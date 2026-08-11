@@ -1,12 +1,21 @@
-# Specification: drawspec — declarative diagram spec to themeable SVG
+# drawspec — Specification (annotated edition)
+
+> Generated 2026-08-11. This is the specification with a **note slot** after every section. Read it in any Markdown app. To annotate, replace the `_(your notes…)_` placeholder under any section. When done, send the file back — notes are acted on.
+
+---
+
+# Specification
+
+## Preamble & scope
 
 **Date**: 2026-08-11
 **Ticket / PR**: [#1](https://github.com/nuncaeslupus/drawspec/pull/1)
 **Author**: drawspec
 
----
+> **✎ Notes** · `SPEC · intro`
+> _(your notes here — replace this line)_
 
-## 1. Problem statement
+## §1 Problem statement
 
 Language models produce diagrams by emitting SVG with absolute `x`/`y`
 coordinates, and they fail at the same things every time. In the 87-diagram
@@ -54,7 +63,10 @@ inheriting the document's colour and surviving greyscale printing.
       **fails loudly** rather than shrinking type or overflowing. Judged by a
       test asserting a specific exception, not by a number.
 
-## 2. Systems & Impact
+> **✎ Notes** · `SPEC §1`
+> _(your notes here — replace this line)_
+
+## §2 Systems & Impact
 
 drawspec is a greenfield library, so the table maps its own subsystems rather
 than existing services. "Needs changes" reads as "must be built".
@@ -90,7 +102,15 @@ than existing services. "Needs changes" reads as "must be built".
 - **Risk of inaction**: hand-written SVG keeps producing a ~72% complaint rate
   (63 of 87), with review cost borne by a human on every diagram, forever.
 
-## 3. Options
+> **✎ Notes** · `SPEC §2`
+> _(your notes here — replace this line)_
+
+## §3 Options
+
+
+
+> **✎ Notes** · `SPEC §3`
+> _(your notes here — replace this line)_
 
 ### The candidate survey
 
@@ -133,6 +153,9 @@ inherited, greyscale-safe; and (2) can it fix the three worst corpus diagrams.
    orders of magnitude larger. At this scale a pure-Python layered layout is
    adequate, and adequacy with no system dependency beats excellence with one.
 
+> **✎ Notes** · `SPEC › The candidate survey`
+> _(your notes here — replace this line)_
+
 ### Option A: Adopt an existing tool with a post-processing template (Conservative)
 
 - **Description**: Pick D2 or Graphviz, write the declarative format as a thin
@@ -152,6 +175,9 @@ inherited, greyscale-safe; and (2) can it fix the three worst corpus diagrams.
   *unrepresentable*. Pyramids, concentric circles and axis charts are not
   expressible at all — 3 of 9 types unserved. And it inherits a system binary.
 - **Compatibility**: Consumers install a Go or C binary.
+
+> **✎ Notes** · `SPEC › Option A: Adopt an existing tool with a post-processing template (Conservative)`
+> _(your notes here — replace this line)_
 
 ### Option B: Own the renderer, pluggable pure-Python layout (Recommended)
 
@@ -178,6 +204,9 @@ inherited, greyscale-safe; and (2) can it fix the three worst corpus diagrams.
 - **Compatibility**: Pure Python, 3.12+. One pure-Python runtime dependency for
   font parsing (`fonttools`).
 
+> **✎ Notes** · `SPEC › Option B: Own the renderer, pluggable pure-Python layout (Recommended)`
+> _(your notes here — replace this line)_
+
 ### Option C: Own the renderer, Graphviz as the only layout engine
 
 - **Description**: As Option B, but the layout engine is Graphviz driven via
@@ -194,6 +223,9 @@ inherited, greyscale-safe; and (2) can it fix the three worst corpus diagrams.
   so the routing work does not actually go away.
 - **Compatibility**: Consumers install Graphviz.
 
+> **✎ Notes** · `SPEC › Option C: Own the renderer, Graphviz as the only layout engine`
+> _(your notes here — replace this line)_
+
 ### Comparison
 
 | | A: adopt + post-process | B: own renderer, pluggable layout | C: own renderer, Graphviz only |
@@ -205,7 +237,10 @@ inherited, greyscale-safe; and (2) can it fix the three worst corpus diagrams.
 | Install story | System binary required | `pip install drawspec` | System binary required |
 | Maintenance | Tracks another project's releases | Ours | Ours plus a version-sensitive parser |
 
-## 4. Recommendation
+> **✎ Notes** · `SPEC › Comparison`
+> _(your notes here — replace this line)_
+
+## §4 Recommendation
 
 **Recommended option: B — own the renderer, pluggable pure-Python layout.**
 
@@ -282,6 +317,9 @@ the three rendering families in that order.
       on what basis). Whether drawspec bundles a font for this or maps onto the
       host's fonts is a packaging decision for the plan.
 
----
 
 > Sections 5–6 (contracts, risks) are appended by `design`.
+
+> **✎ Notes** · `SPEC §4`
+> _(your notes here — replace this line)_
+
