@@ -1,0 +1,23 @@
+<svg viewBox="0 0 440 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n3 n2" width="100%" style="max-width:440px">
+  <title id="n3">Enim ad minim veniam quis nostrud ex</title>
+  <desc id="n2">Ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsu</desc>
+  <polygon points="220,10 250,45 190,45" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <polygon points="190,45 250,45 270,85 170,85" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <polygon points="170,85 270,85 295,130 145,130" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <polygon points="145,130 295,130 320,175 120,175" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <polygon points="120,175 320,175 350,220 90,220" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <g font-size="11.5" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <text x="220" y="32">Id</text>
+    <text x="220" y="70">Id</text>
+    <text x="220" y="112">Id</text>
+    <text x="220" y="157">Tempor incididunt</text>
+    <text x="220" y="202">Ut labore et do</text>
+  </g>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <path d="M375,30 L375,215" fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#n1)"/>
+  <text x="410" y="125" fill="currentColor" font-size="11" font-family="sans-serif" text-anchor="middle" transform="rotate(90 410 125)">magna aliq</text>
+</svg>

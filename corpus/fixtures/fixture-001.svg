@@ -1,0 +1,23 @@
+<svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1">
+  <title id="n2">Exercitation ullamco laboris nisi aliquip ex ea commodo</title>
+  <desc id="n1">Consequat duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim adae</desc>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="220" y="10" width="200" height="40" rx="4"/>
+    <rect x="20" y="90" width="180" height="40" rx="4"/>
+    <rect x="230" y="90" width="180" height="40" rx="4"/>
+    <rect x="440" y="90" width="180" height="40" rx="4"/>
+    <rect x="230" y="160" width="180" height="30" rx="4"/>
+    <path d="M320,50 L320,70 L110,70 L110,90"/>
+    <path d="M320,70 L320,90"/>
+    <path d="M320,70 L530,70 L530,90"/>
+    <path d="M320,130 L320,160"/>
+  </g>
+  <g font-size="13" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <text x="320" y="34">Lorem ipsum dolor sit amet cons</text>
+    <text x="110" y="114">Adipiscingae</text>
+    <text x="320" y="108">Sed do eiusmod tem</text>
+    <text x="320" y="124" font-size="10">incididunt ut labore eta</text>
+    <text x="530" y="114">magna aliquaa</text>
+    <text x="320" y="179">Ad minim veniam quisa</text>
+  </g>
+</svg>

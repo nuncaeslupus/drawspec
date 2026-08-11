@@ -1,0 +1,26 @@
+<svg viewBox="0 0 640 200" role="img" aria-labelledby="n3 n1" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;color:inherit" fill="none" stroke="currentColor" stroke-width="1.5">
+  <title id="n3">Adipiscing elit sed do eiusmod tempor incididunt utae</title>
+  <desc id="n1">Et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur</desc>
+  <rect x="10" y="80" width="150" height="50" rx="6"/>
+  <text x="85" y="100" text-anchor="middle" font-size="13" stroke="none" fill="currentColor">Esse cillum eu fug</text>
+  <text x="85" y="118" text-anchor="middle" font-size="13" stroke="none" fill="currentColor">nulla pariat</text>
+  <line x1="160" y1="105" x2="230" y2="105" marker-end="url(#n2)"/>
+  <polygon points="235,105 260,90 260,120" />
+  <text x="255" y="60" text-anchor="middle" font-size="13" stroke="none" fill="currentColor">Excepteu</text>
+  <text x="255" y="75" text-anchor="middle" font-size="13" stroke="none" fill="currentColor">sint occae</text>
+  <line x1="260" y1="90" x2="330" y2="30" marker-end="url(#n2)"/>
+  <text x="300" y="20" text-anchor="middle" font-size="12" stroke="none" fill="currentColor">Id</text>
+  <rect x="335" y="5" width="180" height="45" rx="6"/>
+  <text x="425" y="23" text-anchor="middle" font-size="13" stroke="none" fill="currentColor">Cupidatat non pr</text>
+  <text x="425" y="40" text-anchor="middle" font-size="13" stroke="none" fill="currentColor">sunt culpa qui of</text>
+  <line x1="260" y1="120" x2="330" y2="170" marker-end="url(#n2)"/>
+  <text x="300" y="185" text-anchor="middle" font-size="12" stroke="none" fill="currentColor">Deserunt mollit anim id</text>
+  <rect x="335" y="145" width="200" height="45" rx="6"/>
+  <text x="435" y="163" text-anchor="middle" font-size="13" stroke="none" fill="currentColor">Est laborum loremae</text>
+  <text x="435" y="180" text-anchor="middle" font-size="13" stroke="none" fill="currentColor">dolor sit amet consect</text>
+  <defs>
+    <marker id="n2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor" stroke="none"/>
+    </marker>
+  </defs>
+</svg>

@@ -1,0 +1,32 @@
+<svg viewBox="0 0 580 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1" style="max-width:100%">
+  <title id="n2">Nisi aliquip ex ea commodo consequat duisae</title>
+  <desc id="n1">Irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequ</desc>
+  <g stroke="currentColor" fill="none" stroke-width="1.2">
+    <path d="M100 60 L150 60"/>
+    <path d="M100 75 L125 75 L125 180 L150 180"/>
+    <path d="M230 60 L280 60"/>
+    <path d="M230 180 L430 180 L430 90"/>
+    <path d="M360 60 L410 60 L410 45"/>
+  </g>
+  <g stroke="currentColor" fill="none" stroke-width="3">
+    <path d="M100 60 L150 60"/>
+    <path d="M230 60 L280 60"/>
+    <path d="M360 60 L410 60"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="3">
+    <rect x="20" y="40" width="80" height="40" rx="4"/>
+    <rect x="150" y="40" width="80" height="40" rx="4"/>
+    <rect x="280" y="40" width="80" height="40" rx="4"/>
+    <rect x="410" y="40" width="80" height="40" rx="4"/>
+  </g>
+  <rect x="150" y="160" width="80" height="40" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  <g font-size="12" fill="currentColor" text-anchor="middle">
+    <text x="60" y="58">I</text><text x="60" y="73">tempor</text>
+    <text x="190" y="58">I</text><text x="190" y="73">incidi</text>
+    <text x="320" y="58">I</text><text x="320" y="73">ut lab</text>
+    <text x="450" y="58">I</text><text x="450" y="73">et dol</text>
+    <text x="190" y="178">I</text><text x="190" y="193">magnaa</text>
+    <text x="190" y="215">enim ad minim veniamae</text>
+    <text x="255" y="25">nostrud exercitation ullamco labo</text>
+  </g>
+</svg>

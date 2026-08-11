@@ -1,0 +1,30 @@
+<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n3 n2" style="max-width:100%;height:auto">
+  <title id="n3">Incididunt ut labore etae</title>
+  <desc id="n2">Magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiu</desc>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <line x1="50" y1="350" x2="50" y2="30" marker-end="url(#n1)"/>
+    <line x1="50" y1="350" x2="370" y2="350" marker-end="url(#n1)"/>
+  </g>
+  <g font-size="12" fill="currentColor" font-family="sans-serif">
+    <text x="10" y="190" transform="rotate(-90 10 190)" text-anchor="middle">Cupidatata</text>
+    <text x="210" y="385" text-anchor="middle">Proident sun</text>
+  </g>
+  <g font-size="12.5" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <circle cx="90" cy="310" r="6" fill="currentColor"/>
+    <text x="90" y="335">Culpa qui offici</text>
+    <circle cx="330" cy="310" r="6" fill="currentColor"/>
+    <text x="330" y="335">Deserunt mollita</text>
+    <circle cx="90" cy="70" r="6" fill="currentColor"/>
+    <text x="90" y="55">Id est laborum lorem</text>
+    <circle cx="330" cy="70" r="6" fill="currentColor"/>
+    <text x="330" y="55">Ipsum dolorae</text>
+    <text x="330" y="40">amet consectetur adi</text>
+    <circle cx="210" cy="190" r="6" fill="currentColor"/>
+    <text x="210" y="210">Elit sed do eiusmod te</text>
+  </g>
+</svg>

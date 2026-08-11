@@ -1,0 +1,17 @@
+<svg viewBox="0 0 460 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1" style="max-width:100%">
+  <title id="n2">In reprehenderit voluptateae</title>
+  <desc id="n1">Esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea co</desc>
+  <line x1="60" y1="20" x2="60" y2="240" stroke="currentColor" stroke-width="1.5"/>
+  <line x1="60" y1="240" x2="420" y2="240" stroke="currentColor" stroke-width="1.5"/>
+  <polyline points="60,30 420,240" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="6 5" opacity="0.55"/>
+  <polyline points="60,30 110,58 160,92 210,112 255,150 300,138 350,168 420,196" fill="none" stroke="currentColor" stroke-width="2.5"/>
+  <text x="55" y="245" text-anchor="end" font-size="11" fill="currentColor">i</text>
+  <text x="55" y="34" text-anchor="end" font-size="11" fill="currentColor">enima</text>
+  <text x="60" y="255" text-anchor="start" font-size="11" fill="currentColor">minim</text>
+  <text x="420" y="255" text-anchor="end" font-size="11" fill="currentColor">veniam qu</text>
+  <text x="240" y="275" text-anchor="middle" font-size="13" fill="currentColor">Nostrud exercita</text>
+  <text x="15" y="130" text-anchor="middle" font-size="13" fill="currentColor" transform="rotate(-90 15 130)">Ullamco laboris nisi aliquip ex ea</text>
+  <text x="335" y="45" font-size="11" fill="currentColor" opacity="0.7">commo</text>
+  <text x="335" y="185" font-size="11" fill="currentColor">cons</text>
+  <text x="262" y="130" text-anchor="middle" font-size="11" fill="currentColor">duis aute ir</text>
+</svg>

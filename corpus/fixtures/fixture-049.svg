@@ -1,0 +1,50 @@
+<svg viewBox="0 0 620 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n3 n2" style="max-width:100%;height:auto">
+  <title id="n3">Cupidatat non proident sunt culpa qui officia deserun</title>
+  <desc id="n2">Mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud</desc>
+  <g font-family="sans-serif" font-size="10.5" fill="currentColor" text-anchor="middle">
+    <text x="10" y="15" text-anchor="start" font-weight="bold">Eiusmod te</text>
+    <rect x="10" y="25" width="95" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="57" y="38">Incididunt ut</text>
+    <text x="57" y="50">labore et dolo</text>
+    <rect x="115" y="25" width="95" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="162" y="45">Magna aliqua eni</text>
+    <rect x="220" y="25" width="95" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="267" y="45">Ad minim veniam qui</text>
+    <rect x="325" y="25" width="95" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="372" y="45">Nostrud</text>
+    <rect x="430" y="25" width="90" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="475" y="38">Exercitati</text>
+    <text x="475" y="50">ullamcoae</text>
+    <rect x="530" y="25" width="80" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="570" y="45">Nisi aliq</text>
+
+    <text x="10" y="105" text-anchor="start" font-weight="bold">Ex ea comm</text>
+    <rect x="10" y="115" width="95" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="57" y="128">Consequatae</text>
+    <text x="57" y="140">aute irure in re</text>
+    <rect x="115" y="115" width="95" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="162" y="135">Voluptat</text>
+    <rect x="220" y="115" width="95" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="267" y="135">Velit esse cill</text>
+    <rect x="325" y="115" width="95" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="372" y="135">Eu fugiat nul</text>
+    <rect x="430" y="115" width="180" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="520" y="135">Pariatur excepteur sinta</text>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#n1)">
+    <line x1="105" y1="42" x2="113" y2="42"/>
+    <line x1="210" y1="42" x2="218" y2="42"/>
+    <line x1="315" y1="42" x2="323" y2="42"/>
+    <line x1="420" y1="42" x2="428" y2="42"/>
+    <line x1="520" y1="42" x2="528" y2="42"/>
+    <line x1="105" y1="132" x2="113" y2="132"/>
+    <line x1="210" y1="132" x2="218" y2="132"/>
+    <line x1="315" y1="132" x2="323" y2="132"/>
+    <line x1="420" y1="132" x2="428" y2="132"/>
+  </g>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+</svg>

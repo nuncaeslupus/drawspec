@@ -1,0 +1,24 @@
+<svg viewBox="0 0 500 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1" style="max-width:100%;height:auto">
+  <title id="n2">Voluptate velit esse cillum eu fugiat</title>
+  <desc id="n1">Nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incid</desc>
+  <g fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.85">
+    <circle cx="150" cy="80" r="65"/>
+    <circle cx="270" cy="80" r="65"/>
+    <circle cx="210" cy="180" r="65"/>
+    <circle cx="330" cy="180" r="65"/>
+  </g>
+  <g fill="currentColor">
+    <circle cx="150" cy="80" r="4"/>
+    <circle cx="270" cy="80" r="4"/>
+    <circle cx="210" cy="180" r="4"/>
+    <circle cx="330" cy="180" r="4"/>
+  </g>
+  <g font-size="11" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <text x="150" y="80">Id</text>
+    <text x="270" y="80">Id</text>
+    <text x="210" y="180">Id</text>
+    <text x="330" y="180">Id</text>
+    <text x="210" y="45">duis autea</text>
+    <text x="210" y="58">in repr</text>
+  </g>
+</svg>

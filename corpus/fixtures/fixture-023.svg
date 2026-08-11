@@ -1,0 +1,25 @@
+<svg role="img" viewBox="0 0 720 130" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto">
+  <title>Incididunt ut labore et dolore magna aliqua enim ad mi</title>
+  <desc>Veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpaa</desc>
+  <g fill="none" stroke="currentColor" stroke-width="1.5" font-family="sans-serif" font-size="11">
+    <rect x="4" y="34" width="112" height="46" rx="5"/>
+    <rect x="150" y="34" width="102" height="46" rx="5"/>
+    <rect x="286" y="34" width="112" height="46" rx="5"/>
+    <rect x="432" y="34" width="112" height="46" rx="5"/>
+    <rect x="578" y="34" width="138" height="46" rx="5"/>
+    <path d="M116 57h30M252 57h30M398 57h30M544 57h30" stroke-dasharray="0"/>
+    <path d="M140 52l8 5-8 5zM276 52l8 5-8 5zM422 52l8 5-8 5zM568 52l8 5-8 5z" fill="currentColor" stroke="none"/>
+    <g fill="currentColor" stroke="none" text-anchor="middle">
+      <text x="60" y="53">Excepteur sintae</text>
+      <text x="60" y="68">cupidatat non proide</text>
+      <text x="201" y="53">Sunt culpa</text>
+      <text x="201" y="68">Qui offic</text>
+      <text x="342" y="53">Deserunt</text>
+      <text x="342" y="68">mollit anim ida</text>
+      <text x="488" y="53">Laborum lorema</text>
+      <text x="488" y="68">dolor sit amet conse</text>
+      <text x="647" y="53">Adipiscing elitae</text>
+      <text x="647" y="68">do eiusmodae</text>
+    </g>
+  </g>
+</svg>

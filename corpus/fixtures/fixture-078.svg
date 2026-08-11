@@ -1,0 +1,30 @@
+<svg viewBox="0 0 400 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n3 n2" style="max-width:100%;height:auto">
+  <title id="n3">Aliquip ex ea commodo consequata</title>
+  <desc id="n2">Aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmo</desc>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="60" y="10" width="280" height="45" rx="4"/>
+    <rect x="60" y="80" width="280" height="45" rx="4"/>
+    <rect x="60" y="150" width="280" height="45" rx="4"/>
+    <rect x="60" y="205" width="280" height="45" rx="4"/>
+    <path d="M200,55 L200,78" marker-end="url(#n1)"/>
+    <path d="M200,125 L200,148" marker-end="url(#n1)"/>
+    <path d="M200,195 L200,203" marker-end="url(#n1)"/>
+  </g>
+  <g font-size="13" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <text x="200" y="37">Laborum lorem ipsum dolorae</text>
+    <text x="200" y="102">Amet</text>
+    <text x="200" y="117" font-size="11">consectetur adipiscing elit seda</text>
+    <text x="200" y="177">Eiusm</text>
+    <text x="200" y="192" font-size="11">tempor incididuntae</text>
+    <text x="200" y="230">Labore et dolore magna aliqua enim ad minima</text>
+  </g>
+  <g font-size="10.5" fill="currentColor" text-anchor="middle" font-family="sans-serif" font-style="italic">
+    <text x="255" y="70">quis nostrud exer</text>
+    <text x="255" y="140">ullamco laborisae</text>
+  </g>
+</svg>

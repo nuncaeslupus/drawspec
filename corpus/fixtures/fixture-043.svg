@@ -1,0 +1,31 @@
+<svg role="img" viewBox="0 0 620 250" xmlns="http://www.w3.org/2000/svg">
+  <title>Consectetur adipiscing elit sed do ei</title>
+  <desc>Tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum</desc>
+  <g fill="none" stroke="currentColor" stroke-width="1.5" font-size="12" font-family="sans-serif">
+    <rect x="220" y="10" width="180" height="34"/>
+    <rect x="40" y="80" width="220" height="34"/>
+    <rect x="360" y="80" width="220" height="34"/>
+    <rect x="40" y="150" width="220" height="34"/>
+    <rect x="360" y="150" width="220" height="34"/>
+    <rect x="170" y="210" width="280" height="34"/>
+    <path d="M310,44 L150,80" marker-end="url(#n1)"/>
+    <path d="M310,44 L470,80" marker-end="url(#n1)"/>
+    <path d="M150,114 L150,150" marker-end="url(#n1)"/>
+    <path d="M470,114 L470,150" marker-end="url(#n1)"/>
+    <path d="M150,184 L280,210" marker-end="url(#n1)"/>
+    <path d="M470,184 L340,210" marker-end="url(#n1)"/>
+  </g>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="currentColor" font-size="12" font-family="sans-serif" text-anchor="middle">
+    <text x="310" y="31">Esse cillum eu</text>
+    <text x="150" y="101">Fugiat nulla pariat</text>
+    <text x="470" y="101">Excepteur sinta</text>
+    <text x="150" y="171">Cupidatat non proide</text>
+    <text x="470" y="171">Sunt culpa qui officia de</text>
+    <text x="310" y="231">Mollit anim id est laborum lorem ipsum dolor sitae</text>
+  </g>
+</svg>

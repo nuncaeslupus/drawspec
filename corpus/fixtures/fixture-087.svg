@@ -1,0 +1,28 @@
+<svg viewBox="0 0 640 190" role="img" aria-labelledby="n2 n1" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto">
+  <title id="n2">Pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui of</title>
+  <desc id="n1">Deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure inae</desc>
+  <line x1="20" y1="150" x2="620" y2="150" stroke="currentColor" stroke-width="2"/>
+  <polygon points="620,150 606,144 606,156" fill="currentColor"/>
+  <text x="20" y="176" font-size="12" fill="currentColor">lorem ipsum dolor sit amet consectetura</text>
+  <g fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="20" y="60" width="170" height="60" rx="6"/>
+    <rect x="230" y="45" width="170" height="75" rx="6"/>
+    <rect x="440" y="20" width="180" height="100" rx="6"/>
+  </g>
+  <g font-size="13" fill="currentColor">
+    <text x="34" y="82" font-weight="bold">Elit sed doa</text>
+    <text x="34" y="102">tempor incididun</text>
+    <text x="244" y="67" font-weight="bold">Ut labore etae</text>
+    <text x="244" y="87">magna aliqua en</text>
+    <text x="244" y="107">ad minimae</text>
+    <text x="454" y="42" font-weight="bold">Quis nostrud exercita</text>
+    <text x="454" y="62">ullamco laboris</text>
+    <text x="454" y="82">nisi aliquip ex ea comm</text>
+    <text x="454" y="102">consequat du</text>
+  </g>
+  <g font-size="11" fill="currentColor">
+    <text x="34" y="140">aute irure ina</text>
+    <text x="244" y="140">voluptate velita</text>
+    <text x="454" y="140">cillum eu fugiat nul</text>
+  </g>
+</svg>

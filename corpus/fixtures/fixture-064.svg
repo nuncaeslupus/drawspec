@@ -1,0 +1,28 @@
+<svg viewBox="0 0 640 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n3 n2" style="max-width:100%;height:auto">
+  <title id="n3">Eiusmod temporae</title>
+  <desc id="n2">Ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat</desc>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="2">
+    <line x1="60" y1="55" x2="580" y2="55" marker-end="url(#n1)"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5 4">
+    <path d="M460,65 C460,110 190,110 190,65" marker-end="url(#n1)"/>
+  </g>
+  <g font-size="12.5" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <circle cx="70" cy="55" r="7" fill="currentColor"/>
+    <text x="70" y="35">Qui off</text>
+    <circle cx="190" cy="55" r="7" fill="currentColor"/>
+    <text x="190" y="35">Deserunt</text>
+    <circle cx="325" cy="55" r="7" fill="currentColor"/>
+    <text x="325" y="35">Mollita</text>
+    <circle cx="460" cy="55" r="7" fill="currentColor"/>
+    <text x="460" y="35">Id est lab</text>
+    <circle cx="580" cy="55" r="7" fill="currentColor"/>
+    <text x="580" y="35">Lorem ipsu</text>
+    <text x="325" y="140" font-size="11" font-style="italic">Dolor sit amet consectetur adipiscing elit sed do</text>
+  </g>
+</svg>

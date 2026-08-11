@@ -1,0 +1,30 @@
+<svg role="img" viewBox="0 0 700 170" xmlns="http://www.w3.org/2000/svg">
+  <title>Reprehenderit voluptate velit esse cillum euae</title>
+  <desc>Nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nos</desc>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="10" y="10" width="150" height="50"/>
+    <rect x="195" y="10" width="150" height="50"/>
+    <rect x="380" y="10" width="150" height="50"/>
+    <rect x="565" y="10" width="125" height="50"/>
+    <path d="M160,35 L195,35" marker-end="url(#n1)"/>
+    <path d="M345,35 L380,35" marker-end="url(#n1)"/>
+    <path d="M530,35 L565,35" marker-end="url(#n1)"/>
+    <path d="M627,60 L627,140 L85,140 L85,60" marker-end="url(#n1)"/>
+  </g>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="currentColor" font-size="11" font-family="sans-serif" text-anchor="middle">
+    <text x="85" y="30">ut labore eta</text>
+    <text x="85" y="44">magnaae</text>
+    <text x="270" y="30">enim ad mini</text>
+    <text x="270" y="44">veniam quis no</text>
+    <text x="455" y="30">exercitationa</text>
+    <text x="455" y="44">laborisa</text>
+    <text x="627" y="30">aliquip ex</text>
+    <text x="627" y="44">ea commo</text>
+    <text x="356" y="155">Consequat duis aute irure in</text>
+  </g>
+</svg>

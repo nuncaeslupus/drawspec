@@ -1,0 +1,20 @@
+<svg viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1" style="max-width:100%;height:auto">
+  <title id="n2">Officia deserunt mollit anim id esta</title>
+  <desc id="n1">Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore mag</desc>
+  <g font-family="sans-serif" font-size="12" fill="currentColor">
+    <g stroke="currentColor" stroke-width="1.5" fill="none">
+      <rect x="20" y="170" width="100" height="30"/>
+      <rect x="120" y="140" width="100" height="60"/>
+      <rect x="220" y="110" width="100" height="90"/>
+      <rect x="320" y="80" width="100" height="120"/>
+      <rect x="420" y="50" width="100" height="150"/>
+    </g>
+    <text x="70" y="189" text-anchor="middle">velit esse</text>
+    <text x="170" y="159" text-anchor="middle">cillum eu fu</text>
+    <text x="270" y="129" text-anchor="middle">nulla pari</text>
+    <text x="370" y="99" text-anchor="middle">excepteur si</text>
+    <text x="370" y="113" text-anchor="middle">occaecat cupidat</text>
+    <text x="470" y="69" text-anchor="middle">nonae</text>
+    <text x="470" y="83" text-anchor="middle">sunt culpaae</text>
+  </g>
+</svg>

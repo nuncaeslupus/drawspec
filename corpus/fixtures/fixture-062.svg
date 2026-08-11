@@ -1,0 +1,29 @@
+<svg viewBox="0 0 640 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n3 n2" style="max-width:100%;height:auto">
+  <title id="n3">Sunt culpa qui officia deserunt mollitae</title>
+  <desc id="n2">Id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cill</desc>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="10" y="15" width="180" height="55" rx="4"/>
+    <rect x="230" y="15" width="180" height="55" rx="4"/>
+    <rect x="450" y="15" width="180" height="55" rx="4"/>
+    <path d="M190,42 L228,42" marker-end="url(#n1)"/>
+    <path d="M410,42 L448,42" marker-end="url(#n1)"/>
+  </g>
+  <g font-size="12" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <text x="100" y="38">Veniam quis nostrud</text>
+    <text x="100" y="53">exercitatio</text>
+    <text x="320" y="38">Ullamco laboris nisi ali</text>
+    <text x="320" y="53">ex ea commo</text>
+    <text x="540" y="38">Consequat duis aute ir</text>
+    <text x="540" y="53">in reprehen</text>
+    <text x="100" y="90" font-size="11" font-style="italic">Voluptate velit ess</text>
+    <text x="100" y="103" font-size="11" font-style="italic">cillum eua</text>
+    <text x="320" y="90" font-size="11" font-style="italic">Nulla pariatur excep</text>
+    <text x="540" y="90" font-size="11" font-style="italic">Sint occaecat cupidat</text>
+    <text x="540" y="103" font-size="11" font-style="italic">non proide</text>
+  </g>
+</svg>

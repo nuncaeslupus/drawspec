@@ -1,0 +1,17 @@
+<svg viewBox="0 0 620 260" role="img" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto">
+  <title>Laboris nisi aliquip ex ea commodo consequat duis aute irure in</title>
+  <desc>Reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptatea</desc>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="160" y="10" width="300" height="42" rx="6"/>
+    <rect x="110" y="72" width="400" height="42" rx="6"/>
+    <rect x="60" y="134" width="500" height="42" rx="6"/>
+    <rect x="10" y="196" width="600" height="42" rx="6"/>
+    <path d="M310 52 v14 M310 114 v14 M310 176 v14" stroke-dasharray="3 3"/>
+  </g>
+  <g fill="currentColor" font-size="13" text-anchor="middle" font-family="sans-serif">
+    <text x="310" y="35">Consectetur adipiscing elit sed doa</text>
+    <text x="310" y="97">Tempor incididunt ut laboreae</text>
+    <text x="310" y="159">Dolore magna aliqua enim ad mi</text>
+    <text x="310" y="221">Veniam quis nostrud exercitation ull</text>
+  </g>
+</svg>

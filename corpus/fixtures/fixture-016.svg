@@ -1,0 +1,31 @@
+<svg viewBox="0 0 700 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n3 n2">
+  <title id="n3">Ullamco laboris nisi aliquip ex eaa</title>
+  <desc id="n2">Consequat duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusm</desc>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="10" y="90" width="150" height="50" rx="4"/>
+    <rect x="190" y="90" width="180" height="50" rx="4"/>
+    <rect x="410" y="30" width="270" height="45" rx="4"/>
+    <rect x="410" y="105" width="270" height="45" rx="4"/>
+    <rect x="190" y="175" width="430" height="40" rx="4"/>
+    <path d="M160,115 L190,115" marker-end="url(#n1)"/>
+    <path d="M370,105 L410,53" marker-end="url(#n1)"/>
+    <path d="M370,125 L410,127" marker-end="url(#n1)"/>
+    <path d="M545,75 L470,175" marker-end="url(#n1)"/>
+  </g>
+  <g font-size="12.5" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <text x="85" y="112">Officia deseru</text>
+    <text x="85" y="128">mollit anim</text>
+    <text x="280" y="112">Id est laborum</text>
+    <text x="280" y="128" font-size="11">lorem ipsum dolor sita</text>
+    <text x="545" y="48">Cons</text>
+    <text x="545" y="62" font-size="11">adipiscing elit se</text>
+    <text x="545" y="128">Do eius</text>
+    <text x="405" y="197">Tempor incididunt ut labore et dolore magnaa</text>
+    <text x="405" y="211" font-size="11">enim ad minim veniam quis nostrud ex</text>
+  </g>
+</svg>

@@ -1,0 +1,34 @@
+<svg viewBox="0 0 720 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1" style="max-width:100%;height:auto">
+  <title id="n2">Ut labore et dolore magna aliqua enim ad</title>
+  <desc id="n1">Minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irureae</desc>
+  <g fill="none" stroke="currentColor" stroke-width="2">
+    <line x1="70" y1="50" x2="650" y2="50" marker-end="url(#n3)"/>
+  </g>
+  <defs>
+    <marker id="n3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g font-size="14" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <g>
+      <circle cx="80" cy="50" r="8" fill="currentColor"/>
+      <text x="80" y="30">Deserunta</text>
+      <text x="80" y="80" font-size="12">anim id est</text>
+    </g>
+    <g>
+      <circle cx="270" cy="50" r="8" fill="currentColor"/>
+      <text x="270" y="30">Laborumae</text>
+      <text x="270" y="80" font-size="12">ipsum dolor</text>
+    </g>
+    <g>
+      <circle cx="460" cy="50" r="8" fill="currentColor"/>
+      <text x="460" y="30">Sit ametae</text>
+      <text x="460" y="80" font-size="12">adipiscinga</text>
+    </g>
+    <g>
+      <circle cx="640" cy="50" r="8" fill="currentColor"/>
+      <text x="640" y="30">Sed do eiu</text>
+      <text x="640" y="80" font-size="12">tempor inci</text>
+    </g>
+  </g>
+</svg>

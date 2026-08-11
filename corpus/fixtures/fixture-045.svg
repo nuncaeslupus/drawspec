@@ -1,0 +1,19 @@
+<svg viewBox="0 0 460 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1">
+  <title id="n2">Lorem ipsum dolor sit amet consectetur adipi</title>
+  <desc id="n1">Elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute</desc>
+  <g fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="20" y="60" width="110" height="44"/>
+    <polygon points="220,40 260,80 220,120 180,80"/>
+    <rect x="330" y="60" width="110" height="44"/>
+    <ellipse cx="75" cy="20" rx="42" ry="16"/>
+    <line x1="130" y1="82" x2="180" y2="80"/>
+    <line x1="260" y1="80" x2="330" y2="82"/>
+    <line x1="75" y1="36" x2="75" y2="60"/>
+  </g>
+  <g fill="currentColor" stroke="none" font-size="13" text-anchor="middle">
+    <text x="75" y="86">Qui of</text>
+    <text x="220" y="84">Deserunta</text>
+    <text x="385" y="86">Anim idae</text>
+    <text x="75" y="24" text-decoration="underline">Lab</text>
+  </g>
+</svg>

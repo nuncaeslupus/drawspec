@@ -1,0 +1,37 @@
+<svg viewBox="0 0 520 420" role="img" aria-labelledby="n2 n1" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto">
+  <title id="n2">Et dolore magna aliqua enimae</title>
+  <desc id="n1">Minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officiaae</desc>
+  <g fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.6">
+    <line x1="260" y1="90" x2="150" y2="150"/>
+    <line x1="260" y1="90" x2="370" y2="150"/>
+    <line x1="150" y1="150" x2="150" y2="270"/>
+    <line x1="370" y1="150" x2="370" y2="270"/>
+    <line x1="150" y1="270" x2="260" y2="330"/>
+    <line x1="370" y1="270" x2="260" y2="330"/>
+    <line x1="150" y1="150" x2="370" y2="270"/>
+    <line x1="370" y1="150" x2="150" y2="270"/>
+  </g>
+  <g stroke="currentColor" stroke-width="1.5" font-size="14">
+    <rect x="200" y="65" width="120" height="42" rx="6" fill="none"/>
+    <text x="260" y="91" text-anchor="middle" fill="currentColor">Sunt culpa</text>
+    <rect x="90" y="130" width="120" height="42" rx="6" fill="none"/>
+    <text x="150" y="156" text-anchor="middle" fill="currentColor">Qui officia deserunt mol</text>
+    <rect x="310" y="130" width="120" height="42" rx="6" fill="none"/>
+    <text x="370" y="156" text-anchor="middle" fill="currentColor">Anim id est labor</text>
+    <rect x="90" y="250" width="120" height="42" rx="6" fill="none"/>
+    <text x="150" y="276" text-anchor="middle" fill="currentColor">Lorem ip</text>
+    <rect x="310" y="250" width="120" height="42" rx="6" fill="none"/>
+    <text x="370" y="271" text-anchor="middle" fill="currentColor">Dolor sit ameta</text>
+    <text x="370" y="286" text-anchor="middle" fill="currentColor">adipis</text>
+    <rect x="200" y="310" width="120" height="42" rx="6" fill="none"/>
+    <text x="260" y="336" text-anchor="middle" fill="currentColor">Elit sedae</text>
+  </g>
+  <g font-size="13" fill="currentColor">
+    <text x="260" y="30" text-anchor="middle">Eiusmod tempor incidid</text>
+    <text x="260" y="400" text-anchor="middle">Ut la</text>
+  </g>
+  <g fill="currentColor">
+    <path d="M260 40 L255 55 L265 55 Z"/>
+    <path d="M260 350 L255 365 L265 365 Z"/>
+  </g>
+</svg>

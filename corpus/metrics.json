@@ -1,0 +1,2716 @@
+[
+  {
+    "id": "fixture-001",
+    "view_box": "0 0 640 200",
+    "width": 640.0,
+    "height": 200.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 2,
+      "path": 4,
+      "rect": 5,
+      "svg": 1,
+      "text": 6,
+      "title": 1
+    },
+    "boxes": 5,
+    "texts": 6,
+    "font_sizes": [
+      10.0,
+      13.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-002",
+    "view_box": "0 0 700 220",
+    "width": 700.0,
+    "height": 220.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 6,
+      "rect": 6,
+      "svg": 1,
+      "text": 11,
+      "title": 1
+    },
+    "boxes": 6,
+    "texts": 11,
+    "font_sizes": [
+      11.0,
+      12.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-003",
+    "view_box": "0 0 640 220",
+    "width": 640.0,
+    "height": 220.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 5,
+      "rect": 5,
+      "svg": 1,
+      "text": 7,
+      "title": 1
+    },
+    "boxes": 5,
+    "texts": 7,
+    "font_sizes": [
+      11.0,
+      12.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-004",
+    "view_box": "0 0 640 250",
+    "width": 640.0,
+    "height": 250.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 2,
+      "polygon": 5,
+      "svg": 1,
+      "text": 6,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 6,
+    "font_sizes": [
+      12.0,
+      13.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-005",
+    "view_box": "0 0 460 400",
+    "width": 460.0,
+    "height": 400.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 9,
+      "rect": 9,
+      "svg": 1,
+      "text": 9,
+      "title": 1
+    },
+    "boxes": 9,
+    "texts": 9,
+    "font_sizes": [
+      12.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-006",
+    "view_box": "0 0 460 300",
+    "width": 460.0,
+    "height": 300.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "line": 2,
+      "polyline": 2,
+      "svg": 1,
+      "text": 9,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 9,
+    "font_sizes": [
+      11.0,
+      13.0
+    ],
+    "stroke_widths": [
+      "1.5",
+      "2",
+      "2.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-007",
+    "view_box": "0 0 640 210",
+    "width": 640.0,
+    "height": 210.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 2,
+      "rect": 3,
+      "svg": 1,
+      "text": 6,
+      "title": 1
+    },
+    "boxes": 3,
+    "texts": 6,
+    "font_sizes": [
+      15.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-008",
+    "view_box": "0 0 720 100",
+    "width": 720.0,
+    "height": 100.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "circle": 4,
+      "defs": 1,
+      "desc": 1,
+      "g": 6,
+      "line": 1,
+      "marker": 1,
+      "path": 1,
+      "svg": 1,
+      "text": 8,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 8,
+    "font_sizes": [
+      12.0,
+      13.0
+    ],
+    "stroke_widths": [
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-009",
+    "view_box": "0 0 720 100",
+    "width": 720.0,
+    "height": 100.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "circle": 4,
+      "defs": 1,
+      "desc": 1,
+      "g": 6,
+      "line": 1,
+      "marker": 1,
+      "path": 1,
+      "svg": 1,
+      "text": 8,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 8,
+    "font_sizes": [
+      12.0,
+      14.0
+    ],
+    "stroke_widths": [
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-010",
+    "view_box": "0 0 640 210",
+    "width": 640.0,
+    "height": 210.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 5,
+      "rect": 5,
+      "svg": 1,
+      "text": 7,
+      "title": 1
+    },
+    "boxes": 5,
+    "texts": 7,
+    "font_sizes": [
+      12.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-011",
+    "view_box": "0 0 640 230",
+    "width": 640.0,
+    "height": 230.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 4,
+      "rect": 4,
+      "svg": 1,
+      "text": 8,
+      "title": 1
+    },
+    "boxes": 4,
+    "texts": 8,
+    "font_sizes": [
+      11.0,
+      12.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-012",
+    "view_box": "0 0 640 260",
+    "width": 640.0,
+    "height": 260.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 2,
+      "rect": 7,
+      "svg": 1,
+      "text": 12,
+      "title": 1
+    },
+    "boxes": 7,
+    "texts": 12,
+    "font_sizes": [
+      11.0,
+      12.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-013",
+    "view_box": "0 0 640 250",
+    "width": 640.0,
+    "height": 250.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 6,
+      "rect": 5,
+      "svg": 1,
+      "text": 9,
+      "title": 1
+    },
+    "boxes": 5,
+    "texts": 9,
+    "font_sizes": [
+      11.0,
+      12.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-014",
+    "view_box": "0 0 700 210",
+    "width": 700.0,
+    "height": 210.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 4,
+      "rect": 5,
+      "svg": 1,
+      "text": 13,
+      "title": 1
+    },
+    "boxes": 5,
+    "texts": 13,
+    "font_sizes": [
+      11.0,
+      12.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-015",
+    "view_box": "0 0 640 190",
+    "width": 640.0,
+    "height": 190.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 2,
+      "rect": 3,
+      "svg": 1,
+      "text": 6,
+      "title": 1
+    },
+    "boxes": 3,
+    "texts": 6,
+    "font_sizes": [
+      15.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-016",
+    "view_box": "0 0 700 220",
+    "width": 700.0,
+    "height": 220.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 5,
+      "rect": 5,
+      "svg": 1,
+      "text": 9,
+      "title": 1
+    },
+    "boxes": 5,
+    "texts": 9,
+    "font_sizes": [
+      11.0,
+      12.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-017",
+    "view_box": "0 0 660 360",
+    "width": 660.0,
+    "height": 360.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 7,
+      "rect": 7,
+      "svg": 1,
+      "text": 15,
+      "title": 1
+    },
+    "boxes": 7,
+    "texts": 15,
+    "font_sizes": [
+      11.0,
+      12.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-018",
+    "view_box": "0 0 640 220",
+    "width": 640.0,
+    "height": 220.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 2,
+      "polygon": 4,
+      "svg": 1,
+      "text": 4,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 4,
+    "font_sizes": [
+      15.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-019",
+    "view_box": "0 0 640 190",
+    "width": 640.0,
+    "height": 190.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 4,
+      "rect": 4,
+      "svg": 1,
+      "text": 6,
+      "title": 1
+    },
+    "boxes": 4,
+    "texts": 6,
+    "font_sizes": [
+      11.0,
+      12.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-020",
+    "view_box": "0 0 900 220",
+    "width": 900.0,
+    "height": 220.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "line": 7,
+      "marker": 1,
+      "path": 1,
+      "rect": 7,
+      "svg": 1,
+      "text": 11,
+      "title": 1
+    },
+    "boxes": 7,
+    "texts": 11,
+    "font_sizes": [
+      14.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-021",
+    "view_box": "0 0 720 230",
+    "width": 720.0,
+    "height": 230.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 3,
+      "marker": 1,
+      "path": 5,
+      "rect": 5,
+      "svg": 1,
+      "text": 19,
+      "title": 1
+    },
+    "boxes": 5,
+    "texts": 19,
+    "font_sizes": [
+      10.5,
+      12.0,
+      13.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-022",
+    "view_box": "0 0 640 200",
+    "width": 640.0,
+    "height": 200.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "line": 3,
+      "marker": 1,
+      "path": 1,
+      "polygon": 1,
+      "rect": 3,
+      "svg": 1,
+      "text": 10,
+      "title": 1
+    },
+    "boxes": 3,
+    "texts": 10,
+    "font_sizes": [
+      12.0,
+      13.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-023",
+    "view_box": "0 0 720 130",
+    "width": 720.0,
+    "height": 130.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 2,
+      "path": 2,
+      "rect": 5,
+      "svg": 1,
+      "text": 10,
+      "title": 1
+    },
+    "boxes": 5,
+    "texts": 10,
+    "font_sizes": [
+      11.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-024",
+    "view_box": "0 0 400 400",
+    "width": 400.0,
+    "height": 400.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "circle": 4,
+      "desc": 1,
+      "g": 2,
+      "svg": 1,
+      "text": 4,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 4,
+    "font_sizes": [
+      14.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-025",
+    "view_box": "0 0 700 210",
+    "width": 700.0,
+    "height": 210.0,
+    "has_accessible_title": false,
+    "has_accessible_description": false,
+    "elements": {
+      "desc": 1,
+      "g": 6,
+      "path": 2,
+      "rect": 9,
+      "svg": 1,
+      "text": 10,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 10,
+    "font_sizes": [
+      11.0,
+      12.0,
+      13.0
+    ],
+    "stroke_widths": [
+      "1.5",
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-026",
+    "view_box": "0 0 620 260",
+    "width": 620.0,
+    "height": 260.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 3,
+      "line": 5,
+      "marker": 1,
+      "path": 1,
+      "rect": 6,
+      "svg": 1,
+      "text": 8,
+      "title": 1
+    },
+    "boxes": 6,
+    "texts": 8,
+    "font_sizes": [
+      11.0,
+      13.0
+    ],
+    "stroke_widths": [
+      "1.5",
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-027",
+    "view_box": "0 0 460 260",
+    "width": 460.0,
+    "height": 260.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 4,
+      "line": 1,
+      "pattern": 1,
+      "rect": 8,
+      "svg": 1,
+      "text": 11,
+      "title": 1
+    },
+    "boxes": 8,
+    "texts": 11,
+    "font_sizes": [
+      11.0,
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5",
+      "2"
+    ],
+    "hardcoded_colors": [
+      "url(#ratllat-resp)"
+    ],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-028",
+    "view_box": "0 0 620 340",
+    "width": 620.0,
+    "height": 340.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "line": 7,
+      "marker": 1,
+      "path": 1,
+      "rect": 7,
+      "svg": 1,
+      "text": 9,
+      "title": 1
+    },
+    "boxes": 7,
+    "texts": 9,
+    "font_sizes": [
+      11.0,
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-029",
+    "view_box": "0 0 700 110",
+    "width": 700.0,
+    "height": 110.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 2,
+      "rect": 7,
+      "svg": 1,
+      "text": 14,
+      "title": 1
+    },
+    "boxes": 7,
+    "texts": 14,
+    "font_sizes": [
+      9.5
+    ],
+    "stroke_widths": [
+      "1.3",
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-030",
+    "view_box": "0 0 640 300",
+    "width": 640.0,
+    "height": 300.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 4,
+      "marker": 2,
+      "path": 4,
+      "rect": 3,
+      "svg": 1,
+      "text": 11,
+      "title": 1
+    },
+    "boxes": 3,
+    "texts": 11,
+    "font_sizes": [
+      12.0,
+      13.0,
+      15.0
+    ],
+    "stroke_widths": [
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 2,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-031",
+    "view_box": "0 0 560 220",
+    "width": 560.0,
+    "height": 220.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 2,
+      "rect": 5,
+      "svg": 1,
+      "text": 7,
+      "title": 1
+    },
+    "boxes": 5,
+    "texts": 7,
+    "font_sizes": [
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-032",
+    "view_box": "0 0 620 200",
+    "width": 620.0,
+    "height": 200.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 2,
+      "path": 3,
+      "rect": 4,
+      "svg": 1,
+      "text": 10,
+      "title": 1
+    },
+    "boxes": 4,
+    "texts": 10,
+    "font_sizes": [
+      11.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 3,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-033",
+    "view_box": "0 0 560 250",
+    "width": 560.0,
+    "height": 250.0,
+    "has_accessible_title": false,
+    "has_accessible_description": false,
+    "elements": {
+      "desc": 1,
+      "g": 5,
+      "path": 3,
+      "rect": 8,
+      "svg": 1,
+      "text": 9,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 9,
+    "font_sizes": [
+      12.0,
+      13.0
+    ],
+    "stroke_widths": [
+      "1.5",
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-034",
+    "view_box": "0 0 620 220",
+    "width": 620.0,
+    "height": 220.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "line": 5,
+      "marker": 1,
+      "path": 1,
+      "rect": 6,
+      "svg": 1,
+      "text": 11,
+      "title": 1
+    },
+    "boxes": 6,
+    "texts": 11,
+    "font_sizes": [
+      11.0,
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5",
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-035",
+    "view_box": "0 0 460 260",
+    "width": 460.0,
+    "height": 260.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 4,
+      "line": 1,
+      "pattern": 1,
+      "rect": 8,
+      "svg": 1,
+      "text": 14,
+      "title": 1
+    },
+    "boxes": 8,
+    "texts": 14,
+    "font_sizes": [
+      10.5,
+      11.0,
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5",
+      "2"
+    ],
+    "hardcoded_colors": [
+      "url(#ratllat-iaas)"
+    ],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-036",
+    "view_box": "0 0 640 200",
+    "width": 640.0,
+    "height": 200.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "line": 7,
+      "marker": 1,
+      "path": 1,
+      "rect": 8,
+      "svg": 1,
+      "text": 12,
+      "title": 1
+    },
+    "boxes": 8,
+    "texts": 12,
+    "font_sizes": [
+      10.5
+    ],
+    "stroke_widths": [
+      "1.5",
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-037",
+    "view_box": "0 0 560 220",
+    "width": 560.0,
+    "height": 220.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 2,
+      "rect": 5,
+      "svg": 1,
+      "text": 6,
+      "title": 1
+    },
+    "boxes": 5,
+    "texts": 6,
+    "font_sizes": [
+      11.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-038",
+    "view_box": "0 0 500 190",
+    "width": 500.0,
+    "height": 190.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 2,
+      "line": 3,
+      "rect": 4,
+      "svg": 1,
+      "text": 4,
+      "title": 1
+    },
+    "boxes": 4,
+    "texts": 4,
+    "font_sizes": [
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5",
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-039",
+    "view_box": "0 0 720 330",
+    "width": 720.0,
+    "height": 330.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 2,
+      "path": 2,
+      "rect": 14,
+      "svg": 1,
+      "text": 16,
+      "title": 1
+    },
+    "boxes": 14,
+    "texts": 16,
+    "font_sizes": [
+      12.0,
+      13.0
+    ],
+    "stroke_widths": [
+      "1.5",
+      "2.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-040",
+    "view_box": "0 0 640 260",
+    "width": 640.0,
+    "height": 260.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 2,
+      "line": 11,
+      "rect": 6,
+      "svg": 1,
+      "text": 10,
+      "title": 1
+    },
+    "boxes": 6,
+    "texts": 10,
+    "font_sizes": [
+      11.0,
+      13.0
+    ],
+    "stroke_widths": [
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-041",
+    "view_box": "0 0 720 250",
+    "width": 720.0,
+    "height": 250.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 3,
+      "line": 5,
+      "path": 11,
+      "svg": 1,
+      "text": 9,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 9,
+    "font_sizes": [
+      11.0,
+      13.0
+    ],
+    "stroke_widths": [
+      "1.5",
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-042",
+    "view_box": "0 0 620 260",
+    "width": 620.0,
+    "height": 260.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 2,
+      "path": 1,
+      "rect": 4,
+      "svg": 1,
+      "text": 4,
+      "title": 1
+    },
+    "boxes": 4,
+    "texts": 4,
+    "font_sizes": [
+      13.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-043",
+    "view_box": "0 0 620 250",
+    "width": 620.0,
+    "height": 250.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 7,
+      "rect": 6,
+      "svg": 1,
+      "text": 6,
+      "title": 1
+    },
+    "boxes": 6,
+    "texts": 6,
+    "font_sizes": [
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-044",
+    "view_box": "0 0 500 180",
+    "width": 500.0,
+    "height": 180.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "line": 2,
+      "marker": 1,
+      "path": 3,
+      "rect": 4,
+      "svg": 1,
+      "text": 8,
+      "title": 1
+    },
+    "boxes": 4,
+    "texts": 8,
+    "font_sizes": [
+      11.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-045",
+    "view_box": "0 0 460 160",
+    "width": 460.0,
+    "height": 160.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "ellipse": 1,
+      "g": 2,
+      "line": 3,
+      "polygon": 1,
+      "rect": 2,
+      "svg": 1,
+      "text": 4,
+      "title": 1
+    },
+    "boxes": 2,
+    "texts": 4,
+    "font_sizes": [
+      13.0
+    ],
+    "stroke_widths": [
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-046",
+    "view_box": "0 0 480 220",
+    "width": 480.0,
+    "height": 220.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 4,
+      "rect": 3,
+      "svg": 1,
+      "text": 8,
+      "title": 1
+    },
+    "boxes": 3,
+    "texts": 8,
+    "font_sizes": [
+      10.5,
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5",
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 2,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-047",
+    "view_box": "0 0 340 340",
+    "width": 340.0,
+    "height": 340.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 6,
+      "rect": 4,
+      "svg": 1,
+      "text": 8,
+      "title": 1
+    },
+    "boxes": 4,
+    "texts": 8,
+    "font_sizes": [
+      10.5,
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 5,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-048",
+    "view_box": "0 0 700 90",
+    "width": 700.0,
+    "height": 90.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 3,
+      "path": 4,
+      "rect": 5,
+      "svg": 1,
+      "text": 8,
+      "title": 1
+    },
+    "boxes": 5,
+    "texts": 8,
+    "font_sizes": [
+      11.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-049",
+    "view_box": "0 0 620 180",
+    "width": 620.0,
+    "height": 180.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "line": 9,
+      "marker": 1,
+      "path": 1,
+      "rect": 11,
+      "svg": 1,
+      "text": 16,
+      "title": 1
+    },
+    "boxes": 11,
+    "texts": 16,
+    "font_sizes": [
+      10.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-050",
+    "view_box": "0 0 760 150",
+    "width": 760.0,
+    "height": 150.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 8,
+      "line": 5,
+      "marker": 1,
+      "path": 1,
+      "rect": 6,
+      "svg": 1,
+      "text": 8,
+      "title": 1
+    },
+    "boxes": 6,
+    "texts": 8,
+    "font_sizes": [
+      11.0,
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-051",
+    "view_box": "0 0 360 220",
+    "width": 360.0,
+    "height": 220.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "circle": 2,
+      "desc": 1,
+      "g": 2,
+      "svg": 1,
+      "text": 4,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 4,
+    "font_sizes": [
+      10.5,
+      13.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-052",
+    "view_box": "0 0 380 200",
+    "width": 380.0,
+    "height": 200.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 4,
+      "rect": 3,
+      "svg": 1,
+      "text": 3,
+      "title": 1
+    },
+    "boxes": 3,
+    "texts": 3,
+    "font_sizes": [
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 2,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-053",
+    "view_box": "0 0 400 320",
+    "width": 400.0,
+    "height": 320.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "circle": 3,
+      "desc": 1,
+      "g": 2,
+      "svg": 1,
+      "text": 5,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 5,
+    "font_sizes": [
+      10.5,
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-054",
+    "view_box": "0 0 400 400",
+    "width": 400.0,
+    "height": 400.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "circle": 5,
+      "desc": 1,
+      "g": 2,
+      "svg": 1,
+      "text": 6,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 6,
+    "font_sizes": [
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-055",
+    "view_box": "0 0 560 200",
+    "width": 560.0,
+    "height": 200.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "line": 4,
+      "marker": 1,
+      "path": 1,
+      "rect": 5,
+      "svg": 1,
+      "text": 6,
+      "title": 1
+    },
+    "boxes": 5,
+    "texts": 6,
+    "font_sizes": [
+      10.5,
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5",
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-056",
+    "view_box": "0 0 520 420",
+    "width": 520.0,
+    "height": 420.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 4,
+      "line": 8,
+      "path": 2,
+      "rect": 6,
+      "svg": 1,
+      "text": 9,
+      "title": 1
+    },
+    "boxes": 6,
+    "texts": 9,
+    "font_sizes": [
+      13.0,
+      14.0
+    ],
+    "stroke_widths": [
+      "1.2",
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-057",
+    "view_box": "0 0 400 260",
+    "width": 400.0,
+    "height": 260.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "line": 4,
+      "marker": 1,
+      "path": 1,
+      "rect": 4,
+      "svg": 1,
+      "text": 4,
+      "title": 1
+    },
+    "boxes": 4,
+    "texts": 4,
+    "font_sizes": [
+      16.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-058",
+    "view_box": "0 0 640 230",
+    "width": 640.0,
+    "height": 230.0,
+    "has_accessible_title": false,
+    "has_accessible_description": false,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 3,
+      "marker": 1,
+      "path": 4,
+      "rect": 4,
+      "svg": 1,
+      "text": 10,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 10,
+    "font_sizes": [
+      13.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-059",
+    "view_box": "0 0 480 160",
+    "width": 480.0,
+    "height": 160.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "line": 1,
+      "marker": 1,
+      "path": 1,
+      "rect": 2,
+      "svg": 1,
+      "text": 8,
+      "title": 1
+    },
+    "boxes": 2,
+    "texts": 8,
+    "font_sizes": [
+      11.0,
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-060",
+    "view_box": "0 0 900 140",
+    "width": 900.0,
+    "height": 140.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "line": 5,
+      "marker": 1,
+      "path": 1,
+      "rect": 6,
+      "svg": 1,
+      "text": 10,
+      "title": 1
+    },
+    "boxes": 6,
+    "texts": 10,
+    "font_sizes": [
+      11.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-061",
+    "view_box": "0 0 640 230",
+    "width": 640.0,
+    "height": 230.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 4,
+      "line": 1,
+      "polyline": 2,
+      "svg": 1,
+      "text": 7,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 7,
+    "font_sizes": [
+      12.5
+    ],
+    "stroke_widths": [
+      "1",
+      "2.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-062",
+    "view_box": "0 0 640 130",
+    "width": 640.0,
+    "height": 130.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 3,
+      "rect": 3,
+      "svg": 1,
+      "text": 11,
+      "title": 1
+    },
+    "boxes": 3,
+    "texts": 11,
+    "font_sizes": [
+      11.0,
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-063",
+    "view_box": "0 0 760 250",
+    "width": 760.0,
+    "height": 250.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 2,
+      "path": 5,
+      "rect": 4,
+      "svg": 1,
+      "text": 21,
+      "title": 1
+    },
+    "boxes": 4,
+    "texts": 21,
+    "font_sizes": [
+      11.0,
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-064",
+    "view_box": "0 0 640 150",
+    "width": 640.0,
+    "height": 150.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "circle": 5,
+      "defs": 1,
+      "desc": 1,
+      "g": 3,
+      "line": 1,
+      "marker": 1,
+      "path": 2,
+      "svg": 1,
+      "text": 6,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 6,
+    "font_sizes": [
+      11.0,
+      12.5
+    ],
+    "stroke_widths": [
+      "1.5",
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 1,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-065",
+    "view_box": "0 0 400 400",
+    "width": 400.0,
+    "height": 400.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "circle": 5,
+      "defs": 1,
+      "desc": 1,
+      "g": 3,
+      "line": 2,
+      "marker": 1,
+      "path": 1,
+      "svg": 1,
+      "text": 8,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 8,
+    "font_sizes": [
+      12.0,
+      12.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-066",
+    "view_box": "0 0 580 250",
+    "width": 580.0,
+    "height": 250.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 4,
+      "path": 8,
+      "rect": 5,
+      "svg": 1,
+      "text": 12,
+      "title": 1
+    },
+    "boxes": 5,
+    "texts": 12,
+    "font_sizes": [
+      12.0
+    ],
+    "stroke_widths": [
+      "1.2",
+      "3"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-067",
+    "view_box": "0 0 560 260",
+    "width": 560.0,
+    "height": 260.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 6,
+      "line": 4,
+      "marker": 1,
+      "path": 4,
+      "svg": 1,
+      "text": 6,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 6,
+    "font_sizes": [
+      11.0,
+      12.5
+    ],
+    "stroke_widths": [
+      "1",
+      "1.5",
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 3,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-068",
+    "view_box": "0 0 700 170",
+    "width": 700.0,
+    "height": 170.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 5,
+      "rect": 4,
+      "svg": 1,
+      "text": 9,
+      "title": 1
+    },
+    "boxes": 4,
+    "texts": 9,
+    "font_sizes": [
+      11.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-069",
+    "view_box": "0 0 720 210",
+    "width": 720.0,
+    "height": 210.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 2,
+      "path": 1,
+      "rect": 9,
+      "svg": 1,
+      "text": 15,
+      "title": 1
+    },
+    "boxes": 9,
+    "texts": 15,
+    "font_sizes": [
+      10.0,
+      11.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-070",
+    "view_box": "0 0 900 220",
+    "width": 900.0,
+    "height": 220.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 4,
+      "line": 10,
+      "marker": 1,
+      "path": 1,
+      "rect": 9,
+      "svg": 1,
+      "text": 17,
+      "title": 1
+    },
+    "boxes": 9,
+    "texts": 17,
+    "font_sizes": [
+      11.0,
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-071",
+    "view_box": "0 0 640 220",
+    "width": 640.0,
+    "height": 220.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "circle": 5,
+      "defs": 1,
+      "desc": 1,
+      "g": 4,
+      "line": 1,
+      "marker": 1,
+      "path": 2,
+      "svg": 1,
+      "text": 11,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 11,
+    "font_sizes": [
+      10.5,
+      11.5
+    ],
+    "stroke_widths": [
+      "1",
+      "2.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 1,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-072",
+    "view_box": "0 0 400 220",
+    "width": 400.0,
+    "height": 220.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "polygon": 3,
+      "svg": 1,
+      "text": 3,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 3,
+    "font_sizes": [
+      13.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-073",
+    "view_box": "0 0 500 240",
+    "width": 500.0,
+    "height": 240.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "circle": 8,
+      "desc": 1,
+      "g": 3,
+      "svg": 1,
+      "text": 6,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 6,
+    "font_sizes": [
+      11.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-074",
+    "view_box": "0 0 680 200",
+    "width": 680.0,
+    "height": 200.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 3,
+      "marker": 1,
+      "path": 8,
+      "rect": 4,
+      "svg": 1,
+      "text": 15,
+      "title": 1
+    },
+    "boxes": 4,
+    "texts": 15,
+    "font_sizes": [
+      11.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-075",
+    "view_box": "0 0 620 150",
+    "width": 620.0,
+    "height": 150.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 2,
+      "rect": 3,
+      "svg": 1,
+      "text": 11,
+      "title": 1
+    },
+    "boxes": 3,
+    "texts": 11,
+    "font_sizes": [
+      10.0,
+      11.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-076",
+    "view_box": "0 0 680 130",
+    "width": 680.0,
+    "height": 130.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 3,
+      "marker": 1,
+      "path": 4,
+      "rect": 4,
+      "svg": 1,
+      "text": 15,
+      "title": 1
+    },
+    "boxes": 4,
+    "texts": 15,
+    "font_sizes": [
+      10.5,
+      11.0,
+      12.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-077",
+    "view_box": "0 0 500 210",
+    "width": 500.0,
+    "height": 210.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 3,
+      "marker": 1,
+      "path": 5,
+      "rect": 5,
+      "svg": 1,
+      "text": 9,
+      "title": 1
+    },
+    "boxes": 5,
+    "texts": 9,
+    "font_sizes": [
+      10.0,
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-078",
+    "view_box": "0 0 400 260",
+    "width": 400.0,
+    "height": 260.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 3,
+      "marker": 1,
+      "path": 4,
+      "rect": 4,
+      "svg": 1,
+      "text": 8,
+      "title": 1
+    },
+    "boxes": 4,
+    "texts": 8,
+    "font_sizes": [
+      10.5,
+      11.0,
+      13.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-079",
+    "view_box": "0 0 440 240",
+    "width": 440.0,
+    "height": 240.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 1,
+      "marker": 1,
+      "path": 2,
+      "polygon": 5,
+      "svg": 1,
+      "text": 6,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 6,
+    "font_sizes": [
+      11.0,
+      11.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-080",
+    "view_box": "0 0 460 210",
+    "width": 460.0,
+    "height": 210.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "circle": 5,
+      "desc": 1,
+      "g": 4,
+      "line": 14,
+      "polygon": 1,
+      "rect": 17,
+      "svg": 1,
+      "text": 2,
+      "title": 1
+    },
+    "boxes": 17,
+    "texts": 2,
+    "font_sizes": [
+      12.5
+    ],
+    "stroke_widths": [
+      "0.75",
+      "1",
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-081",
+    "view_box": "0 0 640 260",
+    "width": 640.0,
+    "height": 260.0,
+    "has_accessible_title": false,
+    "has_accessible_description": false,
+    "elements": {
+      "desc": 1,
+      "g": 6,
+      "rect": 14,
+      "svg": 1,
+      "text": 18,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 18,
+    "font_sizes": [
+      12.0
+    ],
+    "stroke_widths": [
+      "1.2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-082",
+    "view_box": "0 0 400 220",
+    "width": 400.0,
+    "height": 220.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 1,
+      "polygon": 3,
+      "svg": 1,
+      "text": 3,
+      "title": 1
+    },
+    "boxes": 0,
+    "texts": 3,
+    "font_sizes": [
+      13.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-083",
+    "view_box": "0 0 680 100",
+    "width": 680.0,
+    "height": 100.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 5,
+      "rect": 5,
+      "svg": 1,
+      "text": 5,
+      "title": 1
+    },
+    "boxes": 5,
+    "texts": 5,
+    "font_sizes": [
+      12.5
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-084",
+    "view_box": "0 0 620 210",
+    "width": 620.0,
+    "height": 210.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 2,
+      "rect": 9,
+      "svg": 1,
+      "text": 10,
+      "title": 1
+    },
+    "boxes": 9,
+    "texts": 10,
+    "font_sizes": [
+      12.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-085",
+    "view_box": "0 0 640 250",
+    "width": 640.0,
+    "height": 250.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "defs": 1,
+      "desc": 1,
+      "g": 2,
+      "marker": 1,
+      "path": 6,
+      "rect": 6,
+      "svg": 1,
+      "text": 9,
+      "title": 1
+    },
+    "boxes": 6,
+    "texts": 9,
+    "font_sizes": [
+      11.0,
+      13.0
+    ],
+    "stroke_widths": [
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 1,
+    "reviewer_flagged": true
+  },
+  {
+    "id": "fixture-086",
+    "view_box": "0 0 500 220",
+    "width": 500.0,
+    "height": 220.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 4,
+      "path": 1,
+      "rect": 3,
+      "svg": 1,
+      "text": 6,
+      "title": 1
+    },
+    "boxes": 3,
+    "texts": 6,
+    "font_sizes": [
+      11.0,
+      12.5
+    ],
+    "stroke_widths": [
+      "1",
+      "1.5"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": false
+  },
+  {
+    "id": "fixture-087",
+    "view_box": "0 0 640 190",
+    "width": 640.0,
+    "height": 190.0,
+    "has_accessible_title": true,
+    "has_accessible_description": true,
+    "elements": {
+      "desc": 1,
+      "g": 3,
+      "line": 1,
+      "polygon": 1,
+      "rect": 3,
+      "svg": 1,
+      "text": 13,
+      "title": 1
+    },
+    "boxes": 3,
+    "texts": 13,
+    "font_sizes": [
+      11.0,
+      12.0,
+      13.0
+    ],
+    "stroke_widths": [
+      "2"
+    ],
+    "hardcoded_colors": [],
+    "curved_strokes": 0,
+    "arrow_markers": 0,
+    "reviewer_flagged": false
+  }
+]

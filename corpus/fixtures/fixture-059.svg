@@ -1,0 +1,24 @@
+<svg viewBox="0 0 480 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n3 n2" style="max-width:100%;height:auto">
+  <title id="n3">Sunt culpa qui officia deserunt mollit an</title>
+  <desc id="n2">Id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua eni</desc>
+  <g font-family="sans-serif" font-size="12" fill="currentColor" text-anchor="middle">
+    <rect x="20" y="40" width="170" height="80" rx="4" fill="none" stroke="currentColor"/>
+    <text x="105" y="75" font-weight="bold">Consequata</text>
+    <text x="105" y="92" font-style="italic">autea</text>
+    <text x="105" y="20">In reprehenderi</text>
+    <rect x="290" y="40" width="170" height="80" rx="4" fill="none" stroke="currentColor"/>
+    <text x="375" y="75" font-weight="bold">Voluptate veli</text>
+    <text x="375" y="92" font-style="italic">essea</text>
+    <text x="375" y="20">Eu fugiat nulla pa</text>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#n1)">
+    <line x1="190" y1="80" x2="288" y2="80"/>
+  </g>
+  <text x="240" y="70" font-family="sans-serif" font-size="11" fill="currentColor" text-anchor="middle">excepteur sint occ</text>
+  <text x="240" y="140" font-family="sans-serif" font-size="11" fill="currentColor" text-anchor="middle">cupidatat nona</text>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+</svg>

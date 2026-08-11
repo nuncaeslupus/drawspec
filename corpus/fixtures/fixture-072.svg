@@ -1,0 +1,10 @@
+<svg viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1" width="100%" style="max-width:400px">
+  <title id="n2">Dolor sit amet con</title>
+  <desc id="n1">Adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo co</desc>
+  <polygon points="200,10 260,80 140,80" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <polygon points="140,80 260,80 300,150 100,150" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <polygon points="100,150 300,150 340,210 60,210" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <text x="200" y="50" text-anchor="middle" fill="currentColor" font-size="13">Des</text>
+  <text x="200" y="120" text-anchor="middle" fill="currentColor" font-size="13">Mollit anim id esta</text>
+  <text x="200" y="185" text-anchor="middle" fill="currentColor" font-size="13">Lorem ips</text>
+</svg>

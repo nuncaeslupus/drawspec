@@ -1,0 +1,35 @@
+<svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg" role="img" style="max-width:100%" aria-labelledby="n2 n1">
+  <title id="n2">Mollit anim id est laborum loremae</title>
+  <desc id="n1">Dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit</desc>
+  <g fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="10" y="10" width="620" height="40" rx="6"/>
+    <rect x="10" y="210" width="620" height="40" rx="6"/>
+    <rect x="30" y="70" width="130" height="110" rx="6"/>
+    <rect x="190" y="70" width="130" height="110" rx="6"/>
+    <rect x="350" y="70" width="130" height="110" rx="6"/>
+    <rect x="510" y="70" width="130" height="110" rx="6"/>
+    <line x1="160" y1="125" x2="190" y2="125" stroke-dasharray="4 3"/>
+    <line x1="320" y1="125" x2="350" y2="125" stroke-dasharray="4 3"/>
+    <line x1="480" y1="125" x2="510" y2="125" stroke-dasharray="4 3"/>
+    <line x1="95" y1="70" x2="95" y2="50"/>
+    <line x1="255" y1="70" x2="255" y2="50"/>
+    <line x1="415" y1="70" x2="415" y2="50"/>
+    <line x1="575" y1="70" x2="575" y2="50"/>
+    <line x1="95" y1="180" x2="95" y2="210"/>
+    <line x1="255" y1="180" x2="255" y2="210"/>
+    <line x1="415" y1="180" x2="415" y2="210"/>
+    <line x1="575" y1="180" x2="575" y2="210"/>
+  </g>
+  <g fill="currentColor" font-size="13" text-anchor="middle">
+    <text x="320" y="34">Ullamco laboris nisi aliquip ex ea commodo consequat</text>
+    <text x="320" y="234">Duis aute irure in reprehenderit</text>
+    <text x="95" y="105">Voluptat</text>
+    <text x="95" y="150" font-size="11">Velit esse cillum</text>
+    <text x="255" y="105">Eu fugia</text>
+    <text x="255" y="150" font-size="11">Nulla pariatur ex</text>
+    <text x="415" y="105">Sint occ</text>
+    <text x="415" y="150" font-size="11">Cupidatat non pro</text>
+    <text x="575" y="105">Sunt cul</text>
+    <text x="575" y="150" font-size="11">Qui officia deser</text>
+  </g>
+</svg>

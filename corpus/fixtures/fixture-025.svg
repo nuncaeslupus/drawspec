@@ -1,0 +1,37 @@
+<svg viewBox="0 0 700 210" role="img" aria-labelledby="n2 n1" style="max-width:100%;height:auto">
+  <title id="n2">Esse cillum eu fugiat nulla pari</title>
+  <desc id="n1">Excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quisa</desc>
+  <g fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.7">
+    <path d="M75 110 L110 110 M610 110 L620 110"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="10" y="90" width="65" height="40" rx="4"/>
+    <rect x="620" y="90" width="70" height="40" rx="4"/>
+  </g>
+  <rect x="110" y="40" width="500" height="140" rx="6" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="5 4"/>
+  <g fill="currentColor" opacity="0.12" stroke="none">
+    <rect x="130" y="90" width="140" height="60" rx="4"/>
+    <rect x="285" y="90" width="140" height="60" rx="4"/>
+    <rect x="440" y="90" width="150" height="60" rx="4"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="130" y="90" width="140" height="60" rx="4"/>
+    <rect x="285" y="90" width="140" height="60" rx="4"/>
+    <rect x="440" y="90" width="150" height="60" rx="4"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.7">
+    <path d="M270 120 L285 120 M425 120 L440 120"/>
+  </g>
+  <g fill="currentColor" font-size="13" text-anchor="middle" font-family="inherit">
+    <text x="42" y="115">Minim</text>
+    <text x="200" y="115">Veniam</text>
+    <text x="200" y="132" font-size="11" opacity="0.7">qui</text>
+    <text x="355" y="115">Nostru</text>
+    <text x="355" y="132" font-size="11" opacity="0.7">exercit</text>
+    <text x="515" y="115">Ulla</text>
+    <text x="515" y="132" font-size="11" opacity="0.7">labori</text>
+    <text x="655" y="115">Nisi al</text>
+    <text x="90" y="107" font-size="11" opacity="0.7">Ex eaae</text>
+    <text x="360" y="60" font-size="12" opacity="0.8">consequat duis aute irure in reprehenderit voluptate velit</text>
+  </g>
+</svg>
