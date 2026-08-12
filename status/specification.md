@@ -285,3 +285,186 @@ the three rendering families in that order.
 ---
 
 > Sections 5–6 (contracts, risks) are appended by `design`.
+
+## 5. Contracts
+
+The tool has no network surface and no database. Its contracts are four: the
+input document, the theme file, the public Python API, and the CLI. The first
+is by far the most expensive to change, because documents written against it
+live in the consumer's repository.
+
+### 5.1 The input document (the primary contract)
+
+A document is JSON (or any format that parses to the same mapping). It carries
+an explicit `version`, and a `kind` that selects both the rendering family and
+which further fields are legal.
+
+```json
+{
+  "version": 1,
+  "kind": "flow",
+  "title": "Request validation",
+  "description": "An incoming request is validated, then either accepted for processing or rejected with a reason.",
+  "width": 640,
+  "nodes": [
+    {"id": "in",  "text": "Request arrives",        "role": "start"},
+    {"id": "chk", "text": "Is the payload valid?",  "role": "decision"},
+    {"id": "ok",  "text": "Queue for processing",   "role": "step"},
+    {"id": "no",  "text": "Reject with a reason",   "role": "terminal"}
+  ],
+  "edges": [
+    {"from": "in",  "to": "ok"},
+    {"from": "in",  "to": "chk"},
+    {"from": "chk", "to": "ok", "label": "yes"},
+    {"from": "chk", "to": "no", "label": "no"}
+  ]
+}
+```
+
+**What the author may write.** `version`, `kind`, `title`, `description`,
+`width`, `height` (with an optional `height_binding` flag), `theme`, and the
+per-kind payload: `nodes`/`edges`/`groups` for graph kinds, `levels` for
+`pyramid`, `rings` for `rings`, `items` for `stack`/`timeline`/`columns`,
+`axes`/`series` for `chart`. On a node: `id`, `text`, `role`, optional `note`.
+On an edge: `from`, `to`, optional `label`, optional `style` naming a
+theme-declared edge role.
+
+**What the author may not write — and the schema rejects rather than ignores.**
+Because the schema sets `additionalProperties: false` throughout, an author who
+writes any of these gets a validation error naming the field, not a silently
+discarded key. That error message is the teaching surface for a model authoring
+blind:
+
+| Rejected | Why |
+|---|---|
+| `x`, `y`, `cx`, `cy`, `points`, `d` | Coordinates are the tool's output, never its input |
+| `width`/`height` **on a node or shape** | Box geometry is derived from measured text plus theme padding |
+| `font_size`, `font_family`, `font_weight` | Type is selected by semantic role from the theme's scale |
+| `color`, `fill`, `stroke`, `stroke_width` | Appearance is a property of the role, not the element |
+| `anchor`, `port`, `arrow_head`, `dx`, `dy` | Edge geometry is derived from the shapes it connects |
+| `z`, `order`, `layer` | Overlap is resolved by the layout, not declared |
+| `viewBox`, `canvas` | Derived from `width` and the content |
+
+`role` is drawn from a closed vocabulary the theme defines
+(`start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group`), so a
+role the theme does not declare is a validation error too. Text may carry
+inline spans — `` `code` `` for the monospace role and `**bold**` for the
+emphasis role — because those are semantic, not typographic.
+
+**Versioning.** `version` is required and validated. v1 is frozen once the
+first consumer document exists; additive fields ship as v1 minor changes with
+defaults, and anything that changes the meaning of an existing field ships as
+v2 with both readable in parallel for at least one release.
+
+### 5.2 The theme (TOML)
+
+```toml
+version = 1
+name = "example"
+
+[canvas]
+width = 640
+min_legible_size = 9.0
+
+[font]
+sans = ["Source Sans 3", "DejaVu Sans", "sans-serif"]
+mono = ["Source Code Pro", "DejaVu Sans Mono", "monospace"]
+serif = ["Source Serif 4", "DejaVu Serif", "serif"]
+default = "sans"
+
+[scale]
+title = 15.0
+heading = 13.0
+body = 11.0
+label = 10.0
+
+[box]
+padding = [10.0, 12.0, 10.0, 12.0]
+line_height = 1.35
+corner_radius = 4.0
+
+[edge]
+stroke_width = 1.5
+min_shaft_length = 16.0
+head_length = 6.0
+
+[role.step]
+shape = "rect"
+stroke = "currentColor"
+dash = "none"
+
+[role.decision]
+shape = "diamond"
+stroke = "currentColor"
+dash = "none"
+
+[role.note]
+shape = "rect"
+stroke = "currentColor"
+dash = "3 2"
+```
+
+A theme is rejected at load time if any two roles are distinguishable only by
+colour — see the `greyscale_ambiguous_role_pairs` criterion in §1. Colour is
+optional throughout; `currentColor` is the default and the documented norm.
+
+### 5.3 Public Python API
+
+```python
+from drawspec import render, render_document, load_theme, Theme
+
+svg: str = render(document: Mapping[str, Any], theme: Theme | str | Path | None = None) -> str
+```
+
+- Pure function: same document plus same theme yields byte-identical SVG.
+- Raises `DocumentError` (schema violation, naming the offending field),
+  `ThemeError` (malformed or greyscale-ambiguous theme), `FitError` (content
+  cannot fit at the theme's minimum legible size), `LayoutError` (the engine
+  could not produce a valid arrangement).
+- Emits `FontSubstitutionWarning` through `warnings` when a named font is not
+  resolvable, naming the requested and substituted families, so a consumer can
+  promote it with `warnings.simplefilter("error", FontSubstitutionWarning)`.
+
+### 5.4 CLI
+
+| Command | Behaviour | Exit |
+|---|---|---|
+| `drawspec render DOC [-o OUT] [--theme T] [--width N] [--height N]` | Writes SVG to `OUT` or stdout | 0 ok, 1 document/fit error, 2 usage |
+| `drawspec validate DOC [--theme T]` | Validates without rendering; prints each violation with its JSON pointer | 0 clean, 1 violations |
+| `drawspec theme check THEME` | Runs the theme invariants, including the greyscale pairing check | 0 clean, 1 violations |
+| `drawspec schema [--out FILE]` | Emits the JSON Schema for the document format | 0 |
+
+`--width`/`--height` override the document's own values, so a build can render
+one document at several widths without editing it.
+
+### 5.5 Internal component contracts
+
+| Caller | Callee | Contract | Failure handling |
+|---|---|---|---|
+| Renderer | `TextMeasurer` | `measure(text, font_role, size) -> Extents`; `wrap(text, max_width, …) -> list[Line]` | Unresolvable font → substitute, warn, continue |
+| Renderer | `LayoutEngine` | `layout(nodes_with_sizes, edges, direction) -> Positions`. The only coupling to a layout implementation — one method, sizes in, coordinates out | Engine failure → `LayoutError`; the protocol lets a Graphviz or ELK engine be substituted without touching callers |
+| Family renderers | `Scene` | Each family emits a `Scene`: primitives (`Rect`, `Path`, `Ellipse`, `Polygon`, `TextRun`) in final coordinates, each tagged with a semantic role and carrying no styling | A primitive with an undeclared role is a programming error, caught in tests |
+| `Scene` + `Theme` | `emit` | The single place SVG is produced, and therefore the single place the inline-safety invariants are enforced | Violation raises rather than emitting bad SVG |
+
+The `Scene` seam is the load-bearing one: three rendering families converge on
+one primitive list, so acceptance test 1 is satisfied in exactly one file
+rather than three.
+
+### 5.6 Persisted artefacts
+
+None. drawspec has no database and no migrations; it is a pure function from
+document to string. The only files it reads are the document, the theme, and
+font files it does not modify.
+
+## 6. Risks & Validation
+
+| Risk | Likelihood | Impact | Mitigation | Validation |
+|------|-----------|--------|------------|------------|
+| **The measured font is not the rendered font.** The SVG inherits the page's font stack, so a consumer's page may render in a family drawspec never measured, and tight boxes overflow. | High | High | Never design for a tight fit: theme padding carries an explicit safety margin, and box width is the measured width plus that margin. Document that the theme's font stack should match the consuming page's. Warn loudly on substitution. | Integration test rendering the fixture set measured against font A and checked for overflow against the metrics of font B |
+| **Pure-Python layout is not good enough** for the graph kinds, even at 17 nodes. | Medium | High | The `LayoutEngine` protocol is one method, so a Graphviz (`-Tplain`) or ELK engine is an additive change, not a rewrite. The T7 spike settles this on the three worst corpus diagrams *before* the implementation task, and its output is a picture, not an argument. | T7 spike; then edge-crossing and overlap counts on the fixture set |
+| **The input schema is wrong in a way only found later**, after consumer documents exist. | Medium | High | `version` is required from day one and validated; `additionalProperties: false` means unknown fields fail loudly rather than being silently absorbed, so a mistaken field never becomes de-facto API. Freeze v1 only once a real consumer document exists. | Schema round-trip tests; a test asserting every forbidden field in §5.1 is rejected by name |
+| **`FitError` fires too often** and the tool is unusable — every second document refuses to render. | Medium | Medium | The error is correct behaviour per the consumer's own style rules, but its *message* is the product: it must say what did not fit, by how much, and which of the three remedies applies. Measure the rate over the fixture set and treat a high rate as a theme-tuning signal, not a reason to soften the rule. | `fit_error_rate` measured over the regression fixtures |
+| **Determinism breaks** — dict ordering, float formatting, or set iteration makes reruns differ, defeating diffable committed SVG. | Medium | Medium | Sort every iteration order explicitly; format floats through one helper with fixed precision; no `set` iteration in emit paths. | A test rendering every fixture twice and comparing bytes |
+| **Anonymized corpus text distorts the fixtures.** Lorem ipsum has different letter frequencies from real prose, so measured widths differ from the originals. | Low | Low | The fixtures are reference material, not the test suite — drawspec's own fixtures are authored for the cases under test. Reproducing the corpus is explicitly not a goal. | n/a — scope boundary, stated in `corpus/README.md` |
+| **Scope creep into a general diagramming tool** — ports, swimlanes, nested compound graphs, animation. | Medium | Medium | The rule from the brief: no feature that no corpus note asked for. The nine kinds are closed for v1; a tenth needs evidence. | Review gate on any PR adding a `kind` |
+| **`grandalf`'s maintenance status** (v0.8, lightly maintained) becomes a liability if it is chosen in T7. | Low | Medium | It sits behind the protocol, and the EPL-1.0 arm of its dual licence permits vendoring the ~600 lines we would use if upstream goes dark. | T7 records the decision and its escape route |
