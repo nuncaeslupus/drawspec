@@ -12,6 +12,7 @@ path is asserted here too: parse, load the theme, fit, render, emit.
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from itertools import pairwise
 from xml.etree import ElementTree
 
@@ -20,10 +21,10 @@ import pytest
 from drawspec import render
 from drawspec.emit import check_embedding_safety
 from drawspec.errors import DrawspecError, FitError
-from drawspec.kinds import scene_for
+from drawspec.kinds import IMPLEMENTED, scene_for
 from drawspec.kinds.grid import AXIS_ROLE, grid_scene
 from drawspec.scene import Path, Rect, Scene, TextRun
-from drawspec.schema import parse_document
+from drawspec.schema import KINDS, parse_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
 
@@ -308,14 +309,21 @@ def test_render_refuses_rather_than_shrinking_past_the_band() -> None:
         render(document("columns", "Before", "Afterwards", "Difference", width=260.0))
 
 
-def test_render_of_an_unimplemented_kind_says_so() -> None:
-    unimplemented = {
-        "version": 1,
-        "kind": "flow",
-        "nodes": [{"id": "a", "text": "One"}],
-    }
+def test_every_kind_the_schema_accepts_now_has_a_family() -> None:
+    """T11 was the last one. A document that parses is a document that draws."""
+    assert set(KINDS) == set(IMPLEMENTED)
+
+
+def test_scene_for_refuses_a_kind_it_has_no_family_for() -> None:
+    """Unreachable through the parser, and still the dispatch's job to say so.
+
+    Built by hand rather than parsed, because the schema's kind vocabulary is
+    closed: this is the guard that a *new* kind added to the vocabulary without a
+    family fails by name instead of falling through to something odd.
+    """
+    parsed = parse_document(document("stack", *LAYERS))
     with pytest.raises(DrawspecError, match="cannot render it yet"):
-        render(unimplemented)
+        scene_for(replace(parsed, kind="constellation"), THEME, MEASURER)
 
 
 def test_scene_for_dispatches_on_the_documents_kind() -> None:
