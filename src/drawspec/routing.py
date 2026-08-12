@@ -40,13 +40,14 @@ from __future__ import annotations
 import heapq
 import math
 from bisect import bisect_left, bisect_right
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from itertools import pairwise
 from typing import Final
 
 from drawspec.errors import LayoutError
-from drawspec.scene import Ellipse, Path, Polygon, Primitive
+from drawspec.scene import Ellipse, Path, Polygon, Primitive, TextRun
+from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme
 
 #: The four sides a port may sit on.
@@ -69,6 +70,15 @@ TURN_COST: Final = 12.0
 #: than the whole of it, so a port never lands on a corner where the head would
 #: point at nothing.
 PORT_SPREAD: Final = 0.6
+
+#: How far a label sits from the line it names, before anything is in the way.
+LABEL_GAP: Final = 4.0
+
+#: The multiples of that gap tried in turn, outwards, when something is.
+LABEL_OFFSETS: Final = (1.0, 2.0, 3.5, 5.0, 7.0)
+
+#: Where along a segment a label is tried: the middle, then either side of it.
+LABEL_POSITIONS: Final = (0.5, 0.35, 0.65, 0.2, 0.8)
 
 #: Coordinates are rounded to this many decimals before they become grid lines,
 #: so a port computed twice is the same grid line twice.
@@ -114,6 +124,48 @@ class Obstacle:
     @property
     def centre(self) -> tuple[float, float]:
         return self.x + self.width / 2, self.y + self.height / 2
+
+    def overlaps(self, box: tuple[float, float, float, float]) -> bool:
+        """Whether a rectangle meets this obstacle's **shape**.
+
+        Exact for all four shapes, and it matters most for the diamond: the empty
+        corner beside a `decision` is where a flow chart has always put its `yes`
+        and `no`, and treating the bounding rectangle as solid is what would deny
+        a label the one place it obviously belongs.
+
+        Each case is the same trick — the nearest point of the rectangle to the
+        shape's centre line is found by clamping, and the shape's own inequality
+        is evaluated there. It is exact because every one of these shapes is
+        convex and its defining function is smallest at that point.
+        """
+        left, top, right, bottom = box
+        centre_x, centre_y = self.centre
+        near_x = min(max(centre_x, left), right)
+        near_y = min(max(centre_y, top), bottom)
+        half_width, half_height = self.width / 2, self.height / 2
+        if not half_width or not half_height:
+            return False
+
+        if self.shape == "diamond":
+            across = abs(near_x - centre_x) / half_width + abs(near_y - centre_y) / half_height
+            return across < 1 - _TOLERANCE
+        if self.shape == "ellipse":
+            return (
+                math.hypot((near_x - centre_x) / half_width, (near_y - centre_y) / half_height)
+                < 1 - _TOLERANCE
+            )
+        if self.shape == "pill":
+            radius = min(half_width, half_height)
+            flat = half_width - radius
+            away_x = max(left - (centre_x + flat), (centre_x - flat) - right, 0.0)
+            away_y = max(top - centre_y, centre_y - bottom, 0.0)
+            return math.hypot(away_x, away_y) < radius - _TOLERANCE
+        return (
+            left < self.right - _TOLERANCE
+            and self.x < right - _TOLERANCE
+            and top < self.bottom - _TOLERANCE
+            and self.y < bottom - _TOLERANCE
+        )
 
     def crosses(self, first: tuple[float, float], second: tuple[float, float]) -> bool:
         """Whether the segment passes through this box's interior.
@@ -165,6 +217,36 @@ class Route:
     @property
     def length(self) -> float:
         return sum(math.dist(first, second) for first, second in self.segments)
+
+
+@dataclass(frozen=True)
+class Label:
+    """One edge's label, placed: the text and the box it was measured into.
+
+    The box is the point of this type. Every rule about a label is a rule about
+    the space it takes — clear of its own line, clear of every other line, clear
+    of every box and of every other label — so the box is what placement returns
+    and what a test measures, and the drawn position is derived from it rather
+    than the other way round.
+    """
+
+    text: str
+    role: str
+    left: float
+    top: float
+    width: float
+    height: float
+    ascent: float
+    font: str = "sans"
+
+    @property
+    def box(self) -> tuple[float, float, float, float]:
+        """Left, top, right, bottom."""
+        return self.left, self.top, self.left + self.width, self.top + self.height
+
+    @property
+    def baseline(self) -> float:
+        return self.top + self.ascent
 
 
 def shaft_length(route: Route, theme: Theme) -> float:
@@ -820,6 +902,162 @@ def _self_loop(
 
 
 # ---------------------------------------------------------------------------
+# Labels
+# ---------------------------------------------------------------------------
+
+
+def place_labels(
+    routes: Sequence[Route],
+    obstacles: Sequence[Obstacle],
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> tuple[Label, ...]:
+    """A box for every labelled route that touches nothing, in the order given.
+
+    Three things a label must miss, and they are one failure to a reader — text
+    with something drawn through it: its own line and every other line, every
+    node box, and every label already placed. So the candidates are generated in
+    preference order and each is *measured* against all three; the first that is
+    clear is taken, and a label with no clear position is refused rather than
+    drawn on top of something.
+
+    Preference runs offset-first: a label two units further out but still beside
+    the middle of its own line beats one at the perfect distance from the far end
+    of the route, because a label's job is to say which line it belongs to.
+
+    Raises:
+        LayoutError: some label has no position clear of everything. The
+            arrangement is what needs to change — a shorter label or more room —
+            and the message says so.
+    """
+    size = theme.scale["label"]
+    font = theme.font.default
+    placed: list[Label] = []
+    paths = tuple(segment for route in routes for segment in route.segments)
+
+    for route in routes:
+        if not route.label:
+            continue
+        extents = measurer.measure(route.label, font, size)
+        for left, top in _label_candidates(route, extents.width, extents.height, theme):
+            candidate = (left, top, left + extents.width, top + extents.height)
+            # Tested with air around it, kept without. Text that merely fails to
+            # overlap a line still reads as touching it, and the offsets the
+            # placer works through are meaningless if the first position that
+            # technically clears everything wins by a tenth of a unit.
+            air = _inflate(candidate, LABEL_GAP / 2)
+            clear = (
+                not any(box.overlaps(air) for box in obstacles)
+                and not any(_box_meets_segment(air, *path) for path in paths)
+                and not any(_boxes_overlap(air, other.box) for other in placed)
+            )
+            if clear:
+                placed.append(
+                    Label(
+                        text=route.label,
+                        role=route.role,
+                        left=left,
+                        top=top,
+                        width=extents.width,
+                        height=extents.height,
+                        ascent=extents.ascent,
+                        font=font,
+                    )
+                )
+                break
+        else:
+            raise LayoutError(
+                f"no room for the label {route.label!r} on the edge from {route.source!r} to "
+                f"{route.target!r}: every position beside it is taken by a box, a line or "
+                f"another label. Shorten the label or give the diagram more room."
+            )
+    return tuple(placed)
+
+
+def _label_candidates(
+    route: Route, width: float, height: float, theme: Theme
+) -> Iterator[tuple[float, float]]:
+    """Top-left corners to try, nearest and most central first.
+
+    The longest segment comes first because it is the part of the route that most
+    reads as *the* line, and the middle of it before the ends for the same
+    reason. Sides are tried in a fixed order rather than a clever one: with the
+    offsets increasing outwards, a consistent side keeps the labels of parallel
+    edges on the same side of their lines, which reads as deliberate.
+    """
+    gap = LABEL_GAP + theme.edge.stroke_width / 2
+    ordered = sorted(
+        enumerate(route.segments),
+        key=lambda item: (-math.dist(item[1][0], item[1][1]), item[0]),
+    )
+    for multiple in LABEL_OFFSETS:
+        offset = gap * multiple
+        for _, (first, second) in ordered:
+            for fraction in LABEL_POSITIONS:
+                x = first[0] + (second[0] - first[0]) * fraction
+                y = first[1] + (second[1] - first[1]) * fraction
+                if first[0] == second[0]:  # a vertical run: beside it
+                    yield x + offset, y - height / 2
+                    yield x - offset - width, y - height / 2
+                else:  # a horizontal run: above it, then below
+                    yield x - width / 2, y - offset - height
+                    yield x - width / 2, y + offset
+
+
+def _inflate(
+    box: tuple[float, float, float, float], margin: float
+) -> tuple[float, float, float, float]:
+    return box[0] - margin, box[1] - margin, box[2] + margin, box[3] + margin
+
+
+def _boxes_overlap(
+    first: tuple[float, float, float, float], second: tuple[float, float, float, float]
+) -> bool:
+    return (
+        first[0] < second[2] - _TOLERANCE
+        and second[0] < first[2] - _TOLERANCE
+        and first[1] < second[3] - _TOLERANCE
+        and second[1] < first[3] - _TOLERANCE
+    )
+
+
+def _box_meets_segment(
+    box: tuple[float, float, float, float],
+    first: tuple[float, float],
+    second: tuple[float, float],
+) -> bool:
+    """Exactly, not by sampling: every route segment is axis-aligned."""
+    left, right = sorted((first[0], second[0]))
+    top, bottom = sorted((first[1], second[1]))
+    return (
+        box[0] < right + _TOLERANCE
+        and left < box[2] + _TOLERANCE
+        and box[1] < bottom + _TOLERANCE
+        and top < box[3] + _TOLERANCE
+    )
+
+
+def label_primitives(label: Label) -> tuple[Primitive, ...]:
+    """The one text run a placed label draws as.
+
+    Anchored at its own left edge rather than centred, because the box placement
+    already decided where the text goes: an anchor is a second opinion about
+    position, and two opinions is how a label ends up half a word from where it
+    was measured to be.
+    """
+    return (
+        TextRun(
+            label.role,
+            x=label.left,
+            y=label.baseline,
+            text=label.text,
+            level="label",
+            font=label.font,
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Primitives
 # ---------------------------------------------------------------------------
 
@@ -881,15 +1119,21 @@ def _marker(
 
 __all__ = [
     "GRID_PRECISION",
+    "LABEL_GAP",
+    "LABEL_OFFSETS",
+    "LABEL_POSITIONS",
     "OUTWARD",
     "PORT_SPREAD",
     "SIDES",
     "TURN_COST",
     "Connector",
+    "Label",
     "Obstacle",
     "Route",
     "edge_primitives",
+    "label_primitives",
     "minimum_rank_gap",
+    "place_labels",
     "route_edges",
     "shaft_length",
 ]
