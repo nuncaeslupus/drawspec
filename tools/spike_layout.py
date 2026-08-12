@@ -4,10 +4,12 @@ Not shipped code. This exists to settle the layout-engine question with rendered
 output rather than argument, which is what the plan asks T7 for, and to give the
 spike test something to assert against.
 
-What it deliberately is *not*: the graph renderer. Edges here are straight lines
-between box centres, because orthogonal routing is T9 and border anchoring is
-T9's job too. What is being compared is where the boxes went — everything else in
-these pictures is scaffolding.
+What it deliberately is *not*: the graph renderer. What is being compared is
+where the boxes went — everything else in these pictures is scaffolding. Since
+T9 landed, the edges are drawn through `drawspec.routing` rather than as straight
+centre-to-centre lines, which changes nothing about the comparison and makes the
+pictures worth looking at: an engine whose boxes leave no room for a route now
+says so, because routing refuses a shaft it cannot draw.
 
 Usage, from the repository root:
 
@@ -20,7 +22,7 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from drawspec.emit import emit
@@ -29,7 +31,7 @@ from drawspec.kinds.common import box_primitives
 from drawspec.layout.base import Layout, LayoutEdge, LayoutEngine, LayoutNode, Spacing
 from drawspec.layout.grandalf_engine import GrandalfEngine
 from drawspec.layout.layered import LayeredEngine
-from drawspec.scene import Path as ScenePath
+from drawspec.routing import Connector, Obstacle, edge_primitives, minimum_rank_gap, route_edges
 from drawspec.scene import Primitive, Scene
 from drawspec.schema import Document, load_document
 from drawspec.text import TextMeasurer
@@ -91,7 +93,7 @@ def engines(theme: Theme) -> tuple[LayoutEngine, ...]:
     """
     spacing = Spacing(
         node_gap=theme.box.padding.horizontal,
-        rank_gap=max(theme.edge.min_shaft_length + theme.edge.head_length, 24.0),
+        rank_gap=max(minimum_rank_gap(theme), 24.0),
     )
     return (LayeredEngine(spacing=spacing), GrandalfEngine(spacing=spacing))
 
@@ -142,8 +144,14 @@ def measure(
     edges: Sequence[LayoutEdge],
     direction: str = "down",
 ) -> tuple[Measured, Layout]:
-    """Run `engine` twice and report what the comparison turns on."""
-    first = engine.layout(nodes, edges, direction)
+    """Run `engine` twice and report what the comparison turns on.
+
+    The engine leaves `Layout.direction` at its default — the protocol says the
+    caller that chose the direction is the one that records it, and here that is
+    this function. Routing reads it to decide which way an arrow leaves a box, so
+    an unrecorded direction draws a right-facing tree with its arrows going up.
+    """
+    first = replace(engine.layout(nodes, edges, direction), direction=direction)
     second = engine.layout(nodes, edges, direction)
     return (
         Measured(
@@ -161,7 +169,7 @@ def measure(
 
 
 def to_scene(document: Document, layout: Layout, theme: Theme, measurer: TextMeasurer) -> Scene:
-    """A rough Scene for looking at: boxes where they landed, straight edges.
+    """A rough Scene for looking at: boxes where they landed, edges routed.
 
     Boxes are drawn through `kinds.common.box_primitives`, the same path the real
     families use, so a `decision` comes out as the diamond its role declares and
@@ -170,25 +178,31 @@ def to_scene(document: Document, layout: Layout, theme: Theme, measurer: TextMea
     look like an enormous rectangle with the label adrift in it, and was the whole
     of what looked wrong about these pictures.
 
-    Straight centre-to-centre edges *are* still wrong on purpose — routing is T9,
-    so an edge here starts inside its source box and ends inside its target. What
-    these pictures are for is judging where the boxes went.
+    Edges go through `drawspec.routing`, so they are anchored to the borders and
+    turn at right angles. The graph kinds themselves are T11; this is the same
+    stage they will use, wired up by hand.
     """
     margin = theme.box.padding.horizontal
     primitives: list[Primitive] = []
 
-    for edge in document.edges:
-        source = layout.placements[edge.source]
-        target = layout.placements[edge.target]
-        primitives.append(
-            ScenePath(
-                edge.role,
-                points=(
-                    (source.centre[0] + margin, source.centre[1] + margin),
-                    (target.centre[0] + margin, target.centre[1] + margin),
-                ),
-            )
+    shapes = {node.id: theme.roles[node.role].shape for node in document.nodes}
+    obstacles = tuple(
+        Obstacle(
+            identifier,
+            x=place.x + margin,
+            y=place.y + margin,
+            width=place.width,
+            height=place.height,
+            shape=shapes[identifier],
         )
+        for identifier, place in sorted(layout.placements.items())
+    )
+    connectors = tuple(
+        Connector(edge.source, edge.target, role=edge.role, label=edge.label)
+        for edge in document.edges
+    )
+    for route in route_edges(connectors, obstacles, theme, direction=layout.direction):
+        primitives.extend(edge_primitives(route, theme))
 
     for node in document.nodes:
         place = layout.placements[node.id]
