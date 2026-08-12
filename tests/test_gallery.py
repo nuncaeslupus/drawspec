@@ -37,12 +37,13 @@ def test_gallery_renders_every_reference_document_it_can() -> None:
         assert entry.rendered or entry.skipped, entry.name
 
 
-def test_gallery_lists_an_unimplemented_kind_rather_than_failing() -> None:
-    """The gallery has to survive the tool being half built."""
-    unimplemented = [entry for entry in ENTRIES if not entry.rendered]
-    assert unimplemented, "expected some kinds to be unimplemented at this point"
-    for entry in unimplemented:
-        assert "cannot render it yet" in entry.skipped or "FitError" in entry.skipped
+def test_gallery_now_renders_every_reference_document() -> None:
+    """T11 was the last family. Nothing in the reference set is skipped.
+
+    The skip path itself is still exercised — by the FitError test below, which
+    is the shape a skip takes now that every kind has a renderer.
+    """
+    assert [entry.name for entry in ENTRIES if not entry.rendered] == []
 
 
 def test_gallery_reports_a_fiterror_with_its_message_rather_than_crashing(
