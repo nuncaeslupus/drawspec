@@ -1,0 +1,33 @@
+<svg viewBox="0 0 640 250" role="img" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto">
+  <title>Exercitation ullamco laboris nisi aliquip ex ea commodo co</title>
+  <desc>Duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempo</desc>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="20" y="100" width="130" height="50" rx="6"/>
+    <rect x="230" y="100" width="150" height="50" rx="6"/>
+    <rect x="450" y="15" width="170" height="45" rx="6"/>
+    <rect x="450" y="75" width="170" height="45" rx="6"/>
+    <rect x="450" y="135" width="170" height="45" rx="6"/>
+    <rect x="450" y="195" width="170" height="45" rx="6"/>
+    <path d="M150 125 h75" marker-end="url(#n1)"/>
+    <path d="M380 125 h30 v-87 h35" marker-end="url(#n1)"/>
+    <path d="M380 125 h30 v-27 h35" marker-end="url(#n1)"/>
+    <path d="M380 125 h30 v33 h35" marker-end="url(#n1)"/>
+    <path d="M380 125 h30 v93 h35" marker-end="url(#n1)"/>
+  </g>
+  <defs>
+    <marker id="n1" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+      <path d="M0 0 L6 3 L0 6 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="currentColor" font-size="13" font-family="sans-serif">
+    <text x="85" y="130" text-anchor="middle">Qui officia de</text>
+    <text x="305" y="123" text-anchor="middle">Mollit anim id est la</text>
+    <text x="305" y="140" text-anchor="middle" font-size="11">lorem ipsum dolor sitae</text>
+    <text x="535" y="35" text-anchor="middle">Consectetur adipis</text>
+    <text x="535" y="51" text-anchor="middle" font-size="11">elit sed do eiusmod tem</text>
+    <text x="535" y="95" text-anchor="middle">Incididunt ut lab</text>
+    <text x="535" y="111" text-anchor="middle" font-size="11">et doloreae</text>
+    <text x="535" y="163" text-anchor="middle">Aliqua enim adae</text>
+    <text x="535" y="223" text-anchor="middle">Veniam quis no</text>
+  </g>
+</svg>

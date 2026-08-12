@@ -1,0 +1,22 @@
+<svg viewBox="0 0 500 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1" style="max-width:100%;height:auto">
+  <title id="n2">Nisi aliquip ex ea commodo consequat</title>
+  <desc id="n1">Duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum</desc>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="10" y="10" width="480" height="200" rx="6"/>
+    <rect x="35" y="45" width="430" height="150" rx="6"/>
+    <rect x="60" y="90" width="200" height="90" rx="6"/>
+  </g>
+  <g font-size="12.5" fill="currentColor" font-family="sans-serif">
+    <text x="20" y="28">Inci</text>
+    <text x="45" y="63">Ut labore et dolore</text>
+    <text x="70" y="108">Magna aliqua eni</text>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="4 3">
+    <path d="M262,135 L320,135"/>
+  </g>
+  <g font-size="11" fill="currentColor" font-family="sans-serif">
+    <text x="330" y="115">Ad minima</text>
+    <text x="330" y="130">quis nostruda</text>
+    <text x="330" y="145">ullamco labori</text>
+  </g>
+</svg>

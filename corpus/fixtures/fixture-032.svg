@@ -1,0 +1,22 @@
+<svg viewBox="0 0 620 200" role="img" aria-labelledby="n2 n1" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto">
+  <title id="n2">Irure in reprehenderit voluptate velit esse cilluma</title>
+  <desc id="n1">Fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostruda</desc>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="20" y="10" width="160" height="46" rx="6"/>
+    <rect x="230" y="80" width="180" height="46" rx="6"/>
+    <rect x="20" y="150" width="180" height="46" rx="6"/>
+    <rect x="440" y="150" width="160" height="46" rx="6"/>
+    <path d="M120 56v14a200 200 0 0 0 90 40"/>
+    <path d="M280 126v10a90 90 0 0 1 -70 24"/>
+    <path d="M380 126v10a120 120 0 0 0 90 24"/>
+  </g>
+  <g fill="currentColor" font-family="sans-serif" font-size="11" text-anchor="middle">
+    <text x="100" y="38">Aliqua</text>
+    <text x="320" y="100">Enim ad mini</text><text x="320" y="114">veniam quisa</text>
+    <text x="110" y="171">Exercitationae</text><text x="110" y="185">laboris nisi aliqu</text>
+    <text x="520" y="171">Ex ea com</text><text x="520" y="185">conseq</text>
+    <text x="185" y="95" font-weight="bold">Dui</text>
+    <text x="210" y="175" font-weight="bold">Aut</text>
+    <text x="430" y="175" font-weight="bold">Id</text>
+  </g>
+</svg>

@@ -1,0 +1,1336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>drawspec — Specification (annotatable)</title>
+<style>
+:root{
+  --bg:#fbfaf7;--fg:#1d1c1a;--muted:#6b6862;--line:#e6e2da;
+  --card:#ffffff;--accent:#0f766e;--accent2:#b45309;--chip:#eef2f1;
+  --note:#fff8ec;--note-line:#f0cf94;--code:#f3f1ec;--link:#0f766e;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#16151a;--fg:#e9e7e2;--muted:#a09c95;--line:#2e2c33;
+    --card:#1e1d23;--accent:#5eead4;--accent2:#fbbf24;--chip:#26313055;
+    --note:#251f10;--note-line:#6b531c;--code:#26242b;--link:#5eead4;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--bg);color:var(--fg);
+  font:17px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  padding-bottom:96px;
+}
+.wrap{max-width:760px;margin:0 auto;padding:0 16px}
+a{color:var(--link)}
+code{background:var(--code);padding:.08em .35em;border-radius:5px;font-size:.86em;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-word}
+pre{background:var(--code);padding:12px;border-radius:8px;overflow:auto}
+pre code{background:none;padding:0}
+.topbar{position:sticky;top:0;z-index:30;background:var(--bg);
+  border-bottom:1px solid var(--line);backdrop-filter:saturate(120%) blur(6px)}
+.topbar .wrap{display:flex;align-items:center;gap:8px;padding-top:10px;padding-bottom:10px}
+.brand{font-weight:700;font-size:16px;margin-right:auto;letter-spacing:.2px}
+.brand small{font-weight:500;color:var(--muted);display:block;font-size:11px;letter-spacing:0}
+.btn{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--fg);
+  border-radius:9px;padding:8px 11px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+@media(prefers-color-scheme:dark){.btn.primary{color:#06201d}}
+.count{font-size:12px;color:var(--muted);white-space:nowrap;font-weight:600}
+.savestate{font-size:12px;font-weight:700;white-space:nowrap;transition:color .2s}
+.savestate.ok{color:var(--accent)}
+.savestate.warn{color:#b45309}
+@media(prefers-color-scheme:dark){.savestate.warn{color:#fbbf24}}
+.statusbar{border-bottom:1px solid var(--line);background:var(--card)}
+.statusbar .wrap{padding:7px 16px;font-size:12px;color:var(--muted)}
+#warnbar{display:none;background:#fff4e5;border-bottom:1px solid var(--note-line);color:#7c2d12}
+#warnbar .wrap{padding:10px 16px;font-size:13px;line-height:1.45}
+@media(prefers-color-scheme:dark){#warnbar{background:#3a2a0e;color:#fde68a;border-color:#6b531c}}
+.hero{padding:22px 0 6px}
+.hero h1{font-size:25px;line-height:1.2;margin:.1em 0 .3em}
+.hero p{color:var(--muted);margin:.3em 0}
+.help{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:4px 14px;margin:14px 0}
+.help summary{cursor:pointer;font-weight:600;padding:10px 0}
+.help ul{margin:.2em 0 1em;padding-left:1.2em}
+.help li{margin:.3em 0}
+.toc{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:4px 14px;margin:14px 0}
+.toc>summary{cursor:pointer;font-weight:700;padding:11px 0;font-size:15px}
+.toc-part{margin:2px 0;border-top:1px solid var(--line)}
+.toc-part>summary{cursor:pointer;padding:9px 2px;font-weight:600;font-size:14px}
+.toc-part ul{margin:.1em 0 .7em;padding-left:1.1em}
+.toc-part li{margin:.22em 0;font-size:13.5px;line-height:1.4}
+.toc-part a{text-decoration:none}
+.toc-part a:hover{text-decoration:underline}
+.part{margin:26px 0}
+.part-title{font-size:21px;line-height:1.25;border-bottom:2px solid var(--accent);
+  padding-bottom:8px;margin:18px 0 8px;position:sticky;top:54px;background:var(--bg);z-index:10}
+.badge{display:inline-block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
+  vertical-align:middle;padding:3px 7px;border-radius:6px;margin-right:8px}
+.badge.spec{background:var(--chip);color:var(--accent)}
+.badge.workspace{background:var(--chip);color:var(--accent2)}
+.sec{padding:6px 0 2px;border-bottom:1px solid var(--line);scroll-margin-top:100px}
+.sec:last-child{border-bottom:none}
+.sec-h{margin:10px 0 6px;line-height:1.3;position:sticky;top:94px;background:var(--bg);z-index:5;padding-top:6px}
+h3.sec-h{font-size:18.5px}
+h4.sec-h{font-size:16.5px;color:var(--fg)}
+.chip{display:inline-block;font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700;
+  color:var(--accent);background:var(--chip);border-radius:6px;padding:2px 7px;margin-right:8px;vertical-align:middle}
+.sec-title{vertical-align:middle}
+.sec-body{margin:.2em 0 .4em}
+.sec-body p{margin:.55em 0}
+.sec-body ul,.sec-body ol{margin:.5em 0;padding-left:1.35em}
+.sec-body li{margin:.3em 0}
+.sec-body blockquote{margin:.7em 0;padding:.5em .9em;border-left:3px solid var(--accent2);
+  background:var(--code);border-radius:0 8px 8px 0;color:var(--fg)}
+.sec-body blockquote p{margin:.3em 0}
+.sec-body table{border-collapse:collapse;width:100%;font-size:13.5px;margin:.6em 0;display:block;overflow-x:auto}
+.sec-body th,.sec-body td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+.sec-body th{background:var(--chip);font-weight:700}
+.sec-body strong{font-weight:700}
+.note{background:var(--note);border:1px solid var(--note-line);border-radius:10px;
+  padding:8px 11px;margin:10px 0 16px}
+.note-head{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.note-ico{color:var(--accent2);font-weight:800}
+.note-label{font-size:12px;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:.05em}
+.note-ref{margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:var(--muted)}
+.note-ta{width:100%;border:none;background:transparent;color:var(--fg);font:inherit;font-size:15.5px;
+  resize:none;outline:none;line-height:1.5;padding:2px 0;overflow:hidden;min-height:1.6em}
+.note-ta::placeholder{color:var(--muted);opacity:.8}
+.note.filled{box-shadow:0 0 0 2px var(--note-line) inset}
+.fab{position:fixed;right:14px;bottom:16px;z-index:40;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.fab .btn{box-shadow:0 4px 14px #0003}
+.modal{position:fixed;inset:0;z-index:60;background:#0008;display:none;align-items:center;justify-content:center;padding:16px}
+.modal.open{display:flex}
+.modal-card{background:var(--card);border:1px solid var(--line);border-radius:14px;max-width:680px;width:100%;
+  max-height:86vh;display:flex;flex-direction:column;padding:16px}
+.modal-card h3{margin:.1em 0 .5em}
+.modal-card p{color:var(--muted);font-size:13.5px;margin:.2em 0 .6em}
+.modal-card textarea{width:100%;flex:1;min-height:220px;border:1px solid var(--line);border-radius:8px;
+  background:var(--bg);color:var(--fg);font:13px/1.5 ui-monospace,Menlo,monospace;padding:10px;resize:vertical}
+.modal-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.hidden-input{display:none}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:84px;z-index:70;background:#111;color:#fff;
+  padding:9px 14px;border-radius:9px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none}
+.toast.show{opacity:.96}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="wrap">
+    <div class="brand">drawspec — Specification<small>annotatable reader · 2026-08-12</small></div>
+    <span class="savestate ok" id="savestate">✓ Auto-saving</span>
+    <button class="btn primary" id="btn-export">Save / Export</button>
+  </div>
+</div>
+<div class="statusbar"><div class="wrap"><span class="count" id="count">0 / 19 notes</span><span class="hint"> · notes save automatically; <strong>Save / Export</strong> keeps a file you can send back</span></div></div>
+<div id="warnbar"><div class="wrap"><strong>Heads up —</strong> this browser isn't storing your notes automatically (private/incognito mode or restricted file view). Tap <strong>Save / Export</strong> regularly.</div></div>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>drawspec specification</h1>
+    <p>Read at your own pace and leave a note on any point you want to discuss.</p>
+  </div>
+  <details class="help">
+    <summary>How to annotate (tap)</summary>
+    <ul>
+      <li>Tap the note field under any section and type. Each note is tagged so your feedback maps to an exact point.</li>
+      <li><strong>Notes save automatically</strong> in this browser as you type.</li>
+      <li><strong>Save / Export</strong> downloads a Markdown file of your notes — the copy to send back. Tap whenever you pause, especially on a phone.</li>
+      <li><strong>Import</strong> reloads notes from a file you exported earlier (after clearing the browser or switching devices).</li>
+      <li><strong>Clear</strong> erases every note in this browser. Export first.</li>
+    </ul>
+  </details>
+  <details class="toc" open><summary>Contents</summary>
+<details class="toc-part">
+<summary>Specification</summary><ul>
+<li><a href="#s-spec-intro">Preamble &amp; scope</a></li>
+<li><a href="#s-spec-1">§1 Problem statement</a></li>
+<li><a href="#s-spec-2">§2 Systems &amp; Impact</a></li>
+<li><a href="#s-spec-3">§3 Options</a></li>
+<li><a href="#s-spec-the-candidate-survey">The candidate survey</a></li>
+<li><a href="#s-spec-option-a-adopt-an-existing-tool">Option A: Adopt an existing tool with a post-processing template (Conservative)</a></li>
+<li><a href="#s-spec-option-b-own-the-renderer-plugga">Option B: Own the renderer, pluggable pure-Python layout (Recommended)</a></li>
+<li><a href="#s-spec-option-c-own-the-renderer-graphv">Option C: Own the renderer, Graphviz as the only layout engine</a></li>
+<li><a href="#s-spec-comparison">Comparison</a></li>
+<li><a href="#s-spec-4">§4 Recommendation</a></li>
+<li><a href="#s-spec-5">§5 Contracts</a></li>
+<li><a href="#s-spec-5-1">§5.1 The input document (the primary contract)</a></li>
+<li><a href="#s-spec-5-2">§5.2 The theme (TOML)</a></li>
+<li><a href="#s-spec-5-3">§5.3 Public Python API</a></li>
+<li><a href="#s-spec-5-4">§5.4 CLI</a></li>
+<li><a href="#s-spec-5-5">§5.5 Internal component contracts</a></li>
+<li><a href="#s-spec-5-6">§5.6 Persisted artefacts</a></li>
+<li><a href="#s-spec-6">§6 Risks &amp; Validation</a></li>
+<li><a href="#s-spec-product-direction">Product direction</a></li>
+</ul></details>
+</details>
+  <section class="part">
+<h2 class="part-title"><span class="badge spec">Specification</span>Specification</h2>
+<article class="sec" id="s-spec-intro">
+<h3 class="sec-h"><span class="chip">overview</span><span class="sec-title">Preamble &amp; scope</span></h3>
+<div class="sec-body"><p><strong>Date</strong>: 2026-08-11
+<strong>Ticket / PR</strong>: <a href="https://github.com/nuncaeslupus/drawspec/pull/1">#1</a>
+<strong>Author</strong>: drawspec</p></div>
+<div class="note" data-for="s-spec-intro"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC · intro</span></div><textarea class="note-ta" data-key="s-spec-intro" data-label="Preamble &amp; scope" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-1">
+<h3 class="sec-h"><span class="chip">§1</span><span class="sec-title">Problem statement</span></h3>
+<div class="sec-body"><p>Language models produce diagrams by emitting SVG with absolute <code>x</code>/<code>y</code>
+coordinates, and they fail at the same things every time. In the 87-diagram
+evidence corpus (<code>corpus/</code>), <strong>63 drew a complaint from a human reviewer, and
+every complaint was about placement, not content</strong>: arrows with a head but no
+shaft, text escaping its box, lines stopping short of the shape they point at,
+a different font size in every element. These failures cannot be reviewed away
+— a cheap mechanical check over finished SVG catches 17 of the 63 and misses
+46. Nor can they be prompted away, because the author cannot see the result.
+They have to be made <em>unrepresentable</em>: the author describes what the diagram
+means, and every decision that requires seeing the output is taken by the tool.
+drawspec is that tool — a Python library and CLI that takes a declarative
+document and emits SVG clean enough to drop into whatever surrounds it,
+inheriting the host document's colour where that is wanted and surviving
+greyscale printing everywhere.</p>
+<p><strong>Output targets.</strong> Markdown is the sharpest constraint, not the only one: it
+forces inline embedding, where a global <code>&lt;style&gt;</code> leaks, ids collide between
+two diagrams on one page, and a hardcoded colour breaks dark mode. Meeting that
+bar covers HTML embedding for free. But <em>standalone</em> consumption — an <code>.svg</code>
+file linked rather than pasted, or converted to PDF — has the opposite
+requirement: <code>currentColor</code> has nothing to inherit from and resolves to a
+converter default, so a standalone file must carry explicit colour and its own
+dimensions. drawspec therefore emits under an <strong>embedding profile</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Profile</th>
+<th>For</th>
+<th>Colour</th>
+<th>Dimensions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>inline</code> (default)</td>
+<td>Pasted into Markdown or HTML</td>
+<td><code>currentColor</code>, inherits the page</td>
+<td><code>viewBox</code> only, scales to its container</td>
+</tr>
+<tr>
+<td><code>standalone</code></td>
+<td>A linked <code>.svg</code>, or input to a PDF/PNG converter</td>
+<td>Theme colours resolved to explicit values</td>
+<td><code>viewBox</code> plus explicit <code>width</code>/<code>height</code></td>
+</tr>
+</tbody>
+</table>
+<p>Both profiles share every other invariant — no global <code>&lt;style&gt;</code>, namespaced
+ids, no embedded fonts, no information carried by colour alone. The profile
+changes what the SVG assumes about its surroundings, nothing else.</p>
+<p><strong>Success criteria (measurable)</strong> — each seeds a task Gate in the plan:</p>
+<ul>
+<li>[ ] <code>unrepresentable_failure_families == 11</code> — for each of the 11 categorized
+      failure families in <code>docs/brief.md</code>, a test demonstrates that no valid
+      input document can produce it. Judged per family: either the input schema
+      has no field that expresses it, or a layout invariant excludes it.</li>
+<li>[ ] <code>embedding_safety_violations == 0</code> over every generated fixture <strong>in both
+      profiles</strong> — no <code>&lt;style&gt;</code> element, no id that is not prefixed with the
+      document's unique namespace, no embedded or referenced external font, no
+      <code>fill</code>/<code>stroke</code> literal outside the values the active theme declares, and
+      for <code>standalone</code> no unresolved <code>currentColor</code>. Mechanically checked by
+      the emitter's own validator.</li>
+<li>[ ] <code>greyscale_ambiguous_role_pairs == 0</code> — for a theme to load, every pair of
+      semantic roles must differ in at least one non-colour channel (shape,
+      dash pattern, stroke weight, fill pattern) <strong>or</strong> by a luminance delta
+      <code>&gt;= 0.25</code> in relative luminance. Checked once per theme at load time.</li>
+<li>[ ] <code>text_overflow_count == 0</code> over the regression fixture set — no text run's
+      measured advance width exceeds its container's usable width, and no text
+      block's measured height exceeds its container's usable height.</li>
+<li>[ ] <code>system_dependencies == 0</code> — <code>pip install drawspec</code> followed by
+      <code>drawspec render</code> succeeds in a container with no non-Python binaries
+      installed beyond CPython itself.</li>
+<li>[ ] <code>text_measurement_error_ratio &lt;= 0.02</code> — for a font with published
+      metrics, drawspec's measured advance width for a reference string set is
+      within 2% of the value computed from the font's own <code>hmtx</code>/<code>kern</code> tables
+      by an independent reader.</li>
+<li>[ ] <code>nondeterministic_reruns == 0</code> — rendering the same document twice with
+      the same theme produces byte-identical SVG.</li>
+<li>[ ] <code>line_coverage &gt;= 0.85</code>.</li>
+<li>[ ] A document whose content cannot fit at the theme's minimum legible size
+      <strong>fails loudly</strong> rather than shrinking type or overflowing. Judged by a
+      test asserting a specific exception, not by a number.</li>
+</ul></div>
+<div class="note" data-for="s-spec-1"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §1</span></div><textarea class="note-ta" data-key="s-spec-1" data-label="§1 Problem statement" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-2">
+<h3 class="sec-h"><span class="chip">§2</span><span class="sec-title">Systems &amp; Impact</span></h3>
+<div class="sec-body"><p>drawspec is a greenfield library, so the table maps its own subsystems rather
+than existing services. "Needs changes" reads as "must be built".</p>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>Type</th>
+<th>Role</th>
+<th>Needs changes?</th>
+<th>Impact</th>
+<th>Severity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>drawspec.schema</code></td>
+<td>Primary</td>
+<td>The input document model and its JSON Schema. Defines what an author <em>can</em> say — and, more importantly, what they cannot.</td>
+<td>Yes</td>
+<td>Every other subsystem reads it. Getting the omissions wrong reintroduces the failure classes.</td>
+<td>High</td>
+</tr>
+<tr>
+<td><code>drawspec.text</code></td>
+<td>Primary</td>
+<td>Text measurement: advance widths, line breaking, block height, from a font file. Must work for a font it has never seen.</td>
+<td>Yes</td>
+<td>The prerequisite for box sizing, pyramid fitting and chart labels. If it is wrong, everything downstream is wrong.</td>
+<td>High</td>
+</tr>
+<tr>
+<td><code>drawspec.layout</code></td>
+<td>Primary</td>
+<td>Coordinate assignment for graph-shaped diagrams, behind a swappable engine interface.</td>
+<td>Yes</td>
+<td>Determines which failure families are excluded structurally vs merely checked.</td>
+<td>High</td>
+</tr>
+<tr>
+<td><code>drawspec.routing</code></td>
+<td>Primary</td>
+<td>Orthogonal edge routing, border anchoring, minimum shaft length, label placement.</td>
+<td>Yes</td>
+<td>Owns 4 of the 11 failure families on its own. No candidate engine does this to the required standard.</td>
+<td>High</td>
+</tr>
+<tr>
+<td><code>drawspec.templates</code></td>
+<td>Primary</td>
+<td>Parametric non-graph shapes: pyramid, concentric circles, stack, timeline, column comparison.</td>
+<td>Yes</td>
+<td>5 of the 9 diagram types. No graph theory involved; pure geometry plus text fitting.</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td><code>drawspec.charts</code></td>
+<td>Primary</td>
+<td>Axis charts: scales, ticks, labels, series. A separate family sharing only theme and text measurement.</td>
+<td>Yes</td>
+<td>1 of the 9 types, and the one the corpus did worst.</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td><code>drawspec.theme</code></td>
+<td>Primary</td>
+<td>Canvas width, font stack, type scale, padding, stroke scale, role→appearance mapping, greyscale validation.</td>
+<td>Yes</td>
+<td>The proof that no consumer style is baked in.</td>
+<td>High</td>
+</tr>
+<tr>
+<td><code>drawspec.emit</code></td>
+<td>Primary</td>
+<td>SVG serialisation and the inline-safety invariants (id namespacing, <code>currentColor</code>, <code>&lt;title&gt;</code>/<code>&lt;desc&gt;</code>).</td>
+<td>Yes</td>
+<td>Owns acceptance test 1 outright.</td>
+<td>High</td>
+</tr>
+<tr>
+<td><code>drawspec.cli</code></td>
+<td>Primary</td>
+<td><code>drawspec render doc.json -o out.svg</code>, plus <code>validate</code> and <code>theme check</code>.</td>
+<td>Yes</td>
+<td>The interface a build pipeline calls.</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>Consuming project</td>
+<td>Dependent</td>
+<td>Calls the library or CLI, receives SVG files, saves and embeds them.</td>
+<td>No</td>
+<td>Gains a build step; loses hand-written SVG. Must supply a theme or accept the default.</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>Fonts on the host</td>
+<td>Shared resource</td>
+<td>Metric source for measurement.</td>
+<td>No (validate)</td>
+<td>If the named font is absent, measurement must fall back explicitly and say so, never silently.</td>
+<td>Medium</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Impact dimensions.</strong></p>
+<ul>
+<li><strong>Data</strong>: none — the tool is a pure function from document to SVG. No storage.</li>
+<li><strong>API contract</strong>: the input schema is the contract, and it is the thing most
+  expensive to change later, because documents written against it live in the
+  consumer's repository. Versioned from v1 with an explicit <code>version</code> field.
+  <strong>High.</strong></li>
+<li><strong>Performance</strong>: irrelevant at corpus scale (median 4 nodes, max 17). A
+  render should be milliseconds. Not a design constraint. <strong>Low.</strong></li>
+<li><strong>User-facing</strong>: the diagrams are the product for the consumer's readers.
+  Regressions are visible. <strong>High.</strong></li>
+<li><strong>Operational</strong>: adding a system binary dependency would push an install
+  burden onto every consumer and every CI job. <strong>Medium</strong>, and it is the reason
+  Option C below is not recommended.</li>
+<li><strong>Risk of inaction</strong>: hand-written SVG keeps producing a ~72% complaint rate
+  (63 of 87), with review cost borne by a human on every diagram, forever.</li>
+</ul></div>
+<div class="note" data-for="s-spec-2"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §2</span></div><textarea class="note-ta" data-key="s-spec-2" data-label="§2 Systems &amp; Impact" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-3">
+<h3 class="sec-h"><span class="chip">§3</span><span class="sec-title">Options</span></h3>
+<div class="sec-body"></div>
+<div class="note" data-for="s-spec-3"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §3</span></div><textarea class="note-ta" data-key="s-spec-3" data-label="§3 Options" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-the-candidate-survey">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">The candidate survey</span></h4>
+<div class="sec-body"><p>All consulted <strong>2026-08-11</strong>. The question is not "does it draw well" but the
+brief's two acceptance tests: (1) does it emit SVG safe to paste inline into
+Markdown — no global <code>&lt;style&gt;</code>, no colliding ids, no embedded fonts, colour
+inherited, greyscale-safe; and (2) can it fix the three worst corpus diagrams.</p>
+<table>
+<thead>
+<tr>
+<th>Candidate</th>
+<th>Licence</th>
+<th>How it is driven</th>
+<th>What it emits</th>
+<th>Test 1</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://graphviz.org/">Graphviz</a></td>
+<td>EPL-1.0</td>
+<td><code>dot</code> C binary; <code>pip install graphviz</code> gives <strong>bindings only</strong></td>
+<td>SVG, <strong>or coordinates only</strong> via <code>-Tplain</code> / <code>-Tjson</code></td>
+<td>Fails as SVG; <strong>passes as a coordinate source</strong></td>
+<td>Its <code>-Tplain</code> output is positions and edge control points with no styling. Orthogonal routing (<code>splines=ortho</code>) exists but is weak and has no port/label-avoidance model. Needs a system binary.</td>
+</tr>
+<tr>
+<td><a href="https://eclipse.dev/elk/">ELK</a></td>
+<td>EPL-2.0</td>
+<td>Java library; <a href="https://github.com/kieler/elkjs">elkjs</a> is a GWT transpile to JS</td>
+<td><strong>Nothing but coordinates</strong> — ELK does not render, by design</td>
+<td>N/A — nothing to fail</td>
+<td>The best-designed layout kernel of the set, with real port anchoring. No Python binding; would mean a JVM or a Node process. <a href="https://github.com/openedges/elk-rs">elk-rs</a> is an early Rust port.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/bdcht/grandalf">grandalf</a></td>
+<td><strong>GPLv2 <em>or</em> EPL-1.0</strong> (dual)</td>
+<td>Pure Python, <code>pip install grandalf</code></td>
+<td><strong>Coordinates only</strong> — "it is up to you to actually draw"</td>
+<td>N/A — nothing to fail</td>
+<td>Sugiyama hierarchical layout in ~600 lines plus a force-directed layout. Version 0.8, lightly maintained. The EPL-1.0 arm of the dual licence is compatible with shipping MIT code around it.</td>
+</tr>
+<tr>
+<td><a href="https://d2lang.com/">D2</a></td>
+<td>MPL-2.0</td>
+<td>Go binary, <code>d2 in.d2 out.svg</code></td>
+<td>SVG / PNG / PDF only</td>
+<td><strong>Fails</strong></td>
+<td>Emits a styled standalone document with its own fonts and palette. No coordinate-only output. Adds a Go binary dependency.</td>
+</tr>
+<tr>
+<td><a href="https://mermaid.js.org/">Mermaid</a></td>
+<td>MIT</td>
+<td>JS library; CLI needs a headless browser</td>
+<td>SVG with embedded <code>&lt;style&gt;</code></td>
+<td><strong>Fails</strong></td>
+<td>Global CSS classes collide when two diagrams share a page — precisely the disqualifier in the brief. Needs Node plus Chromium.</td>
+</tr>
+<tr>
+<td><a href="https://plantuml.com/">PlantUML</a></td>
+<td>GPL</td>
+<td>Java jar</td>
+<td>SVG with baked colours</td>
+<td><strong>Fails</strong></td>
+<td>GPL plus a JVM. Styling is theme-file driven but the output is not inheritance-friendly.</td>
+</tr>
+<tr>
+<td><a href="https://ctan.org/pkg/pgf">TikZ/PGF</a></td>
+<td>LGPL / GPL</td>
+<td>LaTeX toolchain</td>
+<td>PDF, SVG via converters</td>
+<td><strong>Fails</strong></td>
+<td>A full TeX installation to render a 4-box diagram.</td>
+</tr>
+<tr>
+<td><a href="https://kroki.io/">Kroki</a></td>
+<td>MIT (service)</td>
+<td>HTTP service wrapping the above</td>
+<td>Whatever the wrapped tool emits</td>
+<td><strong>Inherits the failure</strong></td>
+<td>Adds a network dependency and inherits each backend's output problems.</td>
+</tr>
+<tr>
+<td><a href="https://www.yworks.com/">yFiles</a></td>
+<td>Proprietary, commercial</td>
+<td>Library licence per developer/project</td>
+<td>Its own rendering</td>
+<td>Not evaluable</td>
+<td>The quality bar the brief names, and commercially licensed. Out of scope.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>What the survey settles.</strong></p>
+<ol>
+<li><strong>No candidate passes acceptance test 1.</strong> Every tool that renders, renders
+   to its own taste: global <code>&lt;style&gt;</code>, its own palette, its own ids, sometimes
+   its own fonts. Post-processing another tool's SVG into inline-safe SVG is a
+   permanent tax paid on every release of that tool. <strong>So drawspec owns the
+   renderer regardless of which option is chosen.</strong> This is not a decision; it
+   is a finding.</li>
+<li><strong>The useful candidates are coordinate oracles, not renderers.</strong> Graphviz
+   (<code>-Tplain</code>), ELK and grandalf all hand back positions and let the caller
+   draw. That is exactly the seam drawspec needs, and it makes the layout
+   engine a swappable component rather than an architectural commitment.</li>
+<li><strong>The dependency question the brief left open has an answer.</strong> <code>pip install
+   graphviz</code> installs bindings only; the <code>dot</code> executable is a separate system
+   install. For a library whose whole point is to be called from another Python
+   project's build, that pushes an out-of-band binary install onto every
+   consumer and every CI job. ELK is worse: a JVM or a Node process.</li>
+<li><strong>The corpus is small enough that this matters more than engine power.</strong>
+   Median 4 boxes, maximum 17. Graphviz's and ELK's real value is on graphs two
+   orders of magnitude larger. At this scale a pure-Python layered layout is
+   adequate, and adequacy with no system dependency beats excellence with one.</li>
+</ol></div>
+<div class="note" data-for="s-spec-the-candidate-survey"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › The candidate survey</span></div><textarea class="note-ta" data-key="s-spec-the-candidate-survey" data-label="The candidate survey" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-option-a-adopt-an-existing-tool">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Option A: Adopt an existing tool with a post-processing template (Conservative)</span></h4>
+<div class="sec-body"><ul>
+<li><strong>Description</strong>: Pick D2 or Graphviz, write the declarative format as a thin
+  transpiler to its input language, and post-process the emitted SVG into
+  inline-safe form — strip <code>&lt;style&gt;</code>, rewrite ids, replace colours with
+  <code>currentColor</code>, drop font declarations.</li>
+<li><strong>Scope</strong>: A transpiler, an SVG rewriter, a theme mapped onto the upstream
+  tool's styling options. No layout, routing, templates or measurement of our
+  own.</li>
+<li><strong>Effort</strong>: Small to start, Medium and rising to maintain.</li>
+<li><strong>Tradeoffs</strong>: Fastest to a first diagram, and the brief explicitly counts
+  this as a success if it works. But post-processing is structurally fragile —
+  it is pattern-matching another project's output, and it breaks on their
+  releases. Worse, it does not deliver the core promise: text still is not
+  measured by us, so box sizing stays the upstream tool's decision, and the
+  "text does not fit" family is only <em>usually</em> fixed rather than
+  <em>unrepresentable</em>. Pyramids, concentric circles and axis charts are not
+  expressible at all — 3 of 9 types unserved. And it inherits a system binary.</li>
+<li><strong>Compatibility</strong>: Consumers install a Go or C binary.</li>
+</ul></div>
+<div class="note" data-for="s-spec-option-a-adopt-an-existing-tool"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Option A: Adopt an existing tool with a post-processing template (Conservative)</span></div><textarea class="note-ta" data-key="s-spec-option-a-adopt-an-existing-tool" data-label="Option A: Adopt an existing tool with a post-processing template (Conservative)" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-option-b-own-the-renderer-plugga">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Option B: Own the renderer, pluggable pure-Python layout (Recommended)</span></h4>
+<div class="sec-body"><ul>
+<li><strong>Description</strong>: drawspec owns the input schema, text measurement, theme,
+  routing, templates, charts and SVG emission. Graph layout sits behind a
+  narrow <code>LayoutEngine</code> protocol — nodes with measured sizes in, coordinates
+  out — with a pure-Python implementation as the default. Additional engines
+  (Graphviz via <code>-Tplain</code>, ELK via a subprocess) become optional extras for
+  anyone who has them and wants them on larger graphs.</li>
+<li><strong>Scope</strong>: All of <code>src/drawspec/</code>. The engine boundary is one small protocol,
+  making the choice of engine reversible.</li>
+<li><strong>Effort</strong>: Large — but concentrated where the brief says the real work is
+  (style layer, measurement, non-graph shapes), not in reimplementing layout
+  research.</li>
+<li><strong>Tradeoffs</strong>: Most work up front. In exchange: no system dependency, so
+  <code>pip install drawspec</code> is the whole install story; total control of the SVG,
+  so acceptance test 1 is satisfied by construction rather than by rewriting;
+  and all three rendering families served by one theme and one measurement
+  core. The risk is layout quality — mitigated by the graph sizes actually in
+  evidence, and by the escape hatch of a Graphviz engine for anyone who needs
+  it. Whether the default engine wraps <code>grandalf</code> (EPL-1.0 arm, ~600 lines of
+  Sugiyama, lightly maintained) or implements layered layout directly is a
+  decision the protocol defers; the prototype should answer it.</li>
+<li><strong>Compatibility</strong>: Pure Python, 3.12+. One pure-Python runtime dependency for
+  font parsing (<code>fonttools</code>).</li>
+</ul></div>
+<div class="note" data-for="s-spec-option-b-own-the-renderer-plugga"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Option B: Own the renderer, pluggable pure-Python layout (Recommended)</span></div><textarea class="note-ta" data-key="s-spec-option-b-own-the-renderer-plugga" data-label="Option B: Own the renderer, pluggable pure-Python layout (Recommended)" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-option-c-own-the-renderer-graphv">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Option C: Own the renderer, Graphviz as the only layout engine</span></h4>
+<div class="sec-body"><ul>
+<li><strong>Description</strong>: As Option B, but the layout engine is Graphviz driven via
+  <code>-Tplain</code>, with no pure-Python fallback.</li>
+<li><strong>Scope</strong>: Same as B minus the layout implementation, plus a subprocess
+  boundary and its error handling.</li>
+<li><strong>Effort</strong>: Medium.</li>
+<li><strong>Tradeoffs</strong>: Removes the layout work and gets a battle-tested engine for
+  free. But it makes a C binary a hard install requirement for a Python
+  library, in exchange for capability the corpus does not need; it introduces a
+  subprocess with version-dependent output to parse; and it makes the
+  <code>system_dependencies == 0</code> success criterion unachievable. Graphviz's
+  orthogonal routing is also not good enough to own the arrow failure families,
+  so the routing work does not actually go away.</li>
+<li><strong>Compatibility</strong>: Consumers install Graphviz.</li>
+</ul></div>
+<div class="note" data-for="s-spec-option-c-own-the-renderer-graphv"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Option C: Own the renderer, Graphviz as the only layout engine</span></div><textarea class="note-ta" data-key="s-spec-option-c-own-the-renderer-graphv" data-label="Option C: Own the renderer, Graphviz as the only layout engine" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-comparison">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Comparison</span></h4>
+<div class="sec-body"><table>
+<thead>
+<tr>
+<th></th>
+<th>A: adopt + post-process</th>
+<th>B: own renderer, pluggable layout</th>
+<th>C: own renderer, Graphviz only</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Effort</td>
+<td>Small now, rising</td>
+<td>Large</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>Risk</td>
+<td>High — fragile coupling to upstream output</td>
+<td>Medium — layout quality, mitigated by graph size</td>
+<td>Medium — install burden, subprocess parsing</td>
+</tr>
+<tr>
+<td>Completeness</td>
+<td>6 of 9 diagram types; failure families mitigated, not excluded</td>
+<td>9 of 9; families excluded structurally</td>
+<td>9 of 9; families excluded structurally</td>
+</tr>
+<tr>
+<td>Acceptance test 1</td>
+<td>By rewriting, fragile</td>
+<td>By construction</td>
+<td>By construction</td>
+</tr>
+<tr>
+<td>Install story</td>
+<td>System binary required</td>
+<td><code>pip install drawspec</code></td>
+<td>System binary required</td>
+</tr>
+<tr>
+<td>Maintenance</td>
+<td>Tracks another project's releases</td>
+<td>Ours</td>
+<td>Ours plus a version-sensitive parser</td>
+</tr>
+</tbody>
+</table></div>
+<div class="note" data-for="s-spec-comparison"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Comparison</span></div><textarea class="note-ta" data-key="s-spec-comparison" data-label="Comparison" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-4">
+<h3 class="sec-h"><span class="chip">§4</span><span class="sec-title">Recommendation</span></h3>
+<div class="sec-body"><p><strong>Recommended option: B — own the renderer, pluggable pure-Python layout.</strong></p>
+<p>The survey converts the brief's opening hypothesis ("do not write a layout
+engine, wrap one") into something more precise. The half that survives contact
+with the evidence is: <em>do not write a </em><em>renderer</em><em> around someone else's
+opinions</em> — and the answer there is the opposite of wrapping, because every
+candidate's SVG fails the inline-Markdown test and post-processing it is a
+permanent tax. The half that does not survive is the assumption that wrapping a
+layout engine is cheap: at median 4 and maximum 17 nodes, the engine's power is
+not the binding constraint, while its install cost is charged to every consumer
+forever. Keeping the engine behind a one-method protocol gets the benefit of
+the hypothesis (we can drop Graphviz or ELK in later, and should, if the
+default proves inadequate) without paying its cost on day one.</p>
+<p>Three consequences worth stating explicitly, because they shape the plan:</p>
+<ul>
+<li><strong>Three rendering families, one core.</strong> Graph-shaped diagrams (flow, tree,
+  cycle) need the layout engine. Grid-shaped ones (stack, timeline, column
+  comparison) and parametric shapes (pyramid, concentric circles) need geometry
+  and text fitting, not graph theory. Axis charts are a third family again. All
+  three share exactly two things: the theme and text measurement. Nothing else
+  should be shared, and no chart library (matplotlib included) can be used for
+  the third, because their SVG fails acceptance test 1 more badly than the
+  diagram tools do.</li>
+<li><strong>Text measurement is the critical path.</strong> It gates box sizing, pyramid
+  fitting and chart labels, and it must work for a font drawspec has never
+  seen — read from the font file with <code>fonttools</code>, cached, never a hardcoded
+  table. The known-hard part is that the rendered font may not be the measured
+  font, since the SVG inherits the page's stack; the design must carry an
+  explicit safety margin and never rely on a tight fit.</li>
+<li><strong>The failure families are the acceptance suite.</strong> For each of the 11, the
+  plan should name the structural reason it cannot be expressed, and a test
+  that demonstrates it.</li>
+</ul>
+<p><strong>Immediate next action</strong>: run <code>design</code> to turn this into <code>status/plan.md</code> — the
+input schema first, since it is the contract everything else reads and the most
+expensive thing to change later, then text measurement, then the emitter, then
+the three rendering families in that order.</p>
+<p><strong>Decisions taken</strong> (2026-08-11):</p>
+<ul>
+<li>[x] <strong>Font resolution</strong> — <em>replace and warn</em>. When the theme names a font that
+      is not resolvable, drawspec substitutes a metric-compatible fallback,
+      measures against the substitute, and emits a warning naming both fonts.
+      It never fails on this alone and never substitutes silently. The warning
+      must reach the CLI's stderr and the library's <code>warnings</code> channel, so a
+      build can be configured to treat it as an error.</li>
+<li>[x] <strong>Sizing input</strong> — <em>width binding, height advisory</em>. The document may
+      carry a width, a height, or both. Width is always binding: content is
+      laid out to fit it, and failing to fit at the theme's minimum legible
+      size is an error. Height is advisory by default — the canvas grows past
+      it rather than compressing — and becomes binding only when the author
+      marks it so, at which point overflow is an error like width.</li>
+<li>[x] <strong>Theme format</strong> — <em>TOML</em>. A theme is a TOML file so a consumer can
+      version and diff it without importing drawspec. The loader parses it into
+      a frozen dataclass; that dataclass is also constructible directly for
+      programmatic use, but TOML is the documented surface.</li>
+<li>[x] <strong>Default layout engine</strong> — <em>deferred behind the protocol</em>. Whether the
+      default engine wraps <code>grandalf</code> (EPL-1.0 arm, ~600 lines of Sugiyama,
+      v0.8, lightly maintained) or implements layered layout directly is left
+      open deliberately. The <code>LayoutEngine</code> protocol is the commitment; the
+      implementation behind it is not. The first prototype of the three worst
+      corpus diagrams settles it, and the plan should carry a task for that
+      comparison before a task for the implementation.</li>
+</ul>
+<p><strong>Open questions</strong>:</p>
+<ul>
+<li>[ ] <strong>Diagram titles</strong>: the consumer's style rules leave "Figure 1"-style
+      titles undecided. Proposed: a theme switch, default off, so the decision
+      stays with the consumer and costs nothing to change.</li>
+<li>[ ] <strong>Metric-compatible fallback set</strong>: "replace and warn" needs a defensible
+      substitution table (which fallback for a named serif / sans / mono, and
+      on what basis). Whether drawspec bundles a font for this or maps onto the
+      host's fonts is a packaging decision for the plan.</li>
+</ul>
+<blockquote>
+<p>Sections 5–6 (contracts, risks) are appended by <code>design</code>.</p>
+</blockquote></div>
+<div class="note" data-for="s-spec-4"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §4</span></div><textarea class="note-ta" data-key="s-spec-4" data-label="§4 Recommendation" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-5">
+<h3 class="sec-h"><span class="chip">§5</span><span class="sec-title">Contracts</span></h3>
+<div class="sec-body"><p>The tool has no network surface and no database. Its contracts are four: the
+input document, the theme file, the public Python API, and the CLI. The first
+is by far the most expensive to change, because documents written against it
+live in the consumer's repository.</p></div>
+<div class="note" data-for="s-spec-5"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §5</span></div><textarea class="note-ta" data-key="s-spec-5" data-label="§5 Contracts" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-5-1">
+<h4 class="sec-h"><span class="chip">§5.1</span><span class="sec-title">The input document (the primary contract)</span></h4>
+<div class="sec-body"><p>A document is JSON (or any format that parses to the same mapping). It carries
+an explicit <code>version</code>, and a <code>kind</code> that selects both the rendering family and
+which further fields are legal.</p>
+<pre><code class="language-json">{
+  &quot;version&quot;: 1,
+  &quot;kind&quot;: &quot;flow&quot;,
+  &quot;title&quot;: &quot;Request validation&quot;,
+  &quot;description&quot;: &quot;An incoming request is validated, then either accepted for processing or rejected with a reason.&quot;,
+  &quot;width&quot;: 640,
+  &quot;nodes&quot;: [
+    {&quot;id&quot;: &quot;in&quot;,  &quot;text&quot;: &quot;Request arrives&quot;,        &quot;role&quot;: &quot;start&quot;},
+    {&quot;id&quot;: &quot;chk&quot;, &quot;text&quot;: &quot;Is the payload valid?&quot;,  &quot;role&quot;: &quot;decision&quot;},
+    {&quot;id&quot;: &quot;ok&quot;,  &quot;text&quot;: &quot;Queue for processing&quot;,   &quot;role&quot;: &quot;step&quot;},
+    {&quot;id&quot;: &quot;no&quot;,  &quot;text&quot;: &quot;Reject with a reason&quot;,   &quot;role&quot;: &quot;terminal&quot;}
+  ],
+  &quot;edges&quot;: [
+    {&quot;from&quot;: &quot;in&quot;,  &quot;to&quot;: &quot;chk&quot;},
+    {&quot;from&quot;: &quot;chk&quot;, &quot;to&quot;: &quot;ok&quot;, &quot;label&quot;: &quot;yes&quot;},
+    {&quot;from&quot;: &quot;chk&quot;, &quot;to&quot;: &quot;no&quot;, &quot;label&quot;: &quot;no&quot;},
+    {&quot;from&quot;: &quot;no&quot;,  &quot;to&quot;: &quot;in&quot;, &quot;role&quot;: &quot;link&quot;}
+  ]
+}
+</code></pre>
+<p>That last edge is a plain connector rather than a directed step: the author
+picks the semantic role <code>link</code>, and the theme decides it draws as a line with
+no head. See §5.2.</p>
+<p><strong>What the author may write.</strong> <code>version</code>, <code>kind</code>, <code>title</code>, <code>description</code>,
+<code>width</code>, <code>height</code> (with an optional <code>height_binding</code> flag), <code>theme</code>, and the
+per-kind payload: <code>nodes</code>/<code>edges</code>/<code>groups</code> for graph kinds, <code>levels</code> for
+<code>pyramid</code>, <code>rings</code> for <code>rings</code>, <code>items</code> for <code>stack</code>/<code>timeline</code>/<code>columns</code>,
+<code>axes</code>/<code>series</code> for <code>chart</code>. On a node: <code>id</code>, <code>text</code>, <code>role</code>, optional <code>note</code>.
+On an edge: <code>from</code>, <code>to</code>, optional <code>label</code>, optional <code>role</code> naming a
+theme-declared <strong>edge</strong> role (<code>flow</code> by default; <code>link</code> for a plain undirected
+connector — see §5.2).</p>
+<p><strong>What the author may not write — and the schema rejects rather than ignores.</strong>
+Because the schema sets <code>additionalProperties: false</code> throughout, an author who
+writes any of these gets a validation error naming the field, not a silently
+discarded key. That error message is the teaching surface for a model authoring
+blind:</p>
+<table>
+<thead>
+<tr>
+<th>Rejected</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x</code>, <code>y</code>, <code>cx</code>, <code>cy</code>, <code>points</code>, <code>d</code></td>
+<td>Coordinates are the tool's output, never its input</td>
+</tr>
+<tr>
+<td><code>width</code>/<code>height</code> <strong>on a node or shape</strong></td>
+<td>Box geometry is derived from measured text plus theme padding</td>
+</tr>
+<tr>
+<td><code>font_size</code>, <code>font_family</code>, <code>font_weight</code></td>
+<td>Type is selected by semantic role from the theme's scale</td>
+</tr>
+<tr>
+<td><code>color</code>, <code>fill</code>, <code>stroke</code>, <code>stroke_width</code></td>
+<td>Appearance is a property of the role, not the element</td>
+</tr>
+<tr>
+<td><code>anchor</code>, <code>port</code>, <code>arrow_head</code>, <code>dash</code>, <code>dx</code>, <code>dy</code></td>
+<td>Edge geometry and line treatment come from the edge's semantic role, which the theme resolves — say <code>role: "link"</code>, not <code>arrow_head: "none"</code></td>
+</tr>
+<tr>
+<td><code>z</code>, <code>order</code>, <code>layer</code></td>
+<td>Overlap is resolved by the layout, not declared</td>
+</tr>
+<tr>
+<td><code>viewBox</code>, <code>canvas</code></td>
+<td>Derived from <code>width</code> and the content</td>
+</tr>
+</tbody>
+</table>
+<p>Both role fields draw from closed vocabularies the theme defines — node roles
+(<code>start</code>, <code>step</code>, <code>decision</code>, <code>terminal</code>, <code>emphasis</code>, <code>note</code>, <code>group</code>) and edge
+roles (<code>flow</code>, <code>link</code>, <code>exchange</code>, <code>weak</code>, <code>owns</code>) — so a role the theme does
+not declare is a validation error too. Text may carry
+inline spans — <code>`code`</code> for the monospace role and <code>**bold**</code> for the
+emphasis role — because those are semantic, not typographic.</p>
+<p><strong>Versioning.</strong> <code>version</code> is required and validated. v1 is frozen once the
+first consumer document exists; additive fields ship as v1 minor changes with
+defaults, and anything that changes the meaning of an existing field ships as
+v2 with both readable in parallel for at least one release.</p></div>
+<div class="note" data-for="s-spec-5-1"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §5.1</span></div><textarea class="note-ta" data-key="s-spec-5-1" data-label="§5.1 The input document (the primary contract)" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-5-2">
+<h4 class="sec-h"><span class="chip">§5.2</span><span class="sec-title">The theme (TOML)</span></h4>
+<div class="sec-body"><pre><code class="language-toml">version = 1
+name = &quot;example&quot;
+
+[canvas]
+width = 640
+min_legible_size = 9.0
+
+[font]
+sans = [&quot;Source Sans 3&quot;, &quot;DejaVu Sans&quot;, &quot;sans-serif&quot;]
+mono = [&quot;Source Code Pro&quot;, &quot;DejaVu Sans Mono&quot;, &quot;monospace&quot;]
+serif = [&quot;Source Serif 4&quot;, &quot;DejaVu Serif&quot;, &quot;serif&quot;]
+default = &quot;sans&quot;
+
+[scale]
+title = 15.0
+heading = 13.0
+body = 11.0
+label = 10.0
+
+# How far the whole type scale may stretch to make content fit. One factor is
+# applied to every level at once — see &quot;Elastic fit&quot; below.
+[fit]
+scale_min = 0.85
+scale_max = 1.0
+
+[box]
+padding = [10.0, 12.0, 10.0, 12.0]
+line_height = 1.35
+corner_radius = 4.0
+
+[edge]
+stroke_width = 1.5
+min_shaft_length = 16.0
+head_length = 6.0
+
+# Node roles: shape and line treatment per semantic role.
+[role.step]
+shape = &quot;rect&quot;
+stroke = &quot;currentColor&quot;
+dash = &quot;none&quot;
+
+[role.decision]
+shape = &quot;diamond&quot;
+stroke = &quot;currentColor&quot;
+dash = &quot;none&quot;
+
+[role.note]
+shape = &quot;rect&quot;
+stroke = &quot;currentColor&quot;
+dash = &quot;3 2&quot;
+stroke_width = 1.0
+
+# Edge roles: head, tail and line treatment per semantic role. This is where a
+# connector that is *not* an arrow lives.
+[edge_role.flow]
+head = &quot;arrow&quot;
+tail = &quot;none&quot;
+dash = &quot;none&quot;
+
+[edge_role.link]
+head = &quot;none&quot;          # a plain line, no head at all
+tail = &quot;none&quot;
+dash = &quot;none&quot;
+
+[edge_role.exchange]
+head = &quot;arrow&quot;
+tail = &quot;arrow&quot;         # bidirectional
+dash = &quot;none&quot;
+
+[edge_role.weak]
+head = &quot;open&quot;          # an open V rather than a filled triangle
+tail = &quot;none&quot;
+dash = &quot;4 3&quot;
+
+[edge_role.owns]
+head = &quot;diamond&quot;
+tail = &quot;none&quot;
+dash = &quot;none&quot;
+</code></pre>
+<p>A theme is rejected at load time if any two roles are distinguishable only by
+colour — see the <code>greyscale_ambiguous_role_pairs</code> criterion in §1. Colour is
+optional throughout; <code>currentColor</code> is the default and the documented norm.</p>
+<p><strong>Edge roles are how "no arrow, just a line" is said.</strong> The author names a
+semantic role — <code>link</code>, <code>weak</code>, <code>owns</code> — and the theme decides whether that
+means a filled triangle, an open V, a diamond, or no head at all, and whether
+the line is solid or dashed. The author never writes <code>arrow_head = "triangle"</code>,
+because head geometry is a typographic decision and belongs with the other
+decisions taken away from them; but they <em>can</em> say that two things are merely
+associated rather than one flowing into the other, because that is meaning. The
+head vocabulary is closed (<code>arrow</code>, <code>open</code>, <code>diamond</code>, <code>circle</code>, <code>bar</code>, <code>none</code>)
+and lives in the theme, so a document stays readable when the theme changes.</p>
+<p><strong>Elastic fit.</strong> <code>[fit]</code> declares how far the type scale may stretch to make a
+document fit its width. drawspec computes the largest factor in
+<code>[scale_min, scale_max]</code> at which the content fits, and applies that <strong>one
+factor to every level at once</strong> — title, heading, body and label together. This
+is deliberate: scaling levels independently would reintroduce the "mixed type
+sizes in one drawing" failure (51 of 87 in the corpus), whereas a uniform
+factor preserves the hierarchy exactly and keeps one size per level. If the
+content still does not fit at <code>scale_min</code>, or if <code>scale_min × body</code> falls below
+<code>canvas.min_legible_size</code>, that is a <code>FitError</code> — the tool says restructure the
+diagram, it does not keep shrinking.</p>
+<p><code>scale_max</code> defaults to <code>1.0</code>, meaning drawspec will shrink to fit but never
+grow. Growing is available (<code>scale_max &gt; 1.0</code>) but is opt-in, because type size
+being comparable <em>across</em> diagrams is the reason the theme fixes a canvas width
+in the first place; a theme that lets small diagrams inflate has traded that
+away and should do so knowingly.</p></div>
+<div class="note" data-for="s-spec-5-2"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §5.2</span></div><textarea class="note-ta" data-key="s-spec-5-2" data-label="§5.2 The theme (TOML)" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-5-3">
+<h4 class="sec-h"><span class="chip">§5.3</span><span class="sec-title">Public Python API</span></h4>
+<div class="sec-body"><pre><code class="language-python">from drawspec import render, render_document, load_theme, Theme
+
+svg: str = render(
+    document: Mapping[str, Any],
+    theme: Theme | str | Path | None = None,
+    profile: Literal[&quot;inline&quot;, &quot;standalone&quot;] = &quot;inline&quot;,
+) -&gt; str
+</code></pre>
+<ul>
+<li>Pure function: same document plus same theme yields byte-identical SVG.</li>
+<li>Raises <code>DocumentError</code> (schema violation, naming the offending field),
+  <code>ThemeError</code> (malformed or greyscale-ambiguous theme), <code>FitError</code> (content
+  cannot fit at the theme's minimum legible size), <code>LayoutError</code> (the engine
+  could not produce a valid arrangement).</li>
+<li>Emits <code>FontSubstitutionWarning</code> through <code>warnings</code> when a named font is not
+  resolvable, naming the requested and substituted families, so a consumer can
+  promote it with <code>warnings.simplefilter("error", FontSubstitutionWarning)</code>.</li>
+</ul></div>
+<div class="note" data-for="s-spec-5-3"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §5.3</span></div><textarea class="note-ta" data-key="s-spec-5-3" data-label="§5.3 Public Python API" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-5-4">
+<h4 class="sec-h"><span class="chip">§5.4</span><span class="sec-title">CLI</span></h4>
+<div class="sec-body"><table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Behaviour</th>
+<th>Exit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>drawspec render DOC [-o OUT] [--theme T] [--width N] [--height N] [--profile inline\|standalone]</code></td>
+<td>Writes SVG to <code>OUT</code> or stdout</td>
+<td>0 ok, 1 document/fit error, 2 usage</td>
+</tr>
+<tr>
+<td><code>drawspec validate DOC [--theme T]</code></td>
+<td>Validates without rendering; prints each violation with its JSON pointer</td>
+<td>0 clean, 1 violations</td>
+</tr>
+<tr>
+<td><code>drawspec theme check THEME</code></td>
+<td>Runs the theme invariants, including the greyscale pairing check</td>
+<td>0 clean, 1 violations</td>
+</tr>
+<tr>
+<td><code>drawspec schema [--out FILE]</code></td>
+<td>Writes the JSON Schema for the document format</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<p><code>--width</code>/<code>--height</code> override the document's own values, so a build can render
+one document at several widths without editing it. <code>--profile</code> selects the
+embedding profile from §1.</p>
+<p><strong>Yes, there is a real schema, and it validates like HTML's does.</strong> The
+document format is defined by a published JSON Schema, not by prose. Three
+consequences worth stating, because this is the main affordance for an author —
+human or model — working without seeing the output:</p>
+<ul>
+<li><strong><code>drawspec validate</code> is the validator</strong>, and it reports violations by JSON
+  pointer (<code>/nodes/2/font_size</code>), so a failure names the exact location and the
+  exact field, the way an HTML validator names a line and an attribute.</li>
+<li><strong>The schema is a versioned, addressable artefact</strong> with a stable <code>$id</code>,
+  committed to the repository and shipped in the package. A document that
+  carries <code>"$schema": "…/drawspec-v1.schema.json"</code> gets completion and
+  inline error reporting in any editor with JSON Schema support — the author
+  is told <code>font_size</code> is not allowed <em>while typing it</em>, rather than after a
+  render.</li>
+<li><strong><code>additionalProperties: false</code> makes the schema teach.</strong> Because a forbidden
+  field is an error rather than a silently ignored key, the schema is not only
+  a description of what is legal but an active statement of what the author
+  must not decide. That is the point of §5.1's rejection table.</li>
+</ul>
+<p>The output has a validator too, but a different one: the emitter's
+embedding-safety check in §5.5, which enforces the invariants on the SVG it
+produces rather than on the input.</p></div>
+<div class="note" data-for="s-spec-5-4"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §5.4</span></div><textarea class="note-ta" data-key="s-spec-5-4" data-label="§5.4 CLI" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-5-5">
+<h4 class="sec-h"><span class="chip">§5.5</span><span class="sec-title">Internal component contracts</span></h4>
+<div class="sec-body"><table>
+<thead>
+<tr>
+<th>Caller</th>
+<th>Callee</th>
+<th>Contract</th>
+<th>Failure handling</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Renderer</td>
+<td><code>TextMeasurer</code></td>
+<td><code>measure(text, font_role, size) -&gt; Extents</code>; <code>wrap(text, max_width, …) -&gt; list[Line]</code></td>
+<td>Unresolvable font → substitute, warn, continue</td>
+</tr>
+<tr>
+<td>Renderer</td>
+<td><code>LayoutEngine</code></td>
+<td><code>layout(nodes_with_sizes, edges, direction) -&gt; Positions</code>. The only coupling to a layout implementation — one method, sizes in, coordinates out</td>
+<td>Engine failure → <code>LayoutError</code>; the protocol lets a Graphviz or ELK engine be substituted without touching callers</td>
+</tr>
+<tr>
+<td>Family renderers</td>
+<td><code>Scene</code></td>
+<td>Each family emits a <code>Scene</code>: primitives (<code>Rect</code>, <code>Path</code>, <code>Ellipse</code>, <code>Polygon</code>, <code>TextRun</code>) in final coordinates, each tagged with a semantic role and carrying no styling</td>
+<td>A primitive with an undeclared role is a programming error, caught in tests</td>
+</tr>
+<tr>
+<td><code>Scene</code> + <code>Theme</code> + profile</td>
+<td><code>emit</code></td>
+<td>The single place SVG is produced, and therefore the single place the embedding-safety invariants are enforced, for both profiles</td>
+<td>Violation raises rather than emitting bad SVG</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>Scene</code> seam is the load-bearing one: every rendering family converges on
+one primitive list, so acceptance test 1 is satisfied in exactly one file
+rather than four — and adding an embedding profile, or a fifth family, does not
+multiply that work.</p></div>
+<div class="note" data-for="s-spec-5-5"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §5.5</span></div><textarea class="note-ta" data-key="s-spec-5-5" data-label="§5.5 Internal component contracts" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-5-6">
+<h4 class="sec-h"><span class="chip">§5.6</span><span class="sec-title">Persisted artefacts</span></h4>
+<div class="sec-body"><p>None. drawspec has no database and no migrations; it is a pure function from
+document to string. The only files it reads are the document, the theme, and
+font files it does not modify.</p></div>
+<div class="note" data-for="s-spec-5-6"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §5.6</span></div><textarea class="note-ta" data-key="s-spec-5-6" data-label="§5.6 Persisted artefacts" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-6">
+<h3 class="sec-h"><span class="chip">§6</span><span class="sec-title">Risks &amp; Validation</span></h3>
+<div class="sec-body"><table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Likelihood</th>
+<th>Impact</th>
+<th>Mitigation</th>
+<th>Validation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>The measured font is not the rendered font.</strong> The SVG inherits the page's font stack, so a consumer's page may render in a family drawspec never measured, and tight boxes overflow.</td>
+<td>High</td>
+<td>High</td>
+<td>Never design for a tight fit: theme padding carries an explicit safety margin, and box width is the measured width plus that margin. Document that the theme's font stack should match the consuming page's. Warn loudly on substitution.</td>
+<td>Integration test rendering the fixture set measured against font A and checked for overflow against the metrics of font B</td>
+</tr>
+<tr>
+<td><strong>Pure-Python layout is not good enough</strong> for the graph kinds, even at 17 nodes.</td>
+<td>Medium</td>
+<td>High</td>
+<td>The <code>LayoutEngine</code> protocol is one method, so a Graphviz (<code>-Tplain</code>) or ELK engine is an additive change, not a rewrite. The T7 spike settles this on the three worst corpus diagrams <em>before</em> the implementation task, and its output is a picture, not an argument.</td>
+<td>T7 spike; then edge-crossing and overlap counts on the fixture set</td>
+</tr>
+<tr>
+<td><strong>The input schema is wrong in a way only found later</strong>, after consumer documents exist.</td>
+<td>Medium</td>
+<td>High</td>
+<td><code>version</code> is required from day one and validated; <code>additionalProperties: false</code> means unknown fields fail loudly rather than being silently absorbed, so a mistaken field never becomes de-facto API. Freeze v1 only once a real consumer document exists.</td>
+<td>Schema round-trip tests; a test asserting every forbidden field in §5.1 is rejected by name</td>
+</tr>
+<tr>
+<td><strong><code>FitError</code> fires too often</strong> and the tool is unusable — every second document refuses to render.</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>The error is correct behaviour per the consumer's own style rules, but its <em>message</em> is the product: it must say what did not fit, by how much, and which of the three remedies applies. Measure the rate over the fixture set and treat a high rate as a theme-tuning signal, not a reason to soften the rule.</td>
+<td><code>fit_error_rate</code> measured over the regression fixtures</td>
+</tr>
+<tr>
+<td><strong>Determinism breaks</strong> — dict ordering, float formatting, or set iteration makes reruns differ, defeating diffable committed SVG.</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>Sort every iteration order explicitly; format floats through one helper with fixed precision; no <code>set</code> iteration in emit paths.</td>
+<td>A test rendering every fixture twice and comparing bytes</td>
+</tr>
+<tr>
+<td><strong>Anonymized corpus text distorts the fixtures.</strong> Lorem ipsum has different letter frequencies from real prose, so measured widths differ from the originals.</td>
+<td>Low</td>
+<td>Low</td>
+<td>The fixtures are reference material, not the test suite — drawspec's own fixtures are authored for the cases under test. Reproducing the corpus is explicitly not a goal.</td>
+<td>n/a — scope boundary, stated in <code>corpus/README.md</code></td>
+</tr>
+<tr>
+<td><strong>Scope creep into a general diagramming tool</strong> — ports, swimlanes, nested compound graphs, animation.</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>The rule from the brief: no feature that no corpus note asked for. The nine kinds are closed for v1; a tenth needs evidence. See "Product direction" below for why this restraint is temporary and what it is protecting</td>
+<td>Review gate on any PR adding a <code>kind</code></td>
+</tr>
+<tr>
+<td><strong>A profile-specific defect ships unnoticed</strong> — the <code>standalone</code> output is exercised less than <code>inline</code>, so an unresolved <code>currentColor</code> or a missing dimension reaches a PDF conversion.</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>Both profiles are rendered for every fixture and checked by the same validator; the standalone path additionally asserts no unresolved <code>currentColor</code> remains. A round-trip through an SVG→PDF converter is part of the acceptance close-out</td>
+<td><code>embedding_safety_violations == 0</code> measured per profile, not aggregated</td>
+</tr>
+<tr>
+<td><strong><code>grandalf</code>'s maintenance status</strong> (v0.8, lightly maintained) becomes a liability if it is chosen in T7.</td>
+<td>Low</td>
+<td>Medium</td>
+<td>It sits behind the protocol, and the EPL-1.0 arm of its dual licence permits vendoring the ~600 lines we would use if upstream goes dark.</td>
+<td>T7 records the decision and its escape route</td>
+</tr>
+</tbody>
+</table></div>
+<div class="note" data-for="s-spec-6"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §6</span></div><textarea class="note-ta" data-key="s-spec-6" data-label="§6 Risks &amp; Validation" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-product-direction">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Product direction</span></h4>
+<div class="sec-body"><p>The scope discipline above — nine kinds, no feature nobody asked for, one
+corpus as the acceptance suite — is a shipping tactic, not the ambition. It
+exists because the reliable way to never finish a generic tool is to start
+generic.</p>
+<p>What the project is actually for:</p>
+<blockquote>
+<p>A tool useful to most people with different needs, while keeping its central
+goal: that a human <strong>or a language model</strong> can call it with a declarative
+input and get correct, beautiful output.</p>
+</blockquote>
+<p>Three things follow, and they shape decisions taken now even though the
+features they enable are not v1:</p>
+<ul>
+<li><strong>Nothing consumer-specific goes in, ever.</strong> The theme is the boundary, and
+  the fact that a real consumer's entire style guide reduces to a theme file
+  (<code>docs/theme-requirements.md</code>) is the standing proof. Any requirement that
+  cannot be expressed as theme configuration is a design smell to be fixed, not
+  a special case to be added.</li>
+<li><strong>Extension points are chosen now, populated later.</strong> The closed vocabularies
+  (node roles, edge roles, kinds) and the two seams (<code>Scene</code>, <code>LayoutEngine</code>)
+  are picked so that a tenth kind, a sixth head shape or a different layout
+  engine is an addition rather than a redesign. That is what "generic later"
+  costs today: a few interfaces, not a few features.</li>
+<li><strong>"Correct" is mechanically checkable; "beautiful" is not, quite.</strong> The
+  success criteria in §1 cover correctness in full. Beauty is carried by the
+  theme and judged by eye — which is why themes are data a consumer can iterate
+  on without touching the tool, rather than opinions compiled into it.</li>
+</ul>
+<p>The rule that keeps both true at once: <strong>build it generic, drive it with the
+corpus.</strong> Generality is bought through interface design, which is cheap now;
+features are bought through evidence, which arrives later.</p></div>
+<div class="note" data-for="s-spec-product-direction"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Product direction</span></div><textarea class="note-ta" data-key="s-spec-product-direction" data-label="Product direction" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+</section>
+</div>
+
+<div class="fab">
+  <button class="btn" id="btn-top" title="Back to top">↑ Top</button>
+  <button class="btn" id="btn-import">Import</button>
+  <button class="btn" id="btn-clear">Clear</button>
+  <button class="btn primary" id="btn-export2">💾 Save / Export</button>
+</div>
+<input type="file" id="file-import" class="hidden-input" accept=".md,.markdown,.json,text/markdown,application/json">
+
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <h3>Your notes</h3>
+    <p>Downloaded as a Markdown file. You can also copy the text below and paste it back.</p>
+    <textarea id="modal-ta" readonly></textarea>
+    <div class="modal-actions">
+      <button class="btn primary" id="modal-copy">Copy</button>
+      <button class="btn" id="modal-dl">Download again</button>
+      <button class="btn" id="modal-close">Close</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>var SPEC_SEED_NOTES={};</script>
+<script>
+(function(){
+  var NS = 'drawspec-spec-v1:';
+  var tas = Array.prototype.slice.call(document.querySelectorAll('.note-ta'));
+
+  function autoGrow(t){t.style.height='auto';t.style.height=(t.scrollHeight)+'px';}
+  function setFilled(t){var box=t.closest('.note');if(box){box.classList.toggle('filled',t.value.trim()!=='');}}
+  function updateCount(){
+    var n=0;tas.forEach(function(t){if(t.value.trim()!=='')n++;});
+    var el=document.getElementById('count');if(el){el.textContent=n+' / '+tas.length+' notes';}
+    return n;
+  }
+  var lsOK=true,dirty=false;
+  try{localStorage.setItem('__vs__','1');localStorage.removeItem('__vs__');}catch(e){lsOK=false;}
+  var WARN='⚠ Not saving — tap Save / Export';
+  function nowStamp(){var d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());}
+  function setState(txt,cls){var el=document.getElementById('savestate');if(el){el.textContent=txt;el.className='savestate '+(cls||'');}}
+  window.addEventListener('beforeunload',function(e){if(!lsOK&&dirty){e.preventDefault();e.returnValue='';}});
+
+  var saveTimers={};
+  function save(t){
+    if(!lsOK){dirty=true;setState(WARN,'warn');return;}
+    var k=NS+t.dataset.key;
+    try{
+      if(t.value.trim()===''){localStorage.removeItem(k);}else{localStorage.setItem(k,t.value);}
+      dirty=true;setState('✓ Saved '+nowStamp(),'ok');
+    }catch(e){lsOK=false;document.getElementById('warnbar').style.display='block';setState(WARN,'warn');}
+  }
+  var SEED=(typeof SPEC_SEED_NOTES!=='undefined')?SPEC_SEED_NOTES:{};
+  tas.forEach(function(t){
+    try{var v=localStorage.getItem(NS+t.dataset.key);
+        if(v!=null){t.value=v;}else if(Object.prototype.hasOwnProperty.call(SEED,t.dataset.key)){t.value=SEED[t.dataset.key];}}catch(e){}
+    autoGrow(t);setFilled(t);
+    t.addEventListener('input',function(){
+      autoGrow(t);setFilled(t);updateCount();
+      clearTimeout(saveTimers[t.dataset.key]);
+      saveTimers[t.dataset.key]=setTimeout(function(){save(t);},350);
+    });
+    t.addEventListener('blur',function(){save(t);});
+  });
+  updateCount();
+  if(lsOK){setState('✓ Auto-saving','ok');}else{document.getElementById('warnbar').style.display='block';setState(WARN,'warn');}
+
+  function toast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(function(){el.classList.remove('show');},1900);}
+  function pad(n){return n<10?'0'+n:''+n;}
+  function today(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+
+  function buildExport(){
+    var byPart={},order=[],data={},n=0;
+    tas.forEach(function(t){
+      var v=t.value.trim();if(v==='')return;n++;
+      data[t.dataset.key]=t.value;
+      var part=t.dataset.part||'Other';
+      if(!byPart[part]){byPart[part]=[];order.push(part);}
+      byPart[part].push({label:t.dataset.label,ref:keyFromDom(t.dataset.key,t),note:t.value});
+    });
+    var lines=['# Specification notes','','_Exported '+today()+' · '+n+' note'+(n===1?'':'s')+'._','',
+      '> Send this file back to continue the review. Notes are embedded as data at the bottom','> so importing this file restores them in the reader.',''];
+    order.forEach(function(part){
+      lines.push('## '+part,'');
+      byPart[part].forEach(function(it){
+        lines.push('**'+it.label+'**  `'+it.ref+'`');
+        it.note.split('\n').forEach(function(ln){lines.push('> '+ln);});
+        lines.push('');
+      });
+    });
+    lines.push('<!-- SPEC-NOTES-DATA');
+    lines.push(JSON.stringify(data));
+    lines.push('-->');
+    return{text:lines.join('\n'),n:n};
+  }
+  function keyFromDom(domkey,t){var box=t.closest('.note');var r=box?box.querySelector('.note-ref'):null;return r?r.textContent:domkey;}
+
+  function download(name,text){
+    try{var blob=new Blob([text],{type:'text/markdown'});var url=URL.createObjectURL(blob);
+        var a=document.createElement('a');a.href=url;a.download=name;
+        document.body.appendChild(a);a.click();
+        setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1500);return true;}catch(e){return false;}
+  }
+
+  var modal=document.getElementById('modal');
+  var modalTa=document.getElementById('modal-ta');
+  function openModal(text){modalTa.value=text;modal.classList.add('open');}
+  function closeModal(){modal.classList.remove('open');}
+
+  document.getElementById('btn-export').addEventListener('click',function(){
+    var r=buildExport();
+    if(r.n===0){toast('No notes yet — add some first.');return;}
+    var name='spec-notes-'+today()+'.md';
+    download(name,r.text);openModal(r.text);
+    if(navigator.clipboard){navigator.clipboard.writeText(r.text).then(function(){},function(){});}
+    dirty=false;setState('✓ Backup saved '+nowStamp(),'ok');
+    toast('Exported '+r.n+' note'+(r.n===1?'':'s'));
+  });
+  document.getElementById('btn-export2').addEventListener('click',function(){document.getElementById('btn-export').click();});
+
+  document.getElementById('modal-copy').addEventListener('click',function(){
+    modalTa.select();var ok=false;try{ok=document.execCommand('copy');}catch(e){}
+    if(navigator.clipboard){navigator.clipboard.writeText(modalTa.value).then(function(){},function(){});ok=true;}
+    toast(ok?'Copied to clipboard':'Select the text and copy');
+  });
+  document.getElementById('modal-dl').addEventListener('click',function(){download('spec-notes-'+today()+'.md',modalTa.value);toast('Download started');});
+  document.getElementById('modal-close').addEventListener('click',closeModal);
+  modal.addEventListener('click',function(e){if(e.target===modal)closeModal();});
+
+  function applyData(obj){
+    var applied=0;
+    tas.forEach(function(t){
+      if(Object.prototype.hasOwnProperty.call(obj,t.dataset.key)){t.value=obj[t.dataset.key];save(t);autoGrow(t);setFilled(t);applied++;}
+    });
+    updateCount();return applied;
+  }
+  document.getElementById('file-import').addEventListener('change',function(e){
+    var f=e.target.files[0];if(!f)return;
+    var rd=new FileReader();
+    rd.onload=function(){
+      var txt=String(rd.result||'');var obj=null;
+      var m=txt.lastIndexOf('SPEC-NOTES-DATA');
+      try{
+        if(m>=0){var after=txt.slice(m+15);var jstart=after.indexOf('{');var jend=after.lastIndexOf('}');
+                  if(jstart>=0&&jend>jstart){obj=JSON.parse(after.slice(jstart,jend+1));}}
+        else{obj=JSON.parse(txt);}
+      }catch(err){obj=null;}
+      if(!obj){toast('Could not read notes from that file');return;}
+      var k=applyData(obj);toast('Imported '+k+' note'+(k===1?'':'s'));
+    };
+    rd.readAsText(f);e.target.value='';
+  });
+  document.getElementById('btn-import').addEventListener('click',function(){document.getElementById('file-import').click();});
+
+  document.getElementById('btn-clear').addEventListener('click',function(){
+    if(!confirm('Clear ALL notes from this browser? Export first if you want to keep them.'))return;
+    tas.forEach(function(t){t.value='';save(t);autoGrow(t);setFilled(t);});
+    updateCount();toast('All notes cleared');
+  });
+
+  document.getElementById('btn-top').addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+})();
+</script>
+</body>
+</html>

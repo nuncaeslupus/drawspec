@@ -1,0 +1,27 @@
+<svg viewBox="0 0 680 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1" style="max-width:100%;height:auto">
+  <title id="n2">Reprehenderit voluptate velit essea</title>
+  <desc id="n1">Eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet</desc>
+  <defs>
+    <marker id="n3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="10" y="25" width="115" height="45" rx="4"/>
+    <rect x="150" y="25" width="115" height="45" rx="4"/>
+    <rect x="290" y="25" width="115" height="45" rx="4"/>
+    <rect x="430" y="25" width="115" height="45" rx="4"/>
+    <rect x="570" y="25" width="100" height="45" rx="4"/>
+    <path d="M125,47 L148,47" marker-end="url(#n3)"/>
+    <path d="M265,47 L288,47" marker-end="url(#n3)"/>
+    <path d="M405,47 L428,47" marker-end="url(#n3)"/>
+    <path d="M545,47 L568,47" marker-end="url(#n3)"/>
+  </g>
+  <g font-size="12.5" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <text x="67" y="52">Nisi aliqui</text>
+    <text x="207" y="52">Ex eaae</text>
+    <text x="347" y="52">Consequa</text>
+    <text x="487" y="52">Duis au</text>
+    <text x="620" y="52">Irure in</text>
+  </g>
+</svg>

@@ -1,0 +1,16 @@
+<svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1">
+  <title id="n2">Elit sed do eiusmod tempor incidi</title>
+  <desc id="n1">Ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit volup</desc>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <polygon points="260,10 380,10 430,60 210,60" />
+    <polygon points="210,60 430,60 480,110 160,110" />
+    <polygon points="160,110 480,110 530,160 110,160" />
+    <polygon points="110,160 530,160 580,210 60,210" />
+  </g>
+  <g fill="currentColor" font-size="15" font-family="sans-serif" text-anchor="middle">
+    <text x="320" y="40">Sunt culpaa</text>
+    <text x="320" y="90">Officia deserunt mollita</text>
+    <text x="320" y="140">Id est laborum lorem ipsum dolor sit amet consectet</text>
+    <text x="320" y="190">Adipiscin</text>
+  </g>
+</svg>

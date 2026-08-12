@@ -1,0 +1,17 @@
+<svg viewBox="0 0 640 190" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1">
+  <title id="n2">Exercitation ullamco laboris nisi aliquipae</title>
+  <desc id="n1">Ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui</desc>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="10" y="10" width="620" height="50" />
+    <rect x="10" y="70" width="620" height="50" />
+    <rect x="10" y="130" width="620" height="50" />
+  </g>
+  <g fill="currentColor" font-size="15" font-family="sans-serif">
+    <text x="25" y="30">Nisi aliquip ex ea commodo consequat duis autea</text>
+    <text x="25" y="50">In reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur except</text>
+    <text x="25" y="90">Sint occaecat cupidatat non proident sunt culpaae</text>
+    <text x="25" y="110">Officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet con</text>
+    <text x="25" y="150">Adipiscing elit sed do eiusmod temporae</text>
+    <text x="25" y="170">Ut labore et dolore magna aliqua enim ad minim veniam quis nostru</text>
+  </g>
+</svg>

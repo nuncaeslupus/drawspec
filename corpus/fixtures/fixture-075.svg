@@ -1,0 +1,23 @@
+<svg viewBox="0 0 620 150" role="img" aria-labelledby="n3 n2" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto">
+  <title id="n3">Deserunt mollit anim id est laborum lorem</title>
+  <desc id="n2">Ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit volupt</desc>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="10" y="10" width="130" height="70" rx="6"/>
+    <rect x="245" y="10" width="130" height="70" rx="6"/>
+    <rect x="480" y="10" width="130" height="70" rx="6"/>
+    <path d="M140 45h100M375 45h100" marker-end="url(#n1)"/>
+  </g>
+  <g fill="currentColor" font-family="sans-serif" font-size="11" text-anchor="middle">
+    <text x="75" y="35">Exa</text><text x="75" y="50">commodo consequat</text>
+    <text x="310" y="35">Dui</text><text x="310" y="50">aute iru</text>
+    <text x="545" y="35">Ina</text><text x="545" y="50">voluptateae</text>
+    <text x="190" y="38" font-size="10">esse cil</text><text x="190" y="50" font-size="10">eu fugiat</text>
+    <text x="425" y="38" font-size="10">nulla pa</text><text x="425" y="50" font-size="10">excepteur</text>
+    <text x="310" y="115" font-size="11">Sint occaecat cupidatat non proident sunt culpa qui off</text>
+  </g>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M0 0L8 4L0 8Z" fill="currentColor"/>
+    </marker>
+  </defs>
+</svg>

@@ -1,0 +1,30 @@
+<svg viewBox="0 0 340 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n3 n2" style="max-width:100%;height:auto">
+  <title id="n3">Excepteur sint occaecat cupidatat non proident su</title>
+  <desc id="n2">Culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enima</desc>
+  <g font-family="sans-serif" font-size="12" fill="currentColor" text-anchor="middle">
+    <rect x="105" y="10" width="130" height="40" rx="4" fill="none" stroke="currentColor"/>
+    <text x="170" y="34">ullamco labor</text>
+    <rect x="230" y="150" width="100" height="50" rx="4" fill="none" stroke="currentColor"/>
+    <text x="280" y="170">nisi aliqui</text>
+    <text x="280" y="185">ex ea com</text>
+    <rect x="105" y="290" width="130" height="40" rx="4" fill="none" stroke="currentColor"/>
+    <text x="170" y="308">consequat dui</text>
+    <text x="170" y="322">aute irure in reprehende</text>
+    <rect x="10" y="150" width="100" height="50" rx="4" fill="none" stroke="currentColor"/>
+    <text x="60" y="170">voluptate ve</text>
+    <text x="60" y="185">esse cill</text>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#n1)">
+    <path d="M225,35 C260,60 280,100 280,148"/>
+    <path d="M270,200 C250,240 220,270 200,288"/>
+    <path d="M110,308 C70,270 60,230 60,202"/>
+    <path d="M70,148 C90,100 110,60 118,32"/>
+  </g>
+  <path d="M232,155 C260,130 260,110 250,90" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#n1)"/>
+  <text x="270" y="100" font-family="sans-serif" font-size="10.5" fill="currentColor">eu fugiat nulla paria</text>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+</svg>

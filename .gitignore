@@ -216,3 +216,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+claude-arsenal/session/surface_profile.json
+
+claude-arsenal/session/rate_limits.json
+
+claude-arsenal/session/budget_iterations.json
+
+claude-arsenal/session/worktree_isolation
+
+claude-arsenal/session/host_branch

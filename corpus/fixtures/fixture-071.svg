@@ -1,0 +1,35 @@
+<svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n3 n2" style="max-width:100%;height:auto">
+  <title id="n3">Sit amet consectetura</title>
+  <desc id="n2">Elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia</desc>
+  <g fill="none" stroke="currentColor" stroke-width="1" opacity="0.5">
+    <line x1="40" y1="190" x2="620" y2="190" marker-end="url(#n1)"/>
+  </g>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="2.5">
+    <path d="M50,175 C130,140 170,30 230,30 C280,30 260,150 340,165 C420,178 500,110 610,95"/>
+  </g>
+  <g font-size="11.5" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <circle cx="50" cy="175" r="5" fill="currentColor"/>
+    <text x="50" y="205">Esse cillu</text>
+    <text x="50" y="217">eu fugi</text>
+    <circle cx="230" cy="30" r="5" fill="currentColor"/>
+    <text x="230" y="55">Nulla pariaturae</text>
+    <text x="230" y="67">sint occaeca</text>
+    <circle cx="340" cy="165" r="5" fill="currentColor"/>
+    <text x="340" y="205">Cupidatat</text>
+    <text x="340" y="217">non proident su</text>
+    <circle cx="480" cy="130" r="5" fill="currentColor"/>
+    <text x="480" y="150">Culpa qu</text>
+    <text x="480" y="162">officia deser</text>
+    <circle cx="610" cy="95" r="5" fill="currentColor"/>
+    <text x="610" y="80">Mollit ani</text>
+    <text x="610" y="68">id est labor</text>
+  </g>
+  <g font-size="10.5" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <text x="10" y="105" transform="rotate(-90 10 105)">Lorem ipsuma</text>
+  </g>
+</svg>

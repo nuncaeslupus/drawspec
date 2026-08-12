@@ -1,0 +1,43 @@
+<svg viewBox="0 0 720 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1">
+  <title id="n2">Velit esse cillum eu fugiat nulla pariatur excepte</title>
+  <desc id="n1">Sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit</desc>
+  <defs>
+    <marker id="n3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="285" y="10" width="150" height="40" rx="4"/>
+    <rect x="10" y="105" width="165" height="105" rx="4"/>
+    <rect x="190" y="105" width="165" height="105" rx="4"/>
+    <rect x="370" y="105" width="165" height="105" rx="4"/>
+    <rect x="550" y="105" width="165" height="105" rx="4"/>
+    <path d="M320,50 L92,105" marker-end="url(#n3)"/>
+    <path d="M340,50 L272,105" marker-end="url(#n3)"/>
+    <path d="M380,50 L452,105" marker-end="url(#n3)"/>
+    <path d="M400,50 L632,105" marker-end="url(#n3)"/>
+  </g>
+  <g font-size="13" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <text x="360" y="34">Sint occaecat cupidat</text>
+  </g>
+  <g font-size="10.5" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <text x="92" y="124">Non proident sunt cu</text>
+    <text x="92" y="138">qui officia deserun</text>
+    <text x="92" y="152">mollit ani</text>
+    <text x="92" y="180" font-size="12" font-weight="bold">Id est laborum lor</text>
+    <text x="92" y="195" font-size="12" font-weight="bold">Ipsum dolorae</text>
+    <text x="272" y="130">Amet consectetu</text>
+    <text x="272" y="144">adipiscing elit sed doa</text>
+    <text x="272" y="158">temporae</text>
+    <text x="272" y="187" font-size="13" font-weight="bold">Uta</text>
+    <text x="452" y="137">Et doloreae</text>
+    <text x="452" y="151">Aliqua enim ad min</text>
+    <text x="452" y="180" font-size="12" font-weight="bold">Veniam qu</text>
+    <text x="452" y="195" font-size="12" font-weight="bold">Nostruda</text>
+    <text x="632" y="124">Ullamco laboris nisia</text>
+    <text x="632" y="138">Ex ea commodo conseq</text>
+    <text x="632" y="152">duis autea</text>
+    <text x="632" y="180" font-size="12" font-weight="bold">In repre</text>
+    <text x="632" y="195" font-size="12" font-weight="bold">Volupt</text>
+  </g>
+</svg>

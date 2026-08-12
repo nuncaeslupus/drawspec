@@ -1,0 +1,30 @@
+<svg viewBox="0 0 500 180" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n3 n2" style="max-width:100%;height:auto">
+  <title id="n3">Ad minim veniam quis nostrud exercit</title>
+  <desc id="n2">Ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunta</desc>
+  <g font-family="sans-serif" font-size="11" fill="currentColor">
+    <text x="20" y="20" font-weight="bold">Lorem</text>
+    <rect x="20" y="30" width="90" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="65" y="51" text-anchor="middle">Ipsum do</text>
+    <rect x="140" y="30" width="90" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="185" y="51" text-anchor="middle">Sit amet</text>
+    <text x="260" y="51">consectetur adipiscing el</text>
+
+    <text x="20" y="100" font-weight="bold">Sed do ei</text>
+    <rect x="20" y="110" width="90" height="30" rx="4" fill="none" stroke="currentColor"/>
+    <text x="65" y="129" text-anchor="middle">Temporae</text>
+    <rect x="20" y="146" width="90" height="30" rx="4" fill="none" stroke="currentColor"/>
+    <text x="65" y="165" text-anchor="middle">Ut labor</text>
+    <text x="260" y="147">et dolore magna aliqua en</text>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <line x1="110" y1="47" x2="138" y2="47" marker-end="url(#n1)"/>
+    <path d="M0,143 H10 V125 H20 M10,143 V161 H20"/>
+    <path d="M110,125 H120 V143 M110,161 H120 V143"/>
+    <line x1="120" y1="143" x2="138" y2="143" marker-end="url(#n1)"/>
+  </g>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+</svg>

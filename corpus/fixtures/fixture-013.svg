@@ -1,0 +1,32 @@
+<svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1">
+  <title id="n2">Velit esse cillum eu fugiat nulla pariatur excepteur</title>
+  <desc id="n1">Sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea comm</desc>
+  <defs>
+    <marker id="n3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="10" y="100" width="150" height="50" rx="4"/>
+    <rect x="190" y="100" width="170" height="50" rx="4"/>
+    <rect x="400" y="35" width="220" height="45" rx="4"/>
+    <rect x="400" y="115" width="220" height="45" rx="4"/>
+    <rect x="190" y="195" width="430" height="45" rx="4"/>
+    <path d="M160,125 L190,125" marker-end="url(#n3)"/>
+    <path d="M360,115 L400,58" marker-end="url(#n3)"/>
+    <path d="M360,135 L400,137" marker-end="url(#n3)"/>
+    <path d="M480,80 L410,195" marker-end="url(#n3)"/>
+    <path d="M540,160 L520,195" marker-end="url(#n3)"/>
+  </g>
+  <g font-size="12.5" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <text x="85" y="129">Dolor sitae</text>
+    <text x="275" y="122">Consectet</text>
+    <text x="275" y="138" font-size="11">adipiscing elit sed do</text>
+    <text x="510" y="52">Eiusmod tempor incididun</text>
+    <text x="510" y="67">Ut labore et do</text>
+    <text x="510" y="132">Magna aliqua enim ad min</text>
+    <text x="510" y="147">Veniam quis nostrud</text>
+    <text x="405" y="215">Exercitation ullamco laboris nisi aliquip ex eaa</text>
+    <text x="405" y="230" font-size="11">consequat duis aute irure in reprehenderit volupta</text>
+  </g>
+</svg>

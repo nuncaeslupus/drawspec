@@ -1,0 +1,41 @@
+<svg viewBox="0 0 660 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n3 n2">
+  <title id="n3">Mollit anim id est labor</title>
+  <desc id="n2">Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non pro</desc>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="140" y="10" width="300" height="40" rx="4"/>
+    <rect x="140" y="60" width="300" height="40" rx="4"/>
+    <rect x="140" y="110" width="300" height="55" rx="4"/>
+    <rect x="140" y="195" width="300" height="55" rx="4"/>
+    <rect x="140" y="280" width="300" height="50" rx="4"/>
+    <rect x="480" y="112" width="140" height="50" rx="4"/>
+    <rect x="480" y="197" width="140" height="50" rx="4"/>
+    <path d="M290,50 L290,60" marker-end="url(#n1)"/>
+    <path d="M290,100 L290,110" marker-end="url(#n1)"/>
+    <path d="M290,165 L290,195" marker-end="url(#n1)"/>
+    <path d="M290,250 L290,280" marker-end="url(#n1)"/>
+    <path d="M440,137 L480,137" marker-end="url(#n1)"/>
+    <path d="M440,222 L480,222" marker-end="url(#n1)"/>
+  </g>
+  <g font-size="12.5" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <text x="290" y="34">Tempor incididunt ut la</text>
+    <text x="290" y="84">Et dolore magna aliqua enim</text>
+    <text x="290" y="132">ad minim veniam quis nostruda</text>
+    <text x="290" y="147" font-size="11">ullamco labor</text>
+    <text x="290" y="217">nisi aliquip ex ea commod</text>
+    <text x="290" y="232">consequat duisa</text>
+    <text x="290" y="247" font-size="11">irure in repr</text>
+    <text x="290" y="300">Voluptate velit esse cilluma</text>
+    <text x="290" y="315">fugiat nulla pariatur</text>
+    <text x="290" y="329" font-size="11">excepteur sint occaecat</text>
+    <text x="460" y="127" font-size="11">Id</text>
+    <text x="460" y="212" font-size="11">Id</text>
+    <text x="550" y="132">Cupidata</text>
+    <text x="550" y="217">Non proi</text>
+    <text x="290" y="345" font-size="11">Sunt culpa qui officia des</text>
+  </g>
+</svg>

@@ -1,0 +1,36 @@
+<svg viewBox="0 0 640 300" role="img" aria-labelledby="n2 n1" xmlns="http://www.w3.org/2000/svg" style="max-width:100%">
+  <title id="n2">Ullamco laboris nisi aliquip ex ea commodo conse</title>
+  <desc id="n1">Duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit volup</desc>
+  <g fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="120" y="15" width="400" height="70" rx="6"/>
+    <rect x="120" y="115" width="400" height="70" rx="6"/>
+    <rect x="120" y="215" width="400" height="70" rx="6"/>
+  </g>
+  <g fill="currentColor" font-size="15" text-anchor="middle">
+    <text x="320" y="38" font-weight="bold">Duis aute irure in reprehenderit</text>
+    <text x="320" y="58" font-size="13">voluptate velit esse cillum eu fugia</text>
+    <text x="320" y="75" font-size="13">nulla pariatur excepteur sin</text>
+    <text x="320" y="138" font-weight="bold">Occaecat cupidatata</text>
+    <text x="320" y="158" font-size="13">proident sunt culpa qui officia deserunt mollit anim id esta</text>
+    <text x="320" y="175" font-size="13">Lorem ipsuma</text>
+    <text x="320" y="238" font-weight="bold">Sit amet consectetur adipiscin</text>
+    <text x="320" y="258" font-size="13">elit sed do eiusmod tempor incididunt ut labor</text>
+    <text x="320" y="275" font-size="13">et dolore magna aliq</text>
+  </g>
+  <g fill="currentColor" stroke="currentColor" stroke-width="2">
+    <path d="M75,25 L75,275" marker-end="url(#n4)"/>
+    <path d="M565,275 L565,25" marker-end="url(#n3)"/>
+  </g>
+  <g fill="currentColor" font-size="12" text-anchor="middle">
+    <text x="75" y="290">enim ad minim veniamae</text>
+    <text x="565" y="12">nostrud exercitati</text>
+  </g>
+  <defs>
+    <marker id="n4" markerWidth="8" markerHeight="8" refX="4" refY="7" orient="auto">
+      <path d="M0,0 L8,0 L4,8 Z" fill="currentColor"/>
+    </marker>
+    <marker id="n3" markerWidth="8" markerHeight="8" refX="4" refY="1" orient="auto">
+      <path d="M0,8 L8,8 L4,0 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+</svg>

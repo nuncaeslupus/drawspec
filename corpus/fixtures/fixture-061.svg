@@ -1,0 +1,22 @@
+<svg viewBox="0 0 640 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1" style="max-width:100%;height:auto">
+  <title id="n2">Laboris nisi aliquip ex ea commodo consequat duis aute irur</title>
+  <desc id="n1">In reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ada</desc>
+  <g stroke="currentColor" stroke-width="1" opacity="0.4">
+    <line x1="70" y1="190" x2="600" y2="190"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="2.5">
+    <polyline points="80,175 240,140 400,45 560,150"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="2.5" stroke-dasharray="6 4">
+    <polyline points="80,55 240,95 400,140 560,175"/>
+  </g>
+  <g font-size="12.5" fill="currentColor" font-family="sans-serif">
+    <text x="80" y="210" text-anchor="middle">Sedae</text>
+    <text x="240" y="210" text-anchor="middle">Eiusmod tempor</text>
+    <text x="240" y="224" text-anchor="middle">incididunt</text>
+    <text x="400" y="210" text-anchor="middle">Ut labor</text>
+    <text x="560" y="210" text-anchor="middle">Et dolore</text>
+    <text x="405" y="38" text-anchor="middle">Magna aliqua enim ad minim</text>
+    <text x="405" y="185" text-anchor="middle">Veniam quis nostrud exercitationae</text>
+  </g>
+</svg>

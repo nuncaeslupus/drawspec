@@ -1,0 +1,19 @@
+<svg viewBox="0 0 640 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1">
+  <title id="n2">Aliqua enim ad minim veniam quis nostrud exercitation</title>
+  <desc id="n1">Ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariat</desc>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <polygon points="280,10 360,10 400,50 240,50"/>
+    <polygon points="240,50 400,50 440,90 200,90"/>
+    <polygon points="200,90 440,90 480,130 160,130"/>
+    <polygon points="160,130 480,130 520,170 120,170"/>
+    <polygon points="120,170 520,170 560,210 80,210"/>
+  </g>
+  <g fill="currentColor" font-size="13.5" font-family="sans-serif" text-anchor="middle">
+    <text x="320" y="34">non proident sunt culp</text>
+    <text x="320" y="74">qui officia deseruntae</text>
+    <text x="320" y="114">anim id est laborumae</text>
+    <text x="320" y="154">ipsum dol</text>
+    <text x="320" y="194">sit amet</text>
+    <text x="320" y="235" font-size="12">Consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore ma</text>
+  </g>
+</svg>

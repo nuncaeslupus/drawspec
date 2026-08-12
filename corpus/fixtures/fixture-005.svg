@@ -1,0 +1,39 @@
+<svg viewBox="0 0 460 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n3 n2">
+  <title id="n3">Ex ea commodo consequat duis aute irure in repreh</title>
+  <desc id="n2">Voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magnaae</desc>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="60" y="10" width="340" height="32" rx="4"/>
+    <rect x="60" y="52" width="340" height="32" rx="4"/>
+    <rect x="60" y="94" width="340" height="32" rx="4"/>
+    <rect x="60" y="136" width="340" height="32" rx="4"/>
+    <rect x="60" y="178" width="340" height="32" rx="4"/>
+    <rect x="60" y="220" width="340" height="32" rx="4"/>
+    <rect x="60" y="262" width="340" height="32" rx="4"/>
+    <rect x="60" y="304" width="340" height="32" rx="4"/>
+    <rect x="60" y="346" width="340" height="32" rx="4"/>
+    <path d="M230,42 L230,52" marker-end="url(#n1)"/>
+    <path d="M230,84 L230,94" marker-end="url(#n1)"/>
+    <path d="M230,126 L230,136" marker-end="url(#n1)"/>
+    <path d="M230,168 L230,178" marker-end="url(#n1)"/>
+    <path d="M230,210 L230,220" marker-end="url(#n1)"/>
+    <path d="M230,252 L230,262" marker-end="url(#n1)"/>
+    <path d="M230,294 L230,304" marker-end="url(#n1)"/>
+    <path d="M230,336 L230,346" marker-end="url(#n1)"/>
+  </g>
+  <g fill="currentColor" font-size="12.5" font-family="sans-serif" text-anchor="middle">
+    <text x="230" y="30">excepteur sint occae</text>
+    <text x="230" y="72">cupidatat non proident sunt culpa qu</text>
+    <text x="230" y="114">officia deserunt mol</text>
+    <text x="230" y="156">anim id est laborum lorem ipsum do</text>
+    <text x="230" y="198">sit amet consectetur adipiscing elit sed do</text>
+    <text x="230" y="240">eiusmod tempor incididunt</text>
+    <text x="230" y="282">ut labore et dolore magnaa</text>
+    <text x="230" y="324">enim ad minim veniam quis nostrud exercitatio</text>
+    <text x="230" y="366">ullamco laboris nisia</text>
+  </g>
+</svg>

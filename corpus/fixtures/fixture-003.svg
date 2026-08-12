@@ -1,0 +1,29 @@
+<svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n3 n2">
+  <title id="n3">Consectetur adipiscing elit sed do eiu</title>
+  <desc id="n2">Tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupi</desc>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="245" y="10" width="150" height="40" rx="4"/>
+    <rect x="30" y="90" width="240" height="50" rx="4"/>
+    <rect x="370" y="90" width="240" height="50" rx="4"/>
+    <rect x="30" y="175" width="240" height="35" rx="4"/>
+    <rect x="370" y="175" width="240" height="35" rx="4"/>
+    <path d="M290,50 L150,90" marker-end="url(#n1)"/>
+    <path d="M350,50 L490,90" marker-end="url(#n1)"/>
+    <path d="M150,140 L150,175" marker-end="url(#n1)"/>
+    <path d="M490,140 L490,175" marker-end="url(#n1)"/>
+  </g>
+  <g font-size="12.5" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <text x="320" y="34">Ex ea commod</text>
+    <text x="150" y="102" font-size="11">consequat duis aute irure inae</text>
+    <text x="150" y="119">Voluptate velit esse cillum eu fugia</text>
+    <text x="490" y="102" font-size="11">nulla pariatur excepteur sint occae</text>
+    <text x="490" y="119">Cupidatat non proident</text>
+    <text x="150" y="197">sunt culpa qui officia deseruntae</text>
+    <text x="490" y="197">anim id est laborum lorem ipsum dolor sit ame</text>
+  </g>
+</svg>

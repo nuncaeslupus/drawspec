@@ -1,0 +1,37 @@
+<svg viewBox="0 0 680 130" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1" style="max-width:100%;height:auto">
+  <title id="n2">Ut labore et dolore magna aliqua eni</title>
+  <desc id="n1">Ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure in reprehenderit voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mol</desc>
+  <defs>
+    <marker id="n3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <rect x="10" y="20" width="150" height="50" rx="4"/>
+    <rect x="190" y="20" width="150" height="50" rx="4"/>
+    <rect x="370" y="20" width="150" height="50" rx="4"/>
+    <rect x="550" y="20" width="120" height="50" rx="4"/>
+    <path d="M160,45 L188,45" marker-end="url(#n3)"/>
+    <path d="M340,45 L368,45" marker-end="url(#n3)"/>
+    <path d="M520,45 L548,45" marker-end="url(#n3)"/>
+  </g>
+  <g font-size="12.5" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <text x="85" y="40">Velit esseae</text>
+    <text x="85" y="55" font-size="11">eua</text>
+    <text x="265" y="40">Nulla pari</text>
+    <text x="265" y="55" font-size="11">exc</text>
+    <text x="445" y="40">Sint occa</text>
+    <text x="445" y="55" font-size="11">cupidatat nona</text>
+    <text x="610" y="40">Sunt cul</text>
+    <text x="610" y="55" font-size="11">qui</text>
+  </g>
+  <g font-size="10.5" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <text x="85" y="90">Officia deserunta</text>
+    <text x="265" y="90">Anim id est labor</text>
+    <text x="265" y="102">lorem ipsum dolo</text>
+    <text x="445" y="90">Sit ame</text>
+    <text x="445" y="102">consectetur adipiscinga</text>
+    <text x="610" y="90">Sed do eius</text>
+    <text x="610" y="102">tempor incididun</text>
+  </g>
+</svg>

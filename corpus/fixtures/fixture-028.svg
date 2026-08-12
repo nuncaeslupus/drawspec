@@ -1,0 +1,36 @@
+<svg viewBox="0 0 620 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n3 n2" style="max-width:100%;height:auto">
+  <title id="n3">Anim id est laborum loremae</title>
+  <desc id="n2">Dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliquip ex ea commodo consequatae</desc>
+  <g font-family="sans-serif" font-size="12" fill="currentColor">
+    <text x="140" y="20" text-anchor="middle">Veniamae</text>
+    <rect x="20" y="35" width="240" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="140" y="56" text-anchor="middle">Nostrud exercitation ullamco labor</text>
+    <rect x="20" y="95" width="240" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="140" y="116" text-anchor="middle">Nisi aliquip ex ea commodo</text>
+    <rect x="330" y="95" width="270" height="34" rx="4" fill="none" stroke="currentColor" stroke-dasharray="4,2"/>
+    <text x="465" y="116" text-anchor="middle" font-size="11">Consequat duis aute irure in reprehenderit</text>
+    <rect x="20" y="155" width="240" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="140" y="176" text-anchor="middle">Voluptate velit esse cillum</text>
+    <rect x="20" y="215" width="240" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="140" y="236" text-anchor="middle">Eu fugiat nulla</text>
+    <rect x="330" y="215" width="270" height="34" rx="4" fill="none" stroke="currentColor" stroke-dasharray="4,2"/>
+    <text x="465" y="230" text-anchor="middle" font-size="11">pariatur excepteur sint occaecat</text>
+    <text x="465" y="243" text-anchor="middle" font-size="11">cupidatat non proident sunt culpa quiae</text>
+    <rect x="20" y="275" width="240" height="34" rx="4" fill="none" stroke="currentColor"/>
+    <text x="140" y="296" text-anchor="middle">Deserunt moll</text>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1.5" marker-end="url(#n1)">
+    <line x1="140" y1="26" x2="140" y2="33"/>
+    <line x1="140" y1="69" x2="140" y2="93"/>
+    <line x1="140" y1="129" x2="140" y2="153"/>
+    <line x1="140" y1="189" x2="140" y2="213"/>
+    <line x1="140" y1="249" x2="140" y2="273"/>
+    <line x1="260" y1="112" x2="328" y2="112"/>
+    <line x1="260" y1="232" x2="328" y2="232"/>
+  </g>
+  <defs>
+    <marker id="n1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+</svg>

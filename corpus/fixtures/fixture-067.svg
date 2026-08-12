@@ -1,0 +1,34 @@
+<svg viewBox="0 0 560 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1" style="max-width:100%;height:auto">
+  <title id="n2">Irure in reprehenderit voluptate</title>
+  <desc id="n1">Velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt</desc>
+  <defs>
+    <marker id="n3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="1" opacity="0.5">
+    <line x1="50" y1="220" x2="530" y2="220" marker-end="url(#n3)"/>
+    <line x1="50" y1="220" x2="50" y2="20" marker-end="url(#n3)"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M50,210 C200,190 300,110 420,40"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="6 4">
+    <path d="M50,210 C180,195 260,150 340,110"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="2 3">
+    <path d="M50,210 C170,190 240,135 340,70"/>
+  </g>
+  <g stroke="currentColor" stroke-width="1.5">
+    <line x1="340" y1="110" x2="340" y2="70" marker-end="url(#n3)" marker-start="url(#n3)"/>
+    <line x1="340" y1="110" x2="270" y2="110" marker-end="url(#n3)" marker-start="url(#n3)"/>
+  </g>
+  <g font-size="12.5" fill="currentColor" font-family="sans-serif">
+    <text x="425" y="35">Id</text>
+    <text x="345" y="65">Id</text>
+    <text x="300" y="123">Id</text>
+    <text x="355" y="95" font-size="11">Id</text>
+    <text x="290" y="128" font-size="11">Id</text>
+    <text x="290" y="245" text-anchor="middle">Duisa</text>
+  </g>
+</svg>

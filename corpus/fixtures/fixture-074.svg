@@ -1,0 +1,41 @@
+<svg viewBox="0 0 680 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="n2 n1" style="max-width:100%;height:auto">
+  <title id="n2">Consequat duis aute irure inae</title>
+  <desc id="n1">Voluptate velit esse cillum eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud exercitation ullamco laboris nisi aliq</desc>
+  <defs>
+    <marker id="n3" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <path d="M110,15 L180,55 L110,95 L40,55 Z"/>
+    <rect x="230" y="35" width="120" height="40" rx="4"/>
+    <path d="M470,15 L540,55 L470,95 L400,55 Z"/>
+    <rect x="590" y="35" width="80" height="40" rx="4"/>
+    <rect x="80" y="150" width="60" height="30" rx="4"/>
+    <rect x="440" y="150" width="60" height="30" rx="4"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="1.5">
+    <path d="M180,55 L228,55" marker-end="url(#n3)"/>
+    <path d="M350,55 L398,55" marker-end="url(#n3)"/>
+    <path d="M540,55 L588,55" marker-end="url(#n3)"/>
+    <path d="M110,95 L110,150" marker-end="url(#n3)"/>
+    <path d="M470,95 L470,150" marker-end="url(#n3)"/>
+  </g>
+  <g font-size="11.5" fill="currentColor" text-anchor="middle" font-family="sans-serif">
+    <text x="110" y="50">Ut laborea</text>
+    <text x="110" y="64">dolore magn</text>
+    <text x="290" y="52">Aliq</text>
+    <text x="290" y="66">enim ad minim ven</text>
+    <text x="470" y="50">Quis nostruda</text>
+    <text x="470" y="64">ulla</text>
+    <text x="630" y="52">Laborisa</text>
+    <text x="630" y="66">aliqui</text>
+    <text x="110" y="169">Id</text>
+    <text x="470" y="169">Id</text>
+    <text x="204" y="46">Id</text>
+    <text x="564" y="46">Id</text>
+    <text x="122" y="125">Id</text>
+    <text x="482" y="125">Id</text>
+    <text x="630" y="90">ex ea commod</text>
+  </g>
+</svg>
