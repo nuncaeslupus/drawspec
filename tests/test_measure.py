@@ -235,6 +235,14 @@ def test_measure_falls_through_the_stack_without_warning_when_a_later_entry_reso
         measurer.resolve("sans")
 
 
+def test_measure_reaching_the_bundled_copy_of_the_requested_family_does_not_warn() -> None:
+    """The metrics are the ones asked for, whichever entry supplied them."""
+    measurer = TextMeasurer(stacks={"mono": ["DejaVu Sans Mono", "monospace"]}, search_paths=[])
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", FontSubstitutionWarning)
+        assert measurer.resolve("mono").family == "DejaVu Sans Mono"
+
+
 def test_measure_generic_keyword_first_in_the_stack_does_not_warn() -> None:
     """Asking for the generic outright is a request, not a fallback."""
     measurer = TextMeasurer(stacks={"sans": ["sans-serif"]}, search_paths=[])

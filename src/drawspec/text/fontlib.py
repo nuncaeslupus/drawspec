@@ -420,18 +420,27 @@ def resolve_stack(
             family=family,
             path=path,
             requested=requested,
-            # Position 0 is what was asked for. A later entry is a fallback even
-            # when it resolves cleanly — the author's first choice was missed.
-            substituted=position > 0,
+            # Falling through the stack is only a *substitution* if the metrics
+            # changed. Asking for "DejaVu Sans" and getting the bundled copy of
+            # DejaVu Sans is the font that was asked for, whichever entry
+            # supplied it — warning about it would be noise, and noise is how a
+            # warning that matters gets ignored.
+            substituted=position > 0 and not _same_family(family, requested),
         )
 
+    bundled_family = load_font(bundled).family
     return ResolvedFont(
         role=role,
-        family=load_font(bundled).family,
+        family=bundled_family,
         path=bundled,
         requested=requested,
-        substituted=True,
+        substituted=not _same_family(bundled_family, requested),
     )
+
+
+def _same_family(resolved: str, requested: str) -> bool:
+    """Whether the resolved font is the family that was asked for."""
+    return resolved.strip().lower() == requested.strip().lower()
 
 
 def _resolve_entry(entry: str, index: FontIndex) -> Path | None:

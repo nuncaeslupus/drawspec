@@ -26,11 +26,17 @@ width = 640.0
 min_legible_size = 9.0
 
 [font]
-# The families a host page is likely to be set in, ending in the generic that
-# drawspec bundles — so measurement has something to fall back to on any host.
-sans = ["Source Sans 3", "DejaVu Sans", "sans-serif"]
-serif = ["Source Serif 4", "DejaVu Serif", "serif"]
-mono = ["Source Code Pro", "DejaVu Sans Mono", "monospace"]
+# The families to measure against, in preference order. These lead with the
+# generics drawspec bundles, so the default theme resolves on every host and
+# never warns about a substitution nobody asked for.
+#
+# A consumer theme should put the family its *page* is set in first — the SVG
+# inherits the page's font stack, so measuring a different family is what makes
+# a tight box overflow. Naming a family that is not installed is not an error;
+# drawspec substitutes and says so.
+sans = ["DejaVu Sans", "sans-serif"]
+serif = ["DejaVu Serif", "serif"]
+mono = ["DejaVu Sans Mono", "monospace"]
 default = "sans"
 
 [scale]
