@@ -21,7 +21,7 @@ not the direction the ranker needed.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Final, Protocol, runtime_checkable
 
 from drawspec.errors import LayoutError
@@ -108,6 +108,16 @@ class Layout:
     reversed_edges: frozenset[tuple[str, str]] = field(default_factory=frozenset)
     """Edges the engine flipped to break a cycle. Routing must draw these in the
     author's direction, not the ranker's."""
+
+    direction: str = "down"
+    """Which way the ranks run. Set by whoever chose it — see `best_layout`."""
+
+    fits: bool = True
+    """Whether this layout came out within the width it was asked for.
+
+    False is not an error: elastic fit gets a turn before anyone gives up, so the
+    decision to raise belongs to the caller rather than to the engine.
+    """
 
     def overlaps(self) -> tuple[tuple[str, str], ...]:
         """Every pair of boxes that intersect. Empty is the requirement."""
@@ -288,6 +298,65 @@ def rank_nodes(nodes: Sequence[LayoutNode], edges: Sequence[LayoutEdge]) -> dict
     return rank
 
 
+def long_edges(layout: Layout, edges: Sequence[LayoutEdge]) -> tuple[LayoutEdge, ...]:
+    """The edges that span more than one rank, in the order they were given.
+
+    These are what routing has to deal with specially: an edge from rank 0 to
+    rank 3 passes through the two ranks between them, so a straight run would
+    cross whatever is there. This engine deliberately does *not* reserve a column
+    for them — that slack is what made the alternative engine too wide to fit the
+    canvas (see the T7 decision) — so T9 routes them around the drawing instead,
+    and this is the list it routes.
+
+    A reversed back edge counts: it spans every rank it jumped over.
+    """
+    rank_of = {identifier: place.rank for identifier, place in layout.placements.items()}
+    return tuple(
+        edge
+        for edge in edges
+        if edge.source in rank_of
+        and edge.target in rank_of
+        and abs(rank_of[edge.target] - rank_of[edge.source]) > 1
+    )
+
+
+def best_layout(
+    engine: LayoutEngine,
+    nodes: Sequence[LayoutNode],
+    edges: Sequence[LayoutEdge],
+    *,
+    max_width: float,
+    prefer: str = "down",
+) -> Layout:
+    """Lay out in whichever direction fits `max_width`, preferring `prefer`.
+
+    T7's spike found that an engine takes a direction and does not choose one,
+    while "if the arrows do not fit horizontally, the diagram goes vertical" is a
+    real remedy someone has to apply. This is that someone.
+
+    When neither direction fits, the narrower attempt is returned with
+    `fits=False` rather than an exception: the elastic fit (T6) retries the whole
+    diagram at a smaller type scale, and only when that is exhausted is it time to
+    tell the author to restructure. Deciding that is the caller's.
+
+    Raises:
+        LayoutError: `prefer` is not a known direction, or the graph is malformed.
+    """
+    if prefer not in DIRECTIONS:
+        raise LayoutError(f"unknown direction {prefer!r}; expected {', '.join(DIRECTIONS)}")
+
+    order = (prefer, *(d for d in DIRECTIONS if d != prefer))
+    attempts = [
+        replace(engine.layout(nodes, edges, direction), direction=direction) for direction in order
+    ]
+    for attempt in attempts:
+        if attempt.width <= max_width:
+            return replace(attempt, fits=True)
+    # Narrower first, then the preferred order, so the choice is never arbitrary.
+    narrowest = min(attempts, key=lambda attempt: (attempt.width, order.index(attempt.direction)))
+    return replace(narrowest, fits=False)
+
+
 __all__ = [
     "DIRECTIONS",
     "Layout",
@@ -296,7 +365,9 @@ __all__ = [
     "LayoutNode",
     "Placement",
     "Spacing",
+    "best_layout",
     "break_cycles",
+    "long_edges",
     "rank_nodes",
     "validate",
 ]
