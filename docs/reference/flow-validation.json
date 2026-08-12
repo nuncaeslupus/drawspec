@@ -1,0 +1,26 @@
+{
+  "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "flow",
+  "title": "Request validation",
+  "description": "An incoming request is validated, then either queued for processing or rejected with a reason the caller can act on.",
+  "nodes": [
+    {"id": "arrive", "text": "Request arrives", "role": "start"},
+    {"id": "shape", "text": "Is the payload well formed?", "role": "decision"},
+    {"id": "auth", "text": "Is the caller authorised for this resource?", "role": "decision"},
+    {"id": "queue", "text": "Queue for processing", "role": "step"},
+    {"id": "record", "text": "Record the outcome against the request id", "role": "step"},
+    {"id": "reject", "text": "Reject with a reason the caller can act on", "role": "terminal"},
+    {"id": "audit", "text": "Every rejection is audited, including the reason given", "role": "note"}
+  ],
+  "edges": [
+    {"from": "arrive", "to": "shape"},
+    {"from": "shape", "to": "auth", "label": "well formed"},
+    {"from": "shape", "to": "reject", "label": "malformed"},
+    {"from": "auth", "to": "queue", "label": "authorised"},
+    {"from": "auth", "to": "reject", "label": "refused"},
+    {"from": "queue", "to": "record"},
+    {"from": "reject", "to": "audit", "role": "link"},
+    {"from": "record", "to": "arrive", "role": "weak", "label": "next request"}
+  ]
+}

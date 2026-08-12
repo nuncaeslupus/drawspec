@@ -1,0 +1,32 @@
+{
+  "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "tree",
+  "title": "Where a decision is taken",
+  "description": "Which decisions belong to the author, which to the theme, and which to the tool.",
+  "nodes": [
+    {"id": "root", "text": "A decision about the drawing", "role": "start"},
+    {"id": "author", "text": "The author decides", "role": "step"},
+    {"id": "theme", "text": "The theme decides", "role": "step"},
+    {"id": "tool", "text": "The tool decides", "role": "step"},
+    {"id": "meaning", "text": "What the diagram means", "role": "step"},
+    {"id": "role", "text": "Which semantic role each part has", "role": "step"},
+    {"id": "shape", "text": "What a role looks like", "role": "step"},
+    {"id": "type", "text": "Which size each level is set at", "role": "step"},
+    {"id": "coords", "text": "Every coordinate", "role": "terminal"},
+    {"id": "breaks", "text": "Where the lines break", "role": "terminal"},
+    {"id": "fit", "text": "Whether it fits at all", "role": "terminal"}
+  ],
+  "edges": [
+    {"from": "root", "to": "author"},
+    {"from": "root", "to": "theme"},
+    {"from": "root", "to": "tool"},
+    {"from": "author", "to": "meaning"},
+    {"from": "author", "to": "role"},
+    {"from": "theme", "to": "shape"},
+    {"from": "theme", "to": "type"},
+    {"from": "tool", "to": "coords"},
+    {"from": "tool", "to": "breaks"},
+    {"from": "tool", "to": "fit"}
+  ]
+}
