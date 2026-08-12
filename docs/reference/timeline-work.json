@@ -1,0 +1,14 @@
+{
+  "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "timeline",
+  "title": "How the work went",
+  "description": "Each stage settled something the next one depended on.",
+  "items": [
+    {"text": "Brief"},
+    {"text": "Specification"},
+    {"text": "Plan"},
+    {"text": "Foundation"},
+    {"text": "Kinds"}
+  ]
+}

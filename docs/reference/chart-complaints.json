@@ -1,0 +1,15 @@
+{
+  "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "chart",
+  "title": "Complaints per review round",
+  "description": "The corpus's complaint rate, by the round in which the diagram was reviewed.",
+  "axes": {
+    "horizontal": {"label": "Review round"},
+    "vertical": {"label": "Diagrams drawing a complaint", "unit": "per ten"}
+  },
+  "series": [
+    {"name": "Placement", "data": [[1, 7.2], [2, 6.8], [3, 7.4], [4, 6.9]]},
+    {"name": "Content", "data": [[1, 0.0], [2, 0.0], [3, 0.0], [4, 0.0]], "role": "note"}
+  ]
+}

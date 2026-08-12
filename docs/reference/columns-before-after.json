@@ -1,0 +1,11 @@
+{
+  "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "columns",
+  "title": "What changed",
+  "description": "The same diagram, authored two ways.",
+  "items": [
+    {"text": "Hand-written SVG, with every coordinate chosen by the author and reviewed by eye", "role": "note"},
+    {"text": "A declarative document, with every coordinate derived and checked mechanically", "role": "emphasis"}
+  ]
+}

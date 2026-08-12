@@ -1,0 +1,12 @@
+{
+  "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "pyramid",
+  "title": "What a claim rests on",
+  "description": "Each level is only as good as the one beneath it.",
+  "levels": [
+    {"text": "A decision"},
+    {"text": "A measurement"},
+    {"text": "A method someone else could repeat"}
+  ]
+}
