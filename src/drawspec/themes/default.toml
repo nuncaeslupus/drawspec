@@ -1,0 +1,177 @@
+# drawspec's default theme.
+#
+# A theme is data, not code: a consumer versions and diffs this file without
+# importing drawspec, and any theme they write is merged over these values, so
+# they declare only what they change.
+#
+# Two rules shape every value below.
+#
+# Colour is optional; legibility in greyscale is not. Every stroke here is
+# `currentColor`, so a diagram pasted into a page inherits that page's ink and
+# follows it into dark mode. That means colour carries no information at all,
+# which is why every pair of roles is separated by shape, dash pattern or stroke
+# weight instead — checked at load time, not at review time.
+#
+# One size per level. Four type sizes exist and no element may name its own.
+
+version = 1
+name = "default"
+
+[canvas]
+# Every diagram is drawn to one width, so type size and stroke weight are
+# comparable across diagrams rather than only within one.
+width = 640.0
+# Below this, type is not legible at the sizes these diagrams are read at.
+# Content that cannot fit above it is a FitError, never a smaller size.
+min_legible_size = 9.0
+
+[font]
+# The families a host page is likely to be set in, ending in the generic that
+# drawspec bundles — so measurement has something to fall back to on any host.
+sans = ["Source Sans 3", "DejaVu Sans", "sans-serif"]
+serif = ["Source Serif 4", "DejaVu Serif", "serif"]
+mono = ["Source Code Pro", "DejaVu Sans Mono", "monospace"]
+default = "sans"
+
+[scale]
+# Four sizes, not fourteen: diagram title, box heading, box body, edge label.
+title = 15.0
+heading = 13.0
+body = 11.0
+label = 10.0
+
+[fit]
+# How far the whole type scale may stretch to make content fit. One factor is
+# applied to every level at once, so the hierarchy is preserved exactly and no
+# diagram gains a new type size. scale_max = 1.0 means shrink to fit, never grow:
+# growing would trade away the cross-diagram comparability [canvas] width buys.
+scale_min = 0.85
+scale_max = 1.0
+
+[box]
+# Top, right, bottom, left. The bottom is not the smallest value by accident —
+# a starved bottom margin was the single most repeated failure in the corpus.
+padding = [10.0, 12.0, 12.0, 12.0]
+line_height = 1.35
+corner_radius = 4.0
+
+[edge]
+stroke_width = 1.5
+# An arrow with no visible shaft is not an arrow. This is a layout constraint,
+# not a suggestion: it can force extra rank separation.
+min_shaft_length = 16.0
+head_length = 6.0
+
+[title]
+# Whether a diagram carries its own "Figure 1" style title. Raised with the
+# consumer and left open, so drawspec supports it and adds none by default.
+show = false
+level = "title"
+
+# ---------------------------------------------------------------------------
+# Node roles. Shape and line treatment per semantic role. The author names the
+# role; every appearance decision below is taken here, once, for all diagrams.
+#
+# No two roles below share a (shape, dash, stroke_width, fill_pattern) tuple,
+# which is what makes them survive greyscale printing.
+# ---------------------------------------------------------------------------
+
+[role.start]
+shape = "pill"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "none"
+stroke_width = 1.5
+
+[role.step]
+shape = "rect"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "none"
+stroke_width = 1.5
+
+[role.decision]
+shape = "diamond"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "none"
+stroke_width = 1.5
+
+# An end state reads as a heavier ring, not as a different colour.
+[role.terminal]
+shape = "pill"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "none"
+stroke_width = 2.5
+
+[role.emphasis]
+shape = "rect"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "none"
+stroke_width = 2.5
+
+[role.note]
+shape = "rect"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "3 2"
+stroke_width = 1.0
+
+# A container drawn behind its members: a longer dash than a note, so the two
+# are told apart by pattern rather than by weight alone.
+[role.group]
+shape = "rect"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "6 3"
+stroke_width = 1.0
+
+# ---------------------------------------------------------------------------
+# Edge roles. Head, tail and line treatment per semantic role. This is where a
+# connector that is *not* an arrow lives: the author says two things are merely
+# associated (`link`), and the theme decides that means a line with no head.
+# ---------------------------------------------------------------------------
+
+[edge_role.flow]
+head = "arrow"
+tail = "none"
+stroke = "currentColor"
+dash = "none"
+stroke_width = 1.5
+
+[edge_role.link]
+head = "none"
+tail = "none"
+stroke = "currentColor"
+dash = "none"
+stroke_width = 1.0
+
+[edge_role.exchange]
+head = "arrow"
+tail = "arrow"
+stroke = "currentColor"
+dash = "none"
+stroke_width = 1.5
+
+[edge_role.weak]
+head = "open"
+tail = "none"
+stroke = "currentColor"
+dash = "4 3"
+stroke_width = 1.5
+
+[edge_role.owns]
+head = "diamond"
+tail = "none"
+stroke = "currentColor"
+dash = "none"
+stroke_width = 1.5

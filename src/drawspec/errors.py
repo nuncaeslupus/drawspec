@@ -12,6 +12,16 @@ class DrawspecError(Exception):
     """Base class for every drawspec failure."""
 
 
+class ThemeError(DrawspecError):
+    """A theme is malformed, or two of its roles are distinguishable only by
+    colour.
+
+    Raised at load time rather than at render time: greyscale safety is a
+    property of the theme, so it is checked once per theme instead of once per
+    diagram at review.
+    """
+
+
 class FitError(DrawspecError):
     """Content cannot fit at the theme's minimum legible size.
 
@@ -35,4 +45,5 @@ __all__ = [
     "DrawspecError",
     "FitError",
     "FontSubstitutionWarning",
+    "ThemeError",
 ]

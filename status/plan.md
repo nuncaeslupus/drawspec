@@ -151,6 +151,7 @@ travels to every target, and T18 closes.
 
 | T# | Gate | Measured | Command | SHA | Env | Date |
 |----|------|----------|---------|-----|-----|------|
+| T2 | `greyscale_ambiguous_role_pairs == 0` | `0` — all 21 node-role pairs and 10 edge-role pairs differ in a non-colour channel | `uv run pytest tests/test_theme.py -q` (96 passed) | `claude/continuation-yq88jv` | CPython 3.12, Linux | 2026-08-12 |
 | T3 | `text_measurement_error_ratio <= 0.02` | `0.0` — exact agreement with an independent `hmtx`/`kern` reader over 9 reference strings × 3 bundled fonts | `uv run pytest tests/test_measure.py -q` (52 passed) | `claude/continuation-yq88jv` | CPython 3.12, Linux, `fonttools` 4.61 | 2026-08-12 |
 
 ### Dependency graph
