@@ -12,6 +12,7 @@ from drawspec.errors import (
     ThemeError,
 )
 from drawspec.geometry import Box, Fitted, fit, normalise, size_box
+from drawspec.render import render, render_document, render_file
 from drawspec.scene import Ellipse, Path, Polygon, Rect, Scene, TextRun
 from drawspec.schema import Document, load_document, parse_document, validate_document
 from drawspec.theme import Theme, load_theme
@@ -43,6 +44,9 @@ __all__ = [
     "load_theme",
     "normalise",
     "parse_document",
+    "render",
+    "render_document",
+    "render_file",
     "size_box",
     "validate_document",
 ]
