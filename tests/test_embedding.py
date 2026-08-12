@@ -146,7 +146,13 @@ def test_standalone_fixture_converts_to_pdf_without_unresolved_colour() -> None:
     reason="no SVG-to-PDF converter installed",
 )
 def test_standalone_fixture_really_converts_to_pdf(tmp_path: Path) -> None:
-    """The same claim, done rather than described, when a converter exists."""
+    """The same claim, done rather than described, when a converter exists.
+
+    A browser is the last choice and needs telling it is in a container: on a CI
+    runner it has no sandbox namespaces and no GPU, and without those two flags it
+    aborts before it reads the file. That is a fact about the runner rather than
+    about the SVG, which is why the flags are here and not a skip.
+    """
     source = tmp_path / "diagram.svg"
     source.write_text(render(fixture("flow-validation"), profile="standalone"), encoding="utf-8")
     out = tmp_path / "diagram.pdf"
@@ -155,8 +161,19 @@ def test_standalone_fixture_really_converts_to_pdf(tmp_path: Path) -> None:
     command = {
         "rsvg-convert": [converter, "-f", "pdf", "-o", str(out), str(source)],
         "inkscape": [converter, str(source), "--export-filename", str(out)],
-    }.get(converter, [converter, "--headless", f"--print-to-pdf={out}", str(source)])
-    subprocess.run(command, check=True, capture_output=True)
+    }.get(
+        converter,
+        [
+            converter,
+            "--headless",
+            "--no-sandbox",
+            "--disable-gpu",
+            f"--print-to-pdf={out}",
+            str(source),
+        ],
+    )
+    finished = subprocess.run(command, capture_output=True, check=False)
+    assert finished.returncode == 0, finished.stderr.decode("utf-8", "replace")[-2000:]
     assert out.read_bytes().startswith(b"%PDF")
 
 
