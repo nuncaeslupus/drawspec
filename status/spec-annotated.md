@@ -28,8 +28,27 @@ a different font size in every element. These failures cannot be reviewed away
 They have to be made *unrepresentable*: the author describes what the diagram
 means, and every decision that requires seeing the output is taken by the tool.
 drawspec is that tool — a Python library and CLI that takes a declarative
-document and emits SVG clean enough to paste inline into a Markdown page,
-inheriting the document's colour and surviving greyscale printing.
+document and emits SVG clean enough to drop into whatever surrounds it,
+inheriting the host document's colour where that is wanted and surviving
+greyscale printing everywhere.
+
+**Output targets.** Markdown is the sharpest constraint, not the only one: it
+forces inline embedding, where a global `<style>` leaks, ids collide between
+two diagrams on one page, and a hardcoded colour breaks dark mode. Meeting that
+bar covers HTML embedding for free. But *standalone* consumption — an `.svg`
+file linked rather than pasted, or converted to PDF — has the opposite
+requirement: `currentColor` has nothing to inherit from and resolves to a
+converter default, so a standalone file must carry explicit colour and its own
+dimensions. drawspec therefore emits under an **embedding profile**:
+
+| Profile | For | Colour | Dimensions |
+|---|---|---|---|
+| `inline` (default) | Pasted into Markdown or HTML | `currentColor`, inherits the page | `viewBox` only, scales to its container |
+| `standalone` | A linked `.svg`, or input to a PDF/PNG converter | Theme colours resolved to explicit values | `viewBox` plus explicit `width`/`height` |
+
+Both profiles share every other invariant — no global `<style>`, namespaced
+ids, no embedded fonts, no information carried by colour alone. The profile
+changes what the SVG assumes about its surroundings, nothing else.
 
 **Success criteria (measurable)** — each seeds a task Gate in the plan:
 
@@ -37,11 +56,12 @@ inheriting the document's colour and surviving greyscale printing.
       failure families in `docs/brief.md`, a test demonstrates that no valid
       input document can produce it. Judged per family: either the input schema
       has no field that expresses it, or a layout invariant excludes it.
-- [ ] `inline_safety_violations == 0` over every generated fixture — no
-      `<style>` element, no id that is not prefixed with the document's unique
-      namespace, no embedded or referenced external font, no `fill`/`stroke`
-      literal outside the values the active theme declares. Mechanically
-      checked by the emitter's own validator.
+- [ ] `embedding_safety_violations == 0` over every generated fixture **in both
+      profiles** — no `<style>` element, no id that is not prefixed with the
+      document's unique namespace, no embedded or referenced external font, no
+      `fill`/`stroke` literal outside the values the active theme declares, and
+      for `standalone` no unresolved `currentColor`. Mechanically checked by
+      the emitter's own validator.
 - [ ] `greyscale_ambiguous_role_pairs == 0` — for a theme to load, every pair of
       semantic roles must differ in at least one non-colour channel (shape,
       dash pattern, stroke weight, fill pattern) **or** by a luminance delta
@@ -353,21 +373,26 @@ which further fields are legal.
     {"id": "no",  "text": "Reject with a reason",   "role": "terminal"}
   ],
   "edges": [
-    {"from": "in",  "to": "ok"},
     {"from": "in",  "to": "chk"},
     {"from": "chk", "to": "ok", "label": "yes"},
-    {"from": "chk", "to": "no", "label": "no"}
+    {"from": "chk", "to": "no", "label": "no"},
+    {"from": "no",  "to": "in", "role": "link"}
   ]
 }
 ```
+
+That last edge is a plain connector rather than a directed step: the author
+picks the semantic role `link`, and the theme decides it draws as a line with
+no head. See §5.2.
 
 **What the author may write.** `version`, `kind`, `title`, `description`,
 `width`, `height` (with an optional `height_binding` flag), `theme`, and the
 per-kind payload: `nodes`/`edges`/`groups` for graph kinds, `levels` for
 `pyramid`, `rings` for `rings`, `items` for `stack`/`timeline`/`columns`,
 `axes`/`series` for `chart`. On a node: `id`, `text`, `role`, optional `note`.
-On an edge: `from`, `to`, optional `label`, optional `style` naming a
-theme-declared edge role.
+On an edge: `from`, `to`, optional `label`, optional `role` naming a
+theme-declared **edge** role (`flow` by default; `link` for a plain undirected
+connector — see §5.2).
 
 **What the author may not write — and the schema rejects rather than ignores.**
 Because the schema sets `additionalProperties: false` throughout, an author who
@@ -381,13 +406,14 @@ blind:
 | `width`/`height` **on a node or shape** | Box geometry is derived from measured text plus theme padding |
 | `font_size`, `font_family`, `font_weight` | Type is selected by semantic role from the theme's scale |
 | `color`, `fill`, `stroke`, `stroke_width` | Appearance is a property of the role, not the element |
-| `anchor`, `port`, `arrow_head`, `dx`, `dy` | Edge geometry is derived from the shapes it connects |
+| `anchor`, `port`, `arrow_head`, `dash`, `dx`, `dy` | Edge geometry and line treatment come from the edge's semantic role, which the theme resolves — say `role: "link"`, not `arrow_head: "none"` |
 | `z`, `order`, `layer` | Overlap is resolved by the layout, not declared |
 | `viewBox`, `canvas` | Derived from `width` and the content |
 
-`role` is drawn from a closed vocabulary the theme defines
-(`start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group`), so a
-role the theme does not declare is a validation error too. Text may carry
+Both role fields draw from closed vocabularies the theme defines — node roles
+(`start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group`) and edge
+roles (`flow`, `link`, `exchange`, `weak`, `owns`) — so a role the theme does
+not declare is a validation error too. Text may carry
 inline spans — `` `code` `` for the monospace role and `**bold**` for the
 emphasis role — because those are semantic, not typographic.
 
@@ -421,6 +447,12 @@ heading = 13.0
 body = 11.0
 label = 10.0
 
+# How far the whole type scale may stretch to make content fit. One factor is
+# applied to every level at once — see "Elastic fit" below.
+[fit]
+scale_min = 0.85
+scale_max = 1.0
+
 [box]
 padding = [10.0, 12.0, 10.0, 12.0]
 line_height = 1.35
@@ -431,6 +463,7 @@ stroke_width = 1.5
 min_shaft_length = 16.0
 head_length = 6.0
 
+# Node roles: shape and line treatment per semantic role.
 [role.step]
 shape = "rect"
 stroke = "currentColor"
@@ -445,11 +478,66 @@ dash = "none"
 shape = "rect"
 stroke = "currentColor"
 dash = "3 2"
+stroke_width = 1.0
+
+# Edge roles: head, tail and line treatment per semantic role. This is where a
+# connector that is *not* an arrow lives.
+[edge_role.flow]
+head = "arrow"
+tail = "none"
+dash = "none"
+
+[edge_role.link]
+head = "none"          # a plain line, no head at all
+tail = "none"
+dash = "none"
+
+[edge_role.exchange]
+head = "arrow"
+tail = "arrow"         # bidirectional
+dash = "none"
+
+[edge_role.weak]
+head = "open"          # an open V rather than a filled triangle
+tail = "none"
+dash = "4 3"
+
+[edge_role.owns]
+head = "diamond"
+tail = "none"
+dash = "none"
 ```
 
 A theme is rejected at load time if any two roles are distinguishable only by
 colour — see the `greyscale_ambiguous_role_pairs` criterion in §1. Colour is
 optional throughout; `currentColor` is the default and the documented norm.
+
+**Edge roles are how "no arrow, just a line" is said.** The author names a
+semantic role — `link`, `weak`, `owns` — and the theme decides whether that
+means a filled triangle, an open V, a diamond, or no head at all, and whether
+the line is solid or dashed. The author never writes `arrow_head = "triangle"`,
+because head geometry is a typographic decision and belongs with the other
+decisions taken away from them; but they *can* say that two things are merely
+associated rather than one flowing into the other, because that is meaning. The
+head vocabulary is closed (`arrow`, `open`, `diamond`, `circle`, `bar`, `none`)
+and lives in the theme, so a document stays readable when the theme changes.
+
+**Elastic fit.** `[fit]` declares how far the type scale may stretch to make a
+document fit its width. drawspec computes the largest factor in
+`[scale_min, scale_max]` at which the content fits, and applies that **one
+factor to every level at once** — title, heading, body and label together. This
+is deliberate: scaling levels independently would reintroduce the "mixed type
+sizes in one drawing" failure (51 of 87 in the corpus), whereas a uniform
+factor preserves the hierarchy exactly and keeps one size per level. If the
+content still does not fit at `scale_min`, or if `scale_min × body` falls below
+`canvas.min_legible_size`, that is a `FitError` — the tool says restructure the
+diagram, it does not keep shrinking.
+
+`scale_max` defaults to `1.0`, meaning drawspec will shrink to fit but never
+grow. Growing is available (`scale_max > 1.0`) but is opt-in, because type size
+being comparable *across* diagrams is the reason the theme fixes a canvas width
+in the first place; a theme that lets small diagrams inflate has traded that
+away and should do so knowingly.
 
 > **✎ Notes** · `SPEC §5.2`
 > _(your notes here — replace this line)_
@@ -459,7 +547,11 @@ optional throughout; `currentColor` is the default and the documented norm.
 ```python
 from drawspec import render, render_document, load_theme, Theme
 
-svg: str = render(document: Mapping[str, Any], theme: Theme | str | Path | None = None) -> str
+svg: str = render(
+    document: Mapping[str, Any],
+    theme: Theme | str | Path | None = None,
+    profile: Literal["inline", "standalone"] = "inline",
+) -> str
 ```
 
 - Pure function: same document plus same theme yields byte-identical SVG.
@@ -478,13 +570,37 @@ svg: str = render(document: Mapping[str, Any], theme: Theme | str | Path | None 
 
 | Command | Behaviour | Exit |
 |---|---|---|
-| `drawspec render DOC [-o OUT] [--theme T] [--width N] [--height N]` | Writes SVG to `OUT` or stdout | 0 ok, 1 document/fit error, 2 usage |
+| `drawspec render DOC [-o OUT] [--theme T] [--width N] [--height N] [--profile inline\|standalone]` | Writes SVG to `OUT` or stdout | 0 ok, 1 document/fit error, 2 usage |
 | `drawspec validate DOC [--theme T]` | Validates without rendering; prints each violation with its JSON pointer | 0 clean, 1 violations |
 | `drawspec theme check THEME` | Runs the theme invariants, including the greyscale pairing check | 0 clean, 1 violations |
-| `drawspec schema [--out FILE]` | Emits the JSON Schema for the document format | 0 |
+| `drawspec schema [--out FILE]` | Writes the JSON Schema for the document format | 0 |
 
 `--width`/`--height` override the document's own values, so a build can render
-one document at several widths without editing it.
+one document at several widths without editing it. `--profile` selects the
+embedding profile from §1.
+
+**Yes, there is a real schema, and it validates like HTML's does.** The
+document format is defined by a published JSON Schema, not by prose. Three
+consequences worth stating, because this is the main affordance for an author —
+human or model — working without seeing the output:
+
+- **`drawspec validate` is the validator**, and it reports violations by JSON
+  pointer (`/nodes/2/font_size`), so a failure names the exact location and the
+  exact field, the way an HTML validator names a line and an attribute.
+- **The schema is a versioned, addressable artefact** with a stable `$id`,
+  committed to the repository and shipped in the package. A document that
+  carries `"$schema": "…/drawspec-v1.schema.json"` gets completion and
+  inline error reporting in any editor with JSON Schema support — the author
+  is told `font_size` is not allowed *while typing it*, rather than after a
+  render.
+- **`additionalProperties: false` makes the schema teach.** Because a forbidden
+  field is an error rather than a silently ignored key, the schema is not only
+  a description of what is legal but an active statement of what the author
+  must not decide. That is the point of §5.1's rejection table.
+
+The output has a validator too, but a different one: the emitter's
+embedding-safety check in §5.5, which enforces the invariants on the SVG it
+produces rather than on the input.
 
 > **✎ Notes** · `SPEC §5.4`
 > _(your notes here — replace this line)_
@@ -496,11 +612,12 @@ one document at several widths without editing it.
 | Renderer | `TextMeasurer` | `measure(text, font_role, size) -> Extents`; `wrap(text, max_width, …) -> list[Line]` | Unresolvable font → substitute, warn, continue |
 | Renderer | `LayoutEngine` | `layout(nodes_with_sizes, edges, direction) -> Positions`. The only coupling to a layout implementation — one method, sizes in, coordinates out | Engine failure → `LayoutError`; the protocol lets a Graphviz or ELK engine be substituted without touching callers |
 | Family renderers | `Scene` | Each family emits a `Scene`: primitives (`Rect`, `Path`, `Ellipse`, `Polygon`, `TextRun`) in final coordinates, each tagged with a semantic role and carrying no styling | A primitive with an undeclared role is a programming error, caught in tests |
-| `Scene` + `Theme` | `emit` | The single place SVG is produced, and therefore the single place the inline-safety invariants are enforced | Violation raises rather than emitting bad SVG |
+| `Scene` + `Theme` + profile | `emit` | The single place SVG is produced, and therefore the single place the embedding-safety invariants are enforced, for both profiles | Violation raises rather than emitting bad SVG |
 
-The `Scene` seam is the load-bearing one: three rendering families converge on
+The `Scene` seam is the load-bearing one: every rendering family converges on
 one primitive list, so acceptance test 1 is satisfied in exactly one file
-rather than three.
+rather than four — and adding an embedding profile, or a fifth family, does not
+multiply that work.
 
 > **✎ Notes** · `SPEC §5.5`
 > _(your notes here — replace this line)_
@@ -524,9 +641,48 @@ font files it does not modify.
 | **`FitError` fires too often** and the tool is unusable — every second document refuses to render. | Medium | Medium | The error is correct behaviour per the consumer's own style rules, but its *message* is the product: it must say what did not fit, by how much, and which of the three remedies applies. Measure the rate over the fixture set and treat a high rate as a theme-tuning signal, not a reason to soften the rule. | `fit_error_rate` measured over the regression fixtures |
 | **Determinism breaks** — dict ordering, float formatting, or set iteration makes reruns differ, defeating diffable committed SVG. | Medium | Medium | Sort every iteration order explicitly; format floats through one helper with fixed precision; no `set` iteration in emit paths. | A test rendering every fixture twice and comparing bytes |
 | **Anonymized corpus text distorts the fixtures.** Lorem ipsum has different letter frequencies from real prose, so measured widths differ from the originals. | Low | Low | The fixtures are reference material, not the test suite — drawspec's own fixtures are authored for the cases under test. Reproducing the corpus is explicitly not a goal. | n/a — scope boundary, stated in `corpus/README.md` |
-| **Scope creep into a general diagramming tool** — ports, swimlanes, nested compound graphs, animation. | Medium | Medium | The rule from the brief: no feature that no corpus note asked for. The nine kinds are closed for v1; a tenth needs evidence. | Review gate on any PR adding a `kind` |
+| **Scope creep into a general diagramming tool** — ports, swimlanes, nested compound graphs, animation. | Medium | Medium | The rule from the brief: no feature that no corpus note asked for. The nine kinds are closed for v1; a tenth needs evidence. See "Product direction" below for why this restraint is temporary and what it is protecting | Review gate on any PR adding a `kind` |
+| **A profile-specific defect ships unnoticed** — the `standalone` output is exercised less than `inline`, so an unresolved `currentColor` or a missing dimension reaches a PDF conversion. | Medium | Medium | Both profiles are rendered for every fixture and checked by the same validator; the standalone path additionally asserts no unresolved `currentColor` remains. A round-trip through an SVG→PDF converter is part of the acceptance close-out | `embedding_safety_violations == 0` measured per profile, not aggregated |
 | **`grandalf`'s maintenance status** (v0.8, lightly maintained) becomes a liability if it is chosen in T7. | Low | Medium | It sits behind the protocol, and the EPL-1.0 arm of its dual licence permits vendoring the ~600 lines we would use if upstream goes dark. | T7 records the decision and its escape route |
 
 > **✎ Notes** · `SPEC §6`
+> _(your notes here — replace this line)_
+
+### Product direction
+
+The scope discipline above — nine kinds, no feature nobody asked for, one
+corpus as the acceptance suite — is a shipping tactic, not the ambition. It
+exists because the reliable way to never finish a generic tool is to start
+generic.
+
+What the project is actually for:
+
+> A tool useful to most people with different needs, while keeping its central
+> goal: that a human **or a language model** can call it with a declarative
+> input and get correct, beautiful output.
+
+Three things follow, and they shape decisions taken now even though the
+features they enable are not v1:
+
+- **Nothing consumer-specific goes in, ever.** The theme is the boundary, and
+  the fact that a real consumer's entire style guide reduces to a theme file
+  (`docs/theme-requirements.md`) is the standing proof. Any requirement that
+  cannot be expressed as theme configuration is a design smell to be fixed, not
+  a special case to be added.
+- **Extension points are chosen now, populated later.** The closed vocabularies
+  (node roles, edge roles, kinds) and the two seams (`Scene`, `LayoutEngine`)
+  are picked so that a tenth kind, a sixth head shape or a different layout
+  engine is an addition rather than a redesign. That is what "generic later"
+  costs today: a few interfaces, not a few features.
+- **"Correct" is mechanically checkable; "beautiful" is not, quite.** The
+  success criteria in §1 cover correctness in full. Beauty is carried by the
+  theme and judged by eye — which is why themes are data a consumer can iterate
+  on without touching the tool, rather than opinions compiled into it.
+
+The rule that keeps both true at once: **build it generic, drive it with the
+corpus.** Generality is bought through interface design, which is cheap now;
+features are bought through evidence, which arrives later.
+
+> **✎ Notes** · `SPEC › Product direction`
 > _(your notes here — replace this line)_
 

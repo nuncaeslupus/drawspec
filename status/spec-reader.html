@@ -127,7 +127,7 @@ h4.sec-h{font-size:16.5px;color:var(--fg)}
     <button class="btn primary" id="btn-export">Save / Export</button>
   </div>
 </div>
-<div class="statusbar"><div class="wrap"><span class="count" id="count">0 / 18 notes</span><span class="hint"> · notes save automatically; <strong>Save / Export</strong> keeps a file you can send back</span></div></div>
+<div class="statusbar"><div class="wrap"><span class="count" id="count">0 / 19 notes</span><span class="hint"> · notes save automatically; <strong>Save / Export</strong> keeps a file you can send back</span></div></div>
 <div id="warnbar"><div class="wrap"><strong>Heads up —</strong> this browser isn't storing your notes automatically (private/incognito mode or restricted file view). Tap <strong>Save / Export</strong> regularly.</div></div>
 
 <div class="wrap">
@@ -166,6 +166,7 @@ h4.sec-h{font-size:16.5px;color:var(--fg)}
 <li><a href="#s-spec-5-5">§5.5 Internal component contracts</a></li>
 <li><a href="#s-spec-5-6">§5.6 Persisted artefacts</a></li>
 <li><a href="#s-spec-6">§6 Risks &amp; Validation</a></li>
+<li><a href="#s-spec-product-direction">Product direction</a></li>
 </ul></details>
 </details>
   <section class="part">
@@ -190,19 +191,56 @@ a different font size in every element. These failures cannot be reviewed away
 They have to be made <em>unrepresentable</em>: the author describes what the diagram
 means, and every decision that requires seeing the output is taken by the tool.
 drawspec is that tool — a Python library and CLI that takes a declarative
-document and emits SVG clean enough to paste inline into a Markdown page,
-inheriting the document's colour and surviving greyscale printing.</p>
+document and emits SVG clean enough to drop into whatever surrounds it,
+inheriting the host document's colour where that is wanted and surviving
+greyscale printing everywhere.</p>
+<p><strong>Output targets.</strong> Markdown is the sharpest constraint, not the only one: it
+forces inline embedding, where a global <code>&lt;style&gt;</code> leaks, ids collide between
+two diagrams on one page, and a hardcoded colour breaks dark mode. Meeting that
+bar covers HTML embedding for free. But <em>standalone</em> consumption — an <code>.svg</code>
+file linked rather than pasted, or converted to PDF — has the opposite
+requirement: <code>currentColor</code> has nothing to inherit from and resolves to a
+converter default, so a standalone file must carry explicit colour and its own
+dimensions. drawspec therefore emits under an <strong>embedding profile</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Profile</th>
+<th>For</th>
+<th>Colour</th>
+<th>Dimensions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>inline</code> (default)</td>
+<td>Pasted into Markdown or HTML</td>
+<td><code>currentColor</code>, inherits the page</td>
+<td><code>viewBox</code> only, scales to its container</td>
+</tr>
+<tr>
+<td><code>standalone</code></td>
+<td>A linked <code>.svg</code>, or input to a PDF/PNG converter</td>
+<td>Theme colours resolved to explicit values</td>
+<td><code>viewBox</code> plus explicit <code>width</code>/<code>height</code></td>
+</tr>
+</tbody>
+</table>
+<p>Both profiles share every other invariant — no global <code>&lt;style&gt;</code>, namespaced
+ids, no embedded fonts, no information carried by colour alone. The profile
+changes what the SVG assumes about its surroundings, nothing else.</p>
 <p><strong>Success criteria (measurable)</strong> — each seeds a task Gate in the plan:</p>
 <ul>
 <li>[ ] <code>unrepresentable_failure_families == 11</code> — for each of the 11 categorized
       failure families in <code>docs/brief.md</code>, a test demonstrates that no valid
       input document can produce it. Judged per family: either the input schema
       has no field that expresses it, or a layout invariant excludes it.</li>
-<li>[ ] <code>inline_safety_violations == 0</code> over every generated fixture — no
-      <code>&lt;style&gt;</code> element, no id that is not prefixed with the document's unique
-      namespace, no embedded or referenced external font, no <code>fill</code>/<code>stroke</code>
-      literal outside the values the active theme declares. Mechanically
-      checked by the emitter's own validator.</li>
+<li>[ ] <code>embedding_safety_violations == 0</code> over every generated fixture <strong>in both
+      profiles</strong> — no <code>&lt;style&gt;</code> element, no id that is not prefixed with the
+      document's unique namespace, no embedded or referenced external font, no
+      <code>fill</code>/<code>stroke</code> literal outside the values the active theme declares, and
+      for <code>standalone</code> no unresolved <code>currentColor</code>. Mechanically checked by
+      the emitter's own validator.</li>
 <li>[ ] <code>greyscale_ambiguous_role_pairs == 0</code> — for a theme to load, every pair of
       semantic roles must differ in at least one non-colour channel (shape,
       dash pattern, stroke weight, fill pattern) <strong>or</strong> by a luminance delta
@@ -699,20 +737,24 @@ which further fields are legal.</p>
     {&quot;id&quot;: &quot;no&quot;,  &quot;text&quot;: &quot;Reject with a reason&quot;,   &quot;role&quot;: &quot;terminal&quot;}
   ],
   &quot;edges&quot;: [
-    {&quot;from&quot;: &quot;in&quot;,  &quot;to&quot;: &quot;ok&quot;},
     {&quot;from&quot;: &quot;in&quot;,  &quot;to&quot;: &quot;chk&quot;},
     {&quot;from&quot;: &quot;chk&quot;, &quot;to&quot;: &quot;ok&quot;, &quot;label&quot;: &quot;yes&quot;},
-    {&quot;from&quot;: &quot;chk&quot;, &quot;to&quot;: &quot;no&quot;, &quot;label&quot;: &quot;no&quot;}
+    {&quot;from&quot;: &quot;chk&quot;, &quot;to&quot;: &quot;no&quot;, &quot;label&quot;: &quot;no&quot;},
+    {&quot;from&quot;: &quot;no&quot;,  &quot;to&quot;: &quot;in&quot;, &quot;role&quot;: &quot;link&quot;}
   ]
 }
 </code></pre>
+<p>That last edge is a plain connector rather than a directed step: the author
+picks the semantic role <code>link</code>, and the theme decides it draws as a line with
+no head. See §5.2.</p>
 <p><strong>What the author may write.</strong> <code>version</code>, <code>kind</code>, <code>title</code>, <code>description</code>,
 <code>width</code>, <code>height</code> (with an optional <code>height_binding</code> flag), <code>theme</code>, and the
 per-kind payload: <code>nodes</code>/<code>edges</code>/<code>groups</code> for graph kinds, <code>levels</code> for
 <code>pyramid</code>, <code>rings</code> for <code>rings</code>, <code>items</code> for <code>stack</code>/<code>timeline</code>/<code>columns</code>,
 <code>axes</code>/<code>series</code> for <code>chart</code>. On a node: <code>id</code>, <code>text</code>, <code>role</code>, optional <code>note</code>.
-On an edge: <code>from</code>, <code>to</code>, optional <code>label</code>, optional <code>style</code> naming a
-theme-declared edge role.</p>
+On an edge: <code>from</code>, <code>to</code>, optional <code>label</code>, optional <code>role</code> naming a
+theme-declared <strong>edge</strong> role (<code>flow</code> by default; <code>link</code> for a plain undirected
+connector — see §5.2).</p>
 <p><strong>What the author may not write — and the schema rejects rather than ignores.</strong>
 Because the schema sets <code>additionalProperties: false</code> throughout, an author who
 writes any of these gets a validation error naming the field, not a silently
@@ -743,8 +785,8 @@ blind:</p>
 <td>Appearance is a property of the role, not the element</td>
 </tr>
 <tr>
-<td><code>anchor</code>, <code>port</code>, <code>arrow_head</code>, <code>dx</code>, <code>dy</code></td>
-<td>Edge geometry is derived from the shapes it connects</td>
+<td><code>anchor</code>, <code>port</code>, <code>arrow_head</code>, <code>dash</code>, <code>dx</code>, <code>dy</code></td>
+<td>Edge geometry and line treatment come from the edge's semantic role, which the theme resolves — say <code>role: "link"</code>, not <code>arrow_head: "none"</code></td>
 </tr>
 <tr>
 <td><code>z</code>, <code>order</code>, <code>layer</code></td>
@@ -756,9 +798,10 @@ blind:</p>
 </tr>
 </tbody>
 </table>
-<p><code>role</code> is drawn from a closed vocabulary the theme defines
-(<code>start</code>, <code>step</code>, <code>decision</code>, <code>terminal</code>, <code>emphasis</code>, <code>note</code>, <code>group</code>), so a
-role the theme does not declare is a validation error too. Text may carry
+<p>Both role fields draw from closed vocabularies the theme defines — node roles
+(<code>start</code>, <code>step</code>, <code>decision</code>, <code>terminal</code>, <code>emphasis</code>, <code>note</code>, <code>group</code>) and edge
+roles (<code>flow</code>, <code>link</code>, <code>exchange</code>, <code>weak</code>, <code>owns</code>) — so a role the theme does
+not declare is a validation error too. Text may carry
 inline spans — <code>`code`</code> for the monospace role and <code>**bold**</code> for the
 emphasis role — because those are semantic, not typographic.</p>
 <p><strong>Versioning.</strong> <code>version</code> is required and validated. v1 is frozen once the
@@ -788,6 +831,12 @@ heading = 13.0
 body = 11.0
 label = 10.0
 
+# How far the whole type scale may stretch to make content fit. One factor is
+# applied to every level at once — see &quot;Elastic fit&quot; below.
+[fit]
+scale_min = 0.85
+scale_max = 1.0
+
 [box]
 padding = [10.0, 12.0, 10.0, 12.0]
 line_height = 1.35
@@ -798,6 +847,7 @@ stroke_width = 1.5
 min_shaft_length = 16.0
 head_length = 6.0
 
+# Node roles: shape and line treatment per semantic role.
 [role.step]
 shape = &quot;rect&quot;
 stroke = &quot;currentColor&quot;
@@ -812,17 +862,73 @@ dash = &quot;none&quot;
 shape = &quot;rect&quot;
 stroke = &quot;currentColor&quot;
 dash = &quot;3 2&quot;
+stroke_width = 1.0
+
+# Edge roles: head, tail and line treatment per semantic role. This is where a
+# connector that is *not* an arrow lives.
+[edge_role.flow]
+head = &quot;arrow&quot;
+tail = &quot;none&quot;
+dash = &quot;none&quot;
+
+[edge_role.link]
+head = &quot;none&quot;          # a plain line, no head at all
+tail = &quot;none&quot;
+dash = &quot;none&quot;
+
+[edge_role.exchange]
+head = &quot;arrow&quot;
+tail = &quot;arrow&quot;         # bidirectional
+dash = &quot;none&quot;
+
+[edge_role.weak]
+head = &quot;open&quot;          # an open V rather than a filled triangle
+tail = &quot;none&quot;
+dash = &quot;4 3&quot;
+
+[edge_role.owns]
+head = &quot;diamond&quot;
+tail = &quot;none&quot;
+dash = &quot;none&quot;
 </code></pre>
 <p>A theme is rejected at load time if any two roles are distinguishable only by
 colour — see the <code>greyscale_ambiguous_role_pairs</code> criterion in §1. Colour is
-optional throughout; <code>currentColor</code> is the default and the documented norm.</p></div>
+optional throughout; <code>currentColor</code> is the default and the documented norm.</p>
+<p><strong>Edge roles are how "no arrow, just a line" is said.</strong> The author names a
+semantic role — <code>link</code>, <code>weak</code>, <code>owns</code> — and the theme decides whether that
+means a filled triangle, an open V, a diamond, or no head at all, and whether
+the line is solid or dashed. The author never writes <code>arrow_head = "triangle"</code>,
+because head geometry is a typographic decision and belongs with the other
+decisions taken away from them; but they <em>can</em> say that two things are merely
+associated rather than one flowing into the other, because that is meaning. The
+head vocabulary is closed (<code>arrow</code>, <code>open</code>, <code>diamond</code>, <code>circle</code>, <code>bar</code>, <code>none</code>)
+and lives in the theme, so a document stays readable when the theme changes.</p>
+<p><strong>Elastic fit.</strong> <code>[fit]</code> declares how far the type scale may stretch to make a
+document fit its width. drawspec computes the largest factor in
+<code>[scale_min, scale_max]</code> at which the content fits, and applies that <strong>one
+factor to every level at once</strong> — title, heading, body and label together. This
+is deliberate: scaling levels independently would reintroduce the "mixed type
+sizes in one drawing" failure (51 of 87 in the corpus), whereas a uniform
+factor preserves the hierarchy exactly and keeps one size per level. If the
+content still does not fit at <code>scale_min</code>, or if <code>scale_min × body</code> falls below
+<code>canvas.min_legible_size</code>, that is a <code>FitError</code> — the tool says restructure the
+diagram, it does not keep shrinking.</p>
+<p><code>scale_max</code> defaults to <code>1.0</code>, meaning drawspec will shrink to fit but never
+grow. Growing is available (<code>scale_max &gt; 1.0</code>) but is opt-in, because type size
+being comparable <em>across</em> diagrams is the reason the theme fixes a canvas width
+in the first place; a theme that lets small diagrams inflate has traded that
+away and should do so knowingly.</p></div>
 <div class="note" data-for="s-spec-5-2"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §5.2</span></div><textarea class="note-ta" data-key="s-spec-5-2" data-label="§5.2 The theme (TOML)" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
 </article>
 <article class="sec" id="s-spec-5-3">
 <h4 class="sec-h"><span class="chip">§5.3</span><span class="sec-title">Public Python API</span></h4>
 <div class="sec-body"><pre><code class="language-python">from drawspec import render, render_document, load_theme, Theme
 
-svg: str = render(document: Mapping[str, Any], theme: Theme | str | Path | None = None) -&gt; str
+svg: str = render(
+    document: Mapping[str, Any],
+    theme: Theme | str | Path | None = None,
+    profile: Literal[&quot;inline&quot;, &quot;standalone&quot;] = &quot;inline&quot;,
+) -&gt; str
 </code></pre>
 <ul>
 <li>Pure function: same document plus same theme yields byte-identical SVG.</li>
@@ -848,7 +954,7 @@ svg: str = render(document: Mapping[str, Any], theme: Theme | str | Path | None 
 </thead>
 <tbody>
 <tr>
-<td><code>drawspec render DOC [-o OUT] [--theme T] [--width N] [--height N]</code></td>
+<td><code>drawspec render DOC [-o OUT] [--theme T] [--width N] [--height N] [--profile inline\|standalone]</code></td>
 <td>Writes SVG to <code>OUT</code> or stdout</td>
 <td>0 ok, 1 document/fit error, 2 usage</td>
 </tr>
@@ -864,13 +970,36 @@ svg: str = render(document: Mapping[str, Any], theme: Theme | str | Path | None 
 </tr>
 <tr>
 <td><code>drawspec schema [--out FILE]</code></td>
-<td>Emits the JSON Schema for the document format</td>
+<td>Writes the JSON Schema for the document format</td>
 <td>0</td>
 </tr>
 </tbody>
 </table>
 <p><code>--width</code>/<code>--height</code> override the document's own values, so a build can render
-one document at several widths without editing it.</p></div>
+one document at several widths without editing it. <code>--profile</code> selects the
+embedding profile from §1.</p>
+<p><strong>Yes, there is a real schema, and it validates like HTML's does.</strong> The
+document format is defined by a published JSON Schema, not by prose. Three
+consequences worth stating, because this is the main affordance for an author —
+human or model — working without seeing the output:</p>
+<ul>
+<li><strong><code>drawspec validate</code> is the validator</strong>, and it reports violations by JSON
+  pointer (<code>/nodes/2/font_size</code>), so a failure names the exact location and the
+  exact field, the way an HTML validator names a line and an attribute.</li>
+<li><strong>The schema is a versioned, addressable artefact</strong> with a stable <code>$id</code>,
+  committed to the repository and shipped in the package. A document that
+  carries <code>"$schema": "…/drawspec-v1.schema.json"</code> gets completion and
+  inline error reporting in any editor with JSON Schema support — the author
+  is told <code>font_size</code> is not allowed <em>while typing it</em>, rather than after a
+  render.</li>
+<li><strong><code>additionalProperties: false</code> makes the schema teach.</strong> Because a forbidden
+  field is an error rather than a silently ignored key, the schema is not only
+  a description of what is legal but an active statement of what the author
+  must not decide. That is the point of §5.1's rejection table.</li>
+</ul>
+<p>The output has a validator too, but a different one: the emitter's
+embedding-safety check in §5.5, which enforces the invariants on the SVG it
+produces rather than on the input.</p></div>
 <div class="note" data-for="s-spec-5-4"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §5.4</span></div><textarea class="note-ta" data-key="s-spec-5-4" data-label="§5.4 CLI" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
 </article>
 <article class="sec" id="s-spec-5-5">
@@ -904,16 +1033,17 @@ one document at several widths without editing it.</p></div>
 <td>A primitive with an undeclared role is a programming error, caught in tests</td>
 </tr>
 <tr>
-<td><code>Scene</code> + <code>Theme</code></td>
+<td><code>Scene</code> + <code>Theme</code> + profile</td>
 <td><code>emit</code></td>
-<td>The single place SVG is produced, and therefore the single place the inline-safety invariants are enforced</td>
+<td>The single place SVG is produced, and therefore the single place the embedding-safety invariants are enforced, for both profiles</td>
 <td>Violation raises rather than emitting bad SVG</td>
 </tr>
 </tbody>
 </table>
-<p>The <code>Scene</code> seam is the load-bearing one: three rendering families converge on
+<p>The <code>Scene</code> seam is the load-bearing one: every rendering family converges on
 one primitive list, so acceptance test 1 is satisfied in exactly one file
-rather than three.</p></div>
+rather than four — and adding an embedding profile, or a fifth family, does not
+multiply that work.</p></div>
 <div class="note" data-for="s-spec-5-5"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §5.5</span></div><textarea class="note-ta" data-key="s-spec-5-5" data-label="§5.5 Internal component contracts" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
 </article>
 <article class="sec" id="s-spec-5-6">
@@ -982,8 +1112,15 @@ font files it does not modify.</p></div>
 <td><strong>Scope creep into a general diagramming tool</strong> — ports, swimlanes, nested compound graphs, animation.</td>
 <td>Medium</td>
 <td>Medium</td>
-<td>The rule from the brief: no feature that no corpus note asked for. The nine kinds are closed for v1; a tenth needs evidence.</td>
+<td>The rule from the brief: no feature that no corpus note asked for. The nine kinds are closed for v1; a tenth needs evidence. See "Product direction" below for why this restraint is temporary and what it is protecting</td>
 <td>Review gate on any PR adding a <code>kind</code></td>
+</tr>
+<tr>
+<td><strong>A profile-specific defect ships unnoticed</strong> — the <code>standalone</code> output is exercised less than <code>inline</code>, so an unresolved <code>currentColor</code> or a missing dimension reaches a PDF conversion.</td>
+<td>Medium</td>
+<td>Medium</td>
+<td>Both profiles are rendered for every fixture and checked by the same validator; the standalone path additionally asserts no unresolved <code>currentColor</code> remains. A round-trip through an SVG→PDF converter is part of the acceptance close-out</td>
+<td><code>embedding_safety_violations == 0</code> measured per profile, not aggregated</td>
 </tr>
 <tr>
 <td><strong><code>grandalf</code>'s maintenance status</strong> (v0.8, lightly maintained) becomes a liability if it is chosen in T7.</td>
@@ -995,6 +1132,41 @@ font files it does not modify.</p></div>
 </tbody>
 </table></div>
 <div class="note" data-for="s-spec-6"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC §6</span></div><textarea class="note-ta" data-key="s-spec-6" data-label="§6 Risks &amp; Validation" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
+</article>
+<article class="sec" id="s-spec-product-direction">
+<h4 class="sec-h"><span class="chip">▸</span><span class="sec-title">Product direction</span></h4>
+<div class="sec-body"><p>The scope discipline above — nine kinds, no feature nobody asked for, one
+corpus as the acceptance suite — is a shipping tactic, not the ambition. It
+exists because the reliable way to never finish a generic tool is to start
+generic.</p>
+<p>What the project is actually for:</p>
+<blockquote>
+<p>A tool useful to most people with different needs, while keeping its central
+goal: that a human <strong>or a language model</strong> can call it with a declarative
+input and get correct, beautiful output.</p>
+</blockquote>
+<p>Three things follow, and they shape decisions taken now even though the
+features they enable are not v1:</p>
+<ul>
+<li><strong>Nothing consumer-specific goes in, ever.</strong> The theme is the boundary, and
+  the fact that a real consumer's entire style guide reduces to a theme file
+  (<code>docs/theme-requirements.md</code>) is the standing proof. Any requirement that
+  cannot be expressed as theme configuration is a design smell to be fixed, not
+  a special case to be added.</li>
+<li><strong>Extension points are chosen now, populated later.</strong> The closed vocabularies
+  (node roles, edge roles, kinds) and the two seams (<code>Scene</code>, <code>LayoutEngine</code>)
+  are picked so that a tenth kind, a sixth head shape or a different layout
+  engine is an addition rather than a redesign. That is what "generic later"
+  costs today: a few interfaces, not a few features.</li>
+<li><strong>"Correct" is mechanically checkable; "beautiful" is not, quite.</strong> The
+  success criteria in §1 cover correctness in full. Beauty is carried by the
+  theme and judged by eye — which is why themes are data a consumer can iterate
+  on without touching the tool, rather than opinions compiled into it.</li>
+</ul>
+<p>The rule that keeps both true at once: <strong>build it generic, drive it with the
+corpus.</strong> Generality is bought through interface design, which is cheap now;
+features are bought through evidence, which arrives later.</p></div>
+<div class="note" data-for="s-spec-product-direction"><div class="note-head"><span class="note-ico">✎</span><span class="note-label">Your note</span><span class="note-ref">SPEC › Product direction</span></div><textarea class="note-ta" data-key="s-spec-product-direction" data-label="Product direction" data-part="Specification" rows="1" placeholder="Tap to add a note for this point…"></textarea></div>
 </article>
 </section>
 </div>
