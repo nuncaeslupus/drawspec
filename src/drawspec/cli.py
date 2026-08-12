@@ -1,7 +1,26 @@
-"""Command-line entry point.
+"""The command line: four commands, and an exit code that means something.
 
-The real command surface is defined in `docs/spec.md`; this is the scaffold the
-build and CI hang from until that lands.
+The contract is specification §5.4, and the exit codes are the part of it that a
+build script actually consumes:
+
+======  ==========================================================
+``0``   it worked
+``1``   the document, the theme or the fit was refused
+``2``   the command line itself was wrong
+======  ==========================================================
+
+The split between 1 and 2 is worth stating: **2 is about the invocation, 1 is
+about the content**. A misspelt flag or an unknown profile is 2 — nothing was
+read, so nothing can be said about it. A document that cannot be read, cannot be
+parsed, or cannot be fitted is 1, and its message goes to stderr in full, because
+a refusal is an outcome and the message is the product. Nothing is printed to
+stdout but the thing that was asked for: the SVG, the schema, or a one-line
+confirmation. That is what makes `drawspec render doc.json > doc.svg` safe.
+
+`validate` is the validator the specification promises: it prints every
+violation with its JSON pointer, so a failure names the exact location and the
+exact field the way an HTML validator names a line and an attribute. Every
+violation, not the first — one pass should be one edit.
 """
 
 from __future__ import annotations
@@ -9,24 +28,184 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Sequence
+from dataclasses import replace
+from pathlib import Path
+from typing import Final, TextIO
 
 from drawspec import __version__
+from drawspec.emit import PROFILES
+from drawspec.errors import DocumentError, DrawspecError, ThemeError
+from drawspec.render import render_document
+from drawspec.schema import load_document, schema_json
+from drawspec.theme import load_theme
+
+#: What the shell gets back. Named, because these are the contract.
+OK: Final = 0
+REFUSED: Final = 1
+USAGE: Final = 2
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Every command in §5.4, and nothing that is not in it."""
     parser = argparse.ArgumentParser(
         prog="drawspec",
         description="Render a declarative diagram specification to SVG.",
     )
     parser.add_argument("--version", action="version", version=f"drawspec {__version__}")
+    commands = parser.add_subparsers(dest="command")
+
+    render = commands.add_parser("render", help="render a document to SVG")
+    render.add_argument("document", help="the document to render")
+    render.add_argument("-o", "--out", help="write here instead of stdout")
+    render.add_argument("--theme", help="a bundled theme name or a theme file")
+    render.add_argument("--width", type=float, help="override the document's width")
+    render.add_argument("--height", type=float, help="override the document's height")
+    render.add_argument(
+        "--profile", choices=PROFILES, default="inline", help="the embedding profile"
+    )
+
+    validate = commands.add_parser("validate", help="validate a document without rendering it")
+    validate.add_argument("document", help="the document to validate")
+    validate.add_argument("--theme", help="a bundled theme name or a theme file")
+
+    theme = commands.add_parser("theme", help="theme tools")
+    theme_commands = theme.add_subparsers(dest="theme_command")
+    check = theme_commands.add_parser("check", help="run a theme's invariants")
+    check.add_argument("theme", help="a bundled theme name or a theme file")
+
+    schema = commands.add_parser("schema", help="write the document JSON Schema")
+    schema.add_argument("--out", help="write here instead of stdout")
+
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    """Run one command and return its exit code.
+
+    Returns rather than exits, and catches argparse's own `SystemExit`, so the
+    codes in §5.4 are testable as values instead of as process outcomes.
+    """
     parser = build_parser()
-    parser.parse_args(argv)
-    parser.print_help()
-    return 0
+    try:
+        arguments = parser.parse_args(argv)
+    except SystemExit as exit_code:  # argparse's own usage failure
+        return USAGE if exit_code.code else OK
+
+    if arguments.command is None:
+        parser.print_usage(sys.stderr)
+        print("drawspec: a command is required", file=sys.stderr)
+        return USAGE
+
+    if arguments.command == "render":
+        return _render(arguments)
+    if arguments.command == "validate":
+        return _validate(arguments)
+    if arguments.command == "theme":
+        if getattr(arguments, "theme_command", None) != "check":
+            parser.print_usage(sys.stderr)
+            print("drawspec: theme takes one command: check", file=sys.stderr)
+            return USAGE
+        return _theme_check(arguments)
+    return _schema(arguments)
+
+
+# ---------------------------------------------------------------------------
+# Commands
+# ---------------------------------------------------------------------------
+
+
+def _render(arguments: argparse.Namespace) -> int:
+    """Document in, SVG out, with the overrides applied before anything is drawn.
+
+    The overrides are applied to the *document*, not to the finished drawing:
+    width is an input to wrapping, sizing and the direction choice, so overriding
+    it after the fact would scale a picture that had already decided it fitted.
+    """
+    try:
+        document = load_document(arguments.document)
+        if arguments.width is not None:
+            document = replace(document, width=arguments.width)
+        if arguments.height is not None:
+            document = replace(document, height=arguments.height)
+        svg = render_document(document, arguments.theme, arguments.profile)
+    except DrawspecError as error:
+        return _refuse(error)
+
+    if arguments.out:
+        Path(arguments.out).write_text(svg, encoding="utf-8")
+    else:
+        print(svg)
+    return OK
+
+
+def _validate(arguments: argparse.Namespace) -> int:
+    """Parse and check, and draw nothing at all.
+
+    A theme is loaded when one is named, because a theme that will not load is a
+    reason this document cannot be rendered, and finding that out at validation
+    time is the whole point of validating.
+    """
+    try:
+        document = load_document(arguments.document)
+        if arguments.theme:
+            load_theme(arguments.theme)
+    except DocumentError as error:
+        return _refuse(error, violations=error.violations)
+    except DrawspecError as error:
+        return _refuse(error)
+
+    print(f"{arguments.document}: a valid {document.kind} document")
+    return OK
+
+
+def _theme_check(arguments: argparse.Namespace) -> int:
+    """The theme's invariants, greyscale pairing included.
+
+    `load_theme` already refuses an ambiguous theme — the check is not something
+    a caller can forget to run — so this reports what it raised rather than
+    re-implementing the comparison, and prints the pair count when it loads.
+    """
+    try:
+        theme = load_theme(arguments.theme)
+    except ThemeError as error:
+        return _refuse(error)
+
+    ambiguous = theme.ambiguous_role_pairs()
+    if ambiguous:  # unreachable through load_theme, and cheap insurance if it changes
+        for first, second in ambiguous:
+            print(f"{first} and {second} differ only by colour", file=sys.stderr)
+        return REFUSED
+    print(f"{theme.name}: {len(ambiguous)} ambiguous role pairs")
+    return OK
+
+
+def _schema(arguments: argparse.Namespace) -> int:
+    text = schema_json()
+    if arguments.out:
+        Path(arguments.out).write_text(text, encoding="utf-8")
+    else:
+        print(text)
+    return OK
+
+
+# ---------------------------------------------------------------------------
+# Refusals
+# ---------------------------------------------------------------------------
+
+
+def _refuse(
+    error: DrawspecError, violations: Sequence[object] = (), stream: TextIO | None = None
+) -> int:
+    """Print a refusal in full, to stderr, and return the code for it.
+
+    In full: the message a drawspec error carries names the remedy as well as the
+    fault, and truncating it to a summary line is how an author ends up guessing.
+    """
+    out = stream or sys.stderr
+    print(str(error), file=out)
+    for violation in violations:
+        print(f"  {violation}", file=out)
+    return REFUSED
 
 
 if __name__ == "__main__":
