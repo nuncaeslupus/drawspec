@@ -29,14 +29,14 @@ document (JSON)
   box sizing (geometry derived from measured text + theme padding)
       │
       ├── graph kinds ──► LayoutEngine ──► routing ──► labels ──┐
-      │   flow, tree,     (protocol:                            │
-      │   cycle            sizes in,                            │
+      │   flow, tree      (protocol:                            │
+      │                    sizes in,                            │
       │                    coords out)                          │
       ├── grid kinds ─────────────────────────────────────────► ├──► Scene
       │   stack, timeline, columns                              │    (primitives
       │                                                         │     in final
       ├── shape kinds ────────────────────────────────────────► │     coords,
-      │   pyramid, rings                                        │     tagged by
+      │   pyramid, rings, cycle                                 │     tagged by
       │                                                         │     role, no
       └── chart kind ─────────────────────────────────────────► ┘     styling)
                                                                        │
@@ -131,7 +131,7 @@ spec's success criteria.
 | T8 | The chosen default layout engine behind the protocol: ranking, cycle breaking, crossing reduction, coordinate assignment | `drawspec.layout` | L | T7 | `node_overlap_count == 0` | `test_layout_returns_positions_with_no_overlapping_boxes` in `tests/test_layout.py` — no two node boxes intersect. `test_layout_of_a_tree_places_children_after_their_parent` — rank increases with depth. `test_layout_of_a_cyclic_graph_terminates_and_returns_positions` — cycles are broken, not looped on. `test_layout_is_deterministic_across_runs` — identical input yields identical positions |
 | T9 | Orthogonal edge routing: border anchoring, axis-aligned segments only, minimum shaft length, no crossing of node boxes | `drawspec.routing` | L | T8 | `edge_anchor_violations == 0` | `test_route_endpoints_lie_exactly_on_node_borders` in `tests/test_routing.py` — every edge starts and ends on a border, neither short nor overshooting. `test_route_produces_only_axis_aligned_segments` — no diagonal segments. `test_route_shaft_length_is_at_least_the_theme_minimum` — no head-without-shaft is expressible. `test_route_does_not_cross_any_node_box` — routes avoid boxes |
 | T10 | Edge label placement with overlap avoidance against paths, boxes and other labels | `drawspec.routing` | M | T9 | `label_overlap_count == 0` | `test_edge_label_does_not_intersect_any_edge_path` in `tests/test_labels.py` — the label box misses every path. `test_edge_label_does_not_intersect_any_node_box` — and every node. `test_edge_label_offsets_when_the_default_position_is_occupied` — a fallback position is chosen rather than overlapping |
-| T11 | Graph kinds: `flow`, `tree`, `cycle` — document to `Scene` | `drawspec.kinds` | L | T4, T10 | `text_overflow_count == 0` | `test_flow_document_renders_svg_passing_inline_safety` in `tests/test_kinds_graph.py` — a flow document round-trips to safe SVG. `test_cycle_arrows_all_follow_one_direction` — a cycle reads as a cycle. `test_tree_child_ranks_increase_with_depth` — hierarchy is visible in the geometry |
+| T11 | Graph kinds: `flow`, `tree` — document to `Scene`. **`cycle` moved to D-1**, see below | `drawspec.kinds` | L | T4, T10 | `text_overflow_count == 0` | `test_flow_document_renders_svg_passing_inline_safety` in `tests/test_kinds_graph.py` — a flow document round-trips to safe SVG. `test_tree_child_ranks_increase_with_depth` — hierarchy is visible in the geometry |
 | T12 | Grid kinds: `stack`, `timeline`, `columns` — positions from counting, no layout engine | `drawspec.kinds` | M | T4, T6 | `same_rank_size_variance == 0` | `test_stack_layers_are_equal_height_and_full_width` in `tests/test_kinds_grid.py` — layers are uniform. `test_columns_of_the_same_role_are_equal_width` — peers match. `test_timeline_ticks_are_evenly_spaced` — spacing is constant |
 | T13 | Shape kinds: `pyramid`, `rings` — parametric geometry with text fitted to the usable span | `drawspec.kinds` | M | T4, T6 | `text_outside_shape_count == 0` | `test_pyramid_levels_are_equal_height_with_constant_width_progression` in `tests/test_kinds_shape.py` — proportions are regular. `test_pyramid_level_text_fits_the_narrowest_span_of_its_level` — text never crosses a sloped side. `test_ring_label_is_offset_below_its_own_arc` — labels do not touch their ring. `test_innermost_ring_label_is_centred` — the exception is honoured |
 | T14 | Chart kind: scales, ticks, rotated axis labels, series paths, point markers and labels | `drawspec.charts` | L | T4, T6 | `unlabelled_axis_count == 0` | `test_chart_without_an_axis_label_raises_documenterror` in `tests/test_kinds_chart.py` — an unlabelled axis is a validation error. `test_chart_point_markers_lie_on_the_series_path` — markers are on the line, not beside it. `test_chart_point_labels_do_not_intersect_the_series_path` — labels avoid the curve and the plot edge. `test_chart_vertical_axis_label_is_rotated_and_horizontal_is_not` — orientation is constant |
@@ -185,8 +185,9 @@ T4 (schema) ──────────────────────�
                           T10 (labels)           │     │
                                  │               │     │
                                  v               │     │
-                          T11 (graph kinds) <────┤     │
+                          T11 (flow, tree) <─────┤     │
                           T12 (grid kinds) <─────┤     │
+                          D-1 (cycle) <──────────┤     │
                           T13 (shape kinds) <────┤     │
                           T14 (charts) <─────────┘     │
                                  │                     │
@@ -286,6 +287,51 @@ working as intended, and it is the case `FitError` exists for. Two consequences:
 
 **Edges here are straight lines between box centres**, because routing is T9.
 The committed SVGs are for judging where the boxes went and nothing else.
+
+---
+
+## D-1: `cycle` is a parametric template, not a layered graph layout
+
+**Date**: 2026-08-12 · **Task**: `lo-21c8` · Found by looking at
+`docs/reference/rendered/cycle-review-layered-down.svg`.
+
+The table above originally grouped `cycle` with `flow` and `tree` in T11, behind
+the layout engine and orthogonal routing. That contradicts
+`docs/theme-requirements.md` §6, which lists cycles under **Specific shapes**
+with pyramids and concentric circles, and says of all three: *"These are
+parametric templates, not graph layout."*
+
+What the plan's grouping produced, on the five-node `cycle-review` reference:
+
+```
+5 boxes, all at x=24.0, stacked at y = 24.0, 84.8, 145.7, 206.6, 267.4
+5 edges, ALL on the vertical line x=126.1
+```
+
+A column with one line drawn down it. The back edge retraces the four forward
+edges exactly, so the loop is invisible. **T9 cannot repair this** — a layered
+cycle routed orthogonally is still a column with a line around the side. The
+layout is what is wrong, not the routing.
+
+`cycle` therefore moves to its own task and is rendered like `pyramid` and
+`rings`: nodes evenly spaced on a circle, edges following the circumference in
+one direction.
+
+**The input contract does not change.** A cycle is still `nodes` and `edges` —
+that is what it *means*, and the schema is about meaning. Only the renderer moves,
+which is exactly the separation the `Scene` seam exists to allow: a family can
+change how it draws without the author's document changing at all. **Its dependencies change with it** — as a parametric template it
+needs T1, T4 and T6 only, not T9 or T10, so it is unblocked now, alongside T13.
+T11 keeps `flow` and `tree`.
+
+### Consequence for the T7 decision
+
+`cycle-review.json` was one of the three documents in the engine comparison
+above. That comparison remains valid as a test of **cycle breaking**, which is a
+real engine capability every graph kind needs — but its *render* is not how a
+`cycle` document will be drawn, so it should not be read as one. The decision
+does not rest on it: the deciding measurement was `flow-validation` at 539,
+which fits the 640 canvas, against grandalf's 672, which does not.
 
 ## Sign-off
 

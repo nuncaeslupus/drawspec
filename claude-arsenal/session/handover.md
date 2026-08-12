@@ -113,14 +113,26 @@ of each other — this is the batch worker fan-out is built for:
 
 | Task | | Notes |
 |---|---|---|
+| `lo-21c8` | D-1 — `cycle` as a parametric radial template | M. Deps met. A spec divergence: the plan had cycle behind the layout engine, the requirements put it with the shape kinds. |
 | `lo-a63e` | T6b — diamond/ellipse usable span | M. Deps met. Do before T11: it changes box sizes. |
 | `lo-f75a` | T13 — shape kinds (pyramid, rings) | M. Deps met. Uses `kinds/common`. |
 | `lo-0e20` | T14 — chart kind | L. Deps met. Axes are `horizontal`/`vertical`, data is `data`. |
 | `lo-7bfe` | T9 — orthogonal routing | L. Critical path. Read the three routing notes above first. |
-| `lo-b569` | T11 — graph kinds | L, but needs T9 → T10 first. |
+| `lo-b569` | T11 — graph kinds (**flow and tree only**) | L, but needs T9 → T10 first. Cycle left this task in D-1. |
 
 Then T10 (edge labels) → T11 → T15 (CLI) and T16 (the 11 failure families), with
 T17 (embedding targets) and T18 (close-out) last.
+
+### One divergence found and seeded
+
+**D-1 (`lo-21c8`): `cycle` was in the wrong family.** `docs/theme-requirements.md`
+§6 lists cycles under "Specific shapes" with pyramids and rings — *"These are
+parametric templates, not graph layout"* — but `status/plan.md` T11 had it behind
+the layout engine and orthogonal routing. A five-node cycle came out as a column
+of boxes with all five edges on one vertical line. T9 cannot repair that; the
+layout is what is wrong. The plan, its dependency graph and T11's payload are all
+corrected; the input contract is untouched, because a cycle is still `nodes` and
+`edges` and only the renderer moves.
 
 ### Open, and worth the user's attention
 
