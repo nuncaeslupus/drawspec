@@ -1,0 +1,578 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "title": "drawspec document, version 1",
+  "description": "A declarative diagram. The author describes what the diagram means; every decision that requires seeing the output — coordinates, type size, colour, arrow-head geometry, z-order — is taken by drawspec and has no field here. Referential rules (node ids are unique; an edge names nodes that exist) are beyond JSON Schema and are enforced by `drawspec validate`.",
+  "oneOf": [
+    {
+      "type": "object",
+      "title": "flow / tree / cycle",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "flow",
+            "tree",
+            "cycle"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/node"
+          },
+          "minItems": 1
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/edge"
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/group"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "nodes"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "stack / timeline / columns",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "stack",
+            "timeline",
+            "columns"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/item"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "pyramid",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "pyramid"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "levels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/level"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "levels"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "rings",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "rings"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "rings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ring"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "rings"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "chart",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "chart"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "axes": {
+          "$ref": "#/$defs/axes"
+        },
+        "series": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/series"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "axes",
+        "series"
+      ],
+      "additionalProperties": false
+    }
+  ],
+  "$defs": {
+    "axes": {
+      "type": "object",
+      "properties": {
+        "horizontal": {
+          "$ref": "#/$defs/axis"
+        },
+        "vertical": {
+          "$ref": "#/$defs/axis"
+        }
+      },
+      "required": [
+        "horizontal",
+        "vertical"
+      ],
+      "additionalProperties": false
+    },
+    "axis": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Required: an unlabelled axis cannot be read."
+        },
+        "unit": {
+          "type": "string"
+        },
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    "edge": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The id of the source node."
+        },
+        "to": {
+          "type": "string",
+          "description": "The id of the target node."
+        },
+        "label": {
+          "type": "string",
+          "description": "A short label placed along the edge."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'flow'.",
+          "enum": [
+            "flow",
+            "link",
+            "exchange",
+            "weak",
+            "owns"
+          ]
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    },
+    "group": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic."
+        },
+        "members": {
+          "type": "array",
+          "description": "The ids of the nodes this group contains.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "id",
+        "members"
+      ],
+      "additionalProperties": false
+    },
+    "item": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Optional; generated from position when absent."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "start",
+            "step",
+            "decision",
+            "terminal",
+            "emphasis",
+            "note",
+            "group"
+          ]
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "level": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "start",
+            "step",
+            "decision",
+            "terminal",
+            "emphasis",
+            "note",
+            "group"
+          ]
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "node": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique within the document."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "start",
+            "step",
+            "decision",
+            "terminal",
+            "emphasis",
+            "note",
+            "group"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "description": "A short aside attached to this node."
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "ring": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "start",
+            "step",
+            "decision",
+            "terminal",
+            "emphasis",
+            "note",
+            "group"
+          ]
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "series": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "data": {
+          "type": "array",
+          "description": "The values to plot, as [x, y] pairs. Data, not coordinates.",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "minItems": 1
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "start",
+            "step",
+            "decision",
+            "terminal",
+            "emphasis",
+            "note",
+            "group"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "data"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
