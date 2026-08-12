@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from drawspec.errors import DrawspecError
 from drawspec.kinds.common import box_primitives, outline, text_runs
+from drawspec.kinds.cycle import cycle_scene
 from drawspec.kinds.grid import grid_scene
 from drawspec.scene import Scene
 from drawspec.schema import GRID_KINDS, Document
@@ -18,7 +19,7 @@ from drawspec.theme import Theme
 #: Kinds that have a renderer. The document schema accepts all nine; the ones
 #: absent here are the tasks still to come, and asking for one says so rather
 #: than failing obscurely.
-IMPLEMENTED: tuple[str, ...] = GRID_KINDS
+IMPLEMENTED: tuple[str, ...] = (*GRID_KINDS, "cycle")
 
 
 def scene_for(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
@@ -30,10 +31,13 @@ def scene_for(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
     """
     if document.kind in GRID_KINDS:
         return grid_scene(document, theme, measurer)
+    if document.kind == "cycle":
+        # A cycle is a parametric template, not a graph layout — see D-1.
+        return cycle_scene(document, theme, measurer)
     raise DrawspecError(
         f"kind {document.kind!r} is valid but drawspec cannot render it yet; "
         f"implemented so far: {', '.join(sorted(IMPLEMENTED))}"
     )
 
 
-__all__ = ["IMPLEMENTED", "box_primitives", "outline", "scene_for", "text_runs"]
+__all__ = ["IMPLEMENTED", "box_primitives", "cycle_scene", "outline", "scene_for", "text_runs"]

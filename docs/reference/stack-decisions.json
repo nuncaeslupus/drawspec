@@ -1,0 +1,12 @@
+{
+  "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "stack",
+  "title": "Where a decision is taken",
+  "description": "Each layer takes the decisions the one above it must not.",
+  "items": [
+    {"text": "The author says what the diagram **means**"},
+    {"text": "The theme decides what each semantic role looks like"},
+    {"text": "The tool decides every coordinate, line break and type size"}
+  ]
+}

@@ -2,7 +2,7 @@ ARSENAL_REPO    ?= https://github.com/nuncaeslupus/claude-arsenal.git
 ARSENAL_REF     ?= v0.23.1
 ARSENAL_PLUGINS ?= all
 
-.PHONY: help sync build lint format test schema clean update-skills
+.PHONY: help sync build lint format test schema gallery clean update-skills
 
 help:  ## list targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -27,6 +27,9 @@ test:  ## run the test suite
 
 schema:  ## regenerate the published JSON Schema from the field tables
 	uv run python -m drawspec.schema
+
+gallery:  ## render every reference document to docs/gallery and open the page
+	uv run python tools/gallery.py
 
 clean:  ## remove build and tool caches
 	rm -rf dist build .mypy_cache .pytest_cache .ruff_cache
