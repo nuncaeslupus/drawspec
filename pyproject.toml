@@ -18,6 +18,9 @@ dev = [
     "mypy>=1.11",
     "ruff>=0.6",
 ]
+spike = [
+    "grandalf>=0.8",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -52,7 +55,9 @@ select = [
 
 [tool.mypy]
 python_version = "3.12"
-files = ["src", "tests"]
+# `tools/` is not shipped, but the spike test imports it, so it is held to the
+# same standard as everything else.
+files = ["src", "tests", "tools"]
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -70,5 +75,14 @@ show_error_codes = true
 module = "fontTools.*"
 ignore_missing_imports = true
 
+# grandalf ships no py.typed either. It is confined to one adapter module, which
+# is the whole point of the LayoutEngine protocol.
+[[tool.mypy.overrides]]
+module = "grandalf.*"
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# `tools/` holds the T7 spike harness, which the spike test asserts against.
+# Not shipped, so it is not on the package path — put it on the test path.
+pythonpath = ["tools"]

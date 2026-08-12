@@ -1,0 +1,21 @@
+{
+  "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "cycle",
+  "title": "The review loop",
+  "description": "A change is drafted, reviewed, revised and merged, and what is learned feeds the next draft.",
+  "nodes": [
+    {"id": "draft", "text": "Draft the change", "role": "step"},
+    {"id": "review", "text": "Review it against the plan", "role": "step"},
+    {"id": "revise", "text": "Revise on what the review found", "role": "step"},
+    {"id": "merge", "text": "Merge it", "role": "step"},
+    {"id": "learn", "text": "Record what the round taught", "role": "emphasis"}
+  ],
+  "edges": [
+    {"from": "draft", "to": "review"},
+    {"from": "review", "to": "revise"},
+    {"from": "revise", "to": "merge"},
+    {"from": "merge", "to": "learn"},
+    {"from": "learn", "to": "draft"}
+  ]
+}

@@ -122,7 +122,8 @@ spec's success criteria.
 | T3 | Text measurement from font files via `fonttools`: advance widths, kerning, cached; plus "replace and warn" substitution against bundled generic serif/sans/mono | `drawspec.text` | L | — | `text_measurement_error_ratio <= 0.02` | `test_measure_reference_strings_match_font_tables_within_two_percent` in `tests/test_measure.py` — measured widths agree with an independent reader of the same font's `hmtx`. `test_measure_previously_unseen_font_returns_metrics` — a font not in any bundled table measures correctly. `test_measure_unresolvable_font_substitutes_and_warns` — emits `FontSubstitutionWarning` naming requested and substituted families. `test_measure_kerned_pair_differs_from_sum_of_advances` — kerning is applied, not ignored |
 | T4 | Document model and validation, plus the **published** JSON Schema: a versioned artefact with a stable `$id`, committed and shipped in the package, `additionalProperties: false` throughout so forbidden fields fail by name and by JSON pointer | `drawspec.schema`, `schema/drawspec-v1.schema.json` | L | — | `forbidden_field_acceptance_count == 0` | `test_document_with_forbidden_field_raises_documenterror_naming_field` in `tests/test_schema.py` — parametrized over every field in spec §5.1's rejection table; each raises, and the message carries the field's JSON pointer. `test_document_missing_version_raises_documenterror` — `version` is required. `test_document_with_node_or_edge_role_outside_vocabulary_raises_documenterror` — both vocabularies are closed. `test_published_schema_matches_the_runtime_validator` — the committed `.schema.json` accepts and rejects exactly what the parser does, so editor completion never disagrees with the tool |
 | T5 | Line breaking and text block sizing: wrap to a width, compute block height from line count and theme line-height | `drawspec.text` | M | T2, T3 | `text_overflow_count == 0` | `test_wrap_produces_lines_all_within_the_given_width` in `tests/test_wrap.py` — every returned line measures at or below the max width. `test_wrap_word_longer_than_max_width_raises_fiterror` — an unbreakable run wider than the box fails loudly. `test_wrap_block_height_equals_lines_times_line_height` — height is derived, not guessed |
-| T6 | Box geometry derived from measured text plus theme padding; vertical centring; same-rank size normalisation; **elastic fit** — one uniform type-scale factor chosen within the theme's band; `FitError` below the minimum legible size | `drawspec.geometry` | M | T6 | `text_overflow_count == 0` | `0` — text inside the padding on all four sides for 4 roles × 5 texts; centring within 0.5 px; one fit factor across all four levels | `uv run pytest tests/test_box.py -q` (62 passed) | `claude/continuation-yq88jv` | CPython 3.12, Linux | 2026-08-12 |
+| T6 | Box geometry derived from measured text plus theme padding; vertical centring; same-rank size normalisation; **elastic fit** — one uniform type-scale factor chosen within the theme's band; `FitError` below the minimum legible size | `drawspec.geometry` | M | T7 | `candidate_engines_rendered == 2` | `2` — both engines, 0 overlaps and 0 crossings on 3 documents × 2 directions, both deterministic | `uv run pytest tests/test_layout_spike.py -q` (35 passed); `uv run python tools/spike_layout.py` | `claude/continuation-yq88jv` | CPython 3.12, Linux, grandalf 0.8 | 2026-08-12 |
+| T6 | `text_overflow_count == 0` | `0` — text inside the padding on all four sides for 4 roles × 5 texts; centring within 0.5 px; one fit factor across all four levels | `uv run pytest tests/test_box.py -q` (62 passed) | `claude/continuation-yq88jv` | CPython 3.12, Linux | 2026-08-12 |
 | T5 | `text_overflow_count == 0` | `test_box_contains_its_text_with_full_padding_on_all_four_sides` in `tests/test_box.py` — the text extents sit inside the box inset by the theme padding, bottom included. `test_box_text_is_vertically_centred_within_half_a_pixel` — centring is computed from ascent/descent, not approximated. `test_fit_applies_one_scale_factor_to_every_type_level` — the ratios between title, heading, body and label are unchanged after scaling, so no diagram gains a new type size. `test_fit_chooses_the_largest_factor_that_fits_within_the_band` — shrinking stops as soon as the content fits. `test_fit_below_scale_min_or_min_legible_size_raises_fiterror` — refuses to shrink past the band. `test_boxes_of_the_same_rank_are_normalised_to_equal_size` — peers match |
 | T7 | **Spike**: implement the `LayoutEngine` protocol against both `grandalf` and a direct layered implementation, render the three reference documents through each, and record the decision with its escape route | `drawspec.layout` | M | T6 | `candidate_engines_rendered == 2` | `test_spike_each_candidate_engine_lays_out_all_reference_documents` in `tests/test_layout_spike.py` — both engines return valid positions for all three reference documents with no overlapping boxes |
 | T8 | The chosen default layout engine behind the protocol: ranking, cycle breaking, crossing reduction, coordinate assignment | `drawspec.layout` | L | T7 | `node_overlap_count == 0` | `test_layout_returns_positions_with_no_overlapping_boxes` in `tests/test_layout.py` — no two node boxes intersect. `test_layout_of_a_tree_places_children_after_their_parent` — rank increases with depth. `test_layout_of_a_cyclic_graph_terminates_and_returns_positions` — cycles are broken, not looped on. `test_layout_is_deterministic_across_runs` — identical input yields identical positions |
@@ -155,6 +156,7 @@ travels to every target, and T18 closes.
 | T1 | `embedding_safety_violations == 0` | `0` in `inline` and `0` in `standalone`, measured per profile | `uv run pytest tests/test_emit.py -q` (50 passed) | `claude/continuation-yq88jv` | CPython 3.12, Linux | 2026-08-12 |
 | T2 | `greyscale_ambiguous_role_pairs == 0` | `0` — all 21 node-role pairs and 10 edge-role pairs differ in a non-colour channel | `uv run pytest tests/test_theme.py -q` (96 passed) | `claude/continuation-yq88jv` | CPython 3.12, Linux | 2026-08-12 |
 | T3 | `text_measurement_error_ratio <= 0.02` | `0.0` — exact agreement with an independent `hmtx`/`kern` reader over 9 reference strings × 3 bundled fonts | `uv run pytest tests/test_measure.py -q` (52 passed) | `claude/continuation-yq88jv` | CPython 3.12, Linux, `fonttools` 4.61 | 2026-08-12 |
+| T7 | `candidate_engines_rendered == 2` | `2` — both engines, 0 overlaps and 0 crossings on 3 documents × 2 directions, both deterministic | `uv run pytest tests/test_layout_spike.py -q` (35 passed); `uv run python tools/spike_layout.py` | `claude/continuation-yq88jv` | CPython 3.12, Linux, grandalf 0.8 | 2026-08-12 |
 | T6 | `text_overflow_count == 0` | `0` — text inside the padding on all four sides for 4 roles × 5 texts; centring within 0.5 px; one fit factor across all four levels | `uv run pytest tests/test_box.py -q` (62 passed) | `claude/continuation-yq88jv` | CPython 3.12, Linux | 2026-08-12 |
 | T5 | `text_overflow_count == 0` | `0` — every line re-measured at or below its width across 5 widths; block height derived from the line count | `uv run pytest tests/test_wrap.py -q` (32 passed) | `claude/continuation-yq88jv` | CPython 3.12, Linux | 2026-08-12 |
 | T4 | `forbidden_field_acceptance_count == 0` | `0` — all 26 fields in the §5.1 rejection table refused by the parser *and* by the published schema | `uv run pytest tests/test_schema.py -q` (109 passed) | `claude/continuation-yq88jv` | CPython 3.12, Linux | 2026-08-12 |
@@ -196,6 +198,88 @@ The critical path is T3 → T5 → T6 → T7 → T8 → T9 → T10 → T11 → T
 T18. Text measurement gates everything, which is why it is Large and first.
 
 ---
+
+---
+
+## T7 decision: the default layout engine
+
+**Date**: 2026-08-12 · **Task**: `lo-4c51` · **Gate**: `candidate_engines_rendered == 2`, met.
+
+Both candidates were implemented behind the `LayoutEngine` protocol and run over
+the three reference documents in `docs/reference/`, in both flow directions. The
+rendered output is committed in `docs/reference/rendered/` — twelve SVGs, one per
+document × engine × direction. Regenerate with `uv run python tools/spike_layout.py`.
+
+| Document | Engine | Direction | Overlaps | Crossings | Size | Fits 640 | Deterministic |
+|---|---|---|---|---|---|---|---|
+| flow-validation | layered | down | 0 | 0 | 539 x 488 | yes | yes |
+| flow-validation | layered | right | 0 | 0 | 1237 x 133 | no | yes |
+| flow-validation | grandalf | down | 0 | 0 | 672 x 488 | no | yes |
+| flow-validation | grandalf | right | 0 | 0 | 1237 x 256 | no | yes |
+| cycle-review | layered | down | 0 | 0 | 204 x 280 | yes | yes |
+| cycle-review | layered | right | 0 | 0 | 1102 x 37 | no | yes |
+| cycle-review | grandalf | down | 0 | 0 | 318 x 280 | yes | yes |
+| cycle-review | grandalf | right | 0 | 0 | 1102 x 67 | no | yes |
+| tree-decisions | layered | down | 0 | 0 | 1449 x 159 | no | yes |
+| tree-decisions | layered | right | 0 | 0 | 666 x 402 | no | yes |
+| tree-decisions | grandalf | down | 0 | 0 | 1449 x 159 | no | yes |
+| tree-decisions | grandalf | right | 0 | 0 | 666 x 402 | no | yes |
+
+### The decision
+
+**The direct layered implementation (`drawspec.layout.layered.LayeredEngine`) is
+the default.** T8 hardens it; it is not rewritten.
+
+The reasoning, in the order the evidence supports it:
+
+1. **Crossing quality did not separate them.** Both produced zero crossings on
+   all three documents in both directions. grandalf has the better ordering
+   algorithm and it did not matter, because the corpus's median graph has four
+   nodes and its largest has seventeen. The argument for a dependency was
+   quality; the measurement did not find any to buy.
+2. **The layered engine is tighter, and tightness decides whether a diagram
+   fits.** grandalf reserves a full column for every dummy vertex on a long
+   edge: 672 against 539 on the flow (25% wider), 318 against 204 on the cycle
+   (56% wider). At the theme's 640 canvas width that is not cosmetic — the
+   seven-node flow *fits* under the layered engine and does *not* under
+   grandalf. An engine whose slack turns a valid diagram into a `FitError` is
+   the wrong default.
+3. **Zero dependencies, which was a success criterion.** `system_dependencies
+   == 0` is about binaries, but the same reasoning covers a Python dependency
+   that is lightly maintained (v0.8) and dual-licensed GPLv2 / EPL-1.0 — only
+   the EPL arm is compatible with shipping MIT code around it. Choosing
+   grandalf would mean depending on that arm, and vendoring it later would mean
+   carrying EPL notices. Nothing in the measurement pays for that.
+4. **Both are deterministic**, so neither wins on the determinism criterion.
+   That is not free: `break_cycles` picks its back edges in sorted id order, and
+   the barycentre sweeps break ties on id, precisely so the coordinates that end
+   up in committed SVG are the same on every run.
+
+### The escape route
+
+`GrandalfEngine` stays in the tree, tested, behind the same protocol. It is not
+dead weight — it is the escape route made concrete, and having two working
+implementations is the only way to know the seam is real rather than asserted. If
+a consumer's graph ever beats the layered engine on crossings, switching is one
+constructor call, and grandalf remains an optional `spike` extra rather than a
+runtime dependency. A Graphviz (`-Tplain`) or ELK engine would enter the same way.
+
+### What the spike found that was not the question
+
+**No engine can make an eleven-node tree fit a 640 canvas.** `tree-decisions`
+overflows in both directions under both engines — 1449 wide going down, 402 tall
+and 666 wide going right. This is not an engine defect; it is the style rules
+working as intended, and it is the case `FitError` exists for. Two consequences:
+
+- **T8 owes direction selection.** "If the arrows do not fit horizontally, the
+  diagram goes vertical" is a real remedy and neither engine chooses for itself.
+  The engine takes a direction; something above it has to try both and prefer the
+  one that fits.
+- **T11 and T18 will meet real `FitError`s**, and the message is the product.
+  Measuring `fit_error_rate` over the fixture set is not optional bookkeeping.
+
+**Edges here are straight lines between box centres**, because routing is T9.
+The committed SVGs are for judging where the boxes went and nothing else.
 
 ## Sign-off
 

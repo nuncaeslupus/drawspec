@@ -28,6 +28,15 @@ class DocumentError(DrawspecError):
         self.violations: tuple[Any, ...] = tuple(violations)
 
 
+class LayoutError(DrawspecError):
+    """A layout engine could not produce a valid arrangement.
+
+    Raised by the engine rather than swallowed, so a malformed graph or an engine
+    that cannot cope surfaces as itself rather than as a drawing with boxes on top
+    of each other.
+    """
+
+
 class ThemeError(DrawspecError):
     """A theme is malformed, or two of its roles are distinguishable only by
     colour.
@@ -74,5 +83,6 @@ __all__ = [
     "EmitError",
     "FitError",
     "FontSubstitutionWarning",
+    "LayoutError",
     "ThemeError",
 ]
