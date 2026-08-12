@@ -258,6 +258,7 @@ def size_box(
     role: str = "step",
     level: str = "body",
     max_width: float | None = None,
+    shape: str | None = None,
 ) -> Box:
     """Size a box around `text`, derived from measurement and theme padding.
 
@@ -265,17 +266,22 @@ def size_box(
         text: the words, possibly carrying inline spans.
         theme: supplies the padding, the type scale and the role's shape.
         measurer: measures against the theme's own font stacks.
-        role: the semantic role, which decides the shape.
+        role: the semantic role, which decides the shape unless `shape` says
+            otherwise.
         level: which of the four type levels the text is set at.
         max_width: the widest the box may be. Defaults to the theme's canvas
             width, which is the widest anything can be.
+        shape: overrides the role's shape. For a family that draws its own
+            outline — a pyramid level is a trapezoid and a ring is a circle,
+            neither of which is a node shape — the shape used for *sizing* is the
+            family's business, not the role's.
 
     Raises:
         FitError: the text cannot be broken to fit `max_width`.
         KeyError: the theme declares no such role, or no such type level.
     """
     node_role = theme.roles[role]
-    shape = node_role.shape
+    shape = node_role.shape if shape is None else shape
     limit = theme.canvas.width if max_width is None else max_width
 
     block = _wrap_to(text, shape, limit, theme=theme, measurer=measurer, level=level)
