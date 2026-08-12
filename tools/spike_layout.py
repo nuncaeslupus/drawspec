@@ -31,7 +31,15 @@ from drawspec.kinds.common import box_primitives
 from drawspec.layout.base import Layout, LayoutEdge, LayoutEngine, LayoutNode, Spacing
 from drawspec.layout.grandalf_engine import GrandalfEngine
 from drawspec.layout.layered import LayeredEngine
-from drawspec.routing import Connector, Obstacle, edge_primitives, minimum_rank_gap, route_edges
+from drawspec.routing import (
+    Connector,
+    Obstacle,
+    edge_primitives,
+    label_primitives,
+    minimum_rank_gap,
+    place_labels,
+    route_edges,
+)
 from drawspec.scene import Primitive, Scene
 from drawspec.schema import Document, load_document
 from drawspec.text import TextMeasurer
@@ -201,8 +209,11 @@ def to_scene(document: Document, layout: Layout, theme: Theme, measurer: TextMea
         Connector(edge.source, edge.target, role=edge.role, label=edge.label)
         for edge in document.edges
     )
-    for route in route_edges(connectors, obstacles, theme, direction=layout.direction):
+    routes = route_edges(connectors, obstacles, theme, direction=layout.direction)
+    for route in routes:
         primitives.extend(edge_primitives(route, theme))
+    for label in place_labels(routes, obstacles, theme, measurer):
+        primitives.extend(label_primitives(label))
 
     for node in document.nodes:
         place = layout.placements[node.id]

@@ -151,6 +151,7 @@ travels to every target, and T18 closes.
 
 | T# | Gate | Measured | Command | SHA | Env | Date |
 |----|------|----------|---------|-----|-----|------|
+| T10 | `label_overlap_count == 0` | `0` — the five labels of the reference flow, in both directions, each clear of every node shape, every route segment of every edge, and every other label, with 2 units of air on each side | `uv run pytest tests/test_labels.py -q` (13 passed); `uv run python tools/spike_layout.py` | `claude/continuation-yq88jv` | CPython 3.12, Linux | 2026-08-12 |
 | T9 | `edge_anchor_violations == 0` | `0` over 92 routes — 3 reference graphs × 2 engines × 2 directions — measured against the **shapes**: every endpoint on the outline (a diamond's on its sloped edge, not on its bounding box), 0 diagonal segments, 0 routes through a shape, 0 shafts below 16 | `uv run pytest tests/test_routing.py -q` (27 passed); `uv run python tools/spike_layout.py` | `claude/continuation-yq88jv` | CPython 3.12, Linux | 2026-08-12 |
 | T1 | `embedding_safety_violations == 0` | `0` in `inline` and `0` in `standalone`, measured per profile | `uv run pytest tests/test_emit.py -q` (50 passed) | `claude/continuation-yq88jv` | CPython 3.12, Linux | 2026-08-12 |
 | T2 | `greyscale_ambiguous_role_pairs == 0` | `0` — all 21 node-role pairs and 10 edge-role pairs differ in a non-colour channel | `uv run pytest tests/test_theme.py -q` (96 passed) | `claude/continuation-yq88jv` | CPython 3.12, Linux | 2026-08-12 |
