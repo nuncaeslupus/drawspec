@@ -114,6 +114,27 @@ def _font_family(stack: tuple[str, ...]) -> str:
 # ---------------------------------------------------------------------------
 
 
+def ink_inset(scene: Scene, theme: Theme) -> float:
+    """How far the ink reaches outside the scene's own extents.
+
+    A stroke straddles the line it is drawn on, so a shape sitting flush against
+    the edge of the drawing has half its outline outside it. A stack layer is the
+    obvious case: it spans the full canvas width, so its left and right borders
+    render at half the weight of its top and bottom, and the diagram looks like it
+    has inconsistent line weights. It does not — half of two of them is simply
+    missing.
+
+    The answer is that the viewBox is the bounds of the *ink*, not of the
+    geometry, so it is widened by half the heaviest stroke in the scene.
+    """
+    widths = [
+        theme.role_for(primitive.role).stroke_width
+        for primitive in scene.primitives
+        if not isinstance(primitive, TextRun)
+    ]
+    return max(widths, default=0.0) / 2
+
+
 def namespace_for(scene: Scene, theme: Theme, profile: str) -> str:
     """A short id prefix, derived from what is being drawn.
 
@@ -333,14 +354,24 @@ def emit(
 
     prefix = namespace or namespace_for(scene, resolved_theme, profile)
 
+    # The viewBox is the bounds of the ink, so a shape flush against the edge of
+    # the drawing keeps its whole outline instead of half of it.
+    inset = ink_inset(scene, resolved_theme)
+    box_width = scene.width + inset * 2
+    box_height = scene.height + inset * 2
+
     root = [
         ("xmlns", "http://www.w3.org/2000/svg"),
-        ("viewBox", f"0 0 {format_number(scene.width)} {format_number(scene.height)}"),
+        (
+            "viewBox",
+            f"{format_number(-inset)} {format_number(-inset)} "
+            f"{format_number(box_width)} {format_number(box_height)}",
+        ),
     ]
     if profile == "standalone":
         # Nothing to scale against in a linked file or a PDF converter, so the
         # drawing states its own size.
-        root += [("width", format_number(scene.width)), ("height", format_number(scene.height))]
+        root += [("width", format_number(box_width)), ("height", format_number(box_height))]
     root.append(("role", "img"))
 
     labels = []
@@ -457,5 +488,6 @@ __all__ = [
     "check_embedding_safety",
     "emit",
     "format_number",
+    "ink_inset",
     "namespace_for",
 ]

@@ -223,7 +223,7 @@ def _words(paragraph: str, measurer: TextMeasurer, size: float, default_font: st
                 _Word(
                     span=span,
                     text=piece,
-                    width=measurer.measure(piece, span.font, size).width,
+                    width=measurer.measure(piece, span.font, size, span.weight).width,
                 )
             )
     return words
@@ -249,7 +249,7 @@ def _measure_spans(spans: tuple[Span, ...], measurer: TextMeasurer, size: float)
     Per span rather than over the joined string, because a span boundary is a
     font change and no font kerns across one.
     """
-    return sum(measurer.measure(span.text, span.font, size).width for span in spans)
+    return sum(measurer.measure(span.text, span.font, size, span.weight).width for span in spans)
 
 
 def _width(words: list[_Word], measurer: TextMeasurer, size: float) -> float:
@@ -273,7 +273,7 @@ def _split(
         if word.text[position - 1] not in BREAK_AFTER:
             continue
         head = word.text[:position]
-        width = measurer.measure(head, word.span.font, size).width
+        width = measurer.measure(head, word.span.font, size, word.span.weight).width
         if width <= max_width:
             tail = word.text[position:]
             return (
@@ -281,7 +281,7 @@ def _split(
                 _Word(
                     span=word.span,
                     text=tail,
-                    width=measurer.measure(tail, word.span.font, size).width,
+                    width=measurer.measure(tail, word.span.font, size, word.span.weight).width,
                 ),
             )
     return None, word
@@ -289,7 +289,7 @@ def _split(
 
 def _fit_error(word: _Word, max_width: float, measurer: TextMeasurer, size: float) -> FitError:
     """The message is the product: what did not fit, by how much, and what to do."""
-    width = measurer.measure(word.text, word.span.font, size).width
+    width = measurer.measure(word.text, word.span.font, size, word.span.weight).width
     overflow = width - max_width
     return FitError(
         f"{word.text!r} measures {width:.1f} at {size:.1f}pt and has no break "

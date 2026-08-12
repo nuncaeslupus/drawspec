@@ -17,6 +17,7 @@ from drawspec.emit import (
     check_embedding_safety,
     emit,
     format_number,
+    ink_inset,
     namespace_for,
 )
 from drawspec.errors import EmitError
@@ -96,18 +97,48 @@ def test_emit_standalone_profile_leaves_no_unresolved_currentcolor() -> None:
 
 
 def test_emit_standalone_profile_carries_explicit_dimensions() -> None:
-    root = parse(emit(a_scene(), THEME, "standalone"))
-    assert root.get("width") == "320"
-    assert root.get("height") == "180"
-    assert root.get("viewBox") == "0 0 320 180"
+    scene = a_scene()
+    inset = ink_inset(scene, THEME)
+    root = parse(emit(scene, THEME, "standalone"))
+    assert root.get("width") == format_number(scene.width + inset * 2)
+    assert root.get("height") == format_number(scene.height + inset * 2)
 
 
 def test_emit_inline_profile_carries_a_viewbox_and_no_dimensions() -> None:
     """Inline, the diagram scales to whatever contains it."""
     root = parse(emit(a_scene(), THEME, "inline"))
-    assert root.get("viewBox") == "0 0 320 180"
+    assert root.get("viewBox")
     assert root.get("width") is None
     assert root.get("height") is None
+
+
+def test_emit_viewbox_is_the_bounds_of_the_ink_not_of_the_geometry() -> None:
+    """A stroke straddles the line it is drawn on, so it reaches outside.
+
+    A shape flush against the edge of a drawing would otherwise have half its
+    outline clipped away — which does not look like clipping, it looks like the
+    diagram has inconsistent line weights.
+    """
+    flush = Scene(
+        width=100.0, height=40.0, primitives=(Rect("step", x=0.0, y=0.0, width=100.0, height=40.0),)
+    )
+    inset = ink_inset(flush, THEME)
+    assert inset == THEME.roles["step"].stroke_width / 2
+
+    root = parse(emit(flush, THEME))
+    left, top, width, height = (float(value) for value in (root.get("viewBox") or "").split())
+    assert left == pytest.approx(-inset)
+    assert top == pytest.approx(-inset)
+    # The rect's left edge stroke spans [-inset, +inset]; it must be inside.
+    assert left <= -inset + 1e-9
+    assert left + width >= 100.0 + inset - 1e-9
+    assert top + height >= 40.0 + inset - 1e-9
+
+
+def test_emit_scene_with_only_text_needs_no_inset() -> None:
+    """Text has no stroke, so nothing reaches outside the geometry."""
+    words = Scene(width=50.0, height=20.0, primitives=(TextRun("step", text="A"),))
+    assert ink_inset(words, THEME) == 0.0
 
 
 def test_emit_scene_with_undeclared_role_raises_error() -> None:
