@@ -26,6 +26,11 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/drawspec"]
 
+# The published schema is committed once, at the documented path, and copied into
+# the wheel from there. Two copies in the repository would drift.
+[tool.hatch.build.targets.wheel.force-include]
+"schema/drawspec-v1.schema.json" = "drawspec/schemas/drawspec-v1.schema.json"
+
 [tool.ruff]
 line-length = 100
 target-version = "py312"

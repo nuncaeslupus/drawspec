@@ -7,9 +7,25 @@ available rather than a downstream symptom.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+from typing import Any
+
 
 class DrawspecError(Exception):
     """Base class for every drawspec failure."""
+
+
+class DocumentError(DrawspecError):
+    """The input document violates the schema.
+
+    Carries every violation found, not just the first, each located by JSON
+    pointer — so `drawspec validate` can print a document's whole story in one
+    pass and an author fixes it in one edit rather than five.
+    """
+
+    def __init__(self, message: str, violations: Sequence[Any] = ()) -> None:
+        super().__init__(message)
+        self.violations: tuple[Any, ...] = tuple(violations)
 
 
 class ThemeError(DrawspecError):
@@ -53,6 +69,7 @@ class FontSubstitutionWarning(UserWarning):
 
 
 __all__ = [
+    "DocumentError",
     "DrawspecError",
     "EmitError",
     "FitError",
