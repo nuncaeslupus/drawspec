@@ -42,10 +42,16 @@ RENDERED_DIR = REFERENCE_DIR / "rendered"
 #:
 #: The brief's second acceptance test names three corpus fixtures; one of them
 #: (`fixture-067`) is a chart, which no layout engine touches, so it has nothing
-#: to say about this decision. These three exercise the three graph kinds
-#: instead — a flow with two decisions and a back edge, a cycle, and a tree —
-#: which is what the engine choice actually rides on. T18 takes the brief's
-#: three end to end.
+#: to say about this decision. These three were chosen instead — a flow with two
+#: decisions and a back edge, a cycle, and a tree. T18 takes the brief's three
+#: end to end.
+#:
+#: `cycle-review` is here as a **cycle-breaking** test, which every engine needs
+#: to survive, and it is a fair one. Its *render* is not how a `cycle` document
+#: will be drawn: D-1 moved that kind to a parametric radial template, because a
+#: cycle through a layered engine comes out as a column of boxes with one line
+#: down through it. Do not read `cycle-review-*.svg` as a preview of the cycle
+#: kind — read it as two engines agreeing about how to break a loop.
 REFERENCES = ("flow-validation", "cycle-review", "tree-decisions")
 
 #: How wide a node box may be. A node the full canvas width leaves no room for
