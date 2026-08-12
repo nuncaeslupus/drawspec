@@ -3,208 +3,63 @@
 <!-- Written at session end. A new session reading this file can resume without additional context. -->
 
 **Date**: 2026-08-12
-**Branch**: `claude/continuation-yq88jv` · **PR**: [#5](https://github.com/nuncaeslupus/drawspec/pull/5)
+**Branch**: `claude/continuation-yq88jv` · **Last PR**: [#18](https://github.com/nuncaeslupus/drawspec/pull/18)
 
-PRs [#2](https://github.com/nuncaeslupus/drawspec/pull/2) (T1–T5),
-[#3](https://github.com/nuncaeslupus/drawspec/pull/3) (T6, T7) and
-[#4](https://github.com/nuncaeslupus/drawspec/pull/4) (T8) are **merged**. #5 (T12)
-was green on 3.13 and mid-run on 3.12 at handover — check it and merge.
+**The plan is finished.** Every task in `status/plan.md` — T1 to T18, plus T0,
+T6b and D-1 — is delivered, gated and merged. PRs #2 to #18 are all merged; the
+queue holds 21 rows, all `done`, and `queue_doctor` reports 0 findings.
 
 ## Last task
 
-- **ID**: `lo-2f7f`
-- **Title**: T12 — grid kinds: stack, timeline, columns
-- **Status at handover**: `done`; nothing claimed, nothing in flight
+- **ID**: `lo-c107`
+- **Title**: T18 — acceptance close-out
+- **Status at handover**: `done` ([#18](https://github.com/nuncaeslupus/drawspec/pull/18), merged); nothing claimed, nothing in flight
 
 ## What was done this session
 
-Nine tasks — half the plan. Every gate measured, never asserted; the numbers are
-in `status/plan.md`'s evidence log, and T7's decision is recorded there in full.
+Eight tasks, and four rendering defects that no gate had caught.
 
 | Task | Gate | Measured |
 |---|---|---|
-| `lo-b94c` T3 — text measurement | `text_measurement_error_ratio <= 0.02` | `0.0` |
-| `lo-4f9b` T2 — theme | `greyscale_ambiguous_role_pairs == 0` | `0` |
-| `lo-dcd5` T1 — Scene + emitter | `embedding_safety_violations == 0` | `0` per profile |
-| `lo-1c47` T4 — document + JSON Schema | `forbidden_field_acceptance_count == 0` | `0` of 26 |
-| `lo-533d` T5 — line breaking | `text_overflow_count == 0` | `0` |
-| `lo-b7a8` T6 — box geometry | `text_overflow_count == 0` | `0` |
-| `lo-4c51` T7 — engine spike | `candidate_engines_rendered == 2` | `2` |
-| `lo-e93c` T8 — layout engine | `node_overlap_count == 0` | `0` |
-| `lo-2f7f` T12 — grid kinds | `same_rank_size_variance == 0` | `0` |
+| T14 | `unlabelled_axis_count == 0` | `0` — impossible by construction: the schema requires both axis labels |
+| T9 | `edge_anchor_violations == 0` | `0` over 92 routes (3 graphs × 2 engines × 2 directions), measured against the shapes |
+| T10 | `label_overlap_count == 0` | `0` — five labels clear of every shape, every route segment and each other |
+| T11 | `text_overflow_count == 0` | `0` — every run inside the box measured for it; the gallery draws all 9 kinds |
+| T15 | `cli_exit_code_mismatches == 0` | `0` — every code in §5.4 asserted as a value |
+| T16 | `unrepresentable_failure_families == 11` | `11`, each by the schema or by an invariant, never by example |
+| T17 | `embedding_safety_violations == 0` per profile | `0` and `0`; the PDF conversion really runs in CI |
+| T18 | `nondeterministic_reruns == 0` | `0` in this interpreter and in two freshly seeded ones; renders with `PATH=""` |
 
-618 tests, `ruff check`, `ruff format --check`, strict `mypy` (over `src`, `tests`
-*and* `tools`) all clean; CI green on 3.12 and 3.13 for every merged PR.
+Suite: **868 passing, 1 skipped** (the PDF conversion, where no converter is
+installed). ruff, ruff format and strict mypy clean.
 
-**A document renders end to end.** `drawspec.render` exists and the three grid
-kinds go all the way from JSON to safe SVG in both profiles.
+## What looking at the output found
 
-## Decisions taken this session — do not relitigate
+Every one of these came from rendering the references and looking, not from a
+gate. The habit is worth keeping: **end a rendering task by running `make
+gallery` and opening it.**
 
-### The engine question is settled (T7)
+1. **Bold was measured with the regular face**, so the following run started 3.8
+   units early and landed on top of it. Weight is now threaded end to end.
+2. **Half of every flush stroke was outside the viewBox**, which read as uneven
+   line weight. The viewBox is now the bounds of the ink.
+3. **Ports landed on a diamond's bounding box**, so an arrow stopped in the empty
+   corner beside it, pointing at nothing. Anchors are projected onto the outline.
+4. **Route lanes hugged the boxes**, so a connector ran the width of its target
+   just above the border and read as an underline. Lanes are mid-gap now.
 
-**The direct layered implementation is the default.** The full decision with its
-measurements and escape route is in `status/plan.md` § "T7 decision". Short
-version: crossing quality did not separate the candidates at corpus scale, the
-layered engine is 25–56% tighter and therefore fits the canvas where grandalf
-does not, and grandalf is v0.8 dual GPLv2/EPL-1.0. `GrandalfEngine` **stays** in
-the tree, tested, as the escape route made concrete — two working implementations
-is the only way to know the seam is real. It is an optional `spike` extra, never
-a runtime dependency.
+## If work continues
 
-### Contract changes from the specification's sketch
+Nothing is queued. Candidates, none of them blocking:
 
-Both because §5.1's rejection table forbids the obvious spelling. **Update
-`status/specification.md` §5.1 if it is ever revised.**
-
-- A chart's axes are keyed **`horizontal`/`vertical`**, not `x`/`y`.
-- A series' values are **`data`**, not `points`.
-
-### Things later tasks must honour
-
-- **Arrow heads are real primitives, not SVG `<marker>` defs.** So **T9 must
-  produce head geometry**. The emitter's contract: an *edge-role* `Polygon` (or
-  closed `Path`) is a head — filled with the edge's colour, unstroked; an
-  *edge-role* open `Path` is the shaft.
-- **The layout reserves no column for long edges.** That slack is exactly what
-  made grandalf too wide. `layout.long_edges(layout, edges)` returns the edges
-  spanning more than one rank, including reversed back edges: **T9 routes those
-  around the drawing** rather than through the ranks.
-- **`Layout.reversed_edges`** names the edges the ranker flipped. Routing must
-  draw them in the author's direction, not the ranker's.
-- **`best_layout`** is where direction selection lives — it returns the fitting
-  direction, or the narrower attempt with `fits=False` when neither fits, because
-  the elastic fit gets a turn before anyone gives up.
-- **`Theme.with_scale` / `TypeScale.scaled` are the only way to scale type.**
-  There is deliberately no API reaching one level.
-- **`kinds/common.box_primitives`** is how every family turns a box into
-  primitives — never hand-build them. T7's spike did, drew every node as a
-  rectangle, and shipped two `decision` nodes as enormous rects with the label
-  adrift; the emitter now refuses a `Rect` whose role declares a shape other than
-  `rect`/`pill`, so it cannot recur. Adding a shape means one case in
-  `kinds/common.outline`.
-- **`kinds/__init__.IMPLEMENTED`** must gain each kind as its task lands, or
-  `render` will keep saying the kind is unimplemented.
-
-### Standing decisions from earlier in the session
-
-- Bundled generics are coverage-reduced **DejaVu** subsets (~300 kB for three),
-  regenerated by `tools/subset_fonts.py`. Family names are kept, so the SVG names
-  the family it measured.
-- The default theme's stacks **lead with the bundled generics**; a warning that
-  always fires is a warning that gets ignored. A consumer theme puts its own
-  page's family first.
-- Substitution is reported **only when the metrics actually changed**.
-- `[canvas] ink` is what `currentColor` resolves to in `standalone`.
-- Node shapes: `rect`, `pill`, `diamond`, `ellipse`, `none`. Fill patterns:
-  `none`, `solid`, `hatch`, `dots`. Both closed.
-- The JSON Schema is **generated** from the field tables in `drawspec/schema.py`,
-  committed once at `schema/drawspec-v1.schema.json`, copied into the wheel from
-  there. `make schema` regenerates; a test fails if it drifts.
-- `wrap` returns a `TextBlock`; `block.baseline(i)` is what centring uses.
-- A pill's usable width is computed exactly (flat span plus how far into the caps
-  the text's own height allows). Diamond and ellipse use their largest inscribed
-  rectangle — conservative on purpose.
-
-## What remains
-
-Nine tasks. **Four are unblocked right now**, and three of them are independent
-of each other — this is the batch worker fan-out is built for:
-
-| Task | | Notes |
-|---|---|---|
-| `lo-21c8` | D-1 — `cycle` as a parametric radial template | M. Deps met. A spec divergence: the plan had cycle behind the layout engine, the requirements put it with the shape kinds. |
-| `lo-a63e` | T6b — diamond/ellipse usable span | M. Deps met. Do before T11: it changes box sizes. |
-| `lo-f75a` | T13 — shape kinds (pyramid, rings) | M. Deps met. Uses `kinds/common`. |
-| `lo-0e20` | T14 — chart kind | L. Deps met. Axes are `horizontal`/`vertical`, data is `data`. |
-| `lo-7bfe` | T9 — orthogonal routing | L. Critical path. Read the three routing notes above first. |
-| `lo-b569` | T11 — graph kinds (**flow and tree only**) | L, but needs T9 → T10 first. Cycle left this task in D-1. |
-
-Then T10 (edge labels) → T11 → T15 (CLI) and T16 (the 11 failure families), with
-T17 (embedding targets) and T18 (close-out) last.
-
-### One divergence found and seeded
-
-**D-1 (`lo-21c8`): `cycle` was in the wrong family.** `docs/theme-requirements.md`
-§6 lists cycles under "Specific shapes" with pyramids and rings — *"These are
-parametric templates, not graph layout"* — but `status/plan.md` T11 had it behind
-the layout engine and orthogonal routing. A five-node cycle came out as a column
-of boxes with all five edges on one vertical line. T9 cannot repair that; the
-layout is what is wrong. The plan, its dependency graph and T11's payload are all
-corrected; the input contract is untouched, because a cycle is still `nodes` and
-`edges` and only the renderer moves.
-
-### Open, and worth the user's attention
-
-- **`fit_error_rate` is not optional bookkeeping.** T7's spike found that no
-  engine can fit an eleven-node tree in a 640 canvas in either direction. That is
-  the style rules working as intended, but it means real documents will be
-  refused, and the `FitError` message is the product. Measure the rate over the
-  fixture set in T18 and treat a high one as a theme-tuning signal.
-- **Diagram titles** — supported as `[title] show`, default `false`. The question
-  with the consumer is still unanswered, and nothing reads the switch yet.
-- **Worker fan-out** — this session worked serially throughout, because subagents
-  were not requested. T13 and T14 are a genuinely independent pair.
-
-## How to continue
-
-1. `export ARSENAL_QUEUE_DIR="$(claude-arsenal/bin/queue_branch.sh)"` — the
-   selector, `claim.sh` and `release.sh` all read the coordination worktree, not
-   the main tree.
-2. Merge PR #5 if CI is green, then restart the branch from the new `main`
-   (`git checkout -B claude/continuation-yq88jv origin/main`) — the designated
-   branch is reused, so each landed PR means a fresh start from main.
-3. `claude-arsenal/bin/queue_eval.sh` for the next task.
-4. Write the payload's named tests **RED first**. That discipline found six real
-   defects this session, three of them in code from earlier tasks in the same PR
-   — including a chart contract that used forbidden field names and a font
-   substitution warning that fired when nothing had been substituted.
-5. One PR per task or small group, merged when green. Merge commits, not squashes,
-   so the evidence log stays traceable to the change that produced each number.
-
-## Queue snapshot at handover
-
-```
-total=18  open=9  in_progress=0  done=9  merged=0  blocked=0  escalated=0
-
-  lo-dcd5  [done]  T1: Scene primitives, SVG emitter with both embedding profiles
-  lo-4f9b  [done]  T2: Theme dataclass, TOML loader, role vocabularies, elastic fit
-  lo-b94c  [done]  T3: Text measurement from font files via fonttools
-  lo-1c47  [done]  T4: Document model, validation, published JSON Schema
-  lo-533d  [done]  T5: Line breaking and text block sizing
-  lo-b7a8  [done]  T6: Box geometry, vertical centring, elastic fit
-  lo-4c51  [done]  T7: SPIKE — LayoutEngine: grandalf vs direct
-  lo-e93c  [done]  T8: The chosen default layout engine
-  lo-2f7f  [done]  T12: Grid kinds — stack, timeline, columns
-  lo-7bfe  [open]  T9: Orthogonal routing, border anchoring          ← unblocked
-  lo-9dd6  [open]  T10: Edge label placement, overlap avoidance      deps=T9
-  lo-b569  [open]  T11: Graph kinds — flow, tree, cycle              deps=T10
-  lo-f75a  [open]  T13: Shape kinds — pyramid, concentric rings      ← unblocked
-  lo-0e20  [open]  T14: Chart kind — scales, ticks, axis labels      ← unblocked
-  lo-38d8  [open]  T15: CLI                                          deps=T11..T14
-  lo-1291  [open]  T16: The acceptance suite — 11 failure families   deps=T11..T14
-  lo-30b0  [open]  T17: Embedding targets — Markdown, HTML, PDF      deps=T15
-  lo-c107  [open]  T18: Acceptance close-out                         deps=T16,T17
-```
-
-## PR audit at handover
-
-| PR | State | CI | Reviews | Notes |
-|---|---|---|---|---|
-| [#2](https://github.com/nuncaeslupus/drawspec/pull/2) | merged | green | none | T1–T5 |
-| [#3](https://github.com/nuncaeslupus/drawspec/pull/3) | merged | green | none | T6, T7 |
-| [#4](https://github.com/nuncaeslupus/drawspec/pull/4) | merged | green | none | T8 |
-| [#5](https://github.com/nuncaeslupus/drawspec/pull/5) | open | 3.13 green, 3.12 running | none | T12 — merge when green |
-
-No `escalated` tasks. `queue_doctor.sh`: 0 errors, 0 warnings over 18 tasks.
-
-## Repository hygiene
-
-The corpus under `corpus/fixtures/` is **anonymized** — the originals belong to a
-different project. Never restore original text, and do not add any content from
-that project. Everything authored in this repo is in **English**.
-
-`docs/reference/` holds the three graph reference documents and, under
-`rendered/`, T7's committed comparison output. Those SVGs are **frozen evidence**
-for a completed decision — regenerate them only if the engines change, and if you
-do, check the decision table in `status/plan.md` still holds.
+- **Edge bundling.** Three sibling edges leaving one node run parallel a few
+  units apart before they diverge, which reads as one thick line at small sizes.
+  A shared trunk would look better; port spreading is what keeps a decision's two
+  branches apart, so the two cases want different treatment.
+- **The node width share is one tuned number** (a quarter of the canvas). It is
+  what lets the reference tree fit at all, and it makes a `down` flow narrower
+  than it needs to be. A per-direction limit, or a second sizing pass, would do
+  better than one constant.
+- **`docs/gallery/` is committed** so a diff shows what a change did to the
+  pictures. It has to be regenerated when rendering changes, and nothing enforces
+  that yet.
