@@ -22,6 +22,17 @@ class ThemeError(DrawspecError):
     """
 
 
+class EmitError(DrawspecError):
+    """The emitter refused to produce SVG.
+
+    Either a primitive carries a role the theme does not declare — a programming
+    error in a rendering family, since a scene is built by drawspec and not by
+    the author — or the SVG it was about to return failed its own embedding-safety
+    check. Both are refusals rather than warnings: bad SVG that reaches a page is
+    found by a reader, not by a test.
+    """
+
+
 class FitError(DrawspecError):
     """Content cannot fit at the theme's minimum legible size.
 
@@ -43,6 +54,7 @@ class FontSubstitutionWarning(UserWarning):
 
 __all__ = [
     "DrawspecError",
+    "EmitError",
     "FitError",
     "FontSubstitutionWarning",
     "ThemeError",

@@ -183,15 +183,23 @@ class Canvas:
 
     width: float = 640.0
     min_legible_size: float = 9.0
+    ink: str = "#1a1a1a"
+    """What `currentColor` resolves to in the `standalone` profile.
+
+    A linked `.svg` or a PDF conversion has nothing to inherit from, so the ink
+    has to be stated somewhere; stating it here keeps it a theme decision rather
+    than a converter default.
+    """
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> Canvas:
-        _reject_unknown(mapping, ("width", "min_legible_size"), "[canvas]")
+        _reject_unknown(mapping, ("width", "min_legible_size", "ink"), "[canvas]")
         return cls(
             width=_number(mapping.get("width", 640.0), "[canvas] width"),
             min_legible_size=_number(
                 mapping.get("min_legible_size", 9.0), "[canvas] min_legible_size"
             ),
+            ink=_colour(mapping.get("ink", "#1a1a1a"), "[canvas] ink"),
         )
 
 
@@ -592,12 +600,33 @@ class Theme:
         `stroke` in the output that is not in this set, which is what stops a
         colour being decided anywhere but here.
         """
-        colours: set[str] = {"currentColor", "none"}
+        colours: set[str] = {"currentColor", "none", self.canvas.ink}
         for role in self.roles.values():
             colours.update(role.colours)
         for edge_role in self.edge_roles.values():
             colours.update(edge_role.colours)
         return frozenset(colours)
+
+    def declares(self, role: str) -> bool:
+        """True when `role` is in either vocabulary this theme declares."""
+        return role in self.roles or role in self.edge_roles
+
+    def role_for(self, role: str) -> NodeRole | EdgeRole:
+        """The appearance declared for `role`.
+
+        Raises:
+            KeyError: the theme declares no such role. The vocabularies are
+                disjoint, so there is never a question of which one was meant.
+        """
+        if role in self.roles:
+            return self.roles[role]
+        if role in self.edge_roles:
+            return self.edge_roles[role]
+        raise KeyError(
+            f"the theme declares no role {role!r}; it declares "
+            f"{', '.join(sorted(self.roles))} for nodes and "
+            f"{', '.join(sorted(self.edge_roles))} for edges"
+        )
 
     def with_scale(self, factor: float) -> Theme:
         """This theme with the whole type scale multiplied by `factor`.
