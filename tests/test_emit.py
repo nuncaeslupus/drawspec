@@ -117,6 +117,28 @@ def test_emit_scene_with_undeclared_role_raises_error() -> None:
     assert "swimlane" in str(error.value)
 
 
+def test_emit_rect_tagged_with_a_non_rectangular_role_raises() -> None:
+    """A `decision` drawn as a rectangle is silent, and looks like a render bug.
+
+    It produces a box sized for a diamond's inscribed rectangle — so the label
+    floats in a lot of empty space — and nothing about the SVG says why. This
+    exact mistake shipped in T7's spike harness, so it is checked rather than
+    left as a convention.
+    """
+    scene = Scene(width=40.0, height=40.0, primitives=(Rect("decision", width=30.0, height=20.0),))
+    with pytest.raises(EmitError) as error:
+        emit(scene, THEME)
+    message = str(error.value)
+    assert "decision" in message and "diamond" in message
+    assert "box_primitives" in message
+
+
+def test_emit_rect_is_fine_for_a_role_the_theme_draws_as_one() -> None:
+    for role in ("step", "start", "note", "group", "emphasis", "terminal"):
+        scene = Scene(width=40.0, height=40.0, primitives=(Rect(role, width=30.0, height=20.0),))
+        assert emit(scene, THEME)
+
+
 def test_emit_same_scene_twice_produces_identical_bytes() -> None:
     """`nondeterministic_reruns == 0` for the emitter's own contribution."""
     assert emit(a_scene(), THEME).encode() == emit(a_scene(), THEME).encode()

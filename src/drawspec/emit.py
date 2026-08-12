@@ -194,6 +194,18 @@ def _element(primitive: Primitive, namespace: str, theme: Theme, profile: str) -
     paint = _shape_attributes(primitive, role, namespace, theme, profile)
 
     if isinstance(primitive, Rect):
+        # A rectangle may only stand for a role the theme draws as one. Drawing a
+        # `decision` as a rect is silent and looks like a rendering bug — it
+        # produces a box sized for a diamond's inscribed rectangle, so the label
+        # floats in a lot of empty space. It happened, in T7's spike harness,
+        # and survived review; hence a check rather than a convention.
+        if isinstance(role, NodeRole) and role.shape not in ("rect", "pill"):
+            raise EmitError(
+                f"a Rect is tagged with role {primitive.role!r}, which theme "
+                f"{theme.name!r} draws as a {role.shape!r}. Build shapes with "
+                f"drawspec.kinds.common.box_primitives, which reads the shape from "
+                f"the role."
+            )
         geometry = [
             ("x", format_number(primitive.x)),
             ("y", format_number(primitive.y)),

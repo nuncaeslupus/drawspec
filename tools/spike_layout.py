@@ -25,11 +25,12 @@ from pathlib import Path
 
 from drawspec.emit import emit
 from drawspec.geometry import normalise, size_box
+from drawspec.kinds.common import box_primitives
 from drawspec.layout.base import Layout, LayoutEdge, LayoutEngine, LayoutNode, Spacing
 from drawspec.layout.grandalf_engine import GrandalfEngine
 from drawspec.layout.layered import LayeredEngine
 from drawspec.scene import Path as ScenePath
-from drawspec.scene import Rect, Scene, TextRun
+from drawspec.scene import Primitive, Scene
 from drawspec.schema import Document, load_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import Theme, load_theme
@@ -156,12 +157,19 @@ def measure(
 def to_scene(document: Document, layout: Layout, theme: Theme, measurer: TextMeasurer) -> Scene:
     """A rough Scene for looking at: boxes where they landed, straight edges.
 
-    Straight centre-to-centre edges are wrong on purpose — routing is T9. Drawing
-    them anyway is what makes a crossing visible to the eye rather than only in a
-    count.
+    Boxes are drawn through `kinds.common.box_primitives`, the same path the real
+    families use, so a `decision` comes out as the diamond its role declares and
+    its text is centred. An earlier version of this harness built the primitives
+    itself and drew every node as a rectangle — which made a diamond-sized box
+    look like an enormous rectangle with the label adrift in it, and was the whole
+    of what looked wrong about these pictures.
+
+    Straight centre-to-centre edges *are* still wrong on purpose — routing is T9,
+    so an edge here starts inside its source box and ends inside its target. What
+    these pictures are for is judging where the boxes went.
     """
     margin = theme.box.padding.horizontal
-    primitives: list[object] = []
+    primitives: list[Primitive] = []
 
     for edge in document.edges:
         source = layout.placements[edge.source]
@@ -190,27 +198,12 @@ def to_scene(document: Document, layout: Layout, theme: Theme, measurer: TextMea
             .resized(width=place.width, height=place.height)
             .moved_to(place.x + margin, place.y + margin)
         )
-        primitives.append(Rect(node.role, x=box.x, y=box.y, width=box.width, height=box.height))
-        for line, baseline in zip(box.block.lines, box.baselines(), strict=True):
-            offset = box.usable_left + box.padding.left
-            for span in line.spans:
-                primitives.append(
-                    TextRun(
-                        node.role,
-                        x=offset,
-                        y=baseline,
-                        text=span.text,
-                        level=box.level,
-                        font=span.font,
-                        weight=span.weight,
-                    )
-                )
-                offset += measurer.measure(span.text, span.font, theme.scale[box.level]).width
+        primitives.extend(box_primitives(box, theme, measurer))
 
     return Scene(
         width=layout.width + margin * 2,
         height=layout.height + margin * 2,
-        primitives=tuple(primitives),  # type: ignore[arg-type]
+        primitives=tuple(primitives),
         title=document.title,
         description=document.description,
     )
