@@ -15,7 +15,9 @@ from drawspec.layout.base import (
     LayoutNode,
     Placement,
     Spacing,
+    best_layout,
     break_cycles,
+    long_edges,
     rank_nodes,
     validate,
 )
@@ -30,7 +32,9 @@ __all__ = [
     "LayoutNode",
     "Placement",
     "Spacing",
+    "best_layout",
     "break_cycles",
+    "long_edges",
     "rank_nodes",
     "validate",
 ]
