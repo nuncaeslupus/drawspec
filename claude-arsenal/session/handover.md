@@ -78,7 +78,10 @@ Both because §5.1's rejection table forbids the obvious spelling. **Update
 - **`Theme.with_scale` / `TypeScale.scaled` are the only way to scale type.**
   There is deliberately no API reaching one level.
 - **`kinds/common.box_primitives`** is how every family turns a box into
-  primitives. T13 and T14 use it; adding a shape means one case in
+  primitives — never hand-build them. T7's spike did, drew every node as a
+  rectangle, and shipped two `decision` nodes as enormous rects with the label
+  adrift; the emitter now refuses a `Rect` whose role declares a shape other than
+  `rect`/`pill`, so it cannot recur. Adding a shape means one case in
   `kinds/common.outline`.
 - **`kinds/__init__.IMPLEMENTED`** must gain each kind as its task lands, or
   `render` will keep saying the kind is unimplemented.
@@ -110,6 +113,7 @@ of each other — this is the batch worker fan-out is built for:
 
 | Task | | Notes |
 |---|---|---|
+| `lo-a63e` | T6b — diamond/ellipse usable span | M. Deps met. Do before T11: it changes box sizes. |
 | `lo-f75a` | T13 — shape kinds (pyramid, rings) | M. Deps met. Uses `kinds/common`. |
 | `lo-0e20` | T14 — chart kind | L. Deps met. Axes are `horizontal`/`vertical`, data is `data`. |
 | `lo-7bfe` | T9 — orthogonal routing | L. Critical path. Read the three routing notes above first. |
