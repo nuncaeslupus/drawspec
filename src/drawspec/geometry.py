@@ -46,9 +46,9 @@ FIT_STEP: Final = 0.01
 
 _SQRT_HALF: Final = sqrt(0.5)
 
-#: How many passes a pill's width/height fixed point is given before it is
-#: called a failure to fit. Three is one more than any settling case observed.
-_PILL_PASSES: Final = 3
+#: How many passes a shape's width/height fixed point is given before it is
+#: called a failure to fit. Four is one more than any settling case observed.
+_SHAPE_PASSES: Final = 4
 
 
 # ---------------------------------------------------------------------------
@@ -64,36 +64,46 @@ def usable_span(
     Getting this wrong is how text ends up crossing a sloped side — a failure
     that looks like a rendering bug but is really a sizing one.
 
-    A rect can use all of itself. A diamond's and an ellipse's largest inscribed
-    rectangles are half the box and the axes over root two respectively; both are
-    the conventional proportions for these shapes, and both are conservative,
-    which is the right direction to be wrong in.
+    A rect can use all of itself. Every other shape narrows away from its middle,
+    and the rule that matters for all three of them is the same: **text only
+    reaches the narrow part if it is tall enough to get there.** A short label in
+    a diamond sits in the wide band across the middle, and sizing it against the
+    diamond's largest inscribed rectangle — half the width — makes the box a third
+    wider than it needs to be, for nothing.
 
-    A pill is the one shape worth computing exactly. Its flat span is its width
-    less its two semicircular caps, but text only reaches the narrowest part of a
-    cap if it is as tall as the pill itself — so the usable width is the flat span
-    *plus* however far into the caps the text's own height allows. Treating the
-    whole cap as unusable would force a short label into a near-circular box, and
-    a `start` node twice the width of the `step` beside it is a visible defect.
+    So each shape is solved at the text's own height:
+
+    * A **pill**'s usable width is its flat span plus however far into the two
+      semicircular caps the text's height allows.
+    * A **diamond** of height `H` holding text of height `h` is `1 - h / H` of its
+      width at the text's widest point.
+    * An **ellipse** is `sqrt(1 - (h / H)^2)` of its width, by the same argument.
 
     Args:
-        content_height: how tall the text is. Defaults to the box height, which
-            is the conservative case — text filling the box top to bottom.
+        content_height: how tall the text is. When omitted, the answer is the
+            largest inscribed rectangle — the conservative reading, for a caller
+            that does not yet know what it is placing.
 
     Raises:
         KeyError: `shape` is not one drawspec draws.
     """
-    inner_height = height if content_height is None else min(content_height, height)
     if shape in ("rect", "none"):
         return width, height
     if shape == "pill":
+        inner = height if content_height is None else min(content_height, height)
         radius = height / 2
-        reach = sqrt(max(radius**2 - (inner_height / 2) ** 2, 0.0))
+        reach = sqrt(max(radius**2 - (inner / 2) ** 2, 0.0))
         return max(width - height + 2 * reach, 0.0), height
     if shape == "diamond":
-        return width / 2, height / 2
+        if content_height is None:
+            return width / 2, height / 2
+        ratio = min(content_height / height, 1.0) if height else 1.0
+        return max(width * (1 - ratio), 0.0), height
     if shape == "ellipse":
-        return width * _SQRT_HALF, height * _SQRT_HALF
+        if content_height is None:
+            return width * _SQRT_HALF, height * _SQRT_HALF
+        ratio = min(content_height / height, 1.0) if height else 1.0
+        return width * sqrt(max(1 - ratio**2, 0.0)), height
     raise KeyError(f"unknown shape {shape!r}")
 
 
@@ -118,10 +128,17 @@ def outer_size(
         # The caps cost their own diameter less how far the text reaches into them.
         reach = sqrt(max((height / 2) ** 2 - (content_height / 2) ** 2, 0.0))
         return width + height - 2 * reach, height
+
+    # A diamond and an ellipse keep the *height* the largest-inscribed-rectangle
+    # reading gives them, and solve only the width at the text's own height. That
+    # is where the saving is: a taller shape is a narrower one for the same text,
+    # so shrinking the height as well would hand the width straight back.
     if shape == "diamond":
-        return width * 2, height * 2
+        outer_height = height * 2
+        return width / (1 - content_height / outer_height), outer_height
     if shape == "ellipse":
-        return width / _SQRT_HALF, height / _SQRT_HALF
+        outer_height = height / _SQRT_HALF
+        return width / sqrt(1 - (content_height / outer_height) ** 2), outer_height
     raise KeyError(f"unknown shape {shape!r}")
 
 
@@ -286,8 +303,8 @@ def _wrap_to(
 ) -> TextBlock:
     """Wrap `text` to whatever width `shape` leaves inside a box of `limit`.
 
-    A pill is the one shape whose usable width depends on its own height, and its
-    height depends on the line count, which depends on the width. So it is
+    Every shape but a rect has a usable width that depends on its own height, and
+    its height depends on the line count, which depends on the width. So it is
     iterated to a fixed point rather than solved: each pass wraps to the width the
     previous pass's height leaves. The budget shrinks monotonically with the line
     count, so this either settles or runs out of width — and running out is a
@@ -296,15 +313,14 @@ def _wrap_to(
     padding = theme.box.padding
 
     def budget_for(content_height: float) -> float:
-        box_height = content_height + padding.vertical
+        box_height = outer_size(shape, 0.0, content_height, padding)[1]
         return usable_span(shape, limit, box_height, content_height)[0] - padding.horizontal
 
-    if shape != "pill":
-        # Every other shape's usable width is a fixed fraction of the box, so the
-        # first budget is the only budget.
+    if shape in ("rect", "none"):
+        # A rect can use all of itself, so the first budget is the only budget.
         return wrap(
             text,
-            _positive(usable_span(shape, limit, limit)[0] - padding.horizontal, shape, limit),
+            _positive(limit - padding.horizontal, shape, limit),
             measurer,
             theme=theme,
             level=level,
@@ -317,7 +333,7 @@ def _wrap_to(
         theme=theme,
         level=level,
     )
-    for _ in range(_PILL_PASSES):
+    for _ in range(_SHAPE_PASSES):
         candidate = wrap(
             text,
             _positive(budget_for(block.height), shape, limit),
@@ -330,7 +346,7 @@ def _wrap_to(
         block = candidate
     raise FitError(
         f"a {shape} of width {limit:.1f} cannot settle on a line count for this "
-        f"text: each pass that adds a line narrows the span the caps leave. "
+        f"text: each pass that adds a line narrows the span the shape leaves. "
         f"Restructure — a {shape} is for a short label."
     )
 

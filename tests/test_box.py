@@ -183,8 +183,50 @@ def test_outer_size_and_usable_span_are_inverses(shape: str) -> None:
 
 
 def test_diamond_box_is_larger_than_a_rect_holding_the_same_text() -> None:
-    """A diamond's inscribed rectangle is half its box, so the box has to grow."""
+    """A diamond narrows away from its middle, so the box has to grow."""
     assert box(SHORT, role="decision").width > box(SHORT, role="step").width
+
+
+def test_diamond_usable_width_grows_as_its_text_gets_shorter() -> None:
+    """The span is a function of the content height, not a fixed fraction.
+
+    This is the whole of T6b: a short label sits in the wide band across the
+    diamond's middle, and charging it the largest-inscribed-rectangle price makes
+    the box a third wider than it needs to be.
+    """
+    tall = usable_span("diamond", 200.0, 100.0, 80.0)[0]
+    short = usable_span("diamond", 200.0, 100.0, 20.0)[0]
+    assert short > tall
+    assert short == pytest.approx(200.0 * 0.8)
+    assert tall == pytest.approx(200.0 * 0.2)
+
+
+def test_diamond_holding_a_two_line_label_is_narrower_than_the_inscribed_model() -> None:
+    """Measured on the case that prompted this: a decision with a real question in it."""
+    question = "Is the payload well formed?"
+    result = box(question, role="decision", max_width=268.8)
+    inscribed = 2 * (result.block.width + THEME.box.padding.horizontal)
+    assert result.width < inscribed * 0.8
+
+
+def test_ellipse_usable_width_grows_as_its_text_gets_shorter() -> None:
+    tall = usable_span("ellipse", 200.0, 100.0, 90.0)[0]
+    short = usable_span("ellipse", 200.0, 100.0, 20.0)[0]
+    assert short > tall
+
+
+def test_ellipse_text_stays_inside_the_curve() -> None:
+    """Every corner of the text satisfies the ellipse inequality."""
+    curved = load_theme({"version": 1, "name": "curved", "role": {"note": {"shape": "ellipse"}}})
+    result = size_box(
+        SHORT, theme=curved, measurer=MEASURER, role="note", level="body", max_width=300.0
+    )
+    left, top, right, bottom = result.content_bounds()
+    radius_x, radius_y = result.width / 2, result.height / 2
+    for x, y in ((left, top), (right, top), (left, bottom), (right, bottom)):
+        offset_x = (x - radius_x) / radius_x
+        offset_y = (y - radius_y) / radius_y
+        assert offset_x**2 + offset_y**2 <= 1.0 + 1e-9, (x, y)
 
 
 def test_diamond_text_stays_inside_the_sloped_sides() -> None:
