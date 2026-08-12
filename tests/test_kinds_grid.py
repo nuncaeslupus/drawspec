@@ -273,8 +273,13 @@ def test_render_at_two_widths_produces_two_drawings() -> None:
     """One document, several widths, without editing it."""
     narrow = render(document("stack", *LAYERS, width=400.0))
     wide = render(document("stack", *LAYERS, width=800.0))
-    assert 'viewBox="0 0 400' in narrow
-    assert 'viewBox="0 0 800' in wide
+    assert _content_width(narrow) == pytest.approx(400.0)
+    assert _content_width(wide) == pytest.approx(800.0)
+
+
+def _content_width(svg: str) -> float:
+    """The drawing's own width, from a layer that spans it."""
+    return max(float(width) for width in re.findall(r'<rect[^>]* width="([\d.]+)"', svg))
 
 
 def test_render_applies_the_elastic_fit_when_content_is_tight() -> None:

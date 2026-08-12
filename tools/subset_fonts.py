@@ -50,12 +50,20 @@ UNICODES = ",".join(
     ]
 )
 
-# role -> DejaVu file name. The role is the name drawspec knows the font by; the
-# family name inside the file stays "DejaVu Sans" and friends.
+# (role, weight) -> DejaVu file name. The role is the name drawspec knows the
+# font by; the family name inside the file stays "DejaVu Sans" and friends.
+#
+# The bold faces are here because **bold** is a semantic span an author may
+# write, and a span that is *drawn* bold has to be *measured* bold. Measuring it
+# with the regular face under-counts its width — by 3.8 units in one eleven-point
+# word — so the run after it starts early and lands on top of it.
 FAMILIES = {
-    "sans": "DejaVuSans.ttf",
-    "serif": "DejaVuSerif.ttf",
-    "mono": "DejaVuSansMono.ttf",
+    ("sans", "normal"): "DejaVuSans.ttf",
+    ("serif", "normal"): "DejaVuSerif.ttf",
+    ("mono", "normal"): "DejaVuSansMono.ttf",
+    ("sans", "bold"): "DejaVuSans-Bold.ttf",
+    ("serif", "bold"): "DejaVuSerif-Bold.ttf",
+    ("mono", "bold"): "DejaVuSansMono-Bold.ttf",
 }
 
 DEFAULT_SOURCE_DIR = Path("/usr/share/fonts/truetype/dejavu")
@@ -87,16 +95,17 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    for role, filename in sorted(FAMILIES.items()):
+    for (role, weight), filename in sorted(FAMILIES.items()):
         source = args.source_dir / filename
         if not source.is_file():
             print(f"missing source font: {source}", file=sys.stderr)
             return 1
-        destination = args.output_dir / f"{role}.ttf"
+        stem = role if weight == "normal" else f"{role}-{weight}"
+        destination = args.output_dir / f"{stem}.ttf"
         subset(source, destination)
         before = source.stat().st_size // 1024
         after = destination.stat().st_size // 1024
-        print(f"{role}: {filename} {before} kB -> {destination.name} {after} kB")
+        print(f"{role} {weight}: {filename} {before} kB -> {destination.name} {after} kB")
     return 0
 
 

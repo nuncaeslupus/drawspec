@@ -29,6 +29,11 @@ from fontTools.ttLib import TTFont, TTLibError
 #: Font roles drawspec knows. A theme names its stacks with these keys.
 FONT_ROLES: Final = ("sans", "serif", "mono")
 
+#: The weights a span can be set in. Bold is a *measured* weight, not a rendering
+#: hint: a run drawn bold and measured regular is 3.8 units narrow in one
+#: eleven-point word, which puts the next run on top of it.
+FONT_WEIGHTS: Final = ("normal", "bold")
+
 #: CSS generic keywords an author or theme may name in a stack, mapped onto the
 #: role whose bundled font satisfies them. Naming one of these is a request for
 #: the generic, so it terminates a stack without being a failed lookup.
@@ -72,18 +77,25 @@ _NAME_TYPOGRAPHIC_FAMILY: Final = 16
 #: name without further qualification means.
 _REGULAR_SUBFAMILIES: Final = frozenset({"regular", "book", "roman", "normal", ""})
 
+#: Subfamily names that mark the upright bold face. Italics are excluded: a
+#: bold-italic face is not what `**bold**` asks for.
+_BOLD_SUBFAMILIES: Final = frozenset({"bold", "semibold", "demibold", "heavy", "black"})
+
 _FONTS_DIR: Final = Path(__file__).resolve().parent.parent / "fonts"
 
 
-def bundled_font_path(role: str) -> Path:
-    """The bundled generic font file for `role`.
+def bundled_font_path(role: str, weight: str = "normal") -> Path:
+    """The bundled generic font file for `role` at `weight`.
 
     Raises:
-        KeyError: `role` is not one of `FONT_ROLES`.
+        KeyError: `role` or `weight` is not one drawspec knows.
     """
     if role not in FONT_ROLES:
         raise KeyError(f"unknown font role {role!r}; expected one of {', '.join(FONT_ROLES)}")
-    return _FONTS_DIR / f"{role}.ttf"
+    if weight not in FONT_WEIGHTS:
+        raise KeyError(f"unknown weight {weight!r}; expected one of {', '.join(FONT_WEIGHTS)}")
+    stem = role if weight == "normal" else f"{role}-{weight}"
+    return _FONTS_DIR / f"{stem}.ttf"
 
 
 @cache
@@ -112,7 +124,10 @@ class ResolvedFont:
     requested: str
     """The first family the stack named — what the author asked for."""
 
-    substituted: bool
+    weight: str = "normal"
+    """The weight this file is the face for."""
+
+    substituted: bool = False
     """True when `family` is not what `requested` asked for."""
 
 
@@ -333,32 +348,31 @@ class FontIndex:
 
     def __init__(self, search_paths: tuple[Path, ...]) -> None:
         self._search_paths = search_paths
-        self._index: dict[str, Path] | None = None
+        self._index: dict[tuple[str, str], Path] | None = None
 
     @property
-    def families(self) -> dict[str, Path]:
+    def families(self) -> dict[tuple[str, str], Path]:
         if self._index is None:
             self._index = self._build()
         return self._index
 
-    def _build(self) -> dict[str, Path]:
-        index: dict[str, Path] = {}
-        regular: set[str] = set()
+    def _build(self) -> dict[tuple[str, str], Path]:
+        index: dict[tuple[str, str], Path] = {}
         for directory in self._search_paths:
             if not directory.is_dir():
                 continue
             for path in sorted(directory.rglob("*")):
                 if path.suffix.lower() not in FONT_SUFFIXES or not path.is_file():
                     continue
-                self._add(path, index, regular)
+                self._add(path, index)
         return index
 
     @staticmethod
-    def _add(path: Path, index: dict[str, Path], regular: set[str]) -> None:
+    def _add(path: Path, index: dict[tuple[str, str], Path]) -> None:
         try:
             font = TTFont(path, fontNumber=0, lazy=True)
             family = read_family_name(font)
-            is_regular = _read_subfamily(font).strip().lower() in _REGULAR_SUBFAMILIES
+            subfamily = _read_subfamily(font).strip().lower()
             font.close()
         except (TTLibError, OSError, KeyError, UnicodeDecodeError):
             # An unreadable font file is not drawspec's problem to report: it is
@@ -366,16 +380,18 @@ class FontIndex:
             return
         if not family:
             return
-        key = family.strip().lower()
-        # First win, except that a Regular face displaces a styled one — asking
-        # for "DejaVu Sans" must not land on DejaVu Sans Bold.
-        if key not in index or (is_regular and key not in regular):
-            index[key] = path
-        if is_regular:
-            regular.add(key)
+        # Only the upright faces are indexed. An italic is not what any span in
+        # drawspec's vocabulary asks for, and a bold-italic is not `**bold**`.
+        if subfamily in _REGULAR_SUBFAMILIES:
+            weight = "normal"
+        elif subfamily in _BOLD_SUBFAMILIES:
+            weight = "bold"
+        else:
+            return
+        index.setdefault((family.strip().lower(), weight), path)
 
-    def lookup(self, family: str) -> Path | None:
-        return self.families.get(family.strip().lower())
+    def lookup(self, family: str, weight: str = "normal") -> Path | None:
+        return self.families.get((family.strip().lower(), weight))
 
 
 @lru_cache(maxsize=8)
@@ -394,7 +410,7 @@ def default_search_paths() -> tuple[Path, ...]:
 
 
 def resolve_stack(
-    role: str, stack: tuple[str, ...], search_paths: tuple[Path, ...]
+    role: str, stack: tuple[str, ...], search_paths: tuple[Path, ...], weight: str = "normal"
 ) -> ResolvedFont:
     """Resolve one family stack to a single font file.
 
@@ -406,12 +422,12 @@ def resolve_stack(
     Raises:
         KeyError: `role` is not one of `FONT_ROLES`.
     """
-    bundled = bundled_font_path(role)  # validates the role before anything else
+    bundled = bundled_font_path(role, weight)  # validates both before anything else
     index = _index_for(search_paths)
     requested = stack[0] if stack else GENERIC_KEYWORDS_INVERSE[role]
 
     for position, entry in enumerate(stack):
-        path = _resolve_entry(entry, index)
+        path = _resolve_entry(entry, index, weight)
         if path is None:
             continue
         family = load_font(path).family
@@ -420,6 +436,7 @@ def resolve_stack(
             family=family,
             path=path,
             requested=requested,
+            weight=weight,
             # Falling through the stack is only a *substitution* if the metrics
             # changed. Asking for "DejaVu Sans" and getting the bundled copy of
             # DejaVu Sans is the font that was asked for, whichever entry
@@ -434,6 +451,7 @@ def resolve_stack(
         family=bundled_family,
         path=bundled,
         requested=requested,
+        weight=weight,
         substituted=not _same_family(bundled_family, requested),
     )
 
@@ -443,22 +461,28 @@ def _same_family(resolved: str, requested: str) -> bool:
     return resolved.strip().lower() == requested.strip().lower()
 
 
-def _resolve_entry(entry: str, index: FontIndex) -> Path | None:
-    """One stack entry to a font file: generic keyword, file path, or family."""
+def _resolve_entry(entry: str, index: FontIndex, weight: str = "normal") -> Path | None:
+    """One stack entry to a font file: generic keyword, file path, or family.
+
+    A family with no face at this weight is *not* a match — falling through to
+    the next entry, and finally to the bundled bold, is better than measuring a
+    bold span against a regular face.
+    """
     keyword = GENERIC_KEYWORDS.get(entry.strip().lower())
     if keyword is not None:
-        return bundled_font_path(keyword)
+        return bundled_font_path(keyword, weight)
 
     candidate = Path(entry).expanduser()
     if candidate.suffix.lower() in FONT_SUFFIXES and candidate.is_file():
         return candidate
 
-    return index.lookup(entry)
+    return index.lookup(entry, weight)
 
 
 __all__ = [
     "DEFAULT_SEARCH_PATHS",
     "FONT_ROLES",
+    "FONT_WEIGHTS",
     "FontFile",
     "FontIndex",
     "ResolvedFont",

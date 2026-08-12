@@ -89,7 +89,7 @@ def text_runs(box: Box, theme: Theme, measurer: TextMeasurer) -> tuple[TextRun, 
                         weight=span.weight,
                     )
                 )
-            offset += measurer.measure(span.text, span.font, size).width
+            offset += measurer.measure(span.text, span.font, size, span.weight).width
     return tuple(runs)
 
 

@@ -24,6 +24,7 @@ from typing import NamedTuple
 from drawspec.errors import FontSubstitutionWarning
 from drawspec.text.fontlib import (
     FONT_ROLES,
+    FONT_WEIGHTS,
     ResolvedFont,
     default_search_paths,
     load_font,
@@ -105,10 +106,10 @@ class TextMeasurer:
             declared[role] = tuple(stack)
         self._stacks: Mapping[str, tuple[str, ...]] = declared
         self._search_paths = default_search_paths() if search_paths is None else tuple(search_paths)
-        self._resolved: dict[str, ResolvedFont] = {}
+        self._resolved: dict[tuple[str, str], ResolvedFont] = {}
         self._warned: set[str] = set()
         # Widths are cached in font units, so one entry serves every type size.
-        self._widths: dict[tuple[str, str], float] = {}
+        self._widths: dict[tuple[str, str, str], float] = {}
         self._hits = 0
         self._misses = 0
 
@@ -123,16 +124,18 @@ class TextMeasurer:
                 f"unknown font role {font_role!r}; expected one of {', '.join(FONT_ROLES)}"
             ) from None
 
-    def resolve(self, font_role: str) -> ResolvedFont:
-        """Resolve `font_role`'s stack to a font file, warning on substitution.
+    def resolve(self, font_role: str, weight: str = "normal") -> ResolvedFont:
+        """Resolve `font_role`'s stack at `weight`, warning on substitution.
 
         Raises:
-            KeyError: `font_role` is not one of `FONT_ROLES`.
+            KeyError: `font_role` or `weight` is not one drawspec knows.
         """
-        resolved = self._resolved.get(font_role)
+        if weight not in FONT_WEIGHTS:
+            raise KeyError(f"unknown weight {weight!r}; expected one of {', '.join(FONT_WEIGHTS)}")
+        resolved = self._resolved.get((font_role, weight))
         if resolved is None:
-            resolved = resolve_stack(font_role, self.stack(font_role), self._search_paths)
-            self._resolved[font_role] = resolved
+            resolved = resolve_stack(font_role, self.stack(font_role), self._search_paths, weight)
+            self._resolved[(font_role, weight)] = resolved
             if resolved.substituted:
                 self._warn(resolved)
         return resolved
@@ -158,36 +161,44 @@ class TextMeasurer:
 
     # -- measurement ------------------------------------------------------
 
-    def measure(self, text: str, font_role: str = "sans", size: float = 11.0) -> Extents:
-        """The space `text` occupies in `font_role` at `size`.
+    def measure(
+        self, text: str, font_role: str = "sans", size: float = 11.0, weight: str = "normal"
+    ) -> Extents:
+        """The space `text` occupies in `font_role` at `size` and `weight`.
+
+        `weight` is not decoration. A run drawn bold and measured regular comes
+        out narrow — 3.8 units in one eleven-point word — and whatever follows it
+        on the line starts early and lands on top of it.
 
         Raises:
-            KeyError: `font_role` is not one of `FONT_ROLES`.
+            KeyError: `font_role` or `weight` is not one drawspec knows.
             ValueError: `size` is not positive.
         """
         if size <= 0:
             raise ValueError(f"size must be positive, got {size!r}")
-        font = load_font(self.resolve(font_role).path)
+        font = load_font(self.resolve(font_role, weight).path)
         scale = size / font.units_per_em
         return Extents(
-            width=self._advance(text, font_role) * scale,
+            width=self._advance(text, font_role, weight) * scale,
             ascent=font.ascent * scale,
             descent=font.descent * scale,
         )
 
-    def advance(self, text: str, font_role: str = "sans", size: float = 11.0) -> float:
+    def advance(
+        self, text: str, font_role: str = "sans", size: float = 11.0, weight: str = "normal"
+    ) -> float:
         """The advance width of `text` alone — `measure(...).width`."""
-        return self.measure(text, font_role, size).width
+        return self.measure(text, font_role, size, weight).width
 
-    def _advance(self, text: str, font_role: str) -> float:
-        """Advance width in font units, cached per (role, text)."""
-        key = (font_role, text)
+    def _advance(self, text: str, font_role: str, weight: str) -> float:
+        """Advance width in font units, cached per (role, weight, text)."""
+        key = (font_role, weight, text)
         cached = self._widths.get(key)
         if cached is not None:
             self._hits += 1
             return cached
         self._misses += 1
-        width = load_font(self.resolve(font_role).path).text_advance(text)
+        width = load_font(self.resolve(font_role, weight).path).text_advance(text)
         self._widths[key] = width
         return width
 
