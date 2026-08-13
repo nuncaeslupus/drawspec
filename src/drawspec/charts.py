@@ -40,7 +40,7 @@ from itertools import pairwise
 from typing import Final
 
 from drawspec.errors import DrawspecError, FitError
-from drawspec.scene import Ellipse, Path, Primitive, Scene, TextRun
+from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextRun
 from drawspec.schema import Axis, Document, Series
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme
@@ -109,8 +109,9 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     tick = theme.edge.head_length
     line = measurer.measure("0", theme.font.default, label_size)
 
+    filled = tuple(item for item in document.series if item.mark in ("bar", "area"))
     across = _scale_for(horizontal, document.series, index=0)
-    up = _scale_for(vertical, document.series, index=1)
+    up = _scale_for(vertical, document.series, index=1, include_zero=bool(filled))
     across_ticks = _ticks(across.low, across.high)
     up_ticks = _ticks(up.low, up.high)
 
@@ -139,7 +140,17 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     across = Scale(across.low, across.high, plot_left, plot_right)
     up = Scale(up.low, up.high, plot_bottom, plot_top)
 
+    paths = [
+        tuple((across.to_pixels(x), up.to_pixels(y)) for x, y in series.data)
+        for series in document.series
+    ]
+    baseline = up.to_pixels(min(max(0.0, up.low), up.high))
+
+    # Filled marks go down first, then the axis furniture over them, then the
+    # lines: a bar sits *on* the baseline, so the axis has to be the thing drawn
+    # on top of the join or the bar's own edge stands in for it.
     primitives: list[Primitive] = [
+        *_filled_marks(document.series, paths, across, baseline, plot_left, plot_right, theme),
         *_axes(plot_left, plot_right, plot_top, plot_bottom),
         *_tick_marks(across_ticks, up_ticks, across, up, plot_left, plot_bottom, theme),
         *_tick_labels(
@@ -159,28 +170,36 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
         ),
     ]
 
-    paths = [
-        tuple((across.to_pixels(x), up.to_pixels(y)) for x, y in series.data)
-        for series in document.series
+    filled_marks = _filled_marks(
+        document.series, paths, across, baseline, plot_left, plot_right, theme
+    )
+    lines = tuple(item for item in document.series if item.mark == "line")
+    line_paths = [
+        points for item, points in zip(document.series, paths, strict=True) if item.mark == "line"
     ]
-    for series, points in zip(document.series, paths, strict=True):
+    for series, points in zip(lines, line_paths, strict=True):
         primitives.extend(_series(series, points, theme))
-    decimals = _point_decimals(document.series)
-    for series, points in zip(document.series, paths, strict=True):
-        primitives.extend(
-            _point_labels(
-                series,
-                points,
-                paths,
-                theme,
-                measurer,
-                plot_left,
-                plot_right,
-                plot_top,
-                plot_bottom,
-                decimals,
+    if lines:
+        decimals = _point_decimals(lines)
+        for series, points in zip(lines, line_paths, strict=True):
+            primitives.extend(
+                _point_labels(
+                    series,
+                    points,
+                    # A point label dodges the filled marks as well as the
+                    # lines. When there is nowhere left, the series loses its
+                    # labels — which is the rule this kind already had for a
+                    # label with no clean spot, applied to a fuller plot.
+                    [*line_paths, *(_outline(mark) for mark in filled_marks)],
+                    theme,
+                    measurer,
+                    plot_left,
+                    plot_right,
+                    plot_top,
+                    plot_bottom,
+                    decimals,
+                )
             )
-        )
 
     return Scene(
         width=width,
@@ -196,13 +215,22 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
 # ---------------------------------------------------------------------------
 
 
-def _scale_for(axis: Axis, series: tuple[Series, ...], *, index: int) -> Scale:
+def _scale_for(
+    axis: Axis, series: tuple[Series, ...], *, index: int, include_zero: bool = False
+) -> Scale:
     """The data range for one axis, honouring any bounds the author set.
 
     An author may pin `min` or `max` — that is a statement about the subject, not
     about the drawing, which is why it is one of the few numbers they may write.
+
+    `include_zero` stretches the range to the baseline. A bar says "this much of
+    it" by its length, and a bar chart whose axis starts at 6.8 makes a value of
+    7.0 look like nothing and 7.4 like three times nothing. A line makes no such
+    claim, so it does not pay for this.
     """
     values = [point[index] for item in series for point in item.data]
+    if include_zero:
+        values.append(0.0)
     low = axis.minimum if axis.minimum is not None else min(values)
     high = axis.maximum if axis.maximum is not None else max(values)
     if high < low:
@@ -391,6 +419,121 @@ def _series(
     line: list[Primitive] = [Path(series.role, points=points)]
     line.extend(Ellipse(series.role, cx=x, cy=y, rx=radius, ry=radius) for x, y in points)
     return tuple(line)
+
+
+def _filled_marks(
+    series: tuple[Series, ...],
+    paths: list[tuple[tuple[float, float], ...]],
+    across: Scale,
+    baseline: float,
+    plot_left: float,
+    plot_right: float,
+    theme: Theme,
+) -> tuple[Primitive, ...]:
+    """Bars and areas — every mark that reaches the baseline.
+
+    The fill comes from the theme's declared sequence rather than from the role,
+    and is assigned by position among the filled marks. That is deliberate: three
+    series of bars are three of the same *kind* of thing, so telling them apart
+    is a job for a sequence the theme owns, not for inventing three roles.
+    """
+    filled = [
+        (item, points)
+        for item, points in zip(series, paths, strict=True)
+        if item.mark in ("bar", "area")
+    ]
+    if not filled:
+        return ()
+
+    fills = {id(item): theme.mark.fill_for(index) for index, (item, _) in enumerate(filled)}
+    primitives: list[Primitive] = []
+
+    for item, points in filled:
+        if item.mark != "area":
+            continue
+        primitives.append(
+            Polygon(
+                item.role,
+                points=(
+                    (points[0][0], baseline),
+                    *points,
+                    (points[-1][0], baseline),
+                ),
+                fill=fills[id(item)],
+            )
+        )
+
+    bars = [(item, points) for item, points in filled if item.mark == "bar"]
+    if not bars:
+        return tuple(primitives)
+
+    band = _band(across, [x for _, points in bars for x, _ in points], plot_left, plot_right)
+    columns = _columns([item for item, _ in bars])
+    usable = band * (1.0 - theme.mark.gap)
+    width = usable / max(len(columns), 1)
+
+    tops: dict[tuple[str, float], float] = {}
+    for item, points in bars:
+        column = columns.index(item.stack or item.name)
+        offset = -usable / 2 + column * width
+        for x, y in points:
+            if item.stack:
+                # A stack grows from wherever the pile has reached, not from the
+                # baseline — which is the whole difference between stacked and
+                # merely overlapping.
+                floor = tops.get((item.stack, x), baseline)
+                tops[(item.stack, x)] = floor - (baseline - y)
+                low, high = sorted((floor, floor - (baseline - y)))
+            else:
+                low, high = sorted((baseline, y))
+            left, right = x + offset, x + offset + width
+            # A polygon rather than a rect, because a rect takes the theme's
+            # corner radius and a bar with rounded corners no longer meets its
+            # own baseline. The corner treatment belongs to boxes, which is
+            # what the radius was chosen for.
+            primitives.append(
+                Polygon(
+                    item.role,
+                    points=((left, low), (right, low), (right, high), (left, high)),
+                    fill=fills[id(item)],
+                )
+            )
+    return tuple(primitives)
+
+
+def _outline(primitive: Primitive) -> tuple[tuple[float, float], ...]:
+    """A closed figure as the point-label search understands it: a path."""
+    if isinstance(primitive, Polygon):
+        return (*primitive.points, primitive.points[0])
+    return ()
+
+
+def _columns(bars: list[Series]) -> list[str]:
+    """The side-by-side slots a band is divided into.
+
+    One per stack, plus one per unstacked series — so two series in a stack share
+    a slot and two that are not each get their own, which is what stacking means
+    geometrically.
+    """
+    columns: list[str] = []
+    for item in bars:
+        key = item.stack or item.name
+        if key not in columns:
+            columns.append(key)
+    return columns
+
+
+def _band(across: Scale, values: list[float], plot_left: float, plot_right: float) -> float:
+    """How much horizontal room one category has.
+
+    The closest two distinct x values, which is the only spacing that cannot
+    overlap whatever the data does. With a single category the whole plot is the
+    band, halved so one bar does not span the axis end to end.
+    """
+    distinct = sorted(set(values))
+    if len(distinct) < 2:
+        return (plot_right - plot_left) / 2
+    return min(second - first for first, second in pairwise(distinct))
 
 
 def _point_decimals(series: tuple[Series, ...]) -> int:

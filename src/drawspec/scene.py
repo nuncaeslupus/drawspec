@@ -54,6 +54,15 @@ class Rect(Primitive):
     y: float = 0.0
     width: float = 0.0
     height: float = 0.0
+    fill: str = ""
+    """One of the theme's fill patterns, when the *geometry* decides its own fill.
+
+    Empty means "ask the role", which is every box in every graph. A chart mark
+    is the exception: three series of bars are three of the same role, and what
+    tells them apart is a sequence the theme declares rather than a role each.
+    Saying it here keeps that out of the role vocabulary, where it would mean
+    inventing `series-one`, `series-two`, `series-three`.
+    """
 
 
 @dataclass(frozen=True)
@@ -68,9 +77,11 @@ class Ellipse(Primitive):
 
 @dataclass(frozen=True)
 class Polygon(Primitive):
-    """A closed figure: a diamond, a pyramid level, an arrow head."""
+    """A closed figure: a diamond, a pyramid level, an arrow head, an area."""
 
     points: tuple[tuple[float, float], ...] = ()
+    fill: str = ""
+    """As `Rect.fill`: a fill the geometry chose, or empty for the role's."""
 
 
 @dataclass(frozen=True)

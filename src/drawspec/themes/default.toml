@@ -84,6 +84,18 @@ clearance = 4.0
 show = false
 level = "title"
 
+[mark]
+# How a chart tells one mark from another. Fill patterns, never colour: these
+# are what survives a black-and-white printer, and the loader refuses a repeat
+# because two marks sharing a fill cannot be told apart. A mark takes the entry
+# at its own index among the filled marks in its chart. Patterns are drawn faint
+# on purpose — a fill that competes with the text over it makes the text
+# illegible, which was the loudest complaint about the hand-drawn originals.
+fills = ["hatch", "dots", "cross", "grid", "none"]
+# How much of a category's band is left empty around its bars. Zero draws bars
+# that touch, which reads as one wide bar rather than as several.
+gap = 0.3
+
 # ---------------------------------------------------------------------------
 # Node roles. Shape and line treatment per semantic role. The author names the
 # role; every appearance decision below is taken here, once, for all diagrams.

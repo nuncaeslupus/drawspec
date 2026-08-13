@@ -57,6 +57,12 @@ GRID_KINDS: Final = ("stack", "timeline", "columns")
 SHAPE_KINDS: Final = ("pyramid", "rings", "funnel")
 CHART_KINDS: Final = ("chart",)
 
+#: How a series may be drawn. `line` is the default and was the only one until
+#: the corpus asked for the others; `area` is a line whose fill reaches the
+#: baseline, and `bar` is a column per point. Closed, like every other
+#: vocabulary here.
+MARKS: Final = ("line", "bar", "area")
+
 #: The order a chart's axes are held in, so `Document.axes` is not a mapping
 #: whose iteration order a reader has to trust.
 AXIS_ORDER: Final = ("horizontal", "vertical")
@@ -224,6 +230,20 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             description="The values to plot, as [x, y] pairs. Data, not coordinates.",
         ),
         _role(NODE_ROLES, "step"),
+        FieldSpec(
+            "mark",
+            "string",
+            enum=MARKS,
+            description="How this series is drawn: a line, bars, or a filled area. Default 'line'.",
+        ),
+        FieldSpec(
+            "stack",
+            "string",
+            description=(
+                "Series sharing a stack name are piled on each other rather than "
+                "drawn side by side. Bars and areas only."
+            ),
+        ),
     ),
 }
 
@@ -345,6 +365,8 @@ class Series:
     name: str
     data: tuple[tuple[float, float], ...]
     role: str = "step"
+    mark: str = "line"
+    stack: str = ""
 
 
 @dataclass(frozen=True)
@@ -686,6 +708,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
                 name=entry["name"],
                 data=tuple((float(x), float(y)) for x, y in entry["data"]),
                 role=entry.get("role", "step"),
+                mark=entry.get("mark", "line"),
+                stack=entry.get("stack", ""),
             )
             for entry in document.get("series", ())
         ),

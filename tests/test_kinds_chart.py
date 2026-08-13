@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import math
 import re
+from collections.abc import Mapping
 from itertools import pairwise
 
 import pytest
@@ -20,7 +21,7 @@ from drawspec import render
 from drawspec.charts import MARKER_FRACTION, chart_scene
 from drawspec.emit import check_embedding_safety
 from drawspec.errors import DocumentError, DrawspecError, FitError
-from drawspec.scene import Ellipse, Path, Scene, TextRun
+from drawspec.scene import Ellipse, Path, Polygon, Rect, Scene, TextRun
 from drawspec.schema import parse_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
@@ -333,3 +334,136 @@ def test_the_last_tick_label_fits_inside_the_canvas() -> None:
         if run.anchor == "middle":
             width = MEASURER.measure(run.text, run.font, THEME.scale[run.level]).width
             assert run.x + width / 2 <= built.width + 1e-6, f"{run.text!r} runs off the canvas"
+
+
+# --------------------------------------------------------------------------
+# marks: bars, areas, stacks
+# --------------------------------------------------------------------------
+
+
+def marked(*series: Mapping[str, object]) -> Scene:
+    document = {
+        "version": 1,
+        "kind": "chart",
+        "title": "Marks",
+        "axes": {
+            "horizontal": {"label": "Quarter"},
+            "vertical": {"label": "Count"},
+        },
+        "series": list(series),
+    }
+    return chart_scene(parse_document(document), THEME, MEASURER)
+
+
+BARS: Mapping[str, object] = {"name": "One", "mark": "bar", "data": [[1, 30], [2, 40], [3, 20]]}
+MORE: Mapping[str, object] = {"name": "Two", "mark": "bar", "data": [[1, 10], [2, 20], [3, 35]]}
+
+
+def filled_of(built: Scene) -> list[Polygon]:
+    return [item for item in built.primitives if isinstance(item, Polygon)]
+
+
+def test_a_bar_series_draws_one_closed_figure_per_point() -> None:
+    built = marked(BARS)
+    bars = filled_of(built)
+    assert len(bars) == 3
+    for bar in bars:
+        assert len(bar.points) == 4
+
+
+def test_a_bar_stands_on_the_baseline() -> None:
+    """A bar says 'this much of it' by its length, which needs somewhere to start."""
+    built = marked(BARS)
+    bottoms = {round(max(y for _, y in bar.points), 6) for bar in filled_of(built)}
+    assert len(bottoms) == 1, "every bar starts at the same place"
+
+
+def test_a_filled_chart_stretches_its_axis_to_the_baseline() -> None:
+    """Otherwise a bar of 7.0 next to one of 7.4 looks like nothing beside three times nothing."""
+    lined = marked({"name": "One", "mark": "line", "data": [[1, 30], [2, 40]]})
+    barred = marked({"name": "One", "mark": "bar", "data": [[1, 30], [2, 40]]})
+    assert _plot_span(barred) > _plot_span(lined)
+
+
+def _plot_span(built: Scene) -> float:
+    """How much of the vertical axis the drawing covers, in data terms.
+
+    Read off the tick labels rather than the internals: the axis a reader sees is
+    the thing the claim is about.
+    """
+    values = [
+        float(item.text)
+        for item in built.primitives
+        if isinstance(item, TextRun) and re.fullmatch(r"-?\d+(\.\d+)?", item.text)
+    ]
+    return max(values) - min(values)
+
+
+def test_two_bar_series_stand_beside_each_other_without_overlapping() -> None:
+    built = marked(BARS, MORE)
+    spans = sorted(
+        (min(x for x, _ in bar.points), max(x for x, _ in bar.points)) for bar in filled_of(built)
+    )
+    for (_, first_right), (second_left, _) in pairwise(spans):
+        assert first_right <= second_left + 1e-6
+
+
+def test_a_stacked_series_starts_where_the_one_below_it_ended() -> None:
+    """Which is the whole difference between stacked and merely overlapping."""
+    built = marked(
+        {"name": "One", "mark": "bar", "stack": "s", "data": [[1, 30]]},
+        {"name": "Two", "mark": "bar", "stack": "s", "data": [[1, 20]]},
+    )
+    lower, upper = sorted(filled_of(built), key=lambda bar: -max(y for _, y in bar.points))
+    assert min(y for _, y in lower.points) == pytest.approx(max(y for _, y in upper.points))
+
+
+def test_stacked_series_share_one_slot_and_unstacked_ones_do_not() -> None:
+    stacked = marked(
+        {"name": "One", "mark": "bar", "stack": "s", "data": [[1, 30]]},
+        {"name": "Two", "mark": "bar", "stack": "s", "data": [[1, 20]]},
+    )
+    apart = marked(
+        {"name": "One", "mark": "bar", "data": [[1, 30]]},
+        {"name": "Two", "mark": "bar", "data": [[1, 20]]},
+    )
+    lefts = {round(min(x for x, _ in bar.points), 6) for bar in filled_of(stacked)}
+    assert len(lefts) == 1, "a stack is one column"
+    assert len({round(min(x for x, _ in bar.points), 6) for bar in filled_of(apart)}) == 2
+
+
+def test_every_filled_series_gets_a_different_fill() -> None:
+    """Greyscale legibility, made structural: the theme declares the sequence."""
+    built = marked(BARS, MORE)
+    by_left: dict[float, str] = {}
+    for bar in filled_of(built):
+        by_left.setdefault(round(min(x for x, _ in bar.points), 3), bar.fill)
+    assert len(set(by_left.values())) == 2
+    assert set(by_left.values()) <= set(THEME.mark.fills)
+
+
+def test_an_area_reaches_the_baseline_at_both_ends() -> None:
+    built = marked({"name": "One", "mark": "area", "data": [[1, 30], [2, 40], [3, 20]]})
+    (area,) = filled_of(built)
+    baseline = max(y for _, y in area.points)
+    assert area.points[0][1] == pytest.approx(baseline)
+    assert area.points[-1][1] == pytest.approx(baseline)
+
+
+def test_a_bar_has_square_corners() -> None:
+    """A rect would take the theme's corner radius and stop meeting its own baseline."""
+    assert not [item for item in marked(BARS).primitives if isinstance(item, Rect)]
+
+
+def test_an_unknown_mark_is_refused_by_the_schema() -> None:
+    with pytest.raises(DocumentError) as error:
+        parse_document(
+            {
+                "version": 1,
+                "kind": "chart",
+                "title": "Marks",
+                "axes": {"horizontal": {"label": "x"}, "vertical": {"label": "y"}},
+                "series": [{"name": "One", "mark": "candlestick", "data": [[1, 2]]}],
+            }
+        )
+    assert "candlestick" in str(error.value)
