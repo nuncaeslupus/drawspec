@@ -16,15 +16,19 @@ of the shape where the text actually is.**
 * A ring's label sits in the band between its own circle and the next one in, and
   a circle is narrowest at the top of that band.
 
-A ring set fills the canvas width; a pyramid does not, and that difference is
-the one judgement in this file. Rings get wider as they get more concentric, so
-the canvas is the only width that gives the innermost one room. A pyramid's base
-is the widest thing in it, so a base at the canvas width leaves a shape three or
-four times wider than it is tall — a flight of steps. Its base is derived from
-its labels, with the canvas as a ceiling and `centred` putting the result in the
-middle of the page. Both are still a single sizing pass: the width is settled
-before any text is wrapped, so there is no circularity between how wide the
-figure is and how its text breaks.
+**Neither shape fills the canvas.** Both are sized from their own labels, with
+the canvas as a ceiling rather than a target and `centred` putting the result in
+the middle of the page. A shape drawn to the full width is mostly shape: the
+type is the same size as everywhere else in the document, but it is a smaller
+part of what the reader is looking at, and it reads as too small. The fix is to
+shrink the drawing, never to grow the type — the page has one type size.
+
+Both are still a single sizing pass: the extent is settled before any text is
+wrapped, so there is no circularity between how wide the figure is and how its
+text breaks. What each asks of its width differs — a pyramid's base is the
+widest thing in it, a ring's band is narrowest at the top — but the shape of the
+answer is the same, and `_pyramid_base` and `_rings_extent` are the two halves
+of it.
 """
 
 from __future__ import annotations
@@ -68,6 +72,15 @@ PYRAMID_FILL: Final = 1.8
 #: The narrowest base a pyramid may have, as a share of the canvas. A pyramid of
 #: one-word levels would otherwise shrink to the width of its longest word.
 PYRAMID_MIN_SHARE: Final = 0.45
+
+#: The smallest a ring set may be drawn, as a share of the canvas. The same floor
+#: as a pyramid's base and for the same reason: a set of one-word rings would
+#: otherwise close down to a coin.
+RINGS_MIN_SHARE: Final = 0.45
+
+#: Bisection steps used to size a ring set. Enough to settle a canvas-sized
+#: interval well below a unit of the coordinate system.
+_BISECTIONS: Final = 24
 
 #: The type level a pyramid level and a ring band are set at.
 #:
@@ -261,12 +274,10 @@ def _rings(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     if count < 1:
         raise DrawspecError("a rings diagram needs at least one ring")
 
-    extent = _canvas_width(document, theme)
-    radius = extent / 2
-    centre = radius
-    # Equal radial steps, outermost first, so the bands read as a progression
-    # rather than as an accident of how many there are.
-    radii = [radius * (count - index) / count for index in range(count)]
+    canvas = _canvas_width(document, theme)
+    extent = _rings_extent(rings, theme, measurer, canvas)
+    centre = extent / 2
+    radii = _ring_radii(extent, count)
 
     primitives: list[Primitive] = [
         Ellipse(item.role, cx=centre, cy=centre, rx=ring, ry=ring)
@@ -277,7 +288,7 @@ def _rings(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         innermost = index == count - 1
         if innermost:
             # The one label that is centred — it has no band, only its own circle.
-            span = ring * 2 - theme.box.padding.horizontal
+            span = _ring_span(radii, index) - theme.box.padding.horizontal
             box = _label(
                 item, theme, measurer, span, f"the innermost ring ({item.text[:32]!r})", ""
             )
@@ -291,9 +302,7 @@ def _rings(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         # downwards so it does not touch its own circle". Vertically centred in
         # the band, which is also where the band is at its widest.
         label_centre = centre - (ring + inner) / 2
-        # A circle is narrowest at the top of the band, so that is the width the
-        # label has to fit: the half-chord at the label's own top edge.
-        span = 2 * _half_chord(ring, (ring + inner) / 2 + band / 4) - theme.box.padding.horizontal
+        span = _ring_span(radii, index) - theme.box.padding.horizontal
         box = _label(
             item,
             theme,
@@ -321,6 +330,108 @@ def _rings(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     )
 
 
+def _ring_radii(extent: float, count: int) -> list[float]:
+    """Equal radial steps, outermost first.
+
+    Equal steps so the bands read as a progression rather than as an accident of
+    how many there are.
+    """
+    radius = extent / 2
+    return [radius * (count - index) / count for index in range(count)]
+
+
+def _ring_span(radii: list[float], index: int) -> float:
+    """The width ring `index` offers its label, before the box's own padding.
+
+    A circle is narrowest at the top of the band, so that — not the band's widest
+    point — is what the label has to fit. The innermost ring has no band, only
+    its own circle, and its label is centred, so its span is the diameter.
+
+    Every term here is linear in the extent, which is what lets `_rings_extent`
+    invert it: the span at any size is the span at size one, scaled.
+    """
+    ring = radii[index]
+    if index == len(radii) - 1:
+        return ring * 2
+    inner = radii[index + 1]
+    band = ring - inner
+    return 2 * _half_chord(ring, (ring + inner) / 2 + band / 4)
+
+
+def _rings_extent(
+    rings: tuple[Item, ...], theme: Theme, measurer: TextMeasurer, canvas: float
+) -> float:
+    """The smallest circle every label still fits in, found by bisection.
+
+    A ring set drawn to the canvas width is mostly circle: the type is the same
+    size as everywhere else in the document, but it is a smaller part of what the
+    reader is looking at, so it reads as too small. Filling the width was
+    justified by rings needing room to nest — which is true of the *ratio*
+    between the bands, not of the absolute size.
+
+    Bisection rather than the closed form `_pyramid_base` uses, because here
+    wrapping is a real lever and there it is not. A ring's band is a fixed
+    fraction of the extent in *both* directions, so breaking a label over two
+    lines trades width the band is short of for depth it has — and the trade
+    terminates, because the depth runs out. A pyramid level has no such bound:
+    its height comes from its own text, so a level always has room for one more
+    line, and searching for the narrowest base that still fits returns a spire.
+
+    Monotone in the extent — a bigger circle gives every band both more span and
+    more depth — so bisection is well defined. `RINGS_MIN_SHARE` of the canvas is
+    the floor and the canvas is the ceiling; a set that does not fit even there
+    is returned at the ceiling, so `_rings` raises the `FitError` that can say
+    which ring failed and what to do about it.
+    """
+    floor = canvas * RINGS_MIN_SHARE
+    if not _rings_fit(rings, theme, measurer, canvas):
+        return canvas
+    if _rings_fit(rings, theme, measurer, floor):
+        return floor
+    low, high = floor, canvas
+    for _ in range(_BISECTIONS):
+        middle = (low + high) / 2
+        if _rings_fit(rings, theme, measurer, middle):
+            high = middle
+        else:
+            low = middle
+    return high
+
+
+def _rings_fit(
+    rings: tuple[Item, ...], theme: Theme, measurer: TextMeasurer, extent: float
+) -> bool:
+    """Does every label fit its own band at this extent?
+
+    Deliberately the same arithmetic as `_rings` — the same span, the same depth,
+    the same margin — so that "fits" here and "does not raise `FitError`" there
+    are the same question. A predicate that is merely close would pick an extent
+    the drawing then refuses.
+    """
+    count = len(rings)
+    radii = _ring_radii(extent, count)
+    for index, item in enumerate(rings):
+        span = _ring_span(radii, index) - theme.box.padding.horizontal
+        if span <= theme.box.padding.horizontal:
+            return False
+        try:
+            box = size_box(
+                item.text,
+                theme=theme,
+                measurer=measurer,
+                role=item.role,
+                level=SHAPE_LEVEL,
+                max_width=span,
+                shape="rect",
+            )
+        except FitError:
+            return False
+        depth = radii[index] * 2 if index == count - 1 else radii[index] - radii[index + 1]
+        if box.height > depth - theme.box.padding.vertical:
+            return False
+    return True
+
+
 def _half_chord(radius: float, offset: float) -> float:
     """Half the width of a circle at `offset` from its centre line."""
     return math.sqrt(max(radius**2 - offset**2, 0.0))
@@ -331,6 +442,7 @@ __all__ = [
     "PYRAMID_FILL",
     "PYRAMID_MIN_SHARE",
     "PYRAMID_STEPS",
+    "RINGS_MIN_SHARE",
     "SHAPE_LEVEL",
     "shape_scene",
 ]

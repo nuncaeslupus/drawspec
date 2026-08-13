@@ -23,6 +23,7 @@ from drawspec.kinds.common import line_bounds
 from drawspec.kinds.shape import (
     PYRAMID_FILL,
     PYRAMID_MIN_SHARE,
+    RINGS_MIN_SHARE,
     SHAPE_LEVEL,
     shape_scene,
 )
@@ -380,3 +381,42 @@ def test_a_pyramid_level_is_never_much_taller_than_its_own_text() -> None:
             for text in texts
         )
         assert level_height <= tallest * PYRAMID_FILL + 1e-6
+
+
+def test_a_ring_set_does_not_fill_the_canvas_either() -> None:
+    """The same complaint as the pyramid, one round later.
+
+    Rings filling the width was defended by their needing room to nest, which is
+    true of the ratio between the bands and not of the absolute size. Drawn to
+    the page the figure is mostly circle, and the type — the same size as
+    everywhere else in the document — is a smaller part of what the reader sees.
+    """
+    built = rings(*RINGS)
+    assert built.width < THEME.canvas.width
+    assert built.width == pytest.approx(built.height), "a ring set is as tall as it is wide"
+
+
+def test_a_ring_set_never_shrinks_below_its_share_of_the_canvas() -> None:
+    """One-word rings are still a diagram, not a coin.
+
+    Two of them, because with three the band depth binds first and the floor
+    never comes into it — the labels would fit a smaller circle than the bands
+    they sit in do.
+    """
+    assert rings("One", "Two").width == pytest.approx(THEME.canvas.width * RINGS_MIN_SHARE)
+    assert rings("One", "Two", "Three").width >= THEME.canvas.width * RINGS_MIN_SHARE
+
+
+def test_a_ring_label_wraps_to_buy_the_set_a_smaller_circle() -> None:
+    """Wrapping is the lever here, which is what makes bisection the right search.
+
+    A band is a fixed fraction of the extent in both directions, so breaking a
+    label over two lines trades width the band is short of for depth it has, and
+    the trade terminates when the depth runs out. Held to one line each, the set
+    would need a circle as wide as its longest label demands of the narrowest
+    part of its band — wider than the canvas here.
+    """
+    built = rings(*RINGS)
+    assert len(runs_of(built)) > len(RINGS), "at least one label should have wrapped"
+    for run in runs_of(built):
+        assert run_width(run) < built.width
