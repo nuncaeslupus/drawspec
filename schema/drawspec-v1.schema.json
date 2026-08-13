@@ -138,6 +138,78 @@
     },
     {
       "type": "object",
+      "title": "matrix",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "matrix"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "cells": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cell"
+          },
+          "minItems": 1
+        },
+        "columns": {
+          "type": "array",
+          "description": "Column headings, left to right. Omit for a matrix with none.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "description": "Row headings, top to bottom.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "cells"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
       "title": "pyramid",
       "properties": {
         "$schema": {
@@ -409,6 +481,54 @@
       },
       "required": [
         "label"
+      ],
+      "additionalProperties": false
+    },
+    "cell": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic."
+        },
+        "column": {
+          "type": "integer",
+          "description": "Which column this cell starts in, counting from zero."
+        },
+        "row": {
+          "type": "integer",
+          "description": "Which row it starts in, from zero."
+        },
+        "across": {
+          "type": "integer",
+          "description": "How many columns it covers. Default 1."
+        },
+        "down": {
+          "type": "integer",
+          "description": "How many rows it covers. Default 1."
+        },
+        "group": {
+          "type": "string",
+          "description": "Which group this cell belongs to. Cells sharing a group are filled alike; the theme decides how. Naming the fill itself is not an author's decision."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "start",
+            "step",
+            "decision",
+            "terminal",
+            "emphasis",
+            "note",
+            "group"
+          ]
+        }
+      },
+      "required": [
+        "text",
+        "column",
+        "row"
       ],
       "additionalProperties": false
     },

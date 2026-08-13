@@ -27,7 +27,7 @@ originals against the nine kinds, and of the gap that inventory shows.
 | cycle | 9 | yes |
 | ~~group~~ | 6 | **now yes** |
 | stack | 5 | yes |
-| **matrix** | **5** | **no** |
+| ~~matrix~~ | 5 | **now yes** |
 | timeline | 4 | yes |
 | tree | 4 | yes |
 | columns | 4 | yes |
@@ -90,19 +90,36 @@ See `docs/reference/flow-groups.json` for the reference drawing.
 `tic__trabajo-documental-sharepoint-y-onedrive`,
 `tic__practicas-itil-de-soporte-al-servicio`.*
 
-### 2. `matrix` — rows against columns (5)
+### 2. ~~`matrix`~~ — rows against columns (5) — **done**
 
 The shared-responsibility model: three columns (IaaS, PaaS, SaaS), a stack of
 cells in each, and each cell filled to say who manages it. RAID block layouts.
 The TCP/IP encapsulation bands, where each layer's row is segmented and the
 segments line up down the figure.
 
-What it needs beyond `columns`: **both** headings, cells that span more than one
-row, and a fill vocabulary — which is where the theme's greyscale rule bites
-hardest, because the whole point of the diagram is that two cells differ. The
-reviewer's note on the original is the warning: *"the hatching is too strong and
-`client` is hard to read"*. A fill that competes with the text on top of it has
-failed at the only job it has.
+What it needed beyond `columns`: **both** headings, cells that span, and a fill
+vocabulary. The vocabulary arrived with the chart marks and is shared with them
+(`[mark] fills`), which is why this came second.
+
+The interesting part was what an author is allowed to say. `fill` is in the
+schema's **rejection table** — *appearance is a property of the role, not of the
+element* — and a matrix does not get an exemption just because its whole content
+is a comparison. So a cell names a **group**, and the theme turns groups into
+fills in order of first mention. The author says which cells are the same kind of
+cell; drawspec decides what that looks like. The test suite caught the first
+attempt, which had the author naming the fill.
+
+Two more decisions: the matrix's extent is **derived from its cells**, so a cell
+spanning three columns makes a three-column matrix and there is no
+"reaches outside" error to write — only a negative index is refusable. And a
+spanning cell is charged to the **last** row it covers, so a two-row cell asks
+for the two rows together rather than making each of them as deep as itself.
+
+The reviewer's note on the original was the warning to design against: *"the
+hatching is too strong and `client` is hard to read"*. Every pattern is drawn
+faint; the reference drawing has body text over both fills.
+
+See `docs/reference/matrix-responsibility.json`.
 
 *Originals: `tic__arquitecturas-de-seguridad-en-la-nube`,
 `tic__computacion-hibrida-iaas-paas-saas`, `tic__sistemas-san-y-raid`,
@@ -222,8 +239,8 @@ edge style rather than a defeat.
    theme as `[mark] fills` — an ordered sequence of patterns, distinct by
    construction, that a mark takes by its own index. Which is exactly what
    `matrix` needs next.
-3. **`matrix`.** Five originals, and it is where the greyscale rule has to be
-   made to work rather than merely obeyed.
+3. ~~**`matrix`.**~~ Done — and the greyscale rule turned out to be the easy
+   half. The hard half was keeping the author out of the appearance.
 
 `quadrant` and `curve` are each small and each self-contained; they can be
 picked up in any order once the three above are settled. `funnel` is done.

@@ -1,13 +1,14 @@
-"""Grid kinds: `stack`, `timeline`, `columns`. Positions come from counting.
+"""Grid kinds: `stack`, `timeline`, `columns`, `matrix`. Positions come from counting.
 
-No layout engine is involved and no routing problem exists — which is why these
-three are the family where "peers are the same size" can be an exact equality
-rather than a normalisation that happens to work out. The gate is
+No layout engine is involved and no routing problem exists — which is why this is
+the family where "peers are the same size" can be an exact equality rather than a
+normalisation that happens to work out. The gate is
 `same_rank_size_variance == 0`, and in each kind below it holds by construction:
 
 * `stack` — every layer is the full width and one common height.
 * `columns` — the available width less the gutters, divided equally.
 * `timeline` — one step, computed once, between every pair of ticks.
+* `matrix` — equal columns; a row is as deep as its deepest cell needs.
 
 Spacing is derived from the theme's box padding rather than invented here. A kind
 decides *which* gap applies where; how big a gap is remains the theme's business,
@@ -18,9 +19,9 @@ from __future__ import annotations
 
 from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
-from drawspec.kinds.common import box_primitives
-from drawspec.scene import Path, Primitive, Scene
-from drawspec.schema import Document, Item
+from drawspec.kinds.common import box_primitives, text_runs
+from drawspec.scene import Path, Polygon, Primitive, Scene
+from drawspec.schema import Cell, Document, Item
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme
 
@@ -47,6 +48,8 @@ def grid_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Scen
         return _columns(document, theme, measurer)
     if document.kind == "timeline":
         return _timeline(document, theme, measurer)
+    if document.kind == "matrix":
+        return _matrix(document, theme, measurer)
     raise DrawspecError(f"{document.kind!r} is not a grid kind")
 
 
@@ -185,3 +188,203 @@ def _timeline(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
 
 
 __all__ = ["AXIS_ROLE", "TICK_FRACTION", "grid_scene"]
+
+
+# ---------------------------------------------------------------------------
+# matrix
+# ---------------------------------------------------------------------------
+
+
+def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
+    """Rows against columns, with cells that may span either way.
+
+    The one kind whose *content* is a comparison rather than a sequence, which
+    is what the fills are for: a cell says which group it belongs to by how it is
+    filled, and the theme's `[mark] fills` vocabulary is the same one the chart
+    uses. Colour is not an option here and never was — these diagrams are printed
+    in black and white, and two cells that differ only in hue are two cells a
+    reader cannot tell apart.
+
+    Columns are equal. A row is as deep as the deepest cell that ends in it, and
+    a cell spanning several rows is charged to the last one it covers — so a tall
+    cell makes room where it finishes rather than pushing every row it passes.
+    """
+    cells = document.cells
+    if not cells:
+        raise DrawspecError("a matrix needs at least one cell")
+    fills = _group_fills(cells, theme)
+
+    _check_cells(cells)
+    across = max(max(cell.column + cell.across for cell in cells), len(document.columns))
+    down = max(max(cell.row + cell.down for cell in cells), len(document.rows))
+
+    width = _canvas_width(document, theme)
+    gap = theme.box.padding.horizontal
+    heading_width = _heading_width(document, theme, measurer, width) if document.rows else 0.0
+    column_width = (width - heading_width) / across
+
+    boxes = {
+        (cell.column, cell.row): size_box(
+            cell.text,
+            theme=theme,
+            measurer=measurer,
+            role=cell.role,
+            level="body",
+            max_width=column_width * cell.across,
+            shape="rect",
+        )
+        for cell in cells
+    }
+    heights = _row_heights(cells, boxes, down)
+    heading_height = (
+        size_box(
+            " ".join(document.columns) or "x",
+            theme=theme,
+            measurer=measurer,
+            level="body",
+            max_width=width,
+            shape="rect",
+        ).height
+        if document.columns
+        else 0.0
+    )
+
+    tops = [heading_height]
+    for height in heights:
+        tops.append(tops[-1] + height)
+
+    primitives: list[Primitive] = []
+    for index, heading in enumerate(document.columns):
+        band = Box(
+            role="step",
+            shape="rect",
+            level="body",
+            block=size_box(
+                heading, theme=theme, measurer=measurer, max_width=column_width, shape="rect"
+            ).block,
+            width=column_width,
+            height=heading_height,
+            x=heading_width + index * column_width,
+            y=0.0,
+            padding=theme.box.padding,
+        )
+        primitives.extend(text_runs(band, theme, measurer))
+    for index, heading in enumerate(document.rows):
+        band = Box(
+            role="step",
+            shape="rect",
+            level="body",
+            block=size_box(
+                heading, theme=theme, measurer=measurer, max_width=heading_width, shape="rect"
+            ).block,
+            width=heading_width,
+            height=heights[index],
+            x=0.0,
+            y=tops[index],
+            padding=theme.box.padding,
+        )
+        primitives.extend(text_runs(band, theme, measurer))
+
+    for cell in cells:
+        left = heading_width + cell.column * column_width
+        cell_width = column_width * cell.across
+        top = tops[cell.row]
+        cell_height = tops[cell.row + cell.down] - top
+        right, bottom = left + cell_width, top + cell_height
+        # Polygons rather than rects: adjacent cells share an edge, and the
+        # theme's corner radius would leave a gap at every junction and a row of
+        # lozenges where a table should be. The radius belongs to boxes.
+        primitives.append(
+            Polygon(
+                cell.role,
+                points=((left, top), (right, top), (right, bottom), (left, bottom)),
+                fill=fills[cell.group],
+            )
+        )
+        placed = (
+            boxes[(cell.column, cell.row)]
+            .resized(width=cell_width, height=cell_height)
+            .moved_to(left, top)
+        )
+        primitives.extend(text_runs(placed, theme, measurer))
+
+    return _scene(document, primitives, width, tops[-1] + gap * 0)
+
+
+def _group_fills(cells: tuple[Cell, ...], theme: Theme) -> dict[str, str]:
+    """One fill per group, from the theme's sequence, in order of first mention.
+
+    The author names the *group*, never the fill. `fill` is in the schema's
+    rejection table for exactly this reason — appearance is a property of the
+    role, not of the element — and a matrix does not get an exemption just
+    because its whole content is a comparison. What it gets is a way to say
+    which cells are the same kind of cell, and the theme turns that into
+    something a black-and-white printer can keep apart.
+    """
+    named: list[str] = []
+    for cell in cells:
+        if cell.group and cell.group not in named:
+            named.append(cell.group)
+    fills = {"": ""}
+    for index, group in enumerate(named):
+        fills[group] = theme.mark.fill_for(index)
+    return fills
+
+
+def _check_cells(cells: tuple[Cell, ...]) -> None:
+    """Refuse a grid that overlaps or that starts before its own first square.
+
+    Two cells in one square is a document that means two things at once, and
+    drawing it would put one on top of the other and say nothing about which.
+
+    There is deliberately no "reaches outside" check on the far side: the
+    matrix's extent is *derived* from the cells, so a cell that spans three
+    columns makes a matrix three columns wide. Only a negative index is an
+    error, because nothing can grow to meet it.
+    """
+    taken: dict[tuple[int, int], str] = {}
+    for cell in cells:
+        if cell.across < 1 or cell.down < 1:
+            raise DrawspecError(
+                f"cell {cell.text[:24]!r} spans {cell.across} x {cell.down}; a cell covers "
+                f"at least one square"
+            )
+        if cell.column < 0 or cell.row < 0:
+            raise DrawspecError(
+                f"cell {cell.text[:24]!r} is at column {cell.column}, row {cell.row}; a "
+                f"matrix starts at column 0, row 0"
+            )
+        for column in range(cell.column, cell.column + cell.across):
+            for row in range(cell.row, cell.row + cell.down):
+                if (column, row) in taken:
+                    raise DrawspecError(
+                        f"cells {taken[(column, row)]!r} and {cell.text[:24]!r} both cover "
+                        f"column {column}, row {row}. One square holds one cell."
+                    )
+                taken[(column, row)] = cell.text[:24]
+
+
+def _row_heights(
+    cells: tuple[Cell, ...], boxes: dict[tuple[int, int], Box], down: int
+) -> list[float]:
+    """How deep each row is: the deepest cell that *ends* in it.
+
+    Charging a spanning cell to its last row rather than to every row it covers
+    is what keeps a two-row cell from doubling the depth of a matrix — it needs
+    the two rows together, not two rows each as deep as itself.
+    """
+    heights = [0.0] * down
+    for cell in sorted(cells, key=lambda item: item.down):
+        box = boxes[(cell.column, cell.row)]
+        covered = sum(heights[cell.row : cell.row + cell.down])
+        if box.height > covered:
+            heights[cell.row + cell.down - 1] += box.height - covered
+    return heights
+
+
+def _heading_width(document: Document, theme: Theme, measurer: TextMeasurer, width: float) -> float:
+    """How much of the width the row headings take, if there are any."""
+    return max(
+        size_box(heading, theme=theme, measurer=measurer, max_width=width / 3, shape="rect").width
+        for heading in document.rows
+    )
