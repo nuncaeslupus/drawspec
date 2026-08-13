@@ -586,3 +586,117 @@ def test_a_quadrant_still_needs_both_axes_labelled() -> None:
                 "positions": [{"text": "One", "across": 0.5, "up": 0.5}],
             }
         )
+
+
+# --------------------------------------------------------------------------
+# curve
+# --------------------------------------------------------------------------
+
+
+def curve(*curves: Mapping[str, object]) -> Scene:
+    document = {
+        "version": 1,
+        "kind": "curve",
+        "title": "A curve",
+        "axes": {"horizontal": {"label": "Time"}, "vertical": {"label": "How much"}},
+        "curves": list(curves),
+    }
+    return chart_scene(parse_document(document), THEME, MEASURER)
+
+
+HYPE: Mapping[str, object] = {
+    "waypoints": [
+        {"text": "Start", "across": 0.0, "up": 0.1},
+        {"across": 0.2, "up": 0.9},
+        {"text": "Peak", "across": 0.3, "up": 1.0},
+        {"across": 0.5, "up": 0.2},
+        {"text": "Trough", "across": 0.6, "up": 0.1},
+        {"text": "Plateau", "across": 1.0, "up": 0.5},
+    ]
+}
+STRAIGHT: Mapping[str, object] = {
+    "name": "Ideal",
+    "waypoints": [{"across": 0.0, "up": 1.0}, {"across": 1.0, "up": 0.0}],
+}
+
+
+def test_a_curve_passes_through_every_waypoint() -> None:
+    """Through, not near: a waypoint is a named place, and its marker sits on it."""
+    built = curve(HYPE)
+    (path,) = series_paths(built)
+    for marker in markers(built):
+        assert any(math.hypot(x - marker.cx, y - marker.cy) < 0.5 for x, y in path.points), (
+            marker.cx,
+            marker.cy,
+        )
+
+
+def test_a_curve_of_two_points_stays_a_straight_line() -> None:
+    """Which is what an 'ideal' burn-down is, and what smoothing would spoil."""
+    built = curve(STRAIGHT)
+    drawn = [line for line in lines(built) if line.role == "step"]
+    assert len(drawn) == 1
+    assert len(drawn[0].points) == 2
+
+
+def test_a_curve_diagram_has_no_ticks() -> None:
+    """Nobody has the numbers behind a hype cycle."""
+    numbers = [run.text for run in texts(curve(HYPE)) if re.fullmatch(r"-?\d+(\.\d+)?", run.text)]
+    assert numbers == []
+
+
+def test_only_named_waypoints_are_marked() -> None:
+    """The rest are there to shape the curve, not to be read."""
+    waypoints = HYPE["waypoints"]
+    assert isinstance(waypoints, list)
+    named = [point for point in waypoints if point.get("text")]
+    assert len(markers(curve(HYPE))) == len(named)
+
+
+def test_a_curve_name_is_drawn_where_the_curve_ends() -> None:
+    built = curve(STRAIGHT)
+    (path,) = [line for line in lines(built) if len(line.points) == 2 and line.role == "step"]
+    (label,) = [run for run in texts(built) if run.text == "Ideal"]
+    assert label.x > path.points[-1][0]
+    assert abs(label.y - path.points[-1][1]) < THEME.scale["label"]
+
+
+def test_a_waypoint_label_never_lands_on_a_curve_name() -> None:
+    """The two would be saying different things about the same point."""
+    built = curve(
+        {
+            **STRAIGHT,
+            "waypoints": [
+                {"across": 0.0, "up": 1.0},
+                {"text": "The end", "across": 1.0, "up": 0.0},
+            ],
+        }
+    )
+    boxes = []
+    for run in texts(built):
+        if run.text not in ("Ideal", "The end"):
+            continue
+        extents = MEASURER.measure(run.text, THEME.font.default, THEME.scale[run.level])
+        boxes.append(
+            _label_box(run.x, run.y, run.anchor, extents.width, extents.height, extents.width / 2)
+        )
+    for first, second in combinations(boxes, 2):
+        assert not (
+            first[0] < second[2]
+            and second[0] < first[2]
+            and first[1] < second[3]
+            and second[1] < first[3]
+        )
+
+
+def test_a_curve_needs_at_least_two_waypoints() -> None:
+    with pytest.raises(DocumentError):
+        parse_document(
+            {
+                "version": 1,
+                "kind": "curve",
+                "title": "A curve",
+                "axes": {"horizontal": {"label": "x"}, "vertical": {"label": "y"}},
+                "curves": [{"waypoints": [{"across": 0, "up": 0}]}],
+            }
+        )

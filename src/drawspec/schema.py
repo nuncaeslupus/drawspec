@@ -55,7 +55,7 @@ SCHEMA_FILENAME: Final = "drawspec-v1.schema.json"
 GRAPH_KINDS: Final = ("flow", "tree", "cycle")
 GRID_KINDS: Final = ("stack", "timeline", "columns", "matrix")
 SHAPE_KINDS: Final = ("pyramid", "rings", "funnel")
-CHART_KINDS: Final = ("chart", "quadrant")
+CHART_KINDS: Final = ("chart", "quadrant", "curve")
 
 #: How a series may be drawn. `line` is the default and was the only one until
 #: the corpus asked for the others; `area` is a line whose fill reaches the
@@ -221,6 +221,37 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         ),
         _role(NODE_ROLES, "step"),
     ),
+    "waypoint": (
+        FieldSpec(
+            "text",
+            "string",
+            description="What to call this point. Omit for a point that only shapes the curve.",
+        ),
+        FieldSpec(
+            "across",
+            "number",
+            required=True,
+            description="Where this sits on the horizontal axis. Data, not a coordinate.",
+        ),
+        FieldSpec(
+            "up",
+            "number",
+            required=True,
+            description="Where this sits on the vertical axis. Data, not a coordinate.",
+        ),
+    ),
+    "curve": (
+        FieldSpec(
+            "name",
+            "string",
+            description=(
+                "Drawn where the curve ends. Omit it when there is only one curve "
+                "and the axes already say what it is."
+            ),
+        ),
+        FieldSpec("waypoints", "array", required=True, item_ref="waypoint", min_items=2),
+        _role(NODE_ROLES, "step"),
+    ),
     "position": (
         _text(),
         FieldSpec(
@@ -356,6 +387,10 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
         FieldSpec("axes", "object", required=True, ref="axes"),
         FieldSpec("positions", "array", required=True, item_ref="position", min_items=1),
     ),
+    ("curve",): (
+        FieldSpec("axes", "object", required=True, ref="axes"),
+        FieldSpec("curves", "array", required=True, item_ref="curve", min_items=1),
+    ),
 }
 
 
@@ -420,6 +455,24 @@ class Cell:
 
 
 @dataclass(frozen=True)
+class Waypoint:
+    """One point on a curve. Named, or there only to shape it."""
+
+    across: float
+    up: float
+    text: str = ""
+
+
+@dataclass(frozen=True)
+class Curve:
+    """A shape through its waypoints. Not a series: there is no data here."""
+
+    waypoints: tuple[Waypoint, ...]
+    name: str = ""
+    role: str = "step"
+
+
+@dataclass(frozen=True)
 class Position:
     """One named point in the plane. `across` and `up` are data, not coordinates."""
 
@@ -469,6 +522,7 @@ class Document:
     columns: tuple[str, ...] = ()
     rows: tuple[str, ...] = ()
     positions: tuple[Position, ...] = ()
+    curves: tuple[Curve, ...] = ()
     axes: tuple[Axis, ...] = ()
     """The horizontal axis then the vertical one, for `chart`. Empty otherwise."""
 
@@ -806,6 +860,21 @@ def parse_document(document: Mapping[str, Any]) -> Document:
             )
             for entry in document.get("positions", ())
         ),
+        curves=tuple(
+            Curve(
+                name=entry.get("name", ""),
+                waypoints=tuple(
+                    Waypoint(
+                        across=float(point["across"]),
+                        up=float(point["up"]),
+                        text=point.get("text", ""),
+                    )
+                    for point in entry["waypoints"]
+                ),
+                role=entry.get("role", "step"),
+            )
+            for entry in document.get("curves", ())
+        ),
         axes=_axes(document.get("axes")),
         series=tuple(
             Series(
@@ -1009,6 +1078,7 @@ __all__ = [
     "SHAPE_KINDS",
     "Axis",
     "Cell",
+    "Curve",
     "Document",
     "Edge",
     "FieldSpec",
@@ -1018,6 +1088,7 @@ __all__ = [
     "Position",
     "Series",
     "Violation",
+    "Waypoint",
     "build_schema",
     "fields_for",
     "load_document",

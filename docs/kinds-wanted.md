@@ -33,7 +33,7 @@ originals against the nine kinds, and of the gap that inventory shows.
 | columns | 4 | yes |
 | pyramid | 4 | yes |
 | rings | 4 | yes |
-| **curve** | **3** | **no** |
+| ~~curve~~ | 3 | **now yes** |
 | ~~quadrant~~ | 2 | **now yes** |
 | ~~funnel~~ | 2 | **now yes** |
 | *picture* | 2 | out of scope |
@@ -125,16 +125,32 @@ See `docs/reference/matrix-responsibility.json`.
 `tic__computacion-hibrida-iaas-paas-saas`, `tic__sistemas-san-y-raid`,
 `tic__tcp-ip-v4-y-mpls`, `tic__itil-v4-conceptos-y-cadena-de-valor`.*
 
-### 3. `curve` — a shape that is not data (3)
+### 3. ~~`curve`~~ — a shape that is not data (3) — **done**
 
 The Gartner hype cycle, the EVM S-curves, the sprint burn-down. These look like
 charts and are not: there are no numbers behind the hype cycle, only a named
 shape with five labelled waypoints on it. The burn-down has two series where one
 is a straight ideal and the other is the real line, each labelled where it ends.
 
-The chart kind could grow into part of this — multiple series, a dashed series,
-a label at the end of a line. The waypoint annotations and the free-form named
-curve are the part it could not.
+It is its own kind rather than a chart option, and the reason is the one thing
+these three have in common: **there are no numbers**. So there are no ticks —
+drawing them would invite a reader to measure a shape somebody sketched — and a
+waypoint carries a *name* where a data point would carry a value.
+
+Two decisions:
+
+* **The curve passes through every waypoint**, not near it. A spline that merely
+  approached them would put the markers off the line, which is the one defect
+  this family already forbids. Two points stay a straight line: that is what an
+  "ideal" burn-down is, and smoothing it would spoil it.
+* **It is sampled into a polyline**, the way `cycle` already draws its arcs.
+  The smoothing is drawspec's business; the reader's renderer gets the shape
+  rather than a recipe for it.
+
+A curve's name is drawn where it ends, and the names go down before the waypoint
+labels so a label at the end of a curve never lands on that curve's own name.
+
+*See `docs/reference/curve-hype.json` and `docs/reference/curve-burndown.json`.*
 
 *Originals: `tic__prospeccion-de-soluciones-tic`,
 `tic__pmbok-rendimiento-riesgos-y-cierre`, `barcelona__scrum-bit`.*
@@ -261,9 +277,10 @@ edge style rather than a defeat.
 3. ~~**`matrix`.**~~ Done — and the greyscale rule turned out to be the easy
    half. The hard half was keeping the author out of the appearance.
 
-**`curve` is the last of the five**, and the only one still open: a named shape
-with labelled waypoints, for the hype cycle, the EVM S-curves and the burn-down.
-`quadrant`, `funnel`, `group` and `matrix` are done.
+**All five are done** — `group`, `matrix`, `curve`, `quadrant`, `funnel` — along
+with `spans`' cousin still open and the two pictures still declined. The count at
+the top of this document is the state before that work; what is left is the
+features table above and the one limitation below.
 
 One limitation found on the way and worth writing down: a chart series whose
 highest and lowest points sit exactly on the plot's edges can never label them —

@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "kind": "curve",
+  "title": "How expectations move",
+  "description": "Gartner's hype cycle. There are no numbers behind this shape and no ticks on its axes: it names five places a technology passes through, in order.",
+  "axes": {
+    "horizontal": {
+      "label": "Time"
+    },
+    "vertical": {
+      "label": "Expectations"
+    }
+  },
+  "curves": [
+    {
+      "waypoints": [
+        {
+          "text": "The trigger",
+          "across": 0.0,
+          "up": 0.06
+        },
+        {
+          "across": 0.12,
+          "up": 0.35
+        },
+        {
+          "text": "Peak of inflated expectations",
+          "across": 0.25,
+          "up": 1.0
+        },
+        {
+          "across": 0.38,
+          "up": 0.5
+        },
+        {
+          "text": "Trough of disillusionment",
+          "across": 0.5,
+          "up": 0.12
+        },
+        {
+          "across": 0.68,
+          "up": 0.2
+        },
+        {
+          "text": "Slope of enlightenment",
+          "across": 0.82,
+          "up": 0.42
+        },
+        {
+          "text": "Plateau of productivity",
+          "across": 1.0,
+          "up": 0.56
+        }
+      ]
+    }
+  ]
+}

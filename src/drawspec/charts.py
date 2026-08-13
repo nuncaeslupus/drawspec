@@ -35,6 +35,7 @@ the horizontal one is not, in every chart. Neither is a per-diagram choice.
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import pairwise
 from typing import Final
@@ -71,6 +72,11 @@ MARKER_FRACTION: Final = 0.4
 #: meets a label box. Smaller than the shortest side of a label set at the
 #: theme's label size, so a sample cannot step over one.
 SAMPLE_SPACING: Final = 4.0
+
+#: How many segments each span between two waypoints is drawn with. Enough that
+#: the polyline reads as a curve at the sizes drawspec draws at; a reader's
+#: renderer gets the shape rather than a recipe for it.
+CURVE_STEPS: Final = 16
 
 #: A quadrant's height as a fraction of its width. Nearer square than a chart,
 #: because the two directions are peers here — neither is "the" axis.
@@ -114,6 +120,8 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     """
     if document.kind == "quadrant":
         return _quadrant(document, theme, measurer)
+    if document.kind == "curve":
+        return _curve(document, theme, measurer)
     if document.kind != "chart":
         raise DrawspecError(f"{document.kind!r} is not the chart kind")
     if not document.series:
@@ -773,7 +781,7 @@ def _quadrant(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
         ),
     ]
 
-    dividers = [
+    dividers: list[tuple[tuple[float, float], ...]] = [
         ((plot_left, middle_y), (plot_right, middle_y)),
         ((middle_x, plot_top), (middle_x, plot_bottom)),
     ]
@@ -829,7 +837,7 @@ def _place_label(
     x: float,
     y: float,
     placed: list[tuple[float, float, float, float]],
-    dividers: list[tuple[tuple[float, float], tuple[float, float]]],
+    dividers: Sequence[tuple[tuple[float, float], ...]],
     theme: Theme,
     measurer: TextMeasurer,
     left: float,
@@ -890,3 +898,188 @@ def _overlaps(
         and first[1] < second[3]
         and second[1] < first[3]
     )
+
+
+# ---------------------------------------------------------------------------
+# curve
+# ---------------------------------------------------------------------------
+
+
+def _curve(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
+    """Named shapes with labelled waypoints. A drawing, not a measurement.
+
+    The hype cycle, the EVM S-curves, a sprint burn-down. These look like charts
+    and are not: nobody has the numbers behind a hype cycle, and drawing ticks on
+    one would invite a reader to read values off a shape somebody sketched. So
+    the axes are labelled and bare, exactly as in `quadrant`, and the waypoints
+    carry names rather than values.
+
+    The curve itself is **sampled into a polyline** rather than emitted as a
+    Bézier, which is how `cycle` already draws its arcs: the smoothing is
+    drawspec's business, and a reader's renderer should be handed the shape
+    rather than a recipe for it.
+    """
+    curves = document.curves
+    if not curves:
+        raise DrawspecError("a curve diagram needs at least one curve")
+    horizontal, vertical = document.axes
+
+    width = document.width if document.width else theme.canvas.width
+    height = document.height if document.height else width * CHART_ASPECT
+
+    size = theme.scale["label"]
+    gap = theme.box.padding.top
+    line = measurer.measure("0", theme.font.default, size)
+    names = max(
+        (measurer.measure(item.name, theme.font.default, size).width for item in curves),
+        default=0.0,
+    )
+
+    every = [point for item in curves for point in item.waypoints]
+    across = _quadrant_scale(horizontal, [point.across for point in every])
+    up = _quadrant_scale(vertical, [point.up for point in every])
+
+    plot_left = line.height + gap
+    plot_top = line.height + gap
+    plot_bottom = height - line.height - gap
+    # Room on the right for the name that sits at the end of each curve.
+    plot_right = width - names - gap * 2
+    if plot_right - plot_left <= 0 or plot_bottom - plot_top <= 0:
+        raise FitError(
+            f"a curve diagram {width:.0f} x {height:.0f} has no room for its plot once "
+            f"the axis labels and the curve names are measured. Give it more width, or "
+            f"shorten the names."
+        )
+
+    across = Scale(across.low, across.high, plot_left, plot_right)
+    up = Scale(up.low, up.high, plot_bottom, plot_top)
+
+    primitives: list[Primitive] = [
+        *_axes(plot_left, plot_right, plot_top, plot_bottom),
+        *_axis_labels(
+            horizontal,
+            vertical,
+            plot_left,
+            plot_right,
+            plot_top,
+            plot_bottom,
+            height,
+            theme,
+            measurer,
+            gap,
+        ),
+    ]
+
+    drawn = [
+        _smooth([(across.to_pixels(p.across), up.to_pixels(p.up)) for p in item.waypoints])
+        for item in curves
+    ]
+    # The names go down first and their boxes are kept, so a waypoint label at
+    # the end of a curve does not land on the curve's own name — the two would
+    # be saying different things about the same point.
+    placed: list[tuple[float, float, float, float]] = []
+    for item, path in zip(curves, drawn, strict=True):
+        primitives.append(Path(item.role, points=path))
+        if not item.name:
+            continue
+        end_x, end_y = path[-1]
+        extents = measurer.measure(item.name, theme.font.default, size)
+        placed.append(
+            _label_box(
+                end_x + gap,
+                end_y + (line.ascent - line.descent) / 2,
+                "start",
+                extents.width,
+                extents.height,
+                extents.width / 2,
+            )
+        )
+        primitives.append(
+            TextRun(
+                item.role,
+                x=end_x + gap,
+                y=end_y + (line.ascent - line.descent) / 2,
+                text=item.name,
+                level="label",
+                font=theme.font.default,
+                anchor="start",
+            )
+        )
+
+    radius = theme.edge.head_length * MARKER_FRACTION
+    for item in curves:
+        for point in item.waypoints:
+            if not point.text:
+                continue
+            x, y = across.to_pixels(point.across), up.to_pixels(point.up)
+            primitives.append(Ellipse(item.role, cx=x, cy=y, rx=radius, ry=radius))
+            label = _place_label(
+                Position(text=point.text, across=point.across, up=point.up, role=item.role),
+                x,
+                y,
+                placed,
+                drawn,
+                theme,
+                measurer,
+                plot_left,
+                plot_right,
+                plot_top,
+                plot_bottom,
+            )
+            if label is None:
+                raise FitError(
+                    f"the waypoint {point.text[:32]!r} has nowhere to sit that is inside "
+                    f"the plot and clear of the curves. Move it, shorten it, or give the "
+                    f"diagram more room."
+                )
+            box, primitive = label
+            placed.append(box)
+            primitives.append(primitive)
+
+    return Scene(
+        width=width,
+        height=height,
+        primitives=tuple(primitives),
+        title=document.title,
+        description=document.description,
+    )
+
+
+def _smooth(points: list[tuple[float, float]]) -> tuple[tuple[float, float], ...]:
+    """A Catmull-Rom spline through every point, sampled into a polyline.
+
+    Through, not near: a waypoint is a named place on the curve, and a spline
+    that merely approached it would put the marker off the line — the one defect
+    this family already forbids. Two points stay a straight line, which is what
+    an "ideal" burn-down is and what smoothing it would spoil.
+    """
+    if len(points) < 3:
+        return tuple(points)
+    padded = [points[0], *points, points[-1]]
+    sampled: list[tuple[float, float]] = [points[0]]
+    for first, second, third, fourth in zip(
+        padded, padded[1:], padded[2:], padded[3:], strict=False
+    ):
+        for step in range(1, CURVE_STEPS + 1):
+            fraction = step / CURVE_STEPS
+            squared = fraction * fraction
+            cubed = squared * fraction
+            sampled.append(
+                (
+                    0.5
+                    * (
+                        2 * second[0]
+                        + (-first[0] + third[0]) * fraction
+                        + (2 * first[0] - 5 * second[0] + 4 * third[0] - fourth[0]) * squared
+                        + (-first[0] + 3 * second[0] - 3 * third[0] + fourth[0]) * cubed
+                    ),
+                    0.5
+                    * (
+                        2 * second[1]
+                        + (-first[1] + third[1]) * fraction
+                        + (2 * first[1] - 5 * second[1] + 4 * third[1] - fourth[1]) * squared
+                        + (-first[1] + 3 * second[1] - 3 * third[1] + fourth[1]) * cubed
+                    ),
+                )
+            )
+    return tuple(sampled)

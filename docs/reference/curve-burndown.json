@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "kind": "curve",
+  "title": "How the sprint actually went",
+  "description": "The work left at the end of each day, against the straight line it would have followed if every day had been the same. The bulge is the day new work arrived.",
+  "axes": {
+    "horizontal": {
+      "label": "Days of the sprint"
+    },
+    "vertical": {
+      "label": "Work left"
+    }
+  },
+  "curves": [
+    {
+      "name": "Ideal",
+      "role": "note",
+      "waypoints": [
+        {
+          "across": 0.0,
+          "up": 1.0
+        },
+        {
+          "across": 1.0,
+          "up": 0.0
+        }
+      ]
+    },
+    {
+      "name": "Real",
+      "waypoints": [
+        {
+          "text": "The whole of it",
+          "across": 0.0,
+          "up": 1.0
+        },
+        {
+          "across": 0.25,
+          "up": 0.78
+        },
+        {
+          "across": 0.45,
+          "up": 0.6
+        },
+        {
+          "text": "New work arrives",
+          "across": 0.6,
+          "up": 0.66
+        },
+        {
+          "across": 0.8,
+          "up": 0.45
+        },
+        {
+          "across": 1.0,
+          "up": 0.22
+        }
+      ]
+    }
+  ]
+}
