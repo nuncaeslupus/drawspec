@@ -35,7 +35,17 @@ from typing import Final
 from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
 from drawspec.kinds.common import box_primitives
-from drawspec.layout import LayeredEngine, Layout, LayoutEdge, LayoutNode, Spacing, best_layout
+from drawspec.kinds.containers import (
+    Frame,
+    arrange,
+    border_obstacles,
+    caption_obstacle,
+    captions_for,
+    crossed,
+    frame_primitives,
+    nesting_of,
+)
+from drawspec.layout import Layout, Spacing
 from drawspec.routing import (
     Connector,
     Label,
@@ -87,6 +97,8 @@ class GraphDrawing:
     labels: tuple[Label, ...]
     width: float
     height: float
+    frames: tuple[Frame, ...] = ()
+    """The group containers, outermost first — empty when the author declared none."""
 
 
 def graph_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
@@ -100,7 +112,11 @@ def graph_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     drawing = graph_drawing(document, theme, measurer)
 
     primitives: list[Primitive] = []
-    # Lines first, then boxes over them, then labels over everything: a route
+    # Frames first of all — a container is behind what it contains, and its
+    # dashed border must never sit on top of a box or a route.
+    for frame in drawing.frames:
+        primitives.extend(frame_primitives(frame, theme, measurer))
+    # Lines next, then boxes over them, then labels over everything: a route
     # arrives at a border, so whichever is drawn second owns the join, and it
     # should be the box.
     for route in drawing.routes:
@@ -136,16 +152,24 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
     margin = theme.box.padding.horizontal
     boxes = _sized(document, theme, measurer, width * NODE_WIDTH_SHARE)
 
-    layout = best_layout(
-        LayeredEngine(spacing=_spacing(theme)),
-        [
-            LayoutNode(id=node.id, width=boxes[node.id].width, height=boxes[node.id].height)
-            for node in document.nodes
-        ],
-        [LayoutEdge(source=edge.source, target=edge.target) for edge in document.edges],
+    nesting = nesting_of(document)
+    spacing = _spacing(theme)
+    arrangement = arrange(
+        nesting.roots,
+        nesting,
+        [(edge.source, edge.target) for edge in document.edges],
+        boxes,
+        captions_for(document, nesting, theme, measurer, width * NODE_WIDTH_SHARE),
+        theme,
+        spacing,
         max_width=width - margin * 2,
         prefer=PREFERRED_DIRECTION,
+        entered=crossed([(edge.source, edge.target) for edge in document.edges], nesting),
     )
+    # The top level's own layout, with every leaf from every level in it — the
+    # ranks and reversed edges are the top level's, which is what a caller
+    # asking about ranks means by the question.
+    layout = replace(arrangement.layout, placements=arrangement.places)
     if not layout.fits:
         raise FitError(
             f"this {document.kind} needs {layout.width + margin * 2:.0f} at its narrowest "
@@ -171,13 +195,29 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
             Connector(edge.source, edge.target, role=edge.role, label=edge.label)
             for edge in document.edges
         ),
-        obstacles,
+        # Frames do not obstruct — an edge into a group must cross its border —
+        # but a frame's caption does, so an arrow arriving from above comes in
+        # beside the words rather than through them.
+        (
+            *obstacles,
+            *(blocked for frame in arrangement.frames for blocked in caption_obstacle(frame)),
+        ),
         theme,
         direction=layout.direction,
     )
-    labels = place_labels(routes, obstacles, theme, measurer)
+    # Labels avoid the frames as well as the boxes — only the frames' borders,
+    # so a label belonging to an edge inside a group can still sit inside it.
+    labels = place_labels(
+        routes,
+        (
+            *obstacles,
+            *(border for frame in arrangement.frames for border in border_obstacles(frame, theme)),
+        ),
+        theme,
+        measurer,
+    )
 
-    return _framed(layout, boxes, obstacles, routes, labels, margin)
+    return _framed(layout, boxes, obstacles, routes, labels, margin, arrangement.frames)
 
 
 def _spacing(theme: Theme) -> Spacing:
@@ -232,6 +272,7 @@ def _framed(
     routes: Sequence[Route],
     labels: Sequence[Label],
     margin: float,
+    frames: Sequence[Frame] = (),
 ) -> GraphDrawing:
     """Shift everything so the drawing starts at the margin, and measure it.
 
@@ -251,6 +292,9 @@ def _framed(
     for label in labels:
         xs += [label.left, label.left + label.width]
         ys += [label.top, label.top + label.height]
+    for frame in frames:
+        xs += [frame.x, frame.right]
+        ys += [frame.y, frame.bottom]
 
     offset_x = margin - min(xs, default=0.0)
     offset_y = margin - min(ys, default=0.0)
@@ -274,6 +318,7 @@ def _framed(
         ),
         width=max(xs, default=0.0) + offset_x + margin,
         height=max(ys, default=0.0) + offset_y + margin,
+        frames=tuple(frame.moved(offset_x, offset_y) for frame in frames),
     )
 
 
