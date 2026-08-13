@@ -3,9 +3,12 @@
 Declarative diagram spec → clean, themeable SVG. Writable by an LLM with no
 coordinates to get wrong.
 
-> **Status: it draws.** All nine kinds render — `flow`, `tree`, `cycle`,
-> `stack`, `timeline`, `columns`, `pyramid`, `rings` and `chart` — and each of
-> the eleven failure families below has a test asserting it cannot be expressed.
+> **Status: it draws.** All thirteen kinds render — `flow`, `tree`, `cycle`,
+> `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`,
+> `chart`, `quadrant` and `curve` — and each of the eleven failure families
+> below has a test asserting it cannot be expressed. The vocabulary opened from
+> nine to thirteen on evidence: see `docs/kinds-wanted.md`, which sorts all 89
+> hand-drawn originals by the kind that would have to draw them.
 
 ## The problem
 

@@ -2,57 +2,83 @@
 
 <!-- Written at session end. A new session reading this file can resume without additional context. -->
 
-**Date**: 2026-08-13
-**Branch**: `claude/graphic-types-review-l28z1e` · **Last PR**: [#20](https://github.com/nuncaeslupus/drawspec/pull/20), **merged**
+**Date**: 2026-08-13 (overnight)
+**Branch**: `claude/graphic-types-review-l28z1e` · **PRs**: #20–#26, all merged
 
-**A human reviewed all nine kinds by eye and found ten defects.** Every one of
-them was in a drawing that passed every mechanical gate — which is what the
-specification predicts and what `make gallery` exists for. All ten are fixed on
-this branch, each with a test that fails without it: **918 passing**, up from 868.
+**drawspec draws thirteen kinds. It drew nine yesterday.** The four new ones —
+`matrix`, `funnel`, `quadrant`, `curve` — plus containers on the graph kinds and
+bars, areas and stacks on the chart. **1033 passing**, up from 918.
 
-## What was reviewed
+Review sheet: <https://claude.ai/code/artifact/9a70769a-8667-40b2-866c-e24ff830cea5>
 
-The nine reference documents, rendered and published as a review sheet. The
-reviewer's report is the source of the ten items below; nothing here came from a
-gate.
+## How the work was chosen
 
-## The ten, and why each was drawable
+Not by preference. `docs/kinds-wanted.md` extracts all 89 hand-drawn SVGs from
+the opos temario into a gitignored `originals/` and sorts every one by the kind
+that would have to draw it: **68 landed on a kind that existed, 21 did not.** The
+schema's own error message said a new kind "needs evidence"; that document is the
+evidence, and every kind added since cites it.
 
-| Fix | Root cause |
-|---|---|
-| One canvas width for every kind | The canvas was cropped to the ink, so a 365-wide flow and a 602-wide tree scaled differently in one page — the same 11pt label read at two sizes. Now centred on the theme's canvas; `[canvas] width_mode = "ink"` restores the old behaviour. |
-| Routes keep clearance from boxes they pass | A path along a border is as short and straight as one beside it. Boxes are grown by a new `[edge] clearance` before blocking the search. |
-| Two routes no longer share one line | Both edges crossing a gap get the same cheapest route. Overlapping runs are separated after routing — grouped by overlapping stretch, not by lane. |
-| Arrow heads have a straight run | The first lane in front of a port could be 1.7 units away. Degenerate lanes dropped; the approach is floored at the head length; a route that still turns too close is refused. |
-| An open head is never dashed | It was stroked with the role's dash. `Path.marker` says a head is a mark, not a length of line. |
-| Cycle arcs reach both steps | Clearance came from the box *diagonal* while an arc arrives side-on. Both ends are now found on the box outline by bisection. |
-| The bold word keeps its space | SVG strips whitespace at the edge of a text element. |
-| Centred text stays centred on a phone | Per-run coordinates were computed in a font the reader may not have. |
-| Timeline ticks touch their labels | The tick started beside the axis, so the pairing was the reader's inference. |
-| Pyramid/rings type size | Level height was a fixed fraction of the base; it now comes from the labels. The type level went to `heading` for one round and came straight back to `body` — a reader picked those two kinds out of the nine at once. **Every kind sets its shape text at one level, and `test_every_kind_sets_its_text_at_the_same_level` says so.** The shape gives, not the type: the pyramid's base is now derived from its labels (canvas as a ceiling, `PYRAMID_MIN_SHARE` as a floor) so it reads as a pyramid rather than a staircase, and a level is never more than `PYRAMID_FILL` times its own text. |
-| Chart point labels | Precision came from the axis step, so 7.2/6.8/7.4/6.9 all printed `7`. It now comes from the data. |
+## What landed, in order
 
-## The structural change worth knowing about
+| PR | What | Why it was the next thing |
+|---|---|---|
+| #20 | ten defects a human reviewer found | (yesterday's) |
+| #21 | rings sized from labels; the inventory | closed the last review note |
+| #22 | `group` — a box that contains boxes | 6 originals; the schema had declared `groups` since v1 and nothing drew them |
+| #23 | `funnel` | 2 originals, and the pyramid's geometry turned a quarter turn |
+| #24 | chart marks: `bar`, `area`, `stack` | the standing request, and it built the fill vocabulary `matrix` needed |
+| #25 | `matrix` | 5 originals, on that vocabulary |
+| #26 | `quadrant` and `curve` | 5 originals; both are diagrams with no numbers |
 
-`TextRun` (one positioned element per span) is joined by **`TextLine`** (one
-anchored element, spans as `<tspan>`s laid out by the reader's renderer). Box
-text uses `TextLine`; single-run furniture — chart tick labels, edge labels —
-still uses `TextRun`. `kinds.common.line_bounds` is how a test measures a line.
+## The three decisions worth carrying forward
 
-`scene.moved` / `scene.extents` are shared translation and bounds helpers; every
-family should use them rather than reimplementing.
+**Keep hand-rolling the chart.** Nothing matplotlib, plotly or pygal emits can
+pass an emitter that forbids a `<style>` element, namespaces every id, allows
+only theme-declared colours and embeds no font. What a library sells is
+statistical plotting, interactivity and thirty chart types; what was wanted was a
+**mark abstraction**, so the next mark is additive. That is what `mark:
+line|bar|area` plus `stack` is.
 
-## If work continues
+**The author names meaning; the theme names appearance.** A matrix cell was going
+to carry a `fill` until the test suite refused it — `fill` is in the schema's
+rejection table. It names a **group** instead, and `[mark] fills` turns groups
+into patterns in order of first mention. The same vocabulary serves chart marks.
+Two new patterns (`cross`, `grid`) so four series have four fills, every one
+drawn faint because *"the hatching is too strong and it is hard to read client"*
+was the loudest complaint the originals drew.
 
-- **The queue is empty. The plan is finished.** The apparent anomaly — T1–T18
-  reading `open` — was the seed on `main`, not live state: claims and releases
-  only ever land on `arsenal-queue`, which is never merged into mainline, so the
-  copy on the default branch stays frozen at the seed by design. On
-  `arsenal-queue` all **21 tasks are `done`**, each with its PR. Export
-  `ARSENAL_QUEUE_DIR="$(claude-arsenal/bin/queue_branch.sh)"` before reading the
-  queue and the two agree. Nothing here needs fixing.
-- **Left open on purpose**: irregular timeline spacing (a different kind, not a
-  fix); edge bundling for the comb of three arrows leaving one box; chart marks
-  beyond lines — bars, areas — which is where the real work in that kind is.
-- **The habit held.** Every one of these ten came from rendering and looking.
-  Keep ending a rendering task with `make gallery`.
+**A container is not a kind.** `group` is a property of the graph family:
+nesting is layout inside layout, only leaves obstruct routing, and the caption is
+a corner tab because centred is exactly where an arrow arriving from outside
+comes in.
+
+## Open, and deliberately so
+
+- **`spans`** — one original (RPO/RTO/WRT brackets over a timeline). One is one;
+  it may be better served by irregular timeline spacing plus a bracket than by a
+  kind.
+- **Two pictures** — Wi-Fi cells, vector-against-raster. drawspec should decline
+  them; a declarative document whose author has no coordinates is the wrong tool
+  for a picture.
+- **A chart series whose extremes sit on the plot edges loses its point labels.**
+  Above the top point is outside the plot and below it crosses the curve, so the
+  all-or-nothing rule drops them. The fix is a vertical margin on the scale, the
+  way `quadrant` already has one. Left alone because it changes every existing
+  chart drawing and those have been reviewed.
+- The features table in `docs/kinds-wanted.md`: node/edge emphasis, a label
+  inside a bar, an axis caption, irregular timeline spacing, fork and join, and a
+  declared straight-edge style for the one diagram where the mesh *is* the
+  message.
+
+## Notes for the next session
+
+- The queue is empty; all six seeded tasks are `done` with their PRs. Export
+  `ARSENAL_QUEUE_DIR="$(claude-arsenal/bin/queue_branch.sh)"` before reading it —
+  the copy on the default branch is the seed, not live state.
+- `originals/` is gitignored study material belonging to the other project. Rebuild
+  it with the scripts in the session scratchpad if it is missing; the committed
+  evidence is the inventory table in `docs/kinds-wanted.md`.
+- **The habit held again.** Every fix tonight came from rendering the thing and
+  looking at it — square corners on bars, the caption an arrow drove through, a
+  label sitting on a midline. Keep ending a rendering task with `make gallery`.

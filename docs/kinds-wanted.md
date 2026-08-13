@@ -1,4 +1,4 @@
-# What the nine kinds cannot draw
+# What the nine kinds could not draw
 
 drawspec exists because 89 study diagrams were written by hand in SVG and a
 human reviewing them found the same faults over and over — arrow heads with no
@@ -7,7 +7,13 @@ every figure. Those faults are what the nine kinds and the fit engine are for.
 
 This document asks the other question. Not *are the drawings correct*, but
 **could drawspec have drawn them at all**. It is an inventory of the same 89
-originals against the nine kinds, and of the gap that inventory shows.
+originals against the nine kinds, and of the gap that inventory showed.
+
+> **All five gaps are now closed.** `group`, `matrix`, `curve`, `quadrant` and
+> `funnel` are implemented, each with a reference drawing in `docs/reference/`
+> and tests that fail without it. The counts below are the state *before* that
+> work — they are what the decision was made on, and they are left as they were
+> so the reasoning stays readable. Each section says what it turned into.
 
 > **Where the originals are.** They are the `<svg>` blocks inline in the opos
 > temario, extracted to `originals/` (gitignored — they are study material, not
