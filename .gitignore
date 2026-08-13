@@ -226,3 +226,6 @@ claude-arsenal/session/budget_iterations.json
 claude-arsenal/session/worktree_isolation
 
 claude-arsenal/session/host_branch
+
+# The opos schemas this project exists to replace. Study material, not source.
+originals/
