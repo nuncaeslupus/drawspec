@@ -235,7 +235,7 @@ are cheaper than kinds and some are nearly free:
 
 | Want | Where it shows | Kind |
 |---|---|---|
-| Emphasis on a node or an edge | the critical path marked through a network | flow |
+| ~~Emphasis on a node or an edge~~ | **done** — the `strong` edge role, beside the `emphasis` node role | flow |
 | A label inside a bar | the five stars of open data, each in its own column | columns |
 | A caption under the axis | *"depth of change in the organisation"* | timeline |
 | ~~Irregular spacing~~ | **done** — give every entry an `at` | timeline |

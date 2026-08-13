@@ -3,11 +3,12 @@
 <!-- Written at session end. A new session reading this file can resume without additional context. -->
 
 **Date**: 2026-08-13 (overnight)
-**Branch**: `claude/graphic-types-review-l28z1e` · **PRs**: #20–#26, all merged
+**Branch**: `claude/graphic-types-review-l28z1e` · **PRs**: #20–#28, all merged
 
 **drawspec draws thirteen kinds. It drew nine yesterday.** The four new ones —
-`matrix`, `funnel`, `quadrant`, `curve` — plus containers on the graph kinds and
-bars, areas and stacks on the chart. **1033 passing**, up from 918.
+`matrix`, `funnel`, `quadrant`, `curve` — plus containers on the graph kinds,
+bars, areas and stacks on the chart, and a timeline that can space by when things
+happened. **1046 passing**, up from 918.
 
 Review sheet: <https://claude.ai/code/artifact/9a70769a-8667-40b2-866c-e24ff830cea5>
 
@@ -30,6 +31,8 @@ evidence, and every kind added since cites it.
 | #24 | chart marks: `bar`, `area`, `stack` | the standing request, and it built the fill vocabulary `matrix` needed |
 | #25 | `matrix` | 5 originals, on that vocabulary |
 | #26 | `quadrant` and `curve` | 5 originals; both are diagrams with no numbers |
+| #27 | the README and `KINDS` said nine | housekeeping |
+| #28 | `timeline` spaced by `at` | the reviewer's own note from round one |
 
 ## The three decisions worth carrying forward
 
@@ -66,10 +69,10 @@ comes in.
   all-or-nothing rule drops them. The fix is a vertical margin on the scale, the
   way `quadrant` already has one. Left alone because it changes every existing
   chart drawing and those have been reviewed.
-- The features table in `docs/kinds-wanted.md`: node/edge emphasis, a label
-  inside a bar, an axis caption, irregular timeline spacing, fork and join, and a
-  declared straight-edge style for the one diagram where the mesh *is* the
-  message.
+- The features table in `docs/kinds-wanted.md`: node/edge emphasis (the critical
+  path), a label inside a bar, an axis caption, fork and join, and a declared
+  straight-edge style for the one diagram where the mesh *is* the message.
+  Irregular timeline spacing is done.
 
 ## Notes for the next session
 

@@ -712,7 +712,8 @@
             "link",
             "exchange",
             "weak",
-            "owns"
+            "owns",
+            "strong"
           ]
         }
       },

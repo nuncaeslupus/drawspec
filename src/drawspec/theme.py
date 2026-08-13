@@ -43,7 +43,7 @@ THEME_VERSION: Final = 1
 NODE_ROLES: Final = ("start", "step", "decision", "terminal", "emphasis", "note", "group")
 
 #: Semantic edge roles. `link` is how "merely associated" is said.
-EDGE_ROLES: Final = ("flow", "link", "exchange", "weak", "owns")
+EDGE_ROLES: Final = ("flow", "link", "exchange", "weak", "owns", "strong")
 
 #: Shapes a node role may take.
 NODE_SHAPES: Final = ("rect", "pill", "diamond", "ellipse", "none")

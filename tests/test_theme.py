@@ -464,3 +464,15 @@ def test_relative_luminance_matches_the_wcag_definition(colour: str, expected: f
 def test_relative_luminance_of_an_uncomputable_colour_is_none() -> None:
     assert relative_luminance("currentColor") is None
     assert relative_luminance("none") is None
+
+
+def test_the_two_role_vocabularies_share_no_name() -> None:
+    """A name in both would resolve to the node role and cost an edge its head.
+
+    `role_for` tries nodes first, and `edge_primitives` reads a head with
+    `getattr(role, "head", "none")` — so an edge whose role is also a node role
+    silently loses its arrow. That is exactly what happened when `emphasis` was
+    added to both vocabularies: the critical path came out headless, and the
+    drawing looked plausible.
+    """
+    assert set(NODE_ROLES).isdisjoint(EDGE_ROLES)
