@@ -39,7 +39,7 @@ from typing import Final
 from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, size_box
 from drawspec.kinds.common import text_runs
-from drawspec.scene import Ellipse, Polygon, Primitive, Scene
+from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene
 from drawspec.schema import Document, Item
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme
@@ -78,6 +78,20 @@ PYRAMID_MIN_SHARE: Final = 0.45
 #: otherwise close down to a coin.
 RINGS_MIN_SHARE: Final = 0.45
 
+#: How deep a funnel's mouth is, as a fraction of its throat. Not zero: a funnel
+#: that closes to a point has no last stage to write in, which is the same reason
+#: a pyramid's apex is flat.
+FUNNEL_TAPER: Final = 0.4
+
+#: The shallowest a funnel may be drawn, as a fraction of its width. A funnel of
+#: one-word stages would otherwise come out a ruled line with words along it.
+FUNNEL_MIN_DEPTH: Final = 0.16
+
+#: The role a funnel's gates are drawn in. `weak` — dashed, headless — because a
+#: gate is a threshold rather than a wall: the band is continuous and something
+#: passes through it.
+GATE_ROLE: Final = "weak"
+
 #: Bisection steps used to size a ring set. Enough to settle a canvas-sized
 #: interval well below a unit of the coordinate system.
 _BISECTIONS: Final = 24
@@ -107,6 +121,8 @@ def shape_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
         return _pyramid(document, theme, measurer)
     if document.kind == "rings":
         return _rings(document, theme, measurer)
+    if document.kind == "funnel":
+        return _funnel(document, theme, measurer)
     raise DrawspecError(f"{document.kind!r} is not a shape kind")
 
 
@@ -260,6 +276,107 @@ def _pyramid_base(
         for index, item in enumerate(levels)
     ]
     return min(canvas, max(max(demands, default=0.0), canvas * PYRAMID_MIN_SHARE))
+
+
+# ---------------------------------------------------------------------------
+# funnel
+# ---------------------------------------------------------------------------
+
+
+def _funnel(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
+    """A tapering band divided into stages: the pyramid, lying down.
+
+    The same trapezoid and the same constant progression, turned a quarter turn.
+    What changes is which way the shape gives when the text does not fit. A
+    pyramid narrows to its apex, so its *base* is what the labels buy; a funnel
+    narrows to its mouth, so what the labels buy is its **height** — and it fills
+    the canvas width, because a funnel that did not would be a wedge with nowhere
+    to put the stages.
+
+    The dividers are drawn in the theme's `weak` edge role rather than as the
+    shared sides of separate polygons. A gate is a threshold, not a wall: the
+    band is continuous and something passes through it, which is what a stage
+    boundary in a funnel means and what a solid line would deny.
+    """
+    stages = document.stages
+    count = len(stages)
+    if count < 1:
+        raise DrawspecError("a funnel needs at least one stage")
+
+    width = _canvas_width(document, theme)
+    slice_width = width / count
+    boxes = [
+        _label(
+            item,
+            theme,
+            measurer,
+            slice_width - theme.box.padding.horizontal,
+            f"stage {index + 1} of {count} ({item.text[:32]!r})",
+            "Shorten the label, use fewer stages, or give the diagram more width.",
+        )
+        for index, item in enumerate(stages)
+    ]
+    height = _funnel_height(boxes, count, width, theme)
+
+    def edge(x: float) -> float:
+        """Half the band's depth at `x` — it tapers linearly from left to right."""
+        share = x / width
+        return height * (1 - (1 - FUNNEL_TAPER) * share) / 2
+
+    middle = height / 2
+    primitives: list[Primitive] = [
+        Polygon(
+            stages[0].role,
+            points=(
+                (0.0, middle - edge(0.0)),
+                (width, middle - edge(width)),
+                (width, middle + edge(width)),
+                (0.0, middle + edge(0.0)),
+            ),
+        )
+    ]
+    for index in range(1, count):
+        gate = index * slice_width
+        primitives.append(
+            Path(GATE_ROLE, points=((gate, middle - edge(gate)), (gate, middle + edge(gate))))
+        )
+    for index, box in enumerate(boxes):
+        # The right edge is the narrowest part of a stage, so that is what its
+        # text has to fit — the same rule as a pyramid level's top edge.
+        span = edge((index + 1) * slice_width) * 2 - theme.box.padding.vertical
+        if box.height > span:
+            raise FitError(
+                f"stage {index + 1} of {count} needs {box.height:.0f} of depth and the "
+                f"band is {span:.0f} where it ends. Shorten the label, use fewer "
+                f"stages, or give the diagram more width."
+            )
+        placed = box.resized(width=slice_width).moved_to(
+            index * slice_width, middle - box.height / 2
+        )
+        primitives.extend(text_runs(placed, theme, measurer))
+
+    return Scene(
+        width=width,
+        height=height,
+        primitives=tuple(primitives),
+        title=document.title,
+        description=document.description,
+        metadata=(("taper", f"{FUNNEL_TAPER}"),),
+    )
+
+
+def _funnel_height(boxes: list[Box], count: int, width: float, theme: Theme) -> float:
+    """The shallowest band every stage's text still fits in where it ends.
+
+    Each stage asks for the height at which the band, already tapered to where
+    that stage ends, still holds its label. The deepest demand wins; the floor
+    keeps a funnel of one-word stages from becoming a rule with words on it.
+    """
+    demands = [
+        (box.height + theme.box.padding.vertical) / (1 - (1 - FUNNEL_TAPER) * (index + 1) / count)
+        for index, box in enumerate(boxes)
+    ]
+    return max(max(demands, default=0.0), width * FUNNEL_MIN_DEPTH)
 
 
 # ---------------------------------------------------------------------------
@@ -438,6 +555,9 @@ def _half_chord(radius: float, offset: float) -> float:
 
 
 __all__ = [
+    "FUNNEL_MIN_DEPTH",
+    "FUNNEL_TAPER",
+    "GATE_ROLE",
     "PYRAMID_ASPECT",
     "PYRAMID_FILL",
     "PYRAMID_MIN_SHARE",

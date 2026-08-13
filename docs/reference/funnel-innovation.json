@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "kind": "funnel",
+  "title": "The innovation funnel",
+  "description": "Many ideas go in at the throat and few deployed solutions come out at the mouth. The dashed dividers are the gates each idea has to pass.",
+  "stages": [
+    { "text": "Many **ideas**" },
+    { "text": "Assessed and chosen" },
+    { "text": "Validated" },
+    { "text": "**Deployed**" }
+  ]
+}

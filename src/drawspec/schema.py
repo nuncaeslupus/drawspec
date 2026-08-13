@@ -54,7 +54,7 @@ SCHEMA_FILENAME: Final = "drawspec-v1.schema.json"
 
 GRAPH_KINDS: Final = ("flow", "tree", "cycle")
 GRID_KINDS: Final = ("stack", "timeline", "columns")
-SHAPE_KINDS: Final = ("pyramid", "rings")
+SHAPE_KINDS: Final = ("pyramid", "rings", "funnel")
 CHART_KINDS: Final = ("chart",)
 
 #: The order a chart's axes are held in, so `Document.axes` is not a mapping
@@ -191,6 +191,11 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         _text(),
         _role(NODE_ROLES, "step"),
     ),
+    "stage": (
+        _text(),
+        _role(NODE_ROLES, "step"),
+        FieldSpec("note", "string"),
+    ),
     "axis": (
         FieldSpec(
             "label",
@@ -270,6 +275,7 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
     GRID_KINDS: (FieldSpec("items", "array", required=True, item_ref="item", min_items=1),),
     ("pyramid",): (FieldSpec("levels", "array", required=True, item_ref="level", min_items=1),),
     ("rings",): (FieldSpec("rings", "array", required=True, item_ref="ring", min_items=1),),
+    ("funnel",): (FieldSpec("stages", "array", required=True, item_ref="stage", min_items=1),),
     CHART_KINDS: (
         FieldSpec("axes", "object", required=True, ref="axes"),
         FieldSpec("series", "array", required=True, item_ref="series", min_items=1),
@@ -359,6 +365,7 @@ class Document:
     items: tuple[Item, ...] = ()
     levels: tuple[Item, ...] = ()
     rings: tuple[Item, ...] = ()
+    stages: tuple[Item, ...] = ()
     axes: tuple[Axis, ...] = ()
     """The horizontal axis then the vertical one, for `chart`. Empty otherwise."""
 
@@ -530,8 +537,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
                 "/kind",
                 "'kind' is required"
                 if kind is None
-                else f"{kind!r} is not one of {', '.join(KINDS)}. The nine kinds are "
-                f"closed for v1: a tenth needs evidence.",
+                else f"{kind!r} is not one of {', '.join(KINDS)}. The vocabulary is "
+                f"closed: a new kind needs evidence, in docs/kinds-wanted.md.",
             )
         )
         if "version" not in document:
@@ -671,6 +678,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         ),
         items=_items(document.get("items", ())),
         levels=_items(document.get("levels", ())),
+        stages=_items(document.get("stages", ())),
         rings=_items(document.get("rings", ())),
         axes=_axes(document.get("axes")),
         series=tuple(
