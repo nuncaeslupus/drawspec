@@ -53,7 +53,7 @@ SCHEMA_ID: Final = "https://drawspec.dev/schema/drawspec-v1.schema.json"
 SCHEMA_FILENAME: Final = "drawspec-v1.schema.json"
 
 GRAPH_KINDS: Final = ("flow", "tree", "cycle")
-GRID_KINDS: Final = ("stack", "timeline", "columns")
+GRID_KINDS: Final = ("stack", "timeline", "columns", "matrix")
 SHAPE_KINDS: Final = ("pyramid", "rings", "funnel")
 CHART_KINDS: Final = ("chart",)
 
@@ -197,6 +197,30 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         _text(),
         _role(NODE_ROLES, "step"),
     ),
+    "cell": (
+        _text(),
+        FieldSpec(
+            "column",
+            "integer",
+            required=True,
+            description="Which column this cell starts in, counting from zero.",
+        ),
+        FieldSpec(
+            "row", "integer", required=True, description="Which row it starts in, from zero."
+        ),
+        FieldSpec("across", "integer", description="How many columns it covers. Default 1."),
+        FieldSpec("down", "integer", description="How many rows it covers. Default 1."),
+        FieldSpec(
+            "group",
+            "string",
+            description=(
+                "Which group this cell belongs to. Cells sharing a group are filled "
+                "alike; the theme decides how. Naming the fill itself is not an "
+                "author's decision."
+            ),
+        ),
+        _role(NODE_ROLES, "step"),
+    ),
     "stage": (
         _text(),
         _role(NODE_ROLES, "step"),
@@ -292,7 +316,19 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
         FieldSpec("edges", "array", item_ref="edge"),
         FieldSpec("groups", "array", item_ref="group"),
     ),
-    GRID_KINDS: (FieldSpec("items", "array", required=True, item_ref="item", min_items=1),),
+    ("stack", "timeline", "columns"): (
+        FieldSpec("items", "array", required=True, item_ref="item", min_items=1),
+    ),
+    ("matrix",): (
+        FieldSpec("cells", "array", required=True, item_ref="cell", min_items=1),
+        FieldSpec(
+            "columns",
+            "array",
+            item_kind="string",
+            description="Column headings, left to right. Omit for a matrix with none.",
+        ),
+        FieldSpec("rows", "array", item_kind="string", description="Row headings, top to bottom."),
+    ),
     ("pyramid",): (FieldSpec("levels", "array", required=True, item_ref="level", min_items=1),),
     ("rings",): (FieldSpec("rings", "array", required=True, item_ref="ring", min_items=1),),
     ("funnel",): (FieldSpec("stages", "array", required=True, item_ref="stage", min_items=1),),
@@ -353,6 +389,17 @@ class Item:
 
 
 @dataclass(frozen=True)
+class Cell:
+    text: str
+    column: int
+    row: int
+    across: int = 1
+    down: int = 1
+    group: str = ""
+    role: str = "step"
+
+
+@dataclass(frozen=True)
 class Axis:
     label: str
     unit: str = ""
@@ -388,6 +435,9 @@ class Document:
     levels: tuple[Item, ...] = ()
     rings: tuple[Item, ...] = ()
     stages: tuple[Item, ...] = ()
+    cells: tuple[Cell, ...] = ()
+    columns: tuple[str, ...] = ()
+    rows: tuple[str, ...] = ()
     axes: tuple[Axis, ...] = ()
     """The horizontal axis then the vertical one, for `chart`. Empty otherwise."""
 
@@ -702,6 +752,20 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         levels=_items(document.get("levels", ())),
         stages=_items(document.get("stages", ())),
         rings=_items(document.get("rings", ())),
+        cells=tuple(
+            Cell(
+                text=entry["text"],
+                column=int(entry["column"]),
+                row=int(entry["row"]),
+                across=int(entry.get("across", 1)),
+                down=int(entry.get("down", 1)),
+                group=entry.get("group", ""),
+                role=entry.get("role", "step"),
+            )
+            for entry in document.get("cells", ())
+        ),
+        columns=tuple(document.get("columns", ())),
+        rows=tuple(document.get("rows", ())),
         axes=_axes(document.get("axes")),
         series=tuple(
             Series(
@@ -904,6 +968,7 @@ __all__ = [
     "SCHEMA_ID",
     "SHAPE_KINDS",
     "Axis",
+    "Cell",
     "Document",
     "Edge",
     "FieldSpec",

@@ -24,7 +24,7 @@ from drawspec.errors import DrawspecError, FitError
 from drawspec.kinds import IMPLEMENTED, scene_for
 from drawspec.kinds.common import line_bounds
 from drawspec.kinds.grid import AXIS_ROLE, grid_scene
-from drawspec.scene import Path, Rect, Scene, TextLine
+from drawspec.scene import Path, Polygon, Rect, Scene, TextLine
 from drawspec.schema import KINDS, parse_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
@@ -381,3 +381,134 @@ def test_every_timeline_tick_touches_its_own_label() -> None:
             if box.x - 1e-6 <= x <= box.x + box.width + 1e-6 and top <= box.y + box.height + 1e-6
         ]
         assert owner, f"the tick at {x} starts below every label"
+
+
+# --------------------------------------------------------------------------
+# matrix
+# --------------------------------------------------------------------------
+
+
+def matrix(cells: list[dict[str, object]], **extra: object) -> Scene:
+    document = {
+        "version": 1,
+        "kind": "matrix",
+        "title": "A matrix",
+        "cells": cells,
+        **extra,
+    }
+    return grid_scene(parse_document(document), THEME, MEASURER)
+
+
+SHARED: list[dict[str, object]] = [
+    {"text": "The customer", "column": 0, "row": 0, "group": "customer"},
+    {"text": "The provider", "column": 0, "row": 1},
+    {"text": "The customer", "column": 1, "row": 0, "group": "customer"},
+    {"text": "The provider", "column": 1, "row": 1},
+]
+
+
+def cells_of(built: Scene) -> list[Polygon]:
+    return [item for item in built.primitives if isinstance(item, Polygon)]
+
+
+def test_a_matrix_draws_one_figure_per_cell() -> None:
+    assert len(cells_of(matrix(SHARED))) == len(SHARED)
+
+
+def test_matrix_columns_are_equal() -> None:
+    """The family's rule: peers are the same size, by construction."""
+    widths = {
+        round(max(x for x, _ in cell.points) - min(x for x, _ in cell.points), 6)
+        for cell in cells_of(matrix(SHARED))
+    }
+    assert len(widths) == 1
+
+
+def test_matrix_cells_meet_without_a_gap_or_an_overlap() -> None:
+    """A table's cells share their edges; a gap reads as separate diagrams."""
+    built = matrix(SHARED)
+    lefts = sorted({round(min(x for x, _ in cell.points), 6) for cell in cells_of(built)})
+    rights = sorted({round(max(x for x, _ in cell.points), 6) for cell in cells_of(built)})
+    assert lefts[1:] == rights[:-1]
+
+
+def test_a_spanning_cell_covers_the_rows_it_claims() -> None:
+    built = matrix(
+        [
+            {"text": "One", "column": 0, "row": 0},
+            {"text": "Two", "column": 0, "row": 1},
+            {"text": "Both", "column": 1, "row": 0, "down": 2},
+        ]
+    )
+    cells = cells_of(built)
+    tall = max(
+        cells, key=lambda cell: max(y for _, y in cell.points) - min(y for _, y in cell.points)
+    )
+    short = [cell for cell in cells if cell is not tall and min(x for x, _ in cell.points) == 0.0]
+    covered = sum(max(y for _, y in cell.points) - min(y for _, y in cell.points) for cell in short)
+    height = max(y for _, y in tall.points) - min(y for _, y in tall.points)
+    assert height == pytest.approx(covered)
+
+
+def test_a_spanning_cell_does_not_deepen_every_row_it_passes() -> None:
+    """It needs the rows together, not each of them as deep as itself."""
+    plain = matrix(
+        [
+            {"text": "One", "column": 0, "row": 0},
+            {"text": "Two", "column": 0, "row": 1},
+        ]
+    )
+    spanned = matrix(
+        [
+            {"text": "One", "column": 0, "row": 0},
+            {"text": "Two", "column": 0, "row": 1},
+            {"text": "Both", "column": 1, "row": 0, "down": 2},
+        ]
+    )
+    assert spanned.height == pytest.approx(plain.height)
+
+
+def test_a_cell_names_its_group_and_the_theme_picks_the_fill() -> None:
+    """Never by colour, and never by the author naming an appearance."""
+    fills = {cell.fill for cell in cells_of(matrix(SHARED))}
+    assert fills == {THEME.mark.fill_for(0), ""}
+
+
+def test_two_cells_in_one_square_are_refused() -> None:
+    """A document that means two things at once, drawn one on top of the other."""
+    with pytest.raises(DrawspecError) as error:
+        matrix(
+            [
+                {"text": "One", "column": 0, "row": 0},
+                {"text": "Two", "column": 0, "row": 0},
+            ]
+        )
+    assert "One" in str(error.value) and "Two" in str(error.value)
+
+
+def test_a_cell_before_the_first_square_is_refused() -> None:
+    """The far side needs no check — the matrix grows to fit. This side cannot."""
+    with pytest.raises(DrawspecError) as error:
+        matrix([{"text": "One", "column": -1, "row": 0}])
+    assert "column -1" in str(error.value)
+
+
+def test_a_cell_spanning_more_columns_makes_a_wider_matrix() -> None:
+    """The extent is derived from the cells, which is why there is no upper check."""
+    built = matrix([{"text": "One", "column": 0, "row": 0, "across": 3}])
+    (cell,) = cells_of(built)
+    assert max(x for x, _ in cell.points) == pytest.approx(built.width)
+
+
+def test_matrix_headings_are_set_at_the_same_level_as_its_cells() -> None:
+    """One type size on a page, still."""
+    built = matrix(SHARED, columns=["A", "B"], rows=["First", "Second"])
+    levels = {item.level for item in built.primitives if isinstance(item, TextLine)}
+    assert levels == {"body"}
+
+
+def test_row_headings_take_width_from_the_grid_rather_than_overlapping_it() -> None:
+    built = matrix(SHARED, rows=["First", "Second"])
+    plain = matrix(SHARED)
+    assert min(min(x for x, _ in cell.points) for cell in cells_of(built)) > 0.0
+    assert built.width == pytest.approx(plain.width)

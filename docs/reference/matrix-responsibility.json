@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "kind": "matrix",
+  "title": "Who manages what",
+  "description": "The shared-responsibility model. Each cell names the group it belongs to; the theme decides how a group is filled, so the drawing still says the same thing in black and white.",
+  "columns": [
+    "Hosted machines",
+    "Hosted platform",
+    "Hosted software"
+  ],
+  "rows": [
+    "Data and identity",
+    "Runtime",
+    "Machines and network"
+  ],
+  "cells": [
+    {
+      "text": "The customer",
+      "column": 0,
+      "row": 0,
+      "group": "customer"
+    },
+    {
+      "text": "The customer",
+      "column": 0,
+      "row": 1,
+      "group": "customer"
+    },
+    {
+      "text": "The provider",
+      "column": 0,
+      "row": 2,
+      "group": "provider"
+    },
+    {
+      "text": "The customer",
+      "column": 1,
+      "row": 0,
+      "group": "customer"
+    },
+    {
+      "text": "The provider",
+      "column": 1,
+      "row": 1,
+      "down": 2,
+      "group": "provider"
+    },
+    {
+      "text": "The customer",
+      "column": 2,
+      "row": 0,
+      "group": "customer"
+    },
+    {
+      "text": "The provider",
+      "column": 2,
+      "row": 1,
+      "down": 2,
+      "group": "provider"
+    }
+  ]
+}
