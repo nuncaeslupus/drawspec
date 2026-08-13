@@ -3,12 +3,13 @@
 <!-- Written at session end. A new session reading this file can resume without additional context. -->
 
 **Date**: 2026-08-13 (overnight)
-**Branch**: `claude/graphic-types-review-l28z1e` · **PRs**: #20–#28, all merged
+**Branch**: `claude/graphic-types-review-l28z1e` · **PRs**: #20–#29, all merged
 
 **drawspec draws thirteen kinds. It drew nine yesterday.** The four new ones —
 `matrix`, `funnel`, `quadrant`, `curve` — plus containers on the graph kinds,
-bars, areas and stacks on the chart, and a timeline that can space by when things
-happened. **1046 passing**, up from 918.
+bars, areas and stacks on the chart, a timeline that can space by when things
+happened, and an edge role for the path that matters. **1055 passing**, up from
+918.
 
 Review sheet: <https://claude.ai/code/artifact/9a70769a-8667-40b2-866c-e24ff830cea5>
 
@@ -33,6 +34,7 @@ evidence, and every kind added since cites it.
 | #26 | `quadrant` and `curve` | 5 originals; both are diagrams with no numbers |
 | #27 | the README and `KINDS` said nine | housekeeping |
 | #28 | `timeline` spaced by `at` | the reviewer's own note from round one |
+| #29 | the `strong` edge role | 1 original marks a critical path, and only nodes could be emphasised |
 
 ## The three decisions worth carrying forward
 
@@ -50,6 +52,12 @@ into patterns in order of first mention. The same vocabulary serves chart marks.
 Two new patterns (`cross`, `grid`) so four series have four fills, every one
 drawn faint because *"the hatching is too strong and it is hard to read client"*
 was the loudest complaint the originals drew.
+
+**The two role vocabularies must stay disjoint.** `role_for` resolves a name
+against `NODE_ROLES` first, and `edge_primitives` reads a head with
+`getattr(role, "head", "none")` — so an edge whose role is also a node role
+silently loses its arrow. Adding `emphasis` to both is what taught this; the edge
+role is `strong` and a test holds the line.
 
 **A container is not a kind.** `group` is a property of the graph family:
 nesting is layout inside layout, only leaves obstruct routing, and the caption is
@@ -69,10 +77,10 @@ comes in.
   all-or-nothing rule drops them. The fix is a vertical margin on the scale, the
   way `quadrant` already has one. Left alone because it changes every existing
   chart drawing and those have been reviewed.
-- The features table in `docs/kinds-wanted.md`: node/edge emphasis (the critical
-  path), a label inside a bar, an axis caption, fork and join, and a declared
-  straight-edge style for the one diagram where the mesh *is* the message.
-  Irregular timeline spacing is done.
+- The features table in `docs/kinds-wanted.md`: a label inside a bar, an axis
+  caption, fork and join, and a declared straight-edge style for the one diagram
+  where the mesh *is* the message. Irregular timeline spacing and edge emphasis
+  are done.
 
 ## Notes for the next session
 
