@@ -8,7 +8,7 @@
 **A human reviewed all nine kinds by eye and found ten defects.** Every one of
 them was in a drawing that passed every mechanical gate — which is what the
 specification predicts and what `make gallery` exists for. All ten are fixed on
-this branch, each with a test that fails without it: **915 passing**, up from 868.
+this branch, each with a test that fails without it: **918 passing**, up from 868.
 
 ## What was reviewed
 
@@ -29,7 +29,7 @@ gate.
 | The bold word keeps its space | SVG strips whitespace at the edge of a text element. |
 | Centred text stays centred on a phone | Per-run coordinates were computed in a font the reader may not have. |
 | Timeline ticks touch their labels | The tick started beside the axis, so the pairing was the reader's inference. |
-| Pyramid/rings type size | Level height was a fixed fraction of the base; it now comes from the labels. The type level went to `heading` for one round and came straight back to `body` — a reader picked those two kinds out of the nine at once. **Every kind sets its shape text at one level, and `test_every_kind_sets_its_text_at_the_same_level` says so.** The shape gives, not the type. |
+| Pyramid/rings type size | Level height was a fixed fraction of the base; it now comes from the labels. The type level went to `heading` for one round and came straight back to `body` — a reader picked those two kinds out of the nine at once. **Every kind sets its shape text at one level, and `test_every_kind_sets_its_text_at_the_same_level` says so.** The shape gives, not the type: the pyramid's base is now derived from its labels (canvas as a ceiling, `PYRAMID_MIN_SHARE` as a floor) so it reads as a pyramid rather than a staircase, and a level is never more than `PYRAMID_FILL` times its own text. |
 | Chart point labels | Precision came from the axis step, so 7.2/6.8/7.4/6.9 all printed `7`. It now comes from the data. |
 
 ## The structural change worth knowing about

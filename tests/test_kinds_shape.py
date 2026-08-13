@@ -18,8 +18,14 @@ import pytest
 from drawspec import render
 from drawspec.emit import check_embedding_safety
 from drawspec.errors import DrawspecError, FitError
+from drawspec.geometry import size_box
 from drawspec.kinds.common import line_bounds
-from drawspec.kinds.shape import shape_scene
+from drawspec.kinds.shape import (
+    PYRAMID_FILL,
+    PYRAMID_MIN_SHARE,
+    SHAPE_LEVEL,
+    shape_scene,
+)
 from drawspec.scene import Ellipse, Polygon, Scene, TextLine
 from drawspec.schema import parse_document
 from drawspec.text import TextMeasurer
@@ -104,7 +110,7 @@ def test_pyramid_level_text_fits_the_narrowest_span_of_its_level() -> None:
     built = pyramid(*LEVELS)
     for level in levels_of(built):
         for run in _runs_within(built, level):
-            for x in (run.x, run.x + run_width(run)):
+            for x in run_edges(run):
                 assert _inside_trapezoid(x, run.y, level), (run.text, x, run.y)
 
 
@@ -327,3 +333,50 @@ def _runs_for(built: Scene, circle: Ellipse, circles: list[Ellipse]) -> list[Tex
         else circle.cy + circle.rx
     )
     return [run for run in runs_of(built) if outer_top <= run.y <= inner_top]
+
+
+def test_a_pyramid_of_short_labels_does_not_fill_the_canvas() -> None:
+    """The one kind that should not be as wide as the page.
+
+    Its base is the widest thing in it, so a base at the canvas width leaves a
+    shape three or four times wider than it is tall — a flight of steps. The
+    labels decide the base and the canvas is only a ceiling; the drawing is then
+    centred in what is left, like any other narrow diagram.
+    """
+    built = pyramid("A decision", "A measurement", "A method someone else could repeat")
+    assert built.width < THEME.canvas.width
+    assert built.height / built.width > 0.4, "this should read as a pyramid, not as a staircase"
+
+
+def test_a_pyramid_never_shrinks_below_its_share_of_the_canvas() -> None:
+    """A pyramid of one-word levels is still a diagram, not a caption with a hat."""
+    built = pyramid("One", "Two", "Three")
+    assert built.width == pytest.approx(THEME.canvas.width * PYRAMID_MIN_SHARE)
+
+
+def test_a_pyramid_level_is_never_much_taller_than_its_own_text() -> None:
+    """The limit on buying a shape with empty band.
+
+    A level that dwarfs its label is what made the type look lost the first time
+    round, and raising the type was the wrong answer: the shape is the end with
+    nothing to be consistent with, so the shape gives.
+    """
+    for texts in (
+        ("One", "Two", "Three"),
+        ("A decision", "A measurement", "A method someone else could repeat"),
+    ):
+        built = pyramid(*texts)
+        level_height = _height(levels_of(built)[0])
+        tallest = max(
+            size_box(
+                text,
+                theme=THEME,
+                measurer=MEASURER,
+                role="step",
+                level=SHAPE_LEVEL,
+                max_width=built.width,
+                shape="rect",
+            ).height
+            for text in texts
+        )
+        assert level_height <= tallest * PYRAMID_FILL + 1e-6

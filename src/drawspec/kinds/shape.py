@@ -16,9 +16,15 @@ of the shape where the text actually is.**
 * A ring's label sits in the band between its own circle and the next one in, and
   a circle is narrowest at the top of that band.
 
-Both fill the canvas width rather than deriving it, which is what makes the
-sizing a single pass: the theme fixes the width for every diagram, so there is no
-circularity between how wide the figure is and how its text wraps.
+A ring set fills the canvas width; a pyramid does not, and that difference is
+the one judgement in this file. Rings get wider as they get more concentric, so
+the canvas is the only width that gives the innermost one room. A pyramid's base
+is the widest thing in it, so a base at the canvas width leaves a shape three or
+four times wider than it is tall — a flight of steps. Its base is derived from
+its labels, with the canvas as a ceiling and `centred` putting the result in the
+middle of the page. Both are still a single sizing pass: the width is settled
+before any text is wrapped, so there is no circularity between how wide the
+figure is and how its text breaks.
 """
 
 from __future__ import annotations
@@ -42,16 +48,26 @@ from drawspec.theme import Theme
 #: `(i + 2) / (n + 1)` at its bottom.
 PYRAMID_STEPS: Final = 1
 
-#: How tall a pyramid is, as a fraction of its base — a floor, not a target. A
-#: level is as tall as its own label needs; this only stops a pyramid of
-#: one-word levels collapsing into a row of pinstripes.
+#: How tall a pyramid should be, as a fraction of its base. What the shape wants
+#: to look like, granted by `_pyramid` only as far as `PYRAMID_FILL` allows.
 #:
-#: It used to be 0.62, and that was a target rather than a floor: three one-line
-#: levels on a 640 canvas came out 132 units tall each to hold a line of text 15
-#: units tall, so the type read as a caption lost in the middle of each band. The
-#: shape is the end that gives, because it has nothing to be consistent with —
-#: see `SHAPE_LEVEL` for the end that does not.
-PYRAMID_ASPECT: Final = 0.25
+#: Both this and the base being derived from the labels are answers to the same
+#: complaint, and it took two rounds to find the right lever. A pyramid drawn to
+#: the canvas width is three or four times wider than it is tall whatever this
+#: number says, because its height is levels-worth-of-text and its base is the
+#: whole page: the aspect can only be honoured by making the levels taller than
+#: their text, which is what left the type looking lost. Narrowing the base
+#: instead buys the same slope for nothing.
+PYRAMID_ASPECT: Final = 0.55
+
+#: How much taller than its own text a pyramid level may be, in service of the
+#: aspect above. The limit on paying for a shape with empty band: past this the
+#: text reads as marooned in the middle of a stripe rather than as its label.
+PYRAMID_FILL: Final = 1.8
+
+#: The narrowest base a pyramid may have, as a share of the canvas. A pyramid of
+#: one-word levels would otherwise shrink to the width of its longest word.
+PYRAMID_MIN_SHARE: Final = 0.45
 
 #: The type level a pyramid level and a ring band are set at.
 #:
@@ -122,8 +138,14 @@ def _pyramid(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     if count < 1:
         raise DrawspecError("a pyramid needs at least one level")
 
-    width = _canvas_width(document, theme)
+    canvas = _canvas_width(document, theme)
     steps = count + PYRAMID_STEPS
+    # A pyramid is the one kind that should *not* fill the canvas: its base is
+    # the widest thing in it, and a base as wide as everything else on the page
+    # leaves a shape three times wider than it is tall — a flight of steps rather
+    # than a pyramid. So the base comes from the labels and the canvas is a
+    # ceiling, with the drawing centred in whatever is left over.
+    width = _pyramid_base(levels, theme, measurer, canvas, steps)
 
     # The narrowest span of level i is its *top* edge. That is what its text has
     # to fit — fitting the average or the bottom is how text crosses the slope.
@@ -141,9 +163,17 @@ def _pyramid(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     ]
 
     # Equal height: every level the same, sized by the tallest label, so no level
-    # reads as more important than another. The aspect is a floor under that, not
-    # a height in its own right — see PYRAMID_ASPECT.
-    level_height = max(max(box.height for box in boxes), width * PYRAMID_ASPECT / count)
+    # reads as more important than another.
+    #
+    # Between the two numbers below, the shape is as tall as it can be *without
+    # leaving its text swimming*. The aspect is what a pyramid should look like;
+    # the fill is the limit on paying for that look with empty band. When the
+    # labels are short the aspect wins and the drawing is a pyramid; when they
+    # are long enough to need the whole canvas the fill wins, and the shape goes
+    # flat rather than the type going small — which is the trade the last round
+    # got backwards.
+    tallest = max(box.height for box in boxes)
+    level_height = max(tallest, min(width * PYRAMID_ASPECT / count, tallest * PYRAMID_FILL))
     height = level_height * count
 
     primitives: list[Primitive] = []
@@ -175,6 +205,48 @@ def _pyramid(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         title=document.title,
         description=document.description,
     )
+
+
+def _pyramid_base(
+    levels: tuple[Item, ...],
+    theme: Theme,
+    measurer: TextMeasurer,
+    canvas: float,
+    steps: int,
+) -> float:
+    """The narrowest base at which every level's label sits on one line.
+
+    Sized from the level that has to reach furthest, which is not always the
+    apex: level `i` gets `(i + 1) / steps` of the base at its top edge, so a
+    short label at the top can ask for more base than a long one at the bottom.
+    Each level's demand is its own one-line width divided by its share, and the
+    base is the largest of them.
+
+    One line rather than the narrowest base a label could be *wrapped* into,
+    because wrapping is unbounded: a search for the narrowest fitting base would
+    happily return a spire with every label broken into three. Wrapping is what
+    happens when the ceiling is reached, not a way to get further under it.
+
+    Bounded at both ends. The canvas is the ceiling — a pyramid that wants more
+    goes back to wrapping inside it, which is the behaviour every other kind has
+    at the same point — and a share of the canvas is the floor, so a pyramid of
+    one-word levels is still a diagram rather than a caption with a hat on.
+    """
+    demands = [
+        size_box(
+            item.text,
+            theme=theme,
+            measurer=measurer,
+            role=item.role,
+            level=SHAPE_LEVEL,
+            max_width=canvas,
+            shape="rect",
+        ).width
+        * steps
+        / (index + 1)
+        for index, item in enumerate(levels)
+    ]
+    return min(canvas, max(max(demands, default=0.0), canvas * PYRAMID_MIN_SHARE))
 
 
 # ---------------------------------------------------------------------------
@@ -254,4 +326,11 @@ def _half_chord(radius: float, offset: float) -> float:
     return math.sqrt(max(radius**2 - offset**2, 0.0))
 
 
-__all__ = ["PYRAMID_ASPECT", "PYRAMID_STEPS", "SHAPE_LEVEL", "shape_scene"]
+__all__ = [
+    "PYRAMID_ASPECT",
+    "PYRAMID_FILL",
+    "PYRAMID_MIN_SHARE",
+    "PYRAMID_STEPS",
+    "SHAPE_LEVEL",
+    "shape_scene",
+]
