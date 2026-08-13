@@ -1,4 +1,4 @@
-"""T13 — shape kinds: pyramid and concentric rings.
+"""T13 — shape kinds: pyramid, concentric rings, and the funnel.
 
 The gate is `text_outside_shape_count == 0`, and both kinds fail it the same way
 if they are built naively: by fitting text to the *average* width of a shape
@@ -21,13 +21,16 @@ from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import size_box
 from drawspec.kinds.common import line_bounds
 from drawspec.kinds.shape import (
+    FUNNEL_MIN_DEPTH,
+    FUNNEL_TAPER,
+    GATE_ROLE,
     PYRAMID_FILL,
     PYRAMID_MIN_SHARE,
     RINGS_MIN_SHARE,
     SHAPE_LEVEL,
     shape_scene,
 )
-from drawspec.scene import Ellipse, Polygon, Scene, TextLine
+from drawspec.scene import Ellipse, Path, Polygon, Scene, TextLine
 from drawspec.schema import parse_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
@@ -420,3 +423,112 @@ def test_a_ring_label_wraps_to_buy_the_set_a_smaller_circle() -> None:
     assert len(runs_of(built)) > len(RINGS), "at least one label should have wrapped"
     for run in runs_of(built):
         assert run_width(run) < built.width
+
+
+# --------------------------------------------------------------------------
+# funnel
+# --------------------------------------------------------------------------
+
+
+def funnel(*texts: str, **extra: object) -> Scene:
+    document = {
+        "version": 1,
+        "kind": "funnel",
+        "title": "A funnel",
+        "stages": [{"text": text} for text in texts],
+        **extra,
+    }
+    return shape_scene(parse_document(document), THEME, MEASURER)
+
+
+STAGES = ("Many ideas", "Assessed and chosen", "Validated", "Deployed")
+
+
+def band_of(built: Scene) -> Polygon:
+    (band,) = [item for item in built.primitives if isinstance(item, Polygon)]
+    return band
+
+
+def gates_of(built: Scene) -> list[Path]:
+    return [item for item in built.primitives if isinstance(item, Path)]
+
+
+def test_a_funnel_narrows_from_throat_to_mouth() -> None:
+    """The one thing the shape claims."""
+    band = band_of(funnel(*STAGES))
+    left = [y for x, y in band.points if x == pytest.approx(min(p[0] for p in band.points))]
+    right = [y for x, y in band.points if x == pytest.approx(max(p[0] for p in band.points))]
+    assert max(left) - min(left) > max(right) - min(right)
+
+
+def test_a_funnel_mouth_is_open_so_something_can_be_written_in_it() -> None:
+    """A funnel that closed to a point would have no last stage."""
+    band = band_of(funnel(*STAGES))
+    right = [y for x, y in band.points if x == pytest.approx(max(p[0] for p in band.points))]
+    assert max(right) - min(right) > 0
+
+
+def test_a_funnel_has_one_gate_between_each_pair_of_stages() -> None:
+    built = funnel(*STAGES)
+    assert len(gates_of(built)) == len(STAGES) - 1
+
+
+def test_every_gate_is_drawn_in_the_role_that_means_threshold() -> None:
+    """A gate is something you pass through, which a solid line would deny."""
+    assert {gate.role for gate in gates_of(funnel(*STAGES))} == {GATE_ROLE}
+
+
+def test_every_gate_reaches_both_sides_of_the_band_it_cuts() -> None:
+    """A divider that stopped short would read as a tick rather than a gate."""
+    built = funnel(*STAGES)
+    band = band_of(built)
+    top = {x: y for x, y in band.points[:2]}
+    for gate in gates_of(built):
+        (x, first), (_, second) = gate.points
+        depth = abs(second - first)
+        # Linear taper, so the band's depth at the gate is interpolated between
+        # its ends — the gate must span exactly that, not less.
+        share = x / built.width
+        expected = built.height * (1 - (1 - FUNNEL_TAPER) * share)
+        assert depth == pytest.approx(expected, abs=0.5), (x, depth, expected)
+    assert top
+
+
+def test_funnel_stage_text_fits_the_band_where_its_stage_ends() -> None:
+    """The narrowest part of a stage is where it ends — the pyramid's rule, turned.
+
+    Every line of every stage's label sits inside the band at the *right* edge of
+    its own slice, which is the depth that slice has least of. Fitting the middle
+    or the left instead is how text ends up across the taper.
+    """
+    built = funnel(*STAGES)
+    count = len(STAGES)
+    middle = built.height / 2
+    for index in range(count):
+        share = (index + 1) / count
+        half = built.height * (1 - (1 - FUNNEL_TAPER) * share) / 2
+        left = index * built.width / count
+        right = (index + 1) * built.width / count
+        for run in runs_of(built):
+            if not left <= run.x <= right:
+                continue
+            assert middle - half <= run.y <= middle + half, (run.text, index)
+            for x in run_edges(run):
+                assert left <= x <= right, (run.text, index)
+
+
+def test_a_funnel_of_short_stages_is_still_a_funnel_and_not_a_rule() -> None:
+    built = funnel("One", "Two", "Three")
+    assert built.height >= built.width * FUNNEL_MIN_DEPTH - 1e-6
+
+
+def test_a_funnel_fills_the_canvas_width() -> None:
+    """Unlike the pyramid: a funnel that did not would be a wedge in a corner."""
+    assert funnel(*STAGES).width == pytest.approx(THEME.canvas.width)
+
+
+def test_a_funnel_deepens_to_hold_a_long_last_stage() -> None:
+    """The mouth is the tightest place, so a long label there sets the depth."""
+    shallow = funnel("One", "Two")
+    deep = funnel("One", "A label long enough that the mouth has to open for it")
+    assert deep.height > shallow.height

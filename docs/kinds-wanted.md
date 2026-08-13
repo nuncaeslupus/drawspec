@@ -35,7 +35,7 @@ originals against the nine kinds, and of the gap that inventory shows.
 | rings | 4 | yes |
 | **curve** | **3** | **no** |
 | **quadrant** | **2** | **no** |
-| **funnel** | **2** | **no** |
+| ~~funnel~~ | 2 | **now yes** |
 | *picture* | 2 | out of scope |
 | chart | 1 | yes |
 | **spans** | **1** | **no** |
@@ -131,17 +131,25 @@ against named directions.
 
 *Originals: `tic__pmbok-liderazgo-equipo-y-recursos__0` and `__1`.*
 
-### 5. `funnel` — the pyramid lying down (2)
+### 5. ~~`funnel`~~ — the pyramid lying down (2) — **done**
 
 An innovation funnel with three gates; a sales funnel from lead to account. A
 tapering band divided into stages, captioned at both ends, with the dividers
 drawn differently from the outline.
 
-Worth noting how close this is to `pyramid`: same trapezoids, same constant width
-progression, rotated a quarter turn and cut by gates instead of stacked. If the
-pyramid's geometry were expressed once and given an axis, this would be nearly
-free — which is an argument for looking at the shape family before writing a
-sixth kind.
+It was as close to `pyramid` as it looked: same trapezoid, same constant
+progression, turned a quarter turn. What changes is **which way the shape gives
+when the text does not fit**. A pyramid narrows to its apex, so its base is what
+the labels buy; a funnel narrows to its mouth, so what they buy is its *depth* —
+and unlike the pyramid it fills the canvas width, because a funnel that did not
+would be a wedge in a corner.
+
+The gates are drawn in the theme's `weak` edge role rather than as the shared
+sides of separate polygons. A gate is a threshold, not a wall: the band is
+continuous and something passes through it, which is what a stage boundary in a
+funnel means and what a solid line would deny.
+
+See `docs/reference/funnel-innovation.json`.
 
 *Originals: `tic__gestion-de-la-innovacion-sgi__1`, `tic__soluciones-crm`.*
 
@@ -199,8 +207,8 @@ edge style rather than a defeat.
 3. **`matrix`.** Five originals, and it is where the greyscale rule has to be
    made to work rather than merely obeyed.
 
-`quadrant`, `funnel` and `curve` are each small and each self-contained; they can
-be picked up in any order once the three above are settled.
+`quadrant` and `curve` are each small and each self-contained; they can be
+picked up in any order once the three above are settled. `funnel` is done.
 
 ---
 
