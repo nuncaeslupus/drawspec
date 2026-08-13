@@ -443,6 +443,68 @@
         "series"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "quadrant",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "quadrant"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "axes": {
+          "$ref": "#/$defs/axes"
+        },
+        "positions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/position"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "axes",
+        "positions"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -684,6 +746,42 @@
       "required": [
         "id",
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "position": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic."
+        },
+        "across": {
+          "type": "number",
+          "description": "Where this sits on the horizontal axis. Data, not a coordinate."
+        },
+        "up": {
+          "type": "number",
+          "description": "Where this sits on the vertical axis. Data, not a coordinate."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "start",
+            "step",
+            "decision",
+            "terminal",
+            "emphasis",
+            "note",
+            "group"
+          ]
+        }
+      },
+      "required": [
+        "text",
+        "across",
+        "up"
       ],
       "additionalProperties": false
     },

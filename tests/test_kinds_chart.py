@@ -13,12 +13,12 @@ from __future__ import annotations
 import math
 import re
 from collections.abc import Mapping
-from itertools import pairwise
+from itertools import combinations, pairwise
 
 import pytest
 
 from drawspec import render
-from drawspec.charts import MARKER_FRACTION, chart_scene
+from drawspec.charts import DIVIDER_ROLE, MARKER_FRACTION, _crosses, _label_box, chart_scene
 from drawspec.emit import check_embedding_safety
 from drawspec.errors import DocumentError, DrawspecError, FitError
 from drawspec.scene import Ellipse, Path, Polygon, Rect, Scene, TextRun
@@ -314,7 +314,19 @@ def test_point_labels_tell_the_chart_s_own_values_apart() -> None:
     rather than as a rounded one.
     """
     close = [{"name": "Placement", "data": [[1, 7.2], [2, 6.8], [3, 7.4], [4, 6.9]]}]
-    built = scene(series=close)
+    # The axes are pinned wider than the data on purpose. This is a test about
+    # *precision*, and a series whose highest and lowest points sit on the plot's
+    # own edges loses all its labels to the all-or-nothing placement rule: above
+    # the top point is outside the plot and below it crosses the curve. Correct
+    # behaviour, different subject — and a limitation worth knowing about, noted
+    # in docs/kinds-wanted.md.
+    built = scene(
+        series=close,
+        axes={
+            "horizontal": {"label": "Attempt", "min": 0, "max": 5},
+            "vertical": {"label": "Seconds", "min": 6.5, "max": 7.7},
+        },
+    )
     labels = [run.text for run in texts(built) if run.text.replace(".", "").isdigit()]
     assert {"7.2", "6.8", "7.4", "6.9"} <= set(labels)
 
@@ -467,3 +479,110 @@ def test_an_unknown_mark_is_refused_by_the_schema() -> None:
             }
         )
     assert "candlestick" in str(error.value)
+
+
+# --------------------------------------------------------------------------
+# quadrant
+# --------------------------------------------------------------------------
+
+
+def quadrant(*positions: Mapping[str, object]) -> Scene:
+    document = {
+        "version": 1,
+        "kind": "quadrant",
+        "title": "A quadrant",
+        "axes": {
+            "horizontal": {"label": "How much of this"},
+            "vertical": {"label": "How much of that"},
+        },
+        "positions": list(positions),
+    }
+    return chart_scene(parse_document(document), THEME, MEASURER)
+
+
+CORNERS: tuple[Mapping[str, object], ...] = (
+    {"text": "Neither", "across": 0.1, "up": 0.1},
+    {"text": "That only", "across": 0.1, "up": 0.9},
+    {"text": "This only", "across": 0.9, "up": 0.1},
+    {"text": "Both", "across": 0.9, "up": 0.9},
+    {"text": "Some of each", "across": 0.5, "up": 0.5},
+)
+
+
+def test_a_quadrant_marks_every_position_it_was_given() -> None:
+    assert len(markers(quadrant(*CORNERS))) == len(CORNERS)
+
+
+def test_a_quadrant_labels_every_position_it_marks() -> None:
+    said = {run.text for run in texts(quadrant(*CORNERS))}
+    for item in CORNERS:
+        assert item["text"] in said
+
+
+def test_a_quadrant_has_no_ticks() -> None:
+    """A tick invites a reader to measure a diagram whose author was comparing."""
+    numbers = [
+        run.text for run in texts(quadrant(*CORNERS)) if re.fullmatch(r"-?\d+(\.\d+)?", run.text)
+    ]
+    assert numbers == []
+
+
+def test_a_quadrant_draws_both_midlines() -> None:
+    """'Which quarter is it in' is the question these diagrams are for."""
+    dividers = [line for line in lines(quadrant(*CORNERS)) if line.role == DIVIDER_ROLE]
+    assert len(dividers) == 2
+    assert {_orientation(line) for line in dividers} == {"horizontal", "vertical"}
+
+
+def _orientation(line: Path) -> str:
+    (x1, y1), (x2, y2) = line.points[0], line.points[-1]
+    return "horizontal" if abs(y2 - y1) < abs(x2 - x1) else "vertical"
+
+
+def test_no_quadrant_label_sits_on_a_midline() -> None:
+    """The point in the middle of the field is a real answer, and it needs a label."""
+    built = quadrant(*CORNERS)
+    dividers = [line for line in lines(built) if line.role == DIVIDER_ROLE]
+    named = {str(item["text"]) for item in CORNERS}
+    for run in texts(built):
+        if run.text not in named:
+            continue  # the axis labels sit outside the plot the midlines span
+        extents = MEASURER.measure(run.text, THEME.font.default, THEME.scale[run.level])
+        half = extents.width / 2
+        box = _label_box(run.x, run.y, run.anchor, extents.width, extents.height, half)
+        for divider in dividers:
+            assert not _crosses(box, divider.points), (run.text, divider.points)
+
+
+def test_two_quadrant_labels_never_overlap() -> None:
+    built = quadrant(*CORNERS)
+    named = {str(item["text"]) for item in CORNERS}
+    boxes = []
+    for run in texts(built):
+        if run.text not in named:
+            continue
+        extents = MEASURER.measure(run.text, THEME.font.default, THEME.scale[run.level])
+        boxes.append(
+            _label_box(run.x, run.y, run.anchor, extents.width, extents.height, extents.width / 2)
+        )
+    for first, second in combinations(boxes, 2):
+        assert not (
+            first[0] < second[2]
+            and second[0] < first[2]
+            and first[1] < second[3]
+            and second[1] < first[3]
+        )
+
+
+def test_a_quadrant_still_needs_both_axes_labelled() -> None:
+    """The rule holds wherever there is an axis."""
+    with pytest.raises(DocumentError):
+        parse_document(
+            {
+                "version": 1,
+                "kind": "quadrant",
+                "title": "A quadrant",
+                "axes": {"horizontal": {"label": "x"}, "vertical": {}},
+                "positions": [{"text": "One", "across": 0.5, "up": 0.5}],
+            }
+        )

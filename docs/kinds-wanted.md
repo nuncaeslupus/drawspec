@@ -34,7 +34,7 @@ originals against the nine kinds, and of the gap that inventory shows.
 | pyramid | 4 | yes |
 | rings | 4 | yes |
 | **curve** | **3** | **no** |
-| **quadrant** | **2** | **no** |
+| ~~quadrant~~ | 2 | **now yes** |
 | ~~funnel~~ | 2 | **now yes** |
 | *picture* | 2 | out of scope |
 | chart | 1 | yes |
@@ -139,14 +139,33 @@ curve are the part it could not.
 *Originals: `tic__prospeccion-de-soluciones-tic`,
 `tic__pmbok-rendimiento-riesgos-y-cierre`, `barcelona__scrum-bit`.*
 
-### 4. `quadrant` — two named axes, items placed in the plane (2)
+### 4. ~~`quadrant`~~ — two named axes, items placed in the plane (2) — **done**
 
 The Thomas-Kilmann grid: cooperation against assertiveness, five named positions.
 Tuckman's model on a different pair of axes. Small, self-contained, and nothing
 in the nine comes close — `chart` plots series against scales, not labelled points
 against named directions.
 
-*Originals: `tic__pmbok-liderazgo-equipo-y-recursos__0` and `__1`.*
+It lives in the chart family and reuses its axis furniture unchanged, which is
+what made it small. Three decisions of its own:
+
+* **No ticks.** A tick invites a reader to read a value off a diagram whose
+  author was making a comparison rather than a measurement. What is drawn instead
+  is the pair of **midlines** — "which quarter is it in" is the question these
+  diagrams exist to answer.
+* **`across` and `up` are data, not coordinates**, in the same sense a chart's
+  `data` is. The author says where a thing sits between two named directions.
+* **A label dodges the midlines as well as its neighbours.** The middle of the
+  field is a real answer, so the position that needed the most care is the one
+  sitting on both lines at once.
+
+It also turned up a real bug in the chart: `_segment_meets_box` sampled a segment
+at a fixed twenty-four points, which is fine for a chart's short segments and
+steps clean over a label when the segment is a midline running the height of the
+plot. Sampling is now bounded by a spacing smaller than a label box.
+
+*Originals: `tic__pmbok-liderazgo-equipo-y-recursos__0` and `__1`.
+See `docs/reference/quadrant-conflict.json`.*
 
 ### 5. ~~`funnel`~~ — the pyramid lying down (2) — **done**
 
@@ -242,8 +261,16 @@ edge style rather than a defeat.
 3. ~~**`matrix`.**~~ Done — and the greyscale rule turned out to be the easy
    half. The hard half was keeping the author out of the appearance.
 
-`quadrant` and `curve` are each small and each self-contained; they can be
-picked up in any order once the three above are settled. `funnel` is done.
+**`curve` is the last of the five**, and the only one still open: a named shape
+with labelled waypoints, for the hype cycle, the EVM S-curves and the burn-down.
+`quadrant`, `funnel`, `group` and `matrix` are done.
+
+One limitation found on the way and worth writing down: a chart series whose
+highest and lowest points sit exactly on the plot's edges can never label them —
+above the top point is outside the plot, and below it crosses the curve — so the
+all-or-nothing rule drops that series' labels entirely. The fix is a vertical
+margin on the scale, the way `quadrant` already has one. It is not done here
+because it changes every existing chart drawing, and those have been reviewed.
 
 ---
 

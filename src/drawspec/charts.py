@@ -41,7 +41,7 @@ from typing import Final
 
 from drawspec.errors import DrawspecError, FitError
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextRun
-from drawspec.schema import Axis, Document, Series
+from drawspec.schema import Axis, Document, Position, Series
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme
 
@@ -66,6 +66,23 @@ NICE_STEPS: Final = (1.0, 2.0, 2.5, 5.0, 10.0)
 
 #: The radius of a point marker, as a fraction of the theme's edge head length.
 MARKER_FRACTION: Final = 0.4
+
+#: The furthest apart two samples along a segment may be when testing whether it
+#: meets a label box. Smaller than the shortest side of a label set at the
+#: theme's label size, so a sample cannot step over one.
+SAMPLE_SPACING: Final = 4.0
+
+#: A quadrant's height as a fraction of its width. Nearer square than a chart,
+#: because the two directions are peers here — neither is "the" axis.
+QUADRANT_ASPECT: Final = 0.8
+
+#: How much room a quadrant leaves outside the values it holds, as a fraction of
+#: their range. A point *on* the edge has half its label outside the plot.
+QUADRANT_MARGIN: Final = 0.12
+
+#: The role a quadrant's midlines are drawn in. `weak` — dashed, headless — so
+#: they read as a division of the field rather than as two more axes.
+DIVIDER_ROLE: Final = "weak"
 
 #: The most decimals a point label may carry. Past this the label is wider than
 #: the room beside its own point, and values that close needed a different chart.
@@ -95,6 +112,8 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
         DrawspecError: `document.kind` is not `chart`, or it has no series.
         FitError: the plot, its labels, or a point label cannot fit.
     """
+    if document.kind == "quadrant":
+        return _quadrant(document, theme, measurer)
     if document.kind != "chart":
         raise DrawspecError(f"{document.kind!r} is not the chart kind")
     if not document.series:
@@ -655,12 +674,16 @@ def _segment_meets_box(
 ) -> bool:
     """Sampled rather than solved: a segment is checked at intervals along it.
 
-    A chart's segments are short and its labels are a few characters, so sampling
-    finely enough to catch a crossing is cheaper than a line-rectangle
-    intersection and much harder to get subtly wrong.
+    Cheaper than a line-rectangle intersection and much harder to get subtly
+    wrong. The step count comes from the segment's own length rather than being
+    fixed, because a fixed count is only fine while the segments are short: a
+    quadrant's midline runs the height of the plot, and twenty-four samples along
+    it step clean over a label a few units tall. That is a crossing reported as
+    clear, which is the one direction this must not fail in.
     """
     left, top, right, bottom = box
-    steps = 24
+    length = math.hypot(second[0] - first[0], second[1] - first[1])
+    steps = max(24, int(length / 2))
     for index in range(steps + 1):
         fraction = index / steps
         x = first[0] + (second[0] - first[0]) * fraction
@@ -680,3 +703,190 @@ __all__ = [
     "Scale",
     "chart_scene",
 ]
+
+
+# ---------------------------------------------------------------------------
+# quadrant
+# ---------------------------------------------------------------------------
+
+
+def _quadrant(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
+    """Two named directions, and things placed between them.
+
+    A chart plots a series against a scale; a quadrant places named things in the
+    plane and the *directions* are what carry the meaning — more of this, less of
+    that. So there are no ticks and no numbers: a tick would invite a reader to
+    read a value off a diagram whose author was making a comparison, not a
+    measurement. What is drawn instead is the pair of midlines, because "which
+    quarter is it in" is the question these diagrams are for.
+
+    The axis furniture is the chart's, unchanged, which is the reason this lives
+    here rather than in a family of its own.
+    """
+    positions = document.positions
+    if not positions:
+        raise DrawspecError("a quadrant needs at least one position")
+    horizontal, vertical = document.axes
+
+    width = document.width if document.width else theme.canvas.width
+    height = document.height if document.height else width * QUADRANT_ASPECT
+
+    size = theme.scale["label"]
+    gap = theme.box.padding.top
+    line = measurer.measure("0", theme.font.default, size)
+
+    across = _quadrant_scale(horizontal, [item.across for item in positions])
+    up = _quadrant_scale(vertical, [item.up for item in positions])
+
+    left = line.height + gap
+    bottom = line.height + gap
+    top = line.height + gap
+    right = line.height + gap
+    plot_left, plot_right = left, width - right
+    plot_top, plot_bottom = top, height - bottom
+    if plot_right - plot_left <= 0 or plot_bottom - plot_top <= 0:
+        raise FitError(
+            f"a quadrant {width:.0f} x {height:.0f} has no room for its plot once the "
+            f"axis labels are measured. Give it more width or height."
+        )
+
+    across = Scale(across.low, across.high, plot_left, plot_right)
+    up = Scale(up.low, up.high, plot_bottom, plot_top)
+    middle_x = (plot_left + plot_right) / 2
+    middle_y = (plot_top + plot_bottom) / 2
+
+    primitives: list[Primitive] = [
+        *_axes(plot_left, plot_right, plot_top, plot_bottom),
+        Path(DIVIDER_ROLE, points=((plot_left, middle_y), (plot_right, middle_y))),
+        Path(DIVIDER_ROLE, points=((middle_x, plot_top), (middle_x, plot_bottom))),
+        *_axis_labels(
+            horizontal,
+            vertical,
+            plot_left,
+            plot_right,
+            plot_top,
+            plot_bottom,
+            height,
+            theme,
+            measurer,
+            gap,
+        ),
+    ]
+
+    dividers = [
+        ((plot_left, middle_y), (plot_right, middle_y)),
+        ((middle_x, plot_top), (middle_x, plot_bottom)),
+    ]
+    radius = theme.edge.head_length * MARKER_FRACTION
+    placed: list[tuple[float, float, float, float]] = []
+    for item in positions:
+        x, y = across.to_pixels(item.across), up.to_pixels(item.up)
+        primitives.append(Ellipse(item.role, cx=x, cy=y, rx=radius, ry=radius))
+        label = _place_label(
+            item,
+            x,
+            y,
+            placed,
+            dividers,
+            theme,
+            measurer,
+            plot_left,
+            plot_right,
+            plot_top,
+            plot_bottom,
+        )
+        if label is None:
+            raise FitError(
+                f"the label {item.text[:32]!r} has nowhere to sit that is inside the "
+                f"plot and clear of the other labels. Move it, shorten it, or give "
+                f"the diagram more room."
+            )
+        box, primitive = label
+        placed.append(box)
+        primitives.append(primitive)
+
+    return Scene(
+        width=width,
+        height=height,
+        primitives=tuple(primitives),
+        title=document.title,
+        description=document.description,
+    )
+
+
+def _quadrant_scale(axis: Axis, values: list[float]) -> Scale:
+    """The range one direction runs over, padded so a point on the end is visible."""
+    low = axis.minimum if axis.minimum is not None else min([*values, 0.0])
+    high = axis.maximum if axis.maximum is not None else max([*values, 1.0])
+    if high <= low:
+        low, high = low - 0.5, low + 0.5
+    margin = (high - low) * QUADRANT_MARGIN
+    return Scale(low - margin, high + margin, 0.0, 1.0)
+
+
+def _place_label(
+    item: Position,
+    x: float,
+    y: float,
+    placed: list[tuple[float, float, float, float]],
+    dividers: list[tuple[tuple[float, float], tuple[float, float]]],
+    theme: Theme,
+    measurer: TextMeasurer,
+    left: float,
+    right: float,
+    top: float,
+    bottom: float,
+) -> tuple[tuple[float, float, float, float], Primitive] | None:
+    """A label beside its own point, inside the plot and clear of everything else.
+
+    The same eight positions the chart's point labels use, and the same fixed
+    order, so the choice is the same on every run. What differs is what it dodges:
+    a quadrant has no curve, and what it does have is the two midlines and the
+    labels already placed. A point sitting *on* a midline — the middle of the
+    field is a real answer in these diagrams — is exactly the case that needs the
+    second and third positions in the list.
+    """
+    gap = theme.box.padding.top
+    extents = measurer.measure(item.text, theme.font.default, theme.scale["label"])
+    half = extents.width / 2
+    above = y - gap - extents.descent
+    below = y + gap + extents.ascent
+    beside = y + (extents.ascent - extents.descent) / 2
+    for anchor_x, anchor_y, anchor in (
+        (x, above, "middle"),
+        (x, below, "middle"),
+        (x + gap, beside, "start"),
+        (x - gap, beside, "end"),
+        (x, above, "start"),
+        (x, above, "end"),
+        (x, below, "start"),
+        (x, below, "end"),
+    ):
+        box = _label_box(anchor_x, anchor_y, anchor, extents.width, extents.height, half)
+        if not _inside(box, left, right, top, bottom):
+            continue
+        if any(_overlaps(box, other) for other in placed):
+            continue
+        if any(_crosses(box, divider) for divider in dividers):
+            continue
+        return box, TextRun(
+            item.role,
+            x=anchor_x,
+            y=anchor_y,
+            text=item.text,
+            level="label",
+            font=theme.font.default,
+            anchor=anchor,
+        )
+    return None
+
+
+def _overlaps(
+    first: tuple[float, float, float, float], second: tuple[float, float, float, float]
+) -> bool:
+    return (
+        first[0] < second[2]
+        and second[0] < first[2]
+        and first[1] < second[3]
+        and second[1] < first[3]
+    )

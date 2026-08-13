@@ -55,7 +55,7 @@ SCHEMA_FILENAME: Final = "drawspec-v1.schema.json"
 GRAPH_KINDS: Final = ("flow", "tree", "cycle")
 GRID_KINDS: Final = ("stack", "timeline", "columns", "matrix")
 SHAPE_KINDS: Final = ("pyramid", "rings", "funnel")
-CHART_KINDS: Final = ("chart",)
+CHART_KINDS: Final = ("chart", "quadrant")
 
 #: How a series may be drawn. `line` is the default and was the only one until
 #: the corpus asked for the others; `area` is a line whose fill reaches the
@@ -221,6 +221,22 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         ),
         _role(NODE_ROLES, "step"),
     ),
+    "position": (
+        _text(),
+        FieldSpec(
+            "across",
+            "number",
+            required=True,
+            description="Where this sits on the horizontal axis. Data, not a coordinate.",
+        ),
+        FieldSpec(
+            "up",
+            "number",
+            required=True,
+            description="Where this sits on the vertical axis. Data, not a coordinate.",
+        ),
+        _role(NODE_ROLES, "step"),
+    ),
     "stage": (
         _text(),
         _role(NODE_ROLES, "step"),
@@ -332,9 +348,13 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
     ("pyramid",): (FieldSpec("levels", "array", required=True, item_ref="level", min_items=1),),
     ("rings",): (FieldSpec("rings", "array", required=True, item_ref="ring", min_items=1),),
     ("funnel",): (FieldSpec("stages", "array", required=True, item_ref="stage", min_items=1),),
-    CHART_KINDS: (
+    ("chart",): (
         FieldSpec("axes", "object", required=True, ref="axes"),
         FieldSpec("series", "array", required=True, item_ref="series", min_items=1),
+    ),
+    ("quadrant",): (
+        FieldSpec("axes", "object", required=True, ref="axes"),
+        FieldSpec("positions", "array", required=True, item_ref="position", min_items=1),
     ),
 }
 
@@ -400,6 +420,16 @@ class Cell:
 
 
 @dataclass(frozen=True)
+class Position:
+    """One named point in the plane. `across` and `up` are data, not coordinates."""
+
+    text: str
+    across: float
+    up: float
+    role: str = "step"
+
+
+@dataclass(frozen=True)
 class Axis:
     label: str
     unit: str = ""
@@ -438,6 +468,7 @@ class Document:
     cells: tuple[Cell, ...] = ()
     columns: tuple[str, ...] = ()
     rows: tuple[str, ...] = ()
+    positions: tuple[Position, ...] = ()
     axes: tuple[Axis, ...] = ()
     """The horizontal axis then the vertical one, for `chart`. Empty otherwise."""
 
@@ -766,6 +797,15 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         ),
         columns=tuple(document.get("columns", ())),
         rows=tuple(document.get("rows", ())),
+        positions=tuple(
+            Position(
+                text=entry["text"],
+                across=float(entry["across"]),
+                up=float(entry["up"]),
+                role=entry.get("role", "step"),
+            )
+            for entry in document.get("positions", ())
+        ),
         axes=_axes(document.get("axes")),
         series=tuple(
             Series(
@@ -975,6 +1015,7 @@ __all__ = [
     "Group",
     "Item",
     "Node",
+    "Position",
     "Series",
     "Violation",
     "build_schema",
