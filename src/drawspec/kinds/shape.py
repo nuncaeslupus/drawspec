@@ -48,15 +48,23 @@ PYRAMID_STEPS: Final = 1
 #:
 #: It used to be 0.62, and that was a target rather than a floor: three one-line
 #: levels on a 640 canvas came out 132 units tall each to hold a line of text 15
-#: units tall, so the type read as a caption lost in the middle of each band. A
-#: shape sized for its own content and text sized for the reader are the same
-#: decision seen from two ends, and the content is the end that knows.
-PYRAMID_ASPECT: Final = 0.3
+#: units tall, so the type read as a caption lost in the middle of each band. The
+#: shape is the end that gives, because it has nothing to be consistent with —
+#: see `SHAPE_LEVEL` for the end that does not.
+PYRAMID_ASPECT: Final = 0.25
 
-#: The type level a pyramid level and a ring band are set at. `heading` rather
-#: than `body`: these are the only text in their shape, and a shape whose whole
-#: content is five words is titled by them rather than described by them.
-SHAPE_LEVEL: Final = "heading"
+#: The type level a pyramid level and a ring band are set at.
+#:
+#: `body`, which is what every other kind sets its boxes in, and the reason is a
+#: rule about the page rather than about these two shapes. It was `heading` for
+#: one round — defensibly: a shape whose whole content is five words is titled by
+#: them rather than described by them — and a reader with the nine kinds in front
+#: of them picked the two out immediately. Two point five of a difference is
+#: plenty to notice when the diagrams sit in one document, and *"all drawings
+#: should be read the same in the same page"* outranks a per-kind reading of what
+#: the text is doing. A shape whose text looks lost is a shape that is too big;
+#: shrink the shape.
+SHAPE_LEVEL: Final = "body"
 
 
 def shape_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:

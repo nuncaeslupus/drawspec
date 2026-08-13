@@ -37,7 +37,7 @@ from drawspec.errors import FitError, LayoutError
 from drawspec.geometry import fit
 from drawspec.kinds import scene_for
 from drawspec.render import centred
-from drawspec.scene import extents
+from drawspec.scene import TextLine, extents
 from drawspec.schema import load_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
@@ -45,6 +45,10 @@ from drawspec.theme import load_theme
 ROOT: Final = Path(__file__).resolve().parents[1]
 REFERENCE_DIR: Final = ROOT / "docs" / "reference"
 FIXTURES: Final = tuple(sorted(path.stem for path in REFERENCE_DIR.glob("*.json")))
+
+#: The one level every kind sets the text *inside a shape* at. Chart and edge
+#: labels are furniture and sit a level below it — see the test that reads this.
+BODY_LEVEL: Final = "body"
 
 #: The brief's second acceptance test: the three worst diagrams in the corpus,
 #: rewritten as declarative documents. The reviewer's verdict on each is in
@@ -226,3 +230,30 @@ def test_the_ink_width_mode_leaves_a_narrow_diagram_alone() -> None:
     measurer = TextMeasurer(theme.font.stacks())
     drawn = fit(theme, lambda scaled: scene_for(document, scaled, measurer)).value
     assert centred(drawn, theme) is drawn
+
+
+@pytest.mark.parametrize("name", FIXTURES)
+def test_every_kind_sets_its_text_at_the_same_level(name: str) -> None:
+    """One type size for the text inside a shape, whatever kind the shape is.
+
+    The other half of the shared canvas, and the same rule seen from the other
+    end: a fixed width means two diagrams are scaled alike, and this means they
+    were set alike to begin with. Both only matter when the diagrams share a
+    page, and neither can be seen in one diagram on its own.
+
+    It is a rule about the reader rather than about the text. `pyramid` and
+    `rings` were set a level up for one round, on the reasonable argument that a
+    shape whose whole content is five words is titled by them — and a reader with
+    the nine kinds in front of them picked those two out at once. Two and a half
+    points is plenty to notice side by side.
+
+    Furniture is exempt and stays smaller: an axis's tick labels and an edge's
+    label are not the diagram's text, and a chart whose axis numbers matched its
+    node text would be a chart shouting its own scale.
+    """
+    theme = load_theme()
+    document = load_document(REFERENCE_DIR / f"{name}.json")
+    measurer = TextMeasurer(theme.font.stacks())
+    drawn = fit(theme, lambda scaled: scene_for(document, scaled, measurer)).value
+    levels = {primitive.level for primitive in drawn.primitives if isinstance(primitive, TextLine)}
+    assert levels <= {BODY_LEVEL}, f"{name} sets its text at {sorted(levels)}"
