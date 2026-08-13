@@ -171,10 +171,20 @@ def _resolve(colour: str, theme: Theme, profile: str) -> str:
     return colour
 
 
-def _fill_paint(role: NodeRole, namespace: str, theme: Theme, profile: str) -> str:
-    if role.fill_pattern in ("hatch", "dots"):
-        return f"url(#{namespace}-{role.fill_pattern})"
-    if role.fill_pattern == "solid":
+def _fill_paint(
+    role: NodeRole, namespace: str, theme: Theme, profile: str, chosen: str = ""
+) -> str:
+    """The paint for a closed figure. `chosen` is a fill the geometry asked for.
+
+    A primitive may name its own fill pattern — see `Rect.fill` — and when it
+    does it wins over its role's. Nothing else about the role is overridden: the
+    stroke, the dash and the weight are still the role's, so a bar still looks
+    like the thing it is a bar of.
+    """
+    pattern = chosen or role.fill_pattern
+    if pattern in PATTERN_FILLS:
+        return f"url(#{namespace}-{pattern})"
+    if pattern == "solid":
         return _resolve(role.fill, theme, profile)
     return "none"
 
@@ -213,7 +223,7 @@ def _shape_attributes(
         head = isinstance(primitive, Path) and primitive.marker
         return [("fill", "none"), *_stroke_attributes(role, theme, profile, solid=head)]
     return [
-        ("fill", _fill_paint(role, namespace, theme, profile)),
+        ("fill", _fill_paint(role, namespace, theme, profile, getattr(primitive, "fill", ""))),
         *_stroke_attributes(role, theme, profile),
     ]
 
@@ -346,6 +356,27 @@ def _line_font(line: TextLine) -> str:
     return line.spans[0].font if line.spans else "sans"
 
 
+#: The fill patterns that are drawn as a `<pattern>`. `none` and `solid` are
+#: paint rather than pattern, so they are not here.
+PATTERN_FILLS: Final = ("hatch", "dots", "cross", "grid")
+
+#: What each pattern is made of. Kept faint on purpose — a fill that competes
+#: with the text on top of it makes the text illegible, which was the single
+#: loudest complaint about the hand-drawn originals ("the hatching is too strong
+#: and it is hard to read *client*"). Opacity is not a colour, so this does not
+#: smuggle a value past the theme.
+_PATTERN_BODIES: Final = {
+    "hatch": '<path d="M 0 4 L 4 0" stroke="{ink}" stroke-width="0.6" stroke-opacity="0.35"/>',
+    "dots": '<circle cx="2" cy="2" r="0.6" fill="{ink}" fill-opacity="0.35"/>',
+    "cross": (
+        '<path d="M 0 4 L 4 0 M 0 0 L 4 4" stroke="{ink}" stroke-width="0.5" stroke-opacity="0.3"/>'
+    ),
+    "grid": (
+        '<path d="M 0 0 L 0 4 M 0 0 L 4 0" stroke="{ink}" stroke-width="0.5" stroke-opacity="0.3"/>'
+    ),
+}
+
+
 def _pattern_definitions(scene: Scene, namespace: str, theme: Theme, profile: str) -> list[str]:
     """`<pattern>` defs for the fill patterns this scene actually uses.
 
@@ -355,20 +386,16 @@ def _pattern_definitions(scene: Scene, namespace: str, theme: Theme, profile: st
     """
     wanted = sorted(
         {
-            role.fill_pattern
+            pattern
             for primitive in scene.primitives
             if isinstance(role := theme.role_for(primitive.role), NodeRole)
-            and role.fill_pattern in ("hatch", "dots")
+            and (pattern := getattr(primitive, "fill", "") or role.fill_pattern) in PATTERN_FILLS
         }
     )
     ink = _resolve("currentColor", theme, profile)
     definitions = []
     for pattern in wanted:
-        body = (
-            f'<path d="M 0 4 L 4 0" stroke="{ink}" stroke-width="0.6" stroke-opacity="0.35"/>'
-            if pattern == "hatch"
-            else f'<circle cx="2" cy="2" r="0.6" fill="{ink}" fill-opacity="0.35"/>'
-        )
+        body = _PATTERN_BODIES[pattern].format(ink=ink)
         definitions.append(
             f'<pattern id="{namespace}-{pattern}" width="4" height="4" '
             f'patternUnits="userSpaceOnUse">{body}</pattern>'

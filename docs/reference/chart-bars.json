@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "kind": "chart",
+  "title": "Where the tickets went",
+  "description": "Two teams' incident counts by quarter, side by side, and the backlog they left behind as an area under them.",
+  "axes": {
+    "horizontal": { "label": "Quarter", "min": 0, "max": 5 },
+    "vertical": { "label": "Incidents" }
+  },
+  "series": [
+    { "name": "Platform", "mark": "bar", "data": [[1, 34], [2, 41], [3, 28], [4, 22]] },
+    { "name": "Service desk", "mark": "bar", "data": [[1, 52], [2, 47], [3, 55], [4, 38]] },
+    { "name": "Still open", "mark": "line", "data": [[1, 12], [2, 18], [3, 9], [4, 6]] }
+  ]
+}

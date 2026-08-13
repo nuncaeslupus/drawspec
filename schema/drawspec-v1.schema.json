@@ -624,6 +624,19 @@
             "note",
             "group"
           ]
+        },
+        "mark": {
+          "type": "string",
+          "description": "How this series is drawn: a line, bars, or a filled area. Default 'line'.",
+          "enum": [
+            "line",
+            "bar",
+            "area"
+          ]
+        },
+        "stack": {
+          "type": "string",
+          "description": "Series sharing a stack name are piled on each other rather than drawn side by side. Bars and areas only."
         }
       },
       "required": [

@@ -182,7 +182,7 @@ are cheaper than kinds and some are nearly free:
 | A caption under the axis | *"depth of change in the organisation"* | timeline |
 | Irregular spacing | events at their real intervals, not evenly | timeline |
 | A dashed series, a label at the end of a line | ideal against real | chart |
-| Bars, areas, stacked marks | not in the corpus, but the next thing asked for | chart |
+| ~~Bars, areas, stacked marks~~ | **done** — `mark: "bar"` / `"area"`, and `stack` | chart |
 | A fork and a join | components in series against in parallel | flow |
 | Straight edges where the mesh *is* the message | spine-leaf, every leaf to every spine | flow |
 
@@ -200,10 +200,28 @@ edge style rather than a defeat.
 ## What this suggests doing first
 
 1. ~~**`group`.**~~ Done — see above.
-2. **Chart marks** — bars, areas, stacked. Not because the corpus demands them
-   (it barely does) but because it is the standing request, and because the
-   decision it forces — keep hand-rolling the chart or wrap an established
-   library — gets more expensive with every mark type written by hand.
+2. ~~**Chart marks**~~ — done. **The library question was the real content of
+   this item, so here is the answer and its reasons.**
+
+   *Keep hand-rolling.* Not because writing marks is easy, but because nothing
+   an established library emits can pass through this pipeline. drawspec's
+   emitter is the only styling point and it enforces the embedding contract: no
+   `<style>` element, namespaced ids, only theme-declared colours, no embedded
+   or referenced font, and a role on every primitive. matplotlib, plotly and
+   pygal each emit their own complete SVG with their own font handling and their
+   own style block — wrapping one means either abandoning the `Scene` seam for
+   charts, or post-processing foreign SVG, which is more work than the marks and
+   fails in more ways.
+
+   What a library really sells is statistical plotting, interactivity and thirty
+   chart types. drawspec wants none of those. What it wanted was a **mark
+   abstraction** so that the next mark is additive rather than a special case,
+   and that is what this is: `mark: "line" | "bar" | "area"`, plus `stack`.
+
+   The one thing worth borrowing was the *fill vocabulary*, and it is now in the
+   theme as `[mark] fills` — an ordered sequence of patterns, distinct by
+   construction, that a mark takes by its own index. Which is exactly what
+   `matrix` needs next.
 3. **`matrix`.** Five originals, and it is where the greyscale rule has to be
    made to work rather than merely obeyed.
 

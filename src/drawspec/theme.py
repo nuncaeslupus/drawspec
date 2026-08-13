@@ -49,7 +49,7 @@ EDGE_ROLES: Final = ("flow", "link", "exchange", "weak", "owns")
 NODE_SHAPES: Final = ("rect", "pill", "diamond", "ellipse", "none")
 
 #: Fill treatments. A non-colour channel, so it counts toward greyscale safety.
-FILL_PATTERNS: Final = ("none", "solid", "hatch", "dots")
+FILL_PATTERNS: Final = ("none", "solid", "hatch", "dots", "cross", "grid")
 
 #: End treatments an edge role may take. Closed, and it lives in the theme, so a
 #: document stays readable when the theme changes.
@@ -427,6 +427,54 @@ class EdgeStyle:
 
 
 @dataclass(frozen=True)
+class MarkStyle:
+    """How a chart tells one mark from another, and how much room bars get.
+
+    A chart's marks are the one place drawspec needs a *sequence* of appearances
+    rather than a role per thing: the author says "three series of bars", not
+    "this one hatched". So the theme declares the order, and a mark takes the
+    entry at its own index.
+
+    The vocabulary is the fill patterns, not colours, and the entries must be
+    distinct — which makes greyscale legibility structural here rather than
+    checked afterwards. It is the same rule the role table lives under, arrived
+    at from the other direction: roles must differ in a non-colour channel, and
+    these differ in nothing else.
+    """
+
+    fills: tuple[str, ...] = ("hatch", "dots", "cross", "grid", "none")
+    gap: float = 0.3
+    """How much of a category's band is left empty around its bars, as a
+    fraction. Zero draws bars that touch, which reads as one wide bar."""
+
+    def fill_for(self, index: int) -> str:
+        """The fill for the `index`-th filled mark, cycling if there are more."""
+        return self.fills[index % len(self.fills)]
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> MarkStyle:
+        _reject_unknown(mapping, ("fills", "gap"), "[mark]")
+        defaults = cls()
+        fills = mapping.get("fills", list(defaults.fills))
+        if not isinstance(fills, list) or not fills:
+            raise ThemeError(f"[mark] fills: expected a non-empty array, got {fills!r}")
+        for entry in fills:
+            if entry not in FILL_PATTERNS:
+                raise ThemeError(
+                    f"[mark] fills: {entry!r} is not one of {', '.join(FILL_PATTERNS)}"
+                )
+        if len(set(fills)) != len(fills):
+            raise ThemeError(
+                "[mark] fills: the entries must be distinct — two marks sharing a fill "
+                "cannot be told apart, in greyscale or in colour."
+            )
+        gap = _number(mapping.get("gap", defaults.gap), "[mark] gap", positive=False)
+        if not 0.0 <= gap < 1.0:
+            raise ThemeError(f"[mark] gap: expected a fraction below 1, got {gap!r}")
+        return cls(fills=tuple(fills), gap=gap)
+
+
+@dataclass(frozen=True)
 class TitleStyle:
     """Whether a diagram carries its own title. Off until the question is settled."""
 
@@ -540,6 +588,7 @@ _TOP_LEVEL_KEYS: Final = (
     "fit",
     "box",
     "edge",
+    "mark",
     "title",
     "role",
     "edge_role",
@@ -558,6 +607,7 @@ class Theme:
     fit: FitBand = FitBand()
     box: BoxStyle = BoxStyle()
     edge: EdgeStyle = EdgeStyle()
+    mark: MarkStyle = MarkStyle()
     title: TitleStyle = TitleStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
@@ -604,6 +654,7 @@ class Theme:
             fit=FitBand.from_mapping(_section(mapping, "fit")),
             box=BoxStyle.from_mapping(_section(mapping, "box")),
             edge=EdgeStyle.from_mapping(_section(mapping, "edge")),
+            mark=MarkStyle.from_mapping(_section(mapping, "mark")),
             title=TitleStyle.from_mapping(_section(mapping, "title")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
@@ -816,6 +867,7 @@ __all__ = [
     "EdgeStyle",
     "FitBand",
     "FontStacks",
+    "MarkStyle",
     "NodeRole",
     "Padding",
     "Theme",
