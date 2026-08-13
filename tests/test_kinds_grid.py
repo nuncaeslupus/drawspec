@@ -12,6 +12,7 @@ path is asserted here too: parse, load the theme, fit, render, emit.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import replace
 from itertools import pairwise
 from xml.etree import ElementTree
@@ -512,3 +513,83 @@ def test_row_headings_take_width_from_the_grid_rather_than_overlapping_it() -> N
     plain = matrix(SHARED)
     assert min(min(x for x, _ in cell.points) for cell in cells_of(built)) > 0.0
     assert built.width == pytest.approx(plain.width)
+
+
+# --------------------------------------------------------------------------
+# timeline: spacing by when things happened
+# --------------------------------------------------------------------------
+
+
+def timeline(*items: Mapping[str, object]) -> Scene:
+    document = {
+        "version": 1,
+        "kind": "timeline",
+        "title": "A timeline",
+        "items": list(items),
+    }
+    return grid_scene(parse_document(document), THEME, MEASURER)
+
+
+def tick_positions(built: Scene) -> list[float]:
+    """Where each tick meets the axis, left to right."""
+    ticks = [
+        line
+        for line in built.primitives
+        if isinstance(line, Path) and line.points[0][0] == line.points[-1][0]
+    ]
+    return sorted(line.points[0][0] for line in ticks)
+
+
+UNEVEN: tuple[Mapping[str, object], ...] = (
+    {"text": "First", "at": 0},
+    {"text": "Second", "at": 4},
+    {"text": "Third", "at": 24},
+)
+
+
+def test_a_timeline_without_placements_is_evenly_spaced() -> None:
+    """The default, unchanged: even spacing is what this kind has always meant."""
+    built = timeline({"text": "First"}, {"text": "Second"}, {"text": "Third"})
+    positions = tick_positions(built)
+    gaps = [later - earlier for earlier, later in pairwise(positions)]
+    assert gaps[0] == pytest.approx(gaps[1])
+
+
+def test_a_placed_timeline_spaces_by_when_things_happened() -> None:
+    """The gaps then say something a reader can see."""
+    positions = tick_positions(timeline(*UNEVEN))
+    gaps = [later - earlier for earlier, later in pairwise(positions)]
+    assert gaps[1] > gaps[0] * 4
+
+
+def test_placements_are_in_proportion_to_their_own_values() -> None:
+    positions = tick_positions(timeline(*UNEVEN))
+    span = positions[-1] - positions[0]
+    assert (positions[1] - positions[0]) / span == pytest.approx(4 / 24, abs=0.01)
+
+
+def test_two_placed_labels_never_touch() -> None:
+    """The closest pair decides how wide a label may be, and it keeps daylight."""
+    built = timeline(*UNEVEN)
+    boxes = sorted(
+        (item for item in built.primitives if isinstance(item, Rect)),
+        key=lambda box: box.x,
+    )
+    for earlier, later in pairwise(boxes):
+        assert earlier.x + earlier.width < later.x
+
+
+def test_a_timeline_placing_only_some_of_its_entries_spaces_evenly() -> None:
+    """All or nothing: otherwise a reader measures one gap and counts the next."""
+    positions = tick_positions(
+        timeline({"text": "First", "at": 0}, {"text": "Second"}, {"text": "Third", "at": 20})
+    )
+    gaps = [later - earlier for earlier, later in pairwise(positions)]
+    assert gaps[0] == pytest.approx(gaps[1])
+
+
+def test_a_timeline_with_every_entry_at_one_point_is_refused() -> None:
+    """There is nothing for the spacing to say, and drawing it would say it anyway."""
+    with pytest.raises(FitError) as error:
+        timeline({"text": "First", "at": 3}, {"text": "Second", "at": 3})
+    assert "same point" in str(error.value)

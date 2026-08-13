@@ -17,6 +17,8 @@ so a consumer retunes their diagrams by editing a theme file.
 
 from __future__ import annotations
 
+from itertools import pairwise
+
 from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
 from drawspec.kinds.common import box_primitives, text_runs
@@ -145,16 +147,32 @@ def _columns(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
 
 
 def _timeline(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
-    """Labels above an axis, one tick each, evenly spaced.
+    """Labels above an axis, one tick each.
 
-    Even spacing is the gate, so the step is computed once from the width and the
-    label width — never accumulated per item, which is how a timeline ends up
+    Evenly spaced by default, and the step is computed once from the width and
+    the label width — never accumulated per item, which is how a timeline ends up
     with a slightly wider gap at one end.
+
+    **Or spaced by when things happened.** If every entry carries an `at`, the
+    ticks land in proportion to those values, and the gaps then say something:
+    the reader can see that two events were close together and a third was much
+    later. It is all or nothing — a timeline with some entries placed and some
+    not would have a reader measuring one gap and counting the next.
+
+    Sizes stay normalised either way, because peers being the same size is this
+    family's rule and irregular *spacing* is not irregular *labels*. When two of
+    those equal labels will not fit the gap their values ask for, that is a
+    `FitError` naming the pair rather than an overlap.
     """
     width = _canvas_width(document, theme)
     count = len(document.items)
     gutter = theme.box.padding.horizontal
-    label_width = (width - gutter * (count - 1)) / count if count > 1 else width
+    shares = _shares(document.items, count)
+    even = (width - gutter * (count - 1)) / count if count > 1 else width
+    # Placed entries get labels sized to their *tightest* pair rather than to an
+    # even share: the closest two are what decides how wide a label may be, and
+    # sizing to the average would guarantee they overlap.
+    label_width = even if shares is None else min(even, _tightest(shares) * width - gutter / 2)
     if label_width <= theme.box.padding.horizontal:
         raise FitError(
             f"{count} timeline entries do not fit a width of {width:.0f}: each label "
@@ -167,15 +185,13 @@ def _timeline(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
     tick = theme.edge.head_length * TICK_FRACTION
     axis_y = band + theme.box.padding.top
 
-    # One step for every gap, so the last tick lands exactly on the last centre.
-    first_centre = label_width / 2
-    step = (width - label_width) / (count - 1) if count > 1 else 0.0
+    centres = _centres(shares, count, width, label_width)
 
     primitives: list[Primitive] = [
         Path(AXIS_ROLE, points=((0.0, axis_y), (width, axis_y))),
     ]
     for index, box in enumerate(boxes):
-        centre = first_centre + step * index
+        centre = centres[index]
         # From the label's own bottom edge, not from a mark floating beside the
         # axis: a tick that starts in the gap says a moment happened *somewhere*
         # along here, and the reader is left to pair each label with the nearest
@@ -185,6 +201,59 @@ def _timeline(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
         primitives.extend(box_primitives(placed, theme, measurer))
 
     return _scene(document, primitives, width, axis_y + tick / 2)
+
+
+def _shares(items: tuple[Item, ...], count: int) -> list[float] | None:
+    """Each entry's place along the line, from 0 to 1 — or `None` for even spacing.
+
+    All or nothing: a timeline with some entries placed and some not would have a
+    reader measuring one gap and counting the next.
+
+    Raises:
+        FitError: every entry is at the same point, so the spacing has nothing to
+            say.
+    """
+    values = [item.at for item in items]
+    if count < 2 or any(value is None for value in values):
+        return None
+    placed = [value for value in values if value is not None]
+    low, high = min(placed), max(placed)
+    if high == low:
+        raise FitError(
+            "every entry on this timeline is placed at the same point, so there is "
+            "nothing for the spacing to say. Give them different values, or drop "
+            "`at` and let them space evenly."
+        )
+    return [(value - low) / (high - low) for value in placed]
+
+
+def _tightest(shares: list[float]) -> float:
+    """The widest a label may be, as a share of the width, given the closest pair.
+
+    A label of width `w` centred on each end leaves `width - w` for the spread, so
+    the closest pair is `gap * (width - w)` apart and must be at least `w` wide:
+    `w <= gap * width / (1 + gap)`. The caller then takes half a gutter off
+    that, so the closest two labels have daylight between them rather than a
+    shared edge. Half, not a whole one: two labels on a timeline need less
+    separation than two columns do, because each has a tick saying which is
+    which, and a full gutter costs enough width to break a two-word label.
+    """
+    gap = min(later - earlier for earlier, later in pairwise(sorted(shares)))
+    return gap / (1 + gap) if gap > 0 else 0.0
+
+
+def _centres(
+    shares: list[float] | None, count: int, width: float, label_width: float
+) -> list[float]:
+    """Where each tick sits: evenly, or in proportion to the entries' own values."""
+    half = label_width / 2
+    first, last = half, width - half
+    if count < 2:
+        return [width / 2]
+    if shares is None:
+        step = (last - first) / (count - 1)
+        return [first + step * index for index in range(count)]
+    return [first + share * (last - first) for share in shares]
 
 
 __all__ = ["AXIS_ROLE", "TICK_FRACTION", "grid_scene"]

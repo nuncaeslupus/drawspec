@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "kind": "timeline",
+  "title": "What an outage costs",
+  "description": "The same four moments, spaced by when they happened rather than evenly: the gap between the last backup and the failure is the data you lose, and the long stretch after it is the time you spend getting back.",
+  "items": [
+    { "text": "Last backup", "at": 0 },
+    { "text": "**It fails**", "at": 6 },
+    { "text": "Systems back", "at": 30 },
+    { "text": "Working again", "at": 44 }
+  ]
+}

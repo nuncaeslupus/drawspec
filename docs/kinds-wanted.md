@@ -238,7 +238,7 @@ are cheaper than kinds and some are nearly free:
 | Emphasis on a node or an edge | the critical path marked through a network | flow |
 | A label inside a bar | the five stars of open data, each in its own column | columns |
 | A caption under the axis | *"depth of change in the organisation"* | timeline |
-| Irregular spacing | events at their real intervals, not evenly | timeline |
+| ~~Irregular spacing~~ | **done** — give every entry an `at` | timeline |
 | A dashed series, a label at the end of a line | ideal against real | chart |
 | ~~Bars, areas, stacked marks~~ | **done** — `mark: "bar"` / `"area"`, and `stack` | chart |
 | A fork and a join | components in series against in parallel | flow |
