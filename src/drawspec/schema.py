@@ -67,7 +67,11 @@ MARKS: Final = ("line", "bar", "area")
 #: whose iteration order a reader has to trust.
 AXIS_ORDER: Final = ("horizontal", "vertical")
 
-#: The nine kinds. Closed for v1: a tenth needs evidence, not a preference.
+#: The kinds. Closed: a new one needs evidence, not a preference — and the
+#: evidence is `docs/kinds-wanted.md`, which sorts the 89 hand-drawn originals by
+#: the kind that would have to draw them. The four that opened the vocabulary
+#: from nine to thirteen — `matrix`, `funnel`, `quadrant`, `curve` — each cleared
+#: originals nothing here could draw.
 KINDS: Final = GRAPH_KINDS + GRID_KINDS + SHAPE_KINDS + CHART_KINDS
 
 #: Fields an author might reach for that drawspec refuses, and why. Not used for
