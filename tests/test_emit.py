@@ -524,9 +524,7 @@ def test_emit_keeps_the_space_between_two_runs_of_one_line() -> None:
     """
     svg = emit(a_line_scene(), THEME)
     text = next(element for element in parse(svg) if element.tag.endswith("text"))
-    assert "".join(span.text or "" for span in text) == (
-        "The author says what the diagram means"
-    )
+    assert "".join(span.text or "" for span in text) == ("The author says what the diagram means")
 
 
 def test_emit_marker_is_never_dashed() -> None:

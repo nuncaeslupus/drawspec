@@ -378,7 +378,6 @@ def test_every_timeline_tick_touches_its_own_label() -> None:
         owner = [
             box
             for box in labels
-            if box.x - 1e-6 <= x <= box.x + box.width + 1e-6
-            and top <= box.y + box.height + 1e-6
+            if box.x - 1e-6 <= x <= box.x + box.width + 1e-6 and top <= box.y + box.height + 1e-6
         ]
         assert owner, f"the tick at {x} starts below every label"
