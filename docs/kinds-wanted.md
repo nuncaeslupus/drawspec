@@ -33,8 +33,8 @@ originals against the nine kinds, and of the gap that inventory shows.
 | columns | 4 | yes |
 | pyramid | 4 | yes |
 | rings | 4 | yes |
-| **curve** | **3** | **no** |
-| **quadrant** | **2** | **no** |
+| ~~curve~~ | 3 | **now yes** |
+| ~~quadrant~~ | 2 | **now yes** |
 | ~~funnel~~ | 2 | **now yes** |
 | *picture* | 2 | out of scope |
 | chart | 1 | yes |
@@ -125,28 +125,63 @@ See `docs/reference/matrix-responsibility.json`.
 `tic__computacion-hibrida-iaas-paas-saas`, `tic__sistemas-san-y-raid`,
 `tic__tcp-ip-v4-y-mpls`, `tic__itil-v4-conceptos-y-cadena-de-valor`.*
 
-### 3. `curve` — a shape that is not data (3)
+### 3. ~~`curve`~~ — a shape that is not data (3) — **done**
 
 The Gartner hype cycle, the EVM S-curves, the sprint burn-down. These look like
 charts and are not: there are no numbers behind the hype cycle, only a named
 shape with five labelled waypoints on it. The burn-down has two series where one
 is a straight ideal and the other is the real line, each labelled where it ends.
 
-The chart kind could grow into part of this — multiple series, a dashed series,
-a label at the end of a line. The waypoint annotations and the free-form named
-curve are the part it could not.
+It is its own kind rather than a chart option, and the reason is the one thing
+these three have in common: **there are no numbers**. So there are no ticks —
+drawing them would invite a reader to measure a shape somebody sketched — and a
+waypoint carries a *name* where a data point would carry a value.
+
+Two decisions:
+
+* **The curve passes through every waypoint**, not near it. A spline that merely
+  approached them would put the markers off the line, which is the one defect
+  this family already forbids. Two points stay a straight line: that is what an
+  "ideal" burn-down is, and smoothing it would spoil it.
+* **It is sampled into a polyline**, the way `cycle` already draws its arcs.
+  The smoothing is drawspec's business; the reader's renderer gets the shape
+  rather than a recipe for it.
+
+A curve's name is drawn where it ends, and the names go down before the waypoint
+labels so a label at the end of a curve never lands on that curve's own name.
+
+*See `docs/reference/curve-hype.json` and `docs/reference/curve-burndown.json`.*
 
 *Originals: `tic__prospeccion-de-soluciones-tic`,
 `tic__pmbok-rendimiento-riesgos-y-cierre`, `barcelona__scrum-bit`.*
 
-### 4. `quadrant` — two named axes, items placed in the plane (2)
+### 4. ~~`quadrant`~~ — two named axes, items placed in the plane (2) — **done**
 
 The Thomas-Kilmann grid: cooperation against assertiveness, five named positions.
 Tuckman's model on a different pair of axes. Small, self-contained, and nothing
 in the nine comes close — `chart` plots series against scales, not labelled points
 against named directions.
 
-*Originals: `tic__pmbok-liderazgo-equipo-y-recursos__0` and `__1`.*
+It lives in the chart family and reuses its axis furniture unchanged, which is
+what made it small. Three decisions of its own:
+
+* **No ticks.** A tick invites a reader to read a value off a diagram whose
+  author was making a comparison rather than a measurement. What is drawn instead
+  is the pair of **midlines** — "which quarter is it in" is the question these
+  diagrams exist to answer.
+* **`across` and `up` are data, not coordinates**, in the same sense a chart's
+  `data` is. The author says where a thing sits between two named directions.
+* **A label dodges the midlines as well as its neighbours.** The middle of the
+  field is a real answer, so the position that needed the most care is the one
+  sitting on both lines at once.
+
+It also turned up a real bug in the chart: `_segment_meets_box` sampled a segment
+at a fixed twenty-four points, which is fine for a chart's short segments and
+steps clean over a label when the segment is a midline running the height of the
+plot. Sampling is now bounded by a spacing smaller than a label box.
+
+*Originals: `tic__pmbok-liderazgo-equipo-y-recursos__0` and `__1`.
+See `docs/reference/quadrant-conflict.json`.*
 
 ### 5. ~~`funnel`~~ — the pyramid lying down (2) — **done**
 
@@ -242,8 +277,17 @@ edge style rather than a defeat.
 3. ~~**`matrix`.**~~ Done — and the greyscale rule turned out to be the easy
    half. The hard half was keeping the author out of the appearance.
 
-`quadrant` and `curve` are each small and each self-contained; they can be
-picked up in any order once the three above are settled. `funnel` is done.
+**All five are done** — `group`, `matrix`, `curve`, `quadrant`, `funnel` — along
+with `spans`' cousin still open and the two pictures still declined. The count at
+the top of this document is the state before that work; what is left is the
+features table above and the one limitation below.
+
+One limitation found on the way and worth writing down: a chart series whose
+highest and lowest points sit exactly on the plot's edges can never label them —
+above the top point is outside the plot, and below it crosses the curve — so the
+all-or-nothing rule drops that series' labels entirely. The fix is a vertical
+margin on the scale, the way `quadrant` already has one. It is not done here
+because it changes every existing chart drawing, and those have been reviewed.
 
 ---
 

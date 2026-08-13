@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "kind": "quadrant",
+  "title": "Five ways to handle a disagreement",
+  "description": "Thomas and Kilmann's grid: how much you press your own concern against how much you accommodate the other's. No ticks — the directions are the point, not the numbers.",
+  "axes": {
+    "horizontal": { "label": "How firmly you press your own concern" },
+    "vertical": { "label": "How far you go to meet theirs" }
+  },
+  "positions": [
+    { "text": "Give way", "across": 0.1, "up": 0.9 },
+    { "text": "Work it out together", "across": 0.9, "up": 0.9, "role": "emphasis" },
+    { "text": "Split the difference", "across": 0.5, "up": 0.5 },
+    { "text": "Step away", "across": 0.1, "up": 0.1 },
+    { "text": "Insist", "across": 0.9, "up": 0.1 }
+  ]
+}

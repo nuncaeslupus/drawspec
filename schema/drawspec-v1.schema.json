@@ -443,6 +443,130 @@
         "series"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "quadrant",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "quadrant"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "axes": {
+          "$ref": "#/$defs/axes"
+        },
+        "positions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/position"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "axes",
+        "positions"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "curve",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "curve"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "axes": {
+          "$ref": "#/$defs/axes"
+        },
+        "curves": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/curve"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "axes",
+        "curves"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -529,6 +653,39 @@
         "text",
         "column",
         "row"
+      ],
+      "additionalProperties": false
+    },
+    "curve": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Drawn where the curve ends. Omit it when there is only one curve and the axes already say what it is."
+        },
+        "waypoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/waypoint"
+          },
+          "minItems": 2
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "start",
+            "step",
+            "decision",
+            "terminal",
+            "emphasis",
+            "note",
+            "group"
+          ]
+        }
+      },
+      "required": [
+        "waypoints"
       ],
       "additionalProperties": false
     },
@@ -687,6 +844,42 @@
       ],
       "additionalProperties": false
     },
+    "position": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic."
+        },
+        "across": {
+          "type": "number",
+          "description": "Where this sits on the horizontal axis. Data, not a coordinate."
+        },
+        "up": {
+          "type": "number",
+          "description": "Where this sits on the vertical axis. Data, not a coordinate."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "start",
+            "step",
+            "decision",
+            "terminal",
+            "emphasis",
+            "note",
+            "group"
+          ]
+        }
+      },
+      "required": [
+        "text",
+        "across",
+        "up"
+      ],
+      "additionalProperties": false
+    },
     "ring": {
       "type": "object",
       "properties": {
@@ -791,6 +984,28 @@
       },
       "required": [
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "waypoint": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "What to call this point. Omit for a point that only shapes the curve."
+        },
+        "across": {
+          "type": "number",
+          "description": "Where this sits on the horizontal axis. Data, not a coordinate."
+        },
+        "up": {
+          "type": "number",
+          "description": "Where this sits on the vertical axis. Data, not a coordinate."
+        }
+      },
+      "required": [
+        "across",
+        "up"
       ],
       "additionalProperties": false
     }
