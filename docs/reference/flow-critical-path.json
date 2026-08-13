@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "kind": "flow",
+  "title": "The path that decides the date",
+  "description": "A small project network. The heavy arrows are the critical path — the run of tasks with no slack, where a day lost is a day lost on the whole project.",
+  "nodes": [
+    { "id": "survey", "text": "Survey the site\n**3 weeks**", "role": "start" },
+    { "id": "design", "text": "Design\n**3 weeks**", "role": "emphasis" },
+    { "id": "permits", "text": "Apply for permits\n6 weeks" },
+    { "id": "build", "text": "Build\n**8 weeks**", "role": "emphasis" },
+    { "id": "hand", "text": "Hand over\n**4 weeks**", "role": "terminal" }
+  ],
+  "edges": [
+    { "from": "survey", "to": "design", "role": "strong" },
+    { "from": "design", "to": "build", "role": "strong" },
+    { "from": "build", "to": "hand", "role": "strong" },
+    { "from": "survey", "to": "permits", "label": "5 weeks of slack" },
+    { "from": "permits", "to": "hand" }
+  ]
+}

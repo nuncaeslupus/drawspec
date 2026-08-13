@@ -197,6 +197,18 @@ stroke = "currentColor"
 dash = "4 3"
 stroke_width = 1.5
 
+# The opposite end of the scale from `weak`: the one path through a network that
+# matters — a critical path, the route a request actually took. Heavier than
+# `flow` and otherwise identical, so it reads as the same relation drawn louder
+# rather than as a different relation, and it survives greyscale because weight
+# is not a colour.
+[edge_role.strong]
+head = "arrow"
+tail = "none"
+stroke = "currentColor"
+dash = "none"
+stroke_width = 2.5
+
 [edge_role.owns]
 head = "diamond"
 tail = "none"
