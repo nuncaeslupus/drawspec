@@ -22,7 +22,7 @@ from drawspec import render
 from drawspec.emit import check_embedding_safety
 from drawspec.errors import DrawspecError, FitError
 from drawspec.kinds.cycle import MINIMUM_NODES, START_ANGLE, cycle_scene
-from drawspec.scene import Path, Polygon, Rect, Scene, TextRun
+from drawspec.scene import Path, Polygon, Rect, Scene, TextLine, extents
 from drawspec.schema import parse_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
@@ -70,7 +70,14 @@ def heads(built: Scene) -> list[Polygon]:
 
 
 def centre_of(built: Scene) -> tuple[float, float]:
-    return built.width / 2, built.height / 2
+    """Where the family says the ring's centre is.
+
+    Read from the scene's metadata rather than assumed to be the middle of the
+    canvas: the canvas is the width every diagram shares and a height cropped to
+    the ring, so the two coincide only by accident.
+    """
+    values = dict(built.metadata)
+    return float(values["centre_x"]), float(values["centre_y"])
 
 
 def angle_of(point: tuple[float, float], centre: tuple[float, float]) -> float:
@@ -268,7 +275,7 @@ def test_cycle_follows_the_edges_not_the_order_the_nodes_were_listed() -> None:
     for box in boxes(built):
         middle = (box.x + box.width / 2, box.y + box.height / 2)
         text = min(
-            (item for item in built.primitives if isinstance(item, TextRun)),
+            (item for item in built.primitives if isinstance(item, TextLine)),
             key=lambda run: math.dist((run.x, run.y), middle),
         )
         # Measured from where the ring starts — the top — not from 3 o'clock.
@@ -324,10 +331,28 @@ def test_cycle_renders_identically_twice() -> None:
     assert render(document(*STEPS)) == render(document(*STEPS))
 
 
-def test_cycle_scene_is_square() -> None:
-    """A ring is as tall as it is wide; anything else is an oval pretending."""
+def test_cycle_is_a_ring_on_the_canvas_width_and_no_taller_than_it_needs() -> None:
+    """Round, but not squarely framed.
+
+    The steps are all one radius from one centre — that is the ring, and it is
+    what "square" used to stand in for. The canvas around it is the theme's
+    width, shared with every other diagram, and a height cropped to the drawing:
+    a ring whose steps hold sentences is much wider than it is tall, and squaring
+    the canvas would pad a third of the drawing's height above and below it.
+    """
     built = scene(*STEPS)
-    assert built.width == pytest.approx(built.height)
+    centre = centre_of(built)
+    radii = [
+        math.dist((box.x + box.width / 2, box.y + box.height / 2), centre) for box in boxes(built)
+    ]
+    assert max(radii) - min(radii) < 1e-6
+    assert built.width == pytest.approx(THEME.canvas.width)
+    # Cropped to the ink, with an equal margin above and below it. The ink is
+    # what matters rather than the steps: the lowest point of a five-step ring is
+    # the bottom of the arc between the two lowest boxes, not either box.
+    _, top, _, bottom = extents(built.primitives)
+    assert top == pytest.approx(THEME.box.padding.top)
+    assert built.height == pytest.approx(bottom + THEME.box.padding.top)
 
 
 def test_cycle_refuses_a_document_of_another_kind() -> None:
@@ -336,3 +361,30 @@ def test_cycle_refuses_a_document_of_another_kind() -> None:
     )
     with pytest.raises(DrawspecError, match="not the cycle kind"):
         cycle_scene(parsed, THEME, MEASURER)
+
+
+def test_every_arc_reaches_the_step_at_each_end() -> None:
+    """An arc that touches neither box is a curve floating in the ring.
+
+    The clearance used to come from the box's *diagonal* — the distance to a
+    corner — while an arc approaches a wide flat step from the side, a
+    half-*width* away. Both ends stopped short by the difference, on a ring whose
+    radius already guaranteed a clear chord, and what was left was a stub of arc
+    in the middle of each gap: five short curves inside a circle that no longer
+    read as a loop.
+    """
+    built = scene(*STEPS)
+    steps = boxes(built)
+    reach = THEME.edge.clearance + THEME.edge.head_length + 1.0
+    for arc in arcs(built):
+        for end in (arc.points[0], arc.points[-1]):
+            assert any(_distance_to(box, end) <= reach for box in steps), (
+                f"an arc ends at {end}, which is not beside any step"
+            )
+
+
+def _distance_to(box: Rect, point: tuple[float, float]) -> float:
+    """How far a point is from a box's outline, and zero when it is inside."""
+    across = max(box.x - point[0], point[0] - (box.x + box.width), 0.0)
+    down = max(box.y - point[1], point[1] - (box.y + box.height), 0.0)
+    return math.hypot(across, down)

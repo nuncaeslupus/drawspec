@@ -24,15 +24,23 @@ import os
 import subprocess
 import sys
 import tomllib
+from dataclasses import replace
 from pathlib import Path
 from typing import Final
+from xml.etree import ElementTree
 
 import pytest
 
 from drawspec import render, render_document
 from drawspec.emit import PROFILES
 from drawspec.errors import FitError, LayoutError
+from drawspec.geometry import fit
+from drawspec.kinds import scene_for
+from drawspec.render import centred
+from drawspec.scene import extents
 from drawspec.schema import load_document
+from drawspec.text import TextMeasurer
+from drawspec.theme import load_theme
 
 ROOT: Final = Path(__file__).resolve().parents[1]
 REFERENCE_DIR: Final = ROOT / "docs" / "reference"
@@ -167,3 +175,54 @@ def test_the_readme_no_longer_says_there_is_no_renderer() -> None:
     """The status line was true until T11 and is the kind of thing that lingers."""
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "No renderer yet" not in readme
+
+
+# --------------------------------------------------------------------------
+# One canvas, so one type size
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("name", FIXTURES)
+def test_every_reference_document_is_drawn_to_the_same_canvas_width(name: str) -> None:
+    """`canvas_width_variance == 0` across the kinds.
+
+    The one property no diagram can be checked for on its own, and the one a
+    reader meets first. Each of these is internally perfect at whatever width it
+    needed; drop two of them into a page at one column width and the viewer
+    scales each by its own factor, so the same eleven-point label is read at
+    eighteen points in the small one and eleven in the big one. The reader sees a
+    tool that picks a type size at random.
+
+    Empty margin beside a narrow diagram is the price, and it is the right way
+    round: unused paper costs nothing to read past, and a different type size in
+    every figure was the single most repeated complaint in the corpus.
+    """
+    theme = load_theme()
+    svg = render_document(load_document(REFERENCE_DIR / f"{name}.json"), profile="standalone")
+    width = float(ElementTree.fromstring(svg).get("width", "0"))
+    # The ink inset is half a stroke either side of the drawing — see `emit`.
+    assert width == pytest.approx(theme.canvas.width + theme.edge.stroke_width, abs=1.6)
+
+
+def test_a_narrow_diagram_is_centred_on_the_canvas_rather_than_cropped_to_it() -> None:
+    """The margin a fixed canvas buys is shared between the two sides."""
+    theme = load_theme()
+    document = load_document(REFERENCE_DIR / "flow-validation.json")
+    measurer = TextMeasurer(theme.font.stacks())
+    fitted = fit(theme, lambda scaled: scene_for(document, scaled, measurer))
+    drawn = fitted.value
+    assert drawn.width < theme.canvas.width, "this fixture must be narrower than the canvas"
+
+    padded = centred(drawn, fitted.theme)
+    assert padded.width == pytest.approx(theme.canvas.width)
+    left, _, right, _ = extents(padded.primitives)
+    assert left == pytest.approx(padded.width - right, abs=1e-6)
+
+
+def test_the_ink_width_mode_leaves_a_narrow_diagram_alone() -> None:
+    """The other half of the setting, so it is a choice rather than a default."""
+    theme = replace(load_theme(), canvas=replace(load_theme().canvas, width_mode="ink"))
+    document = load_document(REFERENCE_DIR / "flow-validation.json")
+    measurer = TextMeasurer(theme.font.stacks())
+    drawn = fit(theme, lambda scaled: scene_for(document, scaled, measurer)).value
+    assert centred(drawn, theme) is drawn

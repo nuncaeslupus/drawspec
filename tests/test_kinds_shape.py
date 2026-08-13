@@ -18,8 +18,9 @@ import pytest
 from drawspec import render
 from drawspec.emit import check_embedding_safety
 from drawspec.errors import DrawspecError, FitError
+from drawspec.kinds.common import line_bounds
 from drawspec.kinds.shape import shape_scene
-from drawspec.scene import Ellipse, Polygon, Scene, TextRun
+from drawspec.scene import Ellipse, Polygon, Scene, TextLine
 from drawspec.schema import parse_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
@@ -61,12 +62,18 @@ def circles_of(built: Scene) -> list[Ellipse]:
     return [item for item in built.primitives if isinstance(item, Ellipse)]
 
 
-def runs_of(built: Scene) -> list[TextRun]:
-    return [item for item in built.primitives if isinstance(item, TextRun)]
+def runs_of(built: Scene) -> list[TextLine]:
+    return [item for item in built.primitives if isinstance(item, TextLine)]
 
 
-def run_width(run: TextRun) -> float:
-    return MEASURER.measure(run.text, run.font, THEME.scale[run.level]).width
+def run_edges(run: TextLine) -> tuple[float, float]:
+    """The left and right edge of a line, as drawspec measured it."""
+    return line_bounds(run, THEME, MEASURER)
+
+
+def run_width(run: TextLine) -> float:
+    left, right = run_edges(run)
+    return right - left
 
 
 # --------------------------------------------------------------------------
@@ -143,7 +150,7 @@ def test_pyramid_with_a_long_apex_label_wraps_inside_the_narrowest_span() -> Non
     lines = _runs_within(built, apex)
     assert len(lines) > 1, "the apex label should have wrapped"
     for run in lines:
-        for x in (run.x, run.x + run_width(run)):
+        for x in run_edges(run):
             assert _inside_trapezoid(x, run.y, apex), (run.text, x)
     # And the levels stay equal, so the apex does not distort the proportions.
     assert len({round(_height(level), 6) for level in levels_of(built)}) == 1
@@ -161,8 +168,8 @@ def test_pyramid_with_an_unbreakable_apex_label_raises_fiterror_naming_the_level
 def test_pyramid_text_is_centred_on_the_axis() -> None:
     built = pyramid(*LEVELS)
     for run in runs_of(built):
-        centre = run.x + run_width(run) / 2
-        assert centre == pytest.approx(built.width / 2, abs=1.0)
+        left, right = run_edges(run)
+        assert (left + right) / 2 == pytest.approx(built.width / 2, abs=1.0)
 
 
 # --------------------------------------------------------------------------
@@ -204,7 +211,7 @@ def test_ring_labels_stay_inside_their_own_circle() -> None:
     circles = circles_of(built)
     for circle in circles:
         for run in _runs_for(built, circle, circles):
-            for x in (run.x, run.x + run_width(run)):
+            for x in run_edges(run):
                 distance = math.dist((x, run.y), (circle.cx, circle.cy))
                 assert distance <= circle.rx + 1e-6, (run.text, x, run.y)
 
@@ -301,15 +308,15 @@ def _inside_trapezoid(x: float, y: float, level: Polygon) -> bool:
     return abs(x - middle) <= half + 1e-6
 
 
-def _runs_within(built: Scene, level: Polygon) -> list[TextRun]:
+def _runs_within(built: Scene, level: Polygon) -> list[TextLine]:
     return [run for run in runs_of(built) if _top(level) <= run.y <= _bottom(level)]
 
 
-def _label_for(built: Scene, circle: Ellipse, circles: list[Ellipse]) -> TextRun:
+def _label_for(built: Scene, circle: Ellipse, circles: list[Ellipse]) -> TextLine:
     return _runs_for(built, circle, circles)[0]
 
 
-def _runs_for(built: Scene, circle: Ellipse, circles: list[Ellipse]) -> list[TextRun]:
+def _runs_for(built: Scene, circle: Ellipse, circles: list[Ellipse]) -> list[TextLine]:
     """The runs belonging to `circle`: those in its band, or in it if innermost."""
     ordered = sorted(circles, key=lambda item: -item.rx)
     index = ordered.index(circle)

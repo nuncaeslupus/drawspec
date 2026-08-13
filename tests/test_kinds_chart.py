@@ -296,3 +296,40 @@ def _segment_meets(
         if left <= x <= right and top <= y <= bottom:
             return True
     return False
+
+
+# --------------------------------------------------------------------------
+# A label that says which point it belongs to
+# --------------------------------------------------------------------------
+
+
+def test_point_labels_tell_the_chart_s_own_values_apart() -> None:
+    """Four points at four heights must not all be labelled the same number.
+
+    The precision used to come from the axis step, which is the wrong source
+    exactly when it matters: values close together share a tick interval, so the
+    reference chart's 7.2, 6.8, 7.4 and 6.9 all printed as `7` — four labels
+    reading `7` at four visibly different heights, which reads as a broken chart
+    rather than as a rounded one.
+    """
+    close = [{"name": "Placement", "data": [[1, 7.2], [2, 6.8], [3, 7.4], [4, 6.9]]}]
+    built = scene(series=close)
+    labels = [run.text for run in texts(built) if run.text.replace(".", "").isdigit()]
+    assert {"7.2", "6.8", "7.4", "6.9"} <= set(labels)
+
+
+def test_point_labels_carry_no_more_decimals_than_they_need() -> None:
+    """Precision is what the values ask for — values a whole apart print whole."""
+    apart = [{"name": "Accepted", "data": [[1, 10], [2, 14], [3, 12], [4, 17]]}]
+    built = scene(series=apart)
+    for run in texts(built):
+        assert "." not in run.text
+
+
+def test_the_last_tick_label_fits_inside_the_canvas() -> None:
+    """A label centred on the end of an axis hangs half its width past it."""
+    built = scene()
+    for run in texts(built):
+        if run.anchor == "middle":
+            width = MEASURER.measure(run.text, run.font, THEME.scale[run.level]).width
+            assert run.x + width / 2 <= built.width + 1e-6, f"{run.text!r} runs off the canvas"

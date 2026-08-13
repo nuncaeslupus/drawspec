@@ -31,7 +31,7 @@ from typing import Final
 from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
 from drawspec.kinds.common import box_primitives
-from drawspec.scene import Path, Polygon, Primitive, Scene
+from drawspec.scene import Path, Polygon, Primitive, Scene, extents, moved
 from drawspec.schema import Document
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme
@@ -51,6 +51,11 @@ ARC_SEGMENTS: Final = 12
 #: The smallest cycle that can be drawn. Two nodes is a pair of arcs there and
 #: back, which does read as a loop; one node is not a cycle at all.
 MINIMUM_NODES: Final = 2
+
+#: Halvings used to find where the ring crosses a box's outline. Forty takes the
+#: answer far below a rendered pixel, and a fixed count is what makes the same
+#: document render to the same bytes twice.
+_BISECTIONS: Final = 40
 
 
 def cycle_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
@@ -73,11 +78,16 @@ def cycle_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     boxes = _boxes(document, theme, measurer, width)
     radius, extent = _radius(boxes, theme, width)
 
-    centre = extent / 2
+    # Across, the ring sits in the middle of the canvas every diagram shares.
+    # Down, it sits under the top margin: a ring is wider than it is tall as soon
+    # as its steps hold sentences, and squaring the canvas would hang a third of
+    # the drawing's own height off it as blank paper above and below.
+    tallest = max(box.height for box in boxes.values())
+    centre = (extent / 2, theme.box.padding.top + tallest / 2 + radius)
     placed = {
         node_id: boxes[node_id].moved_to(
-            centre + radius * math.cos(_angle(index, len(order))) - boxes[node_id].width / 2,
-            centre + radius * math.sin(_angle(index, len(order))) - boxes[node_id].height / 2,
+            centre[0] + radius * math.cos(_angle(index, len(order))) - boxes[node_id].width / 2,
+            centre[1] + radius * math.sin(_angle(index, len(order))) - boxes[node_id].height / 2,
         )
         for index, node_id in enumerate(order)
     }
@@ -89,17 +99,43 @@ def cycle_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
         following = order[(index + 1) % len(order)]
         role = _edge_role(document, node_id, following)
         primitives.extend(
-            _arc(centre, radius, index, index + 1, len(order), placed[node_id], role, theme)
+            _arc(
+                centre,
+                radius,
+                index,
+                index + 1,
+                len(order),
+                placed[node_id],
+                placed[following],
+                role,
+                theme,
+            )
         )
     for node_id in order:
         primitives.extend(box_primitives(placed[node_id], theme, measurer))
 
+    # Framed against the ink rather than against the steps: with five steps the
+    # lowest point of the drawing is the bottom of the arc *between* the two
+    # lowest boxes, and a canvas measured from the boxes cuts that arc in half.
+    margin = theme.box.padding.top
+    _, top, _, bottom = extents(primitives)
+    shift = margin - top
+    primitives = [moved(primitive, 0.0, shift) for primitive in primitives]
+    centre = (centre[0], centre[1] + shift)
+
     return Scene(
         width=extent,
-        height=extent,
+        height=bottom + shift + margin,
         primitives=tuple(primitives),
         title=document.title,
         description=document.description,
+        # The ring is no longer the middle of the canvas, so where it *is* has to
+        # be sayable by something other than dividing the height by two.
+        metadata=(
+            ("centre_x", f"{centre[0]:.6f}"),
+            ("centre_y", f"{centre[1]:.6f}"),
+            ("radius", f"{radius:.6f}"),
+        ),
     )
 
 
@@ -214,55 +250,93 @@ def _radius(boxes: dict[str, Box], theme: Theme, width: float) -> tuple[float, f
 
 
 def _arc(
-    centre: float,
+    centre: tuple[float, float],
     radius: float,
     start_index: int,
     end_index: int,
     count: int,
     box: Box,
+    target: Box,
     role: str,
     theme: Theme,
 ) -> tuple[Primitive, ...]:
     """One arc from node `start_index` to the next, plus its head.
 
-    The arc stops short of the target node by the box's own reach, so the head
-    lands beside the box rather than under it. Border anchoring proper is T9's
-    work for the graph kinds; a ring is regular enough to do it with one angle.
-    """
-    span = 2 * math.pi / count
-    # How much angle to leave at each end, so the arc starts and finishes clear
-    # of the boxes rather than inside them.
-    #
-    # The angle a box subtends from the centre is *not* the right number: two
-    # points that angle apart on the ring are a chord apart, and the chord is
-    # shorter than the arc. Solving on the chord instead — 2r sin(t/2) >= reach —
-    # is what actually puts the arc's end outside the box's own circle.
-    #
-    # The radius was chosen so the chord between neighbours clears a whole box,
-    # which puts this below half a sector by construction; the cap is a safety
-    # net for the degenerate cases, not a constraint on the normal ones.
-    reach = math.hypot(box.width, box.height) / 2
-    clearance = min(2 * math.asin(min(reach / (2 * radius), 1.0)), span * 0.45)
-    head_span = theme.edge.head_length / radius
+    Both ends are found on the boxes themselves — the angle at which the ring
+    leaves the source's outline, and the angle at which it reaches the target's —
+    which is the same rule the graph kinds anchor by, said in polar coordinates.
 
-    begin = _angle(start_index, count) + clearance
-    finish = _angle(end_index, count) - clearance
+    It replaces a clearance computed from the box's *diagonal*, and the
+    difference is the whole drawing rather than a detail. The diagonal is the
+    distance to a corner, so an arc approaching a wide flat box side-on stopped a
+    half-diagonal short of a border that was a half-*width* away, at both ends,
+    on a ring whose radius already guaranteed a clear chord. What was left was a
+    stub of arc hanging in the middle of the gap, touching neither step: five
+    short curves floating inside a ring that no longer read as a loop at all.
+    """
+    head_span = theme.edge.head_length / radius
+    gap = theme.edge.clearance / radius
+
+    begin = _leaves(centre, radius, _angle(start_index, count), box, theme, forwards=True) + gap
+    finish = _leaves(centre, radius, _angle(end_index, count), target, theme, forwards=False) - gap
     if finish <= begin:
         return ()
 
+    head = theme.edge_roles[role].has_head
+    last = finish - head_span if head else finish
     points = tuple(
-        _on_circle(centre, radius, begin + (finish - head_span - begin) * step / ARC_SEGMENTS)
+        _on_circle(centre, radius, begin + (last - begin) * step / ARC_SEGMENTS)
         for step in range(ARC_SEGMENTS + 1)
     )
     shaft = Path(role, points=points)
 
-    if not theme.edge_roles[role].has_head:
+    if not head:
         return (shaft,)
     return (shaft, _head(centre, radius, finish, head_span, role, theme))
 
 
+def _leaves(
+    centre: tuple[float, float],
+    radius: float,
+    angle: float,
+    box: Box,
+    theme: Theme,
+    *,
+    forwards: bool,
+) -> float:
+    """The angle at which the ring crosses `box`'s outline, leaving it.
+
+    Bisection rather than algebra: the crossing is with a rectangle, so there are
+    four cases and two of them are degenerate, and a fixed number of halvings is
+    both exact enough at these sizes and — the property that matters — the same
+    number on every run.
+
+    The node's own angle is inside the box by construction (its centre is on the
+    ring there) and a quarter turn away is outside it, because the radius was
+    chosen so a whole box fits in the chord between neighbours.
+    """
+    step = 1.0 if forwards else -1.0
+    low, high = 0.0, math.pi / 2
+    for _ in range(_BISECTIONS):
+        middle = (low + high) / 2
+        if _inside(_on_circle(centre, radius, angle + step * middle), box):
+            low = middle
+        else:
+            high = middle
+    return angle + step * high
+
+
+def _inside(point: tuple[float, float], box: Box) -> bool:
+    return box.x <= point[0] <= box.x + box.width and box.y <= point[1] <= box.y + box.height
+
+
 def _head(
-    centre: float, radius: float, tip_angle: float, head_span: float, role: str, theme: Theme
+    centre: tuple[float, float],
+    radius: float,
+    tip_angle: float,
+    head_span: float,
+    role: str,
+    theme: Theme,
 ) -> Polygon:
     """A triangular head at the end of an arc, pointing the way the arc runs."""
     tip = _on_circle(centre, radius, tip_angle)
@@ -278,8 +352,8 @@ def _head(
     )
 
 
-def _on_circle(centre: float, radius: float, angle: float) -> tuple[float, float]:
-    return centre + radius * math.cos(angle), centre + radius * math.sin(angle)
+def _on_circle(centre: tuple[float, float], radius: float, angle: float) -> tuple[float, float]:
+    return centre[0] + radius * math.cos(angle), centre[1] + radius * math.sin(angle)
 
 
 __all__ = ["ARC_SEGMENTS", "MINIMUM_NODES", "NODE_WIDTH_SHARE", "START_ANGLE", "cycle_scene"]

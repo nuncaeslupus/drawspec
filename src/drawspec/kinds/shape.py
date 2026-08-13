@@ -42,9 +42,21 @@ from drawspec.theme import Theme
 #: `(i + 2) / (n + 1)` at its bottom.
 PYRAMID_STEPS: Final = 1
 
-#: How tall a pyramid is, as a fraction of its base. Wider than tall, which is
-#: how a pyramid is drawn when its levels have to hold sentences.
-PYRAMID_ASPECT: Final = 0.62
+#: How tall a pyramid is, as a fraction of its base — a floor, not a target. A
+#: level is as tall as its own label needs; this only stops a pyramid of
+#: one-word levels collapsing into a row of pinstripes.
+#:
+#: It used to be 0.62, and that was a target rather than a floor: three one-line
+#: levels on a 640 canvas came out 132 units tall each to hold a line of text 15
+#: units tall, so the type read as a caption lost in the middle of each band. A
+#: shape sized for its own content and text sized for the reader are the same
+#: decision seen from two ends, and the content is the end that knows.
+PYRAMID_ASPECT: Final = 0.3
+
+#: The type level a pyramid level and a ring band are set at. `heading` rather
+#: than `body`: these are the only text in their shape, and a shape whose whole
+#: content is five words is titled by them rather than described by them.
+SHAPE_LEVEL: Final = "heading"
 
 
 def shape_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
@@ -80,7 +92,7 @@ def _label(
             theme=theme,
             measurer=measurer,
             role=item.role,
-            level="body",
+            level=SHAPE_LEVEL,
             max_width=span,
             # The family draws the outline; the text is sized in a plain
             # rectangle inside the span the family worked out for it.
@@ -121,7 +133,8 @@ def _pyramid(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     ]
 
     # Equal height: every level the same, sized by the tallest label, so no level
-    # reads as more important than another.
+    # reads as more important than another. The aspect is a floor under that, not
+    # a height in its own right — see PYRAMID_ASPECT.
     level_height = max(max(box.height for box in boxes), width * PYRAMID_ASPECT / count)
     height = level_height * count
 
@@ -233,4 +246,4 @@ def _half_chord(radius: float, offset: float) -> float:
     return math.sqrt(max(radius**2 - offset**2, 0.0))
 
 
-__all__ = ["PYRAMID_ASPECT", "PYRAMID_STEPS", "shape_scene"]
+__all__ = ["PYRAMID_ASPECT", "PYRAMID_STEPS", "SHAPE_LEVEL", "shape_scene"]
