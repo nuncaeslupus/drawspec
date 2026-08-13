@@ -18,8 +18,15 @@ import pytest
 from drawspec import render
 from drawspec.emit import check_embedding_safety
 from drawspec.errors import DrawspecError, FitError
-from drawspec.kinds.shape import shape_scene
-from drawspec.scene import Ellipse, Polygon, Scene, TextRun
+from drawspec.geometry import size_box
+from drawspec.kinds.common import line_bounds
+from drawspec.kinds.shape import (
+    PYRAMID_FILL,
+    PYRAMID_MIN_SHARE,
+    SHAPE_LEVEL,
+    shape_scene,
+)
+from drawspec.scene import Ellipse, Polygon, Scene, TextLine
 from drawspec.schema import parse_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
@@ -61,12 +68,18 @@ def circles_of(built: Scene) -> list[Ellipse]:
     return [item for item in built.primitives if isinstance(item, Ellipse)]
 
 
-def runs_of(built: Scene) -> list[TextRun]:
-    return [item for item in built.primitives if isinstance(item, TextRun)]
+def runs_of(built: Scene) -> list[TextLine]:
+    return [item for item in built.primitives if isinstance(item, TextLine)]
 
 
-def run_width(run: TextRun) -> float:
-    return MEASURER.measure(run.text, run.font, THEME.scale[run.level]).width
+def run_edges(run: TextLine) -> tuple[float, float]:
+    """The left and right edge of a line, as drawspec measured it."""
+    return line_bounds(run, THEME, MEASURER)
+
+
+def run_width(run: TextLine) -> float:
+    left, right = run_edges(run)
+    return right - left
 
 
 # --------------------------------------------------------------------------
@@ -97,7 +110,7 @@ def test_pyramid_level_text_fits_the_narrowest_span_of_its_level() -> None:
     built = pyramid(*LEVELS)
     for level in levels_of(built):
         for run in _runs_within(built, level):
-            for x in (run.x, run.x + run_width(run)):
+            for x in run_edges(run):
                 assert _inside_trapezoid(x, run.y, level), (run.text, x, run.y)
 
 
@@ -143,7 +156,7 @@ def test_pyramid_with_a_long_apex_label_wraps_inside_the_narrowest_span() -> Non
     lines = _runs_within(built, apex)
     assert len(lines) > 1, "the apex label should have wrapped"
     for run in lines:
-        for x in (run.x, run.x + run_width(run)):
+        for x in run_edges(run):
             assert _inside_trapezoid(x, run.y, apex), (run.text, x)
     # And the levels stay equal, so the apex does not distort the proportions.
     assert len({round(_height(level), 6) for level in levels_of(built)}) == 1
@@ -161,8 +174,8 @@ def test_pyramid_with_an_unbreakable_apex_label_raises_fiterror_naming_the_level
 def test_pyramid_text_is_centred_on_the_axis() -> None:
     built = pyramid(*LEVELS)
     for run in runs_of(built):
-        centre = run.x + run_width(run) / 2
-        assert centre == pytest.approx(built.width / 2, abs=1.0)
+        left, right = run_edges(run)
+        assert (left + right) / 2 == pytest.approx(built.width / 2, abs=1.0)
 
 
 # --------------------------------------------------------------------------
@@ -204,7 +217,7 @@ def test_ring_labels_stay_inside_their_own_circle() -> None:
     circles = circles_of(built)
     for circle in circles:
         for run in _runs_for(built, circle, circles):
-            for x in (run.x, run.x + run_width(run)):
+            for x in run_edges(run):
                 distance = math.dist((x, run.y), (circle.cx, circle.cy))
                 assert distance <= circle.rx + 1e-6, (run.text, x, run.y)
 
@@ -301,15 +314,15 @@ def _inside_trapezoid(x: float, y: float, level: Polygon) -> bool:
     return abs(x - middle) <= half + 1e-6
 
 
-def _runs_within(built: Scene, level: Polygon) -> list[TextRun]:
+def _runs_within(built: Scene, level: Polygon) -> list[TextLine]:
     return [run for run in runs_of(built) if _top(level) <= run.y <= _bottom(level)]
 
 
-def _label_for(built: Scene, circle: Ellipse, circles: list[Ellipse]) -> TextRun:
+def _label_for(built: Scene, circle: Ellipse, circles: list[Ellipse]) -> TextLine:
     return _runs_for(built, circle, circles)[0]
 
 
-def _runs_for(built: Scene, circle: Ellipse, circles: list[Ellipse]) -> list[TextRun]:
+def _runs_for(built: Scene, circle: Ellipse, circles: list[Ellipse]) -> list[TextLine]:
     """The runs belonging to `circle`: those in its band, or in it if innermost."""
     ordered = sorted(circles, key=lambda item: -item.rx)
     index = ordered.index(circle)
@@ -320,3 +333,50 @@ def _runs_for(built: Scene, circle: Ellipse, circles: list[Ellipse]) -> list[Tex
         else circle.cy + circle.rx
     )
     return [run for run in runs_of(built) if outer_top <= run.y <= inner_top]
+
+
+def test_a_pyramid_of_short_labels_does_not_fill_the_canvas() -> None:
+    """The one kind that should not be as wide as the page.
+
+    Its base is the widest thing in it, so a base at the canvas width leaves a
+    shape three or four times wider than it is tall — a flight of steps. The
+    labels decide the base and the canvas is only a ceiling; the drawing is then
+    centred in what is left, like any other narrow diagram.
+    """
+    built = pyramid("A decision", "A measurement", "A method someone else could repeat")
+    assert built.width < THEME.canvas.width
+    assert built.height / built.width > 0.4, "this should read as a pyramid, not as a staircase"
+
+
+def test_a_pyramid_never_shrinks_below_its_share_of_the_canvas() -> None:
+    """A pyramid of one-word levels is still a diagram, not a caption with a hat."""
+    built = pyramid("One", "Two", "Three")
+    assert built.width == pytest.approx(THEME.canvas.width * PYRAMID_MIN_SHARE)
+
+
+def test_a_pyramid_level_is_never_much_taller_than_its_own_text() -> None:
+    """The limit on buying a shape with empty band.
+
+    A level that dwarfs its label is what made the type look lost the first time
+    round, and raising the type was the wrong answer: the shape is the end with
+    nothing to be consistent with, so the shape gives.
+    """
+    for texts in (
+        ("One", "Two", "Three"),
+        ("A decision", "A measurement", "A method someone else could repeat"),
+    ):
+        built = pyramid(*texts)
+        level_height = _height(levels_of(built)[0])
+        tallest = max(
+            size_box(
+                text,
+                theme=THEME,
+                measurer=MEASURER,
+                role="step",
+                level=SHAPE_LEVEL,
+                max_width=built.width,
+                shape="rect",
+            ).height
+            for text in texts
+        )
+        assert level_height <= tallest * PYRAMID_FILL + 1e-6

@@ -2,64 +2,55 @@
 
 <!-- Written at session end. A new session reading this file can resume without additional context. -->
 
-**Date**: 2026-08-12
-**Branch**: `claude/continuation-yq88jv` · **Last PR**: [#18](https://github.com/nuncaeslupus/drawspec/pull/18)
+**Date**: 2026-08-13
+**Branch**: `claude/graphic-types-review-l28z1e` · **Last PR**: [#20](https://github.com/nuncaeslupus/drawspec/pull/20)
 
-**The plan is finished.** Every task in `status/plan.md` — T1 to T18, plus T0,
-T6b and D-1 — is delivered, gated and merged. PRs #2 to #18 are all merged; the
-queue holds 21 rows, all `done`, and `queue_doctor` reports 0 findings.
+**A human reviewed all nine kinds by eye and found ten defects.** Every one of
+them was in a drawing that passed every mechanical gate — which is what the
+specification predicts and what `make gallery` exists for. All ten are fixed on
+this branch, each with a test that fails without it: **918 passing**, up from 868.
 
-## Last task
+## What was reviewed
 
-- **ID**: `lo-c107`
-- **Title**: T18 — acceptance close-out
-- **Status at handover**: `done` ([#18](https://github.com/nuncaeslupus/drawspec/pull/18), merged); nothing claimed, nothing in flight
+The nine reference documents, rendered and published as a review sheet. The
+reviewer's report is the source of the ten items below; nothing here came from a
+gate.
 
-## What was done this session
+## The ten, and why each was drawable
 
-Eight tasks, and four rendering defects that no gate had caught.
+| Fix | Root cause |
+|---|---|
+| One canvas width for every kind | The canvas was cropped to the ink, so a 365-wide flow and a 602-wide tree scaled differently in one page — the same 11pt label read at two sizes. Now centred on the theme's canvas; `[canvas] width_mode = "ink"` restores the old behaviour. |
+| Routes keep clearance from boxes they pass | A path along a border is as short and straight as one beside it. Boxes are grown by a new `[edge] clearance` before blocking the search. |
+| Two routes no longer share one line | Both edges crossing a gap get the same cheapest route. Overlapping runs are separated after routing — grouped by overlapping stretch, not by lane. |
+| Arrow heads have a straight run | The first lane in front of a port could be 1.7 units away. Degenerate lanes dropped; the approach is floored at the head length; a route that still turns too close is refused. |
+| An open head is never dashed | It was stroked with the role's dash. `Path.marker` says a head is a mark, not a length of line. |
+| Cycle arcs reach both steps | Clearance came from the box *diagonal* while an arc arrives side-on. Both ends are now found on the box outline by bisection. |
+| The bold word keeps its space | SVG strips whitespace at the edge of a text element. |
+| Centred text stays centred on a phone | Per-run coordinates were computed in a font the reader may not have. |
+| Timeline ticks touch their labels | The tick started beside the axis, so the pairing was the reader's inference. |
+| Pyramid/rings type size | Level height was a fixed fraction of the base; it now comes from the labels. The type level went to `heading` for one round and came straight back to `body` — a reader picked those two kinds out of the nine at once. **Every kind sets its shape text at one level, and `test_every_kind_sets_its_text_at_the_same_level` says so.** The shape gives, not the type: the pyramid's base is now derived from its labels (canvas as a ceiling, `PYRAMID_MIN_SHARE` as a floor) so it reads as a pyramid rather than a staircase, and a level is never more than `PYRAMID_FILL` times its own text. |
+| Chart point labels | Precision came from the axis step, so 7.2/6.8/7.4/6.9 all printed `7`. It now comes from the data. |
 
-| Task | Gate | Measured |
-|---|---|---|
-| T14 | `unlabelled_axis_count == 0` | `0` — impossible by construction: the schema requires both axis labels |
-| T9 | `edge_anchor_violations == 0` | `0` over 92 routes (3 graphs × 2 engines × 2 directions), measured against the shapes |
-| T10 | `label_overlap_count == 0` | `0` — five labels clear of every shape, every route segment and each other |
-| T11 | `text_overflow_count == 0` | `0` — every run inside the box measured for it; the gallery draws all 9 kinds |
-| T15 | `cli_exit_code_mismatches == 0` | `0` — every code in §5.4 asserted as a value |
-| T16 | `unrepresentable_failure_families == 11` | `11`, each by the schema or by an invariant, never by example |
-| T17 | `embedding_safety_violations == 0` per profile | `0` and `0`; the PDF conversion really runs in CI |
-| T18 | `nondeterministic_reruns == 0` | `0` in this interpreter and in two freshly seeded ones; renders with `PATH=""` |
+## The structural change worth knowing about
 
-Suite: **868 passing, 1 skipped** (the PDF conversion, where no converter is
-installed). ruff, ruff format and strict mypy clean.
+`TextRun` (one positioned element per span) is joined by **`TextLine`** (one
+anchored element, spans as `<tspan>`s laid out by the reader's renderer). Box
+text uses `TextLine`; single-run furniture — chart tick labels, edge labels —
+still uses `TextRun`. `kinds.common.line_bounds` is how a test measures a line.
 
-## What looking at the output found
-
-Every one of these came from rendering the references and looking, not from a
-gate. The habit is worth keeping: **end a rendering task by running `make
-gallery` and opening it.**
-
-1. **Bold was measured with the regular face**, so the following run started 3.8
-   units early and landed on top of it. Weight is now threaded end to end.
-2. **Half of every flush stroke was outside the viewBox**, which read as uneven
-   line weight. The viewBox is now the bounds of the ink.
-3. **Ports landed on a diamond's bounding box**, so an arrow stopped in the empty
-   corner beside it, pointing at nothing. Anchors are projected onto the outline.
-4. **Route lanes hugged the boxes**, so a connector ran the width of its target
-   just above the border and read as an underline. Lanes are mid-gap now.
+`scene.moved` / `scene.extents` are shared translation and bounds helpers; every
+family should use them rather than reimplementing.
 
 ## If work continues
 
-Nothing is queued. Candidates, none of them blocking:
-
-- **Edge bundling.** Three sibling edges leaving one node run parallel a few
-  units apart before they diverge, which reads as one thick line at small sizes.
-  A shared trunk would look better; port spreading is what keeps a decision's two
-  branches apart, so the two cases want different treatment.
-- **The node width share is one tuned number** (a quarter of the canvas). It is
-  what lets the reference tree fit at all, and it makes a `down` flow narrower
-  than it needs to be. A per-direction limit, or a second sizing pass, would do
-  better than one constant.
-- **`docs/gallery/` is committed** so a diff shows what a change did to the
-  pictures. It has to be regenerated when rendering changes, and nothing enforces
-  that yet.
+- **Queue anomaly, unresolved.** `queue_eval.sh` hands back `lo-dcd5` (T1) and
+  the whole of T1–T18 as `open` on the default branch, while the previous
+  handover records them all merged through PR #18. It looks like a stale seed on
+  `main` rather than real work. Confirm against `arsenal-queue` before acting;
+  nothing was done to it this session.
+- **Left open on purpose**: irregular timeline spacing (a different kind, not a
+  fix); edge bundling for the comb of three arrows leaving one box; chart marks
+  beyond lines — bars, areas — which is where the real work in that kind is.
+- **The habit held.** Every one of these ten came from rendering and looking.
+  Keep ending a rendering task with `make gallery`.

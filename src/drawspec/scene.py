@@ -17,7 +17,8 @@ appearance field here, the decision belongs in the theme.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from collections.abc import Sequence
+from dataclasses import dataclass, field, replace
 from typing import Final
 
 #: Where a text run is anchored horizontally, in SVG's own vocabulary.
@@ -84,6 +85,16 @@ class Path(Primitive):
 
     points: tuple[tuple[float, float], ...] = ()
     closed: bool = False
+    marker: bool = False
+    """Whether this path is an end treatment rather than a length of line.
+
+    Not styling: it says what the geometry *is*. An open arrow head is two short
+    strokes meeting at the tip, and a dash pattern measured along them breaks
+    each into pieces — so a `weak` edge came out with a head made of four
+    disconnected marks instead of an arrow. The emitter reads this to decide that
+    a head is drawn solid whatever the role's dash says; the decision stays in
+    the theme's hands, the fact that this is a head stays in the geometry's.
+    """
 
 
 @dataclass(frozen=True)
@@ -107,6 +118,108 @@ class TextRun(Primitive):
     rotate: float = 0.0
     """Rotation in degrees about (x, y) — a chart's vertical axis label, and
     nothing else so far."""
+
+
+@dataclass(frozen=True)
+class TextSpan:
+    """One run of text inside a line, in its own font and weight.
+
+    The pieces `**bold**` and `` `code` `` produce. A span carries no position:
+    where it lands is the renderer's arithmetic, not drawspec's — see `TextLine`.
+    """
+
+    text: str = ""
+    font: str = "sans"
+    weight: str = "normal"
+
+
+@dataclass(frozen=True)
+class TextLine(Primitive):
+    """One whole line of text, anchored as a unit and laid out by the renderer.
+
+    This is a `TextRun` per span with the *positions taken out*, and the reason is
+    that drawspec cannot know which font the reader has. It measures against the
+    family the theme names, but the SVG only *names* that family — a page without
+    it substitutes, and every per-span x drawspec computed is then wrong by the
+    difference between two fonts' metrics. Two failures came from that, and both
+    are invisible on the machine that drew them:
+
+    * **Centred text stops being centred.** A line placed by its measured left
+      edge drifts by half the metric difference; on a phone, where none of the
+      theme's families are installed, a whole diagram's labels sit off centre.
+    * **Runs collide or gape.** The space at a span boundary is measured into the
+      advance but never drawn — SVG strips whitespace at the edge of a text
+      element — so `the diagram **means**` renders as `diagrammeans` here and
+      with a visible hole there.
+
+    A line, anchored once, is immune to both: the renderer places the spans
+    consecutively with the metrics it actually has, keeps the boundary space
+    because it is now interior to one element, and centres the whole line about
+    `x`. drawspec still decides what the line *is* — which words, which break,
+    which box — and that is the half it can be right about wherever it is read.
+    """
+
+    x: float = 0.0
+    y: float = 0.0
+    spans: tuple[TextSpan, ...] = ()
+    level: str = "body"
+    anchor: str = "middle"
+
+    @property
+    def text(self) -> str:
+        return "".join(span.text for span in self.spans)
+
+
+def moved(primitive: Primitive, dx: float, dy: float) -> Primitive:
+    """`primitive` translated. The one place a scene knows how to shift itself.
+
+    Every family ends up needing this — a graph frames itself against the margin,
+    a ring is dropped under the top margin, and the canvas centres whatever it is
+    given — and a second implementation of it is a second chance to move the
+    boxes and forget the arrows.
+
+    Raises:
+        TypeError: a primitive type nothing here knows how to move, which means
+            one was added without teaching this function about it.
+    """
+    if isinstance(primitive, Rect):
+        return replace(primitive, x=primitive.x + dx, y=primitive.y + dy)
+    if isinstance(primitive, Ellipse):
+        return replace(primitive, cx=primitive.cx + dx, cy=primitive.cy + dy)
+    if isinstance(primitive, Polygon | Path):
+        return replace(primitive, points=tuple((x + dx, y + dy) for x, y in primitive.points))
+    if isinstance(primitive, TextRun | TextLine):
+        return replace(primitive, x=primitive.x + dx, y=primitive.y + dy)
+    raise TypeError(f"nothing here knows how to move a {type(primitive).__name__}")
+
+
+def extents(primitives: Sequence[Primitive]) -> tuple[float, float, float, float]:
+    """The bounds of what is drawn: left, top, right, bottom.
+
+    Of the *ink*, not of the boxes — which is the distinction that matters. A
+    ring's lowest point is the bottom of the arc between its two lowest steps,
+    not the bottom of either step, and a canvas measured from the boxes cuts that
+    arc in half. Text is measured as a point, because its width belongs to
+    whoever has the font; every family already sized a box around it.
+    """
+    xs: list[float] = []
+    ys: list[float] = []
+    for primitive in primitives:
+        if isinstance(primitive, Rect):
+            xs += [primitive.x, primitive.x + primitive.width]
+            ys += [primitive.y, primitive.y + primitive.height]
+        elif isinstance(primitive, Ellipse):
+            xs += [primitive.cx - primitive.rx, primitive.cx + primitive.rx]
+            ys += [primitive.cy - primitive.ry, primitive.cy + primitive.ry]
+        elif isinstance(primitive, Polygon | Path):
+            xs += [x for x, _ in primitive.points]
+            ys += [y for _, y in primitive.points]
+        elif isinstance(primitive, TextRun | TextLine):
+            xs.append(primitive.x)
+            ys.append(primitive.y)
+    if not xs:
+        return 0.0, 0.0, 0.0, 0.0
+    return min(xs), min(ys), max(xs), max(ys)
 
 
 @dataclass(frozen=True)
@@ -141,5 +254,9 @@ __all__ = [
     "Primitive",
     "Rect",
     "Scene",
+    "TextLine",
     "TextRun",
+    "TextSpan",
+    "extents",
+    "moved",
 ]

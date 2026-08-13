@@ -84,9 +84,16 @@ one of them into a single page — `docs/gallery/index.html` — which is the
 fastest way to see what changed. Looking at that page is how four rendering
 defects were found that no gate had caught.
 
+Every kind is drawn to the theme's one canvas width, and a diagram narrower than
+it is centred in it rather than cropped to its own ink. That is what makes the
+two below the same type size at the same column width — and it is the whole
+reason the width belongs to the theme. Set `[canvas] width_mode = "ink"` for a
+diagram meant to be sized on its own.
+
 <p align="center">
-  <img src="docs/gallery/flow-validation.svg" alt="A flow chart: a request arrives, is validated, and is either queued or rejected" width="330">
-  <img src="docs/gallery/tree-decisions.svg" alt="A tree: which decisions belong to the author, the theme and the tool" width="520">
+  <img src="docs/gallery/flow-validation.svg" alt="A flow chart: a request arrives, is validated, and is either queued or rejected" width="420">
+  <br>
+  <img src="docs/gallery/tree-decisions.svg" alt="A tree: which decisions belong to the author, the theme and the tool" width="420">
 </p>
 
 ## Repository layout

@@ -28,6 +28,7 @@ from typing import Any
 from drawspec.emit import emit
 from drawspec.geometry import fit
 from drawspec.kinds import scene_for
+from drawspec.scene import Scene, moved
 from drawspec.schema import Document, parse_document
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme, load_theme
@@ -71,7 +72,35 @@ def render_document(
 
     measurer = TextMeasurer(resolved.font.stacks())
     fitted = fit(resolved, lambda scaled: scene_for(document, scaled, measurer))
-    return emit(fitted.value, fitted.theme, profile)
+    return emit(centred(fitted.value, fitted.theme), fitted.theme, profile)
+
+
+def centred(scene: Scene, theme: Theme) -> Scene:
+    """`scene` on the theme's canvas, its drawing centred — the last step before SVG.
+
+    One line of the pipeline, and it is what makes the theme's single canvas
+    width mean anything. A family produces a drawing as wide as it needed to be;
+    this puts that drawing on the canvas every other diagram is also on, so two
+    diagrams in one document are read at one type size instead of at whatever
+    each one's own width happens to scale to. See `Canvas.width_mode`.
+
+    Done here rather than in each family for the usual reason: a family that
+    forgot would be wrong in a way only a reader with two diagrams open could
+    see. A drawing already at or over the canvas width is returned untouched, so
+    this can only ever add margin.
+    """
+    if theme.canvas.width_mode != "fixed" or scene.width >= theme.canvas.width:
+        return scene
+    return _shifted(scene, (theme.canvas.width - scene.width) / 2, theme.canvas.width)
+
+
+def _shifted(scene: Scene, offset: float, width: float) -> Scene:
+    """Every primitive moved right by `offset`, on a canvas `width` wide."""
+    return replace(
+        scene,
+        width=width,
+        primitives=tuple(moved(primitive, offset, 0.0) for primitive in scene.primitives),
+    )
 
 
 def render_file(
@@ -85,4 +114,4 @@ def render_file(
     return render_document(load_document(path), theme, profile)
 
 
-__all__ = ["render", "render_document", "render_file"]
+__all__ = ["centred", "render", "render_document", "render_file"]

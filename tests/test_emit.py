@@ -21,7 +21,7 @@ from drawspec.emit import (
     namespace_for,
 )
 from drawspec.errors import EmitError
-from drawspec.scene import Ellipse, Path, Polygon, Rect, Scene, TextRun
+from drawspec.scene import Ellipse, Path, Polygon, Rect, Scene, TextLine, TextRun, TextSpan
 from drawspec.theme import load_theme
 
 THEME = load_theme()
@@ -464,3 +464,80 @@ def test_namespace_is_derived_from_content_so_it_is_stable_and_distinct() -> Non
 
 def test_scene_roles_are_sorted_and_deduplicated() -> None:
     assert a_scene().roles() == ("decision", "flow", "link", "note", "start", "step")
+
+
+# --------------------------------------------------------------------------
+# Text a reader's own font can lay out
+# --------------------------------------------------------------------------
+
+
+def a_line_scene() -> Scene:
+    """One box of text with a bold word in it — the shape of the bug below."""
+    return Scene(
+        width=200.0,
+        height=60.0,
+        primitives=(
+            Rect("step", x=10.0, y=10.0, width=180.0, height=40.0),
+            TextLine(
+                "step",
+                x=100.0,
+                y=35.0,
+                spans=(
+                    TextSpan(text="The author says what the diagram", font="sans"),
+                    TextSpan(text=" means", font="sans", weight="bold"),
+                ),
+                level="body",
+            ),
+        ),
+    )
+
+
+def test_emit_text_line_is_one_element_anchored_once() -> None:
+    """The whole line is placed, not each run in it.
+
+    Anything else asks the reader's renderer to agree with drawspec about the
+    width of a string, and it does not: the SVG names a font family, and a page
+    without that family substitutes one whose advance widths differ. Every
+    per-run coordinate is then wrong by the accumulated difference.
+    """
+    svg = emit(a_line_scene(), THEME)
+    root = parse(svg)
+    texts = [element for element in root if element.tag.endswith("text")]
+    assert len(texts) == 1
+    assert texts[0].get("text-anchor") == "middle"
+    assert texts[0].get("x") == "100"
+    spans = list(texts[0])
+    assert [span.tag.split("}")[-1] for span in spans] == ["tspan", "tspan"]
+    assert all(span.get("x") is None for span in spans), (
+        "a span with an x of its own is a position drawspec cannot know"
+    )
+
+
+def test_emit_keeps_the_space_between_two_runs_of_one_line() -> None:
+    """`the diagram **means**` is three words, not two.
+
+    The space belongs to the boundary between two runs, and SVG strips
+    whitespace at the edge of a text element — so a space measured into the
+    advance of one `<text>` and drawn at the start of the next is a space nobody
+    draws. It came out as `diagrammeans`. Inside one element the space is
+    interior, and it survives.
+    """
+    svg = emit(a_line_scene(), THEME)
+    text = next(element for element in parse(svg) if element.tag.endswith("text"))
+    assert "".join(span.text or "" for span in text) == ("The author says what the diagram means")
+
+
+def test_emit_marker_is_never_dashed() -> None:
+    """A head is a mark, and a dash pattern along it chops it into pieces."""
+    scene = Scene(
+        width=100.0,
+        height=40.0,
+        primitives=(
+            Path("weak", points=((10.0, 20.0), (60.0, 20.0))),
+            Path("weak", points=((54.0, 16.0), (60.0, 20.0), (54.0, 24.0)), marker=True),
+        ),
+    )
+    shaft, head = (element for element in parse(emit(scene, THEME)) if element.tag.endswith("path"))
+    assert THEME.edge_roles["weak"].dash != "none", "the role under test must be dashed"
+    assert shaft.get("stroke-dasharray") == THEME.edge_roles["weak"].dash
+    assert head.get("stroke-dasharray") is None

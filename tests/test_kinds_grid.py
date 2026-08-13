@@ -22,8 +22,9 @@ from drawspec import render
 from drawspec.emit import check_embedding_safety
 from drawspec.errors import DrawspecError, FitError
 from drawspec.kinds import IMPLEMENTED, scene_for
+from drawspec.kinds.common import line_bounds
 from drawspec.kinds.grid import AXIS_ROLE, grid_scene
-from drawspec.scene import Path, Rect, Scene, TextRun
+from drawspec.scene import Path, Rect, Scene, TextLine
 from drawspec.schema import KINDS, parse_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
@@ -108,7 +109,7 @@ def test_stack_layers_run_top_to_bottom_in_document_order() -> None:
     built = scene("stack", *LAYERS)
     layers = rects(built)
     assert [layer.y for layer in layers] == sorted(layer.y for layer in layers)
-    texts = [item.text for item in built.primitives if isinstance(item, TextRun)]
+    texts = [item.text for item in built.primitives if isinstance(item, TextLine)]
     assert texts[0] == LAYERS[0]
 
 
@@ -349,13 +350,34 @@ def test_no_text_escapes_its_box_in_any_grid_kind(kind: str) -> None:
     """
     built = scene(kind, *LAYERS)
     boxes = rects(built)
-    runs = [item for item in built.primitives if isinstance(item, TextRun)]
+    runs = [item for item in built.primitives if isinstance(item, TextLine)]
     assert runs
     for run in runs:
-        width = MEASURER.measure(run.text, run.font, THEME.scale[run.level]).width
+        left, right = line_bounds(run, THEME, MEASURER)
         inside = [
-            box
-            for box in boxes
-            if box.x - 1e-6 <= run.x and run.x + width <= box.x + box.width + 1e-6
+            box for box in boxes if box.x - 1e-6 <= left and right <= box.x + box.width + 1e-6
         ]
-        assert inside, f"{run.text!r} at {run.x} is not inside any box"
+        assert inside, f"{run.text!r} at {left} is not inside any box"
+
+
+def test_every_timeline_tick_touches_its_own_label() -> None:
+    """A tick beside the axis leaves the reader to pair labels with marks by eye.
+
+    The mark said *a moment happened somewhere along here*; which label it
+    belonged to was a guess from proximity. Running it from the label's own
+    bottom edge to the axis makes the pairing the drawing's claim rather than the
+    reader's inference.
+    """
+    built = scene("timeline", *MOMENTS)
+    labels = rects(built)
+    ticks = [line for line in paths(built) if line.points[0][0] == line.points[1][0]]
+    assert len(ticks) == len(labels)
+    for tick in ticks:
+        x = tick.points[0][0]
+        top = min(point[1] for point in tick.points)
+        owner = [
+            box
+            for box in labels
+            if box.x - 1e-6 <= x <= box.x + box.width + 1e-6 and top <= box.y + box.height + 1e-6
+        ]
+        assert owner, f"the tick at {x} starts below every label"

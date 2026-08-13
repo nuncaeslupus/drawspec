@@ -177,11 +177,34 @@ def _reject_unknown(mapping: Mapping[str, Any], allowed: Iterable[str], where: s
 # ---------------------------------------------------------------------------
 
 
+#: How a diagram's canvas relates to the drawing inside it.
+WIDTH_MODES: Final = ("fixed", "ink")
+
+
 @dataclass(frozen=True)
 class Canvas:
     """The one width every diagram is drawn to, and the legibility floor."""
 
     width: float = 640.0
+    width_mode: str = "fixed"
+    """Whether a drawing narrower than `width` keeps the canvas or is cropped to it.
+
+    `fixed` — the canvas is always `width` and a narrow drawing is centred in it.
+    `ink` — the canvas is the bounds of what was drawn.
+
+    This is the setting that makes type sizes comparable *between* diagrams, and
+    it is the whole reason `width` is a theme value rather than a per-diagram one.
+    Under `ink`, a five-box flow chart 360 wide and an eleven-box tree 600 wide
+    are two different canvases; drop both into a page at the same column width
+    and the viewer scales the first by 1.7 and the second by 1.03, so an
+    eleven-point label is read at eighteen points in one and eleven in the other.
+    Nothing inside drawspec is wrong in that picture — the *page* did the
+    damage — and no invariant here could catch it, because each diagram is
+    internally perfect. Keeping the canvas fixed spends empty margin to buy one
+    type size across a document, which is the trade the corpus asks for: a
+    different size in every element was its most repeated complaint.
+    """
+
     min_legible_size: float = 9.0
     ink: str = "#1a1a1a"
     """What `currentColor` resolves to in the `standalone` profile.
@@ -193,9 +216,12 @@ class Canvas:
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> Canvas:
-        _reject_unknown(mapping, ("width", "min_legible_size", "ink"), "[canvas]")
+        _reject_unknown(mapping, ("width", "width_mode", "min_legible_size", "ink"), "[canvas]")
         return cls(
             width=_number(mapping.get("width", 640.0), "[canvas] width"),
+            width_mode=_choice(
+                mapping.get("width_mode", "fixed"), WIDTH_MODES, "[canvas] width_mode"
+            ),
             min_legible_size=_number(
                 mapping.get("min_legible_size", 9.0), "[canvas] min_legible_size"
             ),
@@ -368,15 +394,33 @@ class EdgeStyle:
     stroke_width: float = 1.5
     min_shaft_length: float = 16.0
     head_length: float = 6.0
+    clearance: float = 4.0
+    """Daylight a route keeps from every box it is not joined to.
+
+    Zero is a legal drawing and a bad one: a connector that runs flush along the
+    side of a box it merely passes reads as belonging to that box — an underline
+    under a label, a second border down its edge — and the reader has to trace
+    the line to its ends to find out it does not. It is also the one failure a
+    router will produce on purpose, because a path along a border is exactly as
+    short and exactly as straight as one a few units off it, and cheaper than
+    going round.
+    """
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> EdgeStyle:
-        keys = ("stroke_width", "min_shaft_length", "head_length")
+        keys = ("stroke_width", "min_shaft_length", "head_length", "clearance")
         _reject_unknown(mapping, keys, "[edge]")
         defaults = cls()
         return cls(
             **{
-                key: _number(mapping.get(key, getattr(defaults, key)), f"[edge] {key}")
+                key: _number(
+                    mapping.get(key, getattr(defaults, key)),
+                    f"[edge] {key}",
+                    # Zero clearance is a drawing someone may want — flush lines
+                    # are a house style, if an unfortunate one. A stroke width or
+                    # a head length of zero is not a style, it is an absence.
+                    positive=key != "clearance",
+                )
                 for key in keys
             }
         )
@@ -765,6 +809,7 @@ __all__ = [
     "NODE_SHAPES",
     "THEME_VERSION",
     "TYPE_LEVELS",
+    "WIDTH_MODES",
     "BoxStyle",
     "Canvas",
     "EdgeRole",

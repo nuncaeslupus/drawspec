@@ -14,8 +14,9 @@ sync:  ## install the project and its dev dependencies
 build:  ## build the wheel and sdist
 	uv build
 
-lint:  ## ruff check + strict mypy
+lint:  ## ruff check + format check + strict mypy
 	uv run ruff check .
+	uv run ruff format --check .
 	uv run mypy .
 
 format:  ## ruff format + autofix

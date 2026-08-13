@@ -24,19 +24,31 @@ import os
 import subprocess
 import sys
 import tomllib
+from dataclasses import replace
 from pathlib import Path
 from typing import Final
+from xml.etree import ElementTree
 
 import pytest
 
 from drawspec import render, render_document
 from drawspec.emit import PROFILES
 from drawspec.errors import FitError, LayoutError
+from drawspec.geometry import fit
+from drawspec.kinds import scene_for
+from drawspec.render import centred
+from drawspec.scene import TextLine, extents
 from drawspec.schema import load_document
+from drawspec.text import TextMeasurer
+from drawspec.theme import load_theme
 
 ROOT: Final = Path(__file__).resolve().parents[1]
 REFERENCE_DIR: Final = ROOT / "docs" / "reference"
 FIXTURES: Final = tuple(sorted(path.stem for path in REFERENCE_DIR.glob("*.json")))
+
+#: The one level every kind sets the text *inside a shape* at. Chart and edge
+#: labels are furniture and sit a level below it — see the test that reads this.
+BODY_LEVEL: Final = "body"
 
 #: The brief's second acceptance test: the three worst diagrams in the corpus,
 #: rewritten as declarative documents. The reviewer's verdict on each is in
@@ -167,3 +179,81 @@ def test_the_readme_no_longer_says_there_is_no_renderer() -> None:
     """The status line was true until T11 and is the kind of thing that lingers."""
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "No renderer yet" not in readme
+
+
+# --------------------------------------------------------------------------
+# One canvas, so one type size
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("name", FIXTURES)
+def test_every_reference_document_is_drawn_to_the_same_canvas_width(name: str) -> None:
+    """`canvas_width_variance == 0` across the kinds.
+
+    The one property no diagram can be checked for on its own, and the one a
+    reader meets first. Each of these is internally perfect at whatever width it
+    needed; drop two of them into a page at one column width and the viewer
+    scales each by its own factor, so the same eleven-point label is read at
+    eighteen points in the small one and eleven in the big one. The reader sees a
+    tool that picks a type size at random.
+
+    Empty margin beside a narrow diagram is the price, and it is the right way
+    round: unused paper costs nothing to read past, and a different type size in
+    every figure was the single most repeated complaint in the corpus.
+    """
+    theme = load_theme()
+    svg = render_document(load_document(REFERENCE_DIR / f"{name}.json"), profile="standalone")
+    width = float(ElementTree.fromstring(svg).get("width", "0"))
+    # The ink inset is half a stroke either side of the drawing — see `emit`.
+    assert width == pytest.approx(theme.canvas.width + theme.edge.stroke_width, abs=1.6)
+
+
+def test_a_narrow_diagram_is_centred_on_the_canvas_rather_than_cropped_to_it() -> None:
+    """The margin a fixed canvas buys is shared between the two sides."""
+    theme = load_theme()
+    document = load_document(REFERENCE_DIR / "flow-validation.json")
+    measurer = TextMeasurer(theme.font.stacks())
+    fitted = fit(theme, lambda scaled: scene_for(document, scaled, measurer))
+    drawn = fitted.value
+    assert drawn.width < theme.canvas.width, "this fixture must be narrower than the canvas"
+
+    padded = centred(drawn, fitted.theme)
+    assert padded.width == pytest.approx(theme.canvas.width)
+    left, _, right, _ = extents(padded.primitives)
+    assert left == pytest.approx(padded.width - right, abs=1e-6)
+
+
+def test_the_ink_width_mode_leaves_a_narrow_diagram_alone() -> None:
+    """The other half of the setting, so it is a choice rather than a default."""
+    theme = replace(load_theme(), canvas=replace(load_theme().canvas, width_mode="ink"))
+    document = load_document(REFERENCE_DIR / "flow-validation.json")
+    measurer = TextMeasurer(theme.font.stacks())
+    drawn = fit(theme, lambda scaled: scene_for(document, scaled, measurer)).value
+    assert centred(drawn, theme) is drawn
+
+
+@pytest.mark.parametrize("name", FIXTURES)
+def test_every_kind_sets_its_text_at_the_same_level(name: str) -> None:
+    """One type size for the text inside a shape, whatever kind the shape is.
+
+    The other half of the shared canvas, and the same rule seen from the other
+    end: a fixed width means two diagrams are scaled alike, and this means they
+    were set alike to begin with. Both only matter when the diagrams share a
+    page, and neither can be seen in one diagram on its own.
+
+    It is a rule about the reader rather than about the text. `pyramid` and
+    `rings` were set a level up for one round, on the reasonable argument that a
+    shape whose whole content is five words is titled by them — and a reader with
+    the nine kinds in front of them picked those two out at once. Two and a half
+    points is plenty to notice side by side.
+
+    Furniture is exempt and stays smaller: an axis's tick labels and an edge's
+    label are not the diagram's text, and a chart whose axis numbers matched its
+    node text would be a chart shouting its own scale.
+    """
+    theme = load_theme()
+    document = load_document(REFERENCE_DIR / f"{name}.json")
+    measurer = TextMeasurer(theme.font.stacks())
+    drawn = fit(theme, lambda scaled: scene_for(document, scaled, measurer)).value
+    levels = {primitive.level for primitive in drawn.primitives if isinstance(primitive, TextLine)}
+    assert levels <= {BODY_LEVEL}, f"{name} sets its text at {sorted(levels)}"

@@ -35,7 +35,16 @@ from typing import Final
 from xml.sax.saxutils import escape
 
 from drawspec.errors import EmitError
-from drawspec.scene import Ellipse, Path, Polygon, Primitive, Rect, Scene, TextRun
+from drawspec.scene import (
+    Ellipse,
+    Path,
+    Polygon,
+    Primitive,
+    Rect,
+    Scene,
+    TextLine,
+    TextRun,
+)
 from drawspec.theme import EdgeRole, NodeRole, Theme, load_theme
 
 #: The two embedding profiles, per specification §1.
@@ -130,7 +139,7 @@ def ink_inset(scene: Scene, theme: Theme) -> float:
     widths = [
         theme.role_for(primitive.role).stroke_width
         for primitive in scene.primitives
-        if not isinstance(primitive, TextRun)
+        if not isinstance(primitive, TextRun | TextLine)
     ]
     return max(widths, default=0.0) / 2
 
@@ -171,13 +180,20 @@ def _fill_paint(role: NodeRole, namespace: str, theme: Theme, profile: str) -> s
 
 
 def _stroke_attributes(
-    role: NodeRole | EdgeRole, theme: Theme, profile: str
+    role: NodeRole | EdgeRole, theme: Theme, profile: str, *, solid: bool = False
 ) -> list[tuple[str, str]]:
+    """`solid` drops the dash: an end treatment is a mark, not a length of line.
+
+    A dash pattern is a rhythm along a line, and an open head is two strokes a
+    head-length long — so the pattern chops the head into pieces and a `weak`
+    edge arrives with four disconnected marks where its arrow should be. The head
+    says *which way*, and it has to be whole to say it.
+    """
     attributes = [
         ("stroke", _resolve(role.stroke, theme, profile)),
         ("stroke-width", format_number(role.stroke_width)),
     ]
-    if role.dash != "none":
+    if role.dash != "none" and not solid:
         attributes.append(("stroke-dasharray", role.dash))
     return attributes
 
@@ -194,7 +210,8 @@ def _shape_attributes(
     if isinstance(role, EdgeRole):
         if isinstance(primitive, Polygon) or (isinstance(primitive, Path) and primitive.closed):
             return [("fill", _resolve(role.stroke, theme, profile)), ("stroke", "none")]
-        return [("fill", "none"), *_stroke_attributes(role, theme, profile)]
+        head = isinstance(primitive, Path) and primitive.marker
+        return [("fill", "none"), *_stroke_attributes(role, theme, profile, solid=head)]
     return [
         ("fill", _fill_paint(role, namespace, theme, profile)),
         *_stroke_attributes(role, theme, profile),
@@ -211,6 +228,9 @@ def _element(primitive: Primitive, namespace: str, theme: Theme, profile: str) -
 
     if isinstance(primitive, TextRun):
         return _text_element(primitive, theme, profile)
+
+    if isinstance(primitive, TextLine):
+        return _text_line_element(primitive, theme, profile)
 
     paint = _shape_attributes(primitive, role, namespace, theme, profile)
 
@@ -288,6 +308,42 @@ def _text_element(run: TextRun, theme: Theme, profile: str) -> str:
             )
         )
     return f"<text{_attributes(attributes)}>{escape(run.text)}</text>"
+
+
+def _text_line_element(line: TextLine, theme: Theme, profile: str) -> str:
+    """One line of text: anchored once, its spans laid out by the renderer.
+
+    The spans carry no coordinates, which is the entire point — see `TextLine`.
+    A single-span line still goes out as one `<tspan>` rather than as bare text,
+    so a line's markup does not change shape when an author adds a `**bold**`
+    word to it, and two renders of the same words differ only where the words do.
+    """
+    attributes = [
+        ("x", format_number(line.x)),
+        ("y", format_number(line.y)),
+        ("font-family", _font_family(theme.font.stacks()[_line_font(line)])),
+        ("font-size", format_number(theme.scale[line.level])),
+        ("fill", _resolve("currentColor", theme, profile)),
+    ]
+    if line.anchor != "start":
+        attributes.append(("text-anchor", line.anchor))
+
+    spans = []
+    for span in line.spans:
+        if not span.text:
+            continue
+        span_attributes: list[tuple[str, str]] = []
+        if theme.font.stacks()[span.font] != theme.font.stacks()[_line_font(line)]:
+            span_attributes.append(("font-family", _font_family(theme.font.stacks()[span.font])))
+        if span.weight != "normal":
+            span_attributes.append(("font-weight", span.weight))
+        spans.append(f"<tspan{_attributes(span_attributes)}>{escape(span.text)}</tspan>")
+    return f"<text{_attributes(attributes)}>{''.join(spans)}</text>"
+
+
+def _line_font(line: TextLine) -> str:
+    """The family the line is set in — its first span's, which is its voice."""
+    return line.spans[0].font if line.spans else "sans"
 
 
 def _pattern_definitions(scene: Scene, namespace: str, theme: Theme, profile: str) -> list[str]:

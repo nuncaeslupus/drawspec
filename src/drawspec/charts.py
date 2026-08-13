@@ -67,6 +67,10 @@ NICE_STEPS: Final = (1.0, 2.0, 2.5, 5.0, 10.0)
 #: The radius of a point marker, as a fraction of the theme's edge head length.
 MARKER_FRACTION: Final = 0.4
 
+#: The most decimals a point label may carry. Past this the label is wider than
+#: the room beside its own point, and values that close needed a different chart.
+MAXIMUM_DECIMALS: Final = 3
+
 
 @dataclass(frozen=True)
 class Scale:
@@ -102,6 +106,7 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
 
     label_size = theme.scale["label"]
     gap = theme.box.padding.top
+    tick = theme.edge.head_length
     line = measurer.measure("0", theme.font.default, label_size)
 
     across = _scale_for(horizontal, document.series, index=0)
@@ -109,18 +114,20 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     across_ticks = _ticks(across.low, across.high)
     up_ticks = _ticks(up.low, up.high)
 
-    # The gutters are measured, not guessed: the widest tick label decides how
-    # much room the vertical axis needs, and a rotated label occupies its own
-    # line height in width.
-    widest = max(
-        (measurer.measure(text, theme.font.default, label_size).width for _, text in up_ticks),
-        default=0.0,
-    )
-    left = line.height + gap + widest + gap
-    bottom = line.height + gap + line.height + gap
+    # The gutters are measured, not guessed, and each one is the sum of the
+    # things that go in it — in the order they go in it. Writing them any other
+    # way is how the axis label ended up two units from the tick numbers while
+    # the arithmetic said ten: the gutter reserved a gap the placement then spent
+    # on the tick marks, and nothing compared the two.
+    widest = _widest(up_ticks, theme, measurer, label_size)
+    left = line.height + gap + widest + gap + tick
+    bottom = tick + gap + line.height + gap + line.height + gap
     top = line.height + gap
+    # Half the last tick label hangs past the end of its own axis, so the canvas
+    # has to hold it. Without this the reader loses the right-hand digit.
+    right = max(_widest(across_ticks, theme, measurer, label_size) / 2, line.height)
 
-    plot_left, plot_right = left, width
+    plot_left, plot_right = left, width - right
     plot_top, plot_bottom = top, height - bottom
     if plot_right - plot_left <= 0 or plot_bottom - plot_top <= 0:
         raise FitError(
@@ -139,7 +146,16 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
             across_ticks, up_ticks, across, up, plot_left, plot_bottom, theme, measurer, gap
         ),
         *_axis_labels(
-            horizontal, vertical, plot_left, plot_right, plot_bottom, height, theme, measurer, gap
+            horizontal,
+            vertical,
+            plot_left,
+            plot_right,
+            plot_top,
+            plot_bottom,
+            height,
+            theme,
+            measurer,
+            gap,
         ),
     ]
 
@@ -149,10 +165,20 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     ]
     for series, points in zip(document.series, paths, strict=True):
         primitives.extend(_series(series, points, theme))
+    decimals = _point_decimals(document.series)
     for series, points in zip(document.series, paths, strict=True):
         primitives.extend(
             _point_labels(
-                series, points, paths, theme, measurer, plot_left, plot_right, plot_top, plot_bottom
+                series,
+                points,
+                paths,
+                theme,
+                measurer,
+                plot_left,
+                plot_right,
+                plot_top,
+                plot_bottom,
+                decimals,
             )
         )
 
@@ -289,11 +315,21 @@ def _tick_labels(
     return tuple(labels)
 
 
+def _widest(
+    ticks: tuple[tuple[float, str], ...], theme: Theme, measurer: TextMeasurer, size: float
+) -> float:
+    return max(
+        (measurer.measure(text, theme.font.default, size).width for _, text in ticks),
+        default=0.0,
+    )
+
+
 def _axis_labels(
     horizontal: Axis,
     vertical: Axis,
     left: float,
     right: float,
+    top: float,
     bottom: float,
     height: float,
     theme: Theme,
@@ -304,6 +340,10 @@ def _axis_labels(
 
     Decided once and constant in every chart, which is the whole of the rule — an
     author cannot choose, and neither can a diagram.
+
+    Each is centred on the plot rather than on the canvas: an axis names the
+    range it runs along, and the gutters at the two ends of that range are not
+    the same size.
     """
     size = theme.scale["label"]
     extents = measurer.measure("0", theme.font.default, size)
@@ -311,7 +351,7 @@ def _axis_labels(
         TextRun(
             FURNITURE_ROLE,
             x=(left + right) / 2,
-            y=height - gap,
+            y=height - gap - extents.descent,
             text=_with_unit(horizontal),
             level="label",
             font=theme.font.default,
@@ -320,7 +360,7 @@ def _axis_labels(
         TextRun(
             FURNITURE_ROLE,
             x=extents.ascent,
-            y=bottom / 2,
+            y=(top + bottom) / 2,
             text=_with_unit(vertical),
             level="label",
             font=theme.font.default,
@@ -353,6 +393,29 @@ def _series(
     return tuple(line)
 
 
+def _point_decimals(series: tuple[Series, ...]) -> int:
+    """The fewest decimals that still tell the chart's own values apart.
+
+    A point label is there to say *which* value this point is, and rounding it to
+    the axis's step defeats that exactly when the points are close together —
+    which is when a reader most wants the number. The reference chart is the
+    case: four points at 7.2, 6.8, 7.4 and 6.9 all rounded to `7`, so the drawing
+    showed four labels reading `7` at four visibly different heights, and the
+    obvious reading is that the chart is broken.
+
+    So the precision is a property of the data rather than of the axis: the
+    fewest decimals at which no two different values print the same. Capped,
+    because past three the label is longer than the gap it has to sit in and the
+    points were never that far apart to begin with.
+    """
+    values = sorted({value for item in series for _, value in item.data})
+    for decimals in range(MAXIMUM_DECIMALS + 1):
+        printed = {f"{value:.{decimals}f}" for value in values}
+        if len(printed) == len(values):
+            return decimals
+    return MAXIMUM_DECIMALS
+
+
 def _point_labels(
     series: Series,
     points: tuple[tuple[float, float], ...],
@@ -363,6 +426,7 @@ def _point_labels(
     right: float,
     top: float,
     bottom: float,
+    decimals: int,
 ) -> tuple[Primitive, ...]:
     """Labels for every point in a series, or none of them.
 
@@ -379,7 +443,9 @@ def _point_labels(
     labels: list[Primitive] = []
 
     for (x, y), (_, value) in zip(points, series.data, strict=True):
-        text = _format_value(value, _nice_step(abs(value) / TARGET_TICKS or 1.0))
+        text = f"{value:.{decimals}f}"
+        if text in ("-0", f"-0.{'0' * decimals}"):
+            text = text[1:]
         extents = measurer.measure(text, theme.font.default, size)
         half = extents.width / 2
 
@@ -466,6 +532,7 @@ __all__ = [
     "CHART_ASPECT",
     "FURNITURE_ROLE",
     "MARKER_FRACTION",
+    "MAXIMUM_DECIMALS",
     "TARGET_TICKS",
     "Scale",
     "chart_scene",

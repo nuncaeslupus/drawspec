@@ -21,6 +21,13 @@ name = "default"
 # Every diagram is drawn to one width, so type size and stroke weight are
 # comparable across diagrams rather than only within one.
 width = 640.0
+# ...which only holds if a narrow drawing keeps the canvas instead of being
+# cropped to its own ink. Cropped, a 360-wide flow and a 600-wide tree are two
+# different canvases, and a page that gives both the same column scales them by
+# different factors — so the same eleven-point label is read at two sizes. The
+# cost is empty margin beside a small diagram; the gain is one type size across
+# a document. Set to "ink" for a diagram that is meant to be sized on its own.
+width_mode = "fixed"
 # Below this, type is not legible at the sizes these diagrams are read at.
 # Content that cannot fit above it is a FitError, never a smaller size.
 min_legible_size = 9.0
@@ -67,6 +74,9 @@ stroke_width = 1.5
 # not a suggestion: it can force extra rank separation.
 min_shaft_length = 16.0
 head_length = 6.0
+# Daylight a route keeps from a box it is only passing. A line flush against a
+# border reads as part of that box rather than as a connector going elsewhere.
+clearance = 4.0
 
 [title]
 # Whether a diagram carries its own "Figure 1" style title. Raised with the

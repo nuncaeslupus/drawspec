@@ -173,9 +173,11 @@ def _timeline(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
     ]
     for index, box in enumerate(boxes):
         centre = first_centre + step * index
-        primitives.append(
-            Path(AXIS_ROLE, points=((centre, axis_y - tick / 2), (centre, axis_y + tick / 2)))
-        )
+        # From the label's own bottom edge, not from a mark floating beside the
+        # axis: a tick that starts in the gap says a moment happened *somewhere*
+        # along here, and the reader is left to pair each label with the nearest
+        # mark by eye. Touching both, it says which moment is which.
+        primitives.append(Path(AXIS_ROLE, points=((centre, band), (centre, axis_y + tick / 2))))
         placed = box.resized(width=label_width).moved_to(centre - label_width / 2, 0.0)
         primitives.extend(box_primitives(placed, theme, measurer))
 

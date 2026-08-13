@@ -13,7 +13,7 @@ crossing and length from the points alone.
 from __future__ import annotations
 
 import math
-from itertools import pairwise
+from itertools import combinations, pairwise
 
 import pytest
 from spike_layout import REFERENCE_DIR, REFERENCES, layout_inputs
@@ -399,3 +399,139 @@ def _crosses(first: tuple[float, float], second: tuple[float, float], box: Obsta
         and top < box.bottom - 1e-6
         and bottom > box.y + 1e-6
     )
+
+
+# --------------------------------------------------------------------------
+# What a pair of routes looks like — the failures one route cannot have
+# --------------------------------------------------------------------------
+#
+# Everything above measures one route against the boxes. These measure routes
+# against *each other*, which is the blind spot the router has by construction:
+# it costs each edge by length and corners, both edges get the same cheapest
+# answer, and each is individually perfect. Only the pair is wrong.
+
+
+@pytest.mark.parametrize("document", REFERENCES)
+@pytest.mark.parametrize("direction", ["down", "right"])
+def test_no_two_routes_run_down_the_same_line(document: str, direction: str) -> None:
+    """`overlapping_route_length == 0` — two lines a reader could not tell apart.
+
+    Where two routes share a coordinate *and* an overlapping span, they are drawn
+    one on top of the other: three arrows out of a box leave as one thick line
+    that splits at the end, and a fourth crossing them turns at the same
+    coordinate, so which line turned and which carried on is unanswerable.
+    """
+    built = _reference_routes(document, direction)
+    for first, second in combinations(built, 2):
+        for one in first.segments:
+            for two in second.segments:
+                assert not _shares_a_line(one, two), (
+                    f"{first.source}->{first.target} and {second.source}->{second.target} "
+                    f"run down the same line: {one} and {two}"
+                )
+
+
+@pytest.mark.parametrize("document", REFERENCES)
+@pytest.mark.parametrize("direction", ["down", "right"])
+def test_every_route_keeps_its_clearance_from_boxes_it_only_passes(
+    document: str, direction: str
+) -> None:
+    """A connector flush against a border reads as part of that box.
+
+    Not crossing is not enough, and the difference is entirely a reader's
+    problem: a line down the side of a box it has nothing to do with looks like a
+    second border, and a line along the bottom of one looks like an underline
+    under its label. Both are exactly as short and as straight as the line a few
+    units away, so the router will produce them given the chance.
+    """
+    built = _reference_routes(document, direction)
+    boxes = {box.id: box for box in _reference_obstacles(document, direction)}
+    for route in built:
+        others = [box for name, box in boxes.items() if name not in (route.source, route.target)]
+        for first, second in route.segments:
+            for box in others:
+                assert not _crosses(first, second, box.grown(THEME.edge.clearance)), (
+                    f"{route.source}->{route.target} runs within "
+                    f"{THEME.edge.clearance:g} of {box.id}"
+                )
+
+
+@pytest.mark.parametrize("document", REFERENCES)
+@pytest.mark.parametrize("direction", ["down", "right"])
+def test_every_head_has_a_straight_run_of_its_own_to_sit_on(document: str, direction: str) -> None:
+    """A long route can still arrive with nowhere to put its arrow.
+
+    Total shaft length says nothing about the last segment, and the last segment
+    is what the head is drawn along. A route that turns a unit before it lands
+    puts the head across the corner: the point is on the border, the back of it
+    sticks out sideways, and it reads as a blot rather than as an arrow.
+    """
+    for route in _reference_routes(document, direction):
+        role = THEME.role_for(route.role)
+        if getattr(role, "head", "none") != "none":
+            first, second = route.segments[-1]
+            assert math.dist(first, second) >= THEME.edge.head_length - 1e-6, (
+                f"the head of {route.source}->{route.target} has "
+                f"{math.dist(first, second):.2f} of line to sit on"
+            )
+
+
+def test_two_edges_crossing_the_same_gap_are_moved_apart() -> None:
+    """The separation, on the smallest arrangement that produces the failure.
+
+    Two edges from one rank to the next, crossing sideways: the cheapest route
+    for both runs down the one lane in the gap, so without separation they share
+    it exactly.
+    """
+    boxes = (
+        Obstacle("a", x=0.0, y=0.0, width=100.0, height=40.0),
+        Obstacle("b", x=200.0, y=0.0, width=100.0, height=40.0),
+        Obstacle("c", x=0.0, y=40.0 + GAP * 2, width=100.0, height=40.0),
+        Obstacle("d", x=200.0, y=40.0 + GAP * 2, width=100.0, height=40.0),
+    )
+    built = routes((Connector("a", "d"), Connector("b", "c")), boxes)
+    lanes = {round(point[1], 6) for route in built for point in route.points[1:-1]}
+    assert len(lanes) > 1, "both routes turned on the same line"
+
+
+def _reference_obstacles(document: str, direction: str) -> tuple[Obstacle, ...]:
+    parsed = load_document(REFERENCE_DIR / f"{document}.json")
+    nodes, edges = layout_inputs(parsed, THEME, MEASURER)
+    layout = LayeredEngine(spacing=SPACING).layout(nodes, edges, direction)
+    shapes = {node.id: THEME.roles[node.role].shape for node in parsed.nodes}
+    return tuple(
+        Obstacle(
+            identifier,
+            x=place.x,
+            y=place.y,
+            width=place.width,
+            height=place.height,
+            shape=shapes[identifier],
+        )
+        for identifier, place in sorted(layout.placements.items())
+    )
+
+
+def _reference_routes(document: str, direction: str) -> tuple[Route, ...]:
+    parsed = load_document(REFERENCE_DIR / f"{document}.json")
+    connectors = tuple(Connector(edge.source, edge.target, role=edge.role) for edge in parsed.edges)
+    return route_edges(
+        connectors, _reference_obstacles(document, direction), THEME, direction=direction
+    )
+
+
+def _shares_a_line(
+    one: tuple[tuple[float, float], tuple[float, float]],
+    two: tuple[tuple[float, float], tuple[float, float]],
+) -> bool:
+    """Whether two axis-aligned segments are collinear with an overlapping span."""
+    for axis, along in ((0, 1), (1, 0)):
+        flat_one = math.isclose(one[0][axis], one[1][axis], abs_tol=1e-6)
+        flat_two = math.isclose(two[0][axis], two[1][axis], abs_tol=1e-6)
+        if not (flat_one and flat_two and math.isclose(one[0][axis], two[0][axis], abs_tol=1e-6)):
+            continue
+        low = max(min(one[0][along], one[1][along]), min(two[0][along], two[1][along]))
+        high = min(max(one[0][along], one[1][along]), max(two[0][along], two[1][along]))
+        if high - low > 1e-6:
+            return True
+    return False

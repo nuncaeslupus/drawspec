@@ -41,7 +41,7 @@ import heapq
 import math
 from bisect import bisect_left, bisect_right
 from collections.abc import Iterator, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from itertools import pairwise
 from typing import Final
 
@@ -85,6 +85,11 @@ LABEL_POSITIONS: Final = (0.5, 0.35, 0.65, 0.2, 0.8)
 GRID_PRECISION: Final = 9
 
 _TOLERANCE: Final = 1e-7
+
+#: How many times the lane separation is applied to its own output. Moving a run
+#: lengthens the runs either side of it, so a pass can create the overlap the
+#: next one settles; three is one more than any reference document has needed.
+SEPARATION_PASSES: Final = 3
 
 #: Direction codes for the search: +x, -x, +y, -y.
 _MOVES: Final = ((1, 0), (-1, 0), (0, 1), (0, -1))
@@ -165,6 +170,22 @@ class Obstacle:
             and self.x < right - _TOLERANCE
             and top < self.bottom - _TOLERANCE
             and self.y < bottom - _TOLERANCE
+        )
+
+    def grown(self, margin: float) -> Obstacle:
+        """This box with `margin` of daylight around it, as a plain rectangle.
+
+        What the router navigates by, as opposed to what it lands on. The shape
+        is dropped deliberately: clearance is about the reader's eye, and a line
+        four units from a diamond's sloped side looks as attached as one four
+        units from a rectangle's.
+        """
+        return Obstacle(
+            self.id,
+            x=self.x - margin,
+            y=self.y - margin,
+            width=self.width + margin * 2,
+            height=self.height + margin * 2,
         )
 
     def crosses(self, first: tuple[float, float], second: tuple[float, float]) -> bool:
@@ -543,9 +564,10 @@ def route_edges(
                 )
 
     channel = theme.edge.head_length
+    usable = _usable_gap(theme)
     lanes = (
-        _lanes([value for box in obstacles for value in (box.x, box.right)], channel),
-        _lanes([value for box in obstacles for value in (box.y, box.bottom)], channel),
+        _lanes([value for box in obstacles for value in (box.x, box.right)], channel, usable),
+        _lanes([value for box in obstacles for value in (box.y, box.bottom)], channel, usable),
     )
 
     sides = {
@@ -559,10 +581,12 @@ def route_edges(
         connector = connectors[index]
         source, target = boxes[connector.source], boxes[connector.target]
         approaches[index] = (
-            _approach(source, target, side_pair, fractions[index], obstacles, lanes),
-            _approach(source, target, _fallback_sides(side_pair), (0.5, 0.5), obstacles, lanes),
+            _approach(source, target, side_pair, fractions[index], obstacles, lanes, theme),
+            _approach(
+                source, target, _fallback_sides(side_pair), (0.5, 0.5), obstacles, lanes, theme
+            ),
         )
-    grid = _build_grid(approaches, obstacles, lanes)
+    grid = _build_grid(approaches, obstacles, lanes, theme.edge.clearance)
 
     routes: list[Route] = []
     for index, connector in enumerate(connectors):
@@ -579,7 +603,7 @@ def route_edges(
                 label=connector.label,
             )
         )
-    return tuple(routes)
+    return separate_lanes(tuple(routes), obstacles, theme)
 
 
 def _assign_ports(
@@ -681,6 +705,7 @@ def _approach(
     fractions: tuple[float, float],
     obstacles: Sequence[Obstacle],
     lanes: tuple[set[float], set[float]],
+    theme: Theme,
 ) -> _Approach:
     """Anchors on the shapes, stub ends out on the channel lane.
 
@@ -708,10 +733,10 @@ def _approach(
         source_anchor=_anchor(source, source_side, source_fraction),
         target_anchor=_anchor(target, target_side, target_fraction),
         source_stub=_stub_end(
-            source_port, source_side, _reach(source_port, source_side, obstacles, lanes)
+            source_port, source_side, _reach(source_port, source_side, obstacles, lanes, theme)
         ),
         target_stub=_stub_end(
-            target_port, target_side, _reach(target_port, target_side, obstacles, lanes)
+            target_port, target_side, _reach(target_port, target_side, obstacles, lanes, theme)
         ),
     )
 
@@ -721,12 +746,23 @@ def _reach(
     side: str,
     obstacles: Sequence[Obstacle],
     lanes: tuple[set[float], set[float]],
+    theme: Theme,
 ) -> float:
     """How far out of `port` the stub goes: to the first lane, or to half the room.
 
     Half the room is the fallback for a port whose lane is behind something —
     the lanes are global to the drawing, so the one in front of this box may be
     on the far side of a box that is only in *this* port's way.
+
+    Floored at the head's own length plus its clearance, and that floor is the
+    fix for the worst-looking arrow drawspec drew: the first lane in front of a
+    port can be a unit and a half away — a mid-gap lane belonging to two *other*
+    boxes that happen to line up near this border — and a route that turns there
+    puts a six-unit head on a two-unit approach. The head then starts behind the
+    corner and reads as a blot on the corner rather than as an arrow arriving.
+    The floor cannot manufacture room that is not there: it never exceeds the
+    space in front of the port, and a route that ends up too short for a shaft is
+    refused a few lines later, which is the honest answer to boxes that close.
     """
     step_x, step_y = OUTWARD[side]
     axis = lanes[0] if step_x else lanes[1]
@@ -734,26 +770,55 @@ def _reach(
     step = step_x or step_y
     ahead = [(value - origin) * step for value in axis if (value - origin) * step > _TOLERANCE]
     room = _clearance(port, side, obstacles) / 2
-    return min(min(ahead, default=room), room)
+    return min(max(min(ahead, default=room), min(head_room(theme), room)), room)
 
 
-def _lanes(edges: Sequence[float], channel: float) -> set[float]:
+def head_room(theme: Theme) -> float:
+    """The straight run an end treatment needs before the route may turn.
+
+    A head is drawn on the last `head_length` of the route, so a turn that close
+    to the border leaves it nothing to sit on. The clearance on top is what keeps
+    the corner visibly *behind* the head rather than touching it.
+    """
+    return theme.edge.head_length + theme.edge.clearance
+
+
+def _usable_gap(theme: Theme) -> float:
+    """The narrowest gap between two box edges that is worth a lane down it.
+
+    A lane in a narrower gap is a legal place to turn that no route should want:
+    both boxes are within a clearance of it, so a route using it runs flush along
+    a border. Dropping those lanes is what makes the mid-gap rule mean something
+    — otherwise the grid offers the tidy lane *and* a handful of degenerate ones
+    beside it, and the search, which cannot see, takes whichever is a unit
+    shorter.
+    """
+    return theme.edge.clearance * 2
+
+
+def _lanes(edges: Sequence[float], channel: float, usable: float) -> set[float]:
     """One lane between each pair of adjacent box edges, and one outside each end.
 
-    The lane between a box's own two edges lands inside it and is never usable,
-    which costs a grid line and saves a special case.
+    Gaps narrower than `usable` get no lane: see `_usable_gap`. The lane between
+    a box's own two edges lands inside it and is never usable, which costs a grid
+    line and saves a special case.
     """
     if not edges:
         return set()
     ordered = sorted({_round(value) for value in edges})
     bounded = [ordered[0] - channel * 2, *ordered, ordered[-1] + channel * 2]
-    return {_round((first + second) / 2) for first, second in pairwise(bounded)}
+    return {
+        _round((first + second) / 2)
+        for first, second in pairwise(bounded)
+        if second - first >= usable - _TOLERANCE
+    }
 
 
 def _build_grid(
     approaches: Mapping[int, tuple[_Approach, _Approach]],
     obstacles: Sequence[Obstacle],
     lanes: tuple[set[float], set[float]],
+    clearance: float,
 ) -> _Grid:
     """The coordinates a route is allowed to turn on.
 
@@ -769,6 +834,14 @@ def _build_grid(
     able to start and finish on one. That is the whole grid — the router does not
     get a lane per box per side, which is what keeps the search small enough to
     run once per edge without anyone noticing.
+
+    The boxes are grown by `clearance` before they block, and that is what stops
+    a route running flush along a border. Every port is a grid line, and a port
+    sits *on* a border, so the border's own coordinate is always available to
+    travel down — free, straight, and indistinguishable to the search from the
+    lane beside it. Growing the obstacles is what makes the difference visible to
+    the only thing that can act on it. The lines themselves stay: a route still
+    starts and ends on a border, because the stubs are not part of the search.
     """
     xs, ys = set(lanes[0]), set(lanes[1])
     for pair in approaches.values():
@@ -778,7 +851,7 @@ def _build_grid(
                 ys.add(point[1])
 
     grid = _Grid(xs=tuple(sorted(xs)), ys=tuple(sorted(ys)))
-    grid.block(obstacles)
+    grid.block([box.grown(clearance) for box in obstacles])
     return grid
 
 
@@ -806,12 +879,240 @@ def _route_one(
                 f"{minimum_rank_gap(theme):g} apart, so the layout needs more separation or the "
                 f"other direction"
             )
+        _check_head_room(route, theme)
         return points
 
     raise LayoutError(
         f"no orthogonal route from {connector.source!r} to {connector.target!r} that misses "
         f"every box; the arrangement needs more room between them"
     )
+
+
+def _check_head_room(route: Route, theme: Theme) -> None:
+    """The end treatments have a straight run to sit on, or this is not a route.
+
+    Total shaft length is not enough, and the difference is a real drawing: a
+    route can be two hundred units long and still turn a unit and a half before
+    it arrives, which puts the head across the corner with its point on the
+    border and its back sticking out sideways. It reads as a smudge at the
+    corner. So the check is on the *segment the head is drawn along*, and it is a
+    refusal rather than a repair, because the remedy is more room between the
+    boxes and this stage cannot make any.
+
+    Raises:
+        LayoutError: an end treatment's own segment is shorter than the head.
+    """
+    role = theme.role_for(route.role)
+    segments = route.segments
+    if not segments:
+        return
+    ends = []
+    if getattr(role, "head", "none") != "none":
+        ends.append(("head", segments[-1]))
+    if getattr(role, "tail", "none") != "none":
+        ends.append(("tail", segments[0]))
+    for end, (first, second) in ends:
+        if math.dist(first, second) < theme.edge.head_length - _TOLERANCE:
+            raise LayoutError(
+                f"the {end} of the edge from {route.source!r} to {route.target!r} has "
+                f"{math.dist(first, second):.1f} of straight line to sit on and needs "
+                f"{theme.edge.head_length:g}: the route turns a corner just before it "
+                f"arrives, so the arrow would be drawn across the corner. The boxes need "
+                f"more room between them, or the layout needs the other direction."
+            )
+
+
+def separate_lanes(
+    routes: Sequence[Route], obstacles: Sequence[Obstacle], theme: Theme
+) -> tuple[Route, ...]:
+    """Move routes that share a lane apart, so each keeps its own line.
+
+    The router costs a route by length and corners, and two edges crossing the
+    same gap have the same cheapest answer — so they get it, exactly, and are
+    drawn one on top of the other. Three arrows out of one box then leave as a
+    single thick line that splits at the end, and where a fourth crosses them
+    every corner lands on the same coordinate, so a reader cannot tell which line
+    turned and which carried on. It is the one failure the search cannot see:
+    both routes are individually perfect, and only the pair is wrong.
+
+    So it is settled after the fact, and only for segments that are free to move
+    — a run between two corners, never one carrying an endpoint, because an
+    endpoint is on a border and that is the invariant this whole module exists
+    for. Each shifted route is re-checked against every box and reverted if the
+    new line is worse than the shared one; a lane too narrow to share simply
+    stays shared, which is what it looked like before.
+    """
+    spacing = theme.edge.head_length
+    moved = tuple(routes)
+    for _ in range(SEPARATION_PASSES):
+        groups = _shared_runs(moved)
+        if not groups:
+            break
+        moved = _separated(moved, groups, obstacles, theme, spacing)
+    return moved
+
+
+def _separated(
+    routes: tuple[Route, ...],
+    groups: Sequence[tuple[list[tuple[int, int]], bool]],
+    obstacles: Sequence[Obstacle],
+    theme: Theme,
+    spacing: float,
+) -> tuple[Route, ...]:
+    """One pass of the separation. Repeated, because moving a run moves corners.
+
+    A route is a chain: shifting the horizontal run in the middle of it lengthens
+    the vertical runs at both ends, and a vertical run that grows can arrive
+    alongside one belonging to another route that was clear of it before. So the
+    pass runs again on its own output, and the second pass sees the overlap the
+    first one made. It converges quickly because each pass only touches runs that
+    are on top of something.
+    """
+    moved = list(routes)
+    for group, pinned in groups:
+        for offset, (index, segment) in zip(
+            _offsets(len(group), pinned, spacing), group, strict=True
+        ):
+            for candidate_offset in _tries(offset):
+                candidate = _shifted(moved[index], segment, candidate_offset)
+                if candidate is not None and _is_clear(candidate, obstacles, theme):
+                    moved[index] = candidate
+                    break
+    return tuple(moved)
+
+
+def _tries(offset: float) -> tuple[float, ...]:
+    """The offsets to attempt, in order, for one run that has to move.
+
+    The other side of the line, then twice as far, because "six units left" is a
+    preference and the boxes are the constraint: a back edge running up the side
+    of a diagram has a whole rank on one side of it and open paper on the other,
+    and refusing to look at the open side leaves it exactly where it was.
+    """
+    if abs(offset) < _TOLERANCE:
+        return ()
+    return (offset, -offset, offset * 2, -offset * 2)
+
+
+def _offsets(count: int, pinned: bool, spacing: float) -> list[float]:
+    """Where to put `count` runs that are currently on one line.
+
+    Centred on the line when they are all free to move, so the group stays where
+    the router put it. When one of them is *pinned* — a run carrying an endpoint,
+    which cannot move without taking the endpoint off its border — the line
+    belongs to that one, and the rest step outwards around it in alternating
+    directions rather than sliding through it.
+    """
+    if not pinned:
+        return [(position - (count - 1) / 2) * spacing for position in range(count)]
+    steps = [(position // 2 + 1) * (1 if position % 2 == 0 else -1) for position in range(count)]
+    return [step * spacing for step in steps]
+
+
+def _shared_runs(routes: Sequence[Route]) -> list[tuple[list[tuple[int, int]], bool]]:
+    """Segments drawn on top of one another, grouped, and whether one is pinned.
+
+    Every straight run of every route is counted, but only those with a corner at
+    each end can be moved: shifting one that carries an anchor would take the
+    anchor off the border with it. So a run at the end of a route still *takes
+    part* in the group — the others have to get out of its way — and the group
+    reports it as pinned rather than dropping it, which is the case where a back
+    edge runs up the line another edge arrives on.
+
+    Grouped by *overlapping run*, not by the lane they happen to share — which is
+    the difference between separating two lines and rearranging a whole gap. A
+    rank gap holds one lane and every edge crossing it uses that lane, but two
+    edges on the same lane at opposite ends of the diagram are not drawn on top
+    of each other, and moving them spends the room the ones that are need: seven
+    edges spread across a twenty-unit gap have three units each, while the two
+    stretches that actually overlap get six each and everything else stays put.
+    """
+    runs: dict[tuple[str, float], list[tuple[int, int, float, float, bool]]] = {}
+    for index, route in enumerate(routes):
+        for segment, (first, second) in enumerate(route.segments):
+            movable = 0 < segment < len(route.segments) - 1
+            if abs(first[0] - second[0]) < _TOLERANCE:
+                key = ("v", _round(first[0]))
+                span = sorted((first[1], second[1]))
+            elif abs(first[1] - second[1]) < _TOLERANCE:
+                key = ("h", _round(first[1]))
+                span = sorted((first[0], second[0]))
+            else:
+                continue
+            runs.setdefault(key, []).append((index, segment, span[0], span[1], movable))
+
+    groups: list[tuple[list[tuple[int, int]], bool]] = []
+    for entries in runs.values():
+        for component in _overlapping(sorted(entries, key=lambda entry: (entry[2], entry[3]))):
+            free_runs = [(index, segment) for index, segment, _, _, free in component if free]
+            pinned = len(free_runs) < len(component)
+            if len({index for index, _, _, _, _ in component}) > 1 and free_runs:
+                groups.append((free_runs, pinned))
+    return groups
+
+
+def _overlapping(
+    entries: Sequence[tuple[int, int, float, float, bool]],
+) -> Iterator[list[tuple[int, int, float, float, bool]]]:
+    """Runs on one line split into stretches that actually touch each other.
+
+    A sweep along the line: a run that starts after everything before it has
+    ended begins a new group, because nothing behind it is in its way.
+    """
+    group: list[tuple[int, int, float, float, bool]] = []
+    reach = -math.inf
+    for entry in entries:
+        if group and entry[2] > reach - _TOLERANCE:
+            yield group
+            group = []
+        group.append(entry)
+        reach = max(reach, entry[3])
+    if group:
+        yield group
+
+
+def _shifted(route: Route, segment: int, offset: float) -> Route | None:
+    """`route` with one segment moved sideways by `offset`, or None if it degenerates.
+
+    The two points the segment owns move; the segments either side of it stretch
+    to meet them. When that leaves an endpoint's own segment with nothing left,
+    the shift has eaten the square approach to a border, and there is no version
+    of this route worth having — so it is refused rather than trimmed.
+    """
+    points = list(route.points)
+    first, second = points[segment], points[segment + 1]
+    vertical = abs(first[0] - second[0]) < _TOLERANCE
+    if vertical:
+        points[segment] = (_round(first[0] + offset), first[1])
+        points[segment + 1] = (_round(second[0] + offset), second[1])
+    else:
+        points[segment] = (first[0], _round(first[1] + offset))
+        points[segment + 1] = (second[0], _round(second[1] + offset))
+    if any(
+        math.dist(one, two) <= _TOLERANCE
+        for one, two in (
+            (points[0], points[1]),
+            (points[-2], points[-1]),
+        )
+    ):
+        return None
+    return replace(route, points=tuple(points))
+
+
+def _is_clear(route: Route, obstacles: Sequence[Obstacle], theme: Theme) -> bool:
+    """Whether this route keeps its clearance and its head room after a shift."""
+    grown = [
+        box.grown(theme.edge.clearance)
+        for box in obstacles
+        if box.id not in (route.source, route.target)
+    ]
+    if any(box.crosses(first, second) for first, second in route.segments for box in grown):
+        return False
+    try:
+        _check_head_room(route, theme)
+    except LayoutError:
+        return False
+    return shaft_length(route, theme) >= theme.edge.min_shaft_length - _TOLERANCE
 
 
 def _attempt(
@@ -1101,7 +1402,7 @@ def _marker(
     if kind == "arrow":
         return (Polygon(role, points=(tip, at(length, half), at(length, -half))),)
     if kind == "open":
-        return (Path(role, points=(at(length, half), tip, at(length, -half))),)
+        return (Path(role, points=(at(length, half), tip, at(length, -half)), marker=True),)
     if kind == "diamond":
         return (
             Polygon(
@@ -1113,7 +1414,7 @@ def _marker(
         centre = at(length / 2, 0.0)
         return (Ellipse(role, cx=centre[0], cy=centre[1], rx=length / 2, ry=length / 2),)
     if kind == "bar":
-        return (Path(role, points=(at(0.0, length / 2), at(0.0, -length / 2))),)
+        return (Path(role, points=(at(0.0, length / 2), at(0.0, -length / 2)), marker=True),)
     raise LayoutError(f"no geometry for edge end treatment {kind!r}")
 
 
@@ -1124,6 +1425,7 @@ __all__ = [
     "LABEL_POSITIONS",
     "OUTWARD",
     "PORT_SPREAD",
+    "SEPARATION_PASSES",
     "SIDES",
     "TURN_COST",
     "Connector",
@@ -1131,9 +1433,11 @@ __all__ = [
     "Obstacle",
     "Route",
     "edge_primitives",
+    "head_room",
     "label_primitives",
     "minimum_rank_gap",
     "place_labels",
     "route_edges",
+    "separate_lanes",
     "shaft_length",
 ]
