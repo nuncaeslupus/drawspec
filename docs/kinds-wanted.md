@@ -25,7 +25,7 @@ originals against the nine kinds, and of the gap that inventory shows.
 |---|---:|---|
 | flow | 33 | yes |
 | cycle | 9 | yes |
-| **group** | **6** | **no** |
+| ~~group~~ | 6 | **now yes** |
 | stack | 5 | yes |
 | **matrix** | **5** | **no** |
 | timeline | 4 | yes |
@@ -51,17 +51,37 @@ nine kinds between them cover more than three quarters of it.
 
 Ordered by how many originals need them.
 
-### 1. `group` — a box that contains boxes (6)
+### 1. ~~`group`~~ — a box that contains boxes (6) — **done**
 
 The single largest gap, and the least exotic. A Kubernetes control plane holding
 five components; *sector públic* holding three peers and a sub-frame holding two
 more; a medallion architecture holding bronze, silver and gold. The container has
 its own caption, it nests, and edges cross its boundary to reach what is inside.
 
-This is probably **not a kind**. It is a property of a node — a node that has
-children and is drawn around them — and it belongs in the graph family, where
-flow and tree already are. That makes it the most valuable item here twice over:
-it clears six originals *and* it is reachable from what exists.
+This was probably **not a kind**, and it turned out not to be one. It is a
+container over the graph kinds: a `flow` or a `tree` gains one by naming
+members, and everything else about the drawing is unchanged.
+
+It also turned out to be mostly already there. The schema had declared `groups`
+since v1 and the theme had declared a dashed, unfilled `group` role since v1 —
+nothing had ever drawn either. What was missing between them is
+`drawspec.kinds.containers`, and three decisions it had to make:
+
+* **Nesting is layout inside layout.** A group lays its own members out, comes
+  back with an extent, and is handed to its parent's layout as one node of that
+  size. So direction is chosen per level, and an edge between two buried nodes
+  is *lifted* to the level that contains both — for ranking only; it is still
+  drawn between the real endpoints.
+* **Only leaves obstruct.** An edge that ends inside a group has to cross that
+  group's border, so a frame that blocked routing would make the diagram
+  undrawable rather than tidy.
+* **The caption is a tab in the corner, and it does obstruct.** Centred across
+  the top it is exactly where an arrow arriving from outside comes in, and the
+  no-line-crosses-text rule loses. In the corner, at its own width, it is the
+  one part of the top edge nothing wants — and a frame something *enters* keeps
+  a rank gap under its caption so the arrow has room to turn.
+
+See `docs/reference/flow-groups.json` for the reference drawing.
 
 *Originals: `estado__administracion-publica`,
 `tic__devops-cicd-contenedores-y-kubernetes`,
@@ -171,8 +191,7 @@ edge style rather than a defeat.
 
 ## What this suggests doing first
 
-1. **`group`.** Six originals, and it extends the family that already exists
-   rather than starting a new one.
+1. ~~**`group`.**~~ Done — see above.
 2. **Chart marks** — bars, areas, stacked. Not because the corpus demands them
    (it barely does) but because it is the standing request, and because the
    decision it forces — keep hand-rolling the chart or wrap an established

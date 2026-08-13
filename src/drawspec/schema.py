@@ -595,6 +595,14 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
 
     groups = document.get("groups")
     if isinstance(groups, list):
+        # A member may name a node or another group: a container that contains a
+        # container is how the corpus draws three frames deep, and refusing it
+        # would make the nesting the renderer supports unsayable.
+        containers = {
+            group.get("id")
+            for group in groups
+            if isinstance(group, dict) and isinstance(group.get("id"), str)
+        }
         for index, group in enumerate(groups):
             if not isinstance(group, dict):
                 continue
@@ -602,11 +610,11 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
             if not isinstance(members, list):
                 continue
             for position, member in enumerate(members):
-                if isinstance(member, str) and member not in seen:
+                if isinstance(member, str) and member not in seen and member not in containers:
                     found.append(
                         Violation(
                             _pointer("groups", index, "members", position),
-                            f"{member!r} is not the id of any node in this document",
+                            f"{member!r} is not the id of any node or group in this document",
                         )
                     )
     return found
