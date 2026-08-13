@@ -191,6 +191,14 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         _text(),
         _role(NODE_ROLES, "step"),
         FieldSpec("note", "string"),
+        FieldSpec(
+            "at",
+            "number",
+            description=(
+                "For `timeline`: when this happened, so the gaps mean something. "
+                "Give it to every entry or to none."
+            ),
+        ),
     ),
     "level": (
         _text(),
@@ -445,6 +453,7 @@ class Item:
     id: str = ""
     role: str = "step"
     note: str = ""
+    at: float | None = None
 
 
 @dataclass(frozen=True)
@@ -900,6 +909,7 @@ def _items(entries: Sequence[Mapping[str, Any]]) -> tuple[Item, ...]:
             id=entry.get("id", ""),
             role=entry.get("role", "step"),
             note=entry.get("note", ""),
+            at=None if entry.get("at") is None else float(entry["at"]),
         )
         for entry in entries
     )

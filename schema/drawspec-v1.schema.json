@@ -773,6 +773,10 @@
         },
         "note": {
           "type": "string"
+        },
+        "at": {
+          "type": "number",
+          "description": "For `timeline`: when this happened, so the gaps mean something. Give it to every entry or to none."
         }
       },
       "required": [
