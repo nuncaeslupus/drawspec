@@ -3,7 +3,7 @@
 <!-- Written at session end. A new session reading this file can resume without additional context. -->
 
 **Date**: 2026-08-13
-**Branch**: `claude/graphic-types-review-l28z1e` · **Last PR**: [#20](https://github.com/nuncaeslupus/drawspec/pull/20)
+**Branch**: `claude/graphic-types-review-l28z1e` · **Last PR**: [#20](https://github.com/nuncaeslupus/drawspec/pull/20), **merged**
 
 **A human reviewed all nine kinds by eye and found ten defects.** Every one of
 them was in a drawing that passed every mechanical gate — which is what the
@@ -44,11 +44,13 @@ family should use them rather than reimplementing.
 
 ## If work continues
 
-- **Queue anomaly, unresolved.** `queue_eval.sh` hands back `lo-dcd5` (T1) and
-  the whole of T1–T18 as `open` on the default branch, while the previous
-  handover records them all merged through PR #18. It looks like a stale seed on
-  `main` rather than real work. Confirm against `arsenal-queue` before acting;
-  nothing was done to it this session.
+- **The queue is empty. The plan is finished.** The apparent anomaly — T1–T18
+  reading `open` — was the seed on `main`, not live state: claims and releases
+  only ever land on `arsenal-queue`, which is never merged into mainline, so the
+  copy on the default branch stays frozen at the seed by design. On
+  `arsenal-queue` all **21 tasks are `done`**, each with its PR. Export
+  `ARSENAL_QUEUE_DIR="$(claude-arsenal/bin/queue_branch.sh)"` before reading the
+  queue and the two agree. Nothing here needs fixing.
 - **Left open on purpose**: irregular timeline spacing (a different kind, not a
   fix); edge bundling for the comb of three arrows leaving one box; chart marks
   beyond lines — bars, areas — which is where the real work in that kind is.
