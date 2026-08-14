@@ -234,38 +234,44 @@ name, so a misspelt key is an error at the point it was written.
 
 ## What may not be written
 
-These field names are refused wherever they appear, each with the reason
-below and the JSON pointer of the place it was written. This is the list that
+Every object above refuses a field it does not name. When the field is one of
+these, the refusal says *why* rather than just listing the legal keys — and it
+carries the JSON pointer of the place it was written. This is the list that
 makes the failures in `docs/brief.md` unexpressible rather than merely
 discouraged: a document cannot say where a box goes, so a box cannot go in the
 wrong place.
 
-| Field | Why not |
-|---|---|
-| `anchor` | edge geometry comes from the edge's semantic role |
-| `arrow_head` | say role: "link", not arrow_head: "none" — head geometry is the theme's |
-| `canvas` | derived from width and the content |
-| `color` | appearance is a property of the role, not of the element |
-| `cx` | coordinates are the tool's output, never its input |
-| `cy` | coordinates are the tool's output, never its input |
-| `d` | coordinates are the tool's output, never its input |
-| `dash` | line treatment comes from the edge's semantic role |
-| `dx` | coordinates are the tool's output, never its input |
-| `dy` | coordinates are the tool's output, never its input |
-| `fill` | appearance is a property of the role, not of the element |
-| `font_family` | type is selected by semantic role from the theme's scale |
-| `font_size` | type is selected by semantic role from the theme's scale |
-| `font_weight` | type is selected by semantic role from the theme's scale |
-| `height` | box geometry is derived from measured text plus theme padding |
-| `layer` | overlap is resolved by the layout, not declared |
-| `order` | overlap is resolved by the layout, not declared |
-| `points` | coordinates are the tool's output, never its input |
-| `port` | edge geometry comes from the edge's semantic role |
-| `stroke` | appearance is a property of the role, not of the element |
-| `stroke_width` | appearance is a property of the role, not of the element |
-| `viewBox` | derived from width and the content |
-| `width` | box geometry is derived from measured text plus theme padding |
-| `x` | coordinates are the tool's output, never its input |
-| `y` | coordinates are the tool's output, never its input |
-| `z` | overlap is resolved by the layout, not declared |
+The *Where* column matters. Most of these names are legal nowhere at all. A
+few are legal at the **document root** and refused on everything inside it —
+`height`, `width` size the canvas, which is a budget for the whole
+drawing, and are exactly the wrong thing to say about one box in it.
+
+| Field | Where it is refused | Why not |
+|---|---|---|
+| `anchor` | Everywhere | edge geometry comes from the edge's semantic role |
+| `arrow_head` | Everywhere | say role: "link", not arrow_head: "none" — head geometry is the theme's |
+| `canvas` | Everywhere | derived from width and the content |
+| `color` | Everywhere | appearance is a property of the role, not of the element |
+| `cx` | Everywhere | coordinates are the tool's output, never its input |
+| `cy` | Everywhere | coordinates are the tool's output, never its input |
+| `d` | Everywhere | coordinates are the tool's output, never its input |
+| `dash` | Everywhere | line treatment comes from the edge's semantic role |
+| `dx` | Everywhere | coordinates are the tool's output, never its input |
+| `dy` | Everywhere | coordinates are the tool's output, never its input |
+| `fill` | Everywhere | appearance is a property of the role, not of the element |
+| `font_family` | Everywhere | type is selected by semantic role from the theme's scale |
+| `font_size` | Everywhere | type is selected by semantic role from the theme's scale |
+| `font_weight` | Everywhere | type is selected by semantic role from the theme's scale |
+| `height` | On any object — legal at the document root | box geometry is derived from measured text plus theme padding |
+| `layer` | Everywhere | overlap is resolved by the layout, not declared |
+| `order` | Everywhere | overlap is resolved by the layout, not declared |
+| `points` | Everywhere | coordinates are the tool's output, never its input |
+| `port` | Everywhere | edge geometry comes from the edge's semantic role |
+| `stroke` | Everywhere | appearance is a property of the role, not of the element |
+| `stroke_width` | Everywhere | appearance is a property of the role, not of the element |
+| `viewBox` | Everywhere | derived from width and the content |
+| `width` | On any object — legal at the document root | box geometry is derived from measured text plus theme padding |
+| `x` | Everywhere | coordinates are the tool's output, never its input |
+| `y` | Everywhere | coordinates are the tool's output, never its input |
+| `z` | Everywhere | overlap is resolved by the layout, not declared |
 

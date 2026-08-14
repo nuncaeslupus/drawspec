@@ -63,16 +63,27 @@ def test_format_reference_names_every_refused_field() -> None:
         assert f"`{name}`" in page, f"{name} is refused but not documented"
 
 
+def _documented_arguments(page: str, command: argparse.ArgumentParser, where: str) -> None:
+    for action in command._actions:
+        if isinstance(action, argparse._HelpAction | argparse._SubParsersAction):
+            continue
+        for option in action.option_strings or [action.dest]:
+            assert f"`{option}`" in page, f"{where} {option} is not documented"
+
+
 def test_cli_reference_names_every_command_and_argument() -> None:
     page = docs.cli_markdown()
     parser = build_parser()
+    # The root parser's own options too — `--version` lives there, not on any
+    # command, and walking only the subcommands is how a global flag ends up in
+    # the usage synopsis and nowhere else.
+    _documented_arguments(page, parser, "drawspec")
     for name, command in docs._subcommands(parser).items():
         assert f"`drawspec {name}`" in page
-        for action in command._actions:
-            if isinstance(action, argparse._HelpAction | argparse._SubParsersAction):
-                continue
-            for option in action.option_strings or [action.dest]:
-                assert f"`{option}`" in page, f"{name} {option} is not documented"
+        _documented_arguments(page, command, name)
+        for nested_name, nested in docs._subcommands(command).items():
+            assert f"`drawspec {name} {nested_name}`" in page
+            _documented_arguments(page, nested, f"{name} {nested_name}")
 
 
 def test_theme_reference_names_every_section_key_and_role() -> None:

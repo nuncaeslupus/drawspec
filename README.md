@@ -105,9 +105,10 @@ A document is what the diagram *means*:
 }
 ```
 
-There are no coordinates in it, and none may be written: `x`, `width`,
-`font_size`, `stroke` and twenty other fields are refused by name, with the
-JSON pointer of the place they were written.
+There are no coordinates in it, and none may be written: `x`, `font_size`,
+`stroke` and twenty-odd other fields are refused by name, with the JSON pointer
+of the place they were written. A document may size the whole canvas — `width`
+and `height` at the top level — and may not size one box in it.
 
 ## The gallery
 

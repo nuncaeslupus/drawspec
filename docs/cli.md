@@ -25,6 +25,14 @@ or cannot be fitted is 1, and a refusal is an outcome, not a crash.
 | `1` | The document, the theme or the fit was refused. |
 | `2` | The command line itself was wrong. |
 
+## Global options
+
+Legal before the command name.
+
+| Argument | What it does |
+|---|---|
+| `--version` | Show program's version number and exit. |
+
 ## Commands
 
 ### `drawspec render`

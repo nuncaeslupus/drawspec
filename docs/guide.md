@@ -79,13 +79,17 @@ Then:
 drawspec render diagram.json -o diagram.svg
 ```
 
-There is no coordinate in that document, and none may be written. `x`, `width`,
+There is no coordinate in that document, and none may be written. `x`,
 `font_size`, `stroke` and twenty-odd other names are refused *by name*, with the
 JSON pointer of the place they were written — see
 [what may not be written](format.md#what-may-not-be-written). That refusal is
 the whole design: the failures this tool exists to prevent are placement
 failures, and a format that cannot express a position cannot express a wrong
 one.
+
+What a document *may* size is the canvas: `width` and `height` at the top level
+are a budget for the whole drawing, and the same names on a node are refused,
+because how big one box is follows from its text and the theme's padding.
 
 The `$schema` line is optional and costs nothing at render time, but it earns
 its place in an editor: point any JSON-Schema-aware editor at it and you get
@@ -243,19 +247,28 @@ understanding before you change anything else:
 The CLI is the supported interface, but the library underneath it is small and
 stable enough to call directly:
 
+Everything that can be refused raises a `DrawspecError` — `DocumentError`, which
+also carries its violations as a list, `ThemeError`, or `FitError` when the
+content cannot be drawn legibly at the size it was given. Catch the base class
+and print it: the message is the product, and it already names every violation
+with its pointer.
+
 ```python
+from pathlib import Path
+
+from drawspec.errors import DrawspecError
 from drawspec.render import render_document
 from drawspec.schema import load_document
 from drawspec.theme import load_theme
 
-document = load_document("diagram.json")
-svg = render_document(document, load_theme("house.toml"), "inline")
+try:
+    document = load_document("diagram.json")
+    svg = render_document(document, load_theme("house.toml"), "inline")
+except DrawspecError as refusal:
+    print(refusal)  # every violation, located
+else:
+    Path("diagram.svg").write_text(svg, encoding="utf-8")
 ```
-
-Everything that can be refused raises a `DrawspecError` — `DocumentError` with a
-list of located violations, `ThemeError`, or `FitError` when the content cannot
-be drawn legibly at the size it was given. Catch the base class and print it;
-the message is the product.
 
 ## When it refuses
 

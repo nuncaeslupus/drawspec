@@ -242,18 +242,34 @@ def format_markdown() -> str:
     for name, fields in OBJECTS.items():
         lines += [f"### `{name}` object", "", *_fields_table(fields), ""]
 
+    root_legal = {field.name for field in COMMON_FIELDS} & set(REJECTED_FIELDS)
     lines += [
         "## What may not be written",
         "",
-        "These field names are refused wherever they appear, each with the reason",
-        "below and the JSON pointer of the place it was written. This is the list that",
+        "Every object above refuses a field it does not name. When the field is one of",
+        "these, the refusal says *why* rather than just listing the legal keys — and it",
+        "carries the JSON pointer of the place it was written. This is the list that",
         "makes the failures in `docs/brief.md` unexpressible rather than merely",
         "discouraged: a document cannot say where a box goes, so a box cannot go in the",
         "wrong place.",
         "",
+        "The *Where* column matters. Most of these names are legal nowhere at all. A",
+        "few are legal at the **document root** and refused on everything inside it —",
+        f"{_code(sorted(root_legal))} size the canvas, which is a budget for the whole",
+        "drawing, and are exactly the wrong thing to say about one box in it.",
+        "",
         *_table(
-            ("Field", "Why not"),
-            ([f"`{name}`", reason] for name, reason in sorted(REJECTED_FIELDS.items())),
+            ("Field", "Where it is refused", "Why not"),
+            (
+                [
+                    f"`{name}`",
+                    "On any object — legal at the document root"
+                    if name in root_legal
+                    else "Everywhere",
+                    reason,
+                ]
+                for name, reason in sorted(REJECTED_FIELDS.items())
+            ),
         ),
         "",
     ]
@@ -299,7 +315,14 @@ def _argument_note(action: argparse.Action) -> str:
     parts = [_sentence(action.help or "")]
     if action.choices:
         parts.append(f"One of {_code(str(choice) for choice in action.choices)}.")
-    if action.option_strings and action.default not in (None, False):
+    # `==SUPPRESS==` is argparse's sentinel for "this flag has no default", worn
+    # by --help and --version. Printing it as one is how a reference documents a
+    # value that does not exist.
+    if (
+        action.option_strings
+        and action.default not in (None, False)
+        and action.default != argparse.SUPPRESS
+    ):
         parts.append(f"Default `{action.default}`.")
     return " ".join(part for part in parts if part)
 
@@ -375,6 +398,11 @@ def cli_markdown() -> str:
             ],
         ),
         "",
+        "## Global options",
+        "",
+        "Legal before the command name.",
+        "",
+        *_block(_arguments_table(parser)),
         "## Commands",
         "",
     ]

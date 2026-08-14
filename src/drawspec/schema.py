@@ -941,9 +941,35 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
             for group in groups
             if isinstance(group, dict) and isinstance(group.get("id"), str)
         }
+        # A group id is a name a member may resolve to, and the renderer keys its
+        # containment tree and its captions by it. So a repeated one does not
+        # draw twice — the second silently replaces the first, and the drawing
+        # stops matching the document with nothing said. An id shared with a node
+        # is the same failure by another route: a member naming it could mean
+        # either, and which one it gets is an implementation detail.
+        named: set[str] = set()
         for index, group in enumerate(groups):
             if not isinstance(group, dict):
                 continue
+            identifier = group.get("id")
+            if isinstance(identifier, str):
+                if identifier in seen:
+                    found.append(
+                        Violation(
+                            _pointer("groups", index, "id"),
+                            f"{identifier!r} is already the id of a node; a member naming it "
+                            f"could mean either",
+                        )
+                    )
+                elif identifier in named:
+                    found.append(
+                        Violation(
+                            _pointer("groups", index, "id"),
+                            f"duplicate group id {identifier!r}",
+                        )
+                    )
+                named.add(identifier)
+
             members = group.get("members")
             if not isinstance(members, list):
                 continue

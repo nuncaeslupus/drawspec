@@ -171,7 +171,7 @@ def _validate(arguments: argparse.Namespace) -> int:
         if arguments.theme:
             load_theme(arguments.theme)
     except DocumentError as error:
-        return _refuse(error, violations=error.violations)
+        return _refuse(error)
     except DrawspecError as error:
         return _refuse(error)
 
@@ -214,18 +214,19 @@ def _schema(arguments: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 
 
-def _refuse(
-    error: DrawspecError, violations: Sequence[object] = (), stream: TextIO | None = None
-) -> int:
+def _refuse(error: DrawspecError, stream: TextIO | None = None) -> int:
     """Print a refusal in full, to stderr, and return the code for it.
 
     In full: the message a drawspec error carries names the remedy as well as the
     fault, and truncating it to a summary line is how an author ends up guessing.
+
+    A `DocumentError`'s message already carries every located violation — that is
+    what `_describe` builds it from — so printing `error.violations` as well is
+    how each one came out twice. One pass over the output should be one edit, and
+    that is not true of a list a reader has to notice is doubled.
     """
     out = stream or sys.stderr
     print(str(error), file=out)
-    for violation in violations:
-        print(f"  {violation}", file=out)
     return REFUSED
 
 
