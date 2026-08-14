@@ -593,3 +593,73 @@ def test_a_timeline_with_every_entry_at_one_point_is_refused() -> None:
     with pytest.raises(FitError) as error:
         timeline({"text": "First", "at": 3}, {"text": "Second", "at": 3})
     assert "same point" in str(error.value)
+
+
+# --------------------------------------------------------------------------
+# Notes under the line
+# --------------------------------------------------------------------------
+
+
+def _timeline_with(*items: Mapping[str, object]) -> Scene:
+    return grid_scene(
+        parse_document(
+            {
+                "version": 1,
+                "kind": "timeline",
+                "title": "A timeline",
+                "items": list(items),
+            }
+        ),
+        THEME,
+        MEASURER,
+    )
+
+
+def test_a_timeline_entry_says_its_note_under_the_line() -> None:
+    """The originals put text on both sides of every mark, and were right to.
+
+    What happened is one thing and when it happened is another; stacking both
+    above the axis makes the reader work out which line is which kind.
+    """
+    built = _timeline_with(
+        {"text": "Last backup", "note": "02:00"}, {"text": "It fails", "note": "08:00"}
+    )
+    axis = max(
+        line.points[0][1]
+        for line in built.primitives
+        if isinstance(line, Path) and line.points[0][1] == line.points[-1][1]
+    )
+    said = {
+        run.spans[0].text: run.y
+        for run in built.primitives
+        if isinstance(run, TextLine) and run.spans
+    }
+    assert {"02:00", "08:00"} <= said.keys()
+    assert said["02:00"] > axis, "the note belongs under the axis, not over it"
+    assert said["Last backup"] < axis
+
+
+def test_a_timeline_without_notes_is_the_size_it_always_was() -> None:
+    """So the field costs nothing to the documents that do not use it."""
+    bare = _timeline_with({"text": "One"}, {"text": "Two"})
+    noted = _timeline_with({"text": "One", "note": "March"}, {"text": "Two", "note": "April"})
+    assert noted.height > bare.height
+
+
+def test_one_entry_may_carry_a_note_and_another_none() -> None:
+    """Unlike `at`, which is a scale: a note is an aside on a single event."""
+    built = _timeline_with({"text": "One", "note": "March"}, {"text": "Two"})
+    assert "March" in {
+        run.spans[0].text for run in built.primitives if isinstance(run, TextLine) and run.spans
+    }
+
+
+def test_a_note_is_set_at_the_label_size_not_the_body_size() -> None:
+    """It annotates the event; it is not a second event."""
+    built = _timeline_with({"text": "One", "note": "March"}, {"text": "Two", "note": "April"})
+    note = next(
+        run
+        for run in built.primitives
+        if isinstance(run, TextLine) and run.spans and run.spans[0].text == "March"
+    )
+    assert note.level == "label"

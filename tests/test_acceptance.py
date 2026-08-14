@@ -24,6 +24,7 @@ import os
 import subprocess
 import sys
 import tomllib
+from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
 from typing import Final
@@ -37,7 +38,7 @@ from drawspec.errors import FitError, LayoutError
 from drawspec.geometry import fit
 from drawspec.kinds import scene_for
 from drawspec.render import centred
-from drawspec.scene import TextLine, extents
+from drawspec.scene import Polygon, Rect, TextLine, extents
 from drawspec.schema import load_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
@@ -250,10 +251,35 @@ def test_every_kind_sets_its_text_at_the_same_level(name: str) -> None:
     Furniture is exempt and stays smaller: an axis's tick labels and an edge's
     label are not the diagram's text, and a chart whose axis numbers matched its
     node text would be a chart shouting its own scale.
+
+    "Inside a shape" is measured rather than assumed, because furniture is not a
+    primitive type. A timeline's note sits under the axis and is an annotation on
+    an event in exactly the way a tick label is — but an author may bold a word
+    in it, so it is a `TextLine` like the text in a box. Where it sits is what
+    tells them apart, and where it sits is the thing the rule is actually about.
     """
     theme = load_theme()
     document = load_document(REFERENCE_DIR / f"{name}.json")
     measurer = TextMeasurer(theme.font.stacks())
     drawn = fit(theme, lambda scaled: scene_for(document, scaled, measurer)).value
-    levels = {primitive.level for primitive in drawn.primitives if isinstance(primitive, TextLine)}
+    shapes = [primitive for primitive in drawn.primitives if isinstance(primitive, Rect | Polygon)]
+    levels = {
+        primitive.level
+        for primitive in drawn.primitives
+        if isinstance(primitive, TextLine) and _inside_a_shape(primitive, shapes)
+    }
     assert levels <= {BODY_LEVEL}, f"{name} sets its text at {sorted(levels)}"
+
+
+def _inside_a_shape(line: TextLine, shapes: Sequence[Rect | Polygon]) -> bool:
+    """Whether a line's anchor falls within any drawn figure."""
+    for shape in shapes:
+        if isinstance(shape, Rect):
+            bounds = (shape.x, shape.y, shape.x + shape.width, shape.y + shape.height)
+        else:
+            xs = [x for x, _ in shape.points]
+            ys = [y for _, y in shape.points]
+            bounds = (min(xs), min(ys), max(xs), max(ys))
+        if bounds[0] <= line.x <= bounds[2] and bounds[1] <= line.y <= bounds[3]:
+            return True
+    return False

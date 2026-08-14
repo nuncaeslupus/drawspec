@@ -3,12 +3,12 @@
   "version": 1,
   "kind": "timeline",
   "title": "How the work went",
-  "description": "Each stage settled something the next one depended on.",
+  "description": "Each stage settled something the next one depended on. Above the line is what happened; below it is when.",
   "items": [
-    {"text": "Brief"},
-    {"text": "Specification"},
-    {"text": "Plan"},
-    {"text": "Foundation"},
-    {"text": "Kinds"}
+    {"text": "Brief", "note": "March"},
+    {"text": "Specification", "note": "April"},
+    {"text": "Plan", "note": "May"},
+    {"text": "Foundation", "note": "June to July"},
+    {"text": "Kinds", "note": "August"}
   ]
 }
