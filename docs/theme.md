@@ -165,14 +165,14 @@ an arrow lives: an author says two things are merely associated (`link`) and
 the theme decides that means a line with no head. `head` and `tail` are each
 one of `arrow`, `open`, `diamond`, `circle`, `bar`, `none`.
 
-| Role | `head` | `tail` | `stroke` | `dash` | `stroke_width` |
-|---|---|---|---|---|---|
-| `flow` | `"arrow"` | `"none"` | `"currentColor"` | `"none"` | `1.5` |
-| `link` | `"none"` | `"none"` | `"currentColor"` | `"none"` | `1.0` |
-| `exchange` | `"arrow"` | `"arrow"` | `"currentColor"` | `"none"` | `1.5` |
-| `weak` | `"open"` | `"none"` | `"currentColor"` | `"4 3"` | `1.5` |
-| `owns` | `"diamond"` | `"none"` | `"currentColor"` | `"none"` | `1.5` |
-| `strong` | `"arrow"` | `"none"` | `"currentColor"` | `"none"` | `2.5` |
+| Role | `head` | `tail` | `stroke` | `dash` | `stroke_width` | `routing` |
+|---|---|---|---|---|---|---|
+| `flow` | `"arrow"` | `"none"` | `"currentColor"` | `"none"` | `1.5` | `"orthogonal"` |
+| `link` | `"none"` | `"none"` | `"currentColor"` | `"none"` | `1.0` | `"direct"` |
+| `exchange` | `"arrow"` | `"arrow"` | `"currentColor"` | `"none"` | `1.5` | `"orthogonal"` |
+| `weak` | `"open"` | `"none"` | `"currentColor"` | `"4 3"` | `1.5` | `"orthogonal"` |
+| `owns` | `"diamond"` | `"none"` | `"currentColor"` | `"none"` | `1.5` | `"orthogonal"` |
+| `strong` | `"arrow"` | `"none"` | `"currentColor"` | `"none"` | `2.5` | `"orthogonal"` |
 
 ## The bundled themes
 

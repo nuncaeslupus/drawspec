@@ -192,6 +192,14 @@ tail = "none"
 stroke = "currentColor"
 dash = "none"
 stroke_width = 1.0
+# The one role drawn straight rather than routed. `link` means "merely
+# associated" — no head, no direction, no order — and that is the relation a
+# mesh is made of: a spine-leaf fabric or a value chain is saying *everything
+# connects to everything*, which a chord says at a glance and a ladder of
+# parallel staircases makes the reader disentangle. Every role with a head keeps
+# the right angles: a flow read down the page is a sequence, and a diagonal
+# between two steps of it reads as a mistake.
+routing = "direct"
 
 [edge_role.exchange]
 head = "arrow"

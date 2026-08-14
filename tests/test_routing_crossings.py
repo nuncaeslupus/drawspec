@@ -196,3 +196,88 @@ def test_the_document_order_of_the_edges_does_not_reach_the_drawing() -> None:
     drawn = {(route.source, route.target): route.points for route in routes_of(forward)}
     redrawn = {(route.source, route.target): route.points for route in routes_of(backward)}
     assert drawn == redrawn
+
+
+# --------------------------------------------------------------------------
+# A mesh is meant to cross itself
+# --------------------------------------------------------------------------
+
+
+def spine_leaf(spines: int, leaves: int, role: str) -> dict[str, Any]:
+    """Everything above joined to everything below — the shape item E is about."""
+    return {
+        "version": 1,
+        "kind": "flow",
+        "title": "A fabric",
+        "nodes": [{"id": f"s{index}", "text": f"Spine {index}"} for index in range(spines)]
+        + [{"id": f"l{index}", "text": f"Leaf {index}"} for index in range(leaves)],
+        "edges": [
+            {"from": f"s{above}", "to": f"l{below}", "role": role}
+            for above in range(spines)
+            for below in range(leaves)
+        ],
+    }
+
+
+def test_a_link_is_drawn_as_one_straight_line() -> None:
+    """*"We should have that option too, at least for lines without arrow head."*
+
+    `link` is the vocabulary's word for "merely associated" — no head, no
+    direction, no order — and the default theme draws it straight, because that
+    is the relation a mesh is made of. Two points and no corners.
+    """
+    routes = routes_of(spine_leaf(2, 3, "link"))
+    assert routes
+    for route in routes:
+        assert len(route.points) == 2, f"{route.source}->{route.target} turned a corner"
+        (x1, y1), (x2, y2) = route.points
+        assert x1 != x2 and y1 != y2, "a chord between two ranks is not axis-aligned"
+
+
+def test_a_headed_edge_keeps_its_right_angles() -> None:
+    """The setting is per role, and `flow` is the role it must not reach.
+
+    A process read down the page is a sequence of steps, and a diagonal between
+    two of them reads as a mistake — which is the failure the orthogonal router
+    exists to make unrepresentable. Drawing every mesh straight would have cost
+    that.
+    """
+    for route in routes_of(spine_leaf(2, 3, "flow")):
+        for (x1, y1), (x2, y2) in route.segments:
+            assert x1 == pytest.approx(x2) or y1 == pytest.approx(y2)
+
+
+def test_a_chord_starts_and_ends_on_the_shapes_it_joins() -> None:
+    """Straight is not the same as unanchored: both ends still land on a border."""
+    from drawspec.kinds.graph import graph_drawing
+    from drawspec.text.measure import TextMeasurer
+
+    theme = load_theme(None)
+    measurer = TextMeasurer(theme.font.stacks(), search_paths=[])
+    drawing = graph_drawing(parse_document(spine_leaf(2, 2, "link")), theme, measurer)
+    for route in drawing.routes:
+        for identifier, point in (
+            (route.source, route.points[0]),
+            (route.target, route.points[-1]),
+        ):
+            box = drawing.boxes[identifier]
+            assert box.x - 1 <= point[0] <= box.x + box.width + 1
+            assert box.y - 1 <= point[1] <= box.y + box.height + 1
+
+
+def test_the_same_document_draws_either_way() -> None:
+    """The seam again: the author said `link`, the theme said how a link looks."""
+    from dataclasses import replace as _replace
+
+    theme = load_theme(None)
+    orthogonal = _replace(
+        theme,
+        edge_roles={
+            **theme.edge_roles,
+            "link": _replace(theme.edge_roles["link"], routing="orthogonal"),
+        },
+    )
+    document = parse_document(spine_leaf(2, 3, "link"))
+    assert render_document(document, theme, "inline") != render_document(
+        document, orthogonal, "inline"
+    )

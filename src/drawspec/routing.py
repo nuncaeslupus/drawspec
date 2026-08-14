@@ -580,10 +580,16 @@ def route_edges(
         _lanes([value for box in obstacles for value in (box.y, box.bottom)], channel, usable),
     )
 
+    straight = {
+        index
+        for index, connector in enumerate(connectors)
+        if connector.source != connector.target
+        and theme.edge_roles[connector.role].routing == "direct"
+    }
     sides = {
         index: _candidate_sides(boxes[connector.source], boxes[connector.target], direction)
         for index, connector in enumerate(connectors)
-        if connector.source != connector.target
+        if connector.source != connector.target and index not in straight
     }
     fractions = _assign_ports(connectors, boxes, sides)
     approaches: dict[int, tuple[_Approach, _Approach]] = {}
@@ -603,6 +609,17 @@ def route_edges(
         if connector.source == connector.target:
             routes.append(_self_loop(connector, boxes[connector.source], obstacles, theme))
             continue
+        if index in straight:
+            routes.append(
+                Route(
+                    source=connector.source,
+                    target=connector.target,
+                    role=connector.role,
+                    points=_chord(boxes[connector.source], boxes[connector.target]),
+                    label=connector.label,
+                )
+            )
+            continue
         points = _route_one(connector, approaches[index], grid, obstacles, theme)
         routes.append(
             Route(
@@ -614,6 +631,61 @@ def route_edges(
             )
         )
     return separate_lanes(tuple(routes), obstacles, theme)
+
+
+def _chord(source: Obstacle, target: Obstacle) -> tuple[tuple[float, float], ...]:
+    """The straight line between two shapes' outlines, along their centres.
+
+    A mesh drawn straight is meant to cross itself, so this is deliberately not
+    routed: nothing here avoids an obstacle, and the two points are simply where
+    the centre-to-centre line leaves one shape and enters the other. That is the
+    whole of `routing = "direct"`, and it is why the setting belongs to a role
+    rather than to a theme — a `flow` routed this way would be a diagram of
+    diagonals with nothing to say for them.
+
+    Where the line meets each outline is found by bisection rather than by four
+    cases per shape: `Obstacle` already answers *is this point inside me*
+    exactly, for all four shapes, and asking it thirty times settles the crossing
+    far below a rendered pixel. A fixed count is what keeps the same document
+    rendering to the same bytes twice.
+    """
+    start, end = source.centre, target.centre
+    return (_leaving(source, start, end), _leaving(target, end, start))
+
+
+#: Halvings used to find where a direct route crosses a box's outline. Thirty
+#: takes a canvas-sized interval to about a millionth of a unit.
+_CHORD_BISECTIONS: Final = 30
+
+
+def _leaving(
+    box: Obstacle, inside: tuple[float, float], outside: tuple[float, float]
+) -> tuple[float, float]:
+    """The point on `box`'s outline along the segment from `inside` to `outside`."""
+
+    def at(position: float) -> tuple[float, float]:
+        return (
+            inside[0] + (outside[0] - inside[0]) * position,
+            inside[1] + (outside[1] - inside[1]) * position,
+        )
+
+    def within(point: tuple[float, float]) -> bool:
+        # A degenerate rectangle around the point: `overlaps` is the exact
+        # inside test every shape already carries, and a zero-width box is the
+        # way to ask it about a point.
+        return box.overlaps((point[0], point[1], point[0], point[1]))
+
+    if not within(at(0.0)):
+        return _round(inside[0]), _round(inside[1])
+    low, high = 0.0, 1.0
+    for _ in range(_CHORD_BISECTIONS):
+        middle = (low + high) / 2
+        if within(at(middle)):
+            low = middle
+        else:
+            high = middle
+    point = at(high)
+    return _round(point[0]), _round(point[1])
 
 
 def _assign_ports(

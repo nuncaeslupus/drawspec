@@ -189,6 +189,9 @@ CAPTION_POSITIONS: Final = ("below", "above")
 #: Which way a funnel narrows.
 FUNNEL_DIRECTIONS: Final = ("down", "right")
 
+#: How an edge role's lines are drawn between two boxes.
+EDGE_ROUTINGS: Final = ("orthogonal", "direct")
+
 
 @dataclass(frozen=True)
 class Canvas:
@@ -755,6 +758,31 @@ class EdgeRole:
     dash: str = "none"
     stroke_width: float = 1.5
 
+    routing: str = "orthogonal"
+    """Whether edges in this role turn at right angles or run straight.
+
+    `orthogonal` is the default and was the whole of the router for two rounds,
+    because it is what a *flow* wants: a process read down the page is a sequence
+    of steps, and a staircase between two of them says "then this" the way a
+    diagonal does not.
+
+    A mesh is the other picture. A spine-leaf fabric and a value chain are both
+    saying *everything connects to everything*, and drawn orthogonally they
+    become a ladder of parallel runs whose crossings the reader has to
+    disentangle one at a time. The corpus review named it: "in this case, I think
+    the crossed lines transmit better what they want to show. We should have that
+    option too, at least for lines without arrow head."
+
+    Which is why this is per role rather than per theme, and why it is the
+    theme's rather than the document's. The author already said which edges are
+    a flow and which are a bare association — `link` is the vocabulary's word for
+    "merely connected" — and *how a bare association is drawn* is exactly the
+    kind of question a theme answers. The same document renders either way.
+
+    A direct route is a straight line between the two shapes' outlines, and it is
+    not routed around anything: a mesh drawn straight is meant to cross itself.
+    """
+
     @property
     def has_head(self) -> bool:
         return self.head != "none"
@@ -774,7 +802,7 @@ class EdgeRole:
     @classmethod
     def from_mapping(cls, name: str, mapping: Mapping[str, Any], base: EdgeRole) -> EdgeRole:
         where = f"[edge_role.{name}]"
-        keys = ("head", "tail", "stroke", "dash", "stroke_width")
+        keys = ("head", "tail", "stroke", "dash", "stroke_width", "routing")
         _reject_unknown(mapping, keys, where)
         return cls(
             head=_choice(mapping.get("head", base.head), EDGE_HEADS, f"{where} head"),
@@ -783,6 +811,9 @@ class EdgeRole:
             dash=_dash(mapping.get("dash", base.dash), f"{where} dash"),
             stroke_width=_number(
                 mapping.get("stroke_width", base.stroke_width), f"{where} stroke_width"
+            ),
+            routing=_choice(
+                mapping.get("routing", base.routing), EDGE_ROUTINGS, f"{where} routing"
             ),
         )
 
