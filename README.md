@@ -76,7 +76,7 @@ so it survives dark mode and greyscale printing.
 ## Try it
 
 ```bash
-pip install drawspec
+pip install git+https://github.com/nuncaeslupus/drawspec   # not on PyPI yet
 
 drawspec render diagram.json -o diagram.svg   # or to stdout
 drawspec validate diagram.json                # every violation, by JSON pointer
@@ -105,9 +105,10 @@ A document is what the diagram *means*:
 }
 ```
 
-There are no coordinates in it, and none may be written: `x`, `width`,
-`font_size`, `stroke` and twenty other fields are refused by name, with the
-JSON pointer of the place they were written.
+There are no coordinates in it, and none may be written: `x`, `font_size`,
+`stroke` and twenty-odd other fields are refused by name, with the JSON pointer
+of the place they were written. A document may size the whole canvas — `width`
+and `height` at the top level — and may not size one box in it.
 
 ## The gallery
 
@@ -128,10 +129,29 @@ diagram meant to be sized on its own.
   <img src="docs/gallery/tree-decisions.svg" alt="A tree: which decisions belong to the author, the theme and the tool" width="420">
 </p>
 
+## Documentation
+
+[**The guide**](docs/guide.md) is the way in, and it is meant to be enough on its
+own — install, a first diagram, choosing a kind, embedding the output, validating
+in a build, and writing a theme. Under it sit three references, each **generated
+from the code it describes**, so none of them can quietly go out of date:
+
+| Page | What it answers |
+|---|---|
+| [The document format](docs/format.md) | Every field a document may carry, by kind — and every field that is refused, with the reason |
+| [The command line](docs/cli.md) | Every command, argument and exit code |
+| [The theme reference](docs/theme.md) | Every key a theme may set, and what the default sets it to |
+
+`make docs` regenerates all three; a test fails if what is committed is not what
+the code would write, which is the same arrangement the published JSON Schema
+has.
+
 ## Repository layout
 
 | Path | What |
 |---|---|
+| `docs/guide.md` | Using drawspec in another project: install, first diagram, embedding, theming |
+| `docs/format.md`, `docs/cli.md`, `docs/theme.md` | The three generated references. `make docs` writes them; `tools/docs.py` is the generator |
 | `docs/brief.md` | The originating brief: the problem, the measured failure taxonomy, the acceptance tests |
 | `docs/theme-requirements.md` | A real consumer's style rules — the worked example of what a theme must express |
 | `corpus/` | 87 anonymized LLM-written diagrams and their measurements, as evidence |
@@ -147,6 +167,8 @@ make sync     # install with dev extras
 make lint     # ruff + strict mypy
 make test     # pytest
 make gallery  # render every reference document and look at it
+make docs     # regenerate the format, CLI and theme references
+make schema   # regenerate the published JSON Schema
 ```
 
 ## License

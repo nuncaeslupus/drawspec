@@ -416,6 +416,25 @@ REFERENTIAL_CASES: list[tuple[str, dict[str, Any]]] = [
         "group member that does not exist",
         flow_document(groups=[{"id": "g", "members": ["ghost"]}]),
     ),
+    # A group id is a name a member may resolve to, and the renderer keys its
+    # containment tree and its captions by it — so a repeated one does not draw
+    # twice, it silently replaces. Before this was enforced, a document with
+    # three groups sharing two ids validated, rendered, and lost two of its
+    # three captions with nothing said, which is precisely the class of failure
+    # drawspec exists to make unexpressible.
+    (
+        "duplicate group id",
+        flow_document(
+            groups=[
+                {"id": "g", "text": "First", "members": ["in"]},
+                {"id": "g", "text": "Second", "members": ["chk"]},
+            ]
+        ),
+    ),
+    (
+        "group id that is also a node id",
+        flow_document(groups=[{"id": "in", "text": "Ambiguous", "members": ["chk"]}]),
+    ),
 ]
 
 

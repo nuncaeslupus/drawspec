@@ -54,7 +54,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"drawspec {__version__}")
     commands = parser.add_subparsers(dest="command")
 
-    render = commands.add_parser("render", help="render a document to SVG")
+    render = commands.add_parser(
+        "render",
+        help="render a document to SVG",
+        description="Read a document, draw it, and write the SVG to stdout or to a file.",
+    )
     render.add_argument("document", help="the document to render")
     render.add_argument("-o", "--out", help="write here instead of stdout")
     render.add_argument("--theme", help="a bundled theme name or a theme file")
@@ -64,16 +68,33 @@ def build_parser() -> argparse.ArgumentParser:
         "--profile", choices=PROFILES, default="inline", help="the embedding profile"
     )
 
-    validate = commands.add_parser("validate", help="validate a document without rendering it")
+    validate = commands.add_parser(
+        "validate",
+        help="validate a document without rendering it",
+        description=(
+            "Parse and check a document, drawing nothing. Every violation is printed "
+            "with the JSON pointer of the place it was written."
+        ),
+    )
     validate.add_argument("document", help="the document to validate")
     validate.add_argument("--theme", help="a bundled theme name or a theme file")
 
-    theme = commands.add_parser("theme", help="theme tools")
+    theme = commands.add_parser(
+        "theme", help="theme tools", description="Tools for the files that decide appearance."
+    )
     theme_commands = theme.add_subparsers(dest="theme_command")
-    check = theme_commands.add_parser("check", help="run a theme's invariants")
+    check = theme_commands.add_parser(
+        "check",
+        help="run a theme's invariants",
+        description=("Load a theme and run its invariants, the greyscale role pairing included."),
+    )
     check.add_argument("theme", help="a bundled theme name or a theme file")
 
-    schema = commands.add_parser("schema", help="write the document JSON Schema")
+    schema = commands.add_parser(
+        "schema",
+        help="write the document JSON Schema",
+        description="Write the published document JSON Schema, for editor completion.",
+    )
     schema.add_argument("--out", help="write here instead of stdout")
 
     return parser
@@ -150,7 +171,7 @@ def _validate(arguments: argparse.Namespace) -> int:
         if arguments.theme:
             load_theme(arguments.theme)
     except DocumentError as error:
-        return _refuse(error, violations=error.violations)
+        return _refuse(error)
     except DrawspecError as error:
         return _refuse(error)
 
@@ -193,18 +214,19 @@ def _schema(arguments: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 
 
-def _refuse(
-    error: DrawspecError, violations: Sequence[object] = (), stream: TextIO | None = None
-) -> int:
+def _refuse(error: DrawspecError, stream: TextIO | None = None) -> int:
     """Print a refusal in full, to stderr, and return the code for it.
 
     In full: the message a drawspec error carries names the remedy as well as the
     fault, and truncating it to a summary line is how an author ends up guessing.
+
+    A `DocumentError`'s message already carries every located violation — that is
+    what `_describe` builds it from — so printing `error.violations` as well is
+    how each one came out twice. One pass over the output should be one edit, and
+    that is not true of a list a reader has to notice is doubled.
     """
     out = stream or sys.stderr
     print(str(error), file=out)
-    for violation in violations:
-        print(f"  {violation}", file=out)
     return REFUSED
 
 
