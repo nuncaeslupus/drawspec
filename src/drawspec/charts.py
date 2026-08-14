@@ -42,6 +42,7 @@ from itertools import pairwise
 from typing import Final
 
 from drawspec.errors import DrawspecError, FitError
+from drawspec.legend import entries_for, height_of, primitives_for
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextRun
 from drawspec.schema import Axis, Document, Position, Series
 from drawspec.text.measure import Extents, TextMeasurer
@@ -166,17 +167,26 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     filled = tuple(item for item in document.series if item.mark in ("bar", "area"))
     across = _scale_for(horizontal, [point[0] for item in document.series for point in item.data])
     up = _scale_for(vertical, _stacked_heights(document.series), include_zero=bool(filled))
-    across_ticks = _ticks(across.low, across.high)
-    up_ticks = _ticks(up.low, up.high)
+    across_ticks = _named_ticks(horizontal) or _ticks(across.low, across.high)
+    up_ticks = _named_ticks(vertical) or _ticks(up.low, up.high)
 
     # The gutters are measured, not guessed, and each one is the sum of the
     # things that go in it — in the order they go in it. Writing them any other
     # way is how the axis label ended up two units from the tick numbers while
     # the arithmetic said ten: the gutter reserved a gap the placement then spent
     # on the tick marks, and nothing compared the two.
+    # What the fills stand for, and how much of the bottom edge saying so costs.
+    # Measured before the plot is placed, because the legend is not an annotation
+    # on a finished drawing — it takes room the plot then does not have.
+    key = entries_for(
+        [(item.name, item.role, item.mark in ("bar", "area")) for item in document.series],
+        theme,
+    )
+    legend = height_of(key, theme, measurer, width)
+
     widest = _widest(up_ticks, theme, measurer, label_size)
     left = line.height + gap + widest + gap + tick
-    bottom = tick + gap + line.height + _caption_band(line, gap)
+    bottom = tick + gap + line.height + _caption_band(line, gap) + legend
     top = line.height + gap
     # Half the last tick label hangs past the end of its own axis, so the canvas
     # has to hold it. Without this the reader loses the right-hand digit.
@@ -219,11 +229,12 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
             plot_right,
             plot_top,
             plot_bottom,
-            height,
+            height - legend,
             theme,
             measurer,
             gap,
         ),
+        *primitives_for(key, theme, measurer, left, height - legend, width - left),
     ]
 
     if document.values and marked.bars:
@@ -339,6 +350,17 @@ def _ticks(low: float, high: float) -> tuple[tuple[float, str], ...]:
     return tuple((item, _format_value(item, step)) for item in values)
 
 
+def _named_ticks(axis: Axis) -> tuple[tuple[float, str], ...]:
+    """One tick per category, at 1, 2, 3 …, or nothing for a numeric axis.
+
+    A bar chart's horizontal axis is almost never a measurement — it is the
+    quarters, the service models, the teams — and numbering them 0 to 4 asks the
+    reader to hold a mapping the drawing never gave them. `min` and `max` still
+    do the framing; this only replaces what the ticks say.
+    """
+    return tuple((float(index + 1), name) for index, name in enumerate(axis.categories))
+
+
 def _nice_step(raw: float) -> float:
     if raw <= 0:
         return 1.0
@@ -445,7 +467,7 @@ def _axis_labels(
     right: float,
     top: float,
     bottom: float,
-    height: float,
+    floor: float,
     theme: Theme,
     measurer: TextMeasurer,
     gap: float,
@@ -465,7 +487,7 @@ def _axis_labels(
         TextRun(
             FURNITURE_ROLE,
             x=(left + right) / 2,
-            y=height - gap - extents.descent,
+            y=floor - gap - extents.descent,
             text=_with_unit(horizontal),
             level="label",
             font=theme.font.default,

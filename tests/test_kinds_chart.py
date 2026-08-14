@@ -21,6 +21,7 @@ from drawspec import render
 from drawspec.charts import DIVIDER_ROLE, MARKER_FRACTION, _crosses, _label_box, chart_scene
 from drawspec.emit import check_embedding_safety, emit
 from drawspec.errors import DocumentError, DrawspecError, FitError
+from drawspec.legend import SWATCH_ASPECT, SWATCH_SHARE
 from drawspec.scene import Ellipse, Path, Polygon, Rect, Scene, TextRun
 from drawspec.schema import parse_document
 from drawspec.text import TextMeasurer
@@ -371,8 +372,24 @@ BARS: Mapping[str, object] = {"name": "One", "mark": "bar", "data": [[1, 30], [2
 MORE: Mapping[str, object] = {"name": "Two", "mark": "bar", "data": [[1, 10], [2, 20], [3, 35]]}
 
 
+SWATCH_TALL = MEASURER.measure("0", THEME.font.default, THEME.scale["label"]).height * SWATCH_SHARE
+SWATCH_WIDE = SWATCH_TALL * SWATCH_ASPECT
+
+
+def _is_swatch(item: Polygon) -> bool:
+    """A legend swatch: one known size, which no mark is by accident."""
+    xs = [x for x, _ in item.points]
+    ys = [y for _, y in item.points]
+    return (
+        len(item.points) == 4
+        and abs(max(xs) - min(xs) - SWATCH_WIDE) < 1e-6
+        and abs(max(ys) - min(ys) - SWATCH_TALL) < 1e-6
+    )
+
+
 def filled_of(built: Scene) -> list[Polygon]:
-    return [item for item in built.primitives if isinstance(item, Polygon)]
+    """The filled marks. A legend swatch is a polygon too, and is not a mark."""
+    return [item for item in built.primitives if isinstance(item, Polygon) and not _is_swatch(item)]
 
 
 def test_a_bar_series_draws_one_closed_figure_per_point() -> None:

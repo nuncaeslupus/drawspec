@@ -295,6 +295,16 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         FieldSpec("unit", "string"),
         FieldSpec("min", "number"),
         FieldSpec("max", "number"),
+        FieldSpec(
+            "categories",
+            "array",
+            item_kind="string",
+            description=(
+                "Names for the positions 1, 2, 3 … along this axis, instead of "
+                "numbers. What a bar chart's horizontal axis usually is: the "
+                "quarters, the service models, the teams."
+            ),
+        ),
     ),
     "axes": (
         # Named by orientation rather than `x`/`y`: those name coordinates
@@ -510,6 +520,8 @@ class Axis:
     unit: str = ""
     minimum: float | None = None
     maximum: float | None = None
+    categories: tuple[str, ...] = ()
+    """Names for the positions 1, 2, 3 … Empty for an axis that carries numbers."""
 
 
 @dataclass(frozen=True)
@@ -941,6 +953,7 @@ def _axis(entry: Mapping[str, Any]) -> Axis:
         unit=entry.get("unit", ""),
         minimum=_optional_number(entry.get("min")),
         maximum=_optional_number(entry.get("max")),
+        categories=tuple(str(name) for name in entry.get("categories", ())),
     )
 
 

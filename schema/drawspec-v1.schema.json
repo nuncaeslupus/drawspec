@@ -605,6 +605,13 @@
         },
         "max": {
           "type": "number"
+        },
+        "categories": {
+          "type": "array",
+          "description": "Names for the positions 1, 2, 3 … along this axis, instead of numbers. What a bar chart's horizontal axis usually is: the quarters, the service models, the teams.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [
