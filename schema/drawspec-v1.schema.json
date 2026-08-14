@@ -434,6 +434,10 @@
             "$ref": "#/$defs/series"
           },
           "minItems": 1
+        },
+        "values": {
+          "type": "boolean",
+          "description": "Whether to write each point's own number on the drawing. Defaults to true; set false for a chart whose shape is the message and whose numbers would be noise."
         }
       },
       "required": [

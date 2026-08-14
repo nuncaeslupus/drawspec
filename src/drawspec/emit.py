@@ -216,16 +216,20 @@ def _shape_attributes(
     An edge role on a closed figure is an arrow head: filled with the edge's own
     colour and not stroked, so a head is the same weight as its shaft whatever
     the theme says. An edge role on an open figure is the shaft itself.
+
+    A `Polygon` that says it is a region is filled and not outlined — see
+    `Polygon.region`. The theme still chooses the fill; what the geometry decides
+    is only that this figure has no boundary worth drawing.
     """
     if isinstance(role, EdgeRole):
         if isinstance(primitive, Polygon) or (isinstance(primitive, Path) and primitive.closed):
             return [("fill", _resolve(role.stroke, theme, profile)), ("stroke", "none")]
         head = isinstance(primitive, Path) and primitive.marker
         return [("fill", "none"), *_stroke_attributes(role, theme, profile, solid=head)]
-    return [
-        ("fill", _fill_paint(role, namespace, theme, profile, getattr(primitive, "fill", ""))),
-        *_stroke_attributes(role, theme, profile),
-    ]
+    fill = ("fill", _fill_paint(role, namespace, theme, profile, getattr(primitive, "fill", "")))
+    if isinstance(primitive, Polygon) and primitive.region:
+        return [fill, ("stroke", "none")]
+    return [fill, *_stroke_attributes(role, theme, profile)]
 
 
 # ---------------------------------------------------------------------------

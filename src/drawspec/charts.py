@@ -16,9 +16,10 @@ gets to assume both labels exist.
 path passes through, computed once and used for both, so they cannot drift apart.
 
 **Point labels cross neither the curve nor the plot edge.** Each label is tried in
-eight positions and takes the first that is clear of every series path and inside
-the plot. When any point in a series has no clear position, that series gets *no*
-point labels — all or nothing.
+eight positions — above, below, left, right and the four diagonals — and takes the
+first that keeps clear daylight from every series path and sits inside the plot.
+When any point in a series has no clear position, that series gets *no* point
+labels — all or nothing.
 
 That last rule is a judgement, so here is the reasoning. Labelling only the points
 that happen to have room looks arbitrary, and refusing the whole render is
@@ -43,7 +44,7 @@ from typing import Final
 from drawspec.errors import DrawspecError, FitError
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextRun
 from drawspec.schema import Axis, Document, Position, Series
-from drawspec.text.measure import TextMeasurer
+from drawspec.text.measure import Extents, TextMeasurer
 from drawspec.theme import Theme
 
 #: Axis lines and tick marks are plain connectors — no direction, no head — which
@@ -90,9 +91,35 @@ QUADRANT_MARGIN: Final = 0.12
 #: they read as a division of the field rather than as two more axes.
 DIVIDER_ROLE: Final = "weak"
 
+#: How much daylight a label keeps from a line it must not sit on, and from
+#: another label. Not-overlapping is not enough: at the sizes these are read at,
+#: a descender a hair from a stroke reads as touching it.
+LABEL_DAYLIGHT: Final = 2.0
+
 #: The most decimals a point label may carry. Past this the label is wider than
 #: the room beside its own point, and values that close needed a different chart.
 MAXIMUM_DECIMALS: Final = 3
+
+
+@dataclass(frozen=True)
+class Bar:
+    """One drawn bar, and the value it stands for."""
+
+    series: Series
+    value: float
+    box: tuple[float, float, float, float]
+    """`(left, top, right, bottom)`, with `top` the edge away from the baseline."""
+
+    stacked: bool
+    """Whether something may be sitting on this bar's top edge."""
+
+
+@dataclass(frozen=True)
+class Marked:
+    """The filled marks: the drawing, and where the bars in it landed."""
+
+    primitives: tuple[Primitive, ...]
+    bars: tuple[Bar, ...]
 
 
 @dataclass(frozen=True)
@@ -137,8 +164,8 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     line = measurer.measure("0", theme.font.default, label_size)
 
     filled = tuple(item for item in document.series if item.mark in ("bar", "area"))
-    across = _scale_for(horizontal, document.series, index=0)
-    up = _scale_for(vertical, document.series, index=1, include_zero=bool(filled))
+    across = _scale_for(horizontal, [point[0] for item in document.series for point in item.data])
+    up = _scale_for(vertical, _stacked_heights(document.series), include_zero=bool(filled))
     across_ticks = _ticks(across.low, across.high)
     up_ticks = _ticks(up.low, up.high)
 
@@ -149,7 +176,7 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     # on the tick marks, and nothing compared the two.
     widest = _widest(up_ticks, theme, measurer, label_size)
     left = line.height + gap + widest + gap + tick
-    bottom = tick + gap + line.height + gap + line.height + gap
+    bottom = tick + gap + line.height + _caption_band(line, gap)
     top = line.height + gap
     # Half the last tick label hangs past the end of its own axis, so the canvas
     # has to hold it. Without this the reader loses the right-hand digit.
@@ -173,11 +200,13 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     ]
     baseline = up.to_pixels(min(max(0.0, up.low), up.high))
 
+    marked = _filled_marks(document.series, paths, across, baseline, plot_left, plot_right, theme)
+
     # Filled marks go down first, then the axis furniture over them, then the
     # lines: a bar sits *on* the baseline, so the axis has to be the thing drawn
     # on top of the join or the bar's own edge stands in for it.
     primitives: list[Primitive] = [
-        *_filled_marks(document.series, paths, across, baseline, plot_left, plot_right, theme),
+        *marked.primitives,
         *_axes(plot_left, plot_right, plot_top, plot_bottom),
         *_tick_marks(across_ticks, up_ticks, across, up, plot_left, plot_bottom, theme),
         *_tick_labels(
@@ -197,16 +226,24 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
         ),
     ]
 
-    filled_marks = _filled_marks(
-        document.series, paths, across, baseline, plot_left, plot_right, theme
-    )
+    if document.values and marked.bars:
+        primitives.extend(
+            _bar_labels(
+                marked.bars,
+                theme,
+                measurer,
+                plot_top,
+                _point_decimals(tuple(item for item in document.series if item.mark == "bar")),
+            )
+        )
+
     lines = tuple(item for item in document.series if item.mark == "line")
     line_paths = [
         points for item, points in zip(document.series, paths, strict=True) if item.mark == "line"
     ]
     for series, points in zip(lines, line_paths, strict=True):
         primitives.extend(_series(series, points, theme))
-    if lines:
+    if lines and document.values:
         decimals = _point_decimals(lines)
         for series, points in zip(lines, line_paths, strict=True):
             primitives.extend(
@@ -217,7 +254,7 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
                     # lines. When there is nowhere left, the series loses its
                     # labels — which is the rule this kind already had for a
                     # label with no clean spot, applied to a fuller plot.
-                    [*line_paths, *(_outline(mark) for mark in filled_marks)],
+                    [*line_paths, *(_outline(mark) for mark in marked.primitives)],
                     theme,
                     measurer,
                     plot_left,
@@ -242,9 +279,31 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
 # ---------------------------------------------------------------------------
 
 
-def _scale_for(
-    axis: Axis, series: tuple[Series, ...], *, index: int, include_zero: bool = False
-) -> Scale:
+def _stacked_heights(series: tuple[Series, ...]) -> list[float]:
+    """Every height the vertical scale has to reach, piles included.
+
+    A stacked mark's top is the sum of its stack at that x, not its own value, so
+    a scale measured from the raw numbers leaves the pile hanging outside the
+    plot — two bars of 20 in one stack reach 40 against an axis that stops at 20,
+    and the second one is drawn above the top of the drawing. It was.
+
+    Every *running* total counts and not only the last, because a stack whose
+    later members are negative passes through a height taller than where it ends.
+    """
+    running: dict[tuple[str, float], float] = {}
+    heights: list[float] = []
+    for item in series:
+        for x, y in item.data:
+            if not item.stack:
+                heights.append(y)
+                continue
+            total = running.get((item.stack, x), 0.0) + y
+            running[(item.stack, x)] = total
+            heights.append(total)
+    return heights
+
+
+def _scale_for(axis: Axis, values: list[float], *, include_zero: bool = False) -> Scale:
     """The data range for one axis, honouring any bounds the author set.
 
     An author may pin `min` or `max` — that is a statement about the subject, not
@@ -255,7 +314,7 @@ def _scale_for(
     7.0 look like nothing and 7.4 like three times nothing. A line makes no such
     claim, so it does not pay for this.
     """
-    values = [point[index] for item in series for point in item.data]
+    values = list(values)
     if include_zero:
         values.append(0.0)
     low = axis.minimum if axis.minimum is not None else min(values)
@@ -429,6 +488,21 @@ def _with_unit(axis: Axis) -> str:
     return f"{axis.label} ({axis.unit})" if axis.unit else axis.label
 
 
+def _caption_band(line: Extents, gap: float) -> float:
+    """The bottom edge an axis caption needs: a gap, the caption, a gap.
+
+    It is the gap *above* the caption that gets forgotten. `_axis_labels` sets
+    the horizontal caption's baseline a descent up from the bottom edge, so a
+    gutter of `line.height + gap` puts its cap-height exactly on the axis — the
+    caption looks welded to the line it names.
+
+    The rotated caption on the left hides the mistake, which is why it survived:
+    a run rotated a quarter turn measures its own gap from the *descender* side,
+    so `line.height + gap` there really is a gap. Nothing compared the two.
+    """
+    return gap + line.height + gap
+
+
 # ---------------------------------------------------------------------------
 # Series
 # ---------------------------------------------------------------------------
@@ -456,13 +530,18 @@ def _filled_marks(
     plot_left: float,
     plot_right: float,
     theme: Theme,
-) -> tuple[Primitive, ...]:
+) -> Marked:
     """Bars and areas — every mark that reaches the baseline.
 
     The fill comes from the theme's declared sequence rather than from the role,
     and is assigned by position among the filled marks. That is deliberate: three
     series of bars are three of the same *kind* of thing, so telling them apart
     is a job for a sequence the theme owns, not for inventing three roles.
+
+    Where each bar landed comes back with the drawing rather than being worked
+    out a second time by whatever wants to write a number on it: the number and
+    the bar have to agree about where the bar is, and the cheapest way to
+    guarantee that is for there to be one answer.
     """
     filled = [
         (item, points)
@@ -470,40 +549,58 @@ def _filled_marks(
         if item.mark in ("bar", "area")
     ]
     if not filled:
-        return ()
+        return Marked((), ())
 
     fills = {id(item): theme.mark.fill_for(index) for index, (item, _) in enumerate(filled)}
     primitives: list[Primitive] = []
 
+    # Where each stack of areas has reached, per x. Separate from the bars' own
+    # ledger below: a stack name means "pile these on each other", and piling an
+    # area on a bar is not a drawing anyone wants.
+    reached: dict[tuple[str, float], float] = {}
     for item, points in filled:
         if item.mark != "area":
             continue
+        under = tuple(
+            (x, reached.get((item.stack, x), baseline) if item.stack else baseline)
+            for x, _ in points
+        )
+        crest = tuple(
+            (x, ground - (baseline - y)) for (x, y), (_, ground) in zip(points, under, strict=True)
+        )
+        if item.stack:
+            reached.update({(item.stack, x): y for x, y in crest})
+        # Two primitives, because an area is two different claims. The region is
+        # ground: it says "this much of the whole", and the verticals closing it
+        # at either end are only where the drawing stops. Outlined, they read as
+        # a measurement — over a bar chart they put a full-weight line straight
+        # down through the bar at each end of the range. The line along the top
+        # is the data, and it is drawn as a line, exactly like a `line` series.
         primitives.append(
             Polygon(
                 item.role,
-                points=(
-                    (points[0][0], baseline),
-                    *points,
-                    (points[-1][0], baseline),
-                ),
+                points=(*crest, *reversed(under)),
                 fill=fills[id(item)],
+                region=True,
             )
         )
+        primitives.append(Path(item.role, points=crest))
 
     bars = [(item, points) for item, points in filled if item.mark == "bar"]
     if not bars:
-        return tuple(primitives)
+        return Marked(tuple(primitives), ())
 
     band = _band(across, [x for _, points in bars for x, _ in points], plot_left, plot_right)
     columns = _columns([item for item, _ in bars])
     usable = band * (1.0 - theme.mark.gap)
     width = usable / max(len(columns), 1)
 
+    placed: list[Bar] = []
     tops: dict[tuple[str, float], float] = {}
     for item, points in bars:
         column = columns.index(item.stack or item.name)
         offset = -usable / 2 + column * width
-        for x, y in points:
+        for (x, y), (_, value) in zip(points, item.data, strict=True):
             if item.stack:
                 # A stack grows from wherever the pile has reached, not from the
                 # baseline — which is the whole difference between stacked and
@@ -525,13 +622,77 @@ def _filled_marks(
                     fill=fills[id(item)],
                 )
             )
-    return tuple(primitives)
+            # `low` and `high` are sorted by y, and y grows downwards — so `low`
+            # is the edge away from the baseline and `high` is the one on it.
+            placed.append(Bar(item, value, (left, low, right, high), stacked=bool(item.stack)))
+    return Marked(tuple(primitives), tuple(placed))
+
+
+def _bar_labels(
+    bars: tuple[Bar, ...],
+    theme: Theme,
+    measurer: TextMeasurer,
+    plot_top: float,
+    decimals: int,
+) -> tuple[Primitive, ...]:
+    """The number each bar stands for, written on the bar. All of them or none.
+
+    Where it goes follows from what is above the bar. A bar standing on its own
+    has open sky over its top edge, and that is where a person writing on a
+    printout puts the number. A segment of a stack does not — the next segment
+    starts exactly there — so its number goes *inside* it, which is also what a
+    person does, and it only gets one if the segment is tall enough to hold it.
+
+    All or nothing per series, the same rule the point labels follow: numbering
+    the bars that happen to have room reads as arbitrary, and it is not obvious
+    from the drawing which rule was applied.
+    """
+    labels: list[Primitive] = []
+    size = theme.scale["label"]
+    gap = theme.edge.clearance
+    for bar in bars:
+        left, top, right, bottom = bar.box
+        text = _printed(bar.value, decimals)
+        extents = measurer.measure(text, theme.font.default, size)
+        if extents.width > right - left:
+            return ()  # the number is wider than the bar it belongs to
+        above = top - gap - extents.descent
+        inside = top + gap + extents.ascent
+        if not bar.stacked and above - extents.ascent >= plot_top:
+            baseline = above
+        elif inside <= bottom - gap:
+            baseline = inside
+        else:
+            return ()  # nowhere on this bar the number fits
+        labels.append(
+            TextRun(
+                bar.series.role,
+                x=(left + right) / 2,
+                y=baseline,
+                text=text,
+                level="label",
+                font=theme.font.default,
+                anchor="middle",
+            )
+        )
+    return tuple(labels)
+
+
+def _printed(value: float, decimals: int) -> str:
+    text = f"{value:.{decimals}f}"
+    return text[1:] if text in ("-0", f"-0.{'0' * decimals}") else text
 
 
 def _outline(primitive: Primitive) -> tuple[tuple[float, float], ...]:
-    """A closed figure as the point-label search understands it: a path."""
+    """A filled mark as the point-label search understands it: a path.
+
+    A region is closed back to its first point; an area's top edge arrives here
+    as an open `Path` and stays open. Both are things a label must not sit on.
+    """
     if isinstance(primitive, Polygon):
         return (*primitive.points, primitive.points[0])
+    if isinstance(primitive, Path):
+        return primitive.points
     return ()
 
 
@@ -624,11 +785,11 @@ def _point_labels(
         beside = y + (extents.ascent - extents.descent) / 2
         for anchor_x, anchor_y, anchor in (
             (x, above, "middle"),
-            (x, above, "start"),
-            (x, above, "end"),
+            (x + gap, above, "start"),
+            (x - gap, above, "end"),
             (x, below, "middle"),
-            (x, below, "start"),
-            (x, below, "end"),
+            (x + gap, below, "start"),
+            (x - gap, below, "end"),
             (x + gap, beside, "start"),
             (x - gap, beside, "end"),
         ):
@@ -670,9 +831,26 @@ def _inside(
     return box[0] >= left and box[2] <= right and box[1] >= top and box[3] <= bottom
 
 
+def _grown(box: tuple[float, float, float, float], by: float) -> tuple[float, float, float, float]:
+    """`box` with `by` of margin on every side.
+
+    Used for what a label must not *touch*, never for whether it is inside the
+    plot: a label flush against the plot edge is fine — the edge is a boundary,
+    not another mark — while a label flush against a line reads as sitting on it.
+    """
+    return box[0] - by, box[1] - by, box[2] + by, box[3] + by
+
+
 def _crosses(box: tuple[float, float, float, float], path: tuple[tuple[float, float], ...]) -> bool:
-    """Whether a label box meets any segment of a series path."""
-    return any(_segment_meets_box(first, second, box) for first, second in pairwise(path))
+    """Whether a label box comes within `LABEL_DAYLIGHT` of any segment of a path.
+
+    Not-overlapping is too weak a test. A word whose descender stops a hair short
+    of a dashed midline is not overlapping it and still reads as touching it —
+    "Split the difference" ended exactly on the divider it was naming, because
+    the box ended exactly there and the arithmetic said clear.
+    """
+    grown = _grown(box, LABEL_DAYLIGHT)
+    return any(_segment_meets_box(first, second, grown) for first, second in pairwise(path))
 
 
 def _segment_meets_box(
@@ -747,7 +925,7 @@ def _quadrant(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
     up = _quadrant_scale(vertical, [item.up for item in positions])
 
     left = line.height + gap
-    bottom = line.height + gap
+    bottom = _caption_band(line, gap)
     top = line.height + gap
     right = line.height + gap
     plot_left, plot_right = left, width - right
@@ -850,9 +1028,13 @@ def _place_label(
     The same eight positions the chart's point labels use, and the same fixed
     order, so the choice is the same on every run. What differs is what it dodges:
     a quadrant has no curve, and what it does have is the two midlines and the
-    labels already placed. A point sitting *on* a midline — the middle of the
-    field is a real answer in these diagrams — is exactly the case that needs the
-    second and third positions in the list.
+    labels already placed.
+
+    A point sitting *on* both midlines — dead centre is a real answer in these
+    diagrams — is what makes the four diagonals necessary. Above, below, left and
+    right all straddle one divider or the other there, and a corner position that
+    is only offset vertically has its edge flush against the vertical divider. It
+    used to pass by touching it exactly.
     """
     gap = theme.box.padding.top
     extents = measurer.measure(item.text, theme.font.default, theme.scale["label"])
@@ -865,10 +1047,10 @@ def _place_label(
         (x, below, "middle"),
         (x + gap, beside, "start"),
         (x - gap, beside, "end"),
-        (x, above, "start"),
-        (x, above, "end"),
-        (x, below, "start"),
-        (x, below, "end"),
+        (x + gap, above, "start"),
+        (x - gap, above, "end"),
+        (x + gap, below, "start"),
+        (x - gap, below, "end"),
     ):
         box = _label_box(anchor_x, anchor_y, anchor, extents.width, extents.height, half)
         if not _inside(box, left, right, top, bottom):
@@ -892,11 +1074,13 @@ def _place_label(
 def _overlaps(
     first: tuple[float, float, float, float], second: tuple[float, float, float, float]
 ) -> bool:
+    """Whether two labels are within `LABEL_DAYLIGHT` of each other.
+
+    Same reasoning as `_crosses`: two words a hair apart read as one word.
+    """
+    grown = _grown(second, LABEL_DAYLIGHT)
     return (
-        first[0] < second[2]
-        and second[0] < first[2]
-        and first[1] < second[3]
-        and second[1] < first[3]
+        first[0] < grown[2] and grown[0] < first[2] and first[1] < grown[3] and grown[1] < first[3]
     )
 
 
@@ -941,7 +1125,7 @@ def _curve(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
 
     plot_left = line.height + gap
     plot_top = line.height + gap
-    plot_bottom = height - line.height - gap
+    plot_bottom = height - _caption_band(line, gap)
     # Room on the right for the name that sits at the end of each curve.
     plot_right = width - names - gap * 2
     if plot_right - plot_left <= 0 or plot_bottom - plot_top <= 0:

@@ -2,13 +2,13 @@
   "version": 1,
   "kind": "chart",
   "title": "Where the week went",
-  "description": "Build and run hours piled on each other quarter by quarter, under the capacity that was available for both.",
+  "description": "Build and run hours piled on each other quarter by quarter, against the capacity that was available for both.",
   "axes": {
     "horizontal": { "label": "Quarter", "min": 0, "max": 5 },
     "vertical": { "label": "Hours" }
   },
   "series": [
-    { "name": "Capacity", "mark": "area", "data": [[1, 44], [2, 42], [3, 44], [4, 46]] },
+    { "name": "Capacity", "mark": "line", "data": [[1, 44], [2, 42], [3, 44], [4, 46]] },
     { "name": "Build", "mark": "bar", "stack": "spent", "data": [[1, 20], [2, 24], [3, 18], [4, 15]] },
     { "name": "Run", "mark": "bar", "stack": "spent", "data": [[1, 14], [2, 12], [3, 20], [4, 25]] }
   ]

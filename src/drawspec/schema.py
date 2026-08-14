@@ -394,6 +394,15 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
     ("chart",): (
         FieldSpec("axes", "object", required=True, ref="axes"),
         FieldSpec("series", "array", required=True, item_ref="series", min_items=1),
+        FieldSpec(
+            "values",
+            "boolean",
+            description=(
+                "Whether to write each point's own number on the drawing. Defaults "
+                "to true; set false for a chart whose shape is the message and "
+                "whose numbers would be noise."
+            ),
+        ),
     ),
     ("quadrant",): (
         FieldSpec("axes", "object", required=True, ref="axes"),
@@ -523,6 +532,9 @@ class Document:
     width: float | None = None
     height: float | None = None
     height_binding: bool = False
+    values: bool = True
+    """Whether a `chart` writes each point's own number beside its mark."""
+
     theme: str = ""
     nodes: tuple[Node, ...] = ()
     edges: tuple[Edge, ...] = ()
@@ -823,6 +835,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         width=_optional_number(document.get("width")),
         height=_optional_number(document.get("height")),
         height_binding=bool(document.get("height_binding", False)),
+        values=bool(document.get("values", True)),
         theme=str(document.get("theme", "")),
         nodes=tuple(
             Node(

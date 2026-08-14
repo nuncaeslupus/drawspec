@@ -83,6 +83,18 @@ class Polygon(Primitive):
     fill: str = ""
     """As `Rect.fill`: a fill the geometry chose, or empty for the role's."""
 
+    region: bool = False
+    """Whether this figure is an extent rather than a shape, so it is not outlined.
+
+    Not styling — like `Path.marker`, it says what the geometry *is*. A chart
+    area is the ground under a curve: the curve along its top is the data, and
+    the two verticals dropping to the baseline are where the drawing stops, not
+    something that happened. Stroked, those verticals are indistinguishable from
+    a mark: an area over a bar chart put a full-weight line straight down through
+    the bar at each end of its range. The line along the top is drawn separately,
+    by whatever produced the region, so no data is lost by not outlining it.
+    """
+
 
 @dataclass(frozen=True)
 class Path(Primitive):
