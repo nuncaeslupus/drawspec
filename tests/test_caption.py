@@ -19,7 +19,7 @@ import pytest
 
 from drawspec.errors import DocumentError
 from drawspec.kinds import scene_for
-from drawspec.scene import TextLine, extents
+from drawspec.scene import Scene, TextLine, extents
 from drawspec.schema import Document, parse_document, validate_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
@@ -40,12 +40,11 @@ def document(**overrides: object) -> Document:
     return parse_document({**base, **overrides})
 
 
-def caption_lines(scene: object) -> list[TextLine]:
+def caption_lines(scene: Scene) -> list[TextLine]:
     """The caption's own runs: the only ones set at the label level in a rings."""
-    assert hasattr(scene, "primitives")
     return [
         primitive
-        for primitive in scene.primitives  # type: ignore[attr-defined]
+        for primitive in scene.primitives
         if isinstance(primitive, TextLine) and primitive.level == "label"
     ]
 
