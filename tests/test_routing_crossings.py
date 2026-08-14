@@ -142,42 +142,29 @@ def fan_in(sources: int) -> dict[str, Any]:
     }
 
 
-#: A fan of four or more still crosses, for a *second* reason, and these are
-#: marked rather than deleted so the suite carries the defect instead of a
-#: comment somewhere carrying it.
+#: A fan of four or more used to cross for a *second* reason, and it took two
+#: further changes to settle, both of which these widths are the regression for.
 #:
-#: The lane a route turns in comes from `_reach`, which sends the stub out to the
-#: first lane in front of its port — but caps it at half the room actually in
-#: front of *that* port. The ports of one fan are at different heights, so they
-#: have different things in front of them, so they get different reaches: four
-#: edges leaving one box turn in two lanes, alternating, instead of nesting one
-#: inside the next. A route that turns late then runs horizontally straight
-#: through the vertical leg of one that turned early.
+#: The first was the reach. `_reach` sends a stub out to the first lane in front
+#: of its port and caps it at half the room in front of *that* port — so the
+#: ports of one fan, being at different places on the border, got different
+#: reaches and turned in two lanes alternately rather than nesting. It is now
+#: asked once per box side, not once per port: `_shared_reaches`.
 #:
-#: The ports themselves are in the right order and the separation pass now keeps
-#: that order, so this is the last mechanism between a fan and a clean drawing.
-#: Fixing it means making the reaches of one fan monotone with their ports, in
-#: `_approach` — a change to how a route is proposed, not to how two of them are
-#: prised apart, which is why it is not in this commit.
-_SECOND_MECHANISM = pytest.mark.xfail(
-    reason="fan lanes alternate because _reach is capped per port; see the note above",
-    strict=True,
-)
+#: The second was the order the separation pass hands lanes out in. Every run of
+#: a fan reports the same `approach`, so they tied, and a tie went back to
+#: document order — which is where the whole defect started. They now nest by
+#: length, in the direction the band is spread at: `_nesting_sign`.
+_FAN_WIDTHS = [2, 3, 4, 5, 6]
 
 
-@pytest.mark.parametrize(
-    "width",
-    [2, 3, pytest.param(4, marks=_SECOND_MECHANISM), pytest.param(5, marks=_SECOND_MECHANISM)],
-)
+@pytest.mark.parametrize("width", _FAN_WIDTHS)
 def test_a_fan_out_does_not_cross_its_own_arrows(width: int) -> None:
     crossings = crossing_pairs(routes_of(fan_out(width)))
     assert crossings == [], f"{width} edges out of one box crossed: {crossings}"
 
 
-@pytest.mark.parametrize(
-    "width",
-    [2, 3, pytest.param(4, marks=_SECOND_MECHANISM), pytest.param(5, marks=_SECOND_MECHANISM)],
-)
+@pytest.mark.parametrize("width", _FAN_WIDTHS)
 def test_a_fan_in_does_not_cross_its_own_arrows(width: int) -> None:
     crossings = crossing_pairs(routes_of(fan_in(width)))
     assert crossings == [], f"{width} edges into one box crossed: {crossings}"

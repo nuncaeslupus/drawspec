@@ -395,8 +395,31 @@ def _candidate_sides(source: Obstacle, target: Obstacle, direction: str) -> tupl
         target.right <= source.x + _TOLERANCE
     )
     if direction == "right":
+        if separated_horizontally and not beside:
+            return _around("bottom" if below else "top")
         return horizontal if separated_horizontally or not separated_vertically else vertical
+    if separated_vertically and not below:
+        return _around("right" if beside else "left")
     return vertical if separated_vertically or not separated_horizontally else horizontal
+
+
+def _around(side: str) -> tuple[str, str]:
+    """Both ends on `side`: how an edge that goes *backwards* leaves and returns.
+
+    A graph that is a chain plus a few returns should draw as a straight chain
+    with the returns going round it, and it did not: a return took the same two
+    sides the chain uses — the bottom of one box, the top of another — so the
+    chain's own edges had to share those sides with it and left at an angle. The
+    corpus review saw the effect three times and named the cause once, exactly:
+    *"the dotted line could go out of the right side of Performing to the right
+    side of Storming. It would make every other arrow vertical."*
+
+    Both ends on one side is what "goes round" means. It frees the ends of every
+    box on the spine for the spine, which is the whole of the fix — the returning
+    line then has the outside of the drawing to itself, which is where a reader
+    already expects to find it.
+    """
+    return (side, side)
 
 
 def _fallback_sides(primary: tuple[str, str]) -> tuple[str, str]:
@@ -592,12 +615,25 @@ def route_edges(
         if connector.source != connector.target and index not in straight
     }
     fractions = _assign_ports(connectors, boxes, sides)
+    reaches = _shared_reaches(connectors, boxes, sides, fractions, obstacles, lanes, theme)
     approaches: dict[int, tuple[_Approach, _Approach]] = {}
     for index, side_pair in sides.items():
         connector = connectors[index]
         source, target = boxes[connector.source], boxes[connector.target]
         approaches[index] = (
-            _approach(source, target, side_pair, fractions[index], obstacles, lanes, theme),
+            _approach(
+                source,
+                target,
+                side_pair,
+                fractions[index],
+                obstacles,
+                lanes,
+                theme,
+                reaches=(
+                    reaches[(connector.source, side_pair[0])],
+                    reaches[(connector.target, side_pair[1])],
+                ),
+            ),
             _approach(
                 source, target, _fallback_sides(side_pair), (0.5, 0.5), obstacles, lanes, theme
             ),
@@ -780,6 +816,47 @@ class _Approach:
         return (self.source_anchor, self.source_stub, self.target_stub, self.target_anchor)
 
 
+def _shared_reaches(
+    connectors: Sequence[Connector],
+    boxes: Mapping[str, Obstacle],
+    sides: Mapping[int, tuple[str, str]],
+    fractions: Mapping[int, tuple[float, float]],
+    obstacles: Sequence[Obstacle],
+    lanes: tuple[set[float], set[float]],
+    theme: Theme,
+) -> dict[tuple[str, str], float]:
+    """One reach per box side, so the edges leaving it together turn together.
+
+    `_reach` is a question about a single port: how far in front of *this* point
+    is the first lane, capped at half the room actually there. Asked once per
+    port, it gives different answers to the ports of one fan — they are at
+    different places along the border, so different things are in front of them —
+    and four edges leaving one box then turn in two lanes, alternating. A route
+    that turns late runs horizontally straight through the vertical leg of one
+    that turned early, and the drawing crosses itself: the second of the two
+    mechanisms behind "arrows look good for 1 and 2 but are crossed for 3 and 4".
+
+    The port order is already right and `separate_lanes` already keeps it, so the
+    fix is not to compute a cleverer reach per port — it is to stop asking the
+    question per port. Every edge on one side of one box turns at the **nearest**
+    of their reaches, which is the only depth all of them are known to have room
+    for; the separation pass then spreads them in port order, nested rather than
+    alternating.
+    """
+    shared: dict[tuple[str, str], float] = {}
+    for index, (source_side, target_side) in sides.items():
+        connector = connectors[index]
+        for identifier, side, fraction in (
+            (connector.source, source_side, fractions[index][0]),
+            (connector.target, target_side, fractions[index][1]),
+        ):
+            box = boxes[identifier]
+            reach = _reach(_port(box, side, fraction), side, obstacles, lanes, theme)
+            key = (identifier, side)
+            shared[key] = min(shared.get(key, reach), reach)
+    return shared
+
+
 def _approach(
     source: Obstacle,
     target: Obstacle,
@@ -788,6 +865,8 @@ def _approach(
     obstacles: Sequence[Obstacle],
     lanes: tuple[set[float], set[float]],
     theme: Theme,
+    *,
+    reaches: tuple[float, float] | None = None,
 ) -> _Approach:
     """Anchors on the shapes, stub ends out on the channel lane.
 
@@ -807,6 +886,14 @@ def _approach(
     source_fraction, target_fraction = fractions
     source_port = _port(source, source_side, source_fraction)
     target_port = _port(target, target_side, target_fraction)
+    source_reach, target_reach = (
+        reaches
+        if reaches is not None
+        else (
+            _reach(source_port, source_side, obstacles, lanes, theme),
+            _reach(target_port, target_side, obstacles, lanes, theme),
+        )
+    )
     return _Approach(
         source=source.id,
         target=target.id,
@@ -814,12 +901,8 @@ def _approach(
         target_side=target_side,
         source_anchor=_anchor(source, source_side, source_fraction),
         target_anchor=_anchor(target, target_side, target_fraction),
-        source_stub=_stub_end(
-            source_port, source_side, _reach(source_port, source_side, obstacles, lanes, theme)
-        ),
-        target_stub=_stub_end(
-            target_port, target_side, _reach(target_port, target_side, obstacles, lanes, theme)
-        ),
+        source_stub=_stub_end(source_port, source_side, source_reach),
+        target_stub=_stub_end(target_port, target_side, target_reach),
     )
 
 
@@ -1054,12 +1137,91 @@ def _separated(
     moved = list(routes)
     for group, anchor in groups:
         for target, run in zip(_targets(group, anchor, spacing), group, strict=True):
-            for candidate_offset in _tries(target - run.line):
-                candidate = _shifted(moved[run.index], run.segment, candidate_offset)
-                if candidate is not None and _is_clear(candidate, obstacles, theme):
+            offers = _tries(target - run.line)
+            # Every offer that does not strand a route on another's anchor, then
+            # every offer at all. A preference rather than a rule: the point of
+            # the pass is to get two lines off each other, and refusing the only
+            # placement available would leave them exactly as they were found.
+            for guarded in (True, False):
+                placed = False
+                for candidate_offset in offers:
+                    candidate = _shifted(moved[run.index], run.segment, candidate_offset)
+                    if candidate is None or not _is_clear(candidate, obstacles, theme):
+                        continue
+                    if guarded and _lands_on_another(candidate, moved, run.index):
+                        continue
                     moved[run.index] = candidate
+                    placed = True
+                    break
+                if placed:
                     break
     return tuple(moved)
+
+
+def _lands_on_another(candidate: Route, routes: Sequence[Route], index: int) -> bool:
+    """Whether a shifted route would come to rest along another route's line.
+
+    Moving a run does not only move that run: it lengthens the two perpendicular
+    ones either side of it, and the far end of *those* is an anchor on a border
+    that cannot get out of the way. So a lane that is clear of every box can
+    still put one route's approach along another's, and the separation pass would
+    then have no way to fix what it had just made — both runs carry an endpoint,
+    so neither is movable, and the band is skipped on the next pass.
+
+    Only *anchored* runs count, on both sides — the first and last of each route,
+    which carry an endpoint. Two middle runs sharing a line is a collision the
+    next pass can still settle by moving either of them, and refusing those would
+    block the very moves that prise a band apart. Two anchored runs sharing one
+    is the dead end: neither may move, so the pass sees it on every later pass
+    and can do nothing about it.
+
+    And only a *new* dead end. Two boxes in the same column give their stubs the
+    same line by construction — a route leaving the bottom of one and a route
+    arriving at the top of the other below it are both on that column's centre —
+    so a placement is refused for making the count worse, never for a clash the
+    route was already in. Refusing those would leave every such band exactly as
+    it was found.
+    """
+    return _anchor_clashes(candidate, routes, index) > _anchor_clashes(routes[index], routes, index)
+
+
+def _anchor_clashes(route: Route, routes: Sequence[Route], index: int) -> int:
+    """How many of `route`'s anchored runs lie along another route's anchored run."""
+    mine = _anchored(route)
+    return sum(
+        _shares_a_line(one, other)
+        for position, other_route in enumerate(routes)
+        if position != index
+        for one in mine
+        for other in _anchored(other_route)
+    )
+
+
+def _anchored(route: Route) -> tuple[tuple[tuple[float, float], tuple[float, float]], ...]:
+    """The runs of `route` that carry an endpoint, and so can never move."""
+    segments = route.segments
+    if not segments:
+        return ()
+    return (segments[0], segments[-1]) if len(segments) > 1 else (segments[0],)
+
+
+def _shares_a_line(
+    one: tuple[tuple[float, float], tuple[float, float]],
+    two: tuple[tuple[float, float], tuple[float, float]],
+) -> bool:
+    """Whether two axis-aligned segments are collinear with an overlapping span."""
+    for axis, along in ((0, 1), (1, 0)):
+        if not (
+            abs(one[0][axis] - one[1][axis]) < _TOLERANCE
+            and abs(two[0][axis] - two[1][axis]) < _TOLERANCE
+            and abs(one[0][axis] - two[0][axis]) < _TOLERANCE
+        ):
+            continue
+        low = max(min(one[0][along], one[1][along]), min(two[0][along], two[1][along]))
+        high = min(max(one[0][along], one[1][along]), max(two[0][along], two[1][along]))
+        if high - low > _TOLERANCE:
+            return True
+    return False
 
 
 def _tries(offset: float) -> tuple[float, ...]:
@@ -1134,6 +1296,45 @@ class _Run:
     the upper lane, whatever the document said first.
     """
 
+    entry: float = 0.0
+    exit: float = 0.0
+    """Where the run starts and ends along its own direction, in route order."""
+
+    outward: float = 0.0
+    """Which way the band is left: `+1` when the exit corner is past the entry."""
+
+    @property
+    def travel(self) -> float:
+        """How far this run goes through the band — the length of it."""
+        return abs(self.exit - self.entry)
+
+
+def _nesting_sign(runs: Sequence[_Run]) -> float:
+    """Which way a band of runs that tie on `approach` should nest.
+
+    The second of the two mechanisms behind "arrows look good for 1 and 2 but
+    are crossed for 3 and 4", and the one `approach` cannot see. Every run of a
+    fan enters the band from the same corner and leaves towards the same one, so
+    they all report the same two corners and tie — and a tie went back to the
+    order the edges were written in, which is where this whole defect started.
+
+    What separates them is how far each goes before it turns off: a run whose
+    span contains another's turn must be on the near side of it, or its long leg
+    is drawn straight through that turn. So a fan nests by length — and *which*
+    end is near depends on which end of the band the fan spreads at.
+
+    A fan **out** of a box spreads at its far end: the runs start within a few
+    units of each other on one border and end at targets all over the drawing.
+    There the long run turns off last, so it hugs the box and the short ones sit
+    outside it. A fan **in** spreads at its near end and nests the other way
+    round: the long run is the outer one. Same rule, opposite sign, and the sign
+    is exactly which end of the group is spread — measured, because a run on its
+    own cannot tell which end of it the others are clustered at.
+    """
+    entries = [run.entry for run in runs]
+    exits = [run.exit for run in runs]
+    return 1.0 if max(exits) - min(exits) >= max(entries) - min(entries) else -1.0
+
 
 def _shared_runs(routes: Sequence[Route], spacing: float) -> list[tuple[list[_Run], float | None]]:
     """Segments drawn alongside one another, grouped, and whether one is pinned.
@@ -1164,9 +1365,11 @@ def _shared_runs(routes: Sequence[Route], spacing: float) -> list[tuple[list[_Ru
             if abs(first[0] - second[0]) < _TOLERANCE:
                 orientation, line = "v", first[0]
                 span = sorted((first[1], second[1]))
+                entry, leaves = first[1], second[1]
             elif abs(first[1] - second[1]) < _TOLERANCE:
                 orientation, line = "h", first[1]
                 span = sorted((first[0], second[0]))
+                entry, leaves = first[0], second[0]
             else:
                 continue
             across = 1 if orientation == "h" else 0
@@ -1176,8 +1379,22 @@ def _shared_runs(routes: Sequence[Route], spacing: float) -> list[tuple[list[_Ru
                 if 0 <= position < len(route.points)
             ]
             approach = sum(corners) / len(corners) if corners else line
+            outward = 0.0
+            if len(corners) == 2:
+                outward = 1.0 if corners[1] >= corners[0] else -1.0
             runs[orientation].append(
-                _Run(index, segment, span[0], span[1], movable, line, approach)
+                _Run(
+                    index,
+                    segment,
+                    span[0],
+                    span[1],
+                    movable,
+                    line,
+                    approach,
+                    entry=entry,
+                    exit=leaves,
+                    outward=outward,
+                )
             )
 
     groups: list[tuple[list[_Run], float | None]] = []
@@ -1188,14 +1405,26 @@ def _shared_runs(routes: Sequence[Route], spacing: float) -> list[tuple[list[_Ru
                 held = [run.line for run in component if not run.movable]
                 if len({run.index for run in component}) > 1 and free_runs:
                     anchor = sum(held) / len(held) if held else None
-                    # Ordered by where each route is going, then by where it
-                    # currently is. `approach` first is what keeps the lanes in
-                    # the routes' own order; `line` breaks the remaining ties so
-                    # a band the router already spread stays spread the way it
-                    # was, and the whole key is a total order rather than a
-                    # stable-sort accident.
+                    # Ordered by where each route is going, then by how far it
+                    # goes, then by where it currently is. `approach` first is
+                    # what keeps the lanes in the routes' own order; the nesting
+                    # settles a fan, every run of which reports the same
+                    # approach; `line` breaks what is left so a band the router
+                    # already spread stays spread the way it was. The whole key
+                    # is a total order rather than a stable-sort accident.
+                    nesting = _nesting_sign(free_runs)
                     groups.append(
-                        (sorted(free_runs, key=lambda run: (run.approach, run.line)), anchor)
+                        (
+                            sorted(
+                                free_runs,
+                                key=lambda run: (
+                                    run.approach,
+                                    -run.travel * run.outward * nesting,
+                                    run.line,
+                                ),
+                            ),
+                            anchor,
+                        )
                     )
     return groups
 
