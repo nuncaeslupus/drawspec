@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "kind": "flow",
+  "title": "The same critical path, with colour doing the pointing",
+  "description": "The accent theme. Colour marks the run with no slack in it and the box that ends the job; it says nothing a black-and-white printer would lose, because the weight already said it.",
+  "theme": "accent",
+  "nodes": [
+    { "id": "survey", "text": "Survey the site\n**3 weeks**", "role": "start" },
+    { "id": "design", "text": "Design\n**3 weeks**", "role": "emphasis" },
+    { "id": "permits", "text": "Apply for permits\n6 weeks" },
+    { "id": "build", "text": "Build\n**8 weeks**", "role": "emphasis" },
+    { "id": "hand", "text": "Hand over\n**4 weeks**", "role": "terminal" },
+    { "id": "audit", "text": "Every hand-over is signed off", "role": "note" }
+  ],
+  "edges": [
+    { "from": "survey", "to": "design", "role": "strong" },
+    { "from": "survey", "to": "permits", "label": "5 weeks of slack" },
+    { "from": "design", "to": "build", "role": "strong" },
+    { "from": "build", "to": "hand", "role": "strong" },
+    { "from": "permits", "to": "hand" },
+    { "from": "hand", "to": "audit", "role": "link" }
+  ]
+}

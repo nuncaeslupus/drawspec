@@ -80,9 +80,18 @@ def test_every_fixture_passes_safety_in_both_profiles(name: str, profile: str) -
 
     Parametrised rather than looped so a failure names which fixture in which
     profile, which is the difference between a number and a diagnosis.
+
+    Checked against the theme the *document* names, not against the default one.
+    The allowlist of colours is a property of a theme, so measuring a drawing in
+    the accent theme against the default theme's allowlist reports every accent
+    it uses as an undeclared colour — which is a broken test, not a broken
+    drawing.
     """
-    svg = render(fixture(name), profile=profile)
-    assert check_embedding_safety(svg, THEME, profile) == ()
+    document = fixture(name)
+    named = document.get("theme")
+    theme = load_theme(str(named) if named else None)
+    svg = render(document, profile=profile)
+    assert check_embedding_safety(svg, theme, profile) == ()
 
 
 def test_two_fixtures_in_one_html_page_have_no_id_or_selector_collision() -> None:

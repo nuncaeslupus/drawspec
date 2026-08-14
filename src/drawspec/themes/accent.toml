@@ -1,0 +1,61 @@
+# drawspec's accent theme: colour as a highlight, never as the message.
+#
+# Merged over `default.toml`, so it declares only what it changes — which is
+# almost nothing, and that is the point.
+#
+# The default theme uses `currentColor` for every stroke, so a diagram pasted
+# into a page is drawn in that page's ink and follows it into dark mode. Colour
+# then carries no information at all, and every pair of roles is separated by
+# shape, dash pattern or stroke weight instead.
+#
+# This theme keeps every one of those separations and adds colour **on top of**
+# them. Nothing here is the only thing telling two roles apart: print it in
+# black and white and you lose the emphasis, not the meaning. That is the whole
+# design rule, and the loader enforces the half of it that is mechanical — a
+# pair of roles distinguishable only by colour is a load-time error, in this
+# theme exactly as in the default one.
+#
+# What is coloured is what a reader should look at first:
+#
+#   `emphasis`  the one box that matters       — accent
+#   `strong`    the path with no slack in it   — accent
+#   `terminal`  where the thing ends           — accent
+#   `note`      an aside, not the argument     — muted
+#   `group`     a container, not a member      — muted
+#
+# Everything else stays `currentColor` and follows the page. So a diagram in
+# this theme still goes dark with its host: only the five roles above are
+# pinned, and both colours were chosen to hold up on white paper and on a dark
+# screen. There is no third choice to make per diagram.
+#
+# **A chart series takes a role.** `{"name": "…", "role": "emphasis"}` draws
+# that series in the accent at the heavier weight — which is how you say "this
+# is the line the slide is about" without saying anything about colour.
+
+version = 1
+name = "accent"
+
+# The one box that matters, and the end of the thing. Already 2.5 units of
+# stroke against the ordinary 1.5, so greyscale keeps both.
+[role.emphasis]
+stroke = "#C0452A"
+
+[role.terminal]
+stroke = "#C0452A"
+
+# An aside is quieter, not louder. Already dashed at 1.0 against a solid 1.5.
+[role.note]
+stroke = "#7C8794"
+
+# A container is quieter still, and already a longer dash than a note.
+[role.group]
+stroke = "#7C8794"
+
+# The critical path: the same relation as `flow`, drawn louder. Already 2.5
+# units against 1.5, and now in the accent as well.
+[edge_role.strong]
+stroke = "#C0452A"
+
+# An association rather than a consequence — quiet, and already headless.
+[edge_role.link]
+stroke = "#7C8794"

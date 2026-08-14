@@ -476,3 +476,50 @@ def test_the_two_role_vocabularies_share_no_name() -> None:
     drawing looked plausible.
     """
     assert set(NODE_ROLES).isdisjoint(EDGE_ROLES)
+
+
+# --------------------------------------------------------------------------
+# The accent theme
+# --------------------------------------------------------------------------
+
+
+def test_the_accent_theme_loads_and_is_greyscale_safe() -> None:
+    """Its whole design rule, and the loader already enforces it."""
+    assert load_theme("accent").ambiguous_role_pairs() == ()
+
+
+def test_colour_in_the_accent_theme_is_never_the_only_difference() -> None:
+    """Print it in black and white and you lose the emphasis, not the meaning.
+
+    Stronger than the loader's own check, which accepts a luminance difference
+    *instead of* a shape or dash or weight one. Here every coloured role must
+    still differ from every other role in a channel a greyscale printer keeps —
+    so recolouring the theme can never quietly become the thing that carries it.
+    """
+    accent = load_theme("accent")
+    default = load_theme()
+    for group in ("roles", "edge_roles"):
+        coloured = getattr(accent, group)
+        plain = getattr(default, group)
+        for name, role in coloured.items():
+            assert _channels(role) == _channels(plain[name]), (
+                f"{name} changed a non-colour channel, so the two themes no longer "
+                f"say the same thing in black and white"
+            )
+
+
+def _channels(role: object) -> tuple[object, ...]:
+    """Everything about a role that survives a black-and-white printer."""
+    return tuple(
+        getattr(role, name, None)
+        for name in ("shape", "dash", "stroke_width", "fill_pattern", "head", "tail")
+    )
+
+
+def test_the_accent_theme_declares_every_colour_it_uses() -> None:
+    """The emitter's allowlist is a property of a theme, and it is this one."""
+    accent = load_theme("accent")
+    declared = accent.declared_colours()
+    for group in (accent.roles, accent.edge_roles):
+        for role in group.values():
+            assert role.stroke in declared
