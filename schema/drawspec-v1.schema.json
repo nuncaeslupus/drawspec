@@ -51,6 +51,7 @@
         },
         "nodes": {
           "type": "array",
+          "description": "The boxes. Order is not position — the layout decides that.",
           "items": {
             "$ref": "#/$defs/node"
           },
@@ -58,12 +59,14 @@
         },
         "edges": {
           "type": "array",
+          "description": "What connects to what. A `tree` takes one edge per child.",
           "items": {
             "$ref": "#/$defs/edge"
           }
         },
         "groups": {
           "type": "array",
+          "description": "Boxes drawn around sets of nodes, each with its own caption.",
           "items": {
             "$ref": "#/$defs/group"
           }
@@ -123,6 +126,7 @@
         },
         "items": {
           "type": "array",
+          "description": "The entries, in the order they are meant to be read: down for `stack`, along for `timeline` and `columns`.",
           "items": {
             "$ref": "#/$defs/item"
           },
@@ -181,6 +185,7 @@
         },
         "cells": {
           "type": "array",
+          "description": "What is in the grid. A cell states where it starts, not where it is drawn.",
           "items": {
             "$ref": "#/$defs/cell"
           },
@@ -253,6 +258,7 @@
         },
         "levels": {
           "type": "array",
+          "description": "Apex first. The widest band is the last one written.",
           "items": {
             "$ref": "#/$defs/level"
           },
@@ -311,6 +317,7 @@
         },
         "rings": {
           "type": "array",
+          "description": "Innermost first, working outwards.",
           "items": {
             "$ref": "#/$defs/ring"
           },
@@ -369,6 +376,7 @@
         },
         "stages": {
           "type": "array",
+          "description": "Widest first: a funnel is a pyramid lying down.",
           "items": {
             "$ref": "#/$defs/stage"
           },
@@ -426,10 +434,12 @@
           "description": "A bundled theme name or the path of a theme file."
         },
         "axes": {
-          "$ref": "#/$defs/axes"
+          "$ref": "#/$defs/axes",
+          "description": "Both axes. An unlabelled axis cannot be read, so both are required."
         },
         "series": {
           "type": "array",
+          "description": "What is plotted. More than one gets a legend.",
           "items": {
             "$ref": "#/$defs/series"
           },
@@ -492,10 +502,12 @@
           "description": "A bundled theme name or the path of a theme file."
         },
         "axes": {
-          "$ref": "#/$defs/axes"
+          "$ref": "#/$defs/axes",
+          "description": "The two named axes whose crossing makes the four quadrants."
         },
         "positions": {
           "type": "array",
+          "description": "The items placed in the plane, each by what it scores, not by where it goes.",
           "items": {
             "$ref": "#/$defs/position"
           },
@@ -554,10 +566,12 @@
           "description": "A bundled theme name or the path of a theme file."
         },
         "axes": {
-          "$ref": "#/$defs/axes"
+          "$ref": "#/$defs/axes",
+          "description": "Both axes. A named shape still needs saying what it is a shape of."
         },
         "curves": {
           "type": "array",
+          "description": "The shapes drawn, each through its own waypoints.",
           "items": {
             "$ref": "#/$defs/curve"
           },
@@ -578,10 +592,12 @@
       "type": "object",
       "properties": {
         "horizontal": {
-          "$ref": "#/$defs/axis"
+          "$ref": "#/$defs/axis",
+          "description": "The axis across."
         },
         "vertical": {
-          "$ref": "#/$defs/axis"
+          "$ref": "#/$defs/axis",
+          "description": "The axis up."
         }
       },
       "required": [
@@ -598,13 +614,16 @@
           "description": "Required: an unlabelled axis cannot be read."
         },
         "unit": {
-          "type": "string"
+          "type": "string",
+          "description": "What the numbers are in, written after the label."
         },
         "min": {
-          "type": "number"
+          "type": "number",
+          "description": "Where the axis starts. Omit to take it from the data."
         },
         "max": {
-          "type": "number"
+          "type": "number",
+          "description": "Where the axis ends. Omit to take it from the data."
         },
         "categories": {
           "type": "array",
@@ -676,6 +695,7 @@
         },
         "waypoints": {
           "type": "array",
+          "description": "The points the curve passes through, in order. Two is a line.",
           "items": {
             "$ref": "#/$defs/waypoint"
           },
@@ -738,7 +758,8 @@
       "type": "object",
       "properties": {
         "id": {
-          "type": "string"
+          "type": "string",
+          "description": "Unique within the document."
         },
         "text": {
           "type": "string",
@@ -784,7 +805,8 @@
           ]
         },
         "note": {
-          "type": "string"
+          "type": "string",
+          "description": "A short aside attached to this entry."
         },
         "at": {
           "type": "number",
@@ -817,7 +839,8 @@
           ]
         },
         "note": {
-          "type": "string"
+          "type": "string",
+          "description": "A short aside drawn beside this level."
         }
       },
       "required": [
@@ -926,7 +949,8 @@
       "type": "object",
       "properties": {
         "name": {
-          "type": "string"
+          "type": "string",
+          "description": "What to call this series, in the legend and at its end."
         },
         "data": {
           "type": "array",
@@ -995,7 +1019,8 @@
           ]
         },
         "note": {
-          "type": "string"
+          "type": "string",
+          "description": "A short aside drawn beside this stage."
         }
       },
       "required": [

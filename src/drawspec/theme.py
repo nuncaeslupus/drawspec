@@ -186,6 +186,12 @@ class Canvas:
     """The one width every diagram is drawn to, and the legibility floor."""
 
     width: float = 640.0
+    """The canvas every diagram is drawn to, in user units.
+
+    It belongs to the theme rather than to a document because that is what makes
+    two diagrams on one page the same type size at the same column width.
+    """
+
     width_mode: str = "fixed"
     """Whether a drawing narrower than `width` keeps the canvas or is cropped to it.
 
@@ -206,6 +212,12 @@ class Canvas:
     """
 
     min_legible_size: float = 9.0
+    """The floor the fit band may not push type below.
+
+    Content that cannot be made to fit above it is a `FitError` — a refusal whose
+    message is the product — and never a smaller size nobody can read.
+    """
+
     ink: str = "#1a1a1a"
     """What `currentColor` resolves to in the `standalone` profile.
 
@@ -234,9 +246,22 @@ class FontStacks:
     """The families to measure and to name in the output, in preference order."""
 
     sans: tuple[str, ...] = ("sans-serif",)
+    """The families measured for ordinary text, in preference order.
+
+    Put the family the *page* is set in first: the SVG inherits the page's font
+    stack, so measuring a different family is what makes a tight box overflow.
+    Naming a family that is not installed is not an error — drawspec substitutes
+    and says so.
+    """
+
     serif: tuple[str, ...] = ("serif",)
+    """The families for the serif role, in preference order."""
+
     mono: tuple[str, ...] = ("monospace",)
+    """The families for `code` spans, in preference order."""
+
     default: str = "sans"
+    """Which of the three roles text takes when it asks for none."""
 
     def stacks(self) -> Mapping[str, tuple[str, ...]]:
         """The mapping `TextMeasurer` takes — one source of truth for both."""
@@ -277,9 +302,16 @@ class TypeScale:
     """
 
     title: float = 15.0
+    """The diagram's own title."""
+
     heading: float = 13.0
+    """A box's heading — the first line of a node that has more than one."""
+
     body: float = 11.0
+    """Ordinary text inside a box. The size a diagram is mostly read at."""
+
     label: float = 10.0
+    """Edge labels, axis ticks, and the asides beside an entry."""
 
     def scaled(self, factor: float) -> TypeScale:
         """Every level multiplied by `factor`, preserving the ratios exactly."""
@@ -314,7 +346,17 @@ class FitBand:
     """How far the whole type scale may stretch to make a document fit."""
 
     scale_min: float = 0.85
+    """How far the whole scale may shrink. One factor, applied to all four levels.
+
+    Shrinking every level together preserves the hierarchy exactly, so a tight
+    diagram never gains a type size its neighbours do not have.
+    """
+
     scale_max: float = 1.0
+    """How far it may grow. `1.0` means shrink to fit, never grow.
+
+    Growing would trade away the comparability `[canvas] width` is there to buy.
+    """
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> FitBand:
@@ -354,8 +396,17 @@ class BoxStyle:
     """Box geometry constants: margin, line spacing, corner treatment."""
 
     padding: Padding = Padding()
+    """Space between a box's text and its border, as `[top, right, bottom, left]`.
+
+    The bottom is not the smallest value by accident: a starved bottom margin was
+    the single most repeated failure in the corpus.
+    """
+
     line_height: float = 1.35
+    """Baseline-to-baseline distance, as a multiple of the type size."""
+
     corner_radius: float = 4.0
+    """Corner rounding for a `rect`. Zero draws square corners."""
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> BoxStyle:
@@ -392,8 +443,18 @@ class EdgeStyle:
     """Line constants shared by every edge role."""
 
     stroke_width: float = 1.5
+    """The default line weight. An edge role may override it."""
+
     min_shaft_length: float = 16.0
+    """The shortest visible run of line an arrow may have.
+
+    An arrow with no visible shaft is not an arrow. This is a layout constraint
+    rather than a suggestion: it can force extra rank separation.
+    """
+
     head_length: float = 6.0
+    """How long an arrow head is drawn, before it is scaled to its own shaft."""
+
     clearance: float = 4.0
     """Daylight a route keeps from every box it is not joined to.
 
@@ -453,6 +514,13 @@ class MarkStyle:
     """
 
     fills: tuple[str, ...] = ("hatch", "dots", "cross", "grid", "none")
+    """The fills a chart's marks take, in order, one per filled mark.
+
+    Patterns, never colours: these are what survives a black-and-white printer.
+    The entries must be distinct, and they are drawn faint on purpose — a fill
+    that competes with the text over it makes the text illegible.
+    """
+
     gap: float = 0.3
     """How much of a category's band is left empty around its bars, as a
     fraction. Zero draws bars that touch, which reads as one wide bar."""
@@ -489,7 +557,12 @@ class TitleStyle:
     """Whether a diagram carries its own title. Off until the question is settled."""
 
     show: bool = False
+    """Whether a document's `title` is drawn on the diagram as well as announced
+    to a screen reader. Off by default: a figure caption is usually the page's
+    job, not the drawing's."""
+
     level: str = "title"
+    """Which type level the drawn title takes."""
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> TitleStyle:
@@ -525,6 +598,8 @@ class CycleStyle:
     """
 
     connector: str = "arc"
+    """Whether a cycle's steps are joined by a thin arc or a broad tapered band."""
+
     width: float = 11.0
     """How thick a `band` connector is at its shaft, in user units.
 

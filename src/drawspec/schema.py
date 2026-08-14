@@ -175,7 +175,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         _role(EDGE_ROLES, "flow"),
     ),
     "group": (
-        FieldSpec("id", "string", required=True),
+        FieldSpec("id", "string", required=True, description="Unique within the document."),
         _text(required=False),
         FieldSpec(
             "members",
@@ -190,7 +190,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         FieldSpec("id", "string", description="Optional; generated from position when absent."),
         _text(),
         _role(NODE_ROLES, "step"),
-        FieldSpec("note", "string"),
+        FieldSpec("note", "string", description="A short aside attached to this entry."),
         FieldSpec(
             "at",
             "number",
@@ -203,7 +203,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
     "level": (
         _text(),
         _role(NODE_ROLES, "step"),
-        FieldSpec("note", "string"),
+        FieldSpec("note", "string", description="A short aside drawn beside this level."),
     ),
     "ring": (
         _text(),
@@ -261,7 +261,14 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
                 "and the axes already say what it is."
             ),
         ),
-        FieldSpec("waypoints", "array", required=True, item_ref="waypoint", min_items=2),
+        FieldSpec(
+            "waypoints",
+            "array",
+            required=True,
+            item_ref="waypoint",
+            min_items=2,
+            description="The points the curve passes through, in order. Two is a line.",
+        ),
         _role(NODE_ROLES, "step"),
     ),
     "position": (
@@ -283,7 +290,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
     "stage": (
         _text(),
         _role(NODE_ROLES, "step"),
-        FieldSpec("note", "string"),
+        FieldSpec("note", "string", description="A short aside drawn beside this stage."),
     ),
     "axis": (
         FieldSpec(
@@ -292,9 +299,19 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             required=True,
             description="Required: an unlabelled axis cannot be read.",
         ),
-        FieldSpec("unit", "string"),
-        FieldSpec("min", "number"),
-        FieldSpec("max", "number"),
+        FieldSpec(
+            "unit", "string", description="What the numbers are in, written after the label."
+        ),
+        FieldSpec(
+            "min",
+            "number",
+            description="Where the axis starts. Omit to take it from the data.",
+        ),
+        FieldSpec(
+            "max",
+            "number",
+            description="Where the axis ends. Omit to take it from the data.",
+        ),
         FieldSpec(
             "categories",
             "array",
@@ -309,11 +326,18 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
     "axes": (
         # Named by orientation rather than `x`/`y`: those name coordinates
         # everywhere else in this contract, and coordinates are drawspec's output.
-        FieldSpec("horizontal", "object", required=True, ref="axis"),
-        FieldSpec("vertical", "object", required=True, ref="axis"),
+        FieldSpec(
+            "horizontal", "object", required=True, ref="axis", description="The axis across."
+        ),
+        FieldSpec("vertical", "object", required=True, ref="axis", description="The axis up."),
     ),
     "series": (
-        FieldSpec("name", "string", required=True),
+        FieldSpec(
+            "name",
+            "string",
+            required=True,
+            description="What to call this series, in the legend and at its end.",
+        ),
         FieldSpec(
             "data",
             "array",
@@ -354,7 +378,16 @@ COMMON_FIELDS: Final = (
         description="Optional, and only for editors: the URL of this schema.",
     ),
     FieldSpec("version", "integer", required=True, description=_VERSION_REQUIRED),
-    FieldSpec("kind", "string", required=True, enum=KINDS),
+    FieldSpec(
+        "kind",
+        "string",
+        required=True,
+        enum=KINDS,
+        description=(
+            "Which of the thirteen diagrams this is. It selects the fields that are "
+            "legal below, so it is the first thing to get right."
+        ),
+    ),
     FieldSpec("title", "string", description="The diagram's accessible name."),
     FieldSpec("description", "string", description="The diagram's accessible description."),
     FieldSpec(
@@ -381,15 +414,51 @@ COMMON_FIELDS: Final = (
 #: the family selects which further fields are legal.
 KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
     GRAPH_KINDS: (
-        FieldSpec("nodes", "array", required=True, item_ref="node", min_items=1),
-        FieldSpec("edges", "array", item_ref="edge"),
-        FieldSpec("groups", "array", item_ref="group"),
+        FieldSpec(
+            "nodes",
+            "array",
+            required=True,
+            item_ref="node",
+            min_items=1,
+            description="The boxes. Order is not position — the layout decides that.",
+        ),
+        FieldSpec(
+            "edges",
+            "array",
+            item_ref="edge",
+            description="What connects to what. A `tree` takes one edge per child.",
+        ),
+        FieldSpec(
+            "groups",
+            "array",
+            item_ref="group",
+            description="Boxes drawn around sets of nodes, each with its own caption.",
+        ),
     ),
     ("stack", "timeline", "columns"): (
-        FieldSpec("items", "array", required=True, item_ref="item", min_items=1),
+        FieldSpec(
+            "items",
+            "array",
+            required=True,
+            item_ref="item",
+            min_items=1,
+            description=(
+                "The entries, in the order they are meant to be read: down for "
+                "`stack`, along for `timeline` and `columns`."
+            ),
+        ),
     ),
     ("matrix",): (
-        FieldSpec("cells", "array", required=True, item_ref="cell", min_items=1),
+        FieldSpec(
+            "cells",
+            "array",
+            required=True,
+            item_ref="cell",
+            min_items=1,
+            description=(
+                "What is in the grid. A cell states where it starts, not where it is drawn."
+            ),
+        ),
         FieldSpec(
             "columns",
             "array",
@@ -398,12 +467,52 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
         ),
         FieldSpec("rows", "array", item_kind="string", description="Row headings, top to bottom."),
     ),
-    ("pyramid",): (FieldSpec("levels", "array", required=True, item_ref="level", min_items=1),),
-    ("rings",): (FieldSpec("rings", "array", required=True, item_ref="ring", min_items=1),),
-    ("funnel",): (FieldSpec("stages", "array", required=True, item_ref="stage", min_items=1),),
+    ("pyramid",): (
+        FieldSpec(
+            "levels",
+            "array",
+            required=True,
+            item_ref="level",
+            min_items=1,
+            description="Apex first. The widest band is the last one written.",
+        ),
+    ),
+    ("rings",): (
+        FieldSpec(
+            "rings",
+            "array",
+            required=True,
+            item_ref="ring",
+            min_items=1,
+            description="Innermost first, working outwards.",
+        ),
+    ),
+    ("funnel",): (
+        FieldSpec(
+            "stages",
+            "array",
+            required=True,
+            item_ref="stage",
+            min_items=1,
+            description="Widest first: a funnel is a pyramid lying down.",
+        ),
+    ),
     ("chart",): (
-        FieldSpec("axes", "object", required=True, ref="axes"),
-        FieldSpec("series", "array", required=True, item_ref="series", min_items=1),
+        FieldSpec(
+            "axes",
+            "object",
+            required=True,
+            ref="axes",
+            description="Both axes. An unlabelled axis cannot be read, so both are required.",
+        ),
+        FieldSpec(
+            "series",
+            "array",
+            required=True,
+            item_ref="series",
+            min_items=1,
+            description="What is plotted. More than one gets a legend.",
+        ),
         FieldSpec(
             "values",
             "boolean",
@@ -415,12 +524,40 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
         ),
     ),
     ("quadrant",): (
-        FieldSpec("axes", "object", required=True, ref="axes"),
-        FieldSpec("positions", "array", required=True, item_ref="position", min_items=1),
+        FieldSpec(
+            "axes",
+            "object",
+            required=True,
+            ref="axes",
+            description="The two named axes whose crossing makes the four quadrants.",
+        ),
+        FieldSpec(
+            "positions",
+            "array",
+            required=True,
+            item_ref="position",
+            min_items=1,
+            description=(
+                "The items placed in the plane, each by what it scores, not by where it goes."
+            ),
+        ),
     ),
     ("curve",): (
-        FieldSpec("axes", "object", required=True, ref="axes"),
-        FieldSpec("curves", "array", required=True, item_ref="curve", min_items=1),
+        FieldSpec(
+            "axes",
+            "object",
+            required=True,
+            ref="axes",
+            description="Both axes. A named shape still needs saying what it is a shape of.",
+        ),
+        FieldSpec(
+            "curves",
+            "array",
+            required=True,
+            item_ref="curve",
+            min_items=1,
+            description="The shapes drawn, each through its own waypoints.",
+        ),
     ),
 }
 
