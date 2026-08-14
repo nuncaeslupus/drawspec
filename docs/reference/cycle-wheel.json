@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "kind": "cycle",
+  "title": "The same four steps, with the going-round as the message",
+  "description": "The wheel theme draws a cycle's connectors as broad tapered ribbons. Nothing in the document changed — the arrows are appearance, so the theme decides them.",
+  "theme": "wheel",
+  "nodes": [
+    { "id": "make", "text": "Make it" },
+    { "id": "use", "text": "Use it" },
+    { "id": "collect", "text": "Collect it" },
+    { "id": "remake", "text": "Make it again" }
+  ],
+  "edges": [
+    { "from": "make", "to": "use" },
+    { "from": "use", "to": "collect" },
+    { "from": "collect", "to": "remake" },
+    { "from": "remake", "to": "make" }
+  ]
+}
