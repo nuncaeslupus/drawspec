@@ -10,6 +10,35 @@ coordinates to get wrong.
 > nine to thirteen on evidence: see `docs/kinds-wanted.md`, which sorts all 89
 > hand-drawn originals by the kind that would have to draw them.
 
+## What it is not
+
+drawspec draws **simple, declarative diagrams well**, and it is the wrong tool
+for several jobs it might look like it does.
+
+* **It is not a Graphviz replacement.** Graphviz is a graph-layout engine with
+  decades of work behind its layered and force-directed placement, and it will
+  lay out a hundred-node graph that drawspec refuses. drawspec's layout exists
+  to serve thirteen named diagram shapes at the sizes a document reads at; past
+  roughly twenty boxes it will tell you it cannot fit rather than produce
+  something dense and unreadable, which is deliberate but is not what a graph
+  tool does.
+* **It is not charting software.** `chart` has lines, bars, areas, stacks,
+  point labels and a legend. It has no statistics, no interactivity, no dates,
+  no log scales, no error bars, and no second axis. If you are exploring data,
+  use a plotting library; if you are *stating* a small number you already know,
+  this draws it in the same ink and at the same type size as every other
+  diagram on the page, which a plotting library will not.
+* **It is not a drawing program.** A document has no coordinates in it, on
+  purpose — see the table above. Anything whose whole point is where things are
+  (a floor plan, a map, a picture of two overlapping Wi-Fi cells) has no
+  declarative description, and drawspec should decline it rather than pretend.
+* **It is not a rich-text system.** Text carries `**bold**` and `` `code` ``
+  spans and nothing else.
+
+What it is good at is the long tail of ordinary explanatory diagrams — the kind
+that fills a set of course notes, a design document or a runbook — drawn
+consistently, reviewably, and without an author ever choosing a coordinate.
+
 ## The problem
 
 Language models draw diagrams by emitting SVG with absolute `x`/`y`

@@ -2,7 +2,7 @@ ARSENAL_REPO    ?= https://github.com/nuncaeslupus/claude-arsenal.git
 ARSENAL_REF     ?= v0.23.1
 ARSENAL_PLUGINS ?= all
 
-.PHONY: help sync build lint format test schema gallery clean update-skills
+.PHONY: help sync build lint format test schema gallery compare clean update-skills
 
 help:  ## list targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -31,6 +31,9 @@ schema:  ## regenerate the published JSON Schema from the field tables
 
 gallery:  ## render every reference document to docs/gallery and open the page
 	uv run python tools/gallery.py
+
+compare:  ## render the corpus redraws beside their originals
+	uv run python tools/compare.py
 
 clean:  ## remove build and tool caches
 	rm -rf dist build .mypy_cache .pytest_cache .ruff_cache
