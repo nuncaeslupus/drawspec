@@ -523,7 +523,7 @@ class EdgeStyle:
     rather than a suggestion: it can force extra rank separation.
     """
 
-    head_length: float = 8.0
+    head_length: float = 7.0
     """How long an arrow head is drawn, before it is scaled to its own shaft.
 
     Sized against the *type*, not against the line: a head is read beside the
@@ -1006,13 +1006,18 @@ class Theme:
         looks like a thick line that stops, because the head is barely wider
         than the shaft it sits on.
 
-        So the head is scaled by weight. Floored at the theme's own
-        `head_length`, because a light role's head still has to be large enough
-        to see: the shaft may be as quiet as the theme likes, but *which way*
-        is not the part that should get quieter.
+        So the head is scaled by weight, in both directions. It used to be floored
+        at the theme's own `head_length` on the argument that *which way* should
+        never get quieter — and the reviewer read the result straight off the
+        drawing: *"arrow heads are too big, especially when merged with thinner
+        lines"*. A `link` is drawn at two thirds of `flow`'s weight and was
+        getting the same head, so on the thinnest line in the vocabulary the head
+        was the widest thing about it. The head belongs to its shaft: it is
+        `head_length` at the theme's own stroke width and in proportion either
+        side of it.
         """
         width = getattr(self.role_for(role), "stroke_width", self.edge.stroke_width)
-        return self.edge.head_length * max(1.0, width / self.edge.stroke_width)
+        return self.edge.head_length * width / self.edge.stroke_width
 
     @property
     def widest_head(self) -> float:

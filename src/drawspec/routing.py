@@ -1844,6 +1844,7 @@ def place_labels(
     font = theme.font.default
     placed: list[Label] = []
     paths = tuple(segment for route in routes for segment in route.segments)
+    mine = {id(route): route.segments for route in routes}
 
     for route in routes:
         if not route.label:
@@ -1860,6 +1861,7 @@ def place_labels(
                 not any(box.overlaps(air) for box in obstacles)
                 and not any(_box_meets_segment(air, *path) for path in paths)
                 and not any(_boxes_overlap(air, other.box) for other in placed)
+                and _nearest_is_its_own(candidate, route, routes, mine)
             )
             if clear:
                 placed.append(
@@ -1889,6 +1891,47 @@ def place_labels(
                 f"another label. Shorten the label or give the diagram more room."
             )
     return tuple(placed)
+
+
+def _nearest_is_its_own(
+    candidate: tuple[float, float, float, float],
+    route: Route,
+    routes: Sequence[Route],
+    segments: Mapping[int, tuple[tuple[tuple[float, float], tuple[float, float]], ...]],
+) -> bool:
+    """Whether this position is nearer its own line than anybody else's.
+
+    A label that clears every line can still be *beside the wrong one*, which is
+    what the reviewer saw: two arrows leaving one box, and the text for the left
+    one sitting closer to the right one — *"now the edge text is in a weird
+    position"*. Missing everything is not the same as belonging to something, and
+    only the second is what a label is for.
+
+    Ties go to the label: two lines exactly equidistant is a drawing with no
+    right answer, and refusing it would cost a placement to gain nothing.
+    """
+    centre = ((candidate[0] + candidate[2]) / 2, (candidate[1] + candidate[3]) / 2)
+    own = min((_distance_to(centre, *path) for path in segments[id(route)]), default=math.inf)
+    for other in routes:
+        if other is route:
+            continue
+        for path in segments[id(other)]:
+            if _distance_to(centre, *path) < own - _TOLERANCE:
+                return False
+    return True
+
+
+def _distance_to(
+    point: tuple[float, float], first: tuple[float, float], second: tuple[float, float]
+) -> float:
+    """The distance from `point` to the segment `first`-`second`."""
+    step_x, step_y = second[0] - first[0], second[1] - first[1]
+    span = step_x * step_x + step_y * step_y
+    if span <= _TOLERANCE:
+        return math.dist(point, first)
+    along = ((point[0] - first[0]) * step_x + (point[1] - first[1]) * step_y) / span
+    along = min(max(along, 0.0), 1.0)
+    return math.dist(point, (first[0] + step_x * along, first[1] + step_y * along))
 
 
 def _label_candidates(

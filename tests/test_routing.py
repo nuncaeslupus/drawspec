@@ -694,10 +694,14 @@ def test_a_heavier_edge_gets_a_bigger_head() -> None:
     assert THEME.head_length_for("strong") == pytest.approx(THEME.head_length_for("flow") * heavy)
 
 
-def test_a_lighter_edge_keeps_the_theme_s_own_head() -> None:
-    """The shaft may be as quiet as the theme likes; *which way* may not."""
-    assert THEME.role_for("link").stroke_width < THEME.edge.stroke_width
-    assert THEME.head_length_for("link") == pytest.approx(THEME.edge.head_length)
+def test_a_lighter_edge_gets_a_smaller_head() -> None:
+    """The head belongs to its shaft — *"too big ... merged with thinner lines"*."""
+    light = THEME.role_for("link").stroke_width
+    assert light < THEME.edge.stroke_width
+    assert THEME.head_length_for("link") == pytest.approx(
+        THEME.edge.head_length * light / THEME.edge.stroke_width
+    )
+    assert THEME.head_length_for("link") < THEME.edge.head_length
 
 
 def test_the_widest_head_covers_every_edge_role() -> None:
