@@ -91,6 +91,22 @@ What a document *may* size is the canvas: `width` and `height` at the top level
 are a budget for the whole drawing, and the same names on a node are refused,
 because how big one box is follows from its text and the theme's padding.
 
+### A box with a lead and a detail
+
+Labels often carry two things: a name, and what the name means. Write them as
+two paragraphs, with a newline between:
+
+```json
+{"id": "digitise", "text": "Digitisation\nchanges the medium, not the process"}
+```
+
+The theme sets the first paragraph in bold and leaves the rest alone. Do not
+punctuate the two apart on one line — `**Digitisation** — changes the medium`
+puts a typographic decision in the document, and reads as a dash rather than as
+two levels, which is exactly what the corpus review objected to. A theme may
+switch the treatment off with `[box] lead = "plain"`; the break stays either
+way, because a break is structure.
+
 The `$schema` line is optional and costs nothing at render time, but it earns
 its place in an editor: point any JSON-Schema-aware editor at it and you get
 completion over the field names and an inline error on `font_size` *while you

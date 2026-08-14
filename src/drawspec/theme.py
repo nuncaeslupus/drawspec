@@ -180,6 +180,18 @@ def _reject_unknown(mapping: Mapping[str, Any], allowed: Iterable[str], where: s
 #: How a diagram's canvas relates to the drawing inside it.
 WIDTH_MODES: Final = ("fixed", "ink")
 
+#: What a theme may do to the first paragraph of a two-part label.
+LEAD_TREATMENTS: Final = ("bold", "plain")
+
+#: Where a diagram-level caption sits relative to the drawing.
+CAPTION_POSITIONS: Final = ("below", "above")
+
+#: Which way a funnel narrows.
+FUNNEL_DIRECTIONS: Final = ("down", "right")
+
+#: How an edge role's lines are drawn between two boxes.
+EDGE_ROUTINGS: Final = ("orthogonal", "direct")
+
 
 @dataclass(frozen=True)
 class Canvas:
@@ -218,6 +230,15 @@ class Canvas:
     message is the product — and never a smaller size nobody can read.
     """
 
+    caption: str = "below"
+    """Where a document's `caption` sits: `below` the drawing, or `above` it.
+
+    The author says a line of text belongs to the whole diagram; where that puts
+    it on the page is appearance, and appearance is the theme's. A house style
+    that runs figure captions above its figures sets this once rather than in
+    every document.
+    """
+
     ink: str = "#1a1a1a"
     """What `currentColor` resolves to in the `standalone` profile.
 
@@ -228,7 +249,9 @@ class Canvas:
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> Canvas:
-        _reject_unknown(mapping, ("width", "width_mode", "min_legible_size", "ink"), "[canvas]")
+        _reject_unknown(
+            mapping, ("width", "width_mode", "min_legible_size", "caption", "ink"), "[canvas]"
+        )
         return cls(
             width=_number(mapping.get("width", 640.0), "[canvas] width"),
             width_mode=_choice(
@@ -237,6 +260,7 @@ class Canvas:
             min_legible_size=_number(
                 mapping.get("min_legible_size", 9.0), "[canvas] min_legible_size"
             ),
+            caption=_choice(mapping.get("caption", "below"), CAPTION_POSITIONS, "[canvas] caption"),
             ink=_colour(mapping.get("ink", "#1a1a1a"), "[canvas] ink"),
         )
 
@@ -408,9 +432,48 @@ class BoxStyle:
     corner_radius: float = 4.0
     """Corner rounding for a `rect`. Zero draws square corners."""
 
+    lead: str = "bold"
+    """How the first paragraph of a label with more than one is set.
+
+    A label often has a lead and a detail — *Digitització*, and then what
+    digitising means. Written as one paragraph the two run together and the
+    author reaches for punctuation to separate them, which is how eighty-nine
+    corpus redraws ended up with an em dash in the middle of a box; the reviewer
+    asked for that back as two levels of text, "just changing font size or
+    boldness or whatever, as in the original".
+
+    So a blank-free newline in `text` is the author saying *these are two
+    things*, and this setting is the theme saying what the first one looks like.
+    `bold` sets it in the bold weight; `plain` leaves it alone, which is the
+    theme for a document whose labels are already emphatic enough.
+
+    Weight rather than size on purpose: one advance is used for every line in a
+    block, and a block whose first line was set larger would either space
+    unevenly or need a second advance — a change to what a text block *is*, for
+    a distinction the weight already carries.
+    """
+
+    widen_steps: int = 1
+    """How far past the aspect floor a box may keep taking width to shed a line.
+
+    A box is offered more width in steps while each step buys it a line, and it
+    stops once it is `MIN_ASPECT` times wider than tall. That floor turned out to
+    stop it too early — *"a wider round box would be even better"*, *"if even
+    wider, text would fit better"*, *"same, wider boxes → less lines"*, three
+    drawings in one round — so this is how many further paying steps it may take.
+
+    It is a small number and not a large one because width is shared: a rank is
+    as wide as the boxes in it, so a box taking width it barely needs takes it
+    from its neighbours and the drawing stops fitting the canvas. drawspec tries
+    the theme's number first and falls back to `0` for a document that will not
+    fit with it, so this is the generosity a drawing gets *when there is room*.
+    """
+
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> BoxStyle:
-        _reject_unknown(mapping, ("padding", "line_height", "corner_radius"), "[box]")
+        _reject_unknown(
+            mapping, ("padding", "line_height", "corner_radius", "lead", "widen_steps"), "[box]"
+        )
         defaults = cls()
         padding = defaults.padding
         if "padding" in mapping:
@@ -435,6 +498,14 @@ class BoxStyle:
                 "[box] corner_radius",
                 positive=False,
             ),
+            lead=_choice(mapping.get("lead", defaults.lead), LEAD_TREATMENTS, "[box] lead"),
+            widen_steps=int(
+                _number(
+                    mapping.get("widen_steps", defaults.widen_steps),
+                    "[box] widen_steps",
+                    positive=False,
+                )
+            ),
         )
 
 
@@ -452,8 +523,13 @@ class EdgeStyle:
     rather than a suggestion: it can force extra rank separation.
     """
 
-    head_length: float = 6.0
-    """How long an arrow head is drawn, before it is scaled to its own shaft."""
+    head_length: float = 7.0
+    """How long an arrow head is drawn, before it is scaled to its own shaft.
+
+    Sized against the *type*, not against the line: a head is read beside the
+    labels around it, and one at half a capital's height reads as a line that
+    stops rather than as an arrow.
+    """
 
     clearance: float = 4.0
     """Daylight a route keeps from every box it is not joined to.
@@ -623,6 +699,40 @@ class CycleStyle:
 
 
 @dataclass(frozen=True)
+class FunnelStyle:
+    """Which way a `funnel` tapers. Appearance, so it lives here.
+
+    An author writes `funnel` and means "stages narrowing to an outcome". Whether
+    the narrowing runs across the page or down it is a question about the drawing
+    rather than about the subject, so there is no field on the document for it
+    and no second kind: the same document renders either way.
+
+    `down` is the default because that is what the word draws. The corpus review
+    put it plainly, on a funnel drawn sideways: *"it says embut, which should
+    look as vertical — couldn't we have an inverted pyramid for these cases?"* A
+    funnel is a thing you pour into, and every reader has seen one. `right` is
+    the other reading — a pipeline losing volume from left to right — and it
+    suits a diagram whose stages carry long labels, because a stage across the
+    page has the whole width of the band to write in.
+    """
+
+    direction: str = "down"
+    """`down` tapers towards the bottom of the page; `right`, towards its edge."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> FunnelStyle:
+        _reject_unknown(mapping, ("direction",), "[funnel]")
+        defaults = cls()
+        return cls(
+            direction=_choice(
+                mapping.get("direction", defaults.direction),
+                FUNNEL_DIRECTIONS,
+                "[funnel] direction",
+            )
+        )
+
+
+@dataclass(frozen=True)
 class NodeRole:
     """How one semantic node role is drawn."""
 
@@ -673,6 +783,31 @@ class EdgeRole:
     dash: str = "none"
     stroke_width: float = 1.5
 
+    routing: str = "orthogonal"
+    """Whether edges in this role turn at right angles or run straight.
+
+    `orthogonal` is the default and was the whole of the router for two rounds,
+    because it is what a *flow* wants: a process read down the page is a sequence
+    of steps, and a staircase between two of them says "then this" the way a
+    diagonal does not.
+
+    A mesh is the other picture. A spine-leaf fabric and a value chain are both
+    saying *everything connects to everything*, and drawn orthogonally they
+    become a ladder of parallel runs whose crossings the reader has to
+    disentangle one at a time. The corpus review named it: "in this case, I think
+    the crossed lines transmit better what they want to show. We should have that
+    option too, at least for lines without arrow head."
+
+    Which is why this is per role rather than per theme, and why it is the
+    theme's rather than the document's. The author already said which edges are
+    a flow and which are a bare association — `link` is the vocabulary's word for
+    "merely connected" — and *how a bare association is drawn* is exactly the
+    kind of question a theme answers. The same document renders either way.
+
+    A direct route is a straight line between the two shapes' outlines, and it is
+    not routed around anything: a mesh drawn straight is meant to cross itself.
+    """
+
     @property
     def has_head(self) -> bool:
         return self.head != "none"
@@ -692,7 +827,7 @@ class EdgeRole:
     @classmethod
     def from_mapping(cls, name: str, mapping: Mapping[str, Any], base: EdgeRole) -> EdgeRole:
         where = f"[edge_role.{name}]"
-        keys = ("head", "tail", "stroke", "dash", "stroke_width")
+        keys = ("head", "tail", "stroke", "dash", "stroke_width", "routing")
         _reject_unknown(mapping, keys, where)
         return cls(
             head=_choice(mapping.get("head", base.head), EDGE_HEADS, f"{where} head"),
@@ -701,6 +836,9 @@ class EdgeRole:
             dash=_dash(mapping.get("dash", base.dash), f"{where} dash"),
             stroke_width=_number(
                 mapping.get("stroke_width", base.stroke_width), f"{where} stroke_width"
+            ),
+            routing=_choice(
+                mapping.get("routing", base.routing), EDGE_ROUTINGS, f"{where} routing"
             ),
         )
 
@@ -721,6 +859,7 @@ _TOP_LEVEL_KEYS: Final = (
     "mark",
     "title",
     "cycle",
+    "funnel",
     "role",
     "edge_role",
 )
@@ -741,6 +880,7 @@ class Theme:
     mark: MarkStyle = MarkStyle()
     title: TitleStyle = TitleStyle()
     cycle: CycleStyle = CycleStyle()
+    funnel: FunnelStyle = FunnelStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
 
@@ -789,6 +929,7 @@ class Theme:
             mark=MarkStyle.from_mapping(_section(mapping, "mark")),
             title=TitleStyle.from_mapping(_section(mapping, "title")),
             cycle=CycleStyle.from_mapping(_section(mapping, "cycle")),
+            funnel=FunnelStyle.from_mapping(_section(mapping, "funnel")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
         )
@@ -865,13 +1006,18 @@ class Theme:
         looks like a thick line that stops, because the head is barely wider
         than the shaft it sits on.
 
-        So the head is scaled by weight. Floored at the theme's own
-        `head_length`, because a light role's head still has to be large enough
-        to see: the shaft may be as quiet as the theme likes, but *which way*
-        is not the part that should get quieter.
+        So the head is scaled by weight, in both directions. It used to be floored
+        at the theme's own `head_length` on the argument that *which way* should
+        never get quieter — and the reviewer read the result straight off the
+        drawing: *"arrow heads are too big, especially when merged with thinner
+        lines"*. A `link` is drawn at two thirds of `flow`'s weight and was
+        getting the same head, so on the thinnest line in the vocabulary the head
+        was the widest thing about it. The head belongs to its shaft: it is
+        `head_length` at the theme's own stroke width and in proportion either
+        side of it.
         """
         width = getattr(self.role_for(role), "stroke_width", self.edge.stroke_width)
-        return self.edge.head_length * max(1.0, width / self.edge.stroke_width)
+        return self.edge.head_length * width / self.edge.stroke_width
 
     @property
     def widest_head(self) -> float:

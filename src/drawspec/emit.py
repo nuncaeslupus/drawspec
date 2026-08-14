@@ -364,19 +364,35 @@ def _line_font(line: TextLine) -> str:
 #: paint rather than pattern, so they are not here.
 PATTERN_FILLS: Final = ("hatch", "dots", "cross", "grid")
 
-#: What each pattern is made of. Kept faint on purpose — a fill that competes
-#: with the text on top of it makes the text illegible, which was the single
-#: loudest complaint about the hand-drawn originals ("the hatching is too strong
-#: and it is hard to read *client*"). Opacity is not a colour, so this does not
-#: smuggle a value past the theme.
+#: What each pattern is made of, and the tile it repeats on.
+#:
+#: Kept faint on purpose — a fill that competes with the text on top of it makes
+#: the text illegible, which was the single loudest complaint about the
+#: hand-drawn originals ("the hatching is too strong and it is hard to read
+#: *client*"). Opacity is not a colour, so this does not smuggle a value past the
+#: theme.
+#:
+#: **The tile sizes differ, and that is the point.** All four used to repeat on
+#: the same four-unit square, which left them differing only by motif — one
+#: diagonal, two diagonals, two orthogonals, a dot — at a third opacity, in a
+#: cell an inch wide. The corpus review's verdict was "I can't differentiate the
+#: three colors", twice, and it was right: at that size and that contrast, four
+#: fine textures on one grid are one texture. Density is the channel a reader
+#: actually reads at a glance, so each now has its own: dots are sparse and
+#: round, hatch is a medium diagonal, grid is coarse and square, cross is the
+#: fine one. Motif *and* spacing, so no two are alike in either.
 _PATTERN_BODIES: Final = {
-    "hatch": '<path d="M 0 4 L 4 0" stroke="{ink}" stroke-width="0.6" stroke-opacity="0.35"/>',
-    "dots": '<circle cx="2" cy="2" r="0.6" fill="{ink}" fill-opacity="0.35"/>',
-    "cross": (
-        '<path d="M 0 4 L 4 0 M 0 0 L 4 4" stroke="{ink}" stroke-width="0.5" stroke-opacity="0.3"/>'
-    ),
+    "dots": ('<circle cx="3" cy="3" r="1.1" fill="{ink}" fill-opacity="0.4"/>', 7),
+    "hatch": ('<path d="M 0 5 L 5 0" stroke="{ink}" stroke-width="0.7" stroke-opacity="0.4"/>', 5),
     "grid": (
-        '<path d="M 0 0 L 0 4 M 0 0 L 4 0" stroke="{ink}" stroke-width="0.5" stroke-opacity="0.3"/>'
+        '<path d="M 0 0 L 0 9 M 0 0 L 9 0" stroke="{ink}" stroke-width="0.6" '
+        'stroke-opacity="0.35"/>',
+        9,
+    ),
+    "cross": (
+        '<path d="M 0 3 L 3 0 M 0 0 L 3 3" stroke="{ink}" stroke-width="0.45" '
+        'stroke-opacity="0.3"/>',
+        3,
     ),
 }
 
@@ -399,9 +415,10 @@ def _pattern_definitions(scene: Scene, namespace: str, theme: Theme, profile: st
     ink = _resolve("currentColor", theme, profile)
     definitions = []
     for pattern in wanted:
-        body = _PATTERN_BODIES[pattern].format(ink=ink)
+        template, tile = _PATTERN_BODIES[pattern]
+        body = template.format(ink=ink)
         definitions.append(
-            f'<pattern id="{namespace}-{pattern}" width="4" height="4" '
+            f'<pattern id="{namespace}-{pattern}" width="{tile}" height="{tile}" '
             f'patternUnits="userSpaceOnUse">{body}</pattern>'
         )
     return definitions

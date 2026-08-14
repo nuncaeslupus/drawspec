@@ -132,12 +132,39 @@ def test_route_over_a_rank_it_would_otherwise_cross_bends_around_it() -> None:
         assert not _crosses(first, second, COLUMN[1])
 
 
-def test_route_of_a_back_edge_leaves_the_top_and_returns_to_the_bottom() -> None:
-    """The author's direction, drawn upwards, around the side of the drawing."""
+def test_route_of_a_back_edge_goes_out_one_side_and_back_in_the_same_side() -> None:
+    """The author's direction, drawn upwards, around the outside of the drawing.
+
+    Both ends on one side rather than out of the top and into the bottom, which
+    is what leaves the ends of every box on the spine free for the spine — see
+    `_around`, and the corpus note that asked for it.
+    """
     (route,) = routes((Connector("c", "a"),))
     start, end = route.points[0], route.points[-1]
-    assert start[1] == pytest.approx(COLUMN[2].y)
-    assert end[1] == pytest.approx(COLUMN[0].y + COLUMN[0].height)
+    side = COLUMN[2].x + COLUMN[2].width
+    assert start[0] == pytest.approx(side)
+    assert end[0] == pytest.approx(COLUMN[0].x + COLUMN[0].width)
+    assert COLUMN[0].y <= end[1] <= COLUMN[0].y + COLUMN[0].height
+    assert max(x for x, _ in route.points) > side, "it has to leave the column to come back"
+
+
+def test_a_return_edge_leaves_the_spine_its_own_ends() -> None:
+    """The reason `_around` exists: a chain with a return in it stays straight.
+
+    Held to the same two sides as the chain, a return crowds the ports of the
+    box it leaves, and the forward edge that shared that side left at an angle —
+    "look at the angled arrows for what could just be a vertical arrow".
+    """
+    built = route_edges(
+        (Connector("a", "b"), Connector("b", "c"), Connector("c", "a")),
+        COLUMN,
+        THEME,
+        direction="down",
+    )
+    forward = [route for route in built if (route.source, route.target) != ("c", "a")]
+    for route in forward:
+        assert len(route.points) == 2, f"{route.source}->{route.target} bent around the return"
+        assert route.points[0][0] == pytest.approx(route.points[1][0])
 
 
 def test_two_edges_leaving_one_node_do_not_share_a_port() -> None:
@@ -627,6 +654,27 @@ def test_two_routes_alongside_each_other_keep_a_lane_apart(document: str, direct
                 )
 
 
+@pytest.mark.parametrize("document", REFERENCES)
+@pytest.mark.parametrize("direction", ["down", "right"])
+def test_no_route_turns_by_less_than_a_shaft(document: str, direction: str) -> None:
+    """The reviewer's own request: *"We should have a test against that."*
+
+    "That" being a route that steps sideways by a few units and carries straight
+    on, which reads as a kink rather than as a turn — *"notice the small angle in
+    the last arrow"*, three drawings running. The floor is the one drawspec
+    already uses for a line a reader can see, `[edge] min_shaft_length`: a turn
+    shorter than the shortest drawable line is not a turn.
+    """
+    floor = THEME.edge.min_shaft_length
+    for route in _reference_routes(document, direction):
+        for segment in _movable_segments(route):
+            length = math.dist(*segment)
+            assert length >= floor - 1e-6, (
+                f"{route.source}->{route.target} turns through a run of {length:g}, "
+                f"shorter than the {floor:g} floor: {segment}"
+            )
+
+
 def _movable_segments(
     route: Route,
 ) -> list[tuple[tuple[float, float], tuple[float, float]]]:
@@ -646,10 +694,14 @@ def test_a_heavier_edge_gets_a_bigger_head() -> None:
     assert THEME.head_length_for("strong") == pytest.approx(THEME.head_length_for("flow") * heavy)
 
 
-def test_a_lighter_edge_keeps_the_theme_s_own_head() -> None:
-    """The shaft may be as quiet as the theme likes; *which way* may not."""
-    assert THEME.role_for("link").stroke_width < THEME.edge.stroke_width
-    assert THEME.head_length_for("link") == pytest.approx(THEME.edge.head_length)
+def test_a_lighter_edge_gets_a_smaller_head() -> None:
+    """The head belongs to its shaft — *"too big ... merged with thinner lines"*."""
+    light = THEME.role_for("link").stroke_width
+    assert light < THEME.edge.stroke_width
+    assert THEME.head_length_for("link") == pytest.approx(
+        THEME.edge.head_length * light / THEME.edge.stroke_width
+    )
+    assert THEME.head_length_for("link") < THEME.edge.head_length
 
 
 def test_the_widest_head_covers_every_edge_role() -> None:

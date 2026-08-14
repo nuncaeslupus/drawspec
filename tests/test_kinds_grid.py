@@ -178,13 +178,13 @@ def test_columns_keep_a_role_the_author_chose() -> None:
             {
                 "version": 1,
                 "kind": "columns",
-                "items": [{"text": "Old", "role": "note"}, {"text": "New", "role": "emphasis"}],
+                "items": [{"text": "Old", "role": "group"}, {"text": "New", "role": "emphasis"}],
             }
         ),
         THEME,
         MEASURER,
     )
-    assert {rect.role for rect in rects(built)} == {"note", "emphasis"}
+    assert {rect.role for rect in rects(built)} == {"group", "emphasis"}
 
 
 # --------------------------------------------------------------------------
@@ -467,6 +467,33 @@ def test_a_spanning_cell_does_not_deepen_every_row_it_passes() -> None:
         ]
     )
     assert spanned.height == pytest.approx(plain.height)
+
+
+def test_every_row_of_a_matrix_is_the_same_depth() -> None:
+    """*"Could we make all of the rows the same height?"* — yes, and always.
+
+    The same rule a `stack` obeys, and for the same reason: a matrix's whole
+    content is a comparison, so a row drawn deeper than its neighbours makes the
+    strongest claim on the page and nobody wrote it. One long cell used to deepen
+    exactly the row it sat in.
+    """
+    built = matrix(
+        [
+            {"text": "One", "column": 0, "row": 0},
+            {"text": "Two", "column": 1, "row": 0},
+            {
+                "text": "A cell whose text is long enough to take three whole lines of it",
+                "column": 0,
+                "row": 1,
+            },
+            {"text": "Four", "column": 1, "row": 1},
+        ]
+    )
+    depths = {
+        round(max(y for _, y in cell.points) - min(y for _, y in cell.points), 6)
+        for cell in cells_of(built)
+    }
+    assert len(depths) == 1
 
 
 def test_a_cell_names_its_group_and_the_theme_picks_the_fill() -> None:

@@ -18,9 +18,14 @@ width to place its first span — which is exactly what `TextBlock` carries.
 
 from __future__ import annotations
 
+from dataclasses import replace
+from typing import Final
+
+from drawspec.errors import FitError
 from drawspec.geometry import Box
-from drawspec.scene import Ellipse, Polygon, Primitive, Rect, TextLine, TextSpan
+from drawspec.scene import Ellipse, Polygon, Primitive, Rect, Scene, TextLine, TextSpan, moved
 from drawspec.text.measure import TextMeasurer
+from drawspec.text.wrap import wrap
 from drawspec.theme import Theme
 
 
@@ -120,4 +125,80 @@ def line_bounds(line: TextLine, theme: Theme, measurer: TextMeasurer) -> tuple[f
     return left, left + width
 
 
-__all__ = ["box_primitives", "line_bounds", "outline", "text_runs"]
+#: The role a diagram-level caption is drawn in. `note` is the vocabulary's word
+#: for an aside, which is what a caption is — and it means a theme that wants
+#: captions quieter says so once, in the place it says everything else.
+CAPTION_ROLE: Final = "note"
+
+
+def captioned(scene: Scene, caption: str, theme: Theme, measurer: TextMeasurer) -> Scene:
+    """`scene` with `caption` set outside the drawing, above it or below it.
+
+    The reviewer asked for this on four drawings and then in general — *"do we
+    have options to add texts outside graphs? For example, above or below"* — and
+    the answer had been no. `note` was accepted on four objects and drawn by one
+    family, which is worse than not having it: a field an author can write that
+    has no effect is a setting they believe they made.
+
+    A caption is not that field, and the distinction is the useful part. A note
+    belongs to *one element*; a caption belongs to the whole diagram — the units
+    an axis is in, a condition that holds throughout, the sentence the original
+    wrote beside the figure rather than inside it. Neither can stand in for the
+    other, so both exist and each is drawn where it means something.
+
+    Broken to the canvas rather than to the drawing: a caption under a narrow
+    diagram would otherwise wrap at the diagram's width for no reason a reader
+    could see. It is then centred on whichever of the two is wider, and a caption
+    that turns out to need more room than the drawing widens the scene rather
+    than hanging off it — `centred` puts the pair on the canvas together, and it
+    can only do that if the scene's width covers everything in it.
+
+    Which side it goes is `[canvas] caption`, because *this text belongs to the
+    diagram* is what the author knows and *captions go under figures* is what a
+    house style knows.
+
+    Raises:
+        FitError: the caption cannot be broken to the canvas width — named as the
+            caption, because it is raised inside the elastic fit like everything
+            else and the fit's own message only knows that *something* would not
+            go. An author whose diagram was fine and whose caption had one
+            unbreakable word in it would otherwise be told to restructure the
+            diagram.
+    """
+    if not caption:
+        return scene
+    gap = theme.box.padding.top
+    try:
+        block = wrap(caption, theme.canvas.width, measurer, theme=theme, level="label")
+    except FitError as error:
+        raise FitError(f"the caption {caption[:40]!r} does not fit the canvas: {error}") from None
+
+    width = max(scene.width, block.width)
+    band = block.height + gap
+    above = theme.canvas.caption == "above"
+    top = gap if above else scene.height + gap
+    runs = tuple(
+        TextLine(
+            CAPTION_ROLE,
+            x=width / 2,
+            y=top + block.baseline(index),
+            spans=tuple(
+                TextSpan(text=span.text, font=span.font, weight=span.weight)
+                for span in line.spans
+                if span.text
+            ),
+            level="label",
+            anchor="middle",
+        )
+        for index, line in enumerate(block.lines)
+        if line.spans
+    )
+    # The drawing moves down to make room for a caption above it, and across if
+    # the caption made the scene wider than the drawing was.
+    across = (width - scene.width) / 2
+    down = band if above else 0.0
+    drawing = tuple(moved(primitive, across, down) for primitive in scene.primitives)
+    return replace(scene, width=width, height=scene.height + band, primitives=(*drawing, *runs))
+
+
+__all__ = ["CAPTION_ROLE", "box_primitives", "captioned", "line_bounds", "outline", "text_runs"]

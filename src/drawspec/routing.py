@@ -45,7 +45,7 @@ from dataclasses import dataclass, field, replace
 from itertools import pairwise
 from typing import Final
 
-from drawspec.errors import LayoutError
+from drawspec.errors import FitError, LayoutError
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, TextRun
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme
@@ -71,14 +71,24 @@ TURN_COST: Final = 12.0
 #: point at nothing.
 PORT_SPREAD: Final = 0.6
 
+#: Half an end treatment's width, as a fraction of its length. A head is a
+#: direction made visible, and one much narrower than this reads as the line
+#: coming to a point rather than as an arrow arriving somewhere.
+HEAD_SPREAD: Final = 0.45
+
 #: How far a label sits from the line it names, before anything is in the way.
 LABEL_GAP: Final = 4.0
 
-#: The multiples of that gap tried in turn, outwards, when something is.
-LABEL_OFFSETS: Final = (1.0, 2.0, 3.5, 5.0, 7.0)
+#: The multiples of that gap tried in turn, outwards, when something is. The
+#: last two are for the long lines a direct route draws: a chord across a
+#: crowded drawing has open paper further out than a rank gap ever offers, and
+#: stopping the search at seven gaps refused a label that had somewhere to go.
+LABEL_OFFSETS: Final = (1.0, 2.0, 3.5, 5.0, 7.0, 9.5, 12.5)
 
-#: Where along a segment a label is tried: the middle, then either side of it.
-LABEL_POSITIONS: Final = (0.5, 0.35, 0.65, 0.2, 0.8)
+#: Where along a segment a label is tried: the middle, then either side of it,
+#: then near its ends — again for the long ones, where a tenth of the way along
+#: is still nowhere near the box.
+LABEL_POSITIONS: Final = (0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9)
 
 #: Coordinates are rounded to this many decimals before they become grid lines,
 #: so a port computed twice is the same grid line twice.
@@ -194,15 +204,33 @@ class Obstacle:
         Touching counts as clear, in both senses that matter: a route may end on
         the border of the box it points at, and a route may run along the edge of
         one it passes.
+
+        The overlap of the two bounding rectangles is the whole answer while
+        every segment is axis-aligned, because then the segment *is* its
+        rectangle. A direct route is not, and the difference is not small: the
+        rectangle a chord spans is most of the space between two ranks, nearly
+        all of which the chord goes nowhere near. So a slope is then asked the
+        real question — do all four corners of the box fall on one side of the
+        line — which is the separating-axis argument finished off.
         """
         left, right = sorted((first[0], second[0]))
         top, bottom = sorted((first[1], second[1]))
-        return (
+        if not (
             left < self.right - _TOLERANCE
             and right > self.x + _TOLERANCE
             and top < self.bottom - _TOLERANCE
             and bottom > self.y + _TOLERANCE
-        )
+        ):
+            return False
+        step_x, step_y = second[0] - first[0], second[1] - first[1]
+        if abs(step_x) < _TOLERANCE or abs(step_y) < _TOLERANCE:
+            return True
+        reach = [
+            -step_y * (x - first[0]) + step_x * (y - first[1])
+            for x in (self.x, self.right)
+            for y in (self.y, self.bottom)
+        ]
+        return max(reach) > _TOLERANCE and min(reach) < -_TOLERANCE
 
 
 @dataclass(frozen=True)
@@ -390,8 +418,31 @@ def _candidate_sides(source: Obstacle, target: Obstacle, direction: str) -> tupl
         target.right <= source.x + _TOLERANCE
     )
     if direction == "right":
+        if separated_horizontally and not beside:
+            return _around("bottom" if below else "top")
         return horizontal if separated_horizontally or not separated_vertically else vertical
+    if separated_vertically and not below:
+        return _around("right" if beside else "left")
     return vertical if separated_vertically or not separated_horizontally else horizontal
+
+
+def _around(side: str) -> tuple[str, str]:
+    """Both ends on `side`: how an edge that goes *backwards* leaves and returns.
+
+    A graph that is a chain plus a few returns should draw as a straight chain
+    with the returns going round it, and it did not: a return took the same two
+    sides the chain uses — the bottom of one box, the top of another — so the
+    chain's own edges had to share those sides with it and left at an angle. The
+    corpus review saw the effect three times and named the cause once, exactly:
+    *"the dotted line could go out of the right side of Performing to the right
+    side of Storming. It would make every other arrow vertical."*
+
+    Both ends on one side is what "goes round" means. It frees the ends of every
+    box on the spine for the spine, which is the whole of the fix — the returning
+    line then has the outside of the drawing to itself, which is where a reader
+    already expects to find it.
+    """
+    return (side, side)
 
 
 def _fallback_sides(primary: tuple[str, str]) -> tuple[str, str]:
@@ -575,18 +626,41 @@ def route_edges(
         _lanes([value for box in obstacles for value in (box.y, box.bottom)], channel, usable),
     )
 
+    straight = {
+        index
+        for index, connector in enumerate(connectors)
+        if connector.source != connector.target
+        and theme.edge_roles[connector.role].routing == "direct"
+    }
+    # Every connector gets an orthogonal approach worked out, the straight ones
+    # included: `direct` is a preference, and a chord that cannot be drawn
+    # honestly falls back to the search, which needs the approach to have been
+    # prepared with all the others.
     sides = {
         index: _candidate_sides(boxes[connector.source], boxes[connector.target], direction)
         for index, connector in enumerate(connectors)
         if connector.source != connector.target
     }
     fractions = _assign_ports(connectors, boxes, sides)
+    reaches = _shared_reaches(connectors, boxes, sides, fractions, obstacles, lanes, theme)
     approaches: dict[int, tuple[_Approach, _Approach]] = {}
     for index, side_pair in sides.items():
         connector = connectors[index]
         source, target = boxes[connector.source], boxes[connector.target]
         approaches[index] = (
-            _approach(source, target, side_pair, fractions[index], obstacles, lanes, theme),
+            _approach(
+                source,
+                target,
+                side_pair,
+                fractions[index],
+                obstacles,
+                lanes,
+                theme,
+                reaches=(
+                    reaches[(connector.source, side_pair[0])],
+                    reaches[(connector.target, side_pair[1])],
+                ),
+            ),
             _approach(
                 source, target, _fallback_sides(side_pair), (0.5, 0.5), obstacles, lanes, theme
             ),
@@ -598,6 +672,22 @@ def route_edges(
         if connector.source == connector.target:
             routes.append(_self_loop(connector, boxes[connector.source], obstacles, theme))
             continue
+        if index in straight:
+            chord = Route(
+                source=connector.source,
+                target=connector.target,
+                role=connector.role,
+                points=_chord(boxes[connector.source], boxes[connector.target]),
+                label=connector.label,
+            )
+            if _chord_is_drawable(chord, obstacles, theme):
+                routes.append(chord)
+                continue
+            # A chord that would cross a box it has nothing to do with, or that
+            # is too short to carry its own head, is not drawn straight: the
+            # route falls back to the orthogonal search, which knows how to go
+            # around. `direct` is a preference about how a relation reads, and a
+            # line through an uninvolved node's text is not a reading of it.
         points = _route_one(connector, approaches[index], grid, obstacles, theme)
         routes.append(
             Route(
@@ -608,7 +698,94 @@ def route_edges(
                 label=connector.label,
             )
         )
-    return separate_lanes(tuple(routes), obstacles, theme)
+    return straighten(separate_lanes(tuple(routes), obstacles, theme), obstacles, theme)
+
+
+def _chord_is_drawable(route: Route, obstacles: Sequence[Obstacle], theme: Theme) -> bool:
+    """Whether a straight route may be drawn as one, rather than routed.
+
+    Two things the orthogonal search guarantees by construction and a chord does
+    not, so both are checked before one is kept.
+
+    **It misses every box it is not joined to.** "A mesh is meant to cross
+    itself" is about two *lines*; a line through a third node's text is a
+    different failure with the same shape, and the reader cannot tell a
+    deliberate crossing from a box drawn over. The clearance is the theme's, the
+    same daylight every routed line keeps.
+
+    **It has a shaft.** `min_shaft_length` and the head's own room are invariants
+    of the drawing, not of the router — an arrow with no visible shaft is not an
+    arrow whichever way it was found — and a theme may put `routing = "direct"`
+    on a role that has a head, so the check cannot be skipped on the grounds that
+    `link` has none.
+    """
+    grown = [
+        box.grown(theme.edge.clearance)
+        for box in obstacles
+        if box.id not in (route.source, route.target)
+    ]
+    if any(box.crosses(first, second) for first, second in route.segments for box in grown):
+        return False
+    try:
+        _check_head_room(route, theme)
+    except LayoutError:
+        return False
+    return shaft_length(route, theme) >= theme.edge.min_shaft_length - _TOLERANCE
+
+
+def _chord(source: Obstacle, target: Obstacle) -> tuple[tuple[float, float], ...]:
+    """The straight line between two shapes' outlines, along their centres.
+
+    A mesh drawn straight is meant to cross itself, so this is deliberately not
+    routed: nothing here avoids an obstacle, and the two points are simply where
+    the centre-to-centre line leaves one shape and enters the other. That is the
+    whole of `routing = "direct"`, and it is why the setting belongs to a role
+    rather than to a theme — a `flow` routed this way would be a diagram of
+    diagonals with nothing to say for them.
+
+    Where the line meets each outline is found by bisection rather than by four
+    cases per shape: `Obstacle` already answers *is this point inside me*
+    exactly, for all four shapes, and asking it thirty times settles the crossing
+    far below a rendered pixel. A fixed count is what keeps the same document
+    rendering to the same bytes twice.
+    """
+    start, end = source.centre, target.centre
+    return (_leaving(source, start, end), _leaving(target, end, start))
+
+
+#: Halvings used to find where a direct route crosses a box's outline. Thirty
+#: takes a canvas-sized interval to about a millionth of a unit.
+_CHORD_BISECTIONS: Final = 30
+
+
+def _leaving(
+    box: Obstacle, inside: tuple[float, float], outside: tuple[float, float]
+) -> tuple[float, float]:
+    """The point on `box`'s outline along the segment from `inside` to `outside`."""
+
+    def at(position: float) -> tuple[float, float]:
+        return (
+            inside[0] + (outside[0] - inside[0]) * position,
+            inside[1] + (outside[1] - inside[1]) * position,
+        )
+
+    def within(point: tuple[float, float]) -> bool:
+        # A degenerate rectangle around the point: `overlaps` is the exact
+        # inside test every shape already carries, and a zero-width box is the
+        # way to ask it about a point.
+        return box.overlaps((point[0], point[1], point[0], point[1]))
+
+    if not within(at(0.0)):
+        return _round(inside[0]), _round(inside[1])
+    low, high = 0.0, 1.0
+    for _ in range(_CHORD_BISECTIONS):
+        middle = (low + high) / 2
+        if within(at(middle)):
+            low = middle
+        else:
+            high = middle
+    point = at(high)
+    return _round(point[0]), _round(point[1])
 
 
 def _assign_ports(
@@ -703,6 +880,47 @@ class _Approach:
         return (self.source_anchor, self.source_stub, self.target_stub, self.target_anchor)
 
 
+def _shared_reaches(
+    connectors: Sequence[Connector],
+    boxes: Mapping[str, Obstacle],
+    sides: Mapping[int, tuple[str, str]],
+    fractions: Mapping[int, tuple[float, float]],
+    obstacles: Sequence[Obstacle],
+    lanes: tuple[set[float], set[float]],
+    theme: Theme,
+) -> dict[tuple[str, str], float]:
+    """One reach per box side, so the edges leaving it together turn together.
+
+    `_reach` is a question about a single port: how far in front of *this* point
+    is the first lane, capped at half the room actually there. Asked once per
+    port, it gives different answers to the ports of one fan — they are at
+    different places along the border, so different things are in front of them —
+    and four edges leaving one box then turn in two lanes, alternating. A route
+    that turns late runs horizontally straight through the vertical leg of one
+    that turned early, and the drawing crosses itself: the second of the two
+    mechanisms behind "arrows look good for 1 and 2 but are crossed for 3 and 4".
+
+    The port order is already right and `separate_lanes` already keeps it, so the
+    fix is not to compute a cleverer reach per port — it is to stop asking the
+    question per port. Every edge on one side of one box turns at the **nearest**
+    of their reaches, which is the only depth all of them are known to have room
+    for; the separation pass then spreads them in port order, nested rather than
+    alternating.
+    """
+    shared: dict[tuple[str, str], float] = {}
+    for index, (source_side, target_side) in sides.items():
+        connector = connectors[index]
+        for identifier, side, fraction in (
+            (connector.source, source_side, fractions[index][0]),
+            (connector.target, target_side, fractions[index][1]),
+        ):
+            box = boxes[identifier]
+            reach = _reach(_port(box, side, fraction), side, obstacles, lanes, theme)
+            key = (identifier, side)
+            shared[key] = min(shared.get(key, reach), reach)
+    return shared
+
+
 def _approach(
     source: Obstacle,
     target: Obstacle,
@@ -711,6 +929,8 @@ def _approach(
     obstacles: Sequence[Obstacle],
     lanes: tuple[set[float], set[float]],
     theme: Theme,
+    *,
+    reaches: tuple[float, float] | None = None,
 ) -> _Approach:
     """Anchors on the shapes, stub ends out on the channel lane.
 
@@ -730,6 +950,14 @@ def _approach(
     source_fraction, target_fraction = fractions
     source_port = _port(source, source_side, source_fraction)
     target_port = _port(target, target_side, target_fraction)
+    source_reach, target_reach = (
+        reaches
+        if reaches is not None
+        else (
+            _reach(source_port, source_side, obstacles, lanes, theme),
+            _reach(target_port, target_side, obstacles, lanes, theme),
+        )
+    )
     return _Approach(
         source=source.id,
         target=target.id,
@@ -737,12 +965,8 @@ def _approach(
         target_side=target_side,
         source_anchor=_anchor(source, source_side, source_fraction),
         target_anchor=_anchor(target, target_side, target_fraction),
-        source_stub=_stub_end(
-            source_port, source_side, _reach(source_port, source_side, obstacles, lanes, theme)
-        ),
-        target_stub=_stub_end(
-            target_port, target_side, _reach(target_port, target_side, obstacles, lanes, theme)
-        ),
+        source_stub=_stub_end(source_port, source_side, source_reach),
+        target_stub=_stub_end(target_port, target_side, target_reach),
     )
 
 
@@ -977,12 +1201,238 @@ def _separated(
     moved = list(routes)
     for group, anchor in groups:
         for target, run in zip(_targets(group, anchor, spacing), group, strict=True):
-            for candidate_offset in _tries(target - run.line):
-                candidate = _shifted(moved[run.index], run.segment, candidate_offset)
-                if candidate is not None and _is_clear(candidate, obstacles, theme):
+            offers = _tries(target - run.line)
+            # Every offer that does not strand a route on another's anchor, then
+            # every offer at all. A preference rather than a rule: the point of
+            # the pass is to get two lines off each other, and refusing the only
+            # placement available would leave them exactly as they were found.
+            for guarded in (True, False):
+                placed = False
+                for candidate_offset in offers:
+                    candidate = _shifted(moved[run.index], run.segment, candidate_offset)
+                    if candidate is None or not _is_clear(candidate, obstacles, theme):
+                        continue
+                    if guarded and _lands_on_another(candidate, moved, run.index):
+                        continue
                     moved[run.index] = candidate
+                    placed = True
+                    break
+                if placed:
                     break
     return tuple(moved)
+
+
+def straighten(
+    routes: Sequence[Route], obstacles: Sequence[Obstacle], theme: Theme
+) -> tuple[Route, ...]:
+    """Every route with its unreadable turns taken out.
+
+    A route that steps sideways by six units and carries on is drawn as two
+    corners and a nub between them, and it reads as the router wobbling rather
+    than as a line going anywhere — *"notice the small angle in the last arrow"*,
+    *"again a slightly angled arrow"*, *"I would have expected a straight arrow
+    instead of even more angled"*. Three notes on three drawings for one fault.
+
+    The floor is `[edge] min_shaft_length`, and reusing it is the argument:
+    drawspec already refuses to draw a *shaft* shorter than that because nobody
+    can see it, so a *turn* shorter than it is a turn nobody can see either. One
+    number, one reason, and a theme that wants blunter geometry moves both at
+    once.
+
+    Taking one out slides everything on one side of it, which moves that end's
+    anchor along its own border — so the anchor is checked against the shape it
+    sits on rather than against the rectangle: sliding along the top of a pill is
+    fine until the cap starts, and sliding along a diamond is never fine, because
+    the anchor is on the slope and would come off it. `_anchor` already knows
+    all of that, so the check is that the moved point is still the anchor its
+    fraction names.
+
+    The end that moves is whichever one can: the source is tried first because a
+    route's head is the end a reader looks at, and moving the tail is the smaller
+    change to what the drawing says.
+    """
+    boxes = {box.id: box for box in obstacles}
+    settled = list(routes)
+    for index, route in enumerate(settled):
+        # One turn can only be removed by moving a run that another turn owns, so
+        # the pass repeats until nothing more comes out; bounded by the number of
+        # turns, since each success removes at least one.
+        for _ in range(len(route.points)):
+            better = _unjogged(settled[index], boxes, obstacles, theme, settled, index)
+            if better is None:
+                break
+            settled[index] = better
+    return tuple(settled)
+
+
+def _unjogged(
+    route: Route,
+    boxes: Mapping[str, Obstacle],
+    obstacles: Sequence[Obstacle],
+    theme: Theme,
+    routes: Sequence[Route],
+    index: int,
+) -> Route | None:
+    """`route` with its shortest unreadable turn removed, or `None` if none can be."""
+    points = route.points
+    for position in range(1, len(points) - 2):
+        first, second = points[position], points[position + 1]
+        offset = (second[0] - first[0], second[1] - first[1])
+        if math.hypot(*offset) >= theme.edge.min_shaft_length - _TOLERANCE:
+            continue
+        for moving_source in (True, False):
+            candidate = _slid(route, position, offset, boxes, moving_source=moving_source)
+            if candidate is None:
+                continue
+            if not _is_clear(candidate, obstacles, theme):
+                continue
+            if _lands_on_another(candidate, routes, index):
+                continue
+            return candidate
+    return None
+
+
+def _slid(
+    route: Route,
+    position: int,
+    offset: tuple[float, float],
+    boxes: Mapping[str, Obstacle],
+    *,
+    moving_source: bool,
+) -> Route | None:
+    """`route` with one side of the turn at `position` slid onto the other's line.
+
+    The moved end's endpoint is *recomputed* rather than translated, because a
+    route lands on the shape and not on the rectangle: slide along the top of a
+    diamond and the outline rises to meet you, so the anchor takes a new depth
+    and the run into it simply gets shorter. `_anchor` already knows the shape of
+    every box, so this asks it again at the new fraction instead of assuming the
+    old answer still holds — which is the whole difference between straightening
+    an arrow into a rectangle and putting one beside a diamond.
+
+    `None` when the slide would take the anchor off the side it is on: past a
+    corner, or onto a pill's cap, where the flat the run is perpendicular to has
+    run out.
+    """
+    points = list(route.points)
+    end, neighbour_at = (0, 1) if moving_source else (len(points) - 1, len(points) - 2)
+    box = boxes.get(route.source if moving_source else route.target)
+    side = _side_facing(box, points[end], points[neighbour_at]) if box else None
+    if box is None or side is None:
+        return None
+
+    step = offset if moving_source else (-offset[0], -offset[1])
+    along = 0 if side in ("top", "bottom") else 1
+    span, start = (box.width, box.x) if along == 0 else (box.height, box.y)
+    if not span:
+        return None
+    wanted = points[end][along] + step[along]
+    fraction = (wanted - start) / span
+    if not 0.0 < fraction < 1.0:
+        return None
+    anchor = _anchor(box, side, fraction)
+    if abs(anchor[along] - wanted) > _TOLERANCE:
+        # A pill's cap: `_anchor` clamped the port back onto the flat, so the run
+        # would no longer meet the border square.
+        return None
+
+    inner = [
+        (_round(x + step[0]), _round(y + step[1]))
+        for x, y in (points[1 : position + 1] if moving_source else points[position + 1 : -1])
+    ]
+    points = (
+        [anchor, *inner, *points[position + 1 :]]
+        if moving_source
+        else [
+            *points[: position + 1],
+            *inner,
+            anchor,
+        ]
+    )
+    depth = 1 - along
+    if (points[neighbour_at][depth] - anchor[depth]) * OUTWARD[side][depth] <= _TOLERANCE:
+        # The new anchor sits past the point the run turns at — the shape reaches
+        # further out here than the route left room for.
+        return None
+    simplified = _simplify(points)
+    return replace(route, points=simplified) if len(simplified) >= 2 else None
+
+
+def _side_facing(
+    box: Obstacle, point: tuple[float, float], neighbour: tuple[float, float]
+) -> str | None:
+    """Which side of `box` a run from `point` towards `neighbour` leaves by."""
+    step = (neighbour[0] - point[0], neighbour[1] - point[1])
+    for side, outward in OUTWARD.items():
+        if step[0] * outward[0] + step[1] * outward[1] > _TOLERANCE:
+            return side
+    return None
+
+
+def _lands_on_another(candidate: Route, routes: Sequence[Route], index: int) -> bool:
+    """Whether a shifted route would come to rest along another route's line.
+
+    Moving a run does not only move that run: it lengthens the two perpendicular
+    ones either side of it, and the far end of *those* is an anchor on a border
+    that cannot get out of the way. So a lane that is clear of every box can
+    still put one route's approach along another's, and the separation pass would
+    then have no way to fix what it had just made — both runs carry an endpoint,
+    so neither is movable, and the band is skipped on the next pass.
+
+    Only *anchored* runs count, on both sides — the first and last of each route,
+    which carry an endpoint. Two middle runs sharing a line is a collision the
+    next pass can still settle by moving either of them, and refusing those would
+    block the very moves that prise a band apart. Two anchored runs sharing one
+    is the dead end: neither may move, so the pass sees it on every later pass
+    and can do nothing about it.
+
+    And only a *new* dead end. Two boxes in the same column give their stubs the
+    same line by construction — a route leaving the bottom of one and a route
+    arriving at the top of the other below it are both on that column's centre —
+    so a placement is refused for making the count worse, never for a clash the
+    route was already in. Refusing those would leave every such band exactly as
+    it was found.
+    """
+    return _anchor_clashes(candidate, routes, index) > _anchor_clashes(routes[index], routes, index)
+
+
+def _anchor_clashes(route: Route, routes: Sequence[Route], index: int) -> int:
+    """How many of `route`'s anchored runs lie along another route's anchored run."""
+    mine = _anchored(route)
+    return sum(
+        _shares_a_line(one, other)
+        for position, other_route in enumerate(routes)
+        if position != index
+        for one in mine
+        for other in _anchored(other_route)
+    )
+
+
+def _anchored(route: Route) -> tuple[tuple[tuple[float, float], tuple[float, float]], ...]:
+    """The runs of `route` that carry an endpoint, and so can never move."""
+    segments = route.segments
+    if not segments:
+        return ()
+    return (segments[0], segments[-1]) if len(segments) > 1 else (segments[0],)
+
+
+def _shares_a_line(
+    one: tuple[tuple[float, float], tuple[float, float]],
+    two: tuple[tuple[float, float], tuple[float, float]],
+) -> bool:
+    """Whether two axis-aligned segments are collinear with an overlapping span."""
+    for axis, along in ((0, 1), (1, 0)):
+        if not (
+            abs(one[0][axis] - one[1][axis]) < _TOLERANCE
+            and abs(two[0][axis] - two[1][axis]) < _TOLERANCE
+            and abs(one[0][axis] - two[0][axis]) < _TOLERANCE
+        ):
+            continue
+        low = max(min(one[0][along], one[1][along]), min(two[0][along], two[1][along]))
+        high = min(max(one[0][along], one[1][along]), max(two[0][along], two[1][along]))
+        if high - low > _TOLERANCE:
+            return True
+    return False
 
 
 def _tries(offset: float) -> tuple[float, ...]:
@@ -1057,6 +1507,45 @@ class _Run:
     the upper lane, whatever the document said first.
     """
 
+    entry: float = 0.0
+    exit: float = 0.0
+    """Where the run starts and ends along its own direction, in route order."""
+
+    outward: float = 0.0
+    """Which way the band is left: `+1` when the exit corner is past the entry."""
+
+    @property
+    def travel(self) -> float:
+        """How far this run goes through the band — the length of it."""
+        return abs(self.exit - self.entry)
+
+
+def _nesting_sign(runs: Sequence[_Run]) -> float:
+    """Which way a band of runs that tie on `approach` should nest.
+
+    The second of the two mechanisms behind "arrows look good for 1 and 2 but
+    are crossed for 3 and 4", and the one `approach` cannot see. Every run of a
+    fan enters the band from the same corner and leaves towards the same one, so
+    they all report the same two corners and tie — and a tie went back to the
+    order the edges were written in, which is where this whole defect started.
+
+    What separates them is how far each goes before it turns off: a run whose
+    span contains another's turn must be on the near side of it, or its long leg
+    is drawn straight through that turn. So a fan nests by length — and *which*
+    end is near depends on which end of the band the fan spreads at.
+
+    A fan **out** of a box spreads at its far end: the runs start within a few
+    units of each other on one border and end at targets all over the drawing.
+    There the long run turns off last, so it hugs the box and the short ones sit
+    outside it. A fan **in** spreads at its near end and nests the other way
+    round: the long run is the outer one. Same rule, opposite sign, and the sign
+    is exactly which end of the group is spread — measured, because a run on its
+    own cannot tell which end of it the others are clustered at.
+    """
+    entries = [run.entry for run in runs]
+    exits = [run.exit for run in runs]
+    return 1.0 if max(exits) - min(exits) >= max(entries) - min(entries) else -1.0
+
 
 def _shared_runs(routes: Sequence[Route], spacing: float) -> list[tuple[list[_Run], float | None]]:
     """Segments drawn alongside one another, grouped, and whether one is pinned.
@@ -1087,9 +1576,11 @@ def _shared_runs(routes: Sequence[Route], spacing: float) -> list[tuple[list[_Ru
             if abs(first[0] - second[0]) < _TOLERANCE:
                 orientation, line = "v", first[0]
                 span = sorted((first[1], second[1]))
+                entry, leaves = first[1], second[1]
             elif abs(first[1] - second[1]) < _TOLERANCE:
                 orientation, line = "h", first[1]
                 span = sorted((first[0], second[0]))
+                entry, leaves = first[0], second[0]
             else:
                 continue
             across = 1 if orientation == "h" else 0
@@ -1099,8 +1590,22 @@ def _shared_runs(routes: Sequence[Route], spacing: float) -> list[tuple[list[_Ru
                 if 0 <= position < len(route.points)
             ]
             approach = sum(corners) / len(corners) if corners else line
+            outward = 0.0
+            if len(corners) == 2:
+                outward = 1.0 if corners[1] >= corners[0] else -1.0
             runs[orientation].append(
-                _Run(index, segment, span[0], span[1], movable, line, approach)
+                _Run(
+                    index,
+                    segment,
+                    span[0],
+                    span[1],
+                    movable,
+                    line,
+                    approach,
+                    entry=entry,
+                    exit=leaves,
+                    outward=outward,
+                )
             )
 
     groups: list[tuple[list[_Run], float | None]] = []
@@ -1111,14 +1616,26 @@ def _shared_runs(routes: Sequence[Route], spacing: float) -> list[tuple[list[_Ru
                 held = [run.line for run in component if not run.movable]
                 if len({run.index for run in component}) > 1 and free_runs:
                     anchor = sum(held) / len(held) if held else None
-                    # Ordered by where each route is going, then by where it
-                    # currently is. `approach` first is what keeps the lanes in
-                    # the routes' own order; `line` breaks the remaining ties so
-                    # a band the router already spread stays spread the way it
-                    # was, and the whole key is a total order rather than a
-                    # stable-sort accident.
+                    # Ordered by where each route is going, then by how far it
+                    # goes, then by where it currently is. `approach` first is
+                    # what keeps the lanes in the routes' own order; the nesting
+                    # settles a fan, every run of which reports the same
+                    # approach; `line` breaks what is left so a band the router
+                    # already spread stays spread the way it was. The whole key
+                    # is a total order rather than a stable-sort accident.
+                    nesting = _nesting_sign(free_runs)
                     groups.append(
-                        (sorted(free_runs, key=lambda run: (run.approach, run.line)), anchor)
+                        (
+                            sorted(
+                                free_runs,
+                                key=lambda run: (
+                                    run.approach,
+                                    -run.travel * run.outward * nesting,
+                                    run.line,
+                                ),
+                            ),
+                            anchor,
+                        )
                     )
     return groups
 
@@ -1327,6 +1844,7 @@ def place_labels(
     font = theme.font.default
     placed: list[Label] = []
     paths = tuple(segment for route in routes for segment in route.segments)
+    mine = {id(route): route.segments for route in routes}
 
     for route in routes:
         if not route.label:
@@ -1343,6 +1861,7 @@ def place_labels(
                 not any(box.overlaps(air) for box in obstacles)
                 and not any(_box_meets_segment(air, *path) for path in paths)
                 and not any(_boxes_overlap(air, other.box) for other in placed)
+                and _nearest_is_its_own(candidate, route, routes, mine)
             )
             if clear:
                 placed.append(
@@ -1359,12 +1878,60 @@ def place_labels(
                 )
                 break
         else:
-            raise LayoutError(
+            # A `FitError` rather than a `LayoutError`, because that is what this
+            # is: the label is content that does not fit, and content that does
+            # not fit is what the elastic band exists to answer. Raised as a
+            # layout failure it went straight past `fit` — so a diagram whose
+            # every label would have been clear one step of type smaller was
+            # refused outright instead of being drawn. If the band runs out the
+            # author still gets this message, which is the honest end of it.
+            raise FitError(
                 f"no room for the label {route.label!r} on the edge from {route.source!r} to "
                 f"{route.target!r}: every position beside it is taken by a box, a line or "
                 f"another label. Shorten the label or give the diagram more room."
             )
     return tuple(placed)
+
+
+def _nearest_is_its_own(
+    candidate: tuple[float, float, float, float],
+    route: Route,
+    routes: Sequence[Route],
+    segments: Mapping[int, tuple[tuple[tuple[float, float], tuple[float, float]], ...]],
+) -> bool:
+    """Whether this position is nearer its own line than anybody else's.
+
+    A label that clears every line can still be *beside the wrong one*, which is
+    what the reviewer saw: two arrows leaving one box, and the text for the left
+    one sitting closer to the right one — *"now the edge text is in a weird
+    position"*. Missing everything is not the same as belonging to something, and
+    only the second is what a label is for.
+
+    Ties go to the label: two lines exactly equidistant is a drawing with no
+    right answer, and refusing it would cost a placement to gain nothing.
+    """
+    centre = ((candidate[0] + candidate[2]) / 2, (candidate[1] + candidate[3]) / 2)
+    own = min((_distance_to(centre, *path) for path in segments[id(route)]), default=math.inf)
+    for other in routes:
+        if other is route:
+            continue
+        for path in segments[id(other)]:
+            if _distance_to(centre, *path) < own - _TOLERANCE:
+                return False
+    return True
+
+
+def _distance_to(
+    point: tuple[float, float], first: tuple[float, float], second: tuple[float, float]
+) -> float:
+    """The distance from `point` to the segment `first`-`second`."""
+    step_x, step_y = second[0] - first[0], second[1] - first[1]
+    span = step_x * step_x + step_y * step_y
+    if span <= _TOLERANCE:
+        return math.dist(point, first)
+    along = ((point[0] - first[0]) * step_x + (point[1] - first[1]) * step_y) / span
+    along = min(max(along, 0.0), 1.0)
+    return math.dist(point, (first[0] + step_x * along, first[1] + step_y * along))
 
 
 def _label_candidates(
@@ -1377,6 +1944,14 @@ def _label_candidates(
     reason. Sides are tried in a fixed order rather than a clever one: with the
     offsets increasing outwards, a consistent side keeps the labels of parallel
     edges on the same side of their lines, which reads as deliberate.
+
+    A **diagonal** run — a direct route, where the theme draws a role straight —
+    is offset along its own normal. Stepping up and down from the midpoint of a
+    slope does not clear it: the line is at a different height a few units along,
+    so the label lands back on top of it a moment later, and every offer looks
+    occupied. Three corpus documents were refused outright for exactly that,
+    which is the sort of thing a new routing mode buys if the rest of the
+    pipeline is left assuming right angles.
     """
     gap = LABEL_GAP + theme.edge.stroke_width / 2
     ordered = sorted(
@@ -1386,15 +1961,24 @@ def _label_candidates(
     for multiple in LABEL_OFFSETS:
         offset = gap * multiple
         for _, (first, second) in ordered:
+            step_x, step_y = second[0] - first[0], second[1] - first[1]
+            span = math.hypot(step_x, step_y)
             for fraction in LABEL_POSITIONS:
-                x = first[0] + (second[0] - first[0]) * fraction
-                y = first[1] + (second[1] - first[1]) * fraction
-                if first[0] == second[0]:  # a vertical run: beside it
+                x = first[0] + step_x * fraction
+                y = first[1] + step_y * fraction
+                if abs(step_x) < _TOLERANCE:  # a vertical run: beside it
                     yield x + offset, y - height / 2
                     yield x - offset - width, y - height / 2
-                else:  # a horizontal run: above it, then below
+                elif abs(step_y) < _TOLERANCE:  # a horizontal run: above, then below
                     yield x - width / 2, y - offset - height
                     yield x - width / 2, y + offset
+                elif span:
+                    # Out along the normal, far enough that the whole box clears
+                    # the slope rather than only its centre.
+                    away = offset + (width * abs(step_y) + height * abs(step_x)) / (2 * span)
+                    across_x, across_y = -step_y / span * away, step_x / span * away
+                    yield x + across_x - width / 2, y + across_y - height / 2
+                    yield x - across_x - width / 2, y - across_y - height / 2
 
 
 def _inflate(
@@ -1419,15 +2003,42 @@ def _box_meets_segment(
     first: tuple[float, float],
     second: tuple[float, float],
 ) -> bool:
-    """Exactly, not by sampling: every route segment is axis-aligned."""
+    """Exactly, not by sampling — and for a **diagonal** as well as an axis one.
+
+    The bounding-rectangle test this used to be is exact while every segment is
+    axis-aligned, because then the segment *is* its bounding rectangle. A direct
+    route is not: the box a chord spans is most of the space between two ranks,
+    almost all of which the chord does not touch, so testing that box rejects
+    every position beside the line — including the ones the placer generates
+    along the chord's own normal precisely because they are clear.
+
+    So an axis-aligned run keeps the cheap answer and a slope gets the real one,
+    by the separating-axis argument: two convex shapes miss each other if some
+    axis separates them, and for a rectangle and a segment the only axes worth
+    trying are the rectangle's two and the segment's own normal.
+    """
     left, right = sorted((first[0], second[0]))
     top, bottom = sorted((first[1], second[1]))
-    return (
-        box[0] < right + _TOLERANCE
-        and left < box[2] + _TOLERANCE
-        and box[1] < bottom + _TOLERANCE
-        and top < box[3] + _TOLERANCE
+    outside = (
+        box[0] > right + _TOLERANCE
+        or left > box[2] + _TOLERANCE
+        or box[1] > bottom + _TOLERANCE
+        or top > box[3] + _TOLERANCE
     )
+    if outside:
+        return False
+    step_x, step_y = second[0] - first[0], second[1] - first[1]
+    if abs(step_x) < _TOLERANCE or abs(step_y) < _TOLERANCE:
+        return True
+
+    # The segment's normal. A rectangle sits clear of the line when all four of
+    # its corners fall on one side of it.
+    reach = [
+        -step_y * (x - first[0]) + step_x * (y - first[1])
+        for x in (box[0], box[2])
+        for y in (box[1], box[3])
+    ]
+    return not (max(reach) < -_TOLERANCE or min(reach) > _TOLERANCE)
 
 
 def label_primitives(label: Label) -> tuple[Primitive, ...]:
@@ -1486,7 +2097,7 @@ def _marker(
     dx = (tip[0] - from_point[0]) / span
     dy = (tip[1] - from_point[1]) / span
     nx, ny = -dy, dx
-    half = length * 0.4
+    half = length * HEAD_SPREAD
 
     def at(back: float, across: float) -> tuple[float, float]:
         return (tip[0] - dx * back + nx * across, tip[1] - dy * back + ny * across)
@@ -1512,6 +2123,7 @@ def _marker(
 
 __all__ = [
     "GRID_PRECISION",
+    "HEAD_SPREAD",
     "LABEL_GAP",
     "LABEL_OFFSETS",
     "LABEL_POSITIONS",
@@ -1532,4 +2144,5 @@ __all__ = [
     "route_edges",
     "separate_lanes",
     "shaft_length",
+    "straighten",
 ]

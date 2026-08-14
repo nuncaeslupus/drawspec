@@ -50,6 +50,7 @@ The one width every diagram is drawn to, and the legibility floor.
 | `width` | `640.0` | The canvas every diagram is drawn to, in user units. |
 | `width_mode` | `"fixed"` | Whether a drawing narrower than `width` keeps the canvas or is cropped to it. One of `fixed`, `ink`. |
 | `min_legible_size` | `9.0` | The floor the fit band may not push type below. |
+| `caption` | `"below"` | Where a document's `caption` sits: `below` the drawing, or `above` it. |
 | `ink` | `"#1a1a1a"` | What `currentColor` resolves to in the `standalone` profile. |
 
 ### `[font]`
@@ -92,6 +93,8 @@ Box geometry constants: margin, line spacing, corner treatment.
 | `padding` | `[10.0, 12.0, 12.0, 12.0]` | Space between a box's text and its border, as `[top, right, bottom, left]`. |
 | `line_height` | `1.35` | Baseline-to-baseline distance, as a multiple of the type size. |
 | `corner_radius` | `4.0` | Corner rounding for a `rect`. Zero draws square corners. |
+| `lead` | `"bold"` | How the first paragraph of a label with more than one is set. |
+| `widen_steps` | `1` | How far past the aspect floor a box may keep taking width to shed a line. |
 
 ### `[edge]`
 
@@ -101,7 +104,7 @@ Line constants shared by every edge role.
 |---|---|---|
 | `stroke_width` | `1.5` | The default line weight. An edge role may override it. |
 | `min_shaft_length` | `16.0` | The shortest visible run of line an arrow may have. |
-| `head_length` | `6.0` | How long an arrow head is drawn, before it is scaled to its own shaft. |
+| `head_length` | `8.0` | How long an arrow head is drawn, before it is scaled to its own shaft. |
 | `clearance` | `6.0` | Daylight a route keeps from every box it is not joined to. |
 | `lane_spacing` | `12.0` | How far apart two routes running along the same line are drawn. |
 
@@ -111,7 +114,7 @@ How a chart tells one mark from another, and how much room bars get.
 
 | Key | Default | What it is |
 |---|---|---|
-| `fills` | `["hatch", "dots", "cross", "grid", "none"]` | The fills a chart's marks take, in order, one per filled mark. Each one of `none`, `solid`, `hatch`, `dots`, `cross`, `grid`. |
+| `fills` | `["dots", "hatch", "grid", "cross", "none"]` | The fills a chart's marks take, in order, one per filled mark. Each one of `none`, `solid`, `hatch`, `dots`, `cross`, `grid`. |
 | `gap` | `0.3` | How much of a category's band is left empty around its bars, as a fraction. Zero draws bars that touch, which reads as one wide bar. |
 
 ### `[title]`
@@ -132,6 +135,14 @@ How a `cycle`'s connectors are drawn. Appearance, so it lives here.
 | `connector` | `"arc"` | Whether a cycle's steps are joined by a thin arc or a broad tapered band. One of `arc`, `band`. |
 | `width` | `11.0` | How thick a `band` connector is at its shaft, in user units. |
 
+### `[funnel]`
+
+Which way a `funnel` tapers. Appearance, so it lives here.
+
+| Key | Default | What it is |
+|---|---|---|
+| `direction` | `"down"` | `down` tapers towards the bottom of the page; `right`, towards its edge. One of `down`, `right`. |
+
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The
@@ -145,7 +156,7 @@ vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note
 | `decision` | `"diamond"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
 | `terminal` | `"pill"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `2.5` |
 | `emphasis` | `"rect"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `2.5` |
-| `note` | `"rect"` | `"currentColor"` | `"none"` | `"none"` | `"3 2"` | `1.0` |
+| `note` | `"none"` | `"currentColor"` | `"none"` | `"none"` | `"3 2"` | `1.0` |
 | `group` | `"rect"` | `"currentColor"` | `"none"` | `"none"` | `"6 3"` | `1.0` |
 
 ## `[edge_role.*]` — the edge roles
@@ -155,14 +166,14 @@ an arrow lives: an author says two things are merely associated (`link`) and
 the theme decides that means a line with no head. `head` and `tail` are each
 one of `arrow`, `open`, `diamond`, `circle`, `bar`, `none`.
 
-| Role | `head` | `tail` | `stroke` | `dash` | `stroke_width` |
-|---|---|---|---|---|---|
-| `flow` | `"arrow"` | `"none"` | `"currentColor"` | `"none"` | `1.5` |
-| `link` | `"none"` | `"none"` | `"currentColor"` | `"none"` | `1.0` |
-| `exchange` | `"arrow"` | `"arrow"` | `"currentColor"` | `"none"` | `1.5` |
-| `weak` | `"open"` | `"none"` | `"currentColor"` | `"4 3"` | `1.5` |
-| `owns` | `"diamond"` | `"none"` | `"currentColor"` | `"none"` | `1.5` |
-| `strong` | `"arrow"` | `"none"` | `"currentColor"` | `"none"` | `2.5` |
+| Role | `head` | `tail` | `stroke` | `dash` | `stroke_width` | `routing` |
+|---|---|---|---|---|---|---|
+| `flow` | `"arrow"` | `"none"` | `"currentColor"` | `"none"` | `1.5` | `"orthogonal"` |
+| `link` | `"none"` | `"none"` | `"currentColor"` | `"none"` | `1.0` | `"direct"` |
+| `exchange` | `"arrow"` | `"arrow"` | `"currentColor"` | `"none"` | `1.5` | `"orthogonal"` |
+| `weak` | `"open"` | `"none"` | `"currentColor"` | `"4 3"` | `1.5` | `"orthogonal"` |
+| `owns` | `"diamond"` | `"none"` | `"currentColor"` | `"none"` | `1.5` | `"orthogonal"` |
+| `strong` | `"arrow"` | `"none"` | `"currentColor"` | `"none"` | `2.5` | `"orthogonal"` |
 
 ## The bundled themes
 

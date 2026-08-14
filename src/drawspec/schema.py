@@ -143,9 +143,30 @@ def _text(name: str = "text", *, required: bool = True) -> FieldSpec:
         required=required,
         description=(
             "The words themselves. May carry inline spans — `code` for the monospace "
-            "role and **bold** for emphasis — because those are semantic, not typographic."
+            "role and **bold** for emphasis — because those are semantic, not typographic. "
+            "A newline says this label is a lead and a detail rather than one sentence; "
+            "the theme's `[box] lead` decides what the first paragraph looks like. Prefer "
+            "it to punctuating the two apart inside one line."
         ),
     )
+
+
+#: What `note` is for, and — the part that matters — where it is actually drawn.
+#:
+#: `timeline` puts an entry's note under the axis: above the line is the event,
+#: below it is when. **No other kind draws one.** Saying so here is the whole of
+#: the fix available inside v1: the field is accepted by every object that
+#: accepted it before, because a document that validated against the published
+#: v1 schema has to keep validating against it, and removing a field is a change
+#: of meaning that ships as v2. What can change now is that an author reads this
+#: before writing one, in their editor, rather than finding out by rendering and
+#: seeing nothing.
+_NOTE_DESCRIPTION: Final = (
+    "A short aside attached to this element. **Only `timeline` draws one** — it goes "
+    "under the axis, beside the entry's own mark. Every other kind accepts the field "
+    "and has nowhere to put it, so it is not drawn; for text belonging to the whole "
+    "diagram, use the top-level `caption` instead."
+)
 
 
 def _role(vocabulary: tuple[str, ...], default: str) -> FieldSpec:
@@ -166,7 +187,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         FieldSpec("id", "string", required=True, description="Unique within the document."),
         _text(),
         _role(NODE_ROLES, "step"),
-        FieldSpec("note", "string", description="A short aside attached to this node."),
+        FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
     ),
     "edge": (
         FieldSpec("from", "string", required=True, description="The id of the source node."),
@@ -190,7 +211,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         FieldSpec("id", "string", description="Optional; generated from position when absent."),
         _text(),
         _role(NODE_ROLES, "step"),
-        FieldSpec("note", "string", description="A short aside attached to this entry."),
+        FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
         FieldSpec(
             "at",
             "number",
@@ -203,7 +224,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
     "level": (
         _text(),
         _role(NODE_ROLES, "step"),
-        FieldSpec("note", "string", description="A short aside drawn beside this level."),
+        FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
     ),
     "ring": (
         _text(),
@@ -290,7 +311,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
     "stage": (
         _text(),
         _role(NODE_ROLES, "step"),
-        FieldSpec("note", "string", description="A short aside drawn beside this stage."),
+        FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
     ),
     "axis": (
         FieldSpec(
@@ -390,6 +411,17 @@ COMMON_FIELDS: Final = (
     ),
     FieldSpec("title", "string", description="The diagram's accessible name."),
     FieldSpec("description", "string", description="The diagram's accessible description."),
+    FieldSpec(
+        "caption",
+        "string",
+        description=(
+            "A line of text belonging to the whole diagram rather than to any one "
+            "element — an axis's units, a condition that holds throughout, the "
+            "sentence the original wrote alongside the figure. Drawn outside the "
+            "drawing; the theme's `[canvas] caption` says above or below. Use a "
+            "`note` for something attached to one element."
+        ),
+    ),
     FieldSpec(
         "width",
         "number",
@@ -586,6 +618,7 @@ class Node:
     text: str
     role: str = "step"
     note: str = ""
+    """Accepted for v1 compatibility; only `timeline` items are drawn."""
 
 
 @dataclass(frozen=True)
@@ -678,6 +711,9 @@ class Document:
     version: int = DOCUMENT_VERSION
     title: str = ""
     description: str = ""
+    caption: str = ""
+    """Text belonging to the whole diagram, drawn outside the drawing."""
+
     width: float | None = None
     height: float | None = None
     height_binding: bool = False
@@ -1007,6 +1043,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         version=DOCUMENT_VERSION,
         title=str(document.get("title", "")),
         description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
         width=_optional_number(document.get("width")),
         height=_optional_number(document.get("height")),
         height_binding=bool(document.get("height_binding", False)),

@@ -50,6 +50,21 @@ _SQRT_HALF: Final = sqrt(0.5)
 #: called a failure to fit. Four is one more than any settling case observed.
 _SHAPE_PASSES: Final = 4
 
+#: How much wider than tall a box should be, when width is available to make it
+#: so. Past this it is left alone; below it, `_widened` offers it more room.
+#:
+#: Two-and-a-bit is measured rather than chosen. Sweeping it across the
+#: eighty-six corpus redraws: at 1.0 — "not actually taller than it is wide" —
+#: four drawings improve; at 2.2, twenty-six do, saving sixty-six lines of text
+#: with no box anywhere gaining one, and the tallest box in the corpus falls from
+#: nine lines to four. Past 2.2 the gains keep coming but the bill arrives with
+#: them: at 2.6 three drawings have to shrink their type to fit the wider boxes,
+#: which is trading a complaint for the complaint underneath it.
+MIN_ASPECT: Final = 2.2
+
+#: How much of the offered width a widening step adds. Four steps to double.
+_WIDEN_STEP: Final = 0.25
+
 
 # ---------------------------------------------------------------------------
 # Shapes whose usable span is narrower than their bounding box
@@ -259,6 +274,7 @@ def size_box(
     level: str = "body",
     max_width: float | None = None,
     shape: str | None = None,
+    widen: float = 1.0,
 ) -> Box:
     """Size a box around `text`, derived from measurement and theme padding.
 
@@ -275,6 +291,12 @@ def size_box(
             outline — a pyramid level is a trapezoid and a ring is a circle,
             neither of which is a node shape — the shape used for *sizing* is the
             family's business, not the role's.
+        widen: how far past `max_width` this box may go to stop being too
+            vertical, as a multiple of it. The default of one is no widening,
+            which is right wherever `max_width` is a *geometric* width — a
+            column, a timeline's share of the axis — because exceeding it there
+            is an overlap. A family whose limit is a soft share of the canvas
+            passes more; see `MIN_ASPECT`.
 
     Raises:
         FitError: the text cannot be broken to fit `max_width`.
@@ -284,18 +306,96 @@ def size_box(
     shape = node_role.shape if shape is None else shape
     limit = theme.canvas.width if max_width is None else max_width
 
-    block = _wrap_to(text, shape, limit, theme=theme, measurer=measurer, level=level)
-    width, height = outer_size(shape, block.width, block.height, theme.box.padding)
+    def at(width_limit: float) -> Box:
+        block = _wrap_to(text, shape, width_limit, theme=theme, measurer=measurer, level=level)
+        width, height = outer_size(shape, block.width, block.height, theme.box.padding)
+        return Box(
+            role=role,
+            shape=shape,
+            level=level,
+            block=block,
+            width=min(width, width_limit),
+            height=height,
+            padding=theme.box.padding,
+        )
 
-    return Box(
-        role=role,
-        shape=shape,
-        level=level,
-        block=block,
-        width=min(width, limit),
-        height=height,
-        padding=theme.box.padding,
-    )
+    return _widened(at, limit, widen, theme.canvas.width, theme.box.widen_steps)
+
+
+def _widened(
+    at: Callable[[float], Box], limit: float, widen: float, ceiling: float, steps: int = 1
+) -> Box:
+    """Offer a too-vertical box more width, while more width buys fewer lines.
+
+    Every shape but a rect pays for its own outline out of the width it was
+    offered: a pill's text may only use the flat span between its caps, so a
+    taller pill is a *narrower* one, and wrapping into that narrower span makes
+    it taller again. Left alone the fixed point in `_wrap_to` settles wherever
+    that spiral stops — which for nine lines of text in a 240-wide allowance is a
+    box 1.09 times wider than it is tall, and reads as a column of words.
+
+    The allowance is the wrong thing to have been enforcing. It was chosen as a
+    share of the canvas, to keep one node from eating a rank; a shape's own
+    geometry is not that, and charging it to the same budget confuses "this box
+    may not dominate the drawing" with "this box may not have caps".
+
+    So the box is re-offered a wider allowance in steps, and each wider box is
+    kept only if it needs **fewer lines** than the one before — width that buys
+    nothing is not taken, so a short label stays exactly as narrow as its own
+    text. It stops at one line, at the canvas, or at the caller's `widen`
+    multiple, whichever comes first.
+
+    It used to stop the moment the box was `MIN_ASPECT` times wider than tall,
+    and the reviewer read the result off five separate drawings in one round:
+    *"a wider round box would be even better"*, *"if even wider, text would fit
+    better"*, *"same, wider boxes → less lines"*. So the aspect is a floor and
+    not a stopping point: past it the box keeps taking width for exactly as long
+    as width keeps buying lines, and stops at the first step that buys nothing.
+
+    Greedy, and deliberately so. Width is shared — a rank is as wide as the boxes
+    in it — so a box that takes width it cannot spend is taking it from its
+    neighbours, and the drawing that will not fit the canvas is refused rather
+    than being drawn badly. Stopping at the first step that buys nothing keeps
+    the boxes that can use width growing and the ones that cannot exactly as
+    they were.
+
+    A narrow offer that will not settle at all is a *reason* to widen rather than
+    a failure: `FitError` from one offer is held and only raised if every offer
+    raises. That case is not hypothetical — it is where the corpus's tall pills
+    came from. The shape could not settle at a quarter-canvas, the whole diagram
+    was shrunk a step to make it, and the pill settled at the smaller type as a
+    nine-line column. Widening the one box that could not settle keeps the type
+    where it was.
+    """
+    ceiling = min(limit * max(widen, 1.0), ceiling)
+    offers = [limit]
+    while offers[-1] < ceiling - 1e-9:
+        offers.append(min(offers[-1] + limit * _WIDEN_STEP, ceiling))
+
+    box: Box | None = None
+    refusal: FitError | None = None
+    spent = 0
+    for offered in offers:
+        try:
+            candidate = at(offered)
+        except FitError as error:
+            refusal = refusal or error
+            continue
+        if box is None or len(candidate.block.lines) < len(box.block.lines):
+            box, bought_a_line = candidate, True
+        else:
+            bought_a_line = False
+        if len(box.block.lines) <= 1:
+            # One line is the fewest there are; no further width can buy one.
+            return box
+        if box.width >= box.height * MIN_ASPECT:
+            if not bought_a_line or spent >= steps:
+                return box
+            spent += 1
+
+    if box is None:
+        raise refusal or FitError(f"no box fits a width of {limit:.1f}")
+    return box
 
 
 def _wrap_to(
@@ -416,6 +516,13 @@ def candidate_factors(theme: Theme) -> tuple[float, ...]:
     return tuple(factors)
 
 
+def _generosities(theme: Theme) -> tuple[Theme, ...]:
+    """The theme, then the same theme with its box generosity spent down to none."""
+    if not theme.box.widen_steps:
+        return (theme,)
+    return (theme, replace(theme, box=replace(theme.box, widen_steps=0)))
+
+
 def fit[T](theme: Theme, attempt: Callable[[Theme], T]) -> Fitted[T]:
     """Find the largest factor in the theme's band at which `attempt` succeeds.
 
@@ -445,10 +552,18 @@ def fit[T](theme: Theme, attempt: Callable[[Theme], T]) -> Fitted[T]:
     last: FitError | None = None
     for factor in factors:
         scaled = theme.with_scale(factor)
-        try:
-            return Fitted(factor=factor, theme=scaled, value=attempt(scaled))
-        except FitError as error:
-            last = error
+        # Generous boxes first, then plain ones, and only then a smaller type.
+        # `[box] widen_steps` buys a box width past the aspect floor while width
+        # is still shedding lines, and a drawing whose rank is already as wide as
+        # the canvas has none to give. Dropping the generosity is the cheap way
+        # out of that; shrinking the type answers "this text wraps too much" with
+        # "this text is smaller", which is the trade the elastic fit exists to
+        # avoid making. So the fallback happens inside the factor, not after it.
+        for boxes in _generosities(scaled):
+            try:
+                return Fitted(factor=factor, theme=boxes, value=attempt(boxes))
+            except FitError as error:
+                last = error
 
     raise FitError(
         f"the content does not fit at any factor in this theme's band "

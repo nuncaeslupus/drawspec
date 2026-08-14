@@ -31,6 +31,10 @@
           "type": "string",
           "description": "The diagram's accessible description."
         },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
@@ -106,6 +110,10 @@
           "type": "string",
           "description": "The diagram's accessible description."
         },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
@@ -164,6 +172,10 @@
         "description": {
           "type": "string",
           "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
         },
         "width": {
           "type": "number",
@@ -238,6 +250,10 @@
           "type": "string",
           "description": "The diagram's accessible description."
         },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
@@ -296,6 +312,10 @@
         "description": {
           "type": "string",
           "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
         },
         "width": {
           "type": "number",
@@ -356,6 +376,10 @@
           "type": "string",
           "description": "The diagram's accessible description."
         },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
@@ -414,6 +438,10 @@
         "description": {
           "type": "string",
           "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
         },
         "width": {
           "type": "number",
@@ -483,6 +511,10 @@
           "type": "string",
           "description": "The diagram's accessible description."
         },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
@@ -546,6 +578,10 @@
         "description": {
           "type": "string",
           "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
         },
         "width": {
           "type": "number",
@@ -643,7 +679,7 @@
       "properties": {
         "text": {
           "type": "string",
-          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic."
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
         },
         "column": {
           "type": "integer",
@@ -763,7 +799,7 @@
         },
         "text": {
           "type": "string",
-          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic."
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
         },
         "members": {
           "type": "array",
@@ -789,7 +825,7 @@
         },
         "text": {
           "type": "string",
-          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic."
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
         },
         "role": {
           "type": "string",
@@ -806,7 +842,7 @@
         },
         "note": {
           "type": "string",
-          "description": "A short aside attached to this entry."
+          "description": "A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead."
         },
         "at": {
           "type": "number",
@@ -823,7 +859,7 @@
       "properties": {
         "text": {
           "type": "string",
-          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic."
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
         },
         "role": {
           "type": "string",
@@ -840,7 +876,7 @@
         },
         "note": {
           "type": "string",
-          "description": "A short aside drawn beside this level."
+          "description": "A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead."
         }
       },
       "required": [
@@ -857,7 +893,7 @@
         },
         "text": {
           "type": "string",
-          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic."
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
         },
         "role": {
           "type": "string",
@@ -874,7 +910,7 @@
         },
         "note": {
           "type": "string",
-          "description": "A short aside attached to this node."
+          "description": "A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead."
         }
       },
       "required": [
@@ -888,7 +924,7 @@
       "properties": {
         "text": {
           "type": "string",
-          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic."
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
         },
         "across": {
           "type": "number",
@@ -924,7 +960,7 @@
       "properties": {
         "text": {
           "type": "string",
-          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic."
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
         },
         "role": {
           "type": "string",
@@ -1003,7 +1039,7 @@
       "properties": {
         "text": {
           "type": "string",
-          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic."
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
         },
         "role": {
           "type": "string",
@@ -1020,7 +1056,7 @@
         },
         "note": {
           "type": "string",
-          "description": "A short aside drawn beside this stage."
+          "description": "A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead."
         }
       },
       "required": [

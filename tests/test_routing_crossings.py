@@ -28,8 +28,9 @@ from typing import Any
 
 import pytest
 
+from drawspec.errors import LayoutError
 from drawspec.render import render_document
-from drawspec.routing import Route
+from drawspec.routing import Connector, Obstacle, Route, route_edges
 from drawspec.schema import parse_document
 from drawspec.theme import load_theme
 
@@ -142,42 +143,29 @@ def fan_in(sources: int) -> dict[str, Any]:
     }
 
 
-#: A fan of four or more still crosses, for a *second* reason, and these are
-#: marked rather than deleted so the suite carries the defect instead of a
-#: comment somewhere carrying it.
+#: A fan of four or more used to cross for a *second* reason, and it took two
+#: further changes to settle, both of which these widths are the regression for.
 #:
-#: The lane a route turns in comes from `_reach`, which sends the stub out to the
-#: first lane in front of its port — but caps it at half the room actually in
-#: front of *that* port. The ports of one fan are at different heights, so they
-#: have different things in front of them, so they get different reaches: four
-#: edges leaving one box turn in two lanes, alternating, instead of nesting one
-#: inside the next. A route that turns late then runs horizontally straight
-#: through the vertical leg of one that turned early.
+#: The first was the reach. `_reach` sends a stub out to the first lane in front
+#: of its port and caps it at half the room in front of *that* port — so the
+#: ports of one fan, being at different places on the border, got different
+#: reaches and turned in two lanes alternately rather than nesting. It is now
+#: asked once per box side, not once per port: `_shared_reaches`.
 #:
-#: The ports themselves are in the right order and the separation pass now keeps
-#: that order, so this is the last mechanism between a fan and a clean drawing.
-#: Fixing it means making the reaches of one fan monotone with their ports, in
-#: `_approach` — a change to how a route is proposed, not to how two of them are
-#: prised apart, which is why it is not in this commit.
-_SECOND_MECHANISM = pytest.mark.xfail(
-    reason="fan lanes alternate because _reach is capped per port; see the note above",
-    strict=True,
-)
+#: The second was the order the separation pass hands lanes out in. Every run of
+#: a fan reports the same `approach`, so they tied, and a tie went back to
+#: document order — which is where the whole defect started. They now nest by
+#: length, in the direction the band is spread at: `_nesting_sign`.
+_FAN_WIDTHS = [2, 3, 4, 5, 6]
 
 
-@pytest.mark.parametrize(
-    "width",
-    [2, 3, pytest.param(4, marks=_SECOND_MECHANISM), pytest.param(5, marks=_SECOND_MECHANISM)],
-)
+@pytest.mark.parametrize("width", _FAN_WIDTHS)
 def test_a_fan_out_does_not_cross_its_own_arrows(width: int) -> None:
     crossings = crossing_pairs(routes_of(fan_out(width)))
     assert crossings == [], f"{width} edges out of one box crossed: {crossings}"
 
 
-@pytest.mark.parametrize(
-    "width",
-    [2, 3, pytest.param(4, marks=_SECOND_MECHANISM), pytest.param(5, marks=_SECOND_MECHANISM)],
-)
+@pytest.mark.parametrize("width", _FAN_WIDTHS)
 def test_a_fan_in_does_not_cross_its_own_arrows(width: int) -> None:
     crossings = crossing_pairs(routes_of(fan_in(width)))
     assert crossings == [], f"{width} edges into one box crossed: {crossings}"
@@ -196,3 +184,152 @@ def test_the_document_order_of_the_edges_does_not_reach_the_drawing() -> None:
     drawn = {(route.source, route.target): route.points for route in routes_of(forward)}
     redrawn = {(route.source, route.target): route.points for route in routes_of(backward)}
     assert drawn == redrawn
+
+
+# --------------------------------------------------------------------------
+# A mesh is meant to cross itself
+# --------------------------------------------------------------------------
+
+
+def spine_leaf(spines: int, leaves: int, role: str) -> dict[str, Any]:
+    """Everything above joined to everything below — the shape item E is about."""
+    return {
+        "version": 1,
+        "kind": "flow",
+        "title": "A fabric",
+        "nodes": [{"id": f"s{index}", "text": f"Spine {index}"} for index in range(spines)]
+        + [{"id": f"l{index}", "text": f"Leaf {index}"} for index in range(leaves)],
+        "edges": [
+            {"from": f"s{above}", "to": f"l{below}", "role": role}
+            for above in range(spines)
+            for below in range(leaves)
+        ],
+    }
+
+
+def test_a_link_is_drawn_as_one_straight_line() -> None:
+    """*"We should have that option too, at least for lines without arrow head."*
+
+    `link` is the vocabulary's word for "merely associated" — no head, no
+    direction, no order — and the default theme draws it straight, because that
+    is the relation a mesh is made of. Two points and no corners.
+    """
+    routes = routes_of(spine_leaf(2, 3, "link"))
+    assert routes
+    for route in routes:
+        assert len(route.points) == 2, f"{route.source}->{route.target} turned a corner"
+        (x1, y1), (x2, y2) = route.points
+        assert x1 != x2 and y1 != y2, "a chord between two ranks is not axis-aligned"
+
+
+def test_a_headed_edge_keeps_its_right_angles() -> None:
+    """The setting is per role, and `flow` is the role it must not reach.
+
+    A process read down the page is a sequence of steps, and a diagonal between
+    two of them reads as a mistake — which is the failure the orthogonal router
+    exists to make unrepresentable. Drawing every mesh straight would have cost
+    that.
+    """
+    for route in routes_of(spine_leaf(2, 3, "flow")):
+        for (x1, y1), (x2, y2) in route.segments:
+            assert x1 == pytest.approx(x2) or y1 == pytest.approx(y2)
+
+
+def test_a_chord_starts_and_ends_on_the_shapes_it_joins() -> None:
+    """Straight is not the same as unanchored: both ends still land on a border."""
+    from drawspec.kinds.graph import graph_drawing
+    from drawspec.text.measure import TextMeasurer
+
+    theme = load_theme(None)
+    measurer = TextMeasurer(theme.font.stacks(), search_paths=[])
+    drawing = graph_drawing(parse_document(spine_leaf(2, 2, "link")), theme, measurer)
+    for route in drawing.routes:
+        for identifier, point in (
+            (route.source, route.points[0]),
+            (route.target, route.points[-1]),
+        ):
+            box = drawing.boxes[identifier]
+            assert box.x - 1 <= point[0] <= box.x + box.width + 1
+            assert box.y - 1 <= point[1] <= box.y + box.height + 1
+
+
+def test_the_same_document_draws_either_way() -> None:
+    """The seam again: the author said `link`, the theme said how a link looks."""
+    from dataclasses import replace as _replace
+
+    theme = load_theme(None)
+    orthogonal = _replace(
+        theme,
+        edge_roles={
+            **theme.edge_roles,
+            "link": _replace(theme.edge_roles["link"], routing="orthogonal"),
+        },
+    )
+    document = parse_document(spine_leaf(2, 3, "link"))
+    assert render_document(document, theme, "inline") != render_document(
+        document, orthogonal, "inline"
+    )
+
+
+# --------------------------------------------------------------------------
+# What a chord has to earn before it is drawn as one
+# --------------------------------------------------------------------------
+
+
+def test_a_chord_that_would_cross_an_unrelated_box_is_routed_instead() -> None:
+    """ "A mesh crosses itself" is about two lines, not about a third box.
+
+    A line through a node it has nothing to do with is a different failure with
+    the same shape — and the reader cannot tell it from a deliberate crossing,
+    because the box is drawn over. So `direct` is a preference: a chord that
+    would pass through an uninvolved box falls back to the orthogonal search,
+    which knows how to go around.
+    """
+    boxes = (
+        Obstacle("left", x=0.0, y=0.0, width=80.0, height=40.0),
+        Obstacle("middle", x=140.0, y=0.0, width=80.0, height=40.0),
+        Obstacle("right", x=280.0, y=0.0, width=80.0, height=40.0),
+    )
+    theme = load_theme(None)
+    (route,) = route_edges((Connector("left", "right", role="link"),), boxes, theme)
+    for first, second in route.segments:
+        assert not boxes[1].crosses(first, second), "the chord went through the middle box"
+
+
+def test_an_obstacle_knows_a_diagonal_misses_it() -> None:
+    """The bounding rectangle is only the answer while every segment is straight.
+
+    It was, until direct routing — and the rectangle a chord spans is most of the
+    space between two ranks, nearly all of which it goes nowhere near. Treating
+    that rectangle as the segment made every box in the corner look crossed.
+    """
+    box = Obstacle("box", x=0.0, y=0.0, width=20.0, height=20.0)
+    assert box.crosses((-10.0, 10.0), (30.0, 10.0)), "a line through it does cross"
+    assert box.crosses((-10.0, -10.0), (30.0, 30.0)), "a diagonal through it does cross"
+    # Corner to corner of the bounding rectangle, but nowhere near the box.
+    assert not box.crosses((-10.0, 30.0), (30.0, 25.0))
+
+
+def test_a_direct_route_still_needs_a_shaft() -> None:
+    """The invariant belongs to the drawing, not to the router that found it.
+
+    A theme may put `routing = "direct"` on a role that has a head, so "the
+    default `link` has no head" is not a reason to skip the check: an arrow with
+    no visible shaft is not an arrow whichever way it was drawn.
+    """
+    from dataclasses import replace as _replace
+
+    theme = load_theme(None)
+    headed = _replace(
+        theme,
+        edge_roles={
+            **theme.edge_roles,
+            "flow": _replace(theme.edge_roles["flow"], routing="direct"),
+        },
+    )
+    close = (
+        Obstacle("a", x=0.0, y=0.0, width=60.0, height=30.0),
+        Obstacle("b", x=0.0, y=34.0, width=60.0, height=30.0),
+    )
+    with pytest.raises(LayoutError):
+        route_edges((Connector("a", "b"),), close, headed)

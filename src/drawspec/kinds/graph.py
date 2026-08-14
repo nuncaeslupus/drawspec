@@ -74,6 +74,13 @@ DRAWN_KINDS: Final = ("flow", "tree")
 #: a single column of full-width sentences.
 NODE_WIDTH_SHARE: Final = 0.25
 
+#: How far past that share a box may go when its own shape has made it taller
+#: than it is wide. Twice, so no node ever takes more than half the canvas — and
+#: only ever in exchange for fewer lines, which is what `size_box`'s `widen`
+#: enforces. This is where the corpus's tallest boxes came from: a nine-line
+#: pill spends most of a quarter-canvas allowance on its own caps.
+NODE_WIDEN: Final = 2.0
+
 #: Which way each kind reads when both directions fit. A flow chart is read down
 #: the page; a tree of one-line labels is usually wider than it is tall, but its
 #: hierarchy still reads downwards, so both prefer `down` and let the width
@@ -255,6 +262,7 @@ def _sized(
             role=node.role,
             level="body",
             max_width=limit,
+            widen=NODE_WIDEN,
         )
         for node in document.nodes
     }
@@ -328,6 +336,7 @@ def _framed(
 
 __all__ = [
     "DRAWN_KINDS",
+    "NODE_WIDEN",
     "NODE_WIDTH_SHARE",
     "PREFERRED_DIRECTION",
     "GraphDrawing",

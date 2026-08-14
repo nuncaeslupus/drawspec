@@ -57,6 +57,7 @@ from drawspec.theme import (
     EDGE_HEADS,
     FILL_PATTERNS,
     FONT_ROLES,
+    FUNNEL_DIRECTIONS,
     NODE_SHAPES,
     THEME_VERSION,
     TYPE_LEVELS,
@@ -67,6 +68,7 @@ from drawspec.theme import (
     EdgeStyle,
     FitBand,
     FontStacks,
+    FunnelStyle,
     MarkStyle,
     Padding,
     TitleStyle,
@@ -448,6 +450,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "mark": MarkStyle,
     "title": TitleStyle,
     "cycle": CycleStyle,
+    "funnel": FunnelStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are
@@ -459,6 +462,7 @@ THEME_VOCABULARIES: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("mark", "fills"): FILL_PATTERNS,
     ("title", "level"): TYPE_LEVELS,
     ("cycle", "connector"): CYCLE_CONNECTORS,
+    ("funnel", "direction"): FUNNEL_DIRECTIONS,
 }
 
 

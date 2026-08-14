@@ -16,6 +16,7 @@ against that template, which is what a `cycle` document actually renders through
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from itertools import pairwise
 
 import pytest
@@ -34,6 +35,13 @@ from drawspec.theme import load_theme
 
 THEME = load_theme()
 MEASURER = TextMeasurer(THEME.font.stacks(), search_paths=[])
+
+#: The same theme with `[box] widen_steps` spent down to none. A family called
+#: directly gets no elastic fit around it, so it gets no chance to fall back the
+#: way `fit` does when a generous box makes a drawing too wide for the canvas —
+#: and these tests are about ranks, anchors and angles, not about how much width
+#: a box talked its way into. Fixing the generosity keeps them measuring that.
+STRICT = replace(THEME, box=replace(THEME.box, widen_steps=0))
 
 
 def raw(name: str) -> dict[str, object]:
@@ -90,7 +98,7 @@ def test_flow_document_renders_svg_passing_inline_safety(profile: str) -> None:
 
 def test_tree_child_ranks_increase_with_depth() -> None:
     """Hierarchy visible in the geometry, not merely in the document."""
-    drawing = graph_drawing(TREE, THEME, MEASURER)
+    drawing = graph_drawing(TREE, STRICT, MEASURER)
     ranks = {name: place.rank for name, place in drawing.layout.placements.items()}
     for edge in TREE.edges:
         assert ranks[edge.target] > ranks[edge.source], (edge.source, edge.target)
