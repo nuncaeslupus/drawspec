@@ -186,6 +186,9 @@ LEAD_TREATMENTS: Final = ("bold", "plain")
 #: Where a diagram-level caption sits relative to the drawing.
 CAPTION_POSITIONS: Final = ("below", "above")
 
+#: Which way a funnel narrows.
+FUNNEL_DIRECTIONS: Final = ("down", "right")
+
 
 @dataclass(frozen=True)
 class Canvas:
@@ -492,8 +495,13 @@ class EdgeStyle:
     rather than a suggestion: it can force extra rank separation.
     """
 
-    head_length: float = 6.0
-    """How long an arrow head is drawn, before it is scaled to its own shaft."""
+    head_length: float = 8.0
+    """How long an arrow head is drawn, before it is scaled to its own shaft.
+
+    Sized against the *type*, not against the line: a head is read beside the
+    labels around it, and one at half a capital's height reads as a line that
+    stops rather than as an arrow.
+    """
 
     clearance: float = 4.0
     """Daylight a route keeps from every box it is not joined to.
@@ -663,6 +671,40 @@ class CycleStyle:
 
 
 @dataclass(frozen=True)
+class FunnelStyle:
+    """Which way a `funnel` tapers. Appearance, so it lives here.
+
+    An author writes `funnel` and means "stages narrowing to an outcome". Whether
+    the narrowing runs across the page or down it is a question about the drawing
+    rather than about the subject, so there is no field on the document for it
+    and no second kind: the same document renders either way.
+
+    `down` is the default because that is what the word draws. The corpus review
+    put it plainly, on a funnel drawn sideways: *"it says embut, which should
+    look as vertical — couldn't we have an inverted pyramid for these cases?"* A
+    funnel is a thing you pour into, and every reader has seen one. `right` is
+    the other reading — a pipeline losing volume from left to right — and it
+    suits a diagram whose stages carry long labels, because a stage across the
+    page has the whole width of the band to write in.
+    """
+
+    direction: str = "down"
+    """`down` tapers towards the bottom of the page; `right`, towards its edge."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> FunnelStyle:
+        _reject_unknown(mapping, ("direction",), "[funnel]")
+        defaults = cls()
+        return cls(
+            direction=_choice(
+                mapping.get("direction", defaults.direction),
+                FUNNEL_DIRECTIONS,
+                "[funnel] direction",
+            )
+        )
+
+
+@dataclass(frozen=True)
 class NodeRole:
     """How one semantic node role is drawn."""
 
@@ -761,6 +803,7 @@ _TOP_LEVEL_KEYS: Final = (
     "mark",
     "title",
     "cycle",
+    "funnel",
     "role",
     "edge_role",
 )
@@ -781,6 +824,7 @@ class Theme:
     mark: MarkStyle = MarkStyle()
     title: TitleStyle = TitleStyle()
     cycle: CycleStyle = CycleStyle()
+    funnel: FunnelStyle = FunnelStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
 
@@ -829,6 +873,7 @@ class Theme:
             mark=MarkStyle.from_mapping(_section(mapping, "mark")),
             title=TitleStyle.from_mapping(_section(mapping, "title")),
             cycle=CycleStyle.from_mapping(_section(mapping, "cycle")),
+            funnel=FunnelStyle.from_mapping(_section(mapping, "funnel")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
         )

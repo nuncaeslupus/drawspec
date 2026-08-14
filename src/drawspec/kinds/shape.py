@@ -284,19 +284,117 @@ def _pyramid_base(
 
 
 def _funnel(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
-    """A tapering band divided into stages: the pyramid, lying down.
+    """Stages narrowing to an outcome, tapering down the page or across it.
 
-    The same trapezoid and the same constant progression, turned a quarter turn.
-    What changes is which way the shape gives when the text does not fit. A
-    pyramid narrows to its apex, so its *base* is what the labels buy; a funnel
-    narrows to its mouth, so what the labels buy is its **height** — and it fills
-    the canvas width, because a funnel that did not would be a wedge with nowhere
-    to put the stages.
+    Which way is `[funnel] direction`, and it is the theme's because it is a
+    question about the drawing rather than about the subject. The corpus review
+    asked for the vertical one and named the reason: *"it says embut, which
+    should look as vertical — couldn't we have an inverted pyramid for these
+    cases?"* A funnel is a thing you pour into, and drawn sideways it stops being
+    the thing the word names.
 
     The dividers are drawn in the theme's `weak` edge role rather than as the
     shared sides of separate polygons. A gate is a threshold, not a wall: the
     band is continuous and something passes through it, which is what a stage
     boundary in a funnel means and what a solid line would deny.
+    """
+    if theme.funnel.direction == "down":
+        return _funnel_down(document, theme, measurer)
+    return _funnel_right(document, theme, measurer)
+
+
+def _funnel_down(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
+    """The inverted pyramid: full width at the mouth, narrowing to the outcome.
+
+    Exactly the pyramid's geometry with the progression reversed, which is why
+    there is no third family here — the plan's own reading, and it holds: a
+    pyramid's level `i` spans `(i + 1) / steps` of the base at its top and
+    `(i + 2) / steps` at its bottom, and a funnel's spans the same two the other
+    way round. What differs is which edge the text has to fit, and it is the
+    narrow one either way: a pyramid level's *top*, a funnel stage's *bottom*.
+
+    The width is the canvas, not something the labels buy. A funnel that narrowed
+    its mouth to suit its labels would be a wedge, and the mouth is the one part
+    of a funnel a reader already knows the size of.
+    """
+    stages = document.stages
+    count = len(stages)
+    if count < 1:
+        raise DrawspecError("a funnel needs at least one stage")
+
+    width = _canvas_width(document, theme)
+
+    def span(depth: int) -> float:
+        """The band's width `depth` stages down, from the mouth to the outcome."""
+        return width * (1 - (1 - FUNNEL_TAPER) * depth / count)
+
+    boxes = [
+        _label(
+            item,
+            theme,
+            measurer,
+            span(index + 1) - theme.box.padding.horizontal,
+            f"funnel stage {index + 1} of {count} ({item.text[:32]!r})",
+            "The last stage is the narrowest, so it takes the shortest label — "
+            "shorten it, use fewer stages, or give the diagram more width.",
+        )
+        for index, item in enumerate(stages)
+    ]
+
+    # Equal stage heights, for the reason a pyramid's levels are equal: a stage
+    # taller than its neighbours reads as a longer or more important step, which
+    # is not what the author said. Between the two numbers, the shape is as tall
+    # as it can be without leaving its text swimming in it.
+    tallest = max(box.height for box in boxes)
+    stage_height = max(tallest, min(width * PYRAMID_ASPECT / count, tallest * PYRAMID_FILL))
+    height = stage_height * count
+    middle = width / 2
+
+    primitives: list[Primitive] = [
+        Polygon(
+            stages[0].role,
+            points=(
+                (middle - span(0) / 2, 0.0),
+                (middle + span(0) / 2, 0.0),
+                (middle + span(count) / 2, height),
+                (middle - span(count) / 2, height),
+            ),
+        )
+    ]
+    for index in range(1, count):
+        gate = index * stage_height
+        primitives.append(
+            Path(
+                GATE_ROLE,
+                points=((middle - span(index) / 2, gate), (middle + span(index) / 2, gate)),
+            )
+        )
+    for index, box in enumerate(boxes):
+        top = index * stage_height
+        narrow = span(index + 1)
+        placed = box.resized(width=narrow, height=stage_height).moved_to(
+            middle - max(narrow, box.width) / 2, top
+        )
+        primitives.extend(text_runs(placed, theme, measurer))
+
+    return Scene(
+        width=width,
+        height=height,
+        primitives=tuple(primitives),
+        title=document.title,
+        description=document.description,
+        metadata=(("taper", f"{FUNNEL_TAPER}"), ("direction", "down")),
+    )
+
+
+def _funnel_right(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
+    """The pyramid lying down: full width, tapering left to right.
+
+    What changes from the vertical one is which way the shape gives when the text
+    does not fit. Tapering down, the mouth is the canvas and the labels buy
+    *height*; tapering right, the length is the canvas and the labels buy
+    **depth** — and it fills the canvas width either way, because a funnel that
+    did not would be a wedge with nowhere to put the stages.
     """
     stages = document.stages
     count = len(stages)
@@ -361,7 +459,7 @@ def _funnel(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         primitives=tuple(primitives),
         title=document.title,
         description=document.description,
-        metadata=(("taper", f"{FUNNEL_TAPER}"),),
+        metadata=(("taper", f"{FUNNEL_TAPER}"), ("direction", "right")),
     )
 
 

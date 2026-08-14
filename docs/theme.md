@@ -103,7 +103,7 @@ Line constants shared by every edge role.
 |---|---|---|
 | `stroke_width` | `1.5` | The default line weight. An edge role may override it. |
 | `min_shaft_length` | `16.0` | The shortest visible run of line an arrow may have. |
-| `head_length` | `6.0` | How long an arrow head is drawn, before it is scaled to its own shaft. |
+| `head_length` | `8.0` | How long an arrow head is drawn, before it is scaled to its own shaft. |
 | `clearance` | `6.0` | Daylight a route keeps from every box it is not joined to. |
 | `lane_spacing` | `12.0` | How far apart two routes running along the same line are drawn. |
 
@@ -133,6 +133,14 @@ How a `cycle`'s connectors are drawn. Appearance, so it lives here.
 |---|---|---|
 | `connector` | `"arc"` | Whether a cycle's steps are joined by a thin arc or a broad tapered band. One of `arc`, `band`. |
 | `width` | `11.0` | How thick a `band` connector is at its shaft, in user units. |
+
+### `[funnel]`
+
+Which way a `funnel` tapers. Appearance, so it lives here.
+
+| Key | Default | What it is |
+|---|---|---|
+| `direction` | `"down"` | `down` tapers towards the bottom of the page; `right`, towards its edge. One of `down`, `right`. |
 
 ## `[role.*]` — the node roles
 

@@ -11,6 +11,7 @@ against a bounding box.
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 from itertools import pairwise
 
 import pytest
@@ -33,7 +34,7 @@ from drawspec.kinds.shape import (
 from drawspec.scene import Ellipse, Path, Polygon, Scene, TextLine
 from drawspec.schema import parse_document
 from drawspec.text import TextMeasurer
-from drawspec.theme import load_theme
+from drawspec.theme import Theme, load_theme
 
 THEME = load_theme()
 MEASURER = TextMeasurer(THEME.font.stacks(), search_paths=[])
@@ -430,7 +431,14 @@ def test_a_ring_label_wraps_to_buy_the_set_a_smaller_circle() -> None:
 # --------------------------------------------------------------------------
 
 
-def funnel(*texts: str, **extra: object) -> Scene:
+#: A funnel drawn the other way. `down` is the default — a funnel is a thing you
+#: pour into — and the tests below that predate the choice describe the sideways
+#: geometry, so they name the theme that draws it rather than being deleted: both
+#: directions are supported and both have to keep working.
+SIDEWAYS = replace(THEME, funnel=replace(THEME.funnel, direction="right"))
+
+
+def funnel(*texts: str, theme: Theme = SIDEWAYS, **extra: object) -> Scene:
     document = {
         "version": 1,
         "kind": "funnel",
@@ -438,7 +446,7 @@ def funnel(*texts: str, **extra: object) -> Scene:
         "stages": [{"text": text} for text in texts],
         **extra,
     }
-    return shape_scene(parse_document(document), THEME, MEASURER)
+    return shape_scene(parse_document(document), theme, MEASURER)
 
 
 STAGES = ("Many ideas", "Assessed and chosen", "Validated", "Deployed")
@@ -532,3 +540,76 @@ def test_a_funnel_deepens_to_hold_a_long_last_stage() -> None:
     shallow = funnel("One", "Two")
     deep = funnel("One", "A label long enough that the mouth has to open for it")
     assert deep.height > shallow.height
+
+
+# --------------------------------------------------------------------------
+# funnel, the way the word draws it
+# --------------------------------------------------------------------------
+
+
+def test_a_funnel_tapers_down_the_page_by_default() -> None:
+    """*"It says embut, which should look as vertical."*
+
+    A funnel is a thing you pour into, and every reader has seen one. Drawn
+    sideways it is a pipeline, which is a different picture with the same stages
+    in it — so the default draws the one the word names, and `[funnel] direction`
+    is how a document that meant the pipeline says so.
+    """
+    band = band_of(funnel(*STAGES, theme=THEME))
+    top = [x for x, y in band.points if y == pytest.approx(min(p[1] for p in band.points))]
+    bottom = [x for x, y in band.points if y == pytest.approx(max(p[1] for p in band.points))]
+    assert max(top) - min(top) > max(bottom) - min(bottom)
+
+
+def test_a_vertical_funnel_keeps_its_mouth_open() -> None:
+    """The same reason a pyramid's apex is flat: a point has nothing written in it."""
+    band = band_of(funnel(*STAGES, theme=THEME))
+    bottom = [x for x, y in band.points if y == pytest.approx(max(p[1] for p in band.points))]
+    assert max(bottom) - min(bottom) == pytest.approx(THEME.canvas.width * FUNNEL_TAPER)
+
+
+def test_a_vertical_funnel_fills_the_canvas_at_its_mouth() -> None:
+    """The mouth is the one part of a funnel a reader already knows the size of."""
+    assert funnel(*STAGES, theme=THEME).width == pytest.approx(THEME.canvas.width)
+
+
+def test_every_stage_of_a_vertical_funnel_is_the_same_depth() -> None:
+    """A stage taller than its neighbours reads as a longer step, which was not said."""
+    built = funnel(*STAGES, theme=THEME)
+    gates = sorted(gate.points[0][1] for gate in gates_of(built))
+    steps = [
+        second - first for first, second in zip([0.0, *gates], [*gates, built.height], strict=True)
+    ]
+    assert max(steps) - min(steps) < 1e-6
+
+
+def test_a_vertical_stage_label_fits_the_band_where_its_stage_ends() -> None:
+    """The narrowest part of a stage is its bottom edge — the pyramid's rule, inverted."""
+    built = funnel(*STAGES, theme=THEME)
+    count = len(STAGES)
+    middle = built.width / 2
+    depth = built.height / count
+    for index in range(count):
+        half = built.width * (1 - (1 - FUNNEL_TAPER) * (index + 1) / count) / 2
+        for run in runs_of(built):
+            if not index * depth <= run.y <= (index + 1) * depth:
+                continue
+            for x in run_edges(run):
+                assert middle - half <= x <= middle + half, (run.text, index)
+
+
+def test_a_document_draws_either_way_without_being_edited() -> None:
+    """The seam: the author named stages narrowing, the theme named which way."""
+    stages = [{"text": text} for text in STAGES]
+    document = parse_document(
+        {"version": 1, "kind": "funnel", "title": "A funnel", "stages": stages}
+    )
+    down = shape_scene(document, THEME, MEASURER)
+    right = shape_scene(document, SIDEWAYS, MEASURER)
+    assert down.metadata != right.metadata
+    # The same words, in the same order. Not the same *lines*: a stage that is a
+    # band across the page and a stage that is a band down it have different
+    # widths to break in, which is the point of having both.
+    assert " ".join(run.text for run in runs_of(down)) == " ".join(
+        run.text for run in runs_of(right)
+    )

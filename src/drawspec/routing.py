@@ -71,6 +71,11 @@ TURN_COST: Final = 12.0
 #: point at nothing.
 PORT_SPREAD: Final = 0.6
 
+#: Half an end treatment's width, as a fraction of its length. A head is a
+#: direction made visible, and one much narrower than this reads as the line
+#: coming to a point rather than as an arrow arriving somewhere.
+HEAD_SPREAD: Final = 0.45
+
 #: How far a label sits from the line it names, before anything is in the way.
 LABEL_GAP: Final = 4.0
 
@@ -1486,7 +1491,7 @@ def _marker(
     dx = (tip[0] - from_point[0]) / span
     dy = (tip[1] - from_point[1]) / span
     nx, ny = -dy, dx
-    half = length * 0.4
+    half = length * HEAD_SPREAD
 
     def at(back: float, across: float) -> tuple[float, float]:
         return (tip[0] - dx * back + nx * across, tip[1] - dy * back + ny * across)
@@ -1512,6 +1517,7 @@ def _marker(
 
 __all__ = [
     "GRID_PRECISION",
+    "HEAD_SPREAD",
     "LABEL_GAP",
     "LABEL_OFFSETS",
     "LABEL_POSITIONS",

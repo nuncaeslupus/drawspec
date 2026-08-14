@@ -73,7 +73,11 @@ stroke_width = 1.5
 # An arrow with no visible shaft is not an arrow. This is a layout constraint,
 # not a suggestion: it can force extra rank separation.
 min_shaft_length = 16.0
-head_length = 6.0
+# About the cap height of the body type, because that is what a head is read
+# beside: at six it measured half a capital, and the corpus review's word for it
+# was "arrow heads look small, maybe lines are thicker?" — the shaft was the
+# suspect, but the head was the culprit.
+head_length = 8.0
 # Daylight a route keeps from a box it is only passing. A line flush against a
 # border reads as part of that box rather than as a connector going elsewhere,
 # and a line a few units off one still hugs it — this is the smallest gap that
@@ -221,3 +225,10 @@ tail = "none"
 stroke = "currentColor"
 dash = "none"
 stroke_width = 1.5
+
+# A funnel is a thing you pour into, and a reader already knows what one looks
+# like: full width at the mouth, narrowing downward. `right` draws the same
+# stages as a pipeline losing volume across the page, which suits long labels —
+# a stage laid across the page has the whole band to write in.
+[funnel]
+direction = "down"
