@@ -1019,6 +1019,7 @@ def _targets(group: Sequence[_Run], anchor: float | None, spacing: float) -> lis
     if anchor is None:
         middle = sum(run.line for run in group) / count
         return [middle + (position - (count - 1) / 2) * spacing for position in range(count)]
+
     steps = [(position // 2 + 1) * (1 if position % 2 == 0 else -1) for position in range(count)]
     return [anchor + step * spacing for step in steps]
 
@@ -1040,6 +1041,21 @@ class _Run:
 
     line: float
     """The coordinate across its direction — the lane it is drawn in."""
+
+    approach: float
+    """Where the route sits across the band, on either side of this run.
+
+    The mean of the two corners the run turns at — measured across its own
+    direction, so a horizontal run reports the two heights its route came from
+    and goes on to. This is the field that decides *which* lane a run gets when
+    a band is prised apart, and it exists because `line` cannot decide it: the
+    band that most needs separating is the one where every run is on the exact
+    same line, and there `line` is a tie for all of them. Sorting a tie is
+    sorting nothing, so the lanes went out in the order the edges happened to be
+    written in — and two routes whose order was thereby swapped are two routes
+    that cross. A run whose route arrives from above and leaves above belongs in
+    the upper lane, whatever the document said first.
+    """
 
 
 def _shared_runs(routes: Sequence[Route], spacing: float) -> list[tuple[list[_Run], float | None]]:
@@ -1076,7 +1092,16 @@ def _shared_runs(routes: Sequence[Route], spacing: float) -> list[tuple[list[_Ru
                 span = sorted((first[0], second[0]))
             else:
                 continue
-            runs[orientation].append(_Run(index, segment, span[0], span[1], movable, line))
+            across = 1 if orientation == "h" else 0
+            corners = [
+                route.points[position][across]
+                for position in (segment - 1, segment + 2)
+                if 0 <= position < len(route.points)
+            ]
+            approach = sum(corners) / len(corners) if corners else line
+            runs[orientation].append(
+                _Run(index, segment, span[0], span[1], movable, line, approach)
+            )
 
     groups: list[tuple[list[_Run], float | None]] = []
     for entries in runs.values():
@@ -1086,7 +1111,15 @@ def _shared_runs(routes: Sequence[Route], spacing: float) -> list[tuple[list[_Ru
                 held = [run.line for run in component if not run.movable]
                 if len({run.index for run in component}) > 1 and free_runs:
                     anchor = sum(held) / len(held) if held else None
-                    groups.append((sorted(free_runs, key=lambda run: run.line), anchor))
+                    # Ordered by where each route is going, then by where it
+                    # currently is. `approach` first is what keeps the lanes in
+                    # the routes' own order; `line` breaks the remaining ties so
+                    # a band the router already spread stays spread the way it
+                    # was, and the whole key is a total order rather than a
+                    # stable-sort accident.
+                    groups.append(
+                        (sorted(free_runs, key=lambda run: (run.approach, run.line)), anchor)
+                    )
     return groups
 
 
