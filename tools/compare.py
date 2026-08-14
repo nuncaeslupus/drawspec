@@ -39,6 +39,7 @@ import argparse
 import json
 import re
 import sys
+import unicodedata
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -78,6 +79,63 @@ DECLINED = {
 }
 
 
+# Words too common to be evidence of anything, in the languages the corpus and
+# this tool are written in. Written without accents, because comparison folds them.
+_COMMON = """
+    amb dels dins aixo aquest aquesta aquests aquestes altre altra altres cada
+    com des dues entre esta estan tenir tots tota totes una unes uns seu seva
+    seves seus sobre son pero perque quan quant qual quals aqui alla mateix
+    del las los para por quien sus unos unas como esta este estos cuando
+    and are for from into its not that the their them they this those was were
+    what when which with your you have has had can also each only both
+"""
+STOPWORDS = frozenset(_COMMON.split())
+
+# A word has to be this long to count, and two words are treated as the same word
+# when they share this many leading letters — enough to make `públic` and
+# `pública`, or `concepte` and `conceptes`, the same word without pairing things
+# that merely rhyme.
+SHORTEST = 4
+STEM = 5
+
+
+def _fold(text: str) -> list[str]:
+    """The content words of a piece of text, accent-folded and lowercased."""
+    plain = unicodedata.normalize("NFKD", text.lower())
+    plain = "".join(letter for letter in plain if not unicodedata.combining(letter))
+    words = re.findall(r"[a-z0-9]+", plain)
+    return [word for word in words if len(word) >= SHORTEST and word not in STOPWORDS]
+
+
+def _absent(these: list[str], those: list[str]) -> list[str]:
+    """The words in `these` that nothing in `those` accounts for."""
+    stems = {word[:STEM] for word in those}
+    missing, seen = [], set()
+    for word in these:
+        if word[:STEM] not in stems and word not in seen:
+            seen.add(word)
+            missing.append(word)
+    return missing
+
+
+def _authored(value: object) -> list[str]:
+    """Every string an author wrote in a drawspec document, at any depth."""
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list):
+        return [word for item in value for word in _authored(item)]
+    if isinstance(value, dict):
+        return [
+            word
+            for key, item in value.items()
+            # `$schema`, `kind`, `theme` and ids are machinery, not prose.
+            if key in {"title", "description", "text", "label", "name", "note", "unit"}
+            or isinstance(item, (list, dict))
+            for word in _authored(item)
+        ]
+    return []
+
+
 @dataclass(frozen=True)
 class Pair:
     """One original and whatever drawspec makes of it."""
@@ -92,6 +150,9 @@ class Pair:
     kind: str
     old: str
     new: str
+    added: tuple[str, ...] = ()
+    dropped: tuple[str, ...] = ()
+    promoted: tuple[str, ...] = ()
     failure: str = ""
 
     @property
@@ -152,6 +213,36 @@ def _drawn(name: str) -> tuple[str, str, str]:
         return "", kind, f"{type(error).__name__}: {error}"
 
 
+def _spoken(svg: str, tags: str) -> str:
+    found = re.findall(rf"<(?:{tags})[^>]*>(.*?)</(?:{tags})>", svg, re.S)
+    return " ".join(re.sub(r"<[^>]+>", " ", part) for part in found)
+
+
+def _said(name: str) -> tuple[list[str], list[str]]:
+    """What the original draws, and everything it says including its description.
+
+    The two are kept apart because the difference matters: a word that was in the
+    original's `<desc>` and is now on the drawing was moved, not invented.
+    """
+    path = ORIGINALS / f"{name}.svg"
+    if not path.is_file():
+        return [], []
+    svg = path.read_text(encoding="utf-8")
+    drawn = _fold(_spoken(svg, "title|text|tspan"))
+    return drawn, drawn + _fold(_spoken(svg, "desc"))
+
+
+def _wrote(name: str) -> tuple[list[str], list[str]]:
+    """What the redraw draws, and everything it says including its description."""
+    document = CORPUS / f"{name}.json"
+    if not document.is_file():
+        return [], []
+    loaded = json.loads(document.read_text(encoding="utf-8"))
+    described = str(loaded.pop("description", ""))
+    drawn = _fold(" ".join(_authored(loaded)))
+    return drawn, drawn + _fold(described)
+
+
 def pairs() -> list[Pair]:
     """Every original with its redraw beside it, plus any redraw the index lost.
 
@@ -168,6 +259,8 @@ def pairs() -> list[Pair]:
         name = str(row["name"])
         original = ORIGINALS / f"{name}.svg"
         new, kind, failure = _drawn(name)
+        drew, said = _said(name)
+        redrew, wrote = _wrote(name)
         found.append(
             Pair(
                 number=position,
@@ -184,6 +277,14 @@ def pairs() -> list[Pair]:
                     else ""
                 ),
                 new=new,
+                # Words now on the drawing that the original never said at all.
+                added=tuple(_absent(redrew, said)) if new and said else (),
+                # Words the original drew that the redraw does not say anywhere.
+                dropped=tuple(_absent(drew, wrote)) if new and said else (),
+                # Words moved from the original's description onto the drawing.
+                promoted=tuple(_absent(_absent(redrew, drew), _absent(redrew, said)))
+                if new and said
+                else (),
                 failure=failure,
             )
         )
@@ -301,6 +402,19 @@ h1 {{
   display: block; font: 500 10px/1 var(--mono); letter-spacing: .12em;
   text-transform: uppercase; color: var(--signal); margin-bottom: 5px;
 }}
+.changed {{
+  list-style: none; margin: 0 0 18px 32px; padding: 10px 14px; max-width: 86ch;
+  border: 1px solid var(--rule); border-radius: 3px; background: var(--sunk);
+  font-size: 13px; line-height: 1.5;
+}}
+.changed li + li {{ margin-top: 4px; }}
+.changed i {{
+  font: 500 10px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  font-style: normal; color: var(--muted); margin-right: 8px;
+}}
+.changed b {{ font-weight: 600; }}
+.changed .check {{ color: var(--signal); }}
+.changed .check i, .changed .check b {{ color: var(--signal); }}
 .cols {{ display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }}
 @media (max-width: 880px) {{ .cols {{ grid-template-columns: 1fr; }} }}
 figure {{ margin: 0; }}
@@ -328,29 +442,34 @@ SCRIPT = """
 const chips = [...document.querySelectorAll('.chip')];
 const pairs = [...document.querySelectorAll('.pair')];
 const shown = document.getElementById('shown');
-let kind = 'all', state = 'all';
+let kind = 'all', state = 'all', words = 'all';
 
 function apply() {
   let count = 0;
   for (const pair of pairs) {
     const ok = (kind === 'all' || pair.dataset.kind === kind)
-            && (state === 'all' || pair.dataset.state === state);
+            && (state === 'all' || pair.dataset.state === state)
+            && (words === 'all' || pair.dataset.words === words);
     pair.hidden = !ok;
     if (ok) count++;
   }
   for (const area of document.querySelectorAll('.area'))
     area.hidden = ![...area.querySelectorAll('.pair')].some(p => !p.hidden);
   shown.textContent = String(count).padStart(2, '0');
+  const chosen = { kind, state, words };
   for (const chip of chips)
     chip.setAttribute(
       'aria-pressed',
-      String(chip.dataset[chip.dataset.axis] === (chip.dataset.axis === 'kind' ? kind : state)),
+      String(chip.dataset[chip.dataset.axis] === chosen[chip.dataset.axis]),
     );
 }
 
 for (const chip of chips) chip.addEventListener('click', () => {
-  if (chip.dataset.axis === 'kind') kind = chip.dataset.kind;
-  else state = chip.dataset.state;
+  const axis = chip.dataset.axis;
+  if (axis === 'kind') kind = chip.dataset.kind;
+  else if (axis === 'state') state = chip.dataset.state;
+  // The words filter is the only one that toggles: it has no "all" chip of its own.
+  else words = words === 'check' ? 'all' : 'check';
   apply();
 });
 apply();
@@ -363,6 +482,47 @@ def _plate(svg: str, failure: str, *, missing: str) -> str:
     if failure:
         return f"<p class='blank bad'>{escape(failure)}</p>"
     return f"<p class=blank>{missing}</p>"
+
+
+def _changed(pair: Pair) -> str:
+    """What this redraw did to the original, in the terms a checker needs.
+
+    The reviewer's question about every one of these drawings was the same — did
+    you take this from the source or make it up? — and answering it per drawing in
+    prose does not scale and cannot be trusted. So it is computed: the words on
+    the redraw that the original never said, the words it says that the original
+    only said in its description, and the words the original drew that the redraw
+    dropped. It is a signal, not a proof: it compares words, not meanings.
+    """
+    if not pair.new:
+        return ""
+    rows = []
+    if pair.kind and pair.wants and pair.kind != pair.wants:
+        rows.append(
+            f"<li><i>Kind</i> Drawn as <b>{escape(pair.kind)}</b>; "
+            f"the survey said <b>{escape(pair.wants)}</b>.</li>"
+        )
+    if pair.added:
+        rows.append(
+            "<li class=check><i>Not in the original</i> "
+            + ", ".join(f"<b>{escape(word)}</b>" for word in pair.added)
+            + " &mdash; check these against the source.</li>"
+        )
+    if pair.promoted:
+        rows.append(
+            "<li><i>Moved onto the drawing</i> "
+            + ", ".join(escape(word) for word in pair.promoted)
+            + " &mdash; said by the original, but only in its description.</li>"
+        )
+    if pair.dropped:
+        rows.append(
+            "<li><i>Dropped</i> "
+            + ", ".join(escape(word) for word in pair.dropped)
+            + " &mdash; drawn on the original, said nowhere here.</li>"
+        )
+    if not rows:
+        rows.append("<li><i>Words</i> Nothing added, nothing dropped.</li>")
+    return f"<ul class=changed>{''.join(rows)}</ul>"
 
 
 def _article(pair: Pair) -> str:
@@ -388,10 +548,11 @@ def _article(pair: Pair) -> str:
     )
     return (
         f"<article class=pair id='{escape(pair.name)}'"
-        f" data-kind='{escape(pair.drawn_as or 'none')}' data-state='{pair.state}'>"
+        f" data-kind='{escape(pair.drawn_as or 'none')}' data-state='{pair.state}'"
+        f" data-words='{'check' if pair.added else 'clean'}'>"
         f"<div class=head><span class=num>{pair.number:02d}</span>"
         f"<h3>{escape(pair.title)}</h3>{kind}</div>"
-        f"<p class=name>{escape(pair.slug)}</p>{note}"
+        f"<p class=name>{escape(pair.slug)}</p>{note}{_changed(pair)}"
         f"<div class=cols>"
         f"<figure><figcaption>The original</figcaption>{old}</figure>"
         f"<figure><figcaption>drawspec</figcaption>{new}</figure>"
@@ -420,6 +581,12 @@ def _rail(found: list[Pair]) -> str:
     chips.append(
         "<button class=chip data-axis=state data-state=all aria-pressed=true>Any state</button>"
     )
+    check = sum(1 for pair in found if pair.added)
+    if check:
+        chips.append(
+            "<button class=chip data-axis=words data-words=check>"
+            f"Words to check<em>{check}</em></button>"
+        )
     chips += [
         f"<button class=chip data-axis=state data-state='{name}'>"
         f"{label}<em>{states[name]}</em></button>"
