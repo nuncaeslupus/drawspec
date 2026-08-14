@@ -72,16 +72,29 @@ def routes_of(document: dict[str, Any]) -> list[Route]:
     the SVG: the finished drawing carries chart lines, timeline axes and shape
     outlines as paths too, and counting those as crossings measures the wrong
     thing entirely.
+
+    **Only the last attempt counts.** `render_document` lays out through `fit`,
+    which calls its attempt again at a smaller scale factor every time one raises
+    `FitError` — so a document that does not fit at full size routes more than
+    once, and accumulating across those calls would measure a *discarded* layout
+    alongside the finished one. Every fan here fits at the first factor, so this
+    is a trap rather than a live bug, and it is the kind that waits: the helper
+    is general, and the first test document that needs a retry would start
+    reporting crossings drawn in a drawing nobody sees.
+
+    The count is asserted rather than assumed. Taking the last call is only the
+    same thing as taking the successful attempt while one attempt means one call;
+    a kind that routed twice in a single pass would make that silently false, so
+    it fails here instead.
     """
-    from drawspec import routing
     from drawspec.kinds import graph
 
-    captured: list[Route] = []
+    attempts: list[list[Route]] = []
     original = graph.route_edges
 
     def capture(*arguments: Any, **keywords: Any) -> Any:
         produced = original(*arguments, **keywords)
-        captured.extend(produced)
+        attempts.append(list(produced))
         return produced
 
     graph.route_edges = capture
@@ -89,8 +102,13 @@ def routes_of(document: dict[str, Any]) -> list[Route]:
         render_document(parse_document(document), load_theme(None), "inline")
     finally:
         graph.route_edges = original
-    assert routing  # the module under test is the one that was exercised
-    return captured
+
+    assert attempts, "nothing was routed: this document has no edges to measure"
+    assert len(attempts) == 1, (
+        f"routed {len(attempts)} times for one document; the helper takes the last "
+        f"call as the finished layout, which is only right when there is one"
+    )
+    return attempts[-1]
 
 
 def fan_out(targets: int) -> dict[str, Any]:
