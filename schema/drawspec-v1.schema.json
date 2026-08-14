@@ -842,7 +842,7 @@
         },
         "note": {
           "type": "string",
-          "description": "For `timeline`: what goes under the axis beside this entry's mark — the year, the duration, the aside. Above the line is the event; below it is when. No other kind has anywhere to put one, and writing it there is refused rather than dropped."
+          "description": "A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead."
         },
         "at": {
           "type": "number",
@@ -873,6 +873,10 @@
             "note",
             "group"
           ]
+        },
+        "note": {
+          "type": "string",
+          "description": "A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead."
         }
       },
       "required": [
@@ -903,6 +907,10 @@
             "note",
             "group"
           ]
+        },
+        "note": {
+          "type": "string",
+          "description": "A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead."
         }
       },
       "required": [
@@ -1045,6 +1053,10 @@
             "note",
             "group"
           ]
+        },
+        "note": {
+          "type": "string",
+          "description": "A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead."
         }
       },
       "required": [

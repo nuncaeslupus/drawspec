@@ -28,8 +28,9 @@ from typing import Any
 
 import pytest
 
+from drawspec.errors import LayoutError
 from drawspec.render import render_document
-from drawspec.routing import Route
+from drawspec.routing import Connector, Obstacle, Route, route_edges
 from drawspec.schema import parse_document
 from drawspec.theme import load_theme
 
@@ -268,3 +269,67 @@ def test_the_same_document_draws_either_way() -> None:
     assert render_document(document, theme, "inline") != render_document(
         document, orthogonal, "inline"
     )
+
+
+# --------------------------------------------------------------------------
+# What a chord has to earn before it is drawn as one
+# --------------------------------------------------------------------------
+
+
+def test_a_chord_that_would_cross_an_unrelated_box_is_routed_instead() -> None:
+    """ "A mesh crosses itself" is about two lines, not about a third box.
+
+    A line through a node it has nothing to do with is a different failure with
+    the same shape — and the reader cannot tell it from a deliberate crossing,
+    because the box is drawn over. So `direct` is a preference: a chord that
+    would pass through an uninvolved box falls back to the orthogonal search,
+    which knows how to go around.
+    """
+    boxes = (
+        Obstacle("left", x=0.0, y=0.0, width=80.0, height=40.0),
+        Obstacle("middle", x=140.0, y=0.0, width=80.0, height=40.0),
+        Obstacle("right", x=280.0, y=0.0, width=80.0, height=40.0),
+    )
+    theme = load_theme(None)
+    (route,) = route_edges((Connector("left", "right", role="link"),), boxes, theme)
+    for first, second in route.segments:
+        assert not boxes[1].crosses(first, second), "the chord went through the middle box"
+
+
+def test_an_obstacle_knows_a_diagonal_misses_it() -> None:
+    """The bounding rectangle is only the answer while every segment is straight.
+
+    It was, until direct routing — and the rectangle a chord spans is most of the
+    space between two ranks, nearly all of which it goes nowhere near. Treating
+    that rectangle as the segment made every box in the corner look crossed.
+    """
+    box = Obstacle("box", x=0.0, y=0.0, width=20.0, height=20.0)
+    assert box.crosses((-10.0, 10.0), (30.0, 10.0)), "a line through it does cross"
+    assert box.crosses((-10.0, -10.0), (30.0, 30.0)), "a diagonal through it does cross"
+    # Corner to corner of the bounding rectangle, but nowhere near the box.
+    assert not box.crosses((-10.0, 30.0), (30.0, 25.0))
+
+
+def test_a_direct_route_still_needs_a_shaft() -> None:
+    """The invariant belongs to the drawing, not to the router that found it.
+
+    A theme may put `routing = "direct"` on a role that has a head, so "the
+    default `link` has no head" is not a reason to skip the check: an arrow with
+    no visible shaft is not an arrow whichever way it was drawn.
+    """
+    from dataclasses import replace as _replace
+
+    theme = load_theme(None)
+    headed = _replace(
+        theme,
+        edge_roles={
+            **theme.edge_roles,
+            "flow": _replace(theme.edge_roles["flow"], routing="direct"),
+        },
+    )
+    close = (
+        Obstacle("a", x=0.0, y=0.0, width=60.0, height=30.0),
+        Obstacle("b", x=0.0, y=34.0, width=60.0, height=30.0),
+    )
+    with pytest.raises(LayoutError):
+        route_edges((Connector("a", "b"),), close, headed)

@@ -21,6 +21,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Final
 
+from drawspec.errors import FitError
 from drawspec.geometry import Box
 from drawspec.scene import Ellipse, Polygon, Primitive, Rect, Scene, TextLine, TextSpan, moved
 from drawspec.text.measure import TextMeasurer
@@ -157,12 +158,20 @@ def captioned(scene: Scene, caption: str, theme: Theme, measurer: TextMeasurer) 
     house style knows.
 
     Raises:
-        FitError: the caption cannot be broken to the canvas width.
+        FitError: the caption cannot be broken to the canvas width — named as the
+            caption, because it is raised inside the elastic fit like everything
+            else and the fit's own message only knows that *something* would not
+            go. An author whose diagram was fine and whose caption had one
+            unbreakable word in it would otherwise be told to restructure the
+            diagram.
     """
     if not caption:
         return scene
     gap = theme.box.padding.top
-    block = wrap(caption, theme.canvas.width, measurer, theme=theme, level="label")
+    try:
+        block = wrap(caption, theme.canvas.width, measurer, theme=theme, level="label")
+    except FitError as error:
+        raise FitError(f"the caption {caption[:40]!r} does not fit the canvas: {error}") from None
 
     width = max(scene.width, block.width)
     band = block.height + gap

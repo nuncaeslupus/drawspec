@@ -613,3 +613,29 @@ def test_a_document_draws_either_way_without_being_edited() -> None:
     assert " ".join(run.text for run in runs_of(down)) == " ".join(
         run.text for run in runs_of(right)
     )
+
+
+def test_a_vertical_stage_uses_the_whole_width_of_its_narrow_edge() -> None:
+    """The padding comes out once, not twice.
+
+    `_label` hands its span to `size_box` as a `max_width`, and `size_box` takes
+    the theme's padding out itself — so a family that subtracts it first charges
+    every label for it twice, wraps labels that had the room, and makes every
+    stage deeper for it. The pyramid passes its geometric width; this asserts the
+    funnel does the same, by giving a stage a label that only fits if it does.
+    """
+    theme = THEME
+    stages = ("One", "Two", "Three", "Sized to the bottom edge")
+    built = funnel(*stages, theme=theme)
+    count = len(stages)
+    narrow = built.width * (1 - (1 - FUNNEL_TAPER) * count / count)
+    room = narrow - theme.box.padding.horizontal
+    longest = max(
+        (run_width(run) for run in runs_of(built) if run.y > built.height * (count - 1) / count),
+        default=0.0,
+    )
+    assert longest <= room + 1e-6
+    # And it really is using that room rather than half of it: the label fits on
+    # fewer lines than the double-charged span would have allowed.
+    bottom = [run for run in runs_of(built) if run.y > built.height * (count - 1) / count]
+    assert len(bottom) <= 2, [run.text for run in bottom]

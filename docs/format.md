@@ -117,6 +117,7 @@ name, so a misspelt key is an error at the point it was written.
 | `id` | string | **yes** | Unique within the document. |
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `note` | string | no | A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead. |
 
 ### `edge` object
 
@@ -142,7 +143,7 @@ name, so a misspelt key is an error at the point it was written.
 | `id` | string | no | Optional; generated from position when absent. |
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
-| `note` | string | no | For `timeline`: what goes under the axis beside this entry's mark — the year, the duration, the aside. Above the line is the event; below it is when. No other kind has anywhere to put one, and writing it there is refused rather than dropped. |
+| `note` | string | no | A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead. |
 | `at` | number | no | For `timeline`: when this happened, so the gaps mean something. Give it to every entry or to none. |
 
 ### `level` object
@@ -151,6 +152,7 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `note` | string | no | A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead. |
 
 ### `ring` object
 
@@ -202,6 +204,7 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `note` | string | no | A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead. |
 
 ### `axis` object
 

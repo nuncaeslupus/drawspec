@@ -204,15 +204,33 @@ class Obstacle:
         Touching counts as clear, in both senses that matter: a route may end on
         the border of the box it points at, and a route may run along the edge of
         one it passes.
+
+        The overlap of the two bounding rectangles is the whole answer while
+        every segment is axis-aligned, because then the segment *is* its
+        rectangle. A direct route is not, and the difference is not small: the
+        rectangle a chord spans is most of the space between two ranks, nearly
+        all of which the chord goes nowhere near. So a slope is then asked the
+        real question — do all four corners of the box fall on one side of the
+        line — which is the separating-axis argument finished off.
         """
         left, right = sorted((first[0], second[0]))
         top, bottom = sorted((first[1], second[1]))
-        return (
+        if not (
             left < self.right - _TOLERANCE
             and right > self.x + _TOLERANCE
             and top < self.bottom - _TOLERANCE
             and bottom > self.y + _TOLERANCE
-        )
+        ):
+            return False
+        step_x, step_y = second[0] - first[0], second[1] - first[1]
+        if abs(step_x) < _TOLERANCE or abs(step_y) < _TOLERANCE:
+            return True
+        reach = [
+            -step_y * (x - first[0]) + step_x * (y - first[1])
+            for x in (self.x, self.right)
+            for y in (self.y, self.bottom)
+        ]
+        return max(reach) > _TOLERANCE and min(reach) < -_TOLERANCE
 
 
 @dataclass(frozen=True)
@@ -614,10 +632,14 @@ def route_edges(
         if connector.source != connector.target
         and theme.edge_roles[connector.role].routing == "direct"
     }
+    # Every connector gets an orthogonal approach worked out, the straight ones
+    # included: `direct` is a preference, and a chord that cannot be drawn
+    # honestly falls back to the search, which needs the approach to have been
+    # prepared with all the others.
     sides = {
         index: _candidate_sides(boxes[connector.source], boxes[connector.target], direction)
         for index, connector in enumerate(connectors)
-        if connector.source != connector.target and index not in straight
+        if connector.source != connector.target
     }
     fractions = _assign_ports(connectors, boxes, sides)
     reaches = _shared_reaches(connectors, boxes, sides, fractions, obstacles, lanes, theme)
@@ -651,16 +673,21 @@ def route_edges(
             routes.append(_self_loop(connector, boxes[connector.source], obstacles, theme))
             continue
         if index in straight:
-            routes.append(
-                Route(
-                    source=connector.source,
-                    target=connector.target,
-                    role=connector.role,
-                    points=_chord(boxes[connector.source], boxes[connector.target]),
-                    label=connector.label,
-                )
+            chord = Route(
+                source=connector.source,
+                target=connector.target,
+                role=connector.role,
+                points=_chord(boxes[connector.source], boxes[connector.target]),
+                label=connector.label,
             )
-            continue
+            if _chord_is_drawable(chord, obstacles, theme):
+                routes.append(chord)
+                continue
+            # A chord that would cross a box it has nothing to do with, or that
+            # is too short to carry its own head, is not drawn straight: the
+            # route falls back to the orthogonal search, which knows how to go
+            # around. `direct` is a preference about how a relation reads, and a
+            # line through an uninvolved node's text is not a reading of it.
         points = _route_one(connector, approaches[index], grid, obstacles, theme)
         routes.append(
             Route(
@@ -672,6 +699,38 @@ def route_edges(
             )
         )
     return separate_lanes(tuple(routes), obstacles, theme)
+
+
+def _chord_is_drawable(route: Route, obstacles: Sequence[Obstacle], theme: Theme) -> bool:
+    """Whether a straight route may be drawn as one, rather than routed.
+
+    Two things the orthogonal search guarantees by construction and a chord does
+    not, so both are checked before one is kept.
+
+    **It misses every box it is not joined to.** "A mesh is meant to cross
+    itself" is about two *lines*; a line through a third node's text is a
+    different failure with the same shape, and the reader cannot tell a
+    deliberate crossing from a box drawn over. The clearance is the theme's, the
+    same daylight every routed line keeps.
+
+    **It has a shaft.** `min_shaft_length` and the head's own room are invariants
+    of the drawing, not of the router — an arrow with no visible shaft is not an
+    arrow whichever way it was found — and a theme may put `routing = "direct"`
+    on a role that has a head, so the check cannot be skipped on the grounds that
+    `link` has none.
+    """
+    grown = [
+        box.grown(theme.edge.clearance)
+        for box in obstacles
+        if box.id not in (route.source, route.target)
+    ]
+    if any(box.crosses(first, second) for first, second in route.segments for box in grown):
+        return False
+    try:
+        _check_head_room(route, theme)
+    except LayoutError:
+        return False
+    return shaft_length(route, theme) >= theme.edge.min_shaft_length - _TOLERANCE
 
 
 def _chord(source: Obstacle, target: Obstacle) -> tuple[tuple[float, float], ...]:
@@ -1754,15 +1813,42 @@ def _box_meets_segment(
     first: tuple[float, float],
     second: tuple[float, float],
 ) -> bool:
-    """Exactly, not by sampling: every route segment is axis-aligned."""
+    """Exactly, not by sampling — and for a **diagonal** as well as an axis one.
+
+    The bounding-rectangle test this used to be is exact while every segment is
+    axis-aligned, because then the segment *is* its bounding rectangle. A direct
+    route is not: the box a chord spans is most of the space between two ranks,
+    almost all of which the chord does not touch, so testing that box rejects
+    every position beside the line — including the ones the placer generates
+    along the chord's own normal precisely because they are clear.
+
+    So an axis-aligned run keeps the cheap answer and a slope gets the real one,
+    by the separating-axis argument: two convex shapes miss each other if some
+    axis separates them, and for a rectangle and a segment the only axes worth
+    trying are the rectangle's two and the segment's own normal.
+    """
     left, right = sorted((first[0], second[0]))
     top, bottom = sorted((first[1], second[1]))
-    return (
-        box[0] < right + _TOLERANCE
-        and left < box[2] + _TOLERANCE
-        and box[1] < bottom + _TOLERANCE
-        and top < box[3] + _TOLERANCE
+    outside = (
+        box[0] > right + _TOLERANCE
+        or left > box[2] + _TOLERANCE
+        or box[1] > bottom + _TOLERANCE
+        or top > box[3] + _TOLERANCE
     )
+    if outside:
+        return False
+    step_x, step_y = second[0] - first[0], second[1] - first[1]
+    if abs(step_x) < _TOLERANCE or abs(step_y) < _TOLERANCE:
+        return True
+
+    # The segment's normal. A rectangle sits clear of the line when all four of
+    # its corners fall on one side of it.
+    reach = [
+        -step_y * (x - first[0]) + step_x * (y - first[1])
+        for x in (box[0], box[2])
+        for y in (box[1], box[3])
+    ]
+    return not (max(reach) < -_TOLERANCE or min(reach) > _TOLERANCE)
 
 
 def label_primitives(label: Label) -> tuple[Primitive, ...]:

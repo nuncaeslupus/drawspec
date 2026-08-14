@@ -333,7 +333,12 @@ def _funnel_down(document: Document, theme: Theme, measurer: TextMeasurer) -> Sc
             item,
             theme,
             measurer,
-            span(index + 1) - theme.box.padding.horizontal,
+            # The trapezoid's own narrow edge, whole. `_label` hands it to
+            # `size_box` as a `max_width`, which takes the padding out itself —
+            # taking it out here as well charged every stage for it twice, and
+            # wrapped labels that had the room. The pyramid passes its geometric
+            # width for exactly this reason.
+            span(index + 1),
             f"funnel stage {index + 1} of {count} ({item.text[:32]!r})",
             "The last stage is the narrowest, so it takes the shortest label — "
             "shorten it, use fewer stages, or give the diagram more width.",

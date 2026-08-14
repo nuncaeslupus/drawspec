@@ -17,7 +17,7 @@ from dataclasses import replace
 
 import pytest
 
-from drawspec.errors import DocumentError
+from drawspec.errors import FitError
 from drawspec.kinds import scene_for
 from drawspec.scene import Scene, TextLine, extents
 from drawspec.schema import Document, parse_document, validate_document
@@ -115,12 +115,12 @@ def test_every_kind_takes_a_caption() -> None:
 
 
 # --------------------------------------------------------------------------
-# The field that was accepted everywhere and drawn nowhere
+# The field that is accepted everywhere and drawn in one place
 # --------------------------------------------------------------------------
 
 
 def test_a_timeline_still_draws_its_notes() -> None:
-    """The one family that had somewhere to put one keeps it."""
+    """The one family that has somewhere to put one."""
     scene = scene_for(
         parse_document(
             {
@@ -139,40 +139,64 @@ def test_a_timeline_still_draws_its_notes() -> None:
 
 
 @pytest.mark.parametrize("kind", ["stack", "columns"])
-def test_a_note_a_kind_cannot_draw_is_refused_rather_than_dropped(kind: str) -> None:
-    """The author is told, instead of rendering and seeing nothing.
+def test_a_note_a_kind_cannot_draw_is_still_accepted(kind: str) -> None:
+    """v1 stays v1, which is the whole of what can be done about it here.
 
-    A silently dropped field is the worst outcome available — it leaves the
-    author believing they configured something — and this one was in the schema,
-    so `additionalProperties: false` never saw it.
+    Only `timeline` draws a note, so on any other kind the field has no effect —
+    and a field with no effect is the worst outcome available, because the author
+    believes they configured something. The fix that suggests itself is to refuse
+    it; the fix that is *available* is not, because a document carrying one
+    validated against the published v1 schema and has to keep validating. Removing
+    a field is a change of meaning, and a change of meaning ships as v2.
+
+    So the field is accepted and the description says where it is drawn — which
+    reaches the author in their editor, before they have written it, rather than
+    after a render that shows nothing.
     """
-    violations = validate_document(
+    document = parse_document(
         {"version": 1, "kind": kind, "items": [{"text": "One", "note": "an aside"}]}
     )
-    assert [violation.pointer for violation in violations] == ["/items/0/note"]
-    assert "caption" in violations[0].message
+    assert document.items[0].note == "an aside"
+    assert not validate_document(
+        {"version": 1, "kind": kind, "items": [{"text": "One", "note": "an aside"}]}
+    )
 
 
-def test_the_refusal_names_where_the_note_was_written() -> None:
-    with pytest.raises(DocumentError) as raised:
-        parse_document(
-            {
-                "version": 1,
-                "kind": "stack",
-                "items": [{"text": "One"}, {"text": "Two", "note": "an aside"}],
-            }
-        )
-    assert raised.value.violations[0].pointer == "/items/1/note"
+@pytest.mark.parametrize(
+    "collection,name", [("nodes", "node"), ("levels", "level"), ("stages", "stage")]
+)
+def test_note_is_still_offered_by_every_object_that_offered_it(collection: str, name: str) -> None:
+    """Removing it from the tables would fail documents the published schema allows."""
+    from drawspec.schema import OBJECTS
+
+    assert "note" in {field.name for field in OBJECTS[name]}
 
 
-@pytest.mark.parametrize("collection", ["nodes", "levels", "stages"])
-def test_note_is_gone_from_the_objects_nothing_was_going_to_draw(collection: str) -> None:
-    """Removed from the table rather than refused at parse time.
+def test_the_note_description_says_where_it_is_drawn() -> None:
+    """The one thing v1 can do about a field that does nothing: say so, in the schema.
 
-    A schema that advertises a field is a worse place to find out it does nothing
-    than a validator is: an editor completes it before anything has been run.
+    This is load-bearing rather than cosmetic — it is the whole remedy — so it is
+    asserted rather than left to survive an edit.
     """
     from drawspec.schema import OBJECTS
 
-    name = {"nodes": "node", "levels": "level", "stages": "stage"}[collection]
-    assert "note" not in {field.name for field in OBJECTS[name]}
+    for name in ("node", "item", "level", "stage"):
+        (note,) = [field for field in OBJECTS[name] if field.name == "note"]
+        assert "timeline" in note.description
+        assert "caption" in note.description
+
+
+def test_a_caption_that_will_not_fit_says_it_is_the_caption() -> None:
+    """Otherwise the author is told to restructure a diagram that was fine.
+
+    The caption is broken inside the elastic fit, like everything else, and
+    `fit`'s own message only knows that *something* would not go — so a document
+    whose drawing fits and whose caption has one unbreakable word in it would be
+    told the diagram does not fit at any type size.
+    """
+    with pytest.raises(FitError, match="caption"):
+        scene_for(
+            document(caption="Unbreakablesequenceoflettersfarwiderthananycanvas" * 4),
+            THEME,
+            MEASURER,
+        )
