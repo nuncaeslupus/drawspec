@@ -284,7 +284,7 @@ def shaft_length(route: Route, theme: Theme) -> float:
         ends += 1
     if getattr(role, "tail", "none") != "none":
         ends += 1
-    return route.length - theme.edge.head_length * ends
+    return route.length - theme.head_length_for(route.role) * ends
 
 
 def minimum_rank_gap(theme: Theme) -> float:
@@ -295,7 +295,7 @@ def minimum_rank_gap(theme: Theme) -> float:
     between adjacent ranks is legal by construction. Both ends are counted, so a
     two-headed role fits in the same gap as a one-headed one.
     """
-    return theme.edge.min_shaft_length + 2 * theme.edge.head_length
+    return theme.edge.min_shaft_length + 2 * theme.widest_head
 
 
 # ---------------------------------------------------------------------------
@@ -563,7 +563,12 @@ def route_edges(
                     f"edge {end} {identifier!r} goes nowhere: there is no box with that id"
                 )
 
-    channel = theme.edge.head_length
+    # Only the lanes *outside* the outermost boxes are set by this — every other
+    # lane runs down the middle of a real gap. A lane one head length off the
+    # edge of the drawing is a legal place for a back edge to run, and it hugs
+    # the box it passes: there is open paper on the other side of it and no
+    # reason to be that close.
+    channel = theme.edge.lane_spacing
     usable = _usable_gap(theme)
     lanes = (
         _lanes([value for box in obstacles for value in (box.x, box.right)], channel, usable),
@@ -780,7 +785,7 @@ def head_room(theme: Theme) -> float:
     to the border leaves it nothing to sit on. The clearance on top is what keeps
     the corner visibly *behind* the head rather than touching it.
     """
-    return theme.edge.head_length + theme.edge.clearance
+    return theme.widest_head + theme.edge.clearance
 
 
 def _usable_gap(theme: Theme) -> float:
@@ -911,12 +916,13 @@ def _check_head_room(route: Route, theme: Theme) -> None:
         ends.append(("head", segments[-1]))
     if getattr(role, "tail", "none") != "none":
         ends.append(("tail", segments[0]))
+    needed = theme.head_length_for(route.role)
     for end, (first, second) in ends:
-        if math.dist(first, second) < theme.edge.head_length - _TOLERANCE:
+        if math.dist(first, second) < needed - _TOLERANCE:
             raise LayoutError(
                 f"the {end} of the edge from {route.source!r} to {route.target!r} has "
                 f"{math.dist(first, second):.1f} of straight line to sit on and needs "
-                f"{theme.edge.head_length:g}: the route turns a corner just before it "
+                f"{needed:g}: the route turns a corner just before it "
                 f"arrives, so the arrow would be drawn across the corner. The boxes need "
                 f"more room between them, or the layout needs the other direction."
             )
@@ -942,10 +948,10 @@ def separate_lanes(
     new line is worse than the shared one; a lane too narrow to share simply
     stays shared, which is what it looked like before.
     """
-    spacing = theme.edge.head_length
+    spacing = theme.edge.lane_spacing
     moved = tuple(routes)
     for _ in range(SEPARATION_PASSES):
-        groups = _shared_runs(moved)
+        groups = _shared_runs(moved, spacing)
         if not groups:
             break
         moved = _separated(moved, groups, obstacles, theme, spacing)
@@ -954,7 +960,7 @@ def separate_lanes(
 
 def _separated(
     routes: tuple[Route, ...],
-    groups: Sequence[tuple[list[tuple[int, int]], bool]],
+    groups: Sequence[tuple[list[_Run], float | None]],
     obstacles: Sequence[Obstacle],
     theme: Theme,
     spacing: float,
@@ -969,14 +975,12 @@ def _separated(
     are on top of something.
     """
     moved = list(routes)
-    for group, pinned in groups:
-        for offset, (index, segment) in zip(
-            _offsets(len(group), pinned, spacing), group, strict=True
-        ):
-            for candidate_offset in _tries(offset):
-                candidate = _shifted(moved[index], segment, candidate_offset)
+    for group, anchor in groups:
+        for target, run in zip(_targets(group, anchor, spacing), group, strict=True):
+            for candidate_offset in _tries(target - run.line):
+                candidate = _shifted(moved[run.index], run.segment, candidate_offset)
                 if candidate is not None and _is_clear(candidate, obstacles, theme):
-                    moved[index] = candidate
+                    moved[run.index] = candidate
                     break
     return tuple(moved)
 
@@ -994,23 +998,52 @@ def _tries(offset: float) -> tuple[float, ...]:
     return (offset, -offset, offset * 2, -offset * 2)
 
 
-def _offsets(count: int, pinned: bool, spacing: float) -> list[float]:
-    """Where to put `count` runs that are currently on one line.
+def _targets(group: Sequence[_Run], anchor: float | None, spacing: float) -> list[float]:
+    """Where to put the runs of one band — as coordinates, not as nudges.
 
-    Centred on the line when they are all free to move, so the group stays where
-    the router put it. When one of them is *pinned* — a run carrying an endpoint,
-    which cannot move without taking the endpoint off its border — the line
-    belongs to that one, and the rest step outwards around it in alternating
-    directions rather than sliding through it.
+    Coordinates, because a band is not a line: its runs start at three different
+    places, so nudging each by the same ladder of offsets preserves exactly the
+    unevenness it is meant to remove. Spreading them about a middle is the
+    answer, and it reduces to the old behaviour when they did all start on one
+    line.
+
+    Which middle depends on what is holding the band. With every run free, it is
+    the band's own centre, so the group stays where the router put it. With one
+    *pinned* — a run carrying an endpoint, which cannot move without taking the
+    endpoint off its border — the middle is the pinned run's line and the rest
+    step outwards around it in alternating directions rather than sliding
+    through it. Taking the free runs' own centre instead is how a route ended up
+    moved onto the endpoint it was supposed to be avoiding.
     """
-    if not pinned:
-        return [(position - (count - 1) / 2) * spacing for position in range(count)]
+    count = len(group)
+    if anchor is None:
+        middle = sum(run.line for run in group) / count
+        return [middle + (position - (count - 1) / 2) * spacing for position in range(count)]
     steps = [(position // 2 + 1) * (1 if position % 2 == 0 else -1) for position in range(count)]
-    return [step * spacing for step in steps]
+    return [anchor + step * spacing for step in steps]
 
 
-def _shared_runs(routes: Sequence[Route]) -> list[tuple[list[tuple[int, int]], bool]]:
-    """Segments drawn on top of one another, grouped, and whether one is pinned.
+@dataclass(frozen=True)
+class _Run:
+    """One straight run of one route, as the separation pass sees it."""
+
+    index: int
+    """Which route in the batch."""
+
+    segment: int
+    low: float
+    high: float
+    """The stretch it covers along its own direction."""
+
+    movable: bool
+    """False for a run carrying an endpoint: moving it takes the point off its border."""
+
+    line: float
+    """The coordinate across its direction — the lane it is drawn in."""
+
+
+def _shared_runs(routes: Sequence[Route], spacing: float) -> list[tuple[list[_Run], float | None]]:
+    """Segments drawn alongside one another, grouped, and whether one is pinned.
 
     Every straight run of every route is counted, but only those with a corner at
     each end can be moved: shifting one that carries an anchor would take the
@@ -1026,47 +1059,73 @@ def _shared_runs(routes: Sequence[Route]) -> list[tuple[list[tuple[int, int]], b
     of each other, and moving them spends the room the ones that are need: seven
     edges spread across a twenty-unit gap have three units each, while the two
     stretches that actually overlap get six each and everything else stays put.
+
+    "Alongside" rather than "on top of": two runs `spacing` apart are already two
+    lines a reader has to tell apart, and the old exact-coordinate test could not
+    see them — see `_lanes`.
     """
-    runs: dict[tuple[str, float], list[tuple[int, int, float, float, bool]]] = {}
+    runs: dict[str, list[_Run]] = {"v": [], "h": []}
     for index, route in enumerate(routes):
         for segment, (first, second) in enumerate(route.segments):
             movable = 0 < segment < len(route.segments) - 1
             if abs(first[0] - second[0]) < _TOLERANCE:
-                key = ("v", _round(first[0]))
+                orientation, line = "v", first[0]
                 span = sorted((first[1], second[1]))
             elif abs(first[1] - second[1]) < _TOLERANCE:
-                key = ("h", _round(first[1]))
+                orientation, line = "h", first[1]
                 span = sorted((first[0], second[0]))
             else:
                 continue
-            runs.setdefault(key, []).append((index, segment, span[0], span[1], movable))
+            runs[orientation].append(_Run(index, segment, span[0], span[1], movable, line))
 
-    groups: list[tuple[list[tuple[int, int]], bool]] = []
+    groups: list[tuple[list[_Run], float | None]] = []
     for entries in runs.values():
-        for component in _overlapping(sorted(entries, key=lambda entry: (entry[2], entry[3]))):
-            free_runs = [(index, segment) for index, segment, _, _, free in component if free]
-            pinned = len(free_runs) < len(component)
-            if len({index for index, _, _, _, _ in component}) > 1 and free_runs:
-                groups.append((free_runs, pinned))
+        for lane in _bands(sorted(entries, key=lambda run: run.line), spacing):
+            for component in _overlapping(sorted(lane, key=lambda run: (run.low, run.high))):
+                free_runs = [run for run in component if run.movable]
+                held = [run.line for run in component if not run.movable]
+                if len({run.index for run in component}) > 1 and free_runs:
+                    anchor = sum(held) / len(held) if held else None
+                    groups.append((sorted(free_runs, key=lambda run: run.line), anchor))
     return groups
 
 
-def _overlapping(
-    entries: Sequence[tuple[int, int, float, float, bool]],
-) -> Iterator[list[tuple[int, int, float, float, bool]]]:
-    """Runs on one line split into stretches that actually touch each other.
+def _bands(entries: Sequence[_Run], spacing: float) -> Iterator[list[_Run]]:
+    """Runs close enough together to be worth prising apart, grouped.
 
-    A sweep along the line: a run that starts after everything before it has
-    ended begins a new group, because nothing behind it is in its way.
+    Not "on the same line" — that was the old test, and it is too strict by
+    exactly the amount that matters. Three edges leaving one box turn at three
+    *different* coordinates four and eight units apart, so nothing was ever on
+    top of anything and the separation pass had no work to do; the fan was drawn
+    as a bundle a reader cannot follow. Within a lane spacing of each other is
+    the same question asked at the scale a reader answers it.
     """
-    group: list[tuple[int, int, float, float, bool]] = []
+    lane: list[_Run] = []
+    for entry in entries:
+        if lane and entry.line - lane[-1].line > spacing:
+            yield lane
+            lane = []
+        lane.append(entry)
+    if lane:
+        yield lane
+
+
+def _overlapping(entries: Sequence[_Run]) -> Iterator[list[_Run]]:
+    """Runs in one lane split into stretches that actually run alongside each other.
+
+    A sweep along the lane: a run that starts after everything before it has
+    ended begins a new group, because nothing behind it is in its way. Two edges
+    using the same rank gap at opposite ends of the diagram are not drawn on top
+    of each other, and moving them spends the room the ones that are need.
+    """
+    group: list[_Run] = []
     reach = -math.inf
     for entry in entries:
-        if group and entry[2] > reach - _TOLERANCE:
+        if group and entry.low > reach - _TOLERANCE:
             yield group
             group = []
         group.append(entry)
-        reach = max(reach, entry[3])
+        reach = max(reach, entry.high)
     if group:
         yield group
 
@@ -1389,7 +1448,7 @@ def _marker(
     theme: Theme,
 ) -> tuple[Primitive, ...]:
     """One end treatment, pointing along the segment that arrives at `tip`."""
-    length = theme.edge.head_length
+    length = theme.head_length_for(role)
     span = math.dist(from_point, tip) or 1.0
     dx = (tip[0] - from_point[0]) / span
     dy = (tip[1] - from_point[1]) / span

@@ -9,6 +9,7 @@ frame makes: what is inside it is inside it.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from pathlib import Path
 
 import pytest
 
@@ -20,6 +21,8 @@ from drawspec.scene import Rect, TextLine
 from drawspec.schema import Document, load_document, parse_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
+
+REFERENCE_DIR = Path(__file__).resolve().parents[1] / "docs" / "reference"
 
 THEME = load_theme()
 MEASURER = TextMeasurer(THEME.font.stacks(), search_paths=[])
@@ -214,3 +217,27 @@ def test_a_document_with_no_groups_draws_no_frames() -> None:
     """Groups cost nothing when nobody asked for one."""
     plain = flow([("a", "One"), ("b", "Two")], [("a", "b")], [])
     assert drawing(plain).frames == ()
+
+
+def test_an_edge_label_never_lands_on_a_group_caption() -> None:
+    """A caption is words, and two sets of words in one place are neither of them.
+
+    The routes were already told to avoid a caption; the labels were not, so
+    "assigns work" was drawn on top of "Another worker" and the pair read as one
+    smudge. Both are text placed after the fact, and both dodge the same thing.
+    """
+    document = load_document(REFERENCE_DIR / "flow-groups.json")
+    built = drawing(document)
+    assert built.labels, "this document is only a test while it still has edge labels"
+    for frame in built.frames:
+        caption = frame.caption
+        if caption is None:
+            continue
+        for label in built.labels:
+            left, top, right, bottom = label.box
+            assert not (
+                caption.x < right
+                and left < caption.x + caption.width
+                and caption.y < bottom
+                and top < caption.y + caption.height
+            ), (label.text, frame.id)

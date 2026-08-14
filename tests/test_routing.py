@@ -28,6 +28,7 @@ from drawspec.routing import (
     edge_primitives,
     minimum_rank_gap,
     route_edges,
+    separate_lanes,
     shaft_length,
 )
 from drawspec.scene import Ellipse, Path, Polygon
@@ -535,3 +536,122 @@ def _shares_a_line(
         if high - low > 1e-6:
             return True
     return False
+
+
+# --------------------------------------------------------------------------
+# How far apart a pair has to be
+# --------------------------------------------------------------------------
+
+
+def _near_a_line(
+    one: tuple[tuple[float, float], tuple[float, float]],
+    two: tuple[tuple[float, float], tuple[float, float]],
+    within: float,
+) -> bool:
+    """`_shares_a_line`, but asking about a band rather than about a coordinate."""
+    for axis, along in ((0, 1), (1, 0)):
+        flat_one = math.isclose(one[0][axis], one[1][axis], abs_tol=1e-6)
+        flat_two = math.isclose(two[0][axis], two[1][axis], abs_tol=1e-6)
+        if not (flat_one and flat_two and abs(one[0][axis] - two[0][axis]) < within - 1e-6):
+            continue
+        low = max(min(one[0][along], one[1][along]), min(two[0][along], two[1][along]))
+        high = min(max(one[0][along], one[1][along]), max(two[0][along], two[1][along]))
+        if high - low > 1e-6:
+            return True
+    return False
+
+
+def _fan(*turns: float) -> tuple[Route, ...]:
+    """Three edges out of one box, turning at the coordinates given.
+
+    The shape a tree makes: leave the right-hand border at three heights, run a
+    little way out, turn, and go to three targets. What the reviewer saw is that
+    the three turns land within a few units of each other.
+    """
+    return tuple(
+        Route(
+            source="one",
+            target=f"t{index}",
+            role="flow",
+            points=(
+                (100.0, 200.0 + index * 10),
+                (turn, 200.0 + index * 10),
+                (turn, 400.0),
+                (500.0, 400.0),
+            ),
+        )
+        for index, turn in enumerate(turns)
+    )
+
+
+def test_a_fan_of_turns_a_few_units_apart_is_prised_apart() -> None:
+    """Not on top of each other is not far enough apart.
+
+    Three edges leaving one box turned at three *different* coordinates four and
+    eight units apart, so nothing was ever collinear, the old exact-coordinate
+    test saw nothing to do, and the fan was drawn as a bundle whose corners a
+    reader cannot tell apart — the failure the pass exists to prevent, at a
+    smaller scale.
+    """
+    spacing = THEME.edge.lane_spacing
+    moved = separate_lanes(_fan(210.0, 214.0, 218.0), (), THEME)
+    turns = sorted(route.points[1][0] for route in moved)
+    for first, second in pairwise(turns):
+        assert second - first >= spacing - 1e-6, turns
+
+
+def test_prising_a_fan_apart_leaves_it_where_it_was() -> None:
+    """Centred on the band, so the group does not migrate across the drawing."""
+    before = _fan(210.0, 214.0, 218.0)
+    after = separate_lanes(before, (), THEME)
+    middle = sum(route.points[1][0] for route in before) / len(before)
+    assert sum(route.points[1][0] for route in after) / len(after) == pytest.approx(middle)
+
+
+@pytest.mark.parametrize("document", REFERENCES)
+@pytest.mark.parametrize("direction", ["down", "right"])
+def test_two_routes_alongside_each_other_keep_a_lane_apart(document: str, direction: str) -> None:
+    """The same rule, held on every reference drawing.
+
+    Two runs that a shift could not fix stay where they were, so this asks only
+    about runs both of which were free to move.
+    """
+    built = _reference_routes(document, direction)
+    spacing = THEME.edge.lane_spacing
+    for first, second in combinations(built, 2):
+        for one in _movable_segments(first):
+            for two in _movable_segments(second):
+                assert not _near_a_line(one, two, spacing), (
+                    f"{first.source}->{first.target} and {second.source}->{second.target} "
+                    f"run within {spacing:g} of each other: {one} and {two}"
+                )
+
+
+def _movable_segments(
+    route: Route,
+) -> list[tuple[tuple[float, float], tuple[float, float]]]:
+    """The runs with a corner at each end — the ones the separation pass may move."""
+    segments = route.segments
+    return [segment for index, segment in enumerate(segments) if 0 < index < len(segments) - 1]
+
+
+def test_a_heavier_edge_gets_a_bigger_head() -> None:
+    """Otherwise a `strong` edge reads as a thick line that stops, not as an arrow.
+
+    The head is barely wider than the shaft it sits on at 2.5 units of weight and
+    six of head, which is what the reviewer saw.
+    """
+    assert THEME.head_length_for("strong") > THEME.head_length_for("flow")
+    heavy = THEME.role_for("strong").stroke_width / THEME.role_for("flow").stroke_width
+    assert THEME.head_length_for("strong") == pytest.approx(THEME.head_length_for("flow") * heavy)
+
+
+def test_a_lighter_edge_keeps_the_theme_s_own_head() -> None:
+    """The shaft may be as quiet as the theme likes; *which way* may not."""
+    assert THEME.role_for("link").stroke_width < THEME.edge.stroke_width
+    assert THEME.head_length_for("link") == pytest.approx(THEME.edge.head_length)
+
+
+def test_the_widest_head_covers_every_edge_role() -> None:
+    """Routing reserves room for a head before it knows which role will use it."""
+    assert THEME.widest_head == max(THEME.head_length_for(name) for name in THEME.edge_roles)

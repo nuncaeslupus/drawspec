@@ -406,9 +406,19 @@ class EdgeStyle:
     going round.
     """
 
+    lane_spacing: float = 12.0
+    """How far apart two routes running along the same line are drawn.
+
+    Separate from `head_length`, which it used to borrow. One head length was
+    enough to prove two lines are different and not enough to *read* as
+    different: three edges leaving one box came out as a bundle whose corners
+    stacked within a few units of each other — which is the failure the
+    separation pass exists to prevent, reintroduced at a smaller scale.
+    """
+
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> EdgeStyle:
-        keys = ("stroke_width", "min_shaft_length", "head_length", "clearance")
+        keys = ("stroke_width", "min_shaft_length", "head_length", "clearance", "lane_spacing")
         _reject_unknown(mapping, keys, "[edge]")
         defaults = cls()
         return cls(
@@ -721,6 +731,38 @@ class Theme:
             f"the theme declares no role {role!r}; it declares "
             f"{', '.join(sorted(self.roles))} for nodes and "
             f"{', '.join(sorted(self.edge_roles))} for edges"
+        )
+
+    def head_length_for(self, role: str) -> float:
+        """How long an end treatment drawn in `role` is.
+
+        A head on a heavier shaft has to be bigger to read as equally emphatic.
+        The `strong` edge role is two thirds heavier than `flow`, and drawn with
+        the same six units of head it does not look like a louder arrow — it
+        looks like a thick line that stops, because the head is barely wider
+        than the shaft it sits on.
+
+        So the head is scaled by weight. Floored at the theme's own
+        `head_length`, because a light role's head still has to be large enough
+        to see: the shaft may be as quiet as the theme likes, but *which way*
+        is not the part that should get quieter.
+        """
+        width = getattr(self.role_for(role), "stroke_width", self.edge.stroke_width)
+        return self.edge.head_length * max(1.0, width / self.edge.stroke_width)
+
+    @property
+    def widest_head(self) -> float:
+        """The longest head any edge role in this theme draws.
+
+        Routing reserves straight run, rank separation and turn clearance for a
+        head *before* it knows which role will use them — the layout runs once
+        for every edge in the diagram. So it reserves the largest, and every
+        role fits by construction rather than by the router happening to be
+        asked about the light one first.
+        """
+        return max(
+            (self.head_length_for(name) for name in self.edge_roles),
+            default=self.edge.head_length,
         )
 
     def with_scale(self, factor: float) -> Theme:
