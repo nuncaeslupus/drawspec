@@ -210,7 +210,17 @@ def test_every_reference_document_is_drawn_to_the_same_canvas_width(name: str) -
 
 
 def test_a_narrow_diagram_is_centred_on_the_canvas_rather_than_cropped_to_it() -> None:
-    """The margin a fixed canvas buys is shared between the two sides."""
+    """The margin a fixed canvas buys is shared between the two sides.
+
+    Asserted as *the drawing moved by half the slack*, rather than as the ink
+    coming out symmetric about the middle. The two are only the same thing when
+    the drawing's own frame is its ink, and it is not: `extents` measures a text
+    run as a point, on purpose — its width belongs to whoever has the font — so a
+    free edge label sitting outside every box counts towards the frame the family
+    computed and not towards the ink measured here. That is a real asymmetry in
+    the drawing, and centring is not the function that should be answering for
+    it.
+    """
     theme = load_theme()
     document = load_document(REFERENCE_DIR / "flow-validation.json")
     measurer = TextMeasurer(theme.font.stacks())
@@ -220,8 +230,12 @@ def test_a_narrow_diagram_is_centred_on_the_canvas_rather_than_cropped_to_it() -
 
     padded = centred(drawn, fitted.theme)
     assert padded.width == pytest.approx(theme.canvas.width)
-    left, _, right, _ = extents(padded.primitives)
-    assert left == pytest.approx(padded.width - right, abs=1e-6)
+    slack = (padded.width - drawn.width) / 2
+    before = extents(drawn.primitives)
+    after = extents(padded.primitives)
+    assert after[0] == pytest.approx(before[0] + slack, abs=1e-6)
+    assert after[2] == pytest.approx(before[2] + slack, abs=1e-6)
+    assert after[1] == pytest.approx(before[1], abs=1e-6), "centring is horizontal only"
 
 
 def test_the_ink_width_mode_leaves_a_narrow_diagram_alone() -> None:

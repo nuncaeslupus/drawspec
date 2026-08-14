@@ -44,6 +44,12 @@ START_ANGLE: Final = -math.pi / 2
 #: this leaves no room for the ring itself.
 NODE_WIDTH_SHARE: Final = 0.34
 
+#: How far past that share a step may go when its shape has made it taller than
+#: it is wide. Less headroom than a graph gets: a cycle's boxes sit on a ring
+#: whose radius they set, so a wider box is a bigger figure, and half a canvas
+#: of node would leave nothing for the ring.
+NODE_WIDEN: Final = 1.5
+
 #: Segments per arc. Enough that a curve reads as a curve at the sizes these are
 #: drawn, few enough that the path data stays legible in a diff.
 ARC_SEGMENTS: Final = 12
@@ -218,7 +224,13 @@ def _boxes(
     limit = width * NODE_WIDTH_SHARE
     sized = [
         size_box(
-            node.text, theme=theme, measurer=measurer, role=node.role, level="body", max_width=limit
+            node.text,
+            theme=theme,
+            measurer=measurer,
+            role=node.role,
+            level="body",
+            max_width=limit,
+            widen=NODE_WIDEN,
         )
         for node in document.nodes
     ]
@@ -418,4 +430,11 @@ def _on_circle(centre: tuple[float, float], radius: float, angle: float) -> tupl
     return centre[0] + radius * math.cos(angle), centre[1] + radius * math.sin(angle)
 
 
-__all__ = ["ARC_SEGMENTS", "MINIMUM_NODES", "NODE_WIDTH_SHARE", "START_ANGLE", "cycle_scene"]
+__all__ = [
+    "ARC_SEGMENTS",
+    "MINIMUM_NODES",
+    "NODE_WIDEN",
+    "NODE_WIDTH_SHARE",
+    "START_ANGLE",
+    "cycle_scene",
+]

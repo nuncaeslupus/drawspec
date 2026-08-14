@@ -20,6 +20,7 @@ import pytest
 from drawspec.errors import FitError
 from drawspec.geometry import (
     FIT_STEP,
+    MIN_ASPECT,
     Box,
     candidate_factors,
     fit,
@@ -269,6 +270,99 @@ def test_pill_holding_a_short_label_is_not_much_wider_than_a_rect() -> None:
 def test_usable_span_of_an_unknown_shape_raises_keyerror() -> None:
     with pytest.raises(KeyError):
         usable_span("octagon", 100.0, 40.0)
+
+
+# --------------------------------------------------------------------------
+# A shape does not pay for its own outline out of the caller's allowance
+# --------------------------------------------------------------------------
+
+#: Long enough to need several lines in a pill of the width a graph offers, which
+#: is the case the whole widening rule exists for: the corpus's tallest box was
+#: nine lines of this shape.
+WORDY = (
+    "Via de l'art. 143 (ordinària) — diputacions i dos terços dels municipis "
+    "amb majoria del cens, en sis mesos"
+)
+
+
+def test_a_pill_that_would_be_too_vertical_is_offered_more_width() -> None:
+    """The reviewer's most repeated note, as an assertion.
+
+    A pill's text may only use the flat span between its caps, so a taller pill
+    is a narrower one and wrapping into that narrower span makes it taller again.
+    Held to the allowance, this text settles as a column; allowed past it, the
+    same words take fewer lines in a box that reads as a label.
+    """
+    held = box(WORDY, role="start", max_width=180.0)
+    offered = size_box(
+        WORDY,
+        theme=THEME,
+        measurer=MEASURER,
+        role="start",
+        level="body",
+        max_width=160.0,
+        widen=2.0,
+    )
+    assert held.shape == offered.shape == "pill"
+    assert len(offered.block.lines) < len(held.block.lines)
+    assert offered.height < held.height
+    assert offered.width <= 180.0 * 2.0
+
+
+def test_width_that_buys_no_lines_is_not_taken() -> None:
+    """A short label stays exactly as narrow as its own text.
+
+    This is what keeps the rule from being "make everything wider": the wider
+    offer is only kept when the box needs fewer lines for it.
+    """
+    tight = box(SHORT, max_width=160.0)
+    offered = size_box(
+        SHORT, theme=THEME, measurer=MEASURER, role="step", level="body", max_width=160.0, widen=2.0
+    )
+    assert offered.width == pytest.approx(tight.width)
+    assert offered.height == pytest.approx(tight.height)
+
+
+def test_a_box_stops_widening_once_it_is_wide_enough() -> None:
+    """It is a floor, not a target: nothing is stretched past `MIN_ASPECT`."""
+    offered = size_box(
+        WORDY, theme=THEME, measurer=MEASURER, role="step", level="body", max_width=160.0, widen=4.0
+    )
+    narrower = size_box(
+        WORDY, theme=THEME, measurer=MEASURER, role="step", level="body", max_width=160.0, widen=8.0
+    )
+    assert offered.width == pytest.approx(narrower.width), "a larger ceiling changed the answer"
+    assert offered.width >= offered.height * MIN_ASPECT or offered.width == pytest.approx(640.0)
+
+
+def test_a_narrow_offer_that_cannot_settle_widens_instead_of_refusing() -> None:
+    """The failure that used to shrink the whole diagram to fix one box.
+
+    A pill this narrow cannot break the text at all, and the `FitError` it raises
+    is what sent `fit` down a step of type scale — so a single unlucky label set
+    the size of every other word in the drawing. Offered more width, the box
+    settles and the type stays where it was.
+    """
+    with pytest.raises(FitError):
+        size_box(WORDY, theme=THEME, measurer=MEASURER, role="start", level="body", max_width=60.0)
+    widened = size_box(
+        WORDY, theme=THEME, measurer=MEASURER, role="start", level="body", max_width=60.0, widen=6.0
+    )
+    assert widened.block.lines
+
+
+def test_a_box_that_fits_at_no_offered_width_still_refuses() -> None:
+    """Widening is a wider search, not a way to stop saying no."""
+    with pytest.raises(FitError):
+        size_box(
+            WORDY,
+            theme=THEME,
+            measurer=MEASURER,
+            role="start",
+            level="body",
+            max_width=40.0,
+            widen=2.0,
+        )
 
 
 # --------------------------------------------------------------------------
