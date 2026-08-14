@@ -23,9 +23,10 @@ from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
 from drawspec.kinds.common import box_primitives, text_runs
 from drawspec.legend import entries_for, height_of, primitives_for
-from drawspec.scene import Path, Polygon, Primitive, Scene
+from drawspec.scene import Path, Polygon, Primitive, Scene, TextLine, TextSpan
 from drawspec.schema import Cell, Document, Item
 from drawspec.text.measure import TextMeasurer
+from drawspec.text.wrap import TextBlock, wrap
 from drawspec.theme import Theme
 
 #: The role the timeline's own axis and ticks are drawn with. An axis is a plain
@@ -164,6 +165,14 @@ def _timeline(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
     family's rule and irregular *spacing* is not irregular *labels*. When two of
     those equal labels will not fit the gap their values ask for, that is a
     `FitError` naming the pair rather than an overlap.
+
+    **An entry's `note` goes under the line.** The hand-drawn originals put text
+    on both sides of every mark and they were right to: what happened is one
+    thing and when it happened is another, and a timeline that stacks both above
+    the axis makes the reader work out which line is which kind. Above the line
+    is the event; below it is the year, the duration, the aside. Set at the label
+    size rather than the body size, because it is an annotation on the event and
+    not a second event.
     """
     width = _canvas_width(document, theme)
     count = len(document.items)
@@ -187,6 +196,7 @@ def _timeline(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
     axis_y = band + theme.box.padding.top
 
     centres = _centres(shares, count, width, label_width)
+    notes = _notes(document.items, theme, measurer, label_width)
 
     primitives: list[Primitive] = [
         Path(AXIS_ROLE, points=((0.0, axis_y), (width, axis_y))),
@@ -201,7 +211,66 @@ def _timeline(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
         placed = box.resized(width=label_width).moved_to(centre - label_width / 2, 0.0)
         primitives.extend(box_primitives(placed, theme, measurer))
 
-    return _scene(document, primitives, width, axis_y + tick / 2)
+    below = axis_y + tick / 2
+    if notes:
+        primitives.extend(_note_runs(notes, centres, below + theme.box.padding.top))
+        below += theme.box.padding.top + _note_band(notes)
+
+    return _scene(document, primitives, width, below)
+
+
+def _notes(
+    items: tuple[Item, ...], theme: Theme, measurer: TextMeasurer, label_width: float
+) -> list[TextBlock | None]:
+    """Each entry's note, wrapped to the width its label already fits in.
+
+    Empty when no entry has one, so a timeline without notes is exactly the size
+    it was before. Not all-or-nothing, unlike `at`: a note is an aside on one
+    event rather than a scale the whole line is read against, so an entry with
+    nothing to add simply says nothing.
+    """
+    if not any(item.note for item in items):
+        return []
+    return [
+        wrap(item.note, label_width, measurer, theme=theme, level="label") if item.note else None
+        for item in items
+    ]
+
+
+def _note_band(notes: list[TextBlock | None]) -> float:
+    """How deep the band under the axis is: the tallest note in it."""
+    return max((block.height for block in notes if block), default=0.0)
+
+
+def _note_runs(notes: list[TextBlock | None], centres: list[float], top: float) -> list[Primitive]:
+    """One centred line per line of each note, under its own tick.
+
+    Anchored at the centre rather than placed by a measured left edge, for the
+    reason `text_runs` is: a reader whose page substitutes the font gets
+    different widths, and the arithmetic belongs to whoever has the font.
+    """
+    runs: list[Primitive] = []
+    for block, centre in zip(notes, centres, strict=True):
+        if block is None:
+            continue
+        for index, line in enumerate(block.lines):
+            if not line.spans:
+                continue
+            runs.append(
+                TextLine(
+                    "step",
+                    x=centre,
+                    y=top + index * block.advance + block.ascent,
+                    spans=tuple(
+                        TextSpan(text=span.text, font=span.font, weight=span.weight)
+                        for span in line.spans
+                        if span.text
+                    ),
+                    level="label",
+                    anchor="middle",
+                )
+            )
+    return runs
 
 
 def _shares(items: tuple[Item, ...], count: int) -> list[float] | None:
