@@ -502,6 +502,51 @@ class TitleStyle:
         )
 
 
+#: How a `cycle` draws the connectors between its steps.
+CYCLE_CONNECTORS: Final = ("arc", "band")
+
+
+@dataclass(frozen=True)
+class CycleStyle:
+    """How a `cycle`'s connectors are drawn. Appearance, so it lives here.
+
+    An author writes `cycle` and means "these steps come round again". Whether
+    the coming-round is drawn as a thin arc with a small head or as a broad
+    tapered ribbon — the recycling mark — is a question about the drawing, not
+    about the subject, and this project's rule is that the theme answers those.
+    So there is no field on the document for it and no second kind: a theme that
+    sets `connector = "band"` draws every cycle that way, and the same document
+    renders either way without being edited.
+
+    `band` suits a cycle of few, well-separated steps, where the arrows have room
+    to be the loudest thing in the drawing and the going-round is the message.
+    `arc` is the default because it survives a cycle of seven steps, which a
+    ribbon does not.
+    """
+
+    connector: str = "arc"
+    width: float = 11.0
+    """How thick a `band` connector is at its shaft, in user units.
+
+    The head is drawn wider than this in the same proportion an arrow head is
+    wider than its shaft, so a band reads as the same arrow drawn fat rather
+    than as a different kind of mark.
+    """
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> CycleStyle:
+        _reject_unknown(mapping, ("connector", "width"), "[cycle]")
+        defaults = cls()
+        return cls(
+            connector=_choice(
+                mapping.get("connector", defaults.connector),
+                CYCLE_CONNECTORS,
+                "[cycle] connector",
+            ),
+            width=_number(mapping.get("width", defaults.width), "[cycle] width"),
+        )
+
+
 @dataclass(frozen=True)
 class NodeRole:
     """How one semantic node role is drawn."""
@@ -600,6 +645,7 @@ _TOP_LEVEL_KEYS: Final = (
     "edge",
     "mark",
     "title",
+    "cycle",
     "role",
     "edge_role",
 )
@@ -619,6 +665,7 @@ class Theme:
     edge: EdgeStyle = EdgeStyle()
     mark: MarkStyle = MarkStyle()
     title: TitleStyle = TitleStyle()
+    cycle: CycleStyle = CycleStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
 
@@ -666,6 +713,7 @@ class Theme:
             edge=EdgeStyle.from_mapping(_section(mapping, "edge")),
             mark=MarkStyle.from_mapping(_section(mapping, "mark")),
             title=TitleStyle.from_mapping(_section(mapping, "title")),
+            cycle=CycleStyle.from_mapping(_section(mapping, "cycle")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
         )

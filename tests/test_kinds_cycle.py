@@ -20,7 +20,7 @@ import pytest
 
 from drawspec import render
 from drawspec.emit import check_embedding_safety
-from drawspec.errors import DrawspecError, FitError
+from drawspec.errors import DrawspecError, FitError, ThemeError
 from drawspec.kinds.cycle import MINIMUM_NODES, START_ANGLE, cycle_scene
 from drawspec.scene import Path, Polygon, Rect, Scene, TextLine, extents
 from drawspec.schema import parse_document
@@ -388,3 +388,60 @@ def _distance_to(box: Rect, point: tuple[float, float]) -> float:
     across = max(box.x - point[0], point[0] - (box.x + box.width), 0.0)
     down = max(box.y - point[1], point[1] - (box.y + box.height), 0.0)
     return math.hypot(across, down)
+
+
+# --------------------------------------------------------------------------
+# Broad connectors
+# --------------------------------------------------------------------------
+
+WHEEL = load_theme("wheel")
+
+
+def _wheel(*texts: str) -> Scene:
+    document = {
+        "version": 1,
+        "kind": "cycle",
+        "title": "A wheel",
+        "nodes": [{"id": str(index), "text": text} for index, text in enumerate(texts)],
+        "edges": [
+            {"from": str(index), "to": str((index + 1) % len(texts))} for index in range(len(texts))
+        ],
+    }
+    return cycle_scene(
+        parse_document(document), WHEEL, TextMeasurer(WHEEL.font.stacks(), search_paths=[])
+    )
+
+
+def test_a_band_connector_is_one_closed_figure_not_a_shaft_and_a_head() -> None:
+    """Drawn in one piece, the taper is continuous and there is no seam."""
+    built = _wheel("Make it", "Use it", "Collect it", "Make it again")
+    bands = [item for item in built.primitives if isinstance(item, Polygon)]
+    assert len(bands) == 4, "one figure per edge, not two"
+    assert not [item for item in built.primitives if isinstance(item, Path)]
+
+
+def test_a_band_is_wider_than_the_arc_it_replaces() -> None:
+    """It is the same arrow drawn fat: the point of the theme."""
+    assert WHEEL.cycle.connector == "band"
+    assert WHEEL.cycle.width > WHEEL.edge.stroke_width
+
+
+def test_the_same_document_draws_either_way_without_being_edited() -> None:
+    """Appearance is the theme's, so there is no second kind and no field to set."""
+    document = {
+        "version": 1,
+        "kind": "cycle",
+        "title": "A cycle",
+        "nodes": [{"id": str(index), "text": f"Step {index}"} for index in range(4)],
+        "edges": [{"from": str(index), "to": str((index + 1) % 4)} for index in range(4)],
+    }
+    parsed = parse_document(document)
+    thin = cycle_scene(parsed, THEME, MEASURER)
+    fat = cycle_scene(parsed, WHEEL, TextMeasurer(WHEEL.font.stacks(), search_paths=[]))
+    assert [item for item in thin.primitives if isinstance(item, Path)]
+    assert not [item for item in fat.primitives if isinstance(item, Path)]
+
+
+def test_an_unknown_connector_is_refused_by_the_theme() -> None:
+    with pytest.raises(ThemeError, match="connector"):
+        load_theme({"version": 1, "name": "bad", "cycle": {"connector": "squiggle"}})

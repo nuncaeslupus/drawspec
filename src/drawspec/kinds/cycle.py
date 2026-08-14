@@ -48,6 +48,16 @@ NODE_WIDTH_SHARE: Final = 0.34
 #: drawn, few enough that the path data stays legible in a diff.
 ARC_SEGMENTS: Final = 12
 
+#: How far a band's head reaches back along the arc, as a multiple of the band's
+#: own width. The same proportion an ordinary arrow head has to its shaft, so a
+#: ribbon reads as that arrow drawn fat rather than as a different mark.
+ARROW_ASPECT: Final = 1.1
+
+#: How much wider a band's head is than its shaft. Below about 1.6 the head stops
+#: reading as a head and the whole thing looks like a band that got confused at
+#: one end.
+HEAD_FLARE: Final = 2.0
+
 #: The smallest cycle that can be drawn. Two nodes is a pair of arcs there and
 #: back, which does read as a loop; one node is not a cycle at all.
 MINIMUM_NODES: Final = 2
@@ -283,6 +293,9 @@ def _arc(
         return ()
 
     head = theme.edge_roles[role].has_head
+    if theme.cycle.connector == "band":
+        return (_band(centre, radius, begin, finish, role, theme, head=head),)
+
     last = finish - head_span if head else finish
     points = tuple(
         _on_circle(centre, radius, begin + (last - begin) * step / ARC_SEGMENTS)
@@ -293,6 +306,55 @@ def _arc(
     if not head:
         return (shaft,)
     return (shaft, _head(centre, radius, finish, head_span, role, theme))
+
+
+def _band(
+    centre: tuple[float, float],
+    radius: float,
+    begin: float,
+    finish: float,
+    role: str,
+    theme: Theme,
+    *,
+    head: bool,
+) -> Polygon:
+    """One connector drawn as a broad tapered ribbon — the recycling mark.
+
+    A single closed figure rather than a shaft plus a head, because that is what
+    it is: the outer edge runs from the start of the arc to the shoulder, out to
+    the wide point of the head, in to the tip, back out along the inner shoulder,
+    and home along the inner edge. Drawn in one piece, the taper is continuous
+    and there is no seam where a stroked shaft would meet a filled triangle.
+
+    It is filled with the edge's own colour and not outlined, which is what the
+    emitter already does with an arrow head — a head is the same weight as its
+    shaft whatever the theme says, and a band is a head that goes all the way
+    round.
+    """
+    half = theme.cycle.width / 2
+    # The head's span along the arc is proportional to how wide it is, so a
+    # ribbon and a thin arrow are the same shape at two sizes.
+    span = (theme.cycle.width * ARROW_ASPECT) / radius if head else 0.0
+    shoulder = max(begin, finish - span)
+
+    def along(offset: float, start: float, end: float) -> tuple[tuple[float, float], ...]:
+        return tuple(
+            _on_circle(centre, radius + offset, start + (end - start) * step / ARC_SEGMENTS)
+            for step in range(ARC_SEGMENTS + 1)
+        )
+
+    if not head:
+        return Polygon(role, points=(*along(half, begin, finish), *along(-half, finish, begin)))
+    return Polygon(
+        role,
+        points=(
+            *along(half, begin, shoulder),
+            _on_circle(centre, radius + half * HEAD_FLARE, shoulder),
+            _on_circle(centre, radius, finish),
+            _on_circle(centre, radius - half * HEAD_FLARE, shoulder),
+            *along(-half, shoulder, begin),
+        ),
+    )
 
 
 def _leaves(

@@ -1,0 +1,23 @@
+# drawspec's wheel theme: a cycle whose arrows are the loudest thing in it.
+#
+# One change from the default, and it is a change of appearance rather than of
+# meaning: `cycle` draws its connectors as broad tapered ribbons — the recycling
+# mark — instead of thin arcs with small heads.
+#
+# The document does not change. An author writes `cycle` and means "these steps
+# come round again"; whether the coming-round is a hairline or a fat arrow is a
+# question about the drawing, which is the theme's to answer. So the same
+# document renders either way without being edited, and there is no second kind
+# and no field to set.
+#
+# **Use it for a cycle of few, well-separated steps**, where the arrows have
+# room to carry the drawing. A ribbon between seven steps has no room to taper
+# and comes out as a thick smudge; the default `arc` survives that and this does
+# not, which is why `arc` is the default.
+
+version = 1
+name = "wheel"
+
+[cycle]
+connector = "band"
+width = 13.0
