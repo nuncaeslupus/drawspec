@@ -165,7 +165,7 @@ def test_emit_rect_tagged_with_a_non_rectangular_role_raises() -> None:
 
 
 def test_emit_rect_is_fine_for_a_role_the_theme_draws_as_one() -> None:
-    for role in ("step", "start", "note", "group", "emphasis", "terminal"):
+    for role in ("step", "start", "group", "emphasis", "terminal"):
         scene = Scene(width=40.0, height=40.0, primitives=(Rect(role, width=30.0, height=20.0),))
         assert emit(scene, THEME)
 
@@ -259,8 +259,8 @@ def test_emit_node_role_stroke_width_comes_from_the_theme() -> None:
 
 
 def test_emit_dashed_role_carries_its_dash_pattern() -> None:
-    scene = Scene(width=10.0, height=10.0, primitives=(Rect("note", width=5.0, height=5.0),))
-    assert f'stroke-dasharray="{THEME.roles["note"].dash}"' in emit(scene, THEME)
+    scene = Scene(width=10.0, height=10.0, primitives=(Rect("group", width=5.0, height=5.0),))
+    assert f'stroke-dasharray="{THEME.roles["group"].dash}"' in emit(scene, THEME)
 
 
 def test_emit_solid_role_carries_no_dash_attribute() -> None:

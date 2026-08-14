@@ -155,8 +155,12 @@ fill_pattern = "none"
 dash = "none"
 stroke_width = 2.5
 
+# An aside is set beside the argument, not boxed off from it: a note is words on
+# the page, and the box drawspec used to draw round them was a border with
+# nothing on the other side of it. A grouping that *does* want a line round it is
+# `group`, below — that is the role whose whole job is enclosing.
 [role.note]
-shape = "rect"
+shape = "none"
 stroke = "currentColor"
 fill = "none"
 fill_pattern = "none"

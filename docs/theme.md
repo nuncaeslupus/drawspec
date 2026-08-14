@@ -94,6 +94,7 @@ Box geometry constants: margin, line spacing, corner treatment.
 | `line_height` | `1.35` | Baseline-to-baseline distance, as a multiple of the type size. |
 | `corner_radius` | `4.0` | Corner rounding for a `rect`. Zero draws square corners. |
 | `lead` | `"bold"` | How the first paragraph of a label with more than one is set. |
+| `widen_steps` | `1` | How far past the aspect floor a box may keep taking width to shed a line. |
 
 ### `[edge]`
 
@@ -155,7 +156,7 @@ vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note
 | `decision` | `"diamond"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
 | `terminal` | `"pill"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `2.5` |
 | `emphasis` | `"rect"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `2.5` |
-| `note` | `"rect"` | `"currentColor"` | `"none"` | `"none"` | `"3 2"` | `1.0` |
+| `note` | `"none"` | `"currentColor"` | `"none"` | `"none"` | `"3 2"` | `1.0` |
 | `group` | `"rect"` | `"currentColor"` | `"none"` | `"none"` | `"6 3"` | `1.0` |
 
 ## `[edge_role.*]` — the edge roles

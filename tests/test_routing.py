@@ -654,6 +654,27 @@ def test_two_routes_alongside_each_other_keep_a_lane_apart(document: str, direct
                 )
 
 
+@pytest.mark.parametrize("document", REFERENCES)
+@pytest.mark.parametrize("direction", ["down", "right"])
+def test_no_route_turns_by_less_than_a_shaft(document: str, direction: str) -> None:
+    """The reviewer's own request: *"We should have a test against that."*
+
+    "That" being a route that steps sideways by a few units and carries straight
+    on, which reads as a kink rather than as a turn — *"notice the small angle in
+    the last arrow"*, three drawings running. The floor is the one drawspec
+    already uses for a line a reader can see, `[edge] min_shaft_length`: a turn
+    shorter than the shortest drawable line is not a turn.
+    """
+    floor = THEME.edge.min_shaft_length
+    for route in _reference_routes(document, direction):
+        for segment in _movable_segments(route):
+            length = math.dist(*segment)
+            assert length >= floor - 1e-6, (
+                f"{route.source}->{route.target} turns through a run of {length:g}, "
+                f"shorter than the {floor:g} floor: {segment}"
+            )
+
+
 def _movable_segments(
     route: Route,
 ) -> list[tuple[tuple[float, float], tuple[float, float]]]:

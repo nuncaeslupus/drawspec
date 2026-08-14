@@ -319,10 +319,12 @@ def size_box(
             padding=theme.box.padding,
         )
 
-    return _widened(at, limit, widen, theme.canvas.width)
+    return _widened(at, limit, widen, theme.canvas.width, theme.box.widen_steps)
 
 
-def _widened(at: Callable[[float], Box], limit: float, widen: float, ceiling: float) -> Box:
+def _widened(
+    at: Callable[[float], Box], limit: float, widen: float, ceiling: float, steps: int = 1
+) -> Box:
     """Offer a too-vertical box more width, while more width buys fewer lines.
 
     Every shape but a rect pays for its own outline out of the width it was
@@ -340,8 +342,22 @@ def _widened(at: Callable[[float], Box], limit: float, widen: float, ceiling: fl
     So the box is re-offered a wider allowance in steps, and each wider box is
     kept only if it needs **fewer lines** than the one before — width that buys
     nothing is not taken, so a short label stays exactly as narrow as its own
-    text. It stops as soon as the box is at least as wide as it is tall, and
-    never passes the canvas or the caller's `widen` multiple.
+    text. It stops at one line, at the canvas, or at the caller's `widen`
+    multiple, whichever comes first.
+
+    It used to stop the moment the box was `MIN_ASPECT` times wider than tall,
+    and the reviewer read the result off five separate drawings in one round:
+    *"a wider round box would be even better"*, *"if even wider, text would fit
+    better"*, *"same, wider boxes → less lines"*. So the aspect is a floor and
+    not a stopping point: past it the box keeps taking width for exactly as long
+    as width keeps buying lines, and stops at the first step that buys nothing.
+
+    Greedy, and deliberately so. Width is shared — a rank is as wide as the boxes
+    in it — so a box that takes width it cannot spend is taking it from its
+    neighbours, and the drawing that will not fit the canvas is refused rather
+    than being drawn badly. Stopping at the first step that buys nothing keeps
+    the boxes that can use width growing and the ones that cannot exactly as
+    they were.
 
     A narrow offer that will not settle at all is a *reason* to widen rather than
     a failure: `FitError` from one offer is held and only raised if every offer
@@ -358,6 +374,7 @@ def _widened(at: Callable[[float], Box], limit: float, widen: float, ceiling: fl
 
     box: Box | None = None
     refusal: FitError | None = None
+    spent = 0
     for offered in offers:
         try:
             candidate = at(offered)
@@ -365,9 +382,16 @@ def _widened(at: Callable[[float], Box], limit: float, widen: float, ceiling: fl
             refusal = refusal or error
             continue
         if box is None or len(candidate.block.lines) < len(box.block.lines):
-            box = candidate
-        if box.width >= box.height * MIN_ASPECT:
+            box, bought_a_line = candidate, True
+        else:
+            bought_a_line = False
+        if len(box.block.lines) <= 1:
+            # One line is the fewest there are; no further width can buy one.
             return box
+        if box.width >= box.height * MIN_ASPECT:
+            if not bought_a_line or spent >= steps:
+                return box
+            spent += 1
 
     if box is None:
         raise refusal or FitError(f"no box fits a width of {limit:.1f}")
@@ -492,6 +516,13 @@ def candidate_factors(theme: Theme) -> tuple[float, ...]:
     return tuple(factors)
 
 
+def _generosities(theme: Theme) -> tuple[Theme, ...]:
+    """The theme, then the same theme with its box generosity spent down to none."""
+    if not theme.box.widen_steps:
+        return (theme,)
+    return (theme, replace(theme, box=replace(theme.box, widen_steps=0)))
+
+
 def fit[T](theme: Theme, attempt: Callable[[Theme], T]) -> Fitted[T]:
     """Find the largest factor in the theme's band at which `attempt` succeeds.
 
@@ -521,10 +552,18 @@ def fit[T](theme: Theme, attempt: Callable[[Theme], T]) -> Fitted[T]:
     last: FitError | None = None
     for factor in factors:
         scaled = theme.with_scale(factor)
-        try:
-            return Fitted(factor=factor, theme=scaled, value=attempt(scaled))
-        except FitError as error:
-            last = error
+        # Generous boxes first, then plain ones, and only then a smaller type.
+        # `[box] widen_steps` buys a box width past the aspect floor while width
+        # is still shedding lines, and a drawing whose rank is already as wide as
+        # the canvas has none to give. Dropping the generosity is the cheap way
+        # out of that; shrinking the type answers "this text wraps too much" with
+        # "this text is smaller", which is the trade the elastic fit exists to
+        # avoid making. So the fallback happens inside the factor, not after it.
+        for boxes in _generosities(scaled):
+            try:
+                return Fitted(factor=factor, theme=boxes, value=attempt(boxes))
+            except FitError as error:
+                last = error
 
     raise FitError(
         f"the content does not fit at any factor in this theme's band "

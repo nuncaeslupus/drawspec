@@ -178,13 +178,13 @@ def test_columns_keep_a_role_the_author_chose() -> None:
             {
                 "version": 1,
                 "kind": "columns",
-                "items": [{"text": "Old", "role": "note"}, {"text": "New", "role": "emphasis"}],
+                "items": [{"text": "Old", "role": "group"}, {"text": "New", "role": "emphasis"}],
             }
         ),
         THEME,
         MEASURER,
     )
-    assert {rect.role for rect in rects(built)} == {"note", "emphasis"}
+    assert {rect.role for rect in rects(built)} == {"group", "emphasis"}
 
 
 # --------------------------------------------------------------------------

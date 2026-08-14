@@ -453,9 +453,27 @@ class BoxStyle:
     a distinction the weight already carries.
     """
 
+    widen_steps: int = 1
+    """How far past the aspect floor a box may keep taking width to shed a line.
+
+    A box is offered more width in steps while each step buys it a line, and it
+    stops once it is `MIN_ASPECT` times wider than tall. That floor turned out to
+    stop it too early — *"a wider round box would be even better"*, *"if even
+    wider, text would fit better"*, *"same, wider boxes → less lines"*, three
+    drawings in one round — so this is how many further paying steps it may take.
+
+    It is a small number and not a large one because width is shared: a rank is
+    as wide as the boxes in it, so a box taking width it barely needs takes it
+    from its neighbours and the drawing stops fitting the canvas. drawspec tries
+    the theme's number first and falls back to `0` for a document that will not
+    fit with it, so this is the generosity a drawing gets *when there is room*.
+    """
+
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> BoxStyle:
-        _reject_unknown(mapping, ("padding", "line_height", "corner_radius", "lead"), "[box]")
+        _reject_unknown(
+            mapping, ("padding", "line_height", "corner_radius", "lead", "widen_steps"), "[box]"
+        )
         defaults = cls()
         padding = defaults.padding
         if "padding" in mapping:
@@ -481,6 +499,13 @@ class BoxStyle:
                 positive=False,
             ),
             lead=_choice(mapping.get("lead", defaults.lead), LEAD_TREATMENTS, "[box] lead"),
+            widen_steps=int(
+                _number(
+                    mapping.get("widen_steps", defaults.widen_steps),
+                    "[box] widen_steps",
+                    positive=False,
+                )
+            ),
         )
 
 

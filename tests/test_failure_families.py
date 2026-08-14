@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 import math
 import re
+from dataclasses import replace
 from itertools import pairwise
 from pathlib import Path
 from typing import Final
@@ -45,6 +46,14 @@ from drawspec.theme import TYPE_LEVELS, load_theme
 
 THEME = load_theme()
 MEASURER = TextMeasurer(THEME.font.stacks(), search_paths=[])
+
+#: The same theme with `[box] widen_steps` spent down to none. A family called
+#: directly gets no elastic fit around it, so it gets no chance to fall back the
+#: way `fit` does when a generous box makes a drawing too wide for the canvas —
+#: and these tests are about ranks, anchors and angles, not about how much width
+#: a box talked its way into. Fixing the generosity keeps them measuring that.
+STRICT = replace(THEME, box=replace(THEME.box, widen_steps=0))
+
 REFERENCE_DIR = Path(__file__).resolve().parents[1] / "docs" / "reference"
 
 #: The eleven families in `docs/brief.md`, in the order the brief counts them.
@@ -293,7 +302,7 @@ def test_family_line_not_reaching_the_box_is_unrepresentable(name: str) -> None:
     anywhere else, and this measures it against the shapes.
     """
     parsed = load_document(REFERENCE_DIR / f"{name}.json")
-    drawing = graph_drawing(parsed, THEME, MEASURER)
+    drawing = graph_drawing(parsed, STRICT, MEASURER)
     shapes = {node.id: THEME.roles[node.role].shape for node in parsed.nodes}
     for route in drawing.routes:
         for point, identifier in (
@@ -319,7 +328,7 @@ def test_family_curve_instead_of_a_right_angle_is_unrepresentable(name: str) -> 
     `open` head is a V by design. The claim is that an edge's *line* cannot be a
     curve, not that drawspec never draws a slope.
     """
-    drawing = graph_drawing(load_document(REFERENCE_DIR / f"{name}.json"), THEME, MEASURER)
+    drawing = graph_drawing(load_document(REFERENCE_DIR / f"{name}.json"), STRICT, MEASURER)
     assert drawing.routes
     for route in drawing.routes:
         for first, second in pairwise(route.points):

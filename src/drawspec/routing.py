@@ -698,7 +698,7 @@ def route_edges(
                 label=connector.label,
             )
         )
-    return separate_lanes(tuple(routes), obstacles, theme)
+    return straighten(separate_lanes(tuple(routes), obstacles, theme), obstacles, theme)
 
 
 def _chord_is_drawable(route: Route, obstacles: Sequence[Obstacle], theme: Theme) -> bool:
@@ -1220,6 +1220,153 @@ def _separated(
                 if placed:
                     break
     return tuple(moved)
+
+
+def straighten(
+    routes: Sequence[Route], obstacles: Sequence[Obstacle], theme: Theme
+) -> tuple[Route, ...]:
+    """Every route with its unreadable turns taken out.
+
+    A route that steps sideways by six units and carries on is drawn as two
+    corners and a nub between them, and it reads as the router wobbling rather
+    than as a line going anywhere — *"notice the small angle in the last arrow"*,
+    *"again a slightly angled arrow"*, *"I would have expected a straight arrow
+    instead of even more angled"*. Three notes on three drawings for one fault.
+
+    The floor is `[edge] min_shaft_length`, and reusing it is the argument:
+    drawspec already refuses to draw a *shaft* shorter than that because nobody
+    can see it, so a *turn* shorter than it is a turn nobody can see either. One
+    number, one reason, and a theme that wants blunter geometry moves both at
+    once.
+
+    Taking one out slides everything on one side of it, which moves that end's
+    anchor along its own border — so the anchor is checked against the shape it
+    sits on rather than against the rectangle: sliding along the top of a pill is
+    fine until the cap starts, and sliding along a diamond is never fine, because
+    the anchor is on the slope and would come off it. `_anchor` already knows
+    all of that, so the check is that the moved point is still the anchor its
+    fraction names.
+
+    The end that moves is whichever one can: the source is tried first because a
+    route's head is the end a reader looks at, and moving the tail is the smaller
+    change to what the drawing says.
+    """
+    boxes = {box.id: box for box in obstacles}
+    settled = list(routes)
+    for index, route in enumerate(settled):
+        # One turn can only be removed by moving a run that another turn owns, so
+        # the pass repeats until nothing more comes out; bounded by the number of
+        # turns, since each success removes at least one.
+        for _ in range(len(route.points)):
+            better = _unjogged(settled[index], boxes, obstacles, theme, settled, index)
+            if better is None:
+                break
+            settled[index] = better
+    return tuple(settled)
+
+
+def _unjogged(
+    route: Route,
+    boxes: Mapping[str, Obstacle],
+    obstacles: Sequence[Obstacle],
+    theme: Theme,
+    routes: Sequence[Route],
+    index: int,
+) -> Route | None:
+    """`route` with its shortest unreadable turn removed, or `None` if none can be."""
+    points = route.points
+    for position in range(1, len(points) - 2):
+        first, second = points[position], points[position + 1]
+        offset = (second[0] - first[0], second[1] - first[1])
+        if math.hypot(*offset) >= theme.edge.min_shaft_length - _TOLERANCE:
+            continue
+        for moving_source in (True, False):
+            candidate = _slid(route, position, offset, boxes, moving_source=moving_source)
+            if candidate is None:
+                continue
+            if not _is_clear(candidate, obstacles, theme):
+                continue
+            if _lands_on_another(candidate, routes, index):
+                continue
+            return candidate
+    return None
+
+
+def _slid(
+    route: Route,
+    position: int,
+    offset: tuple[float, float],
+    boxes: Mapping[str, Obstacle],
+    *,
+    moving_source: bool,
+) -> Route | None:
+    """`route` with one side of the turn at `position` slid onto the other's line.
+
+    The moved end's endpoint is *recomputed* rather than translated, because a
+    route lands on the shape and not on the rectangle: slide along the top of a
+    diamond and the outline rises to meet you, so the anchor takes a new depth
+    and the run into it simply gets shorter. `_anchor` already knows the shape of
+    every box, so this asks it again at the new fraction instead of assuming the
+    old answer still holds — which is the whole difference between straightening
+    an arrow into a rectangle and putting one beside a diamond.
+
+    `None` when the slide would take the anchor off the side it is on: past a
+    corner, or onto a pill's cap, where the flat the run is perpendicular to has
+    run out.
+    """
+    points = list(route.points)
+    end, neighbour_at = (0, 1) if moving_source else (len(points) - 1, len(points) - 2)
+    box = boxes.get(route.source if moving_source else route.target)
+    side = _side_facing(box, points[end], points[neighbour_at]) if box else None
+    if box is None or side is None:
+        return None
+
+    step = offset if moving_source else (-offset[0], -offset[1])
+    along = 0 if side in ("top", "bottom") else 1
+    span, start = (box.width, box.x) if along == 0 else (box.height, box.y)
+    if not span:
+        return None
+    wanted = points[end][along] + step[along]
+    fraction = (wanted - start) / span
+    if not 0.0 < fraction < 1.0:
+        return None
+    anchor = _anchor(box, side, fraction)
+    if abs(anchor[along] - wanted) > _TOLERANCE:
+        # A pill's cap: `_anchor` clamped the port back onto the flat, so the run
+        # would no longer meet the border square.
+        return None
+
+    inner = [
+        (_round(x + step[0]), _round(y + step[1]))
+        for x, y in (points[1 : position + 1] if moving_source else points[position + 1 : -1])
+    ]
+    points = (
+        [anchor, *inner, *points[position + 1 :]]
+        if moving_source
+        else [
+            *points[: position + 1],
+            *inner,
+            anchor,
+        ]
+    )
+    depth = 1 - along
+    if (points[neighbour_at][depth] - anchor[depth]) * OUTWARD[side][depth] <= _TOLERANCE:
+        # The new anchor sits past the point the run turns at — the shape reaches
+        # further out here than the route left room for.
+        return None
+    simplified = _simplify(points)
+    return replace(route, points=simplified) if len(simplified) >= 2 else None
+
+
+def _side_facing(
+    box: Obstacle, point: tuple[float, float], neighbour: tuple[float, float]
+) -> str | None:
+    """Which side of `box` a run from `point` towards `neighbour` leaves by."""
+    step = (neighbour[0] - point[0], neighbour[1] - point[1])
+    for side, outward in OUTWARD.items():
+        if step[0] * outward[0] + step[1] * outward[1] > _TOLERANCE:
+            return side
+    return None
 
 
 def _lands_on_another(candidate: Route, routes: Sequence[Route], index: int) -> bool:
@@ -1954,4 +2101,5 @@ __all__ = [
     "route_edges",
     "separate_lanes",
     "shaft_length",
+    "straighten",
 ]
