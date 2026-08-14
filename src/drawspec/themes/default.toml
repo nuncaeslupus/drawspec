@@ -101,7 +101,7 @@ level = "title"
 # at its own index among the filled marks in its chart. Patterns are drawn faint
 # on purpose — a fill that competes with the text over it makes the text
 # illegible, which was the loudest complaint about the hand-drawn originals.
-fills = ["hatch", "dots", "cross", "grid", "none"]
+fills = ["dots", "hatch", "grid", "cross", "none"]
 # How much of a category's band is left empty around its bars. Zero draws bars
 # that touch, which reads as one wide bar rather than as several.
 gap = 0.3

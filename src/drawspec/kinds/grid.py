@@ -516,19 +516,25 @@ def _check_cells(cells: tuple[Cell, ...]) -> None:
 def _row_heights(
     cells: tuple[Cell, ...], boxes: dict[tuple[int, int], Box], down: int
 ) -> list[float]:
-    """How deep each row is: the deepest cell that *ends* in it.
+    """Every row the same depth: the deepest any one cell needs of a single row.
 
-    Charging a spanning cell to its last row rather than to every row it covers
-    is what keeps a two-row cell from doubling the depth of a matrix — it needs
-    the two rows together, not two rows each as deep as itself.
+    Equal rows for the reason a `stack`'s layers are equal — *"a stack whose
+    layers differ in height reads as a ranking of importance, which is not what
+    the author said"* — and a matrix is the kind whose whole content is a
+    comparison, so a row drawn deeper than its neighbours is the strongest claim
+    on the page and nobody made it. The corpus review asked for this directly:
+    "could we make all of the rows the same height?"
+
+    A spanning cell is charged *per row it covers* rather than to the last one.
+    It needs its rows together, not each of them as deep as itself, so what it
+    demands of one row is its own depth divided by how many it spans — which is
+    what keeps a two-row cell from doubling the matrix.
     """
-    heights = [0.0] * down
-    for cell in sorted(cells, key=lambda item: item.down):
-        box = boxes[(cell.column, cell.row)]
-        covered = sum(heights[cell.row : cell.row + cell.down])
-        if box.height > covered:
-            heights[cell.row + cell.down - 1] += box.height - covered
-    return heights
+    demand = max(
+        (boxes[(cell.column, cell.row)].height / cell.down for cell in cells),
+        default=0.0,
+    )
+    return [demand] * down
 
 
 def _heading_width(document: Document, theme: Theme, measurer: TextMeasurer, width: float) -> float:

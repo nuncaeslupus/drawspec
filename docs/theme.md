@@ -113,7 +113,7 @@ How a chart tells one mark from another, and how much room bars get.
 
 | Key | Default | What it is |
 |---|---|---|
-| `fills` | `["hatch", "dots", "cross", "grid", "none"]` | The fills a chart's marks take, in order, one per filled mark. Each one of `none`, `solid`, `hatch`, `dots`, `cross`, `grid`. |
+| `fills` | `["dots", "hatch", "grid", "cross", "none"]` | The fills a chart's marks take, in order, one per filled mark. Each one of `none`, `solid`, `hatch`, `dots`, `cross`, `grid`. |
 | `gap` | `0.3` | How much of a category's band is left empty around its bars, as a fraction. Zero draws bars that touch, which reads as one wide bar. |
 
 ### `[title]`
