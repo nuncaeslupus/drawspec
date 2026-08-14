@@ -207,11 +207,15 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
     )
     # Labels avoid the frames as well as the boxes — only the frames' borders,
     # so a label belonging to an edge inside a group can still sit inside it.
+    # And the captions, for the same reason the routes avoid them: a caption is
+    # words, and two sets of words in one place are neither of them. An edge
+    # label landed on top of "Another worker" and the pair read as one smudge.
     labels = place_labels(
         routes,
         (
             *obstacles,
             *(border for frame in arrangement.frames for border in border_obstacles(frame, theme)),
+            *(blocked for frame in arrangement.frames for blocked in caption_obstacle(frame)),
         ),
         theme,
         measurer,

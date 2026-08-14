@@ -75,8 +75,14 @@ stroke_width = 1.5
 min_shaft_length = 16.0
 head_length = 6.0
 # Daylight a route keeps from a box it is only passing. A line flush against a
-# border reads as part of that box rather than as a connector going elsewhere.
-clearance = 4.0
+# border reads as part of that box rather than as a connector going elsewhere,
+# and a line a few units off one still hugs it — this is the smallest gap that
+# reads as "going past" rather than "attached to".
+clearance = 6.0
+# How far apart two routes running the same line are drawn. One head length was
+# what this used to borrow, and three edges leaving one box came out as a bundle
+# whose corners stacked within a few units of each other.
+lane_spacing = 12.0
 
 [title]
 # Whether a diagram carries its own "Figure 1" style title. Raised with the
