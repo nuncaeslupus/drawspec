@@ -63,6 +63,21 @@ AREAS = {
 }
 
 
+# Three originals will not be redrawn, and the page should say so rather than
+# leave them looking merely unfinished. The reasoning is in `docs/kinds-wanted.md`;
+# these are the one-line versions, shown in place of the drawing.
+DECLINED = {
+    "tic__redes-wifi": "A picture, not a diagram. Overlapping Wi-Fi cells are an "
+    "illustration of a physical thing, and a language whose author never writes a "
+    "coordinate is the wrong tool for one.",
+    "tic__servicios-digitales-geograficos": "A picture, not a diagram: one parcel of "
+    "land drawn vector against raster. Same reason.",
+    "tic__drp-y-bcp": "Wanted, not refused. RPO, RTO, WRT and MTD are spans — "
+    "intervals between events — and drawspec's timeline draws marks on a line, not "
+    "durations along it. This is the next kind worth adding.",
+}
+
+
 @dataclass(frozen=True)
 class Pair:
     """One original and whatever drawspec makes of it."""
@@ -90,10 +105,16 @@ class Pair:
         return self.kind or self.wants
 
     @property
+    def declined(self) -> str:
+        return DECLINED.get(self.name, "")
+
+    @property
     def state(self) -> str:
         if self.failure:
             return "failed"
-        return "drawn" if self.new else "pending"
+        if self.new:
+            return "drawn"
+        return "declined" if self.declined else "pending"
 
 
 def _namespaced(svg: str, key: str) -> str:
@@ -293,9 +314,10 @@ figcaption {{
 }}
 .plate svg {{ display: block; width: 100%; height: auto; }}
 .blank {{
-  border: 1px dashed var(--edge); border-radius: 3px; padding: 28px 16px;
-  color: var(--faint); font: 13px/1.5 var(--sans);
+  border: 1px dashed var(--edge); border-radius: 3px; padding: 24px 18px;
+  color: var(--faint); font: 13px/1.55 var(--sans); max-width: 62ch;
 }}
+.blank b {{ color: var(--muted); display: block; margin-bottom: 4px; }}
 .blank.bad {{ color: var(--signal); border-color: var(--signal); font-family: var(--mono);
               font-size: 12px; white-space: pre-wrap; }}
 footer {{ padding: 56px 0 88px; color: var(--faint); font-size: 13px; }}
@@ -355,7 +377,15 @@ def _article(pair: Pair) -> str:
         "",
         missing="The originals are gitignored study material and are not in this checkout.",
     )
-    new = _plate(pair.new, pair.failure, missing="Not redrawn yet.")
+    new = _plate(
+        pair.new,
+        pair.failure,
+        missing=(
+            f"<b>Not being redrawn.</b> {escape(pair.declined)}"
+            if pair.declined
+            else "Not redrawn yet."
+        ),
+    )
     return (
         f"<article class=pair id='{escape(pair.name)}'"
         f" data-kind='{escape(pair.drawn_as or 'none')}' data-state='{pair.state}'>"
@@ -371,7 +401,10 @@ def _article(pair: Pair) -> str:
 
 def _rail(found: list[Pair]) -> str:
     drawn = sum(1 for pair in found if pair.new)
-    total = len(found) or 1
+    # Coverage is measured against what drawspec is meant to draw, so the three
+    # set-aside originals come out of the denominator rather than holding the
+    # bar permanently short of full.
+    total = sum(1 for pair in found if not pair.declined) or 1
     kinds = Counter(pair.drawn_as or "none" for pair in found)
     states = Counter(pair.state for pair in found)
 
@@ -390,12 +423,17 @@ def _rail(found: list[Pair]) -> str:
     chips += [
         f"<button class=chip data-axis=state data-state='{name}'>"
         f"{label}<em>{states[name]}</em></button>"
-        for name, label in (("drawn", "Redrawn"), ("pending", "Pending"), ("failed", "Failing"))
+        for name, label in (
+            ("drawn", "Redrawn"),
+            ("pending", "Pending"),
+            ("declined", "Out of scope"),
+            ("failed", "Failing"),
+        )
         if states[name]
     ]
     return (
         "<div class=rail><div class=rail-inner>"
-        f"<div class=coverage><b>{drawn:02d}</b><span>of {len(found)} redrawn</span></div>"
+        f"<div class=coverage><b>{drawn:02d}</b><span>of {total} drawable redrawn</span></div>"
         f"<div class=gauge><i style='width:{drawn / total:.1%}'></i></div>"
         f"<div class=filters>{''.join(chips)}</div>"
         f"<div class=coverage><b id=shown>{len(found):02d}</b><span>shown</span></div>"
@@ -434,9 +472,10 @@ def render_page(found: list[Pair], *, standalone: bool = True) -> str:
     for area in order:
         members = [pair for pair in found if pair.area == area]
         drawn = sum(1 for pair in members if pair.new)
+        drawable = sum(1 for pair in members if not pair.declined)
         parts.append(
             f"<section class=area><h2><span>{escape(AREAS.get(area, area))}</span>"
-            f"<span>{drawn} / {len(members)}</span></h2>"
+            f"<span>{drawn} / {drawable}</span></h2>"
         )
         parts += [_article(pair) for pair in members]
         parts.append("</section>")
@@ -463,7 +502,11 @@ def main(argv: list[str] | None = None) -> int:
     drawn = [pair for pair in found if pair.new]
     for pair in found:
         print(f"{pair.number:3d}  {pair.name:52} {pair.drawn_as:10} {pair.failure or pair.state}")
-    print(f"\n{len(drawn)} of {len(found)} redrawn, {len(failed)} failing")
+    declined = [pair for pair in found if pair.declined]
+    print(
+        f"\n{len(drawn)} of {len(found) - len(declined)} drawable redrawn, "
+        f"{len(declined)} out of scope, {len(failed)} failing"
+    )
 
     if not arguments.check:
         CORPUS.mkdir(parents=True, exist_ok=True)

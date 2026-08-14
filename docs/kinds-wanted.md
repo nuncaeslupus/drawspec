@@ -302,6 +302,16 @@ because it changes every existing chart drawing, and those have been reviewed.
 Every original, the kind that would draw it, and the reviewer's note where
 there is one. `*` marks a kind drawspec does not have.
 
+A struck-through kind is one this survey got wrong and the redraw corrected.
+**Fourteen of the eighty-nine moved** — one in six. The survey was made by
+counting shapes, and a diagram's shapes are not always what it is saying: three
+boxes in a row were called `columns` and turned out to be a stack, a chart and a
+matrix; six activities joined by chords were called a matrix and are a graph; a
+grid of customer-against-provider was called a matrix and is a proportion. The
+lesson is the one the reviewer taught on the shared-responsibility model: read
+what the original is *saying* before choosing the kind. `group` is not counted
+as a move — it was never a kind, only `flow` carrying a `groups` field.
+
 A struck-through kind is one this survey got wrong and the redraw corrected —
 the survey was made by counting shapes, and a diagram's shapes are not always
 what it is saying. The comparison page shows both, so a reclassification is
@@ -310,24 +320,24 @@ visible rather than quietly applied.
 | Original | Wants | Reviewer's note |
 |---|---|---|
 | `tic__pmbok-enfoques-y-ciclo-de-vida` | chart |  |
-| `cataluna__estatut-autonomia-catalunya` | columns |  |
-| `estado__funcion-publica-y-trebep` | columns | Margen inferior en cajas. "máxim 6 ANYS" está dentro del recuadro. Sin contexto no lo entiendo mucho, no sé si cada caja superior encaja con una inferior? |
+| `cataluna__estatut-autonomia-catalunya` | ~~columns~~ stack |  |
+| `estado__funcion-publica-y-trebep` | ~~columns~~ chart | Margen inferior en cajas. "máxim 6 ANYS" está dentro del recuadro. Sin contexto no lo entiendo mucho, no sé si cada caja superior encaja con una inferior? |
 | `tic__datos-abiertos-y-reutilizacion` | columns | Sólo la última queda con las estrellas encima del título. A lo mejor podrían ir todas así. |
-| `tic__dominios-de-datos-data-mesh` | columns | Las cajas no están alineadas. Las de Domini sobresalen por la derecha. |
+| `tic__dominios-de-datos-data-mesh` | ~~columns~~ matrix | Las cajas no están alineadas. Las de Domini sobresalen por la derecha. |
 | `barcelona__scrum-bit` | *curve | Es un poco feo, pero no sé muy bien por qué. Lo de ideal y real está en sitios extraños. |
 | `tic__pmbok-rendimiento-riesgos-y-cierre` | *curve | Es un gráfico muy raro, los textos se solapan, hay flechas con sólo punta, no hay texto para el eje vertical... Revisar entero. |
 | `tic__prospeccion-de-soluciones-tic` | *curve | Puntos fuera de la línea y texto atravesando líneas. El texto "productivity\nPlateau of" queda cortado y creo que el texto esperado sería "Plateau of productivity". No quedan muy claros los ejes. |
-| `barcelona__estrategia-municipal-de-algoritmos-y-datos` | cycle | "3. Contractació" (y todos en general) deberían ir centrados verticalmente? |
+| `barcelona__estrategia-municipal-de-algoritmos-y-datos` | ~~cycle~~ flow | "3. Contractació" (y todos en general) deberían ir centrados verticalmente? |
 | `estado__haciendas-locales-y-presupuestos` | cycle | Fatal en cuanto a márgenes y flechas y texto que no cabe. Revisar completo. |
 | `tic__automatizacion-orquestacion-y-rpa` | cycle | Centrado verticalmente. Sólo hay una flecha con cabeza, no sé si es lo esperado. |
-| `tic__certificados-digitales-y-eidas` | cycle | Márgenes y no queda claro dónde van "Signant" y "Verificador" |
+| `tic__certificados-digitales-y-eidas` | ~~cycle~~ flow | Márgenes y no queda claro dónde van "Signant" y "Verificador" |
 | `tic__gestion-de-incidentes-de-ciberseguridad` | cycle | Las flechas están todas mal. Como parece ser un ciclo, entiendo que tratan de simular un círculo, pero no aciertan. La frase "si hi ha indicis nous" queda cortada y no se ve entera, además de atravesar la línea. |
-| `tic__gestion-de-la-innovacion-sgi__0` | cycle | Flechas sin palo. |
+| `tic__gestion-de-la-innovacion-sgi__0` | ~~cycle~~ matrix | Flechas sin palo. |
 | `tic__gestion-del-riesgo-en-itil-v4` | cycle | Flechas con palo demasiado corto. |
 | `tic__gestion-financiera-de-los-servicios` | cycle | Si trata de ser un ciclo, OK, pero las flechas cruzan líneas y las curvas son extrañas. Valorar ángulos de 90 grados. |
 | `tic__medicion-y-mejora-continua` | cycle | Las flechas no acaban en la caja. |
 | `barcelona__municipio-y-regimen-especial-de-barcelona` | flow | Creo que las frases deberían empezar en mayúscula. Además, estar centradas verticalmente. Y "Presideix la Commissió..." no cabe en la caja. |
-| `barcelona__prevencion-de-riesgos-y-lengua-catalana` | flow | Puede que esté hecho a propósito, pero las flechas no tienen palo. Preferiría que lo tuvieran o bien que sean otro tipo de flechas. |
+| `barcelona__prevencion-de-riesgos-y-lengua-catalana` | ~~flow~~ stack | Puede que esté hecho a propósito, pero las flechas no tienen palo. Preferiría que lo tuvieran o bien que sean otro tipo de flechas. |
 | `estado__administracion-electronica` | flow |  |
 | `estado__administracion-general-del-estado` | flow | El texto de "Subdelegat del Govern" tiene interlineado irregular y no tiene margen inferior suficiente. |
 | `estado__buen-gobierno` | flow | "Reclamació..." está debajo de todo y hay flechas que cruzan otras cajas. Si hace falta, haz el esquema vertical con flechas hacia abajo. |
@@ -361,15 +371,15 @@ visible rather than quietly applied.
 | `tic__trabajo-colaborativo-microsoft-365` | flow | Aquí por ejemplo has usado líneas con ángulos rectos. Me gusta. Pero a diferencia del resto de los esquemas, las puntas de flecha no tocan las cajas de destino. |
 | `tic__gestion-de-la-innovacion-sgi__1` | *funnel | Flechas sin palo. |
 | `tic__soluciones-crm` | *funnel | Pirámide de forma rara. Texto "Compte i contacte" se solapa con las líneas (no cabe). |
-| `estado__administracion-publica` | *group | Margen inferior e interlineado en b). |
+| `estado__administracion-publica` | ~~group~~ tree | Margen inferior e interlineado en b). |
 | `tic__arquitectura-de-datos-dw-lake-lakehouse` | *group | "Ingesta" no cabe. "format" debería ser "Format"? Líneas entre las tres cajas principales con distinta longitud. |
 | `tic__devops-cicd-contenedores-y-kubernetes` | *group | Comandos en monospace? |
 | `tic__practicas-itil-de-entrega-de-servicios` | *group | La línea que sale de "Disseny del servei" va a "Transició del servei", mientras que la que llega a "Operació del servei" no viene de "Transició del servei" sino de un item interno, "Revisió posterior". Sólo comprobar si es correcto. La caja de debajo ("CMDB...") debería estar centrada con "Transició del servei o con todo el gráfico? Ahora no acaba de estar centrada del todo con nada. |
 | `tic__practicas-itil-de-soporte-al-servicio` | *group | Yexto muy pequeño. Alguna flecha con poco palo. La palabra "excepció" no se sabe si es de la línea entre "Service Desk" y "Petició de servei" o de la línea entre "Esdeveniment" y "Incident" (o de las dos). |
 | `tic__trabajo-documental-sharepoint-y-onedrive` | *group |  |
-| `tic__arquitecturas-de-seguridad-en-la-nube` | *matrix | Las líneas de rayado son demasiado fuertes y cuesta leer "client". Además, hay como unos separadores entre las tres cajas que no se respetan ni por las líneas generales ni por el rayado. |
+| `tic__arquitecturas-de-seguridad-en-la-nube` | ~~matrix~~ chart | Las líneas de rayado son demasiado fuertes y cuesta leer "client". Además, hay como unos separadores entre las tres cajas que no se respetan ni por las líneas generales ni por el rayado. |
 | `tic__computacion-hibrida-iaas-paas-saas` | *matrix | Mismo problema que antes en cuanto al rayado y las cajas separadas. A lo mejor "Gestiona el client" y "Gestiona el proveïdor" deberían ir al revés. |
-| `tic__itil-v4-conceptos-y-cadena-de-valor` | *matrix | No acabo de entender este esquema: las líneas cruzan cajas, hay dos posibles flechas sin palo, el texto se sale de las cajas y es muy grande y en negrita (o con sombra, no sé). |
+| `tic__itil-v4-conceptos-y-cadena-de-valor` | ~~matrix~~ flow | No acabo de entender este esquema: las líneas cruzan cajas, hay dos posibles flechas sin palo, el texto se sale de las cajas y es muy grande y en negrita (o con sombra, no sé). |
 | `tic__sistemas-san-y-raid` | *matrix |  |
 | `tic__tcp-ip-v4-y-mpls` | *matrix |  |
 | `tic__redes-wifi` | *picture | Todos los AP quedan cruzados con el punto. La imagen queda cortada por abajo. El texto "solapament 15-20 %" no sé si está donde toca. Entiendo que el dibujo con los solapamientos sí es correcto. |
@@ -378,7 +388,7 @@ visible rather than quietly applied.
 | `estado__fuentes-del-derecho-publico` | pyramid |  |
 | `tic__pruebas-de-software` | pyramid | Pirámide de forma extraña. |
 | `tic__servicio-de-atencion-al-usuario` | pyramid | Pirámide de forma rara, texto pequeño. Revisar si el texto es correcto. |
-| `tic__pmbok-liderazgo-equipo-y-recursos__0` | *quadrant | Puntas de flecha raras. |
+| `tic__pmbok-liderazgo-equipo-y-recursos__0` | ~~quadrant~~ flow | Puntas de flecha raras. |
 | `tic__pmbok-liderazgo-equipo-y-recursos__1` | *quadrant | "Suavitzar / acomodar" atraviesa línea, y "Retirar / eludir" casi también. |
 | `tic__aplicaciones-nativas-en-la-nube` | rings | Los textos de Cloud, Clúster y Contenidor deberían ir más abajo. Concretamente, Contenidor casi toca la línea. |
 | `tic__gestion-documental-y-archivo-electronico` | rings |  |
@@ -387,8 +397,8 @@ visible rather than quietly applied.
 | `tic__drp-y-bcp` | *spans |  |
 | `estado__constitucion-espanola` | stack | A lo mejor un poco más de margen vertical. |
 | `tic__brm-y-gestion-de-expectativas` | stack | Flechas un poco raras, no sé qué significan. |
-| `tic__calidad-del-software` | stack |  |
-| `tic__nube-soberana-y-administracion-publica` | stack |  |
+| `tic__calidad-del-software` | ~~stack~~ columns |  |
+| `tic__nube-soberana-y-administracion-publica` | ~~stack~~ flow |  |
 | `tic__sap-trm` | stack | Flecha sin palo, márgenes inferiores escasos, entre las dos últimas cajas no hay texto... |
 | `estado__acceso-al-empleo-publico` | timeline | Es raro partir una frase por cualquier lado y poner una parte con letra más pequeña. En el esquema siguiente tiene sentido, pero no aquí. Todo el texto debería ir arriba. No sé si a), b), c) y d) son necesarios, a no ser que vengan así en el texto. |
 | `estado__acto-administrativo` | timeline |  |
@@ -396,5 +406,5 @@ visible rather than quietly applied.
 | `tic__transformacion-digital` | timeline |  |
 | `barcelona__carta-municipal` | tree | Margen inferior en "Comissió de Govern". |
 | `tic__despliegue-de-aplicaciones-sccm` | tree | Las líneas no tocan las cajas. |
-| `tic__esquema-nacional-de-seguridad` | ~~tree~~ pyramid | Parece como si las líneas no llegaran a las cajas inferiores. |
+| `tic__esquema-nacional-de-seguridad` | ~~~~tree~~ pyramid~~ pyramid | Parece como si las líneas no llegaran a las cajas inferiores. |
 | `tic__internet-arquitectura-protocolos-dns` | tree | El texto "13 conjunts..." toca líneas y cajas, no queda muy claro dónde debe ir. |
