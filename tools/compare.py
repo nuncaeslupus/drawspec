@@ -11,8 +11,10 @@ Where the two halves come from:
   directory is absent the left column says so and the page still builds, because
   a page that only works on one machine is a page nobody runs.
 * **New** — `docs/corpus/<name>.json`, a drawspec document written against the
-  original. These *are* source: they are the deliverable this project exists to
-  produce.
+  original. Also gitignored: these are the consumer's diagrams expressed through
+  drawspec, not this repository's source. What drawspec ships as its own worked
+  examples is `docs/reference`. Both halves of the comparison therefore live
+  outside the repository, and the tool that puts them together lives in it.
 
 The page lists **every** original, not only the ones already redrawn, so it is
 also the progress board for that work: an entry with no document yet shows its
@@ -440,9 +442,10 @@ def render_page(found: list[Pair], *, standalone: bool = True) -> str:
         parts.append("</section>")
 
     parts += [
-        "<footer>The originals are study material from the opos temario and are not "
-        "part of this repository. The documents on the right are, and they are the "
-        "deliverable: <code>docs/corpus/*.json</code>.</footer>",
+        "<footer>Both halves belong to the opos project, not to drawspec: the "
+        "originals are study material from the temario, and the documents on the "
+        "right are those same diagrams expressed as drawspec documents. Neither is "
+        "kept in this repository. What is kept is the tool that draws them.</footer>",
         "</div>",
         f"<script>{SCRIPT}</script>",
     ]
