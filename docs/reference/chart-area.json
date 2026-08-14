@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "kind": "chart",
+  "title": "How long the backlog would take to clear",
+  "description": "Two bands of work stacked on each other across the year. The line along the top of each band is the data; the ground beneath it says how much of the whole that band accounts for.",
+  "axes": {
+    "horizontal": { "label": "Month" },
+    "vertical": { "label": "Days of work left" }
+  },
+  "series": [
+    {
+      "name": "Known",
+      "mark": "area",
+      "stack": "left",
+      "data": [[1, 120], [2, 104], [3, 96], [4, 74], [5, 58], [6, 40]]
+    },
+    {
+      "name": "Found on the way",
+      "mark": "area",
+      "stack": "left",
+      "data": [[1, 0], [2, 18], [3, 22], [4, 30], [5, 26], [6, 18]]
+    }
+  ]
+}

@@ -19,7 +19,7 @@ import pytest
 
 from drawspec import render
 from drawspec.charts import DIVIDER_ROLE, MARKER_FRACTION, _crosses, _label_box, chart_scene
-from drawspec.emit import check_embedding_safety
+from drawspec.emit import check_embedding_safety, emit
 from drawspec.errors import DocumentError, DrawspecError, FitError
 from drawspec.scene import Ellipse, Path, Polygon, Rect, Scene, TextRun
 from drawspec.schema import parse_document
@@ -455,11 +455,19 @@ def test_every_filled_series_gets_a_different_fill() -> None:
 
 
 def test_an_area_reaches_the_baseline_at_both_ends() -> None:
+    """Stated as an extent, not as a point order — the ring closes at the floor.
+
+    An unstacked area's floor *is* the baseline, so both ends of its x-range have
+    a corner sitting on it. Asserting `points[0]` and `points[-1]` instead pins
+    the order the ring happens to be wound in, which changed the moment areas
+    learned to stack on a floor that is not the baseline.
+    """
     built = marked({"name": "One", "mark": "area", "data": [[1, 30], [2, 40], [3, 20]]})
     (area,) = filled_of(built)
     baseline = max(y for _, y in area.points)
-    assert area.points[0][1] == pytest.approx(baseline)
-    assert area.points[-1][1] == pytest.approx(baseline)
+    on_floor = {round(x, 3) for x, y in area.points if y == pytest.approx(baseline)}
+    xs = [x for x, _ in area.points]
+    assert {round(min(xs), 3), round(max(xs), 3)} <= on_floor
 
 
 def test_a_bar_has_square_corners() -> None:
@@ -700,3 +708,213 @@ def test_a_curve_needs_at_least_two_waypoints() -> None:
                 "curves": [{"waypoints": [{"across": 0, "up": 0}]}],
             }
         )
+
+
+# --------------------------------------------------------------------------
+# Axis captions
+# --------------------------------------------------------------------------
+
+
+def _horizontal_axis(built: Scene) -> Path:
+    """The bottom rule: the widest horizontal line in the drawing."""
+    flat = [
+        line
+        for line in lines(built)
+        if len(line.points) == 2 and _orientation(line) == "horizontal"
+    ]
+    return max(flat, key=lambda line: abs(line.points[1][0] - line.points[0][0]))
+
+
+def _caption(built: Scene, text: str) -> TextRun:
+    return next(run for run in texts(built) if run.text == text and not run.rotate)
+
+
+CAPTIONED: tuple[tuple[str, Scene], ...] = (
+    ("Week", scene()),
+    ("How much of this", quadrant(*CORNERS)),
+)
+
+
+@pytest.mark.parametrize(("label", "built"), CAPTIONED, ids=["chart", "quadrant"])
+def test_the_horizontal_axis_caption_keeps_daylight_from_the_axis(label: str, built: Scene) -> None:
+    """A caption welded to the line it names reads as part of the line.
+
+    The rotated caption on the left hides this class of mistake — a run turned a
+    quarter turn measures its gap from the descender side — so the horizontal one
+    is the one worth asserting on.
+    """
+    caption = _caption(built, label)
+    extents = MEASURER.measure(caption.text, THEME.font.default, THEME.scale[caption.level])
+    top_of_text = caption.y - extents.ascent
+    axis_y = _horizontal_axis(built).points[0][1]
+    assert top_of_text - axis_y > 0.0, "the caption's cap-height sits on the axis"
+
+
+def test_the_curve_caption_keeps_daylight_from_the_axis() -> None:
+    built = curve({"name": "One", "waypoints": [{"across": 0, "up": 0}, {"across": 1, "up": 1}]})
+    caption = _caption(built, "Time")
+    extents = MEASURER.measure(caption.text, THEME.font.default, THEME.scale[caption.level])
+    axis_y = _horizontal_axis(built).points[0][1]
+    assert caption.y - extents.ascent - axis_y > 0.0
+
+
+def test_a_label_on_the_middle_of_a_quadrant_clears_both_dividers() -> None:
+    """Dead centre is a real answer, and it is the case the diagonals exist for.
+
+    Above, below, left and right all straddle one divider there; a corner
+    position offset only vertically has its edge flush against the other. That
+    one used to be taken, and it passed by touching exactly.
+    """
+    built = quadrant({"text": "Split it", "across": 0.5, "up": 0.5})
+    dividers = [line for line in lines(built) if line.role == DIVIDER_ROLE]
+    run = _caption(built, "Split it")
+    extents = MEASURER.measure(run.text, THEME.font.default, THEME.scale[run.level])
+    box = _label_box(run.x, run.y, run.anchor, extents.width, extents.height, extents.width / 2)
+    for divider in dividers:
+        assert not _crosses(box, divider.points)
+
+
+# --------------------------------------------------------------------------
+# Areas and piles
+# --------------------------------------------------------------------------
+
+
+def test_an_area_is_not_outlined() -> None:
+    """Its sides are where the drawing stops, not something that happened.
+
+    Stroked, the two verticals closing an area are indistinguishable from a
+    measurement — over a bar chart they drew a full-weight line straight down
+    through the bar at each end of the area's range.
+    """
+    built = marked({"name": "One", "mark": "area", "data": [[1, 30], [2, 40], [3, 20]]})
+    (area,) = filled_of(built)
+    assert area.region
+    drawn = next(line for line in emit(built, THEME).split("<") if line.startswith("polygon"))
+    assert 'stroke="none"' in drawn
+
+
+def test_an_area_draws_its_top_edge_as_a_line() -> None:
+    """No data is lost by not outlining the region: the crest is a line of its own."""
+    data = [[1, 30], [2, 40], [3, 20]]
+    built = marked({"name": "One", "mark": "area", "data": data})
+    (area,) = filled_of(built)
+    crest = {
+        (round(x, 3), round(y, 3)) for x, y in area.points if y != max(p[1] for p in area.points)
+    }
+    tops = [line for line in lines(built) if len(line.points) == len(data)]
+    assert tops, "the area's top edge is drawn as its own path"
+    assert crest <= {(round(x, 3), round(y, 3)) for line in tops for x, y in line.points}
+
+
+def test_a_stacked_area_sits_on_the_one_below_it() -> None:
+    """`stack` used to be read for bars only, so a stacked area silently overlaid."""
+    built = marked(
+        {"name": "Lower", "mark": "area", "stack": "s", "data": [[1, 10], [2, 10]]},
+        {"name": "Upper", "mark": "area", "stack": "s", "data": [[1, 10], [2, 10]]},
+    )
+    lower, upper = filled_of(built)
+    # y grows downwards, so "above" is a smaller number.
+    assert min(y for _, y in upper.points) < min(y for _, y in lower.points)
+    assert max(y for _, y in upper.points) == pytest.approx(min(y for _, y in lower.points))
+
+
+def test_a_pile_is_measured_by_its_total_not_by_its_tallest_member() -> None:
+    """Two bars of 20 in one stack reach 40, and used to be drawn off the top.
+
+    The scale was taken from the raw values, so the axis stopped at 20 and the
+    second bar of the pile was placed above the top edge of the drawing.
+    """
+    built = marked(
+        {"name": "a", "mark": "bar", "stack": "s", "data": [[1, 20], [2, 20]]},
+        {"name": "b", "mark": "bar", "stack": "s", "data": [[1, 20], [2, 20]]},
+    )
+    for bar in filled_of(built):
+        assert min(y for _, y in bar.points) >= 0.0, "a bar is drawn off the top of the plot"
+        assert max(y for _, y in bar.points) <= built.height
+
+
+# --------------------------------------------------------------------------
+# Values written on the marks
+# --------------------------------------------------------------------------
+
+
+BARS_TWO = (
+    {"name": "Raised", "mark": "bar", "data": [[1, 34], [2, 41]]},
+    {"name": "Closed", "mark": "bar", "data": [[1, 52], [2, 47]]},
+)
+
+
+def _on_bar(built: Scene, bar: Polygon, text: str) -> TextRun:
+    """The run reading `text` that belongs to `bar`, not the tick label of the same name.
+
+    A tick can be numbered `10` too, and it was the one `next()` found first.
+    """
+    left, right = min(x for x, _ in bar.points), max(x for x, _ in bar.points)
+    return next(
+        run
+        for run in texts(built)
+        if run.text == text and run.anchor == "middle" and left <= run.x <= right
+    )
+
+
+def test_a_bar_says_its_own_number() -> None:
+    built = marked(*BARS_TWO)
+    for bar in filled_of(built):
+        left = min(x for x, _ in bar.points)
+        assert [run for run in texts(built) if run.anchor == "middle" and run.x > left]
+
+
+def test_a_bar_s_number_sits_above_it_and_a_stacked_one_sits_inside() -> None:
+    """Open sky over a bar is where a person writing on a printout puts it.
+
+    A segment of a stack has no sky: the next segment starts exactly at its top
+    edge, so its number goes inside it instead.
+    """
+    plain = marked({"name": "One", "mark": "bar", "data": [[1, 10], [2, 12]]})
+    bar = min(filled_of(plain), key=lambda item: min(x for x, _ in item.points))
+    assert _on_bar(plain, bar, "10").y < min(y for _, y in bar.points)
+
+    piled = marked(
+        {"name": "Lower", "mark": "bar", "stack": "s", "data": [[1, 10]]},
+        {"name": "Upper", "mark": "bar", "stack": "s", "data": [[1, 12]]},
+    )
+    upper = min(filled_of(piled), key=lambda item: min(y for _, y in item.points))
+    label = _on_bar(piled, upper, "12")
+    assert min(y for _, y in upper.points) < label.y < max(y for _, y in upper.points)
+
+
+def test_a_bar_number_never_spills_over_the_bar_beside_it() -> None:
+    """Wider than its own bar means the series gets no numbers at all.
+
+    Numbering only the bars that happen to have room reads as arbitrary — the
+    same judgement the point labels are held to.
+    """
+    narrow = {
+        "version": 1,
+        "kind": "chart",
+        "title": "Crowded",
+        "width": 220,
+        "axes": {"horizontal": {"label": "Quarter"}, "vertical": {"label": "Count"}},
+        "series": [
+            {"name": name, "mark": "bar", "data": [[1, value], [2, value + 1]]}
+            for name, value in (("a", 1234), ("b", 3456), ("c", 5678), ("d", 7891))
+        ],
+    }
+    built = chart_scene(parse_document(narrow), THEME, MEASURER)
+    said = {run.text for run in texts(built)}
+    assert not {"1234", "3456", "5678", "7891"} & said
+
+
+def test_values_false_silences_every_number_on_the_marks() -> None:
+    """The tick labels stay: they are the axis, not a claim about a point."""
+    document = {
+        "version": 1,
+        "kind": "chart",
+        "title": "Quiet",
+        "values": False,
+        "axes": {"horizontal": {"label": "Quarter"}, "vertical": {"label": "Count"}},
+        "series": list(BARS_TWO),
+    }
+    said = {run.text for run in texts(chart_scene(parse_document(document), THEME, MEASURER))}
+    assert not {"34", "41", "52", "47"} & said
+    assert any(re.fullmatch(r"\d+", run) for run in said), "the ticks are still numbered"
