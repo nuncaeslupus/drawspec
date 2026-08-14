@@ -183,6 +183,9 @@ WIDTH_MODES: Final = ("fixed", "ink")
 #: What a theme may do to the first paragraph of a two-part label.
 LEAD_TREATMENTS: Final = ("bold", "plain")
 
+#: Where a diagram-level caption sits relative to the drawing.
+CAPTION_POSITIONS: Final = ("below", "above")
+
 
 @dataclass(frozen=True)
 class Canvas:
@@ -221,6 +224,15 @@ class Canvas:
     message is the product — and never a smaller size nobody can read.
     """
 
+    caption: str = "below"
+    """Where a document's `caption` sits: `below` the drawing, or `above` it.
+
+    The author says a line of text belongs to the whole diagram; where that puts
+    it on the page is appearance, and appearance is the theme's. A house style
+    that runs figure captions above its figures sets this once rather than in
+    every document.
+    """
+
     ink: str = "#1a1a1a"
     """What `currentColor` resolves to in the `standalone` profile.
 
@@ -231,7 +243,9 @@ class Canvas:
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> Canvas:
-        _reject_unknown(mapping, ("width", "width_mode", "min_legible_size", "ink"), "[canvas]")
+        _reject_unknown(
+            mapping, ("width", "width_mode", "min_legible_size", "caption", "ink"), "[canvas]"
+        )
         return cls(
             width=_number(mapping.get("width", 640.0), "[canvas] width"),
             width_mode=_choice(
@@ -240,6 +254,7 @@ class Canvas:
             min_legible_size=_number(
                 mapping.get("min_legible_size", 9.0), "[canvas] min_legible_size"
             ),
+            caption=_choice(mapping.get("caption", "below"), CAPTION_POSITIONS, "[canvas] caption"),
             ink=_colour(mapping.get("ink", "#1a1a1a"), "[canvas] ink"),
         )
 

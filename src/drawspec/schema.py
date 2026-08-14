@@ -169,7 +169,6 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         FieldSpec("id", "string", required=True, description="Unique within the document."),
         _text(),
         _role(NODE_ROLES, "step"),
-        FieldSpec("note", "string", description="A short aside attached to this node."),
     ),
     "edge": (
         FieldSpec("from", "string", required=True, description="The id of the source node."),
@@ -193,7 +192,16 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         FieldSpec("id", "string", description="Optional; generated from position when absent."),
         _text(),
         _role(NODE_ROLES, "step"),
-        FieldSpec("note", "string", description="A short aside attached to this entry."),
+        FieldSpec(
+            "note",
+            "string",
+            description=(
+                "For `timeline`: what goes under the axis beside this entry's mark — the "
+                "year, the duration, the aside. Above the line is the event; below it is "
+                "when. No other kind has anywhere to put one, and writing it there is "
+                "refused rather than dropped."
+            ),
+        ),
         FieldSpec(
             "at",
             "number",
@@ -206,7 +214,6 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
     "level": (
         _text(),
         _role(NODE_ROLES, "step"),
-        FieldSpec("note", "string", description="A short aside drawn beside this level."),
     ),
     "ring": (
         _text(),
@@ -293,7 +300,6 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
     "stage": (
         _text(),
         _role(NODE_ROLES, "step"),
-        FieldSpec("note", "string", description="A short aside drawn beside this stage."),
     ),
     "axis": (
         FieldSpec(
@@ -393,6 +399,17 @@ COMMON_FIELDS: Final = (
     ),
     FieldSpec("title", "string", description="The diagram's accessible name."),
     FieldSpec("description", "string", description="The diagram's accessible description."),
+    FieldSpec(
+        "caption",
+        "string",
+        description=(
+            "A line of text belonging to the whole diagram rather than to any one "
+            "element — an axis's units, a condition that holds throughout, the "
+            "sentence the original wrote alongside the figure. Drawn outside the "
+            "drawing; the theme's `[canvas] caption` says above or below. Use a "
+            "`note` for something attached to one element."
+        ),
+    ),
     FieldSpec(
         "width",
         "number",
@@ -588,7 +605,6 @@ class Node:
     id: str
     text: str
     role: str = "step"
-    note: str = ""
 
 
 @dataclass(frozen=True)
@@ -681,6 +697,9 @@ class Document:
     version: int = DOCUMENT_VERSION
     title: str = ""
     description: str = ""
+    caption: str = ""
+    """Text belonging to the whole diagram, drawn outside the drawing."""
+
     width: float | None = None
     height: float | None = None
     height_binding: bool = False
@@ -893,7 +912,56 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         )
 
     found.extend(_referential_violations(document, kind))
+    found.extend(_undrawn_notes(document, kind))
     return tuple(found)
+
+
+#: Which collection each kind draws a `note` from. `timeline` puts an entry's
+#: note under the axis — what happened is one thing and when it happened is
+#: another — and no other family has anywhere to put one.
+NOTE_DRAWN_BY: Final[Mapping[str, str]] = {"timeline": "items"}
+
+#: Collections whose object table still offers `note`. `node`, `level` and
+#: `stage` no longer do: nothing was ever going to draw those, and a schema that
+#: advertises a field an editor will complete is a worse place to find that out
+#: than a validator is.
+NOTE_BEARING: Final = ("items",)
+
+
+def _undrawn_notes(document: Mapping[str, Any], kind: str) -> list[Violation]:
+    """A `note` this kind has nowhere to draw is refused rather than discarded.
+
+    `item` is shared by four kinds and only `timeline` draws a note, so a `stack`
+    could accept an aside, render, and show nothing — leaving the author to
+    believe they configured something. That is the failure
+    `additionalProperties: false` exists to prevent, arriving through a field
+    that *is* in the schema, and JSON Schema cannot express "legal for one of the
+    kinds that use this object" — so it is checked here, like every other rule
+    the schema cannot carry.
+
+    The message names `caption` because that is usually what was wanted: text
+    alongside a diagram, which now has somewhere to go.
+    """
+    drawn = NOTE_DRAWN_BY.get(kind)
+    found: list[Violation] = []
+    for collection in NOTE_BEARING:
+        if collection == drawn:
+            continue
+        entries = document.get(collection)
+        if not isinstance(entries, list):
+            continue
+        for index, entry in enumerate(entries):
+            if isinstance(entry, dict) and entry.get("note"):
+                found.append(
+                    Violation(
+                        _pointer(collection, index, "note"),
+                        f"a {kind} has nowhere to draw a note, so writing one here would "
+                        f"be silently discarded. For an aside on the whole diagram use "
+                        f"the top-level `caption`; for one attached to a single moment, "
+                        f"`timeline` is the kind that draws notes.",
+                    )
+                )
+    return found
 
 
 def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
@@ -1010,18 +1078,14 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         version=DOCUMENT_VERSION,
         title=str(document.get("title", "")),
         description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
         width=_optional_number(document.get("width")),
         height=_optional_number(document.get("height")),
         height_binding=bool(document.get("height_binding", False)),
         values=bool(document.get("values", True)),
         theme=str(document.get("theme", "")),
         nodes=tuple(
-            Node(
-                id=entry["id"],
-                text=entry["text"],
-                role=entry.get("role", "step"),
-                note=entry.get("note", ""),
-            )
+            Node(id=entry["id"], text=entry["text"], role=entry.get("role", "step"))
             for entry in document.get("nodes", ())
         ),
         edges=tuple(

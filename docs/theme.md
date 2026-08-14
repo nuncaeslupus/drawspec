@@ -50,6 +50,7 @@ The one width every diagram is drawn to, and the legibility floor.
 | `width` | `640.0` | The canvas every diagram is drawn to, in user units. |
 | `width_mode` | `"fixed"` | Whether a drawing narrower than `width` keeps the canvas or is cropped to it. One of `fixed`, `ink`. |
 | `min_legible_size` | `9.0` | The floor the fit band may not push type below. |
+| `caption` | `"below"` | Where a document's `caption` sits: `below` the drawing, or `above` it. |
 | `ink` | `"#1a1a1a"` | What `currentColor` resolves to in the `standalone` profile. |
 
 ### `[font]`

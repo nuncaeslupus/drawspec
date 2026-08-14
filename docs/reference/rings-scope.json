@@ -4,9 +4,16 @@
   "kind": "rings",
   "title": "What is in scope",
   "description": "The centre is fixed; the outer rings are where the arguments happen.",
+  "caption": "Continuous consultation and review sit outside every ring.",
   "rings": [
-    {"text": "Everything a theme can express"},
-    {"text": "The nine diagram kinds"},
-    {"text": "One document, one SVG"}
+    {
+      "text": "Everything a theme can express"
+    },
+    {
+      "text": "The nine diagram kinds"
+    },
+    {
+      "text": "One document, one SVG"
+    }
   ]
 }

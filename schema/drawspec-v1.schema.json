@@ -31,6 +31,10 @@
           "type": "string",
           "description": "The diagram's accessible description."
         },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
@@ -106,6 +110,10 @@
           "type": "string",
           "description": "The diagram's accessible description."
         },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
@@ -164,6 +172,10 @@
         "description": {
           "type": "string",
           "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
         },
         "width": {
           "type": "number",
@@ -238,6 +250,10 @@
           "type": "string",
           "description": "The diagram's accessible description."
         },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
@@ -296,6 +312,10 @@
         "description": {
           "type": "string",
           "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
         },
         "width": {
           "type": "number",
@@ -356,6 +376,10 @@
           "type": "string",
           "description": "The diagram's accessible description."
         },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
@@ -414,6 +438,10 @@
         "description": {
           "type": "string",
           "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
         },
         "width": {
           "type": "number",
@@ -483,6 +511,10 @@
           "type": "string",
           "description": "The diagram's accessible description."
         },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
@@ -546,6 +578,10 @@
         "description": {
           "type": "string",
           "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
         },
         "width": {
           "type": "number",
@@ -806,7 +842,7 @@
         },
         "note": {
           "type": "string",
-          "description": "A short aside attached to this entry."
+          "description": "For `timeline`: what goes under the axis beside this entry's mark — the year, the duration, the aside. Above the line is the event; below it is when. No other kind has anywhere to put one, and writing it there is refused rather than dropped."
         },
         "at": {
           "type": "number",
@@ -837,10 +873,6 @@
             "note",
             "group"
           ]
-        },
-        "note": {
-          "type": "string",
-          "description": "A short aside drawn beside this level."
         }
       },
       "required": [
@@ -871,10 +903,6 @@
             "note",
             "group"
           ]
-        },
-        "note": {
-          "type": "string",
-          "description": "A short aside attached to this node."
         }
       },
       "required": [
@@ -1017,10 +1045,6 @@
             "note",
             "group"
           ]
-        },
-        "note": {
-          "type": "string",
-          "description": "A short aside drawn beside this stage."
         }
       },
       "required": [

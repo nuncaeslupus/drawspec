@@ -31,6 +31,7 @@ These fields are legal whatever the kind is.
 | `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `curve` | **yes** | Which of the thirteen diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
+| `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
 | `width` | number, greater than 0 | no | Overrides the theme's canvas width. Binding. |
 | `height` | number, greater than 0 | no | Advisory unless height_binding is true. |
 | `height_binding` | boolean | no | Makes height a constraint rather than a hint. |
@@ -116,7 +117,6 @@ name, so a misspelt key is an error at the point it was written.
 | `id` | string | **yes** | Unique within the document. |
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
-| `note` | string | no | A short aside attached to this node. |
 
 ### `edge` object
 
@@ -142,7 +142,7 @@ name, so a misspelt key is an error at the point it was written.
 | `id` | string | no | Optional; generated from position when absent. |
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
-| `note` | string | no | A short aside attached to this entry. |
+| `note` | string | no | For `timeline`: what goes under the axis beside this entry's mark — the year, the duration, the aside. Above the line is the event; below it is when. No other kind has anywhere to put one, and writing it there is refused rather than dropped. |
 | `at` | number | no | For `timeline`: when this happened, so the gaps mean something. Give it to every entry or to none. |
 
 ### `level` object
@@ -151,7 +151,6 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
-| `note` | string | no | A short aside drawn beside this level. |
 
 ### `ring` object
 
@@ -203,7 +202,6 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
-| `note` | string | no | A short aside drawn beside this stage. |
 
 ### `axis` object
 
