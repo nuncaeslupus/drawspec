@@ -229,3 +229,8 @@ claude-arsenal/session/host_branch
 
 # The opos schemas this project exists to replace. Study material, not source.
 originals/
+
+# The comparison page is built from `docs/corpus/*.json` by `make compare`, and
+# its left-hand column embeds the gitignored originals — so the page itself is
+# not source either. The documents are.
+docs/corpus/index.html

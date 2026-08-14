@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "kind": "chart",
+  "title": "Who manages what, as you move up the stack",
+  "description": "The shared-responsibility model is not a table: it is how much of each service model the customer is still holding. Three columns, each piled to the same total, and what the drawing says is the proportion.",
+  "values": false,
+  "axes": {
+    "horizontal": {
+      "label": "What you rent",
+      "min": 0.4,
+      "max": 3.6,
+      "categories": [
+        "IaaS",
+        "PaaS",
+        "SaaS"
+      ]
+    },
+    "vertical": {
+      "label": "Share of the stack you manage",
+      "unit": "%"
+    }
+  },
+  "series": [
+    {
+      "name": "The provider",
+      "mark": "bar",
+      "stack": "who",
+      "data": [
+        [
+          1,
+          33
+        ],
+        [
+          2,
+          67
+        ],
+        [
+          3,
+          83
+        ]
+      ]
+    },
+    {
+      "name": "You",
+      "mark": "bar",
+      "stack": "who",
+      "data": [
+        [
+          1,
+          67
+        ],
+        [
+          2,
+          33
+        ],
+        [
+          3,
+          17
+        ]
+      ]
+    }
+  ]
+}
