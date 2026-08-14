@@ -302,6 +302,11 @@ because it changes every existing chart drawing, and those have been reviewed.
 Every original, the kind that would draw it, and the reviewer's note where
 there is one. `*` marks a kind drawspec does not have.
 
+A struck-through kind is one this survey got wrong and the redraw corrected —
+the survey was made by counting shapes, and a diagram's shapes are not always
+what it is saying. The comparison page shows both, so a reclassification is
+visible rather than quietly applied.
+
 | Original | Wants | Reviewer's note |
 |---|---|---|
 | `tic__pmbok-enfoques-y-ciclo-de-vida` | chart |  |
@@ -391,5 +396,5 @@ there is one. `*` marks a kind drawspec does not have.
 | `tic__transformacion-digital` | timeline |  |
 | `barcelona__carta-municipal` | tree | Margen inferior en "Comissió de Govern". |
 | `tic__despliegue-de-aplicaciones-sccm` | tree | Las líneas no tocan las cajas. |
-| `tic__esquema-nacional-de-seguridad` | tree | Parece como si las líneas no llegaran a las cajas inferiores. |
+| `tic__esquema-nacional-de-seguridad` | ~~tree~~ pyramid | Parece como si las líneas no llegaran a las cajas inferiores. |
 | `tic__internet-arquitectura-protocolos-dns` | tree | El texto "13 conjunts..." toca líneas y cajas, no queda muy claro dónde debe ir. |

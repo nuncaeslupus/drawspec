@@ -1,0 +1,14 @@
+{
+  "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "chart",
+  "title": "Suspensió provisional contra suspensió ferma",
+  "description": "La suspensió provisional és una mesura cautelar amb un màxim de sis mesos; la suspensió ferma és una sanció per falta molt greu amb un màxim de sis anys, dotze vegades més. La comparació és la durada, i és el que el dibuix ha de dir.",
+  "axes": {
+    "horizontal": {"label": "Tipus de suspensió", "min": 0.4, "max": 2.6, "categories": ["Provisional (cautelar)", "Ferma (falta molt greu)"]},
+    "vertical": {"label": "Durada màxima", "unit": "mesos"}
+  },
+  "series": [
+    {"name": "Durada màxima", "mark": "bar", "data": [[1, 6], [2, 72]]}
+  ]
+}

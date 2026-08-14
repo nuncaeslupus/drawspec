@@ -1,0 +1,14 @@
+{
+  "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "pyramid",
+  "title": "Piràmide dels cinc nivells de suport",
+  "description": "De dalt a baix: nivell 4, proveïdors i fabricants; nivell 3, experts; nivell 2, especialistes; nivell 1, el Service Desk; i nivell 0, l'autoservei. El shift-left desplaça el volum cap avall.",
+  "levels": [
+    {"text": "N4 · Proveïdors i fabricants"},
+    {"text": "N3 · Experts"},
+    {"text": "N2 · Especialistes"},
+    {"text": "N1 · Service Desk"},
+    {"text": "N0 · Autoservei — cap on el shift-left desplaça el volum"}
+  ]
+}

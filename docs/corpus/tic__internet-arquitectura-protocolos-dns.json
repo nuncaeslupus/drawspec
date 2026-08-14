@@ -1,0 +1,20 @@
+{
+  "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "tree",
+  "title": "La jerarquia del DNS",
+  "description": "L'arrel es delega en els gTLD genèrics i els ccTLD territorials; un ccTLD com .cat es delega en un domini de segon nivell com barcelona.cat, que al seu torn es delega en un subdomini com www.",
+  "nodes": [
+    {"id": "arrel", "text": ". (arrel) — 13 conjunts de servidors, replicats per anycast", "role": "start"},
+    {"id": "gtld", "text": "com, org, net… (gTLD)"},
+    {"id": "cctld", "text": "es, cat, fr… (ccTLD)"},
+    {"id": "segon", "text": "barcelona.cat"},
+    {"id": "host", "text": "www (subdomini/host)", "role": "terminal"}
+  ],
+  "edges": [
+    {"from": "arrel", "to": "gtld", "label": "delega"},
+    {"from": "arrel", "to": "cctld", "label": "delega"},
+    {"from": "cctld", "to": "segon"},
+    {"from": "segon", "to": "host"}
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "pyramid",
+  "title": "Piràmide de proves",
+  "description": "Al cim, poques proves d'extrem a extrem, lentes i cares; al mig, proves d'integració i de servei; a la base, moltes proves unitàries, ràpides i barates.",
+  "levels": [
+    {"text": "Extrem a extrem — poques, lentes i cares"},
+    {"text": "Integració i servei"},
+    {"text": "Unitàries — moltes, ràpides i barates"}
+  ]
+}

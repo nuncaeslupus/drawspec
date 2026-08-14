@@ -1,0 +1,12 @@
+{
+  "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "stack",
+  "title": "Els tres tipus de competències de l'Estatut",
+  "description": "Exclusives, compartides i executives, de més a menys potestat.",
+  "items": [
+    {"text": "**Exclusives (art. 110)** — potestat legislativa, reglamentària i executiva, de manera íntegra"},
+    {"text": "**Compartides (art. 111)** — legislativa, reglamentària i executiva, dins les bases que fixi l'Estat"},
+    {"text": "**Executives (art. 112)** — només potestat reglamentària d'execució i funció executiva, sobre normativa de l'Estat"}
+  ]
+}

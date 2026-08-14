@@ -72,9 +72,20 @@ class Pair:
     title: str
     note: str
     wants: str
+    kind: str
     old: str
     new: str
     failure: str = ""
+
+    @property
+    def drawn_as(self) -> str:
+        """The kind actually used, falling back to the one the survey wanted.
+
+        They differ when reading the original more carefully changed the answer,
+        and the page shows both in that case rather than quietly keeping the
+        survey's guess.
+        """
+        return self.kind or self.wants
 
     @property
     def state(self) -> str:
@@ -106,15 +117,16 @@ def _index() -> list[dict[str, str]]:
     return [row for row in rows if isinstance(row, dict) and "name" in row]
 
 
-def _drawn(name: str) -> tuple[str, str]:
-    """The rendered redraw for one original, or the error that stopped it."""
+def _drawn(name: str) -> tuple[str, str, str]:
+    """The rendered redraw for one original, its kind, or the error that stopped it."""
     document = CORPUS / f"{name}.json"
     if not document.is_file():
-        return "", ""
+        return "", "", ""
+    kind = str(json.loads(document.read_text(encoding="utf-8")).get("kind", ""))
     try:
-        return render_document(load_document(document)), ""
+        return render_document(load_document(document)), kind, ""
     except DrawspecError as error:
-        return "", f"{type(error).__name__}: {error}"
+        return "", kind, f"{type(error).__name__}: {error}"
 
 
 def pairs() -> list[Pair]:
@@ -132,7 +144,7 @@ def pairs() -> list[Pair]:
     for position, row in enumerate(rows, start=1):
         name = str(row["name"])
         original = ORIGINALS / f"{name}.svg"
-        new, failure = _drawn(name)
+        new, kind, failure = _drawn(name)
         found.append(
             Pair(
                 number=position,
@@ -142,6 +154,7 @@ def pairs() -> list[Pair]:
                 title=str(row.get("title", name)),
                 note=str(row.get("note", "")),
                 wants=str(row.get("wants", "")),
+                kind=kind,
                 old=(
                     _namespaced(original.read_text(encoding="utf-8"), f"old-{name}")
                     if original.is_file()
@@ -250,6 +263,7 @@ h1 {{
   font-variant-numeric: tabular-nums; flex: none;
 }}
 .pair h3 {{ font: 400 21px/1.28 var(--serif); margin: 0; text-wrap: balance; }}
+.kind s {{ color: var(--faint); text-decoration-thickness: 1px; }}
 .kind {{
   font: 500 10px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
   color: var(--muted); border: 1px solid var(--edge); border-radius: 2px;
@@ -329,7 +343,11 @@ def _plate(svg: str, failure: str, *, missing: str) -> str:
 
 def _article(pair: Pair) -> str:
     note = f"<p class=note><b>The reviewer's note</b>{escape(pair.note)}</p>" if pair.note else ""
-    kind = f"<span class=kind>{escape(pair.wants)}</span>" if pair.wants else ""
+    kind = ""
+    if pair.drawn_as:
+        moved = pair.kind and pair.wants and pair.kind != pair.wants
+        was = f"<s>{escape(pair.wants)}</s> " if moved else ""
+        kind = f"<span class=kind>{was}{escape(pair.drawn_as)}</span>"
     old = _plate(
         pair.old,
         "",
@@ -338,7 +356,7 @@ def _article(pair: Pair) -> str:
     new = _plate(pair.new, pair.failure, missing="Not redrawn yet.")
     return (
         f"<article class=pair id='{escape(pair.name)}'"
-        f" data-kind='{escape(pair.wants or 'none')}' data-state='{pair.state}'>"
+        f" data-kind='{escape(pair.drawn_as or 'none')}' data-state='{pair.state}'>"
         f"<div class=head><span class=num>{pair.number:02d}</span>"
         f"<h3>{escape(pair.title)}</h3>{kind}</div>"
         f"<p class=name>{escape(pair.slug)}</p>{note}"
@@ -352,7 +370,7 @@ def _article(pair: Pair) -> str:
 def _rail(found: list[Pair]) -> str:
     drawn = sum(1 for pair in found if pair.new)
     total = len(found) or 1
-    kinds = Counter(pair.wants or "none" for pair in found)
+    kinds = Counter(pair.drawn_as or "none" for pair in found)
     states = Counter(pair.state for pair in found)
 
     chips = [
@@ -441,7 +459,7 @@ def main(argv: list[str] | None = None) -> int:
     failed = [pair for pair in found if pair.failure]
     drawn = [pair for pair in found if pair.new]
     for pair in found:
-        print(f"{pair.number:3d}  {pair.name:52} {pair.wants:10} {pair.failure or pair.state}")
+        print(f"{pair.number:3d}  {pair.name:52} {pair.drawn_as:10} {pair.failure or pair.state}")
     print(f"\n{len(drawn)} of {len(found)} redrawn, {len(failed)} failing")
 
     if not arguments.check:

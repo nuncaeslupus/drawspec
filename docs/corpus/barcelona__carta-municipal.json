@@ -1,0 +1,20 @@
+{
+  "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "tree",
+  "title": "Organització institucional de Barcelona segons la Carta",
+  "description": "El Consell Municipal, amb 41 regidors, és l'òrgan de màxima representació. L'Alcalde el presideix i nomena lliurement la Comissió de Govern, amb un màxim d'un terç dels regidors. Dels deu districtes en depenen els consells de districte.",
+  "nodes": [
+    {"id": "consell", "text": "Consell Municipal (41 regidors)", "role": "start"},
+    {"id": "alcalde", "text": "Alcalde/essa"},
+    {"id": "comissio", "text": "Comissió de Govern (fins a 1/3 del Consell)"},
+    {"id": "districtes", "text": "10 Districtes"},
+    {"id": "consells", "text": "Consells de Districte", "role": "terminal"}
+  ],
+  "edges": [
+    {"from": "consell", "to": "alcalde"},
+    {"from": "consell", "to": "comissio"},
+    {"from": "consell", "to": "districtes"},
+    {"from": "districtes", "to": "consells"}
+  ]
+}
