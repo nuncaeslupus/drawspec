@@ -22,6 +22,7 @@ from itertools import pairwise
 from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
 from drawspec.kinds.common import box_primitives, text_runs
+from drawspec.legend import entries_for, height_of, primitives_for
 from drawspec.scene import Path, Polygon, Primitive, Scene
 from drawspec.schema import Cell, Document, Item
 from drawspec.text.measure import TextMeasurer
@@ -288,7 +289,6 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     down = max(max(cell.row + cell.down for cell in cells), len(document.rows))
 
     width = _canvas_width(document, theme)
-    gap = theme.box.padding.horizontal
     heading_width = _heading_width(document, theme, measurer, width) if document.rows else 0.0
     column_width = (width - heading_width) / across
 
@@ -377,7 +377,21 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         )
         primitives.extend(text_runs(placed, theme, measurer))
 
-    return _scene(document, primitives, width, tops[-1] + gap * 0)
+    # What the fills stand for. A matrix's whole content is a comparison between
+    # groups of cells, so a matrix with two groups and no key is a drawing whose
+    # subject is undrawn — the original this kind replaces carried one.
+    key = entries_for([(group, "step", True) for group in _named_groups(cells)], theme)
+    primitives.extend(primitives_for(key, theme, measurer, 0.0, tops[-1], width))
+    return _scene(document, primitives, width, tops[-1] + height_of(key, theme, measurer, width))
+
+
+def _named_groups(cells: tuple[Cell, ...]) -> list[str]:
+    """Every group a cell names, in order of first mention — the legend's order too."""
+    named: list[str] = []
+    for cell in cells:
+        if cell.group and cell.group not in named:
+            named.append(cell.group)
+    return named
 
 
 def _group_fills(cells: tuple[Cell, ...], theme: Theme) -> dict[str, str]:
@@ -390,10 +404,7 @@ def _group_fills(cells: tuple[Cell, ...], theme: Theme) -> dict[str, str]:
     which cells are the same kind of cell, and the theme turns that into
     something a black-and-white printer can keep apart.
     """
-    named: list[str] = []
-    for cell in cells:
-        if cell.group and cell.group not in named:
-            named.append(cell.group)
+    named = _named_groups(cells)
     fills = {"": ""}
     for index, group in enumerate(named):
         fills[group] = theme.mark.fill_for(index)
