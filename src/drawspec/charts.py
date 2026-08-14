@@ -97,6 +97,15 @@ DIVIDER_ROLE: Final = "weak"
 #: a descender a hair from a stroke reads as touching it.
 LABEL_DAYLIGHT: Final = 2.0
 
+#: How much room a chart leaves above the tallest value it holds, as a fraction
+#: of the range, when the author has not pinned a maximum. A point *on* the top
+#: edge has nowhere for its label: above is outside the plot and below crosses
+#: the line, so the all-or-nothing rule drops the labels of the whole series —
+#: and the series most likely to touch the top edge is the one going up, which
+#: is usually the one the chart is about. Only the top: a bar has to stand on its
+#: baseline, so the bottom of the range is not ours to move.
+HEADROOM: Final = 0.08
+
 #: The most decimals a point label may carry. Past this the label is wider than
 #: the room beside its own point, and values that close needed a different chart.
 MAXIMUM_DECIMALS: Final = 3
@@ -166,7 +175,9 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
 
     filled = tuple(item for item in document.series if item.mark in ("bar", "area"))
     across = _scale_for(horizontal, [point[0] for item in document.series for point in item.data])
-    up = _scale_for(vertical, _stacked_heights(document.series), include_zero=bool(filled))
+    up = _scale_for(
+        vertical, _stacked_heights(document.series), include_zero=bool(filled), headroom=True
+    )
     across_ticks = _named_ticks(horizontal) or _ticks(across.low, across.high)
     up_ticks = _named_ticks(vertical) or _ticks(up.low, up.high)
 
@@ -314,7 +325,9 @@ def _stacked_heights(series: tuple[Series, ...]) -> list[float]:
     return heights
 
 
-def _scale_for(axis: Axis, values: list[float], *, include_zero: bool = False) -> Scale:
+def _scale_for(
+    axis: Axis, values: list[float], *, include_zero: bool = False, headroom: bool = False
+) -> Scale:
     """The data range for one axis, honouring any bounds the author set.
 
     An author may pin `min` or `max` — that is a statement about the subject, not
@@ -330,6 +343,10 @@ def _scale_for(axis: Axis, values: list[float], *, include_zero: bool = False) -
         values.append(0.0)
     low = axis.minimum if axis.minimum is not None else min(values)
     high = axis.maximum if axis.maximum is not None else max(values)
+    if headroom and axis.maximum is None and high > low:
+        # Only when the author has not said where the top is. Pinning `max` is a
+        # statement about the subject, and widening it would be overruling them.
+        high += (high - low) * HEADROOM
     if high < low:
         raise DrawspecError(f"axis {axis.label!r} has a max below its min")
     if high == low:
