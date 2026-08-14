@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Final
 
 from drawspec.errors import FitError
@@ -164,9 +164,20 @@ def wrap(
     default_font = theme.font.default
 
     extents = measurer.measure("", default_font, size)
+    paragraphs = text.split("\n")
+    # A label with a second paragraph has said its first one is a lead. The
+    # theme decides what that looks like; here it only decides which words it
+    # applies to, and it applies before measurement because a bold word is wider
+    # than the same word is not, and a wrapper that could not see that would
+    # produce exactly the overflow this module exists to prevent.
+    lead = theme.box.lead == "bold" and len(paragraphs) > 1
     lines: list[Line] = []
-    for paragraph in text.split("\n"):
-        lines.extend(_wrap_paragraph(paragraph, max_width, measurer, size, default_font))
+    for index, paragraph in enumerate(paragraphs):
+        lines.extend(
+            _wrap_paragraph(
+                paragraph, max_width, measurer, size, default_font, bold=lead and index == 0
+            )
+        )
 
     return TextBlock(
         lines=tuple(lines),
@@ -184,8 +195,10 @@ def _wrap_paragraph(
     measurer: TextMeasurer,
     size: float,
     default_font: str,
+    *,
+    bold: bool = False,
 ) -> list[Line]:
-    words = _words(paragraph, measurer, size, default_font)
+    words = _words(paragraph, measurer, size, default_font, bold=bold)
     if not words:
         return [Line(spans=(Span("", font=default_font),), width=0.0)]
 
@@ -214,10 +227,24 @@ def _wrap_paragraph(
     return [line for line in lines if line.spans]
 
 
-def _words(paragraph: str, measurer: TextMeasurer, size: float, default_font: str) -> list[_Word]:
-    """Split a paragraph into measured words, keeping each word's span."""
+def _words(
+    paragraph: str,
+    measurer: TextMeasurer,
+    size: float,
+    default_font: str,
+    *,
+    bold: bool = False,
+) -> list[_Word]:
+    """Split a paragraph into measured words, keeping each word's span.
+
+    `bold` is the theme's lead treatment reaching the words: it promotes the
+    weight of every span that has not already asked for one, so an author who
+    wrote `` `code` `` in a lead keeps their monospace and one who wrote nothing
+    gets the bold.
+    """
     words: list[_Word] = []
-    for span in parse_spans(paragraph, font=default_font):
+    for original in parse_spans(paragraph, font=default_font):
+        span = replace(original, weight="bold") if bold else original
         for piece in span.text.split():
             words.append(
                 _Word(

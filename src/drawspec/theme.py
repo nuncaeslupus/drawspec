@@ -180,6 +180,9 @@ def _reject_unknown(mapping: Mapping[str, Any], allowed: Iterable[str], where: s
 #: How a diagram's canvas relates to the drawing inside it.
 WIDTH_MODES: Final = ("fixed", "ink")
 
+#: What a theme may do to the first paragraph of a two-part label.
+LEAD_TREATMENTS: Final = ("bold", "plain")
+
 
 @dataclass(frozen=True)
 class Canvas:
@@ -408,9 +411,30 @@ class BoxStyle:
     corner_radius: float = 4.0
     """Corner rounding for a `rect`. Zero draws square corners."""
 
+    lead: str = "bold"
+    """How the first paragraph of a label with more than one is set.
+
+    A label often has a lead and a detail — *Digitització*, and then what
+    digitising means. Written as one paragraph the two run together and the
+    author reaches for punctuation to separate them, which is how eighty-nine
+    corpus redraws ended up with an em dash in the middle of a box; the reviewer
+    asked for that back as two levels of text, "just changing font size or
+    boldness or whatever, as in the original".
+
+    So a blank-free newline in `text` is the author saying *these are two
+    things*, and this setting is the theme saying what the first one looks like.
+    `bold` sets it in the bold weight; `plain` leaves it alone, which is the
+    theme for a document whose labels are already emphatic enough.
+
+    Weight rather than size on purpose: one advance is used for every line in a
+    block, and a block whose first line was set larger would either space
+    unevenly or need a second advance — a change to what a text block *is*, for
+    a distinction the weight already carries.
+    """
+
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> BoxStyle:
-        _reject_unknown(mapping, ("padding", "line_height", "corner_radius"), "[box]")
+        _reject_unknown(mapping, ("padding", "line_height", "corner_radius", "lead"), "[box]")
         defaults = cls()
         padding = defaults.padding
         if "padding" in mapping:
@@ -435,6 +459,7 @@ class BoxStyle:
                 "[box] corner_radius",
                 positive=False,
             ),
+            lead=_choice(mapping.get("lead", defaults.lead), LEAD_TREATMENTS, "[box] lead"),
         )
 
 

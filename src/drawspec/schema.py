@@ -143,7 +143,10 @@ def _text(name: str = "text", *, required: bool = True) -> FieldSpec:
         required=required,
         description=(
             "The words themselves. May carry inline spans — `code` for the monospace "
-            "role and **bold** for emphasis — because those are semantic, not typographic."
+            "role and **bold** for emphasis — because those are semantic, not typographic. "
+            "A newline says this label is a lead and a detail rather than one sentence; "
+            "the theme's `[box] lead` decides what the first paragraph looks like. Prefer "
+            "it to punctuating the two apart inside one line."
         ),
     )
 

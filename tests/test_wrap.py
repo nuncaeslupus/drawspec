@@ -9,6 +9,7 @@ rather than letting text escape.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from itertools import pairwise
 
 import pytest
@@ -238,3 +239,65 @@ def test_wrap_block_is_iterable_over_its_lines() -> None:
     result = block(PROSE, 140.0)
     assert list(result) == list(result.lines)
     assert len(result) == len(result.lines)
+
+
+# --------------------------------------------------------------------------
+# A lead and a detail, which is what the em dashes were standing in for
+# --------------------------------------------------------------------------
+
+LEAD = "Digitalització\ncanvia el suport, no el procés"
+
+
+def test_a_second_paragraph_makes_the_first_one_a_lead() -> None:
+    """The author writes a break; the theme decides it is bold.
+
+    This is the whole feature. Eighty-nine redraws wrote `**Titol** — explicació`
+    because there was no way to say "these are two things", and the reviewer
+    asked for it back as two levels of text.
+    """
+    result = block(LEAD, 400.0)
+    assert len(result.lines) == 2
+    assert all(span.weight == "bold" for span in result.lines[0].spans)
+    assert all(span.weight == "normal" for span in result.lines[1].spans)
+
+
+def test_one_paragraph_is_never_a_lead() -> None:
+    """A label that did not ask for two levels does not get one."""
+    result = block("Digitalització canvia el suport", 400.0)
+    assert all(span.weight == "normal" for line in result.lines for span in line.spans)
+
+
+def test_a_lead_that_wraps_stays_bold_on_every_line_of_itself() -> None:
+    """It is the first *paragraph*, not the first line — a break is structure."""
+    result = block(f"{PROSE}\nand then the detail", 140.0)
+    detail = result.lines[-1]
+    assert len(result.lines) > 2
+    assert all(span.weight == "bold" for line in result.lines[:-1] for span in line.spans)
+    assert all(span.weight == "normal" for span in detail.spans)
+
+
+def test_a_lead_is_measured_as_bold_rather_than_as_the_plain_words() -> None:
+    """Otherwise the box is sized for narrower text than it will be drawn with.
+
+    The failure this guards is the one the module exists to prevent, arriving by
+    a new route: promote the weight after measuring and every lead overflows its
+    box by the difference between the two weights.
+    """
+    lead = block(LEAD, 400.0)
+    plain = wrap(LEAD, 400.0, MEASURER, theme=replace(THEME, box=replace(THEME.box, lead="plain")))
+    assert lead.lines[0].width > plain.lines[0].width
+    assert lead.lines[1].width == pytest.approx(plain.lines[1].width)
+
+
+def test_the_plain_lead_treatment_leaves_the_break_but_not_the_weight() -> None:
+    """`[box] lead = "plain"` is the theme opting out, and it still breaks."""
+    plain = wrap(LEAD, 400.0, MEASURER, theme=replace(THEME, box=replace(THEME.box, lead="plain")))
+    assert len(plain.lines) == 2
+    assert all(span.weight == "normal" for line in plain.lines for span in line.spans)
+
+
+def test_a_lead_keeps_an_inline_span_the_author_asked_for() -> None:
+    """The theme promotes the weight; it does not take the monospace away."""
+    result = block("Run `make test`\nbefore every push", 400.0)
+    fonts = {span.font for span in result.lines[0].spans}
+    assert "mono" in fonts

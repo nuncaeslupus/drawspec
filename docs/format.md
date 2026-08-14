@@ -114,7 +114,7 @@ name, so a misspelt key is an error at the point it was written.
 | Field | Type | Required | What it is |
 |---|---|---|---|
 | `id` | string | **yes** | Unique within the document. |
-| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 | `note` | string | no | A short aside attached to this node. |
 
@@ -132,7 +132,7 @@ name, so a misspelt key is an error at the point it was written.
 | Field | Type | Required | What it is |
 |---|---|---|---|
 | `id` | string | **yes** | Unique within the document. |
-| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `members` | array of string, at least 1 | **yes** | The ids of the nodes this group contains. |
 
 ### `item` object
@@ -140,7 +140,7 @@ name, so a misspelt key is an error at the point it was written.
 | Field | Type | Required | What it is |
 |---|---|---|---|
 | `id` | string | no | Optional; generated from position when absent. |
-| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 | `note` | string | no | A short aside attached to this entry. |
 | `at` | number | no | For `timeline`: when this happened, so the gaps mean something. Give it to every entry or to none. |
@@ -149,7 +149,7 @@ name, so a misspelt key is an error at the point it was written.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 | `note` | string | no | A short aside drawn beside this level. |
 
@@ -157,14 +157,14 @@ name, so a misspelt key is an error at the point it was written.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 
 ### `cell` object
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `column` | integer | **yes** | Which column this cell starts in, counting from zero. |
 | `row` | integer | **yes** | Which row it starts in, from zero. |
 | `across` | integer | no | How many columns it covers. Default 1. |
@@ -192,7 +192,7 @@ name, so a misspelt key is an error at the point it was written.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `across` | number | **yes** | Where this sits on the horizontal axis. Data, not a coordinate. |
 | `up` | number | **yes** | Where this sits on the vertical axis. Data, not a coordinate. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
@@ -201,7 +201,7 @@ name, so a misspelt key is an error at the point it was written.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 | `note` | string | no | A short aside drawn beside this stage. |
 

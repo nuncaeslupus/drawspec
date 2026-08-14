@@ -92,6 +92,7 @@ Box geometry constants: margin, line spacing, corner treatment.
 | `padding` | `[10.0, 12.0, 12.0, 12.0]` | Space between a box's text and its border, as `[top, right, bottom, left]`. |
 | `line_height` | `1.35` | Baseline-to-baseline distance, as a multiple of the type size. |
 | `corner_radius` | `4.0` | Corner rounding for a `rect`. Zero draws square corners. |
+| `lead` | `"bold"` | How the first paragraph of a label with more than one is set. |
 
 ### `[edge]`
 
