@@ -45,7 +45,7 @@ from dataclasses import dataclass, field, replace
 from itertools import pairwise
 from typing import Final
 
-from drawspec.errors import LayoutError
+from drawspec.errors import FitError, LayoutError
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, TextRun
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme
@@ -79,11 +79,16 @@ HEAD_SPREAD: Final = 0.45
 #: How far a label sits from the line it names, before anything is in the way.
 LABEL_GAP: Final = 4.0
 
-#: The multiples of that gap tried in turn, outwards, when something is.
-LABEL_OFFSETS: Final = (1.0, 2.0, 3.5, 5.0, 7.0)
+#: The multiples of that gap tried in turn, outwards, when something is. The
+#: last two are for the long lines a direct route draws: a chord across a
+#: crowded drawing has open paper further out than a rank gap ever offers, and
+#: stopping the search at seven gaps refused a label that had somewhere to go.
+LABEL_OFFSETS: Final = (1.0, 2.0, 3.5, 5.0, 7.0, 9.5, 12.5)
 
-#: Where along a segment a label is tried: the middle, then either side of it.
-LABEL_POSITIONS: Final = (0.5, 0.35, 0.65, 0.2, 0.8)
+#: Where along a segment a label is tried: the middle, then either side of it,
+#: then near its ends — again for the long ones, where a tenth of the way along
+#: is still nowhere near the box.
+LABEL_POSITIONS: Final = (0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9)
 
 #: Coordinates are rounded to this many decimals before they become grid lines,
 #: so a port computed twice is the same grid line twice.
@@ -1665,7 +1670,14 @@ def place_labels(
                 )
                 break
         else:
-            raise LayoutError(
+            # A `FitError` rather than a `LayoutError`, because that is what this
+            # is: the label is content that does not fit, and content that does
+            # not fit is what the elastic band exists to answer. Raised as a
+            # layout failure it went straight past `fit` — so a diagram whose
+            # every label would have been clear one step of type smaller was
+            # refused outright instead of being drawn. If the band runs out the
+            # author still gets this message, which is the honest end of it.
+            raise FitError(
                 f"no room for the label {route.label!r} on the edge from {route.source!r} to "
                 f"{route.target!r}: every position beside it is taken by a box, a line or "
                 f"another label. Shorten the label or give the diagram more room."
@@ -1683,6 +1695,14 @@ def _label_candidates(
     reason. Sides are tried in a fixed order rather than a clever one: with the
     offsets increasing outwards, a consistent side keeps the labels of parallel
     edges on the same side of their lines, which reads as deliberate.
+
+    A **diagonal** run — a direct route, where the theme draws a role straight —
+    is offset along its own normal. Stepping up and down from the midpoint of a
+    slope does not clear it: the line is at a different height a few units along,
+    so the label lands back on top of it a moment later, and every offer looks
+    occupied. Three corpus documents were refused outright for exactly that,
+    which is the sort of thing a new routing mode buys if the rest of the
+    pipeline is left assuming right angles.
     """
     gap = LABEL_GAP + theme.edge.stroke_width / 2
     ordered = sorted(
@@ -1692,15 +1712,24 @@ def _label_candidates(
     for multiple in LABEL_OFFSETS:
         offset = gap * multiple
         for _, (first, second) in ordered:
+            step_x, step_y = second[0] - first[0], second[1] - first[1]
+            span = math.hypot(step_x, step_y)
             for fraction in LABEL_POSITIONS:
-                x = first[0] + (second[0] - first[0]) * fraction
-                y = first[1] + (second[1] - first[1]) * fraction
-                if first[0] == second[0]:  # a vertical run: beside it
+                x = first[0] + step_x * fraction
+                y = first[1] + step_y * fraction
+                if abs(step_x) < _TOLERANCE:  # a vertical run: beside it
                     yield x + offset, y - height / 2
                     yield x - offset - width, y - height / 2
-                else:  # a horizontal run: above it, then below
+                elif abs(step_y) < _TOLERANCE:  # a horizontal run: above, then below
                     yield x - width / 2, y - offset - height
                     yield x - width / 2, y + offset
+                elif span:
+                    # Out along the normal, far enough that the whole box clears
+                    # the slope rather than only its centre.
+                    away = offset + (width * abs(step_y) + height * abs(step_x)) / (2 * span)
+                    across_x, across_y = -step_y / span * away, step_x / span * away
+                    yield x + across_x - width / 2, y + across_y - height / 2
+                    yield x - across_x - width / 2, y - across_y - height / 2
 
 
 def _inflate(

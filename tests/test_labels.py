@@ -17,7 +17,7 @@ from itertools import pairwise
 import pytest
 from spike_layout import REFERENCE_DIR, layout_inputs
 
-from drawspec.errors import LayoutError
+from drawspec.errors import FitError
 from drawspec.layout.base import Spacing
 from drawspec.layout.layered import LayeredEngine
 from drawspec.routing import (
@@ -132,6 +132,13 @@ def test_a_label_with_nowhere_to_go_is_refused() -> None:
 
     Rendering it anyway would put text over a line, which is the failure this
     task exists to prevent — so it raises, and the message says what to do.
+
+    A `FitError`, which is the accurate name for it: the label is content that
+    does not fit, and content that does not fit is what the elastic band exists
+    to answer. As a `LayoutError` it went straight past `fit`, so a diagram whose
+    labels would all have been clear one step of type smaller was refused instead
+    of drawn — four of the eighty-six corpus documents, once their labels grew a
+    line. When the band runs out the author still gets this message.
     """
     boxes = (
         Obstacle("a", x=0.0, y=0.0, width=40.0, height=40.0),
@@ -139,7 +146,7 @@ def test_a_label_with_nowhere_to_go_is_refused() -> None:
         Obstacle("left", x=-400.0, y=40.0, width=396.0, height=GAP),
         Obstacle("right", x=44.0, y=40.0, width=400.0, height=GAP),
     )
-    with pytest.raises(LayoutError, match="no room"):
+    with pytest.raises(FitError, match="no room"):
         place_labels(
             route_edges((Connector("a", "b", label="a rather long label"),), boxes, THEME),
             boxes,
