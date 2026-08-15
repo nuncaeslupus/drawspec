@@ -935,3 +935,96 @@ def test_values_false_silences_every_number_on_the_marks() -> None:
     said = {run.text for run in texts(chart_scene(parse_document(document), THEME, MEASURER))}
     assert not {"34", "41", "52", "47"} & said
     assert any(re.fullmatch(r"\d+", run) for run in said), "the ticks are still numbered"
+
+
+# --------------------------------------------------------------------------
+# Category labels
+# --------------------------------------------------------------------------
+
+LONG_CATEGORIES = [
+    "Suspensio PROVISIONAL (mesura cautelar)",
+    "Suspensio FERMA per sentencia",
+    "Inhabilitacio especial",
+    "Multa coercitiva",
+]
+
+
+def _categorical(categories: list[str], **extra: object) -> Scene:
+    return chart_scene(
+        parse_document(
+            document(
+                axes={
+                    "horizontal": {"label": "Mesura", "categories": categories},
+                    "vertical": {"label": "Dies"},
+                },
+                series=[
+                    {
+                        "name": "Durada",
+                        "data": [[index + 1, 10 * (index + 1)] for index in range(len(categories))],
+                        "mark": "bar",
+                    }
+                ],
+                **extra,
+            )
+        ),
+        THEME,
+        MEASURER,
+    )
+
+
+def _run_box(run: TextRun) -> tuple[float, float]:
+    width = MEASURER.advance(run.text, THEME.font.default, THEME.scale[run.level])
+    return run.x - width / 2, run.x + width / 2
+
+
+def test_long_category_labels_do_not_overprint_each_other() -> None:
+    """Two of these used to read as one smudge.
+
+    'Suspensio PROVISIONAL (mesura cautelar)' and the one after it overlapped by
+    27 units at the default width — text over text, which is the first failure
+    family the tool exists to remove.
+    """
+    built = _categorical(LONG_CATEGORIES)
+    bottom = max(run.y for run in texts(built))
+    band = [run for run in texts(built) if run.y > bottom - 60 and run.anchor == "middle"]
+    by_line: dict[float, list[TextRun]] = {}
+    for run in band:
+        by_line.setdefault(round(run.y, 3), []).append(run)
+    for row in by_line.values():
+        boxes = sorted(_run_box(run) for run in row)
+        for (_, first_right), (second_left, _) in pairwise(boxes):
+            assert first_right <= second_left + 1e-6
+
+
+def test_a_long_category_label_stays_inside_the_canvas() -> None:
+    """The first label began 55 units outside the viewBox: text off the sheet."""
+    built = _categorical(LONG_CATEGORIES)
+    for run in texts(built):
+        if run.anchor != "middle" or run.rotate:
+            continue
+        left, right = _run_box(run)
+        assert left >= -1e-6, run.text
+        assert right <= built.width + 1e-6, run.text
+
+
+def test_a_long_category_label_is_wrapped_rather_than_shrunk() -> None:
+    """It gets more lines, not a smaller size — the size is the theme's."""
+    built = _categorical(LONG_CATEGORIES)
+    wanted = ("Suspensio", "PROVISIONAL", "(mesura cautelar)")
+    written = " ".join(run.text for run in texts(built) if run.text in wanted)
+    assert written == "Suspensio PROVISIONAL (mesura cautelar)"
+
+
+def test_a_short_category_label_is_left_on_one_line() -> None:
+    built = _categorical(["IaaS", "PaaS", "SaaS"])
+    assert [run.text for run in texts(built) if run.text.endswith("aaS")] == [
+        "IaaS",
+        "PaaS",
+        "SaaS",
+    ]
+
+
+def test_a_category_that_cannot_be_broken_small_enough_is_refused() -> None:
+    """A refusal naming the label beats illegible output, which is the promise."""
+    with pytest.raises(FitError, match="does not fit"):
+        _categorical(["Unsplittableliteralrunofcharactersthatgoesonandon", "b", "c", "d", "e", "f"])
