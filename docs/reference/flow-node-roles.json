@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "kind": "flow",
+  "title": "Every node role, drawn",
+  "description": "The seven roles a node may take, each drawn as the bundled default theme draws it: start and terminal are pills, with the terminal in a heavier line; a step is a plain rectangle; a decision is a diamond; emphasis is a rectangle at the heavier weight; a note has no outline at all; and a group is a dashed rectangle. An author names the role and the theme decides the shape, so a different theme draws this same document differently.",
+  "caption": "Say what the box is, not what it looks like — the shape follows.",
+  "nodes": [
+    { "id": "start", "text": "start\nwhere the diagram begins", "role": "start" },
+    { "id": "step", "text": "step\nthe ordinary box, and the default", "role": "step" },
+    { "id": "decision", "text": "decision\na question with named ways out", "role": "decision" },
+    { "id": "terminal", "text": "terminal\nwhere it ends", "role": "terminal" },
+    { "id": "emphasis", "text": "emphasis\nthe one box that matters most", "role": "emphasis" },
+    { "id": "note", "text": "note\nan aside, not part of the argument", "role": "note" },
+    { "id": "group", "text": "group\na container, drawn around others", "role": "group" }
+  ]
+}

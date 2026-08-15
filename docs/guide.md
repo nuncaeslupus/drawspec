@@ -156,6 +156,56 @@ Two notes worth having before you pick:
   [`kinds-wanted.md`](kinds-wanted.md) is the inventory that decided which kinds
   exist and which requests were declined.
 
+## Choosing a role
+
+*"I don't know what criteria you use to choose between circle and rectangle
+here"* — asked three times in one review, which means the answer was never
+written down. Here it is.
+
+**A role says what a box is; the theme decides what that looks like.** So the
+question to ask is never "should this be a diamond" — it is "is this a
+question?". These are the seven, and the shape each one currently gets from the
+bundled theme:
+
+| Role | Use it for | Drawn as |
+|---|---|---|
+| `step` | The ordinary box. **The default, and most boxes should be one.** | a rectangle |
+| `start` | Where the diagram begins — the trigger, the arrival, the input | a pill |
+| `terminal` | Where it ends. Not "the last box": the box after which nothing happens | a pill, heavier |
+| `decision` | A question, with named ways out. If the edges leaving it are not labelled, it is probably a `step` | a diamond |
+| `emphasis` | The one box the diagram is about. One per drawing, or it stops meaning anything | a rectangle, heavier |
+| `note` | An aside — a caveat, a source, a reminder. Not part of the argument | no outline at all |
+| `group` | A container drawn around other boxes. Set by naming `members`; rarely written by hand | a dashed rectangle |
+
+Two mistakes worth naming, both made in the corpus and both caught in review:
+
+* **`start` and `terminal` are not decoration for the extremities.** Making one
+  child a `step` and its sibling a `terminal` says the second one ends the
+  process, and if the original gave them equal weight, that is a claim the
+  author did not make.
+* **A role is not a size.** `emphasis` and `terminal` are heavier because the
+  theme draws them so. Reaching for one to make a box stand out is writing a
+  typographic instruction in a document that has no field for one.
+
+The same holds for connectors, where the vocabulary answers *what kind of
+relation is this* and the theme answers whether it has a head:
+
+| Role | Use it for | Drawn as |
+|---|---|---|
+| `flow` | Then this happens. The default | an arrow |
+| `strong` | The same relation, on the path that has no slack in it | a heavier arrow |
+| `link` | Merely associated — no direction, no order | no head, and drawn as a straight chord |
+| `exchange` | Both ways at once | a head at each end |
+| `weak` | A soft or conditional dependency | dashed, with an open head |
+| `owns` | This is a part of that | a diamond at the owning end |
+
+Both sets are drawn, one box per role, in
+[`reference/flow-node-roles.json`](reference/flow-node-roles.json) and
+[`reference/flow-edge-roles.json`](reference/flow-edge-roles.json). `make
+gallery` renders them; that page is the fastest answer to "what does `owns`
+look like". The mechanical properties behind each row — shape, dash,
+stroke width — are in [the theme reference](theme.md).
+
 ## Embedding the output
 
 `render --profile` picks how the SVG is written, and the choice is about where

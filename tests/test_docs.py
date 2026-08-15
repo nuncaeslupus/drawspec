@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import json
 from pathlib import Path
 
 import pytest
@@ -25,7 +26,7 @@ import pytest
 import docs
 from drawspec.cli import build_parser
 from drawspec.schema import KINDS, OBJECTS, REJECTED_FIELDS
-from drawspec.theme import _TOP_LEVEL_KEYS, load_theme
+from drawspec.theme import _TOP_LEVEL_KEYS, EDGE_ROLES, NODE_ROLES, load_theme
 
 GENERATED = docs.generate()
 
@@ -108,3 +109,29 @@ def test_guide_links_to_all_three_references() -> None:
     guide = (docs.DOCS_DIR / "guide.md").read_text(encoding="utf-8")
     for name in docs.GENERATED:
         assert f"]({name})" in guide, f"the guide does not link to {name}"
+
+
+def test_the_guide_answers_the_question_the_review_asked_three_times() -> None:
+    """*"I don't know what criteria you use to choose between circle and
+    rectangle here"* — the roles are a vocabulary, and a vocabulary nobody
+    documented is a vocabulary nobody can use."""
+    guide = (Path(__file__).resolve().parents[1] / "docs" / "guide.md").read_text(encoding="utf-8")
+    assert "## Choosing a role" in guide
+    for role in NODE_ROLES:
+        assert f"`{role}`" in guide, role
+    for role in EDGE_ROLES:
+        assert f"`{role}`" in guide, role
+
+
+def test_every_role_is_drawn_somewhere_in_the_reference_set() -> None:
+    """Prose says what a role means; only a drawing says what it looks like."""
+    reference = Path(__file__).resolve().parents[1] / "docs" / "reference"
+    drawn: set[str] = set()
+    linking: set[str] = set()
+    for path in reference.glob("*.json"):
+        document = json.loads(path.read_text(encoding="utf-8"))
+        drawn.update(node.get("role", "step") for node in document.get("nodes", ()))
+        drawn.update("group" for _ in document.get("groups", ()))
+        linking.update(edge.get("role", "flow") for edge in document.get("edges", ()))
+    assert set(NODE_ROLES) <= drawn, set(NODE_ROLES) - drawn
+    assert set(EDGE_ROLES) <= linking, set(EDGE_ROLES) - linking
