@@ -326,6 +326,28 @@ def test_load_theme_accepts_a_mapping() -> None:
     assert theme.canvas.width == 480.0
 
 
+def test_a_zero_margin_is_accepted_because_flush_is_a_house_style() -> None:
+    """Every other length in `[canvas]` must be positive; this one may be nothing.
+
+    A page that pads its own figures wants the drawing to end where its ink does,
+    so zero is a setting rather than the absence of one.
+    """
+    assert load_theme({"version": 1, "name": "flush", "canvas": {"margin": 0.0}}).canvas.margin == 0
+
+
+def test_a_negative_margin_is_refused() -> None:
+    with pytest.raises(ThemeError, match="margin"):
+        load_theme({"version": 1, "name": "inverted", "canvas": {"margin": -4.0}})
+
+
+def test_a_margin_wider_than_the_drawing_it_frames_is_refused() -> None:
+    """Nothing breaks — the margin is added around the width, so every document
+    still draws — but a figure that is mostly frame is a unit mistake far more
+    often than a house style, and a theme is read once and used everywhere."""
+    with pytest.raises(ThemeError, match="more frame than figure"):
+        load_theme({"version": 1, "name": "framed", "canvas": {"width": 100.0, "margin": 60.0}})
+
+
 def test_load_theme_missing_version_raises_themeerror(tmp_path: Path) -> None:
     path = write_theme(tmp_path, 'name = "no version"\n')
     with pytest.raises(ThemeError, match="version"):

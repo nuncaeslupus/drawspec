@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "kind": "tree",
+  "theme": "compartment",
+  "title": "A box that is a name over what belongs to it",
+  "description": "The same lead-and-detail every label may carry, separated by a rule instead of by weight. A blank-free newline in `text` is the author saying these are two things; `[box] lead` is the theme saying what separates them, and this theme says a line. It is what a class, a record or a component is drawn as by hand — a name, a rule, and the things under it — and it is also where who performs a step goes when that is not the kind of thing a role should carry.",
+  "nodes": [
+    {
+      "id": "payment",
+      "text": "**Payment**\nreference\namount\ntaken at",
+      "role": "emphasis"
+    },
+    {
+      "id": "card",
+      "text": "**Card payment**\nlast four digits\nscheme"
+    },
+    {
+      "id": "transfer",
+      "text": "**Bank transfer**\nsort code\ncleared at"
+    },
+    {
+      "id": "refund",
+      "text": "**Refund**\nreverses\nreason"
+    },
+    {
+      "id": "settled",
+      "text": "Settled\nno further change is possible",
+      "role": "terminal"
+    }
+  ],
+  "edges": [
+    {"from": "payment", "to": "card", "role": "owns"},
+    {"from": "payment", "to": "transfer", "role": "owns"},
+    {"from": "payment", "to": "refund", "role": "owns"},
+    {"from": "card", "to": "settled", "role": "weak"}
+  ]
+}

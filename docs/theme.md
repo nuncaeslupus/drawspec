@@ -49,6 +49,7 @@ The one width every diagram is drawn to, and the legibility floor.
 |---|---|---|
 | `width` | `640.0` | The canvas every diagram is drawn to, in user units. |
 | `width_mode` | `"fixed"` | Whether a drawing narrower than `width` keeps the canvas or is cropped to it. One of `fixed`, `ink`. |
+| `margin` | `12.0` | The channel of blank between the drawing and the edge of the canvas. |
 | `min_legible_size` | `9.0` | The floor the fit band may not push type below. |
 | `caption` | `"below"` | Where a document's `caption` sits: `below` the drawing, or `above` it. |
 | `ink` | `"#1a1a1a"` | What `currentColor` resolves to in the `standalone` profile. |
@@ -184,4 +185,5 @@ one of `arrow`, `open`, `diamond`, `circle`, `bar`, `none`.
 | `default` | Ink only. Every stroke is `currentColor`, so a diagram follows its page. |
 | `accent` | Colour that points and never carries: six roles are coloured, and every one of them already differed from its neighbours by weight, dash or shape. |
 | `wheel` | The broad tapered cycle connector — `[cycle] connector = "band"` — for a cycle drawn loudly. |
+| `compartment` | A rule between a label's lead and its detail — `[box] lead = "rule"` — for a diagram whose boxes are a name over what belongs to it. |
 

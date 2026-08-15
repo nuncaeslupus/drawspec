@@ -124,6 +124,39 @@ def usable_span(
     raise KeyError(f"unknown shape {shape!r}")
 
 
+def span_at(shape: str, width: float, height: float, depth: float) -> float:
+    """How wide `shape` is at `depth` below its top — its width on one line.
+
+    A different question from `usable_span`, which asks for the largest rectangle
+    text can occupy anywhere inside the shape. This asks where the outline is at
+    one height, which is what a mark drawn *across* the box needs: a lead rule in
+    a `rect` should run edge to edge, the way a hand-drawn class box does, and the
+    same rule in a `diamond` has to stop at the two sloped sides or it comes out
+    of them.
+
+    Clamped to the shape, so a depth above the top or below the bottom is zero
+    rather than an imaginary number.
+
+    Raises:
+        KeyError: `shape` is not one drawspec draws.
+    """
+    if shape in ("rect", "none"):
+        return width if 0.0 <= depth <= height else 0.0
+    if not height:
+        return 0.0
+    # How far from the middle, as a fraction of the half-height. Every shape but
+    # the rect narrows away from there, and all three do it symmetrically.
+    away = min(abs(depth - height / 2) / (height / 2), 1.0)
+    if shape == "pill":
+        radius = height / 2
+        return max(width - height, 0.0) + 2 * radius * sqrt(max(1 - away**2, 0.0))
+    if shape == "diamond":
+        return width * (1 - away)
+    if shape == "ellipse":
+        return width * sqrt(max(1 - away**2, 0.0))
+    raise KeyError(f"unknown shape {shape!r}")
+
+
 def outer_size(
     shape: str, content_width: float, content_height: float, padding: Padding
 ) -> tuple[float, float]:
@@ -213,8 +246,12 @@ class Box:
     # -- where the text actually sits -------------------------------------
 
     @property
-    def _block_top(self) -> float:
+    def block_top(self) -> float:
         """The top of the text block, centred in the content area.
+
+        Public because a box's own furniture is placed against it: the lead rule
+        sits at `block_top + block.rule_offset`, which is the block's answer read
+        rather than a second calculation of the same number.
 
         The extra height a box carries beyond its own text is split evenly
         above and below, which is what keeps a group of peers looking like
@@ -226,7 +263,7 @@ class Box:
     def baselines(self) -> tuple[float, ...]:
         """The absolute y of every line's baseline, top to bottom."""
         return tuple(
-            self._block_top + self.block.baseline(index) for index in range(len(self.block.lines))
+            self.block_top + self.block.baseline(index) for index in range(len(self.block.lines))
         )
 
     def content_bounds(self) -> tuple[float, float, float, float]:
@@ -239,7 +276,7 @@ class Box:
         baselines = self.baselines()
         left = self.usable_left + self.padding.left
         if not baselines:
-            return left, self._block_top, left, self._block_top
+            return left, self.block_top, left, self.block_top
         return (
             left,
             baselines[0] - self.block.ascent,
@@ -441,6 +478,7 @@ def _wrap_to(
             theme=theme,
             level=level,
             lead=lead,
+            boxed=True,
         )
 
     block = wrap(
@@ -450,6 +488,7 @@ def _wrap_to(
         theme=theme,
         level=level,
         lead=lead,
+        boxed=True,
     )
     for _ in range(_SHAPE_PASSES):
         candidate = wrap(
@@ -459,6 +498,7 @@ def _wrap_to(
             theme=theme,
             level=level,
             lead=lead,
+            boxed=True,
         )
         if len(candidate.lines) == len(block.lines):
             return candidate

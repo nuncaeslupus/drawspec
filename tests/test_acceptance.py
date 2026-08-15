@@ -205,8 +205,63 @@ def test_every_reference_document_is_drawn_to_the_same_canvas_width(name: str) -
     theme = load_theme()
     svg = render_document(load_document(REFERENCE_DIR / f"{name}.json"), profile="standalone")
     width = float(ElementTree.fromstring(svg).get("width", "0"))
-    # The ink inset is half a stroke either side of the drawing — see `emit`.
-    assert width == pytest.approx(theme.canvas.width + theme.edge.stroke_width, abs=1.6)
+    # The outer margin frames the drawing on both sides — see `theme.Canvas.margin`,
+    # which is why it is *added* to the width rather than taken out of it: taken
+    # out, this equality would still hold and every drawing would have lost the
+    # margin from its own budget. The ink inset is half a stroke either side of
+    # that again — see `emit`.
+    drawn = theme.canvas.width + theme.canvas.margin * 2
+    assert width == pytest.approx(drawn + theme.edge.stroke_width, abs=1.6)
+
+
+def test_a_drawing_wider_than_the_canvas_is_refused_rather_than_emitted() -> None:
+    """The other half of the same property, and the one that had a hole in it.
+
+    A family checks its *layout* against the width. The drawing is not the
+    layout: a band's bar and name sit beside the boxes, are measured after
+    placement, and are in nobody's budget — so a layout that exactly fills the
+    canvas produces a drawing that does not fit in it, and `centred` leaves a
+    scene already at the canvas alone by design. It went out as an oversized
+    `viewBox`, which is `canvas_width_variance == 0` failing quietly.
+
+    Eight packed steps and a long band came out 90 units over. Refused now, after
+    the elastic fit has tried every smaller type scale first.
+    """
+    packed = {
+        "version": 1,
+        "kind": "flow",
+        "title": "packed with a band",
+        "nodes": [{"id": f"n{index}", "text": f"Step number {index}"} for index in range(8)],
+        "edges": [],
+        "bands": [
+            {
+                "text": "A continuous activity that runs alongside every one of these steps",
+                "members": [f"n{index}" for index in range(8)],
+            }
+        ],
+    }
+    with pytest.raises(FitError, match="the canvas is"):
+        render(packed)
+
+
+def test_a_drawing_sized_on_its_own_may_be_any_width() -> None:
+    """`ink` mode has no canvas to overflow — that is what the setting means."""
+    theme = load_theme()
+    theme = replace(theme, canvas=replace(theme.canvas, width_mode="ink"))
+    wide = {
+        "version": 1,
+        "kind": "flow",
+        "title": "packed with a band",
+        "nodes": [{"id": f"n{index}", "text": f"Step number {index}"} for index in range(8)],
+        "edges": [],
+        "bands": [
+            {
+                "text": "A continuous activity that runs alongside every one of these steps",
+                "members": [f"n{index}" for index in range(8)],
+            }
+        ],
+    }
+    assert "<svg" in render(wide, theme)
 
 
 def test_a_narrow_diagram_is_centred_on_the_canvas_rather_than_cropped_to_it() -> None:
@@ -267,9 +322,15 @@ def test_a_binding_height_that_cannot_be_met_is_refused() -> None:
     tall, exit 0, no refusal — the third outcome the format page promises never to
     produce. The refusal now names the height it got and the height it was asked
     for.
+
+    Eighty is no longer the number that cannot be met: the graph family used to
+    take its own outer margin out of the layout budget, and now that
+    `[canvas] margin` frames every kind from outside, those forty-eight units are
+    width the four ranks can read across in. So the ask here is one no
+    arrangement can meet — thirty units is shorter than a single box.
     """
     with pytest.raises(FitError, match="height_binding"):
-        render({**_TALL, "height": 80, "height_binding": True})
+        render({**_TALL, "height": 30, "height_binding": True})
 
 
 def test_a_binding_height_that_can_be_met_draws() -> None:

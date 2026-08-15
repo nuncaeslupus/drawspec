@@ -168,6 +168,9 @@ drawing is flush and the page pads it, or a figure carries its own gutter and it
 belongs in `[canvas]` beside `width` — for the same reason `width` lives there.
 Not taken unilaterally because it moves all 33 drawings.
 
+R5-1 has since been decided — *the figure carries its own channel* — and done;
+what that took is the section after this one. R5-2 is still open.
+
 **R5-2 — `edge-from-a-group`.** Still refused, checked rather than assumed. It is
 the oldest item on the consumer's list that is not closed, `gap4` on sheets 39
 and 44, and 44 is still `blocked` on it. `Frame` already carries an extent and
@@ -176,6 +179,83 @@ the missing piece is small: let the schema name a group in `from`/`to`, and let 
 route anchor on the frame.
 
 ---
+
+## R5-1, decided: `[canvas] margin`
+
+The owner's call, taken after the round: **a figure carries its own gutter, and
+it belongs in `[canvas]` beside `width`** — for the same reason `width` lives
+there. So there is now one number, read from the theme, applied in one place
+(`render.framed`), equal across all thirteen kinds. `kinds/graph` and
+`kinds/cycle` stopped adding their own, and the eleven other families that added
+none now get one.
+
+### The half of the decision that was not in the question
+
+*Where the margin comes from* turned out to matter more than what it is set to,
+and only one of the two answers is safe.
+
+Taken **out of** the width, every family lays out against `width - margin * 2`
+and the emitted canvas stays 640. That is the tidier story — the number a
+consumer sets to match their column is the number the SVG comes out — and it was
+the first implementation. It breaks a document that used to draw. `timeline-work`
+survived it; `timeline-disaster` did not. An `at`-spaced timeline sizes every
+label to its **tightest** pair of marks, and that sheet's tightest pair is a
+seventh of its span, so it needs 630 of the 640 it has. Twelve units off each
+side put it at 616 and it refused — correctly, by its own rules, for a diagram
+nobody had touched. A theme growing a frame must not be able to stop a document
+rendering.
+
+Nor could that reference simply be given more width: `canvas_width_variance == 0`
+across the kinds is this project's own acceptance gate, and one drawing at 664
+beside thirty-two at 640 fails it. The escape hatch and the invariant are the
+same field.
+
+So the margin goes **around** the width. `[canvas] width` keeps meaning the width
+of the *drawing*; the canvas is `width + margin * 2`, the same arithmetic for
+every kind, so two figures on a page are still one width and comparability — the
+whole reason `width` is a theme value — is untouched. `height` and
+`height_binding` keep meaning the height of the drawing for the same reason, so
+no binding height moved either. Nothing in any layout budget changed except the
+one that was wrong: `kinds/graph` had been taking its own 24-unit margin out of
+`max_width`, charging every flow chart and tree 48 units for a gutter it now does
+not draw. Four ranks that used to need 330 units of depth read across in 80.
+
+### Measured
+
+| | Before | After |
+|---|---:|---:|
+| smallest outer gutter, 33 references | **0.00** | **12.00** |
+| largest *tightest* gutter | **24.50** | **18.00** |
+| spread | **24.50** | **6.00** |
+
+The 18.00 is one drawing, `matrix-process`, and it is interior rather than a
+family framing itself: a matrix carrying edges puts `[edge] clearance` around
+every cell so an arrow has somewhere to live in the join, including the cells on
+the outside — taking it off those alone would make the edge cells wider than the
+middle ones, and equal cells are that family's whole rule. The rest of the
+residue is half a stroke, because `emit` widens the `viewBox` by half the
+*heaviest* stroke in the scene and a lighter outermost element reads a hair clear
+of it.
+
+The consumer's corpus is the same shape and was measured, not predicted: **87
+documents, 87 drawn, 0 refused, 0 collisions, 0 outside the canvas**, tightest
+gutter 12.00 and widest 18.00 — the 18.00 again a matrix with edges.
+
+`tests/test_margins.py` gates both halves per document: no drawing framed tighter
+than the margin (exact — `emit`'s inset means a gutter can only come out at the
+margin or above), and no drawing's tightest side further from it than that
+interior allowance.
+
+### And the clipping checker had a fourth hole
+
+Found by pointing the new measurement at the gallery: a fill pattern's tile is a
+`<rect>` a few units square at the origin inside `<defs>`, and its coordinates
+are in the pattern's own space. Measured as canvas coordinates it is ink pinned
+to the top-left corner, which is why five chart drawings reported an outer gutter
+of zero while they were framed like everything else. `clipped` could only ever
+have *under*-reported because of it, which is why it never showed — the same
+shape as the three the round found: a gate looking at the wrong thing and
+reporting a number anyway.
 
 ## Still the owner's, and untouched
 

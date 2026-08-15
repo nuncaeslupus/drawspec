@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from itertools import pairwise
+from typing import Final
 
 import pytest
 
@@ -294,6 +295,69 @@ def test_the_plain_lead_treatment_leaves_the_break_but_not_the_weight() -> None:
     plain = wrap(LEAD, 400.0, MEASURER, theme=replace(THEME, box=replace(THEME.box, lead="plain")))
     assert len(plain.lines) == 2
     assert all(span.weight == "normal" for line in plain.lines for span in line.spans)
+
+
+# --------------------------------------------------------------------------
+# The third treatment: a rule between the two, instead of a weight on one
+# --------------------------------------------------------------------------
+
+RULED: Final = replace(THEME, box=replace(THEME.box, lead="rule"))
+
+
+def _ruled(text: str = LEAD, width: float = 400.0, *, boxed: bool = True) -> TextBlock:
+    return wrap(text, width, MEASURER, theme=RULED, boxed=boxed)
+
+
+def test_the_rule_treatment_reserves_its_own_band() -> None:
+    """A rule a box did not count is a rule through a word.
+
+    The band is reserved where the height is computed, so a box sized from this
+    block already has room for the line — rather than by whoever draws it, which
+    would be a second source of truth for the same number.
+    """
+    plain = wrap(LEAD, 400.0, MEASURER, theme=replace(THEME, box=replace(THEME.box, lead="plain")))
+    ruled = _ruled()
+
+    assert ruled.rule == pytest.approx(THEME.box.padding.top)
+    assert ruled.height == pytest.approx(plain.height + ruled.rule)
+
+
+def test_the_rule_sits_between_the_two_parts_and_pushes_the_detail_down() -> None:
+    """Which is what makes it a divider rather than an underline."""
+    ruled = _ruled()
+
+    assert ruled.lead_lines == 1
+    assert ruled.rule_offset is not None
+    assert ruled.baseline(0) < ruled.rule_offset < ruled.baseline(1)
+    # The gap above the line and the gap below it are the same.
+    assert ruled.rule_offset == pytest.approx(ruled.advance + ruled.rule / 2)
+
+
+def test_a_lead_that_wraps_puts_the_rule_under_all_of_it() -> None:
+    """It is the first *paragraph*, the same rule the bold treatment follows."""
+    ruled = _ruled(f"{PROSE}\nand then the detail", 140.0)
+
+    assert ruled.lead_lines > 1
+    assert ruled.rule_offset == pytest.approx(ruled.lead_lines * ruled.advance + ruled.rule / 2)
+
+
+def test_the_rule_treatment_does_not_take_the_weight_as_well() -> None:
+    """One treatment at a time: bold *and* a rule would say it twice."""
+    assert all(span.weight == "normal" for line in _ruled().lines for span in line.spans)
+
+
+def test_one_paragraph_gets_no_rule() -> None:
+    """A label that did not ask for two parts does not get a divider."""
+    assert _ruled("Digitalització canvia el suport").rule_offset is None
+
+
+def test_text_that_is_not_in_a_box_gets_no_rule() -> None:
+    """A caption, a band's name and a tick label have no column to cross, so the
+    line would be a mark hanging in the white beside the drawing."""
+    loose = _ruled(boxed=False)
+
+    assert loose.rule_offset is None
+    assert loose.height == pytest.approx(len(loose.lines) * loose.advance)
 
 
 def test_a_lead_keeps_an_inline_span_the_author_asked_for() -> None:

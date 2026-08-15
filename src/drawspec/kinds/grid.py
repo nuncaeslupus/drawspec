@@ -68,7 +68,11 @@ def grid_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Scen
 
 
 def _canvas_width(document: Document, theme: Theme) -> float:
-    """The width to draw to. The document may override the theme; nothing else may."""
+    """The width to draw to. The document may override the theme; nothing else may.
+
+    The outer margin `render.framed` gives every drawing goes *around* this, so a
+    family never has to account for it — see `theme.Canvas.margin`.
+    """
     return document.width if document.width else theme.canvas.width
 
 
@@ -285,7 +289,7 @@ def _span_bars(
     # Wrapped at the whole diagram's width: a span's name is as wide as it needs
     # to be — `MTD = RTO + WRT` is wider than several of the bars it covers — so
     # the width is a backstop against running off the sheet, not a column.
-    room = (document.width if document.width else theme.canvas.width) - gap * 2
+    room = _canvas_width(document, theme) - gap * 2
     blocks = [wrap(text, room, measurer, theme=theme, level="label") for *_, text in placed]
     band = max((block.height for block in blocks), default=line.height)
 

@@ -123,6 +123,23 @@ two levels, which is exactly what the corpus review objected to. A theme may
 switch the treatment off with `[box] lead = "plain"`; the break stays either
 way, because a break is structure.
 
+The third treatment is a **rule** between the two, and it is for the case where
+the second part is not an explanation but a *list of things belonging to* the
+first — the attributes of a class, the fields of a record, the members of a
+team, who performs a step. Weight would say "this one matters more", which is
+not what those diagrams mean; a line says "this is the heading of those", which
+is what every hand-drawn class box already does. The bundled `compartment` theme
+is `default` plus that one setting, and `docs/reference/tree-compartments.json`
+is what it looks like:
+
+```json
+{"id": "card", "text": "**Card payment**\nlast four digits\nscheme"}
+```
+
+Still no new field — the same newline, read the same way. The rule is drawn in
+the box's own ink and runs edge to edge, stopping on the sloped sides of a
+diamond rather than coming out of them.
+
 The `$schema` line is optional and costs nothing at render time, but it earns
 its place in an editor: point any JSON-Schema-aware editor at it and you get
 completion over the field names and an inline error on `font_size` *while you
@@ -319,6 +336,13 @@ understanding before you change anything else:
 
 * **`[canvas] width`** is why two diagrams on one page are the same type size.
   It belongs to the theme rather than to a document on purpose.
+* **`[canvas] margin`** is the channel of blank between the drawing and the edge
+  of the figure, on all four sides. It sits *around* `width`, so the emitted
+  canvas is `width + margin * 2` and the drawing keeps every unit of its own
+  budget — set `width` to your column less twice this to fill a measure exactly.
+  Set it to `0` for a page that pads its own figures. It exists because without
+  it each kind framed itself: a timeline above a flow chart bled to the edge
+  beside a quarter-inch of white.
 * **`[canvas] width_mode`** decides whether a narrow drawing keeps that canvas
   (`fixed`, centred in it) or is cropped to its own ink (`ink`). Cropping is
   what makes a page scale two diagrams by different factors and read one label

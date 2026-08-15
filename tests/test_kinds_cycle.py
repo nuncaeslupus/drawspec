@@ -348,12 +348,14 @@ def test_cycle_is_a_ring_on_the_canvas_width_and_no_taller_than_it_needs() -> No
     ]
     assert max(radii) - min(radii) < 1e-6
     assert built.width == pytest.approx(THEME.canvas.width)
-    # Cropped to the ink, with an equal margin above and below it. The ink is
-    # what matters rather than the steps: the lowest point of a five-step ring is
-    # the bottom of the arc between the two lowest boxes, not either box.
+    # Cropped to the ink, flush to it top and bottom. The ink is what matters
+    # rather than the steps: the lowest point of a five-step ring is the bottom of
+    # the arc between the two lowest boxes, not either box. The channel of blank
+    # around the drawing is `render.framed`'s and equal for every kind; this
+    # family used to add ten units of its own while a stack added none.
     _, top, _, bottom = extents(built.primitives)
-    assert top == pytest.approx(THEME.box.padding.top)
-    assert built.height == pytest.approx(bottom + THEME.box.padding.top)
+    assert top == pytest.approx(0.0)
+    assert built.height == pytest.approx(bottom)
 
 
 def test_cycle_refuses_a_document_of_another_kind() -> None:

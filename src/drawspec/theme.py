@@ -152,6 +152,29 @@ def _number(value: object, where: str, *, positive: bool = True) -> float:
     return number
 
 
+def _margin(mapping: Mapping[str, Any], width: float) -> float:
+    """`[canvas] margin`, checked against the drawing it goes around.
+
+    Zero is allowed and means *flush*, which is a real house style: a page that
+    pads its own figures wants the drawing to end where its ink does. So the
+    usual `positive=True` would be wrong here, and this is the check instead.
+
+    A margin wider than the drawing it frames is a figure that is mostly frame.
+    Nothing breaks — it is added around the width rather than taken out of it, so
+    every document still draws — but it is far likelier to be a unit mistake than
+    a house style, and a theme is read once and used everywhere.
+    """
+    margin = _number(mapping.get("margin", 12.0), "[canvas] margin", positive=False)
+    if margin < 0:
+        raise ThemeError(f"[canvas] margin: expected zero or a positive number, got {margin}")
+    if margin * 2 >= width:
+        raise ThemeError(
+            f"[canvas] margin: {margin} on each side of a {width} drawing is more frame "
+            f"than figure. The margin goes around [canvas] width, not inside it."
+        )
+    return margin
+
+
 def _choice(value: object, allowed: tuple[str, ...], where: str) -> str:
     if not isinstance(value, str) or value not in allowed:
         raise ThemeError(f"{where}: {value!r} is not one of {', '.join(allowed)}")
@@ -185,7 +208,7 @@ def _reject_unknown(mapping: Mapping[str, Any], allowed: Iterable[str], where: s
 WIDTH_MODES: Final = ("fixed", "ink")
 
 #: What a theme may do to the first paragraph of a two-part label.
-LEAD_TREATMENTS: Final = ("bold", "plain")
+LEAD_TREATMENTS: Final = ("bold", "plain", "rule")
 
 #: Where a diagram-level caption sits relative to the drawing.
 CAPTION_POSITIONS: Final = ("below", "above")
@@ -227,6 +250,33 @@ class Canvas:
     different size in every element was its most repeated complaint.
     """
 
+    margin: float = 12.0
+    """The channel of blank between the drawing and the edge of the canvas.
+
+    One number, applied once, on all four sides — which is the point. Before it
+    existed there was no outer margin in the theme at all: `emit` set the
+    `viewBox` to the bounds of the ink and every family then added whatever
+    gutter it happened to add, so the same theme framed a `flow` in 24 units, a
+    `cycle` in 10, and a `stack` in none. Put a timeline above a flow chart on one
+    page — which a set of course notes does on most of them — and the first
+    bleeds to the edge beside the second's quarter-inch of white. Nothing clipped
+    and nothing collided; they were simply not framed alike, and a theme had no
+    way to say they should be.
+
+    It is the same idea as `[box] padding` one level out: the gap a box gives its
+    own text, the figure gives the page. The default is that padding's side value
+    for exactly that reason. A page that supplies its own figure padding sets this
+    to `0` and gets a drawing flush to its ink.
+
+    It sits **around** `width`, which therefore keeps meaning the width of the
+    drawing: the emitted canvas is `width + margin * 2`, the same for every kind,
+    so two diagrams on one page are still one width. Set `width` to the column
+    less twice this to fill a measure exactly. Taking it out of `width` instead
+    would charge every family's layout budget for the frame — and a drawing
+    already near the width its own content demands would stop fitting because the
+    theme grew a margin, which is not a thing a margin should be able to do.
+    """
+
     min_legible_size: float = 9.0
     """The floor the fit band may not push type below.
 
@@ -254,13 +304,16 @@ class Canvas:
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> Canvas:
         _reject_unknown(
-            mapping, ("width", "width_mode", "min_legible_size", "caption", "ink"), "[canvas]"
+            mapping,
+            ("width", "width_mode", "margin", "min_legible_size", "caption", "ink"),
+            "[canvas]",
         )
         return cls(
             width=_number(mapping.get("width", 640.0), "[canvas] width"),
             width_mode=_choice(
                 mapping.get("width_mode", "fixed"), WIDTH_MODES, "[canvas] width_mode"
             ),
+            margin=_margin(mapping, _number(mapping.get("width", 640.0), "[canvas] width")),
             min_legible_size=_number(
                 mapping.get("min_legible_size", 9.0), "[canvas] min_legible_size"
             ),
@@ -447,9 +500,24 @@ class BoxStyle:
     boldness or whatever, as in the original".
 
     So a blank-free newline in `text` is the author saying *these are two
-    things*, and this setting is the theme saying what the first one looks like.
-    `bold` sets it in the bold weight; `plain` leaves it alone, which is the
-    theme for a document whose labels are already emphatic enough.
+    things*, and this setting is the theme saying what separates them. `bold`
+    sets the lead in the bold weight; `plain` leaves it alone, which is the theme
+    for a document whose labels are already emphatic enough; `rule` draws a line
+    across the text column between the two, in the box's own ink.
+
+    `rule` makes a box read as a **compartment** — a name over what belongs to
+    it, which is how a class, a record or a component is drawn by hand, and it is
+    also the cheapest honest place to put *who performs this step* without
+    spending a role on it. It applies inside a box and nowhere else: a caption, a
+    band's name and a tick label have no column for a line to cross, so there the
+    rule would be a mark hanging in the white. The band it needs is `padding.top`,
+    spent half above the line and half below, and it is reserved when the text is
+    measured rather than added when it is drawn — a rule a box did not count is a
+    rule through a word.
+
+    One treatment at a time, and that is on purpose: `bold` *and* `rule` would
+    say the same thing twice, which is the redundancy the greyscale rule already
+    forbids between two roles.
 
     Weight rather than size on purpose: one advance is used for every line in a
     block, and a block whose first line was set larger would either space
