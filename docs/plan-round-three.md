@@ -23,12 +23,12 @@ rather than off.
 
 | Round three | Round two | Status |
 |---|---|---|
-| `sibling-order` | **D** ("boxes are not in the same order") | **fixed here** — see below |
-| `crossing` | **E** (straight lines, on purpose) | **already built** — the report and this page were both wrong |
-| `spans` | **G** (`spans`, the clearest missing kind) | confirmed, unbuilt |
-| `uniform-box-size` | **A** (shapes too tall and too narrow) | confirmed, measured, unbuilt |
-| `role-vocabulary` | **H** (document the roles) | half-served by the guide |
-| `mark-above-label` | **G** (stars above the title) | **already possible** — see below |
+| `sibling-order` | **D** ("boxes are not in the same order") | **built** |
+| `crossing` | **E** (straight lines, on purpose) | **was already built** — the report and this page were both wrong |
+| `spans` | **G** (`spans`, the clearest missing kind) | **built**, for the timeline |
+| `uniform-box-size` | **A** (shapes too tall and too narrow) | **built** |
+| `role-vocabulary` | **H** (document the roles) | half-served by the guide; still open |
+| `mark-above-label` | **G** (stars above the title) | **was already possible** — see below |
 
 Everything else on this page is new.
 
@@ -98,7 +98,9 @@ a detail. No new field. The want can be struck off round two's table.
 
 ## The nine that cannot be said
 
-Ordered by what they cost, not by where they appeared.
+Ordered by what they cost, not by where they appeared. Each one is now built —
+the section says what the gap was and what shape the answer took, and **What
+landed** at the foot of this page is the summary.
 
 ### 1. `grouping-only` — a diagram that is only containment
 
@@ -255,7 +257,7 @@ Done — see above.
 
 ## Says it, and draws it wrong
 
-Four defects, all reproduced.
+Four defects, all reproduced, all fixed.
 
 ### `uniform-box-size`
 
@@ -365,23 +367,40 @@ owner's yes before it is written.
 
 ---
 
-## Suggested order
+## What landed
 
-1. ~~**`sibling-order`**~~ — done, and it was the most-asked item.
-2. **`grouping-only`** (pack an unordered level) — a layout change with no new
-   vocabulary, and it unblocks the `flow` fallback for `matrix-relations`.
-3. **`uniform-box-size`** — round two's A, twice-reported, already measured.
-4. **`category-label-collision`** — the tool committing the failure it exists
-   to prevent. Decide wrap-versus-refuse first.
-5. **`between-stages`**, **`lead-alone`**, **`group-legend-names`** — the three
-   small ones; `lead-alone` needs its scoping decided, not just written.
-6. **`crossing`** (round two's E) and **`cycle-exception`** — both routing.
-7. **`spans`** — the largest, and the one sheet of eighty-nine still
-   undrawable.
-8. **`hub`**, **`matrix-relations`** — new placement behaviour, most work.
+All fourteen items are built. In the order they were done, with what each one
+cost and what it moved:
 
-Colour sits outside the order: it is a theme question, and it wants an answer
-before it wants an implementation.
+| # | Item | What it took |
+|---|---|---|
+| 1 | `sibling-order` | Declaration order as the tie-break, in two places. Also fixed a hash-seed non-determinism. |
+| 2 | `grouping-only` | `pack` — an edgeless level fills rows instead of ranking. Five members: 388 units tall → 206. |
+| 3 | `uniform-box-size` | `normalise` shares the width and not the height. Three reference drawings got shorter. |
+| 4 | `category-label-collision` | Category labels wrap to their own band, and refuse when a word will not fit. |
+| 5 | `between-stages` | A stage takes a `gate`; the divider breaks to let its name through. |
+| 6 | `lead-alone` | The lead question is asked of the peer set, not the label. |
+| 7 | `group-legend-names` | A matrix takes a `key`, one entry per group. |
+| 8 | `crossing` | Nothing — already built. Gained the mesh reference drawing that would have shown it. |
+| 9 | `cycle-exception` | The ring is found by search, so a cycle may carry a shortcut across it. |
+| 10 | `spans` | Named intervals under a timeline axis, in lanes. |
+| 11 | `lone-child-not-aligned` | Isotonic alignment: a box sits under what it hangs from. 852 units of dog-leg → 428. |
+| 12 | `matrix-relations` | A cell takes an `id`; a matrix takes ordinary `edges`. |
+| 13 | `hub` | `centre: true`, and the flow is arranged around it. |
+| 14 | `mark-above-label` | Nothing — already possible. |
+
+Seven reference drawings are new or changed, so every one of these is visible
+in `make gallery` rather than only in a test.
+
+**What is still open**, and named rather than quietly dropped:
+
+* **Sheet 69's spans.** `spans` is built for the timeline. The chart case wants
+  an interval between two *curves*, one horizontal and one vertical, and that
+  is a different placement problem in a different family.
+* **`role-vocabulary`** (round two's H). The guide documents the roles in prose;
+  the per-role drawing it asks for is not there.
+* **Colour.** Below — a theme question, and it wants an answer before it wants
+  an implementation.
 
 ---
 
