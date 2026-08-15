@@ -703,3 +703,48 @@ def test_an_unnamed_divider_is_still_drawn_whole() -> None:
     """A funnel without gates is the funnel it always was."""
     built = funnel(*STAGES, theme=THEME)
     assert len(gates_of(built)) == len(STAGES) - 1
+
+
+# --------------------------------------------------------------------------
+# A name is a name, whether or not it needed explaining
+# --------------------------------------------------------------------------
+
+
+def _weights(built: Scene) -> dict[str, str]:
+    return {
+        span.text: span.weight
+        for item in built.primitives
+        if isinstance(item, TextLine)
+        for span in item.spans
+    }
+
+
+def test_a_bare_ring_name_is_set_like_the_one_that_carries_a_detail() -> None:
+    """Three ring names of the same rank, one of which happens to be explained.
+
+    It used to be the only one in bold, because a lead was decided per label:
+    *Governança* had a second line and *SVS* did not, so the two came out set
+    differently for a reason that is about the explanation rather than about
+    the name.
+    """
+    document = {
+        "version": 1,
+        "kind": "rings",
+        "title": "Governance around the system",
+        "rings": [
+            {"text": "Value chain and practices"},
+            {"text": "SVS"},
+            {"text": "Governance\nevaluate, direct, monitor"},
+        ],
+    }
+    weights = _weights(shape_scene(parse_document(document), THEME, MEASURER))
+    assert weights["Governance"] == "bold"
+    assert weights["SVS"] == "bold"
+    assert weights["Value chain and"] == "bold"
+    assert weights["evaluate, direct,"] == "normal"
+
+
+def test_a_set_with_no_detail_anywhere_is_left_plain() -> None:
+    """The rule only fires when the set has said it is names-and-details."""
+    weights = _weights(funnel(*STAGES, theme=THEME))
+    assert set(weights.values()) == {"normal"}

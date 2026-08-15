@@ -142,6 +142,7 @@ def wrap(
     *,
     theme: Theme,
     level: str = "body",
+    lead: bool | None = None,
 ) -> TextBlock:
     """Break `text` to `max_width` and size the block it makes.
 
@@ -151,6 +152,13 @@ def wrap(
         measurer: measures against the theme's own font stacks.
         theme: supplies the type size for `level` and the line height.
         level: which of the four type levels this text is set at.
+        lead: whether the first paragraph is a lead. `None` asks the text
+            itself — it is a lead when something follows it — which is right
+            for a label standing alone. A caller sizing a *set* of peers passes
+            the answer for the set, so that a bare name among named-and-
+            explained ones is still a name: whether a particular member happens
+            to carry an explanation is incidental, and it should not decide how
+            that member's name is set.
 
     Raises:
         FitError: a run cannot be broken small enough to fit `max_width`.
@@ -170,12 +178,13 @@ def wrap(
     # applies to, and it applies before measurement because a bold word is wider
     # than the same word is not, and a wrapper that could not see that would
     # produce exactly the overflow this module exists to prevent.
-    lead = theme.box.lead == "bold" and len(paragraphs) > 1
+    wanted = len(paragraphs) > 1 if lead is None else lead
+    lead_set = theme.box.lead == "bold" and wanted
     lines: list[Line] = []
     for index, paragraph in enumerate(paragraphs):
         lines.extend(
             _wrap_paragraph(
-                paragraph, max_width, measurer, size, default_font, bold=lead and index == 0
+                paragraph, max_width, measurer, size, default_font, bold=lead_set and index == 0
             )
         )
 

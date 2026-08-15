@@ -34,6 +34,7 @@ of it.
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from typing import Final
 
 from drawspec.errors import DrawspecError, FitError
@@ -182,8 +183,30 @@ def _gate_divider(
     )
 
 
+def _peers_lead(items: Sequence[Item]) -> bool:
+    """Whether this set of peers is a set of names, each with room for a detail.
+
+    One member with a second line used to be the only member set as a name: the
+    three rings of *Governança* / *SVS* / *Cadena de valor i pràctiques* came
+    out with the first in bold and the other two not, because the first happens
+    to carry an explanation under it and they do not. They are three names of
+    the same rank, and whether one of them needed explaining is incidental.
+
+    So the question is asked of the *set*, not of each label — if any member has
+    a lead, every member's first paragraph is one.
+    """
+    return any("\n" in item.text for item in items)
+
+
 def _label(
-    item: Item, theme: Theme, measurer: TextMeasurer, span: float, where: str, why: str
+    item: Item,
+    theme: Theme,
+    measurer: TextMeasurer,
+    span: float,
+    where: str,
+    why: str,
+    *,
+    lead: bool | None = None,
 ) -> Box:
     """Size one label to `span`, or refuse with a message naming what to do."""
     if span <= theme.box.padding.horizontal:
@@ -202,6 +225,7 @@ def _label(
             # The family draws the outline; the text is sized in a plain
             # rectangle inside the span the family worked out for it.
             shape="rect",
+            lead=lead,
         )
     except FitError as error:
         raise FitError(f"{where}: {error} {why}") from None
@@ -239,6 +263,7 @@ def _pyramid(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
             f"pyramid level {index + 1} of {count} ({item.text[:32]!r})",
             "The top level is the narrowest, so it takes the shortest label — "
             "shorten it, use fewer levels, or give the diagram more width.",
+            lead=_peers_lead(levels),
         )
         for index, item in enumerate(levels)
     ]
@@ -394,6 +419,7 @@ def _funnel_down(document: Document, theme: Theme, measurer: TextMeasurer) -> Sc
             f"funnel stage {index + 1} of {count} ({item.text[:32]!r})",
             "The last stage is the narrowest, so it takes the shortest label — "
             "shorten it, use fewer stages, or give the diagram more width.",
+            lead=_peers_lead(stages),
         )
         for index, item in enumerate(stages)
     ]
@@ -471,6 +497,7 @@ def _funnel_right(document: Document, theme: Theme, measurer: TextMeasurer) -> S
             slice_width - theme.box.padding.horizontal,
             f"stage {index + 1} of {count} ({item.text[:32]!r})",
             "Shorten the label, use fewer stages, or give the diagram more width.",
+            lead=_peers_lead(stages),
         )
         for index, item in enumerate(stages)
     ]
@@ -571,7 +598,13 @@ def _rings(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
             # The one label that is centred — it has no band, only its own circle.
             span = _ring_span(radii, index) - theme.box.padding.horizontal
             box = _label(
-                item, theme, measurer, span, f"the innermost ring ({item.text[:32]!r})", ""
+                item,
+                theme,
+                measurer,
+                span,
+                f"the innermost ring ({item.text[:32]!r})",
+                "",
+                lead=_peers_lead(rings),
             )
             placed = box.resized(width=span).moved_to(centre - span / 2, centre - box.height / 2)
             primitives.extend(text_runs(placed, theme, measurer))
@@ -592,6 +625,7 @@ def _rings(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
             f"ring {index + 1} of {count} ({item.text[:32]!r})",
             "An outer ring's band is narrow near the top — shorten the label, use "
             "fewer rings, or give the diagram more width.",
+            lead=_peers_lead(rings),
         )
         if box.height > band - theme.box.padding.vertical:
             raise FitError(

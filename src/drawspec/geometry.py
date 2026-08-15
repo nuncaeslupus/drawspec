@@ -278,6 +278,7 @@ def size_box(
     max_width: float | None = None,
     shape: str | None = None,
     widen: float = 1.0,
+    lead: bool | None = None,
 ) -> Box:
     """Size a box around `text`, derived from measurement and theme padding.
 
@@ -300,6 +301,9 @@ def size_box(
             column, a timeline's share of the axis — because exceeding it there
             is an overlap. A family whose limit is a soft share of the canvas
             passes more; see `MIN_ASPECT`.
+        lead: whether the first paragraph is a lead. `None` asks the text; a
+            caller sizing a set of peers passes the answer for the set. See
+            `drawspec.text.wrap.wrap`.
 
     Raises:
         FitError: the text cannot be broken to fit `max_width`.
@@ -310,7 +314,9 @@ def size_box(
     limit = theme.canvas.width if max_width is None else max_width
 
     def at(width_limit: float) -> Box:
-        block = _wrap_to(text, shape, width_limit, theme=theme, measurer=measurer, level=level)
+        block = _wrap_to(
+            text, shape, width_limit, theme=theme, measurer=measurer, level=level, lead=lead
+        )
         width, height = outer_size(shape, block.width, block.height, theme.box.padding)
         return Box(
             role=role,
@@ -409,6 +415,7 @@ def _wrap_to(
     theme: Theme,
     measurer: TextMeasurer,
     level: str,
+    lead: bool | None = None,
 ) -> TextBlock:
     """Wrap `text` to whatever width `shape` leaves inside a box of `limit`.
 
@@ -433,6 +440,7 @@ def _wrap_to(
             measurer,
             theme=theme,
             level=level,
+            lead=lead,
         )
 
     block = wrap(
@@ -441,6 +449,7 @@ def _wrap_to(
         measurer,
         theme=theme,
         level=level,
+        lead=lead,
     )
     for _ in range(_SHAPE_PASSES):
         candidate = wrap(
@@ -449,6 +458,7 @@ def _wrap_to(
             measurer,
             theme=theme,
             level=level,
+            lead=lead,
         )
         if len(candidate.lines) == len(block.lines):
             return candidate
