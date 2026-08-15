@@ -122,6 +122,17 @@ class LayeredEngine:
         the same barycentre, so it decides the order of every fan in the corpus.
         Ordering them by id put *Alcalde, Comissió de Govern, 10 Districtes* into
         the order their ids happened to sort in, which is no order at all.
+
+        **A node with no neighbour in the reference rank holds its place.** It is
+        not sorted to the end, and this is the half the tie-break alone did not
+        buy. One sibling with a child of its own is enough to break the fan
+        otherwise: on the sweep that looks the other way that sibling has a
+        barycentre and its childless peers do not, a sentinel value sorts it to
+        the front, and *Alcalde, Comissió de Govern, 10 Districtes* comes out
+        *10 Districtes, Alcalde, Comissió de Govern* — in that order whichever
+        order the document declares, so the author's order decides nothing at
+        all. Holding the unattached ones still leaves the barycentre to order
+        exactly the nodes it has evidence about, which is what it is for.
         """
         depth = max(ranks.values(), default=0) + 1
         declared = {node.id: position for position, node in enumerate(nodes)}
@@ -146,13 +157,7 @@ class LayeredEngine:
                         layers[index - 1 if downward else index + 1]
                     )
                 }
-                layers[index] = sorted(
-                    layers[index],
-                    key=lambda identifier: (
-                        _barycentre(neighbours[identifier], reference),
-                        declared[identifier],
-                    ),
-                )
+                layers[index] = _sweep(layers[index], neighbours, reference, declared)
 
         return tuple(tuple(layer) for layer in layers)
 
@@ -300,17 +305,55 @@ def _isotonic(wanted: Sequence[float]) -> list[float]:
     return [mean for mean, count in blocks for _ in range(count)]
 
 
-def _barycentre(neighbours: Sequence[str], reference: dict[str, int]) -> float:
-    """The average position of `neighbours`, or a large value when it has none.
+def _sweep(
+    layer: Sequence[str],
+    neighbours: dict[str, list[str]],
+    reference: dict[str, int],
+    declared: dict[str, int],
+) -> list[str]:
+    """One rank reordered by barycentre, with the unattached nodes held in place.
 
-    A node with no neighbour in the adjacent rank has nothing to be pulled
-    towards, so it sorts after the ones that do. Which of two such nodes comes
-    first is then decided by `_order`'s tie-break — the document's own order —
-    not here.
+    Two groups, and only one of them moves. A node with at least one neighbour in
+    the reference rank has evidence about where it should be, and those are
+    sorted among themselves by `(barycentre, declared)`. A node with none has no
+    evidence at all, so it keeps the index it already holds and the sorted ones
+    fill the slots left over, in order.
+
+    The alternative — a sentinel barycentre that sorts the unattached to one end —
+    is what `_order`'s docstring describes as breaking the fan: it lets a node
+    that happens to have a child reorder the siblings that do not, which is a
+    decision made on the absence of information.
+    """
+    ordered = list(layer)
+    movable = [identifier for identifier in ordered if _attached(identifier, neighbours, reference)]
+    if len(movable) < 2:
+        return ordered
+
+    movable.sort(
+        key=lambda identifier: (
+            _barycentre(neighbours[identifier], reference),
+            declared[identifier],
+        )
+    )
+    slots = [index for index, identifier in enumerate(ordered) if identifier in set(movable)]
+    for slot, identifier in zip(slots, movable, strict=True):
+        ordered[slot] = identifier
+    return ordered
+
+
+def _attached(identifier: str, neighbours: dict[str, list[str]], reference: dict[str, int]) -> bool:
+    """Whether `identifier` has any neighbour in the rank being swept against."""
+    return any(neighbour in reference for neighbour in neighbours[identifier])
+
+
+def _barycentre(neighbours: Sequence[str], reference: dict[str, int]) -> float:
+    """The average position of `neighbours` in the reference rank.
+
+    Only ever called for a node that has at least one — see `_sweep`, which is
+    what decides that a node with none holds its place instead of being given a
+    value here.
     """
     positions = [reference[identifier] for identifier in neighbours if identifier in reference]
-    if not positions:
-        return float(len(reference) + 1)
     return sum(positions) / len(positions)
 
 

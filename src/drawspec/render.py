@@ -10,7 +10,9 @@ design in one place:
    applying it to all four type levels together, and raise `FitError` if there is
    none rather than shrinking past the band or letting text overflow.
 4. **Render** to a `Scene` with whichever family the kind selects.
-5. **Emit**, which is the only place styling happens and therefore the only place
+5. **Clear**: break every stroke that would be drawn through a word, which is the
+   one defect a family cannot see because it only knows its own primitives.
+6. **Emit**, which is the only place styling happens and therefore the only place
    embedding safety is enforced.
 
 Every failure has its own type and is raised as early as it can be detected, so
@@ -25,6 +27,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+from drawspec.clearance import cleared
 from drawspec.emit import emit
 from drawspec.geometry import fit
 from drawspec.kinds import scene_for
@@ -72,7 +75,8 @@ def render_document(
 
     measurer = TextMeasurer(resolved.font.stacks())
     fitted = fit(resolved, lambda scaled: scene_for(document, scaled, measurer))
-    return emit(centred(fitted.value, fitted.theme), fitted.theme, profile)
+    placed = centred(fitted.value, fitted.theme)
+    return emit(cleared(placed, fitted.theme, measurer), fitted.theme, profile)
 
 
 def centred(scene: Scene, theme: Theme) -> Scene:

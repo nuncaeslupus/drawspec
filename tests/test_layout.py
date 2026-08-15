@@ -178,6 +178,37 @@ def test_layout_orders_unconnected_nodes_as_the_document_declares_them() -> None
     assert ENGINE.layout(graph_nodes, []).ranks == (("gamma", "alpha", "beta"),)
 
 
+def test_layout_keeps_sibling_order_when_one_sibling_has_a_child() -> None:
+    """The half the tie-break alone did not buy — five nodes, four edges.
+
+    Three leaf siblings order correctly on the tie above. Give one of them a
+    child and the sweep that looks the other way finds a barycentre for that one
+    and none for its peers; a sentinel value for "no neighbours" then sorted it
+    to the front and took the whole fan with it. The rendered order was
+    *D, A, C* whichever of the two orders the document declared, so the author's
+    order decided nothing.
+    """
+    graph_nodes = nodes("root", "a", "c", "d", "e")
+    graph_edges = edges("root->a", "root->c", "root->d", "d->e")
+    assert ENGINE.layout(graph_nodes, graph_edges).ranks[1] == ("a", "c", "d")
+
+    rewritten = nodes("root", "d", "a", "c", "e")
+    assert ENGINE.layout(rewritten, graph_edges).ranks[1] == ("d", "a", "c")
+
+
+def test_layout_holds_an_unattached_node_in_place_rather_than_at_the_end() -> None:
+    """The mechanism, stated on its own: no neighbours means no opinion.
+
+    `b` has nothing in the rank below, so it neither moves nor pushes. `a` and
+    `c` are ordered by their own barycentres into the slots that are left.
+    """
+    graph_nodes = nodes("top", "a", "b", "c", "x", "y")
+    graph_edges = edges("top->a", "top->b", "top->c", "a->y", "c->x")
+    result = ENGINE.layout(graph_nodes, graph_edges)
+    assert result.ranks[1][1] == "b", "the unattached sibling keeps its declared slot"
+    assert set(result.ranks[1]) == {"a", "b", "c"}
+
+
 def test_layout_still_reorders_a_rank_when_that_removes_a_crossing() -> None:
     """Declaration order is the tie-break, not an override: a barycentre that
     differs still wins, or the ordering pass would do nothing."""
