@@ -204,7 +204,10 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             required=True,
             item_kind="string",
             min_items=1,
-            description="The ids of the nodes this group contains.",
+            description=(
+                "The ids of the nodes this group contains, in the order they are "
+                "meant to read — the members of a container are an ordered set."
+            ),
         ),
     ),
     "item": (
@@ -452,7 +455,12 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             required=True,
             item_ref="node",
             min_items=1,
-            description="The boxes. Order is not position — the layout decides that.",
+            description=(
+                "The boxes. Order is not a coordinate — the layout decides where a "
+                "box goes — but it is the order siblings are drawn in: where nothing "
+                "else separates two boxes of the same rank, they read in the order "
+                "written here."
+            ),
         ),
         FieldSpec(
             "edges",

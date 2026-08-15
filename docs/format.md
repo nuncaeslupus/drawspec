@@ -47,7 +47,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `nodes` | array of [node](#node-object), at least 1 | **yes** | The boxes. Order is not position — the layout decides that. |
+| `nodes` | array of [node](#node-object), at least 1 | **yes** | The boxes. Order is not a coordinate — the layout decides where a box goes — but it is the order siblings are drawn in: where nothing else separates two boxes of the same rank, they read in the order written here. |
 | `edges` | array of [edge](#edge-object) | no | What connects to what. A `tree` takes one edge per child. |
 | `groups` | array of [group](#group-object) | no | Boxes drawn around sets of nodes, each with its own caption. |
 
@@ -134,7 +134,7 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `id` | string | **yes** | Unique within the document. |
 | `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
-| `members` | array of string, at least 1 | **yes** | The ids of the nodes this group contains. |
+| `members` | array of string, at least 1 | **yes** | The ids of the nodes this group contains, in the order they are meant to read — the members of a container are an ordered set. |
 
 ### `item` object
 
