@@ -64,6 +64,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `cells` | array of [cell](#cell-object), at least 1 | **yes** | What is in the grid. A cell states where it starts, not where it is drawn. |
 | `columns` | array of string | no | Column headings, left to right. Omit for a matrix with none. |
 | `rows` | array of string | no | Row headings, top to bottom. |
+| `key` | array of [key](#key-object) | no | What each group of cells is called, for the key drawn under the grid. Without one, a group is announced to the reader under the name the cells use for it — which is fine when that name is a name, and is how an id-shaped key like `carrega` ends up as visible text. |
 
 ### `pyramid`
 
@@ -206,6 +207,13 @@ name, so a misspelt key is an error at the point it was written.
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 | `gate` | string | no | What stands between this stage and the next — the threshold a thing has to pass to get from one to the other, which is what makes a stage-gate model one. Drawn on the divider, which breaks to let it through. The last stage has no next stage, so it may not carry one. |
 | `note` | string | no | A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead. |
+
+### `key` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `group` | string | **yes** | Which group this names. Some cell must belong to it. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 
 ### `axis` object
 

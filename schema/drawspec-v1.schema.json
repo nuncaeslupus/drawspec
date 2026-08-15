@@ -216,6 +216,13 @@
           "items": {
             "type": "string"
           }
+        },
+        "key": {
+          "type": "array",
+          "description": "What each group of cells is called, for the key drawn under the grid. Without one, a group is announced to the reader under the name the cells use for it — which is fine when that name is a name, and is how an id-shaped key like `carrega` ends up as visible text.",
+          "items": {
+            "$ref": "#/$defs/key"
+          }
         }
       },
       "required": [
@@ -850,6 +857,24 @@
         }
       },
       "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "key": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "type": "string",
+          "description": "Which group this names. Some cell must belong to it."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "group",
         "text"
       ],
       "additionalProperties": false

@@ -3,27 +3,128 @@
   "kind": "matrix",
   "title": "How a stripe is laid out across four disks",
   "description": "One row per RAID level, one column per disk. A cell says what that disk holds for one stripe: a block of data, a copy of one, or a parity block computed from the others. The fills say which kind, so the drawing still says it in black and white.",
-  "columns": ["Disk 1", "Disk 2", "Disk 3", "Disk 4"],
-  "rows": ["RAID 0", "RAID 1", "RAID 5", "RAID 6"],
+  "columns": [
+    "Disk 1",
+    "Disk 2",
+    "Disk 3",
+    "Disk 4"
+  ],
+  "rows": [
+    "RAID 0",
+    "RAID 1",
+    "RAID 5",
+    "RAID 6"
+  ],
+  "key": [
+    {
+      "group": "Data",
+      "text": "A block of this stripe's data"
+    },
+    {
+      "group": "Copy",
+      "text": "A copy of a block on another disk"
+    },
+    {
+      "group": "Parity",
+      "text": "Parity, computed from the blocks beside it"
+    }
+  ],
   "cells": [
-    { "text": "A", "column": 0, "row": 0, "group": "Data" },
-    { "text": "B", "column": 1, "row": 0, "group": "Data" },
-    { "text": "C", "column": 2, "row": 0, "group": "Data" },
-    { "text": "D", "column": 3, "row": 0, "group": "Data" },
-
-    { "text": "A", "column": 0, "row": 1, "group": "Data" },
-    { "text": "A", "column": 1, "row": 1, "group": "Copy" },
-    { "text": "B", "column": 2, "row": 1, "group": "Data" },
-    { "text": "B", "column": 3, "row": 1, "group": "Copy" },
-
-    { "text": "A", "column": 0, "row": 2, "group": "Data" },
-    { "text": "B", "column": 1, "row": 2, "group": "Data" },
-    { "text": "C", "column": 2, "row": 2, "group": "Data" },
-    { "text": "P", "column": 3, "row": 2, "group": "Parity" },
-
-    { "text": "A", "column": 0, "row": 3, "group": "Data" },
-    { "text": "B", "column": 1, "row": 3, "group": "Data" },
-    { "text": "P", "column": 2, "row": 3, "group": "Parity" },
-    { "text": "Q", "column": 3, "row": 3, "group": "Parity" }
+    {
+      "text": "A",
+      "column": 0,
+      "row": 0,
+      "group": "Data"
+    },
+    {
+      "text": "B",
+      "column": 1,
+      "row": 0,
+      "group": "Data"
+    },
+    {
+      "text": "C",
+      "column": 2,
+      "row": 0,
+      "group": "Data"
+    },
+    {
+      "text": "D",
+      "column": 3,
+      "row": 0,
+      "group": "Data"
+    },
+    {
+      "text": "A",
+      "column": 0,
+      "row": 1,
+      "group": "Data"
+    },
+    {
+      "text": "A",
+      "column": 1,
+      "row": 1,
+      "group": "Copy"
+    },
+    {
+      "text": "B",
+      "column": 2,
+      "row": 1,
+      "group": "Data"
+    },
+    {
+      "text": "B",
+      "column": 3,
+      "row": 1,
+      "group": "Copy"
+    },
+    {
+      "text": "A",
+      "column": 0,
+      "row": 2,
+      "group": "Data"
+    },
+    {
+      "text": "B",
+      "column": 1,
+      "row": 2,
+      "group": "Data"
+    },
+    {
+      "text": "C",
+      "column": 2,
+      "row": 2,
+      "group": "Data"
+    },
+    {
+      "text": "P",
+      "column": 3,
+      "row": 2,
+      "group": "Parity"
+    },
+    {
+      "text": "A",
+      "column": 0,
+      "row": 3,
+      "group": "Data"
+    },
+    {
+      "text": "B",
+      "column": 1,
+      "row": 3,
+      "group": "Data"
+    },
+    {
+      "text": "P",
+      "column": 2,
+      "row": 3,
+      "group": "Parity"
+    },
+    {
+      "text": "Q",
+      "column": 3,
+      "row": 3,
+      "group": "Parity"
+    }
   ]
 }

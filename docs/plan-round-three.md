@@ -285,13 +285,18 @@ because every option moves existing drawings.
 *Sheets 83, 86.* A cell's `group` key is drawn verbatim as the fill legend, so
 an id-shaped key becomes user-visible text.
 
-**Partly reproduced, and worth a second look before it is fixed.** A matrix of
-nine cells over three groups drew **no legend at all** in the reproduction —
-only the headings and the cell text — so the conditions under which the legend
-appears need pinning down before the naming is changed. The underlying
-complaint stands either way: `group` is documented as *"which group this cell
-belongs to"*, with nothing saying it will be read aloud to the reader. Either
-say so in the docs or give a group a display name.
+**Reproduced, and the report is right.** The first attempt here reported "no
+legend at all" and that was the reproduction's fault, not the code's: legend
+text is a bare `<text>` element and the check only looked at `<tspan>`s. A
+matrix of nine cells over three groups draws `carrega`, `capcalera`,
+`proveïdor` under the grid, verbatim.
+
+`group` is doing two jobs — it is how a cell says *which other cells are like
+me*, which an id does perfectly well, and it is what gets printed under the
+drawing, which an id does badly. A matrix now takes an optional `key`, one
+entry per group, giving it a name meant for reading; the group's own name stays
+the fallback. Naming a group no cell belongs to, or naming one twice, is
+refused with the pointer.
 
 ### `lone-child-not-aligned`
 

@@ -449,7 +449,15 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     # What the fills stand for. A matrix's whole content is a comparison between
     # groups of cells, so a matrix with two groups and no key is a drawing whose
     # subject is undrawn — the original this kind replaces carried one.
-    key = entries_for([(group, "step", True) for group in _named_groups(cells)], theme)
+    #
+    # A group's own name is the fallback and not the intent: `group` is how a
+    # cell says which other cells are like it, and an id-shaped one — `carrega`,
+    # `capcalera` — was being read out to the reader as though it were prose. A
+    # `key` entry gives the group a name meant for reading.
+    named = {entry.group: entry.text for entry in document.key}
+    key = entries_for(
+        [(named.get(group, group), "step", True) for group in _named_groups(cells)], theme
+    )
     primitives.extend(primitives_for(key, theme, measurer, 0.0, tops[-1], width))
     return _scene(document, primitives, width, tops[-1] + height_of(key, theme, measurer, width))
 

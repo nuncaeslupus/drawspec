@@ -326,6 +326,15 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         ),
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
     ),
+    "key": (
+        FieldSpec(
+            "group",
+            "string",
+            required=True,
+            description="Which group this names. Some cell must belong to it.",
+        ),
+        _text(),
+    ),
     "axis": (
         FieldSpec(
             "label",
@@ -516,6 +525,17 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             description="Column headings, left to right. Omit for a matrix with none.",
         ),
         FieldSpec("rows", "array", item_kind="string", description="Row headings, top to bottom."),
+        FieldSpec(
+            "key",
+            "array",
+            item_ref="key",
+            description=(
+                "What each group of cells is called, for the key drawn under the grid. "
+                "Without one, a group is announced to the reader under the name the "
+                "cells use for it — which is fine when that name is a name, and is how "
+                "an id-shaped key like `carrega` ends up as visible text."
+            ),
+        ),
     ),
     ("pyramid",): (
         FieldSpec(
@@ -677,6 +697,14 @@ class Cell:
 
 
 @dataclass(frozen=True)
+class Key:
+    """What one group of cells is called, where a reader can see it."""
+
+    group: str
+    text: str
+
+
+@dataclass(frozen=True)
 class Waypoint:
     """One point on a curve. Named, or there only to shape it."""
 
@@ -751,6 +779,7 @@ class Document:
     cells: tuple[Cell, ...] = ()
     columns: tuple[str, ...] = ()
     rows: tuple[str, ...] = ()
+    key: tuple[Key, ...] = ()
     positions: tuple[Position, ...] = ()
     curves: tuple[Curve, ...] = ()
     axes: tuple[Axis, ...] = ()
@@ -952,6 +981,41 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
 def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
     """The checks JSON Schema cannot express: unique ids, and edges that land."""
     found: list[Violation] = []
+    if kind == "matrix":
+        cells = document.get("cells")
+        entries = document.get("key")
+        if not isinstance(cells, list) or not isinstance(entries, list):
+            return found
+        cell_groups = {
+            str(cell["group"])
+            for cell in cells
+            if isinstance(cell, dict) and isinstance(cell.get("group"), str) and cell["group"]
+        }
+        seen_groups: set[str] = set()
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                continue
+            group = entry.get("group")
+            if not isinstance(group, str):
+                continue
+            if group not in cell_groups:
+                found.append(
+                    Violation(
+                        f"/key/{index}/group",
+                        f"no cell belongs to the group {group!r}, so naming it puts a line "
+                        f"in the key for a fill that is not in the drawing. Groups here: "
+                        f"{', '.join(sorted(cell_groups)) or 'none'}.",
+                    )
+                )
+            elif group in seen_groups:
+                found.append(
+                    Violation(
+                        f"/key/{index}/group",
+                        f"the group {group!r} is named twice. One group, one line in the key.",
+                    )
+                )
+            seen_groups.add(group)
+        return found
     if kind == "funnel":
         stages = document.get("stages")
         if isinstance(stages, list) and stages:
@@ -1123,6 +1187,9 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         ),
         columns=tuple(document.get("columns", ())),
         rows=tuple(document.get("rows", ())),
+        key=tuple(
+            Key(group=entry["group"], text=entry["text"]) for entry in document.get("key", ())
+        ),
         positions=tuple(
             Position(
                 text=entry["text"],

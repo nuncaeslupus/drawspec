@@ -11,6 +11,7 @@ from __future__ import annotations
 import pytest
 
 from drawspec.charts import chart_scene
+from drawspec.errors import DocumentError
 from drawspec.kinds.grid import grid_scene
 from drawspec.legend import Entry, entries_for, height_of, primitives_for
 from drawspec.scene import Path, Polygon, Scene, TextRun
@@ -239,5 +240,61 @@ def test_categories_are_refused_where_the_schema_says_they_may_not_go() -> None:
                 "title": "A flow",
                 "categories": ["one"],
                 "nodes": [{"id": "a", "text": "One"}],
+            }
+        )
+
+
+def test_a_group_can_be_given_a_name_meant_for_reading() -> None:
+    """`group` is how a cell says which other cells are like it, and it was
+    being read out to the reader as though it were prose.
+
+    An id-shaped key — `carrega`, `capcalera` — is a perfectly good way to say
+    *these two cells are the same kind of cell* and a poor thing to print under
+    a drawing. A `key` entry separates the two jobs.
+    """
+    document = parse_document(
+        {
+            "version": 1,
+            "kind": "matrix",
+            "title": "A matrix",
+            "cells": [
+                {"text": "x", "column": 0, "row": 0, "group": "carrega"},
+                {"text": "y", "column": 1, "row": 0, "group": "capcalera"},
+            ],
+            "key": [
+                {"group": "carrega", "text": "You manage it"},
+                {"group": "capcalera", "text": "The provider manages it"},
+            ],
+        }
+    )
+    written = said(grid_scene(document, THEME, MEASURER))
+    assert {"You manage it", "The provider manages it"} <= written
+    assert "carrega" not in written
+
+
+def test_a_key_for_a_group_no_cell_belongs_to_is_refused() -> None:
+    """A line in the key for a fill that is not in the drawing."""
+    with pytest.raises(DocumentError, match="no cell belongs to the group"):
+        parse_document(
+            {
+                "version": 1,
+                "kind": "matrix",
+                "cells": [{"text": "x", "column": 0, "row": 0, "group": "here"}],
+                "key": [{"group": "elsewhere", "text": "Nothing"}],
+            }
+        )
+
+
+def test_naming_one_group_twice_is_refused() -> None:
+    with pytest.raises(DocumentError, match="named twice"):
+        parse_document(
+            {
+                "version": 1,
+                "kind": "matrix",
+                "cells": [{"text": "x", "column": 0, "row": 0, "group": "here"}],
+                "key": [
+                    {"group": "here", "text": "One name"},
+                    {"group": "here", "text": "Another"},
+                ],
             }
         )
