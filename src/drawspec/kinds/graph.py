@@ -46,7 +46,7 @@ from drawspec.kinds.containers import (
     frame_primitives,
     nesting_of,
 )
-from drawspec.layout import Layout, Spacing
+from drawspec.layout import Layout, Placement, Spacing
 from drawspec.routing import (
     Connector,
     Label,
@@ -58,9 +58,10 @@ from drawspec.routing import (
     place_labels,
     route_edges,
 )
-from drawspec.scene import Path, Primitive, Scene, TextRun
-from drawspec.schema import Document
+from drawspec.scene import Path, Primitive, Scene, TextLine, TextSpan
+from drawspec.schema import Band, Document
 from drawspec.text.measure import TextMeasurer
+from drawspec.text.wrap import TextBlock, wrap
 from drawspec.theme import Theme
 
 #: The graph kinds this family draws. `cycle` is the third by the schema and
@@ -107,11 +108,24 @@ class BandBar:
     The name sits *beside* the bar rather than on it, on the far side from the
     drawing. A gate breaks its divider to let its name through because a gate's
     name belongs to the threshold itself; a band's name belongs to the whole
-    length of it, and outside is where there is room for the words at any length.
+    length of it, and outside is where there is room for the words.
+
+    Room for the words, and no more: the name is broken to the **length of its
+    own bar**, which is the same promise the bar itself makes. A band says *this
+    runs alongside these boxes*, so a name that ran past the last of them would
+    be claiming boxes the band does not have; and one that ran past the canvas —
+    which is what an unbroken name did — would not be on the page at all.
+
+    `label_x` and `label_y` anchor the wrapped block rather than a baseline: the
+    block's top and centre for a bar drawn across the page, its left edge and
+    centre for one drawn down it. `block` is what makes the extent knowable, and
+    the extent is what `_framed` needs — a canvas measured from an anchor point
+    is a canvas that clips every word around it.
     """
 
     text: str
     points: tuple[tuple[float, float], ...]
+    block: TextBlock
     label_x: float
     label_y: float
     rotate: float = 0.0
@@ -122,6 +136,28 @@ class BandBar:
             points=tuple((x + dx, y + dy) for x, y in self.points),
             label_x=self.label_x + dx,
             label_y=self.label_y + dy,
+        )
+
+    @property
+    def label_box(self) -> tuple[float, float, float, float]:
+        """The name's bounds — left, top, right, bottom — after any rotation.
+
+        Turned a quarter turn, a block's *height* is what it takes across the
+        page and its *width* is what it takes down it, which is the swap a
+        canvas sized from the unrotated block would get backwards.
+        """
+        if self.rotate:
+            return (
+                self.label_x,
+                self.label_y - self.block.width / 2,
+                self.label_x + self.block.height,
+                self.label_y + self.block.width / 2,
+            )
+        return (
+            self.label_x - self.block.width / 2,
+            self.label_y,
+            self.label_x + self.block.width / 2,
+            self.label_y + self.block.height,
         )
 
 
@@ -322,45 +358,45 @@ def _bands(
     places = layout.placements
     across = layout.direction == "right"
     gap = theme.box.padding.horizontal
-    size = theme.scale["label"]
-    line = measurer.measure("0", theme.font.default, size)
-    # One band's whole claim on the cross axis: the bar, the gap to its name, and
-    # the name. Every band gets the same, so two on opposite sides are symmetric.
-    step = gap + line.height + gap
 
     everything = list(places.values())
     near = min((place.y if across else place.x) for place in everything)
     far = max((place.bottom if across else place.right) for place in everything)
 
+    spans = [_band_span(band, places, across) for band in document.bands]
+    blocks = [
+        _band_name(band, finish - start, theme, measurer)
+        for band, (start, finish) in zip(document.bands, spans, strict=True)
+    ]
+    # One band's whole claim on the cross axis: the gap to its name, and the name.
+    # Taken from the tallest name rather than from each, so two bands on opposite
+    # sides sit the same distance out and read as the peers they are.
+    step = gap + max(block.height for block in blocks) + gap
+
     bars: list[BandBar] = []
-    for index, band in enumerate(document.bands):
-        members = [places[member] for member in band.members if member in places]
-        if not members:
-            raise DrawspecError(
-                f"the band {band.text[:32]!r} names no box that this drawing placed, so "
-                f"there is nothing for it to run alongside. Give it members that are "
-                f"nodes of this document."
-            )
-        start = min((place.x if across else place.y) for place in members)
-        finish = max((place.right if across else place.bottom) for place in members)
+    for index, (band, (start, finish), block) in enumerate(
+        zip(document.bands, spans, blocks, strict=True)
+    ):
         # Outward: even-numbered bands on the near side, odd on the far side, each
         # pair a step further out than the last.
         rank = index // 2
         outward = gap + rank * step
-        cross = near - outward if index % 2 == 0 else far + outward
+        near_side = index % 2 == 0
+        cross = near - outward if near_side else far + outward
         middle = (start + finish) / 2
         # The name goes on the far side of the bar from the drawing, so a longer
-        # name never reaches back over the boxes.
-        away = gap + line.ascent
-        text_at = cross - away if index % 2 == 0 else cross + away
+        # name never reaches back over the boxes. On the near side the block grows
+        # away from the drawing too, so it is its *far* edge that sits at the gap.
+        block_at = cross - gap - block.height if near_side else cross + gap
 
         if across:
             bars.append(
                 BandBar(
                     text=band.text,
                     points=((start, cross), (finish, cross)),
+                    block=block,
                     label_x=middle,
-                    label_y=text_at,
+                    label_y=block_at,
                 )
             )
         else:
@@ -368,7 +404,8 @@ def _bands(
                 BandBar(
                     text=band.text,
                     points=((cross, start), (cross, finish)),
-                    label_x=text_at,
+                    block=block,
+                    label_x=block_at,
                     label_y=middle,
                     rotate=-90.0,
                 )
@@ -376,21 +413,77 @@ def _bands(
     return tuple(bars)
 
 
+def _band_span(band: Band, places: Mapping[str, Placement], across: bool) -> tuple[float, float]:
+    """Where one band's bar starts and finishes along the reading direction.
+
+    Raises:
+        DrawspecError: the band names no member that was placed. Every id is
+            checked against the document at parse time, so this is the empty-band
+            case rather than a typo, and it is refused rather than drawn as a bar
+            of no length beside nothing.
+    """
+    members = [places[member] for member in band.members if member in places]
+    if not members:
+        raise DrawspecError(
+            f"the band {band.text[:32]!r} names no box that this drawing placed, so "
+            f"there is nothing for it to run alongside. Give it members that are "
+            f"nodes of this document."
+        )
+    start = min((place.x if across else place.y) for place in members)
+    finish = max((place.right if across else place.bottom) for place in members)
+    return start, finish
+
+
+def _band_name(band: Band, length: float, theme: Theme, measurer: TextMeasurer) -> TextBlock:
+    """A band's name, broken to the length of its own bar.
+
+    The band name was the last text field that skipped the wrapper, and it kept
+    none of a text field's promises for it: `**bold**` went out with its asterisks
+    showing, a second paragraph was flattened into the first, and — because an
+    unbroken name has no width anyone measured — a long one was drawn straight off
+    the canvas and simply not there. A name of eighty characters beside a
+    two-box chain lost sixty per cent of itself that way, silently.
+
+    Raises:
+        FitError: a single word in the name is longer than the bar. Named as the
+            band, because the diagram was fine and the name was not, and the
+            author should be told which of the two to shorten.
+    """
+    try:
+        return wrap(band.text, length, measurer, theme=theme, level="label")
+    except FitError as error:
+        raise FitError(
+            f"the band name {band.text[:40]!r} does not fit the "
+            f"{length:.0f} units its members span: {error}"
+        ) from None
+
+
 def band_primitives(bar: BandBar, theme: Theme) -> tuple[Primitive, ...]:
-    """A band's bar and its name."""
-    return (
-        Path(BAND_ROLE, points=bar.points),
-        TextRun(
+    """A band's bar and its name, one `TextLine` per wrapped line.
+
+    A quarter turn swaps which of the block's two axes is which: the lines still
+    advance down the block, but *down the block* is across the page, so a line's
+    baseline offset is added to x rather than to y.
+    """
+    del theme  # the name's type comes from its role, like every other text run's
+    lines = tuple(
+        TextLine(
             BAND_TEXT_ROLE,
-            x=bar.label_x,
-            y=bar.label_y,
-            text=bar.text,
+            x=bar.label_x + (bar.block.baseline(index) if bar.rotate else 0.0),
+            y=bar.label_y + (0.0 if bar.rotate else bar.block.baseline(index)),
+            spans=tuple(
+                TextSpan(text=span.text, font=span.font, weight=span.weight)
+                for span in line.spans
+                if span.text
+            ),
             level="label",
-            font=theme.font.default,
             anchor="middle",
             rotate=bar.rotate,
-        ),
+        )
+        for index, line in enumerate(bar.block.lines)
+        if line.spans
     )
+    return (Path(BAND_ROLE, points=bar.points), *lines)
 
 
 def _spacing(theme: Theme) -> Spacing:
@@ -493,8 +586,11 @@ def _framed(
     for bar in bands:
         xs += [point[0] for point in bar.points]
         ys += [point[1] for point in bar.points]
-        xs.append(bar.label_x)
-        ys.append(bar.label_y)
+        # The name's whole box, not its anchor. Measured from the anchor alone,
+        # the canvas ended where the words began and drew the rest off the page.
+        left, top, right, bottom = bar.label_box
+        xs += [left, right]
+        ys += [top, bottom]
 
     offset_x = margin - min(xs, default=0.0)
     offset_y = margin - min(ys, default=0.0)

@@ -20,6 +20,7 @@ from dataclasses import replace
 from itertools import pairwise
 
 import pytest
+from clipping import clipped
 from spike_layout import REFERENCE_DIR
 
 from drawspec import render
@@ -419,3 +420,63 @@ def test_a_band_runs_along_the_reading_direction_whichever_it_is() -> None:
     (turned,) = across.bands
     assert turned.points[0][1] == turned.points[-1][1], "reading across, the bar is horizontal"
     assert turned.rotate == 0.0
+
+
+#: Long enough that it cannot sit on one line beside a three-box chain, which is
+#: the case that used to be drawn straight off the canvas.
+LONG_NAME = (
+    "Comunicació permanent amb la persona interessada durant tot el procediment administratiu"
+)
+
+
+def test_a_band_name_is_broken_to_the_length_of_its_own_bar() -> None:
+    """The name was the last text field that skipped the wrapper.
+
+    Unbroken and unmeasured, a name longer than the drawing was drawn past the
+    canvas — present in the markup, absent from the page. It now wraps to the bar,
+    which is the same extent the bar itself claims.
+    """
+    (bar,) = _band_drawing(_banded(LONG_NAME, **ACROSS)).bands
+    length = abs(bar.points[-1][0] - bar.points[0][0])
+
+    assert len(bar.block) > 1, "a name this long cannot sit on one line"
+    assert bar.block.width <= length, "and it is broken to the bar, not to the canvas"
+
+
+def test_a_band_name_stays_inside_the_canvas_in_either_direction() -> None:
+    """The defect itself, measured where it showed: 63% of the name was outside.
+
+    Down the page the name is turned a quarter turn, so it is long in the
+    direction the canvas is short — which is why that arrangement lost the most.
+    """
+    for extra in ({}, {**ACROSS, "height": 200}):
+        found = clipped(render(_banded(LONG_NAME, **extra), profile="standalone"))
+        assert found == [], "\n".join(str(item) for item in found)
+
+
+def test_a_band_name_keeps_the_promises_of_a_text_field() -> None:
+    """`**bold**` used to go out with its asterisks showing, exactly as a span's
+    name did before it was made to wrap."""
+    svg = render(_banded("**RPO** i `codi`"))
+
+    assert "**" not in svg and "`" not in svg
+    assert '<tspan font-weight="bold">RPO</tspan>' in svg
+
+
+def test_a_band_name_with_a_word_longer_than_its_bar_is_refused_by_name() -> None:
+    """Named as the band: the diagram was fine and the name was not."""
+    with pytest.raises(FitError, match="the band name"):
+        render(_banded("Responsabilitat" * 8, **ACROSS))
+
+
+def test_two_bands_sit_the_same_distance_out_whatever_their_names() -> None:
+    """Peers by construction, so a two-line name may not push one bar further out
+    than the other — that would draw one as the outer of the two."""
+    built = _band_drawing(_banded(LONG_NAME, "Short", **{**ACROSS, "height": 200}))
+    first, second = built.bands
+    boxes = list(built.boxes.values())
+    near = min(box.y for box in boxes)
+    far = max(box.y + box.height for box in boxes)
+    cross = 1 if first.rotate == 0.0 else 0
+
+    assert near - first.points[0][cross] == pytest.approx(second.points[0][cross] - far)
