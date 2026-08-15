@@ -230,7 +230,9 @@ claude-arsenal/session/host_branch
 # The opos schemas this project exists to replace. Study material, not source.
 originals/
 
-# The comparison page is built from `docs/corpus/*.json` by `make compare`, and
-# its left-hand column embeds the gitignored originals — so the page itself is
-# not source either. The documents are.
-docs/corpus/index.html
+# The corpus redraws, and the page built from them. These are the opos project's
+# diagrams rendered through drawspec: material belonging to the consumer, kept
+# locally so `make compare` can put old and new side by side, but not this
+# repository's source. The reference documents in `docs/reference` are what
+# drawspec ships as its own examples.
+docs/corpus/
