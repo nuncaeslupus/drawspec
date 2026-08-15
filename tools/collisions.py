@@ -70,6 +70,15 @@ class Box:
 
 
 @dataclass(frozen=True)
+class Segment:
+    """One stroked line segment, and how far its paint reaches from the centreline."""
+
+    start: tuple[float, float]
+    finish: tuple[float, float]
+    reach: float
+
+
+@dataclass(frozen=True)
 class Collision:
     """A stroke crossing a word, or a word crossing a word."""
 
@@ -162,12 +171,20 @@ def _runs(element: ET.Element) -> list[tuple[str, str]]:
     return [(text, weight) for text, weight in runs if text]
 
 
-def _segments(root: ET.Element) -> Iterator[tuple[tuple[float, float], tuple[float, float]]]:
-    """Every stroked line segment: paths, polygons and rect outlines."""
+def _segments(root: ET.Element) -> Iterator[Segment]:
+    """Every stroked line segment: paths, polygons and rect outlines.
+
+    Each carries half its own `stroke-width`, because a stroke is paint around a
+    centreline and it is the paint that lands on the word. A 2.5-unit `strong`
+    edge reaches 1.25 units either side of the geometry in the `d` attribute, so
+    a checker that samples the centreline alone reports a clean drawing where a
+    reader sees ink through a letter.
+    """
     for element in root.iter():
         tag = _local(element.tag)
         if element.get("stroke", "none") == "none":
             continue
+        reach = _number(element.get("stroke-width"), 1.0) / 2
         if tag == "path":
             subpaths = _path_points(element.get("d", ""))
         elif tag in ("polygon", "polyline"):
@@ -180,7 +197,7 @@ def _segments(root: ET.Element) -> Iterator[tuple[tuple[float, float], tuple[flo
         for points in subpaths:
             for start, finish in pairwise(points):
                 if start != finish:
-                    yield start, finish
+                    yield Segment(start, finish, reach)
 
 
 def _path_points(data: str) -> list[list[tuple[float, float]]]:
@@ -219,21 +236,27 @@ def _rect_points(element: ET.Element) -> list[tuple[float, float]]:
     return [(x, y), (x + width, y), (x + width, y + height), (x, y + height), (x, y)]
 
 
-def _crosses(
-    box: Box, start: tuple[float, float], finish: tuple[float, float]
-) -> tuple[float, float] | None:
-    """Where `start`-`finish` enters `box`, walking the segment at 0.5-unit steps.
+def _crosses(box: Box, segment: Segment) -> tuple[float, float] | None:
+    """Where `segment`'s paint enters `box`, walking it at 0.5-unit steps.
 
     Half a unit is finer than any glyph is wide, so a stroke that passes through
-    a word cannot step over it.
+    a word cannot step over it. The box is grown by the segment's own reach rather
+    than the segment thickened, which is the same test and one rectangle cheaper.
     """
-    (x0, y0), (x1, y1) = start, finish
+    (x0, y0), (x1, y1) = segment.start, segment.finish
+    grown = Box(
+        text=box.text,
+        x0=box.x0 - segment.reach,
+        y0=box.y0 - segment.reach,
+        x1=box.x1 + segment.reach,
+        y1=box.y1 + segment.reach,
+    )
     length = max(abs(x1 - x0), abs(y1 - y0))
     steps = max(int(length / 0.5), 1)
     for step in range(steps + 1):
         ratio = step / steps
         x, y = x0 + (x1 - x0) * ratio, y0 + (y1 - y0) * ratio
-        if box.contains(x, y):
+        if grown.contains(x, y):
             return (x, y)
     return None
 
@@ -245,8 +268,8 @@ def collisions(svg: str, *, search_paths: Sequence[Path] | None = None) -> list[
     found: list[Collision] = []
     segments = list(_segments(root))
     for box in boxes:
-        for start, finish in segments:
-            at = _crosses(box, start, finish)
+        for segment in segments:
+            at = _crosses(box, segment)
             if at is not None:
                 found.append(Collision("stroke", box.text, "", at))
                 break

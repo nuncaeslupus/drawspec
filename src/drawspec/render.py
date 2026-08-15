@@ -29,6 +29,7 @@ from typing import Any
 
 from drawspec.clearance import cleared
 from drawspec.emit import emit
+from drawspec.errors import FitError
 from drawspec.geometry import fit
 from drawspec.kinds import scene_for
 from drawspec.scene import Scene, moved
@@ -74,9 +75,42 @@ def render_document(
         resolved = replace(resolved, canvas=replace(resolved.canvas, width=document.width))
 
     measurer = TextMeasurer(resolved.font.stacks())
-    fitted = fit(resolved, lambda scaled: scene_for(document, scaled, measurer))
+    fitted = fit(
+        resolved,
+        lambda scaled: _within_height(scene_for(document, scaled, measurer), document),
+    )
     placed = centred(fitted.value, fitted.theme)
     return emit(cleared(placed, fitted.theme, measurer), fitted.theme, profile)
+
+
+def _within_height(scene: Scene, document: Document) -> Scene:
+    """`scene`, or a `FitError` when a binding height is not met.
+
+    This is what makes `height_binding` bind. The field was parsed, documented as
+    "makes height a constraint rather than a hint", and then read by nothing at
+    all: a four-node flow asking for `height: 80` came back 340 units tall, exit
+    0, no refusal — the third outcome the format page promises never to produce.
+
+    It is enforced here rather than in each family because the answer is the same
+    for all of them, and because *here* is where the lever already exists: raising
+    `FitError` inside the fit loop makes the elastic fit try a smaller type scale
+    and then refuse, which is what a constraint on a rendered size means. A family
+    doing its own checking would have to reimplement that, and six of the kinds
+    would have forgotten to.
+
+    `height` on its own stays advisory, which is what it says. Only the chart
+    kinds read it as a plot height, and none of them treated it as a ceiling.
+    """
+    if not document.height_binding or not document.height:
+        return scene
+    if scene.height > document.height:
+        raise FitError(
+            f"this drawing is {scene.height:.0f} units tall and `height_binding` asks "
+            f"for {document.height:.0f}. Give it more height, drop `height_binding` to "
+            f"make the height advisory again, or restructure the diagram — usually "
+            f"fewer ranks, or a wider canvas so each rank holds more."
+        )
+    return scene
 
 
 def centred(scene: Scene, theme: Theme) -> Scene:

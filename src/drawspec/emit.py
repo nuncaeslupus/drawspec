@@ -204,7 +204,12 @@ def _fill_paint(
 
 
 def _stroke_attributes(
-    role: NodeRole | EdgeRole, theme: Theme, profile: str, *, solid: bool = False
+    role: NodeRole | EdgeRole,
+    theme: Theme,
+    profile: str,
+    *,
+    solid: bool = False,
+    started_at: float = 0.0,
 ) -> list[tuple[str, str]]:
     """`solid` drops the dash: an end treatment is a mark, not a length of line.
 
@@ -212,6 +217,13 @@ def _stroke_attributes(
     head-length long — so the pattern chops the head into pieces and a `weak`
     edge arrives with four disconnected marks where its arrow should be. The head
     says *which way*, and it has to be whole to say it.
+
+    `started_at` continues that rhythm across a break. A dash pattern restarts at
+    the beginning of every `<path>`, so a dashed line the clearance pass cut into
+    three to let a label through came out as three separate rhythms. Offsetting
+    each piece by how far along the original stroke it began makes the dashes
+    after the gap fall where they would have fallen without it — see
+    `Path.started_at`.
     """
     attributes = [
         ("stroke", _resolve(role.stroke, theme, profile)),
@@ -219,6 +231,8 @@ def _stroke_attributes(
     ]
     if role.dash != "none" and not solid:
         attributes.append(("stroke-dasharray", role.dash))
+        if started_at:
+            attributes.append(("stroke-dashoffset", format_number(started_at)))
     return attributes
 
 
@@ -239,7 +253,11 @@ def _shape_attributes(
         if isinstance(primitive, Polygon) or (isinstance(primitive, Path) and primitive.closed):
             return [("fill", _resolve(role.stroke, theme, profile)), ("stroke", "none")]
         head = isinstance(primitive, Path) and primitive.marker
-        return [("fill", "none"), *_stroke_attributes(role, theme, profile, solid=head)]
+        offset = primitive.started_at if isinstance(primitive, Path) else 0.0
+        return [
+            ("fill", "none"),
+            *_stroke_attributes(role, theme, profile, solid=head, started_at=offset),
+        ]
     fill = (
         "fill",
         _fill_paint(

@@ -329,13 +329,16 @@ def _sweep(
     if len(movable) < 2:
         return ordered
 
+    # Built once, not once per node in the rank: inside the comprehension this
+    # is a fresh set per element, and a rank has no declared upper bound.
+    attached = set(movable)
+    slots = [index for index, identifier in enumerate(ordered) if identifier in attached]
     movable.sort(
         key=lambda identifier: (
             _barycentre(neighbours[identifier], reference),
             declared[identifier],
         )
     )
-    slots = [index for index, identifier in enumerate(ordered) if identifier in set(movable)]
     for slot, identifier in zip(slots, movable, strict=True):
         ordered[slot] = identifier
     return ordered

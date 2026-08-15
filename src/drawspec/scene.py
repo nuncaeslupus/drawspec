@@ -117,6 +117,19 @@ class Path(Primitive):
 
     points: tuple[tuple[float, float], ...] = ()
     closed: bool = False
+    started_at: float = 0.0
+    """How far along the stroke this path *began*, when it is a piece of a longer one.
+
+    Not styling — a length, in user units, and the only thing that lets a broken
+    stroke keep one rhythm. `drawspec.clearance` cuts a dashed line into pieces to
+    let a label through, and SVG restarts a dash pattern at the start of every
+    `<path>`: three pieces of one dashed curve come out as three fresh dash
+    cycles, so the dashes either side of a gap no longer line up with the ones
+    before it and the line reads as several lines. The emitter turns this into the
+    dash offset that continues the pattern instead. Zero — an unbroken stroke, or
+    the first piece of one — emits nothing.
+    """
+
     marker: bool = False
     """Whether this path is an end treatment rather than a length of line.
 

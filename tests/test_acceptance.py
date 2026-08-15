@@ -247,6 +247,41 @@ def test_the_ink_width_mode_leaves_a_narrow_diagram_alone() -> None:
     assert centred(drawn, theme) is drawn
 
 
+# --------------------------------------------------------------------------
+# A binding height binds
+# --------------------------------------------------------------------------
+
+_TALL: Final = {
+    "version": 1,
+    "kind": "flow",
+    "title": "four ranks",
+    "nodes": [{"id": letter, "text": letter.upper()} for letter in "abcd"],
+    "edges": [{"from": "a", "to": "b"}, {"from": "b", "to": "c"}, {"from": "c", "to": "d"}],
+}
+
+
+def test_a_binding_height_that_cannot_be_met_is_refused() -> None:
+    """`height_binding` was parsed, documented as a constraint, and read by nothing.
+
+    A four-node flow asking for eighty units came back three hundred and thirty
+    tall, exit 0, no refusal — the third outcome the format page promises never to
+    produce. The refusal now names the height it got and the height it was asked
+    for.
+    """
+    with pytest.raises(FitError, match="height_binding"):
+        render({**_TALL, "height": 80, "height_binding": True})
+
+
+def test_a_binding_height_that_can_be_met_draws() -> None:
+    """A constraint, not a ban: the same document inside a height it fits renders."""
+    assert "<svg" in render({**_TALL, "height": 400, "height_binding": True})
+
+
+def test_a_height_without_the_binding_flag_stays_advisory() -> None:
+    """Which is what `height` says of itself, and what every kind but the charts did."""
+    assert "<svg" in render({**_TALL, "height": 80})
+
+
 @pytest.mark.parametrize("name", FIXTURES)
 def test_every_kind_sets_its_text_at_the_same_level(name: str) -> None:
     """One type size for the text inside a shape, whatever kind the shape is.

@@ -757,6 +757,38 @@ def test_a_curve_refuses_two_axis_marks_that_would_overlap() -> None:
         )
 
 
+def test_a_curve_refuses_vertical_axis_marks_that_would_overlap() -> None:
+    """The vertical axis gets the same two checks as the horizontal one.
+
+    Not symmetry for its own sake: `up` maps values to pixels downwards, so a set
+    of names a reader would call adjacent lands in the opposite order, and enough
+    of them on a short axis stack exactly as two long names do side by side.
+    """
+    with pytest.raises(FitError, match="overlap"):
+        curve(
+            STRAIGHT,
+            axes={
+                "horizontal": {"label": "Temps"},
+                "vertical": {
+                    "label": "Nivell",
+                    "categories": [f"place {index}" for index in range(40)],
+                },
+            },
+        )
+
+
+def test_a_curve_draws_vertical_axis_marks_when_they_fit() -> None:
+    """The check is a refusal for the bad case, not a ban on the field."""
+    built = curve(
+        STRAIGHT,
+        axes={
+            "horizontal": {"label": "Temps"},
+            "vertical": {"label": "Nivell", "categories": ["baix", "alt"]},
+        },
+    )
+    assert {"baix", "alt"} <= {run.text for run in texts(built)}
+
+
 def test_only_named_waypoints_are_marked() -> None:
     """The rest are there to shape the curve, not to be read."""
     waypoints = HYPE["waypoints"]

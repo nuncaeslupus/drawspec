@@ -1383,6 +1383,7 @@ def _curve(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
             tick,
             gap,
             width,
+            height,
             theme,
             measurer,
         )
@@ -1432,6 +1433,7 @@ def _curve_mark_primitives(
     tick: float,
     gap: float,
     width: float,
+    height: float,
     theme: Theme,
     measurer: TextMeasurer,
 ) -> tuple[Primitive, ...]:
@@ -1451,7 +1453,7 @@ def _curve_mark_primitives(
     line = measurer.measure("0", theme.font.default, size)
     primitives: list[Primitive] = []
 
-    edges: list[tuple[float, float, str]] = []
+    across_edges: list[tuple[float, float, str]] = []
     for value, text in across_names:
         x = across.to_pixels(value)
         extents = measurer.measure(text, theme.font.default, size)
@@ -1467,39 +1469,62 @@ def _curve_mark_primitives(
                 anchor="middle",
             )
         )
-        edges.append((x - extents.width / 2, x + extents.width / 2, text))
+        across_edges.append((x - extents.width / 2, x + extents.width / 2, text))
 
-    for start, finish, text in edges:
-        over = max(-start, finish - width)
-        if over > 0:
-            raise FitError(
-                f"the axis mark {text!r} needs {over:.0f} units past the edge of a "
-                f"{width:.0f}-unit diagram to be centred on the place it names. Give the "
-                f"diagram more width, or shorten it."
-            )
-    for (_, right, first), (following, _, second) in pairwise(sorted(edges)):
-        if following < right:
-            raise FitError(
-                f"the axis marks {first!r} and {second!r} overlap by "
-                f"{right - following:.0f} units. Give the diagram more width, shorten "
-                f"them, or name fewer places on the axis."
-            )
-
+    up_edges: list[tuple[float, float, str]] = []
     for value, text in up_names:
         y = up.to_pixels(value)
+        baseline = y + (line.ascent - line.descent) / 2
         primitives.append(Path(AXIS_ROLE, points=((left - tick, y), (left, y))))
         primitives.append(
             TextRun(
                 FURNITURE_ROLE,
                 x=left - tick - gap,
-                y=y + (line.ascent - line.descent) / 2,
+                y=baseline,
                 text=text,
                 level="label",
                 font=theme.font.default,
                 anchor="end",
             )
         )
+        up_edges.append((baseline - line.ascent, baseline + line.descent, text))
+
+    # Both axes, the same two checks. The vertical one is not a symmetry for its
+    # own sake: `up` maps values to pixels *downwards*, so two categories a
+    # reader would call adjacent are adjacent in the opposite order, and a pair
+    # of names close together on a short axis stack on each other exactly as two
+    # long names do side by side.
+    _refuse_bad_marks(across_edges, width, "width", "shorten them")
+    _refuse_bad_marks(up_edges, height, "height", "shorten them")
     return tuple(primitives)
+
+
+def _refuse_bad_marks(
+    edges: Sequence[tuple[float, float, str]], extent: float, axis: str, remedy: str
+) -> None:
+    """Refuse any mark that leaves the sheet, or any pair that overlaps.
+
+    `edges` are `(near, far, name)` along the direction the marks are spread in —
+    left-to-right for the horizontal axis, top-to-bottom for the vertical one.
+
+    Raises:
+        FitError: naming the mark and the shortfall in units.
+    """
+    for near, far, text in edges:
+        over = max(-near, far - extent)
+        if over > 0:
+            raise FitError(
+                f"the axis mark {text!r} needs {over:.0f} units past the edge of a "
+                f"{extent:.0f}-unit {axis} to be centred on the place it names. Give the "
+                f"diagram more {axis}, or shorten it."
+            )
+    for (_, far, first), (following, _, second) in pairwise(sorted(edges)):
+        if following < far:
+            raise FitError(
+                f"the axis marks {first!r} and {second!r} overlap by "
+                f"{far - following:.0f} units. Give the diagram more {axis}, {remedy}, "
+                f"or name fewer places on the axis."
+            )
 
 
 def _curve_spans(

@@ -177,14 +177,13 @@ def _validate(arguments: argparse.Namespace) -> int:
     kind, a layout, a fit or the emitter makes is now on this path, and there is
     no list of them here to fall out of step with the ones that exist.
 
-    A theme is loaded when one is named, because a theme that will not load is a
-    reason this document cannot be rendered, and finding that out at validation
-    time is the whole point of validating.
+    A named theme is checked too, because a theme that will not load is a reason
+    this document cannot be rendered — but it is not loaded twice: `render_document`
+    resolves and loads whatever theme it is handed, so passing the name through is
+    the whole of it.
     """
     try:
         document = load_document(arguments.document)
-        if arguments.theme:
-            load_theme(arguments.theme)
         render_document(document, arguments.theme or None)
     except DocumentError as error:
         return _refuse(error)
