@@ -383,6 +383,14 @@ def _text_line_element(line: TextLine, theme: Theme, profile: str) -> str:
     ]
     if line.anchor != "start":
         attributes.append(("text-anchor", line.anchor))
+    if line.rotate:
+        attributes.append(
+            (
+                "transform",
+                f"rotate({format_number(line.rotate)} "
+                f"{format_number(line.x)} {format_number(line.y)})",
+            )
+        )
 
     spans = []
     for span in line.spans:

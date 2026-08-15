@@ -155,6 +155,7 @@ has.
 | `docs/brief.md` | The originating brief: the problem, the measured failure taxonomy, the acceptance tests |
 | `docs/theme-requirements.md` | A real consumer's style rules — the worked example of what a theme must express |
 | `docs/plan-round-three.md` | What a consumer's corpus could not express, checked against the code, sized and ordered |
+| `docs/plan-round-five.md` | The round that came from looking at the drawings rather than from a report — and the two checkers it left behind |
 | `corpus/` | 87 anonymized LLM-written diagrams and their measurements, as evidence |
 | `docs/reference/` | One document per kind — the examples, and what the gallery and the acceptance suite both render |
 | `docs/gallery/` | The rendered gallery: `make gallery` writes it, and it is committed so a diff shows what a change did to the pictures |

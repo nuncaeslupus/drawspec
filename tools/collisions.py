@@ -123,6 +123,65 @@ def _stack(family: str | None) -> tuple[str, ...]:
     return tuple(names) or ("sans-serif",)
 
 
+class Measurers:
+    """One `TextMeasurer` per distinct font stack, built once and reused.
+
+    A measurer resolves its stacks on construction and caches the faces it loads
+    on the instance, so building one per `<text>` throws that cache away on every
+    label. Keyed by the stack because a mixed line needs two of them: the run set
+    inside one `<text>` may name a second family, and it is the run's own family
+    that has to do the measuring.
+    """
+
+    def __init__(self, search_paths: Sequence[Path] | None = None) -> None:
+        self._search_paths = search_paths
+        self._built: dict[tuple[str, ...], TextMeasurer] = {}
+
+    def of(self, stack: tuple[str, ...]) -> TextMeasurer:
+        if stack not in self._built:
+            self._built[stack] = TextMeasurer({"sans": stack}, search_paths=self._search_paths)
+        return self._built[stack]
+
+
+def line_box(element: ET.Element, measurers: Measurers) -> tuple[str, float, float, float, float]:
+    """One `<text>` as its text and its measured line box, before any transform.
+
+    Each run is measured in **its own** family and weight, not the element's. A
+    `` `code` `` span is emitted as a `<tspan>` carrying a monospace
+    `font-family`, and monospace is the wider face: measured as the parent's sans,
+    a twenty-six character identifier came out 124 units where it is really 156 —
+    a fifth of it unaccounted for, which is a box too small in exactly the
+    direction that hides an overflow.
+
+    The line's ascent and descent are the deepest of its runs, for the same
+    reason: a line is as tall as the tallest thing on it.
+    """
+    size = _number(element.get("font-size"), 11.0)
+    outer = _stack(element.get("font-family"))
+    runs = _runs(element, outer)
+    text = "".join(run for run, _, _ in runs)
+    if not runs or not text.strip():
+        return "", 0.0, 0.0, 0.0, 0.0
+
+    width = sum(
+        measurers.of(stack).advance(run, "sans", size, weight) for run, weight, stack in runs
+    )
+    extents = [
+        measurers.of(stack).measure(run, "sans", size, weight) for run, weight, stack in runs
+    ]
+    ascent = max(item.ascent for item in extents)
+    descent = max(item.descent for item in extents)
+
+    x = _number(element.get("x"))
+    y = _number(element.get("y"))
+    anchor = element.get("text-anchor", "start")
+    if anchor == "middle":
+        x -= width / 2
+    elif anchor == "end":
+        x -= width
+    return text, x, y - ascent, x + width, y + descent
+
+
 def _text_boxes(root: ET.Element, search_paths: Sequence[Path] | None) -> list[Box]:
     """Every `<text>` in the tree as a measured line box.
 
@@ -130,45 +189,39 @@ def _text_boxes(root: ET.Element, search_paths: Sequence[Path] | None) -> list[B
     the transform would have to be applied to the strokes too, and an axis title
     is never the label a route runs through.
     """
+    measurers = Measurers(search_paths)
     boxes: list[Box] = []
     for element in root.iter(f"{{{SVG_NS}}}text"):
         if element.get("transform"):
             continue
-        size = _number(element.get("font-size"), 11.0)
-        stack = _stack(element.get("font-family"))
-        measurer = TextMeasurer({"sans": stack}, search_paths=search_paths)
-        runs = _runs(element)
-        if not runs:
-            continue
-        text = "".join(run for run, _ in runs)
-        if not text.strip():
-            continue
-        width = sum(measurer.advance(run, "sans", size, weight) for run, weight in runs)
-        extents = measurer.measure(text, "sans", size, runs[0][1])
-        x = _number(element.get("x"))
-        y = _number(element.get("y"))
-        anchor = element.get("text-anchor", "start")
-        if anchor == "middle":
-            x -= width / 2
-        elif anchor == "end":
-            x -= width
-        boxes.append(
-            Box(text=text, x0=x, y0=y - extents.ascent, x1=x + width, y1=y + extents.descent)
-        )
+        text, x0, y0, x1, y1 = line_box(element, measurers)
+        if text:
+            boxes.append(Box(text=text, x0=x0, y0=y0, x1=x1, y1=y1))
     return boxes
 
 
-def _runs(element: ET.Element) -> list[tuple[str, str]]:
-    """The (text, weight) runs of one `<text>`, tspans included."""
-    runs: list[tuple[str, str]] = []
+def _runs(element: ET.Element, outer: tuple[str, ...]) -> list[tuple[str, str, tuple[str, ...]]]:
+    """The (text, weight, font stack) runs of one `<text>`, tspans included.
+
+    A `<tspan>` names a family only when it differs from the line's, so a run
+    without one inherits `outer`.
+    """
+    runs: list[tuple[str, str, tuple[str, ...]]] = []
     if element.text:
-        runs.append((element.text, "normal"))
+        runs.append((element.text, "normal", outer))
     for child in element:
         if _local(child.tag) == "tspan" and child.text:
-            runs.append((child.text, child.get("font-weight") or "normal"))
+            family = child.get("font-family")
+            runs.append(
+                (
+                    child.text,
+                    child.get("font-weight") or "normal",
+                    _stack(family) if family else outer,
+                )
+            )
         if child.tail:
-            runs.append((child.tail, "normal"))
-    return [(text, weight) for text, weight in runs if text]
+            runs.append((child.tail, "normal", outer))
+    return [(text, weight, stack) for text, weight, stack in runs if text]
 
 
 def _segments(root: ET.Element) -> Iterator[Segment]:

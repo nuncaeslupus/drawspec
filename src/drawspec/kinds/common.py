@@ -157,6 +157,13 @@ def captioned(scene: Scene, caption: str, theme: Theme, measurer: TextMeasurer) 
     diagram* is what the author knows and *captions go under figures* is what a
     house style knows.
 
+    The gap is left on **both** sides of the caption, and only one of the two used
+    to be paid for. A caption below was spaced off the drawing and then ran flush
+    to the bottom of the figure — the canvas ended where the block did — so the
+    words butted against whatever the page put next. That is the starved bottom
+    margin `[box] padding` names as the corpus's most repeated complaint, one
+    level up: fixed inside the box, reintroduced at the canvas.
+
     Raises:
         FitError: the caption cannot be broken to the canvas width — named as the
             caption, because it is raised inside the elastic fit like everything
@@ -174,7 +181,14 @@ def captioned(scene: Scene, caption: str, theme: Theme, measurer: TextMeasurer) 
         raise FitError(f"the caption {caption[:40]!r} does not fit the canvas: {error}") from None
 
     width = max(scene.width, block.width)
-    band = block.height + gap
+    # A gap on each side of the caption: one between it and the drawing, one
+    # between it and the edge of the figure. One gap bought only the first, and
+    # which of the two went unpaid depended on the side — above, the caption was
+    # inset from the top and butted against the drawing; below, it was spaced off
+    # the drawing and ran flush to the bottom edge. Two gaps is also what keeps
+    # the band the same size either way, which is what makes the side a house
+    # style's choice rather than a change of measurements.
+    band = block.height + gap * 2
     above = theme.canvas.caption == "above"
     top = gap if above else scene.height + gap
     runs = tuple(

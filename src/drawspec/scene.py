@@ -209,6 +209,16 @@ class TextLine(Primitive):
     spans: tuple[TextSpan, ...] = ()
     level: str = "body"
     anchor: str = "middle"
+    rotate: float = 0.0
+    """Rotation in degrees about (x, y) — a band's name beside a vertical bar.
+
+    A `TextRun` has carried this since the chart's axis title needed it. It is
+    here because a band's name is a *text field*: it wraps, it takes inline
+    spans, and a second paragraph is a lead over its detail. Setting one on its
+    side used to mean dropping to a `TextRun`, which is a run of plain
+    characters — so `**RPO**` went out with its asterisks showing, the same
+    defect a span's name had before it was made to go through `wrap`.
+    """
 
     @property
     def text(self) -> str:

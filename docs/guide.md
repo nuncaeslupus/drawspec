@@ -377,6 +377,14 @@ read across the page gets its bands above and below, and the same process read
 down gets them left and right. See
 [`reference/flow-bands.json`](reference/flow-bands.json).
 
+A band's name is a text field like any other: it carries `**bold**` and
+`` `code` ``, a newline makes the first paragraph a lead over its detail, and it
+**wraps to the length of its own bar**. That length is the extent the band already
+claims — a name running past the last of its members would be claiming boxes the
+band has not got — so a long name beside a short bar comes back as two or three
+lines rather than one long one. A single word longer than the bar is refused, and
+the message names the band rather than the diagram.
+
 ## Asking for a wide drawing instead of a tall one
 
 Reading direction is part of what a diagram says, and some processes read across
