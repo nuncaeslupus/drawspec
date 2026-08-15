@@ -22,16 +22,50 @@ from dataclasses import replace
 from typing import Final
 
 from drawspec.errors import FitError
-from drawspec.geometry import Box
-from drawspec.scene import Ellipse, Polygon, Primitive, Rect, Scene, TextLine, TextSpan, moved
+from drawspec.geometry import Box, span_at
+from drawspec.scene import (
+    Ellipse,
+    Path,
+    Polygon,
+    Primitive,
+    Rect,
+    Scene,
+    TextLine,
+    TextSpan,
+    moved,
+)
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import wrap
 from drawspec.theme import Theme
 
 
 def box_primitives(box: Box, theme: Theme, measurer: TextMeasurer) -> tuple[Primitive, ...]:
-    """The outline of `box` followed by its text, in paint order."""
-    return (*outline(box, theme), *text_runs(box, theme, measurer))
+    """The outline of `box`, its lead rule if it has one, then its text."""
+    return (*outline(box, theme), *lead_rule(box), *text_runs(box, theme, measurer))
+
+
+def lead_rule(box: Box) -> tuple[Primitive, ...]:
+    """The line between a box's lead and its detail, or nothing.
+
+    Only `[box] lead = "rule"` produces one — see `theme.BoxStyle.lead`. The band
+    it sits in was reserved when the text was measured, so this is placement
+    rather than arithmetic: whether there is a rule, and where, is the block's
+    answer and not a second opinion about it.
+
+    It runs **edge to edge**, which in a `rect` is what a hand-drawn class box
+    does and is the whole look. That is a question about where the outline is at
+    one height rather than about the text column, so it is asked as one:
+    `span_at` gives the shape's own width at the rule's depth, which stops the
+    line on the two sloped sides of a diamond and inside the cap of a pill
+    instead of coming out of them.
+    """
+    offset = box.block.rule_offset
+    if offset is None:
+        return ()
+    y = box.block_top + offset
+    half = span_at(box.shape, box.width, box.height, y - box.y) / 2
+    middle = box.x + box.width / 2
+    return (Path(box.role, points=((middle - half, y), (middle + half, y))),)
 
 
 def outline(box: Box, theme: Theme) -> tuple[Primitive, ...]:

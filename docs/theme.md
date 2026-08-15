@@ -185,4 +185,5 @@ one of `arrow`, `open`, `diamond`, `circle`, `bar`, `none`.
 | `default` | Ink only. Every stroke is `currentColor`, so a diagram follows its page. |
 | `accent` | Colour that points and never carries: six roles are coloured, and every one of them already differed from its neighbours by weight, dash or shape. |
 | `wheel` | The broad tapered cycle connector — `[cycle] connector = "band"` — for a cycle drawn loudly. |
+| `compartment` | A rule between a label's lead and its detail — `[box] lead = "rule"` — for a diagram whose boxes are a name over what belongs to it. |
 

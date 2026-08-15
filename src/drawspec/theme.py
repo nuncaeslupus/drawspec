@@ -208,7 +208,7 @@ def _reject_unknown(mapping: Mapping[str, Any], allowed: Iterable[str], where: s
 WIDTH_MODES: Final = ("fixed", "ink")
 
 #: What a theme may do to the first paragraph of a two-part label.
-LEAD_TREATMENTS: Final = ("bold", "plain")
+LEAD_TREATMENTS: Final = ("bold", "plain", "rule")
 
 #: Where a diagram-level caption sits relative to the drawing.
 CAPTION_POSITIONS: Final = ("below", "above")
@@ -500,9 +500,24 @@ class BoxStyle:
     boldness or whatever, as in the original".
 
     So a blank-free newline in `text` is the author saying *these are two
-    things*, and this setting is the theme saying what the first one looks like.
-    `bold` sets it in the bold weight; `plain` leaves it alone, which is the
-    theme for a document whose labels are already emphatic enough.
+    things*, and this setting is the theme saying what separates them. `bold`
+    sets the lead in the bold weight; `plain` leaves it alone, which is the theme
+    for a document whose labels are already emphatic enough; `rule` draws a line
+    across the text column between the two, in the box's own ink.
+
+    `rule` makes a box read as a **compartment** — a name over what belongs to
+    it, which is how a class, a record or a component is drawn by hand, and it is
+    also the cheapest honest place to put *who performs this step* without
+    spending a role on it. It applies inside a box and nowhere else: a caption, a
+    band's name and a tick label have no column for a line to cross, so there the
+    rule would be a mark hanging in the white. The band it needs is `padding.top`,
+    spent half above the line and half below, and it is reserved when the text is
+    measured rather than added when it is drawn — a rule a box did not count is a
+    rule through a word.
+
+    One treatment at a time, and that is on purpose: `bold` *and* `rule` would
+    say the same thing twice, which is the redundancy the greyscale rule already
+    forbids between two roles.
 
     Weight rather than size on purpose: one advance is used for every line in a
     block, and a block whose first line was set larger would either space

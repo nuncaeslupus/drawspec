@@ -27,6 +27,7 @@ from drawspec.geometry import (
     normalise,
     outer_size,
     size_box,
+    span_at,
     usable_span,
 )
 from drawspec.text import TextMeasurer
@@ -181,6 +182,39 @@ def test_outer_size_and_usable_span_are_inverses(shape: str) -> None:
     usable = usable_span(shape, width, height, 30.0)
     assert usable[0] >= 120.0 + THEME.box.padding.horizontal - 1e-6
     assert usable[1] >= 30.0 + THEME.box.padding.vertical - 1e-6
+
+
+@pytest.mark.parametrize("shape", ["rect", "pill", "diamond", "ellipse"])
+def test_span_at_never_reaches_outside_the_shape(shape: str) -> None:
+    """What a mark drawn across the box may span, at every height in it."""
+    for step in range(21):
+        depth = 60.0 * step / 20
+        assert 0.0 <= span_at(shape, 200.0, 60.0, depth) <= 200.0 + 1e-9
+
+
+@pytest.mark.parametrize("shape", ["pill", "diamond", "ellipse"])
+def test_span_at_is_widest_across_the_middle_and_narrowest_at_the_ends(shape: str) -> None:
+    """Every shape but the rect narrows away from its own middle, symmetrically."""
+    middle = span_at(shape, 200.0, 60.0, 30.0)
+    assert middle > span_at(shape, 200.0, 60.0, 6.0)
+    assert span_at(shape, 200.0, 60.0, 6.0) == pytest.approx(span_at(shape, 200.0, 60.0, 54.0))
+
+
+def test_span_at_gives_a_rect_its_whole_width_at_every_height() -> None:
+    """Which is what makes a lead rule in a rect run edge to edge, the way a
+    hand-drawn class box does."""
+    assert span_at("rect", 200.0, 60.0, 1.0) == pytest.approx(200.0)
+    assert span_at("rect", 200.0, 60.0, 59.0) == pytest.approx(200.0)
+
+
+def test_span_at_outside_the_shape_is_nothing_rather_than_an_error() -> None:
+    assert span_at("rect", 200.0, 60.0, -5.0) == 0.0
+    assert span_at("ellipse", 200.0, 60.0, 90.0) == 0.0
+
+
+def test_span_at_rejects_a_shape_it_cannot_draw() -> None:
+    with pytest.raises(KeyError):
+        span_at("hexagon", 200.0, 60.0, 30.0)
 
 
 def test_diamond_box_is_larger_than_a_rect_holding_the_same_text() -> None:

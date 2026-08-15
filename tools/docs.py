@@ -635,6 +635,11 @@ def theme_markdown() -> str:
                     'The broad tapered cycle connector — `[cycle] connector = "band"` — for a '
                     "cycle drawn loudly.",
                 ],
+                [
+                    "`compartment`",
+                    'A rule between a label\'s lead and its detail — `[box] lead = "rule"` — for '
+                    "a diagram whose boxes are a name over what belongs to it.",
+                ],
             ],
         ),
         "",

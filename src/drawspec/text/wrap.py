@@ -84,6 +84,18 @@ class TextBlock:
     ascent: float
     descent: float
 
+    lead_lines: int = 0
+    """How many of `lines` belong to the lead, when a rule separates it."""
+
+    rule: float = 0.0
+    """The band reserved for that rule, or zero when the theme draws none.
+
+    Reserved here rather than added by whoever draws the line, for the reason
+    every other measurement in this module is here: the height and the baselines
+    have to come from the same place as the lines. A rule drawn into a box that
+    had not counted it is a rule through a word.
+    """
+
     def __iter__(self) -> Iterator[Line]:
         return iter(self.lines)
 
@@ -97,10 +109,25 @@ class TextBlock:
         line is optically centred in its slot — computed from the font's ascent
         and descent rather than from half the size, which is the approximation
         that leaves a box looking bottom-heavy.
+
+        A line below the rule is pushed down by the band it reserved, which is
+        what makes the rule sit *between* the two parts rather than on top of the
+        first line of the second one.
         """
         if not 0 <= index < len(self.lines):
             raise IndexError(f"line {index} of a {len(self.lines)}-line block")
-        return index * self.advance + (self.advance + self.ascent - self.descent) / 2
+        below = self.rule if index >= self.lead_lines else 0.0
+        return index * self.advance + below + (self.advance + self.ascent - self.descent) / 2
+
+    @property
+    def rule_offset(self) -> float | None:
+        """Where the rule sits, measured from the block's top, or `None`.
+
+        The middle of the band, so the gap above the line and the gap below it
+        are the same — which is what makes the two compartments read as peers
+        rather than as one with an underline.
+        """
+        return None if not self.rule else self.lead_lines * self.advance + self.rule / 2
 
 
 def parse_spans(text: str, *, font: str = "sans") -> tuple[Span, ...]:
@@ -143,6 +170,7 @@ def wrap(
     theme: Theme,
     level: str = "body",
     lead: bool | None = None,
+    boxed: bool = False,
 ) -> TextBlock:
     """Break `text` to `max_width` and size the block it makes.
 
@@ -159,6 +187,12 @@ def wrap(
             explained ones is still a name: whether a particular member happens
             to carry an explanation is incidental, and it should not decide how
             that member's name is set.
+        boxed: whether this block will be drawn inside a box. Only a box gets
+            `[box] lead = "rule"`, because that treatment is a line across the
+            column the text sits in, and a caption, a band's name or a tick
+            label has no column — the rule would be a mark hanging in the white
+            beside the drawing. The other two treatments are a weight and so
+            apply anywhere.
 
     Raises:
         FitError: a run cannot be broken small enough to fit `max_width`.
@@ -180,21 +214,30 @@ def wrap(
     # produce exactly the overflow this module exists to prevent.
     wanted = len(paragraphs) > 1 if lead is None else lead
     lead_set = theme.box.lead == "bold" and wanted
+    # A rule needs somewhere to be, and the band is the theme's own gap spent
+    # half above the line and half below it. Reserved before the block is
+    # measured, so the box sized from that block already has room for it.
+    ruled = theme.box.lead == "rule" and wanted and boxed
     lines: list[Line] = []
+    lead_lines = 0
     for index, paragraph in enumerate(paragraphs):
-        lines.extend(
-            _wrap_paragraph(
-                paragraph, max_width, measurer, size, default_font, bold=lead_set and index == 0
-            )
+        wrapped = _wrap_paragraph(
+            paragraph, max_width, measurer, size, default_font, bold=lead_set and index == 0
         )
+        if index == 0:
+            lead_lines = len(wrapped)
+        lines.extend(wrapped)
 
+    rule = theme.box.padding.top if ruled else 0.0
     return TextBlock(
         lines=tuple(lines),
         width=max((line.width for line in lines), default=0.0),
-        height=len(lines) * advance,
+        height=len(lines) * advance + rule,
         advance=advance,
         ascent=extents.ascent,
         descent=extents.descent,
+        lead_lines=lead_lines,
+        rule=rule,
     )
 
 

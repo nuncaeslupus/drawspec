@@ -123,6 +123,23 @@ two levels, which is exactly what the corpus review objected to. A theme may
 switch the treatment off with `[box] lead = "plain"`; the break stays either
 way, because a break is structure.
 
+The third treatment is a **rule** between the two, and it is for the case where
+the second part is not an explanation but a *list of things belonging to* the
+first — the attributes of a class, the fields of a record, the members of a
+team, who performs a step. Weight would say "this one matters more", which is
+not what those diagrams mean; a line says "this is the heading of those", which
+is what every hand-drawn class box already does. The bundled `compartment` theme
+is `default` plus that one setting, and `docs/reference/tree-compartments.json`
+is what it looks like:
+
+```json
+{"id": "card", "text": "**Card payment**\nlast four digits\nscheme"}
+```
+
+Still no new field — the same newline, read the same way. The rule is drawn in
+the box's own ink and runs edge to edge, stopping on the sloped sides of a
+diamond rather than coming out of them.
+
 The `$schema` line is optional and costs nothing at render time, but it earns
 its place in an editor: point any JSON-Schema-aware editor at it and you get
 completion over the field names and an inline error on `font_size` *while you

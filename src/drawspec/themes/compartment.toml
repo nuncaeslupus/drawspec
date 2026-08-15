@@ -1,0 +1,26 @@
+# drawspec's compartment theme: a box is a name over what belongs to it.
+#
+# Merged over `default.toml`, so it declares only what it changes — and it
+# changes one thing.
+#
+# The default theme sets a label's lead in bold: a blank-free newline in `text`
+# means "these are two things", and weight is what tells them apart. That is
+# right for a step whose second line explains the first. It is not enough when
+# the second part is a *list* of things belonging to the first — the attributes
+# of a class, the fields of a record, the responsibilities of a team, who
+# performs a step — because weight says "this one matters more" where the
+# drawing means "this one is the heading of those".
+#
+# A rule says that instead, and it is the mark every hand-drawn class box,
+# record and component diagram already uses. Nothing else moves: the rule is
+# drawn in the box's own ink, so it inherits that role's weight and dash and
+# survives greyscale like everything else here.
+#
+# Use it for a diagram whose boxes are compartments. Keep `default` for one
+# whose boxes are steps.
+
+version = 1
+name = "compartment"
+
+[box]
+lead = "rule"
