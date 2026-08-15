@@ -85,7 +85,7 @@
     },
     {
       "type": "object",
-      "title": "stack / timeline / columns",
+      "title": "stack / columns",
       "properties": {
         "$schema": {
           "type": "string",
@@ -98,7 +98,6 @@
           "type": "string",
           "enum": [
             "stack",
-            "timeline",
             "columns"
           ]
         },
@@ -139,6 +138,76 @@
             "$ref": "#/$defs/item"
           },
           "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "timeline",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "timeline"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "items": {
+          "type": "array",
+          "description": "The entries, in the order they are meant to be read: down for `stack`, along for `timeline` and `columns`.",
+          "items": {
+            "$ref": "#/$defs/item"
+          },
+          "minItems": 1
+        },
+        "spans": {
+          "type": "array",
+          "description": "Named intervals between two entries, drawn as bars under the axis. For the quantity that is not a thing on the diagram but the distance between two things on it: a recovery objective is not an event, it is how much lies between the last backup and the disaster.",
+          "items": {
+            "$ref": "#/$defs/span"
+          }
         }
       },
       "required": [
@@ -1056,6 +1125,29 @@
       "required": [
         "name",
         "data"
+      ],
+      "additionalProperties": false
+    },
+    "span": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "from": {
+          "type": "string",
+          "description": "The id of the entry the interval starts at."
+        },
+        "to": {
+          "type": "string",
+          "description": "The id of the entry it ends at. Must come after `from`."
+        }
+      },
+      "required": [
+        "text",
+        "from",
+        "to"
       ],
       "additionalProperties": false
     },

@@ -23,7 +23,7 @@ from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
 from drawspec.kinds.common import box_primitives, text_runs
 from drawspec.legend import entries_for, height_of, primitives_for
-from drawspec.scene import Path, Polygon, Primitive, Scene, TextLine, TextSpan
+from drawspec.scene import Path, Polygon, Primitive, Scene, TextLine, TextRun, TextSpan
 from drawspec.schema import Cell, Document, Item
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
@@ -216,7 +216,75 @@ def _timeline(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
         primitives.extend(_note_runs(notes, centres, below + theme.box.padding.top))
         below += theme.box.padding.top + _note_band(notes)
 
+    if document.spans:
+        bars, below = _span_bars(document, centres, below, theme, measurer)
+        primitives.extend(bars)
+
     return _scene(document, primitives, width, below)
+
+
+def _span_bars(
+    document: Document,
+    centres: list[float],
+    top: float,
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> tuple[list[Primitive], float]:
+    """The named intervals, in lanes under the axis.
+
+    A span is the quantity that is not a thing on the diagram but the
+    **distance** between two things on it. A recovery point objective is not an
+    event: it is how much lies between the last backup and the disaster, and on
+    the disaster-timeline original it is the entire content — four instants
+    without their intervals are four words, which is why that sheet was the one
+    of eighty-nine with no document at all.
+
+    Each bar runs between its two entries' marks, capped at both ends so a
+    reader can see where it starts and stops, with its name centred above it.
+    Two spans that overlap go in different lanes: `MTD = RTO + WRT` is a span
+    over two spans, and the arithmetic is only visible when the wider one is
+    drawn clear of the two it covers. Lanes are assigned in declaration order,
+    so the document decides which interval sits nearest the axis.
+    """
+    order = {item.id: index for index, item in enumerate(document.items) if item.id}
+    cap = theme.edge.head_length * TICK_FRACTION
+    size = theme.scale["label"]
+    line = measurer.measure("0", theme.font.default, size)
+    gap = theme.box.padding.top
+
+    lanes: list[list[tuple[float, float]]] = []
+    placed: list[tuple[int, float, float, str]] = []
+    for span in document.spans:
+        left, right = centres[order[span.start]], centres[order[span.end]]
+        for index, lane in enumerate(lanes):
+            if all(right <= start or left >= end for start, end in lane):
+                lane.append((left, right))
+                placed.append((index, left, right, span.text))
+                break
+        else:
+            lanes.append([(left, right)])
+            placed.append((len(lanes) - 1, left, right, span.text))
+
+    depth = gap + line.height + gap
+    primitives: list[Primitive] = []
+    for row, left, right, text in placed:
+        base = top + gap + row * depth
+        bar = base + line.height + gap / 2
+        primitives.append(Path(AXIS_ROLE, points=((left, bar), (right, bar))))
+        for end in (left, right):
+            primitives.append(Path(AXIS_ROLE, points=((end, bar - cap / 2), (end, bar + cap / 2))))
+        primitives.append(
+            TextRun(
+                AXIS_ROLE,
+                x=(left + right) / 2,
+                y=base + line.ascent,
+                text=text,
+                level="label",
+                font=theme.font.default,
+                anchor="middle",
+            )
+        )
+    return primitives, top + gap + len(lanes) * depth
 
 
 def _notes(

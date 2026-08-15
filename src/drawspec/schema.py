@@ -326,6 +326,21 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         ),
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
     ),
+    "span": (
+        _text(),
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description="The id of the entry the interval starts at.",
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description="The id of the entry it ends at. Must come after `from`.",
+        ),
+    ),
     "key": (
         FieldSpec(
             "group",
@@ -507,6 +522,19 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    ("timeline",): (
+        FieldSpec(
+            "spans",
+            "array",
+            item_ref="span",
+            description=(
+                "Named intervals between two entries, drawn as bars under the axis. "
+                "For the quantity that is not a thing on the diagram but the distance "
+                "between two things on it: a recovery objective is not an event, it is "
+                "how much lies between the last backup and the disaster."
+            ),
+        ),
+    ),
     ("matrix",): (
         FieldSpec(
             "cells",
@@ -633,11 +661,22 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
 
 
 def payload_for(kind: str) -> tuple[FieldSpec, ...]:
-    """The payload fields legal for `kind`."""
-    for kinds, fields in KIND_PAYLOADS.items():
-        if kind in kinds:
-            return fields
-    raise KeyError(kind)
+    """The payload fields legal for `kind`, from every group that names it.
+
+    Accumulated rather than first-match, so a family's shared fields and one
+    member's own can be written as two entries: `timeline` takes `items` with
+    the rest of the grid kinds and `spans` by itself, and neither entry has to
+    know about the other.
+
+    Raises:
+        KeyError: no group names this kind.
+    """
+    found = tuple(
+        field for kinds, fields in KIND_PAYLOADS.items() if kind in kinds for field in fields
+    )
+    if not found:
+        raise KeyError(kind)
+    return found
 
 
 def fields_for(kind: str) -> tuple[FieldSpec, ...]:
@@ -694,6 +733,15 @@ class Cell:
     down: int = 1
     group: str = ""
     role: str = "step"
+
+
+@dataclass(frozen=True)
+class Span:
+    """A named interval between two entries of a timeline."""
+
+    text: str
+    start: str
+    end: str
 
 
 @dataclass(frozen=True)
@@ -780,6 +828,7 @@ class Document:
     columns: tuple[str, ...] = ()
     rows: tuple[str, ...] = ()
     key: tuple[Key, ...] = ()
+    spans: tuple[Span, ...] = ()
     positions: tuple[Position, ...] = ()
     curves: tuple[Curve, ...] = ()
     axes: tuple[Axis, ...] = ()
@@ -981,6 +1030,45 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
 def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
     """The checks JSON Schema cannot express: unique ids, and edges that land."""
     found: list[Violation] = []
+    if kind == "timeline":
+        entries = document.get("items")
+        spans = document.get("spans")
+        if not isinstance(entries, list) or not isinstance(spans, list):
+            return found
+        order = {
+            str(entry["id"]): index
+            for index, entry in enumerate(entries)
+            if isinstance(entry, dict) and isinstance(entry.get("id"), str) and entry["id"]
+        }
+        for index, span in enumerate(spans):
+            if not isinstance(span, dict):
+                continue
+            start, end = span.get("from"), span.get("to")
+            for role, value in (("from", start), ("to", end)):
+                if isinstance(value, str) and value not in order:
+                    found.append(
+                        Violation(
+                            f"/spans/{index}/{role}",
+                            f"{value!r} is not the id of any entry on this timeline. A span "
+                            f"runs between two of its moments, so both need naming — give "
+                            f"the entries ids.",
+                        )
+                    )
+            if (
+                isinstance(start, str)
+                and isinstance(end, str)
+                and start in order
+                and end in order
+                and order[start] >= order[end]
+            ):
+                found.append(
+                    Violation(
+                        f"/spans/{index}/to",
+                        f"{end!r} is not after {start!r} on this timeline, so there is no "
+                        f"interval between them to name. A span runs forwards.",
+                    )
+                )
+        return found
     if kind == "matrix":
         cells = document.get("cells")
         entries = document.get("key")
@@ -1190,6 +1278,10 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         key=tuple(
             Key(group=entry["group"], text=entry["text"]) for entry in document.get("key", ())
         ),
+        spans=tuple(
+            Span(text=entry["text"], start=entry["from"], end=entry["to"])
+            for entry in document.get("spans", ())
+        ),
         positions=tuple(
             Position(
                 text=entry["text"],
@@ -1341,9 +1433,18 @@ def build_schema() -> dict[str, Any]:
     a real node) are outside JSON Schema's reach and are documented as such
     rather than silently missing.
     """
+    # One branch per *set of legal fields*, not per entry in the table above: a
+    # kind may draw its fields from more than one entry — `timeline` takes
+    # `items` with the other grid kinds and `spans` on its own — and a kind
+    # appearing in two branches would match both, which `oneOf` reads as invalid.
+    grouped: dict[tuple[str, ...], list[str]] = {}
+    for kind in KINDS:
+        grouped.setdefault(tuple(field.name for field in payload_for(kind)), []).append(kind)
+
     variants = []
-    for kinds in KIND_PAYLOADS:
-        specs = list(COMMON_FIELDS + KIND_PAYLOADS[kinds])
+    for names, kinds in grouped.items():
+        by_name = {field.name: field for field in payload_for(kinds[0])}
+        specs = list(COMMON_FIELDS) + [by_name[name] for name in names]
         variant = _object_schema(specs, title=" / ".join(kinds))
         variant["properties"]["kind"] = {"type": "string", "enum": list(kinds)}
         variant["properties"]["version"] = {"const": DOCUMENT_VERSION}

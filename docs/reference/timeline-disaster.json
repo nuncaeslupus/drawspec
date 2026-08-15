@@ -2,27 +2,53 @@
   "version": 1,
   "kind": "timeline",
   "title": "What an outage costs",
-  "description": "The same four moments, spaced by when they happened rather than evenly: the gap between the last backup and the failure is the data you lose, and the long stretch after it is the time you spend getting back. The clock runs under the line.",
+  "description": "The same four moments, spaced by when they happened rather than evenly: the gap between the last backup and the failure is the data you lose, and the long stretch after it is the time you spend getting back. The clock runs under the line, and the named intervals under that — the maximum tolerable downtime is the recovery time and the work-recovery time together, which is what the two bars over one bar say.",
   "items": [
     {
+      "id": "backup",
       "text": "Last backup",
       "at": 0,
       "note": "02:00"
     },
     {
+      "id": "failure",
       "text": "**It fails**",
       "at": 6,
       "note": "08:00"
     },
     {
+      "id": "back",
       "text": "Systems back",
       "at": 30,
       "note": "Next day, 08:00"
     },
     {
+      "id": "working",
       "text": "Working again",
       "at": 44,
       "note": "Next day, 22:00"
+    }
+  ],
+  "spans": [
+    {
+      "text": "Data lost",
+      "from": "backup",
+      "to": "failure"
+    },
+    {
+      "text": "Recovery time",
+      "from": "failure",
+      "to": "back"
+    },
+    {
+      "text": "Work recovery",
+      "from": "back",
+      "to": "working"
+    },
+    {
+      "text": "Maximum tolerable downtime",
+      "from": "failure",
+      "to": "working"
     }
   ]
 }

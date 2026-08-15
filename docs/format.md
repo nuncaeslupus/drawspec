@@ -57,6 +57,12 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 |---|---|---|---|
 | `items` | array of [item](#item-object), at least 1 | **yes** | The entries, in the order they are meant to be read: down for `stack`, along for `timeline` and `columns`. |
 
+### `timeline`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `spans` | array of [span](#span-object) | no | Named intervals between two entries, drawn as bars under the axis. For the quantity that is not a thing on the diagram but the distance between two things on it: a recovery objective is not an event, it is how much lies between the last backup and the disaster. |
+
 ### `matrix`
 
 | Field | Type | Required | What it is |
@@ -207,6 +213,14 @@ name, so a misspelt key is an error at the point it was written.
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 | `gate` | string | no | What stands between this stage and the next — the threshold a thing has to pass to get from one to the other, which is what makes a stage-gate model one. Drawn on the divider, which breaks to let it through. The last stage has no next stage, so it may not carry one. |
 | `note` | string | no | A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead. |
+
+### `span` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `from` | string | **yes** | The id of the entry the interval starts at. |
+| `to` | string | **yes** | The id of the entry it ends at. Must come after `from`. |
 
 ### `key` object
 
