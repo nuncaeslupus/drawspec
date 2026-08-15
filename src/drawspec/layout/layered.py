@@ -108,13 +108,20 @@ class LayeredEngine:
         """Node ids per rank, ordered to reduce crossings.
 
         Barycentre sweeps: a node moves to the average position of its
-        neighbours in the adjacent rank, alternating direction. Ties break on id,
-        so the result is the same on every run — which matters more here than the
-        last crossing, because the coordinates end up in committed SVG.
+        neighbours in the adjacent rank, alternating direction. Ties break on
+        **declaration order** — the position the node holds in the document — so
+        the result is the same on every run, and so a tie means the author's
+        order rather than an alphabetical accident.
+
+        That tie is not a corner case: three children of one parent all sit at
+        the same barycentre, so it decides the order of every fan in the corpus.
+        Ordering them by id put *Alcalde, Comissió de Govern, 10 Districtes* into
+        the order their ids happened to sort in, which is no order at all.
         """
         depth = max(ranks.values(), default=0) + 1
+        declared = {node.id: position for position, node in enumerate(nodes)}
         layers: list[list[str]] = [[] for _ in range(depth)]
-        for node in sorted(nodes, key=lambda item: item.id):
+        for node in nodes:
             layers[ranks[node.id]].append(node.id)
 
         successors: dict[str, list[str]] = {node.id: [] for node in nodes}
@@ -138,7 +145,7 @@ class LayeredEngine:
                     layers[index],
                     key=lambda identifier: (
                         _barycentre(neighbours[identifier], reference),
-                        identifier,
+                        declared[identifier],
                     ),
                 )
 

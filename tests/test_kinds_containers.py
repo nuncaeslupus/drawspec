@@ -241,3 +241,37 @@ def test_an_edge_label_never_lands_on_a_group_caption() -> None:
                 and caption.y < bottom
                 and top < caption.y + caption.height
             ), (label.text, frame.id)
+
+
+def test_group_members_are_laid_out_in_the_order_they_were_written() -> None:
+    """A group's members are an ordered set, and the order is the author's.
+
+    They were laid out in id order, so the Kubernetes control plane came out
+    *cloud-controller-manager, etcd, kube-apiserver, …* — alphabetical, which is
+    neither the order the source draws nor a meaningful one.
+    """
+    written = ("kube-apiserver", "etcd", "kube-scheduler", "cloud-cm")
+    document = flow(
+        [(identifier, identifier) for identifier in written],
+        [],
+        [("cp", "Control plane", written)],
+    )
+    built = drawing(document)
+    placed = sorted(written, key=lambda i: (built.boxes[i].y, built.boxes[i].x))
+    assert tuple(placed) == written
+
+
+def test_two_top_level_groups_keep_the_order_their_members_were_written_in() -> None:
+    """Roots were read out of a `frozenset`, whose iteration order follows the
+    interpreter's hash seed — so the same document could render two ways. A
+    group now sits where its first member was written, which is the only
+    position the document gives it."""
+    document = flow(
+        [("a", "One"), ("b", "Two"), ("c", "Three"), ("d", "Four")],
+        [],
+        [("second", "Later", ("c", "d")), ("first", "Earlier", ("a", "b"))],
+    )
+    built = drawing(document)
+    earlier = frame_named(built, "first")
+    later = frame_named(built, "second")
+    assert (earlier.y, earlier.x) < (later.y, later.x)

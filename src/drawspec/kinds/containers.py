@@ -117,14 +117,40 @@ class Nesting:
 
     @property
     def roots(self) -> tuple[str, ...]:
-        """Nothing contains these."""
-        return tuple(
+        """Nothing contains these, in the order the document declares them.
+
+        A loose node sits where it was written; a group sits where its first
+        member was written, because that is the only position the document
+        gives it. Iterating `groups` instead would be iterating a `frozenset`
+        of strings — an order that changes with the interpreter's hash seed,
+        so the same document rendered twice could differ.
+        """
+        roots = [
             identifier
             for identifier in (*self.groups, *self._nodes)
             if identifier not in self.parent
-        )
+        ]
+        return tuple(sorted(roots, key=self._declared))
 
     _nodes: tuple[str, ...] = ()
+
+    def _declared(self, identifier: str) -> tuple[int, str]:
+        """Where `identifier` was written: its own position, or its first member's."""
+        positions = {node: index for index, node in enumerate(self._nodes)}
+        if identifier in positions:
+            return (positions[identifier], identifier)
+        buried = [
+            positions[member] for member in self.descendants(identifier) if member in positions
+        ]
+        return (min(buried, default=len(positions)), identifier)
+
+    def descendants(self, identifier: str) -> tuple[str, ...]:
+        """Every id under `identifier`, groups included, depth first."""
+        found: list[str] = []
+        for member in self.members.get(identifier, ()):
+            found.append(member)
+            found.extend(self.descendants(member))
+        return tuple(found)
 
     def lift(self, identifier: str, level: frozenset[str]) -> str | None:
         """The ancestor of `identifier` that belongs to `level`, if any.
@@ -183,7 +209,7 @@ def nesting_of(document: Document) -> Nesting:
         members=members,
         parent=parent,
         groups=frozenset(groups),
-        _nodes=tuple(sorted(identifiers)),
+        _nodes=tuple(node.id for node in document.nodes),
     )
 
 
