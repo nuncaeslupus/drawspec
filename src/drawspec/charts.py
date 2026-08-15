@@ -674,6 +674,7 @@ def _filled_marks(
         return Marked((), ())
 
     fills = {id(item): theme.mark.fill_for(index) for index, (item, _) in enumerate(filled)}
+    inks = {id(item): theme.mark.colour_for(index) for index, (item, _) in enumerate(filled)}
     primitives: list[Primitive] = []
 
     # Where each stack of areas has reached, per x. Separate from the bars' own
@@ -703,6 +704,7 @@ def _filled_marks(
                 item.role,
                 points=(*crest, *reversed(under)),
                 fill=fills[id(item)],
+                fill_colour=inks[id(item)],
                 region=True,
             )
         )
@@ -742,6 +744,7 @@ def _filled_marks(
                     item.role,
                     points=((left, low), (right, low), (right, high), (left, high)),
                     fill=fills[id(item)],
+                    fill_colour=inks[id(item)],
                 )
             )
             # `low` and `high` are sorted by y, and y grows downwards — so `low`

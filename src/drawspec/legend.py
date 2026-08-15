@@ -69,6 +69,14 @@ class Entry:
     different.
     """
 
+    colour: str = ""
+    """The colour that fill is drawn in, when the theme declares mark colours.
+
+    Carried so the swatch matches the mark. A key that showed a grey hatch for a
+    blue bar would be worse than no key: it would be a second claim about which
+    fill means what, disagreeing with the first.
+    """
+
 
 def entries_for(items: Sequence[tuple[str, str, bool]], theme: Theme) -> tuple[Entry, ...]:
     """The legend for a sequence of `(name, role, filled)`, in the order given.
@@ -87,7 +95,9 @@ def entries_for(items: Sequence[tuple[str, str, bool]], theme: Theme) -> tuple[E
     filled = 0
     for text, role, is_filled in items:
         if is_filled:
-            entries.append(Entry(text, role, theme.mark.fill_for(filled)))
+            entries.append(
+                Entry(text, role, theme.mark.fill_for(filled), theme.mark.colour_for(filled))
+            )
             filled += 1
         else:
             entries.append(Entry(text, role))
@@ -170,6 +180,7 @@ def primitives_for(
                         SWATCH_ROLE,
                         points=((x, low), (x + sample, low), (x + sample, high), (x, high)),
                         fill=entry.fill,
+                        fill_colour=entry.colour,
                     )
                 )
             else:

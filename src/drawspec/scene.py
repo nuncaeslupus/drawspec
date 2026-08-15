@@ -55,6 +55,10 @@ class Rect(Primitive):
     width: float = 0.0
     height: float = 0.0
     fill: str = ""
+    fill_colour: str = ""
+    """The colour that pattern is drawn in, when the theme declares one. Resolved
+    from the theme by whoever chose the fill — never a value an author wrote."""
+
     """One of the theme's fill patterns, when the *geometry* decides its own fill.
 
     Empty means "ask the role", which is every box in every graph. A chart mark
@@ -82,6 +86,9 @@ class Polygon(Primitive):
     points: tuple[tuple[float, float], ...] = ()
     fill: str = ""
     """As `Rect.fill`: a fill the geometry chose, or empty for the role's."""
+
+    fill_colour: str = ""
+    """As `Rect.fill_colour`: the colour that fill is drawn in."""
 
     region: bool = False
     """Whether this figure is an extent rather than a shape, so it is not outlined.
