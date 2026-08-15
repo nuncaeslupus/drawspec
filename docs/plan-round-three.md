@@ -24,7 +24,7 @@ rather than off.
 | Round three | Round two | Status |
 |---|---|---|
 | `sibling-order` | **D** ("boxes are not in the same order") | **fixed here** — see below |
-| `crossing` | **E** (straight lines, on purpose) | confirmed, unbuilt |
+| `crossing` | **E** (straight lines, on purpose) | **already built** — the report and this page were both wrong |
 | `spans` | **G** (`spans`, the clearest missing kind) | confirmed, unbuilt |
 | `uniform-box-size` | **A** (shapes too tall and too narrow) | confirmed, measured, unbuilt |
 | `role-vocabulary` | **H** (document the roles) | half-served by the guide |
@@ -194,17 +194,26 @@ cycle may hold.
 **Size.** Medium, and it is mostly routing, which round two's item D already
 opened up.
 
-### 6. `crossing` — whether lines may cross
+### 6. ~~`crossing`~~ — whether lines may cross — **already built**
 
-*Sheets 33, 72. Round two's item E, unchanged and now confirmed from the other
-side.* The spine-leaf fabric reads as a fan that avoids itself, which
-understates the mesh.
+*Sheets 33, 72. Round two's item E.*
 
-**Shape.** Unchanged from round two: `[edge] routing = "orthogonal" | "direct"`
-in the **theme**, possibly restricted to headless roles. The reviewer's own
-boundary — *"at least for lines without arrow head"* — is a good one, because a
-diagonal arriving at a box at a closed angle is what the original rule was
-protecting against and a headless chord has no head to arrive badly.
+**This one is closed, and both the report and the first draft of this page were
+wrong to list it.** `[edge_role] routing = "orthogonal" | "direct"` exists, the
+bundled default theme gives `link` the direct routing, and the reviewer's own
+boundary is exactly where it landed: every role with a head keeps its right
+angles. Checked rather than assumed — a spine-leaf fabric of four leaves and
+three spines draws ten of its twelve links as single straight chords.
+
+The other two fall back to an orthogonal route, and that is deliberate: a
+direct route still has to miss every box it is not joined to. *A mesh is meant
+to cross itself* is about two lines; a line through a third node's label is a
+different failure wearing the same shape, and a reader cannot tell a deliberate
+crossing from a box drawn over. So a chord that would cross a stranger is
+routed instead of drawn.
+
+`docs/reference/flow-mesh.json` is the drawing, added here because the
+reference set had no mesh in it and the behaviour was therefore invisible.
 
 ### 7. `between-stages` — a label on what separates two stages
 
