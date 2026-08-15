@@ -1054,6 +1054,10 @@
             "group"
           ]
         },
+        "gate": {
+          "type": "string",
+          "description": "What stands between this stage and the next — the threshold a thing has to pass to get from one to the other, which is what makes a stage-gate model one. Drawn on the divider, which breaks to let it through. The last stage has no next stage, so it may not carry one."
+        },
         "note": {
           "type": "string",
           "description": "A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead."

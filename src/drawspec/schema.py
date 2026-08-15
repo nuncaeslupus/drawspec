@@ -314,6 +314,16 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
     "stage": (
         _text(),
         _role(NODE_ROLES, "step"),
+        FieldSpec(
+            "gate",
+            "string",
+            description=(
+                "What stands between this stage and the next — the threshold a thing "
+                "has to pass to get from one to the other, which is what makes a "
+                "stage-gate model one. Drawn on the divider, which breaks to let it "
+                "through. The last stage has no next stage, so it may not carry one."
+            ),
+        ),
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
     ),
     "axis": (
@@ -651,6 +661,8 @@ class Item:
     role: str = "step"
     note: str = ""
     at: float | None = None
+    gate: str = ""
+    """For a `funnel` stage: what separates it from the next one."""
 
 
 @dataclass(frozen=True)
@@ -940,6 +952,20 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
 def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
     """The checks JSON Schema cannot express: unique ids, and edges that land."""
     found: list[Violation] = []
+    if kind == "funnel":
+        stages = document.get("stages")
+        if isinstance(stages, list) and stages:
+            last = stages[-1]
+            if isinstance(last, dict) and last.get("gate"):
+                found.append(
+                    Violation(
+                        f"/stages/{len(stages) - 1}/gate",
+                        "the last stage has no next stage, so nothing stands between it "
+                        "and one. A gate names the threshold *after* a stage; drop it, or "
+                        "add the stage it leads to.",
+                    )
+                )
+        return found
     if kind not in GRAPH_KINDS:
         return found
 
@@ -1143,6 +1169,7 @@ def _items(entries: Sequence[Mapping[str, Any]]) -> tuple[Item, ...]:
             role=entry.get("role", "step"),
             note=entry.get("note", ""),
             at=None if entry.get("at") is None else float(entry["at"]),
+            gate=entry.get("gate", ""),
         )
         for entry in entries
     )
