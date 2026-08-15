@@ -2,54 +2,73 @@
 
 <!-- Written at session end. A new session reading this file can resume without additional context. -->
 
-**Date**: 2026-08-15 · **Branch**: `claude/drawspec-feedback-schemas-62zkuf`
-**PR**: [#45](https://github.com/nuncaeslupus/drawspec/pull/45) — open, **CI green**, Qodo **0 bugs**
-**Suite**: 1418 passing, 1 skipped · lint + strict mypy clean · **0 collisions across 33 drawings**
+**Date**: 2026-08-15 · **Branch**: `claude/drawspec-graphics-schemas-sp577b`
+**PR**: [#46](https://github.com/nuncaeslupus/drawspec/pull/46) — open, CI pending at hand-off, Qodo summary posted (no findings)
+**Suite**: 1 463 passing, 1 skipped · lint + strict mypy clean
+**Gates**: 0 collisions **and 0 outside the canvas**, across 33 references *and* the consumer's 87
 
 ## What this session was
 
-Round four of the corpus review, from the consumer (`nuncaeslupus/opos`). It named
-two round-three items that do not hold up, five things that cannot be said, and
-five defects — ten in all. **All ten are done, in seven commits on the PR above.**
+Round five, and it did not come from a report. The input was the round-four
+artifact itself — *look at the drawings and see what can be fixed*. Two defects
+came out of looking, and one of them was in the feature round four had just
+shipped.
 
-Everything was reproduced against the code before being fixed. Where the report
-gave a number, the number was re-measured independently; where it named a defect,
-the defect was made to fail a test first.
+## The measurement round four owed
 
-| Item | What it was | Where it landed |
+Round four ended on a prediction: *"what is blocked on vocabulary should now be
+zero — that is a prediction, not a measurement."* Taken. `nuncaeslupus/opos`
+holds the real corpus at `docs/esquemas/drawspec/corpus/` — 87 documents. All 87
+render on this build, both gates zero. The three `etiqueta-cruzada-por-su-linea`
+notes in the consumer's `revision.jsonl` (47, 65, 69) are closed by measurement.
+
+## The two defects
+
+| | What | Where |
 |---|---|---|
-| `label-on-its-own-line` | 3 gallery collisions, reproduced exactly | `drawspec/clearance.py` — scene-level pass |
-| `sibling-order` | one child broke a whole fan's declared order | `layout/layered.py` `_sweep` |
-| `uniform-box-size` (width) | one paragraph set every box's width | `kinds/graph.py` `_sized`, scoped by container |
-| `validate` vs `render` | validator passed what the renderer refused | `cli.py` — validate now draws and discards |
-| `curve-categories` | accepted, drew nothing | `charts.py` — named marks on curve axes |
-| `span-text-raw` | `**RPO**` drew its asterisks | both span kinds now go through `wrap` |
-| `height-not-binding` | documented as a constraint, read by nothing | `render.py` `_within_height` |
-| `always-down` | `right` unreachable for any document | `layout/base.py` — `max_height` |
-| `dashed-headless` | no such edge role existed | `aside`, seventh edge role |
-| `sibling-bands` | two peer bands over one set unsayable | `bands`, new document field |
+| **A band's name skipped `wrap`** | `**bold**` drew asterisks; a newline flattened; and an unmeasured name was drawn **148 units off a 171-unit canvas** — 63% of it outside the page | `kinds/graph.py` `_bands`, `BandBar.label_box`, `_framed` |
+| **A caption below ran flush to the bottom** | the caption band was one gap, spent on the drawing side; the far side went unpaid | `kinds/common.py` `captioned` |
+
+The first is `span-text-raw` from round four, still live in `bands` — the feature
+that same round added. Bottom gutters across the captioned references go 1.7 → 11.7.
+`flow-bands` needed its ceiling raised 240 → 250.
 
 ## The one thing worth carrying forward
 
-**A measurement that runs in the suite beats one run by hand.** `tools/collisions.py`
-answers *can the word be read* — the counterpart to a coverage check's *is the word
-there*. It does a browser-based checker's arithmetic against **the same font metrics
-the layout used**, for two reasons: the belief is where the bug is, and a check that
-needs a browser runs once, in the round that added it. It found the report's three
-collisions independently, and it is now a per-document gate.
+**`tools/clipping.py` — is the word on the page.** `collisions.py` answers *can
+the word be read*; this answers the question before it. A label past the
+`viewBox` is in the markup, collides with nothing, passes every text check, and
+is not there when the file is looked at. It measures against the same font
+metrics the layout used, for the reason the last one did — the `viewBox` comes
+from `scene.extents`, which records a text run as its **anchor point**, so the
+belief is where the bug is. It measures rotated runs rather than skipping them:
+on its side a name is long in exactly the direction the canvas is short, which is
+why that arrangement lost the most. Gated per document in `tests/test_clipping.py`.
 
-Qodo then made it stricter (a stroke is paint around a centreline, so the checker
-measures the paint) and the gate still reports zero.
+## Reported, not changed — a call for the owner
 
-## Still open, and not code
+**The outer margin is decided per family and the families disagree.** There is no
+outer margin in the theme at all; measured across the 33 references the top gutter
+comes to four answers: **0** (stack, timeline, funnel, pyramid), **10.5** (cycle),
+**≈22** (curve, quadrant, chart), **24.5** (flow, tree). A timeline above a flow in
+one document — which the temario does — bleeds to the edge beside a 25-unit gutter.
+Nothing clips and nothing collides; they are just not framed alike, and a theme has
+no way to say so. Looks like a value the theme should own; not changed unilaterally
+because it moves all 33 drawings.
 
-Content decisions the owner has to make, carried over from the report: sheets **01**
-and **27**, and the glosses on **53 / 74 / 81**. Also still outstanding from the
-previous session and untouched here: three redraws written in English against a
-Catalan source — items **27**, **83**, **86**.
+## Delivered outside this repo
+
+Four opos sheets rewritten in the round-four vocabulary, from the real Catalan
+source — **51** (two sibling `bands`, read across), **88** (`aside`), **41** (span
+markup), **06** (curve `categories`). Verified clean on both gates. Handed to the
+owner as files; **not** pushed to `opos` — that needs permission.
+
+Still refused, and checked against this build rather than assumed:
+`edge-from-a-group` (an edge may only name a node) — sheets **39** and **44**.
 
 ## Next session
 
-Nothing is mid-flight. If #45 has merged, round four is closed; the natural next
-input is round five from the consumer. If it has not, check the PR for review
-comments — CI was green and Qodo clean at hand-off.
+Nothing mid-flight. If #46 is green, the natural next step is the owner's call on
+the outer-margin question, and landing the four rewritten sheets in `opos`.
+Content decisions unchanged and still the owner's: **01**, **27**, the glosses on
+**53 / 74 / 81**, and the English-against-Catalan redraws **27, 83, 86**.
