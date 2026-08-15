@@ -3,8 +3,8 @@
 <!-- Written at session end. A new session reading this file can resume without additional context. -->
 
 **Date**: 2026-08-15 · **Branch**: `claude/drawspec-graphics-schemas-sp577b`
-**PR**: [#46](https://github.com/nuncaeslupus/drawspec/pull/46) — open, CI pending at hand-off, Qodo summary posted (no findings)
-**Suite**: 1 463 passing, 1 skipped · lint + strict mypy clean
+**PR**: [#46](https://github.com/nuncaeslupus/drawspec/pull/46) — open · Qodo found **3**, all fixed in `de06bd9`, re-review reports **0**
+**Suite**: 1 468 passing, 1 skipped · lint + strict mypy clean
 **Gates**: 0 collisions **and 0 outside the canvas**, across 33 references *and* the consumer's 87
 
 ## What this session was
@@ -44,6 +44,17 @@ from `scene.extents`, which records a text run as its **anchor point**, so the
 belief is where the bug is. It measures rotated runs rather than skipping them:
 on its side a name is long in exactly the direction the canvas is short, which is
 why that arrangement lost the most. Gated per document in `tests/test_clipping.py`.
+
+**And review found three holes in the counter itself**, all the same shape — a gate
+reporting zero because it did not look. It measured every run in the parent's
+**sans**, so an inline `` `code` `` span came out a fifth narrow (124 units where
+it is 156) and an understated box is a clipped label called clean; and it took its
+geometry from `collisions._segments`, which skips `stroke="none"` — so every
+**arrow head** (a fill) and every chart's `<ellipse>` was invisible to it. Both
+closed with a regression test each, plus a `Measurers` cache keyed by font stack.
+`collisions.py` shared the first hole and is fixed with it: its boxes were too
+small too. The lesson is the round's own: **a new gate needs its own adversary
+before its zero means anything.**
 
 ## Reported, not changed — a call for the owner
 
