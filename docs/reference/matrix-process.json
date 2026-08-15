@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "kind": "matrix",
+  "title": "What each phase produces",
+  "description": "Four phases across the top, each with the thing it hands on underneath it. The phases run left to right; each phase produces the output below it; and the last one returns to the first. The grid places the cells and the arrows say how they are related, which is what a table on its own cannot.",
+  "columns": ["Plan", "Do", "Check", "Act"],
+  "rows": ["The work", "What it hands on"],
+  "cells": [
+    { "id": "plan", "text": "Agree what good looks like", "column": 0, "row": 0 },
+    { "id": "do", "text": "Make the change", "column": 1, "row": 0 },
+    { "id": "check", "text": "Measure what happened", "column": 2, "row": 0 },
+    { "id": "act", "text": "Keep it or undo it", "column": 3, "row": 0 },
+    { "id": "criteria", "text": "Criteria", "column": 0, "row": 1, "group": "output" },
+    { "id": "change", "text": "A change", "column": 1, "row": 1, "group": "output" },
+    { "id": "number", "text": "A number", "column": 2, "row": 1, "group": "output" },
+    { "id": "decision", "text": "A decision", "column": 3, "row": 1, "group": "output" }
+  ],
+  "key": [{ "group": "output", "text": "What the phase above it produces" }],
+  "edges": [
+    { "from": "plan", "to": "do" },
+    { "from": "do", "to": "check" },
+    { "from": "check", "to": "act" },
+    { "from": "plan", "to": "criteria", "role": "owns" },
+    { "from": "do", "to": "change", "role": "owns" },
+    { "from": "check", "to": "number", "role": "owns" },
+    { "from": "act", "to": "decision", "role": "owns" }
+  ]
+}

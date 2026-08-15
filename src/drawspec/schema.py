@@ -234,6 +234,14 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         _role(NODE_ROLES, "step"),
     ),
     "cell": (
+        FieldSpec(
+            "id",
+            "string",
+            description=(
+                "Optional, and only needed to join this cell to another: an edge names "
+                "the two cells it runs between. Unique within the document."
+            ),
+        ),
         _text(),
         FieldSpec(
             "column",
@@ -554,6 +562,17 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
         ),
         FieldSpec("rows", "array", item_kind="string", description="Row headings, top to bottom."),
         FieldSpec(
+            "edges",
+            "array",
+            item_ref="edge",
+            description=(
+                "What connects to what, between cells that carry an `id`. The cells of a "
+                "grid are not always only cells: one may produce another, or come before "
+                "it. The grid places them; the relations are a separate thing, and "
+                "without them a reader sees a table where the source drew a process."
+            ),
+        ),
+        FieldSpec(
             "key",
             "array",
             item_ref="key",
@@ -729,6 +748,7 @@ class Cell:
     text: str
     column: int
     row: int
+    id: str = ""
     across: int = 1
     down: int = 1
     group: str = ""
@@ -1071,8 +1091,33 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return found
     if kind == "matrix":
         cells = document.get("cells")
+        if not isinstance(cells, list):
+            return found
+        identified: set[str] = set()
+        for index, cell in enumerate(cells):
+            if not isinstance(cell, dict) or not isinstance(cell.get("id"), str) or not cell["id"]:
+                continue
+            if cell["id"] in identified:
+                found.append(
+                    Violation(_pointer("cells", index, "id"), f"duplicate cell id {cell['id']!r}")
+                )
+            identified.add(cell["id"])
+        for index, edge in enumerate(document.get("edges", ()) or ()):
+            if not isinstance(edge, dict):
+                continue
+            for end in ("from", "to"):
+                target = edge.get(end)
+                if isinstance(target, str) and target not in identified:
+                    found.append(
+                        Violation(
+                            _pointer("edges", index, end),
+                            f"{target!r} is not the id of any cell in this document. An edge "
+                            f"on a matrix joins two cells, and a cell needs an `id` before "
+                            f"anything can name it.",
+                        )
+                    )
         entries = document.get("key")
-        if not isinstance(cells, list) or not isinstance(entries, list):
+        if not isinstance(entries, list):
             return found
         cell_groups = {
             str(cell["group"])
@@ -1264,6 +1309,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         cells=tuple(
             Cell(
                 text=entry["text"],
+                id=entry.get("id", ""),
                 column=int(entry["column"]),
                 row=int(entry["row"]),
                 across=int(entry.get("across", 1)),

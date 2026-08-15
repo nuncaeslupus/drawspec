@@ -286,6 +286,13 @@
             "type": "string"
           }
         },
+        "edges": {
+          "type": "array",
+          "description": "What connects to what, between cells that carry an `id`. The cells of a grid are not always only cells: one may produce another, or come before it. The grid places them; the relations are a separate thing, and without them a reader sees a table where the source drew a process.",
+          "items": {
+            "$ref": "#/$defs/edge"
+          }
+        },
         "key": {
           "type": "array",
           "description": "What each group of cells is called, for the key drawn under the grid. Without one, a group is announced to the reader under the name the cells use for it — which is fine when that name is a name, and is how an id-shaped key like `carrega` ends up as visible text.",
@@ -753,6 +760,10 @@
     "cell": {
       "type": "object",
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Optional, and only needed to join this cell to another: an edge names the two cells it runs between. Unique within the document."
+        },
         "text": {
           "type": "string",
           "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."

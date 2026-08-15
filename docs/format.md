@@ -70,6 +70,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `cells` | array of [cell](#cell-object), at least 1 | **yes** | What is in the grid. A cell states where it starts, not where it is drawn. |
 | `columns` | array of string | no | Column headings, left to right. Omit for a matrix with none. |
 | `rows` | array of string | no | Row headings, top to bottom. |
+| `edges` | array of [edge](#edge-object) | no | What connects to what, between cells that carry an `id`. The cells of a grid are not always only cells: one may produce another, or come before it. The grid places them; the relations are a separate thing, and without them a reader sees a table where the source drew a process. |
 | `key` | array of [key](#key-object) | no | What each group of cells is called, for the key drawn under the grid. Without one, a group is announced to the reader under the name the cells use for it — which is fine when that name is a name, and is how an id-shaped key like `carrega` ends up as visible text. |
 
 ### `pyramid`
@@ -172,6 +173,7 @@ name, so a misspelt key is an error at the point it was written.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
+| `id` | string | no | Optional, and only needed to join this cell to another: an edge names the two cells it runs between. Unique within the document. |
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `column` | integer | **yes** | Which column this cell starts in, counting from zero. |
 | `row` | integer | **yes** | Which row it starts in, from zero. |

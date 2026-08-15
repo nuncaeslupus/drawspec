@@ -771,3 +771,77 @@ def test_a_span_that_runs_backwards_is_refused() -> None:
 def test_spans_belong_to_the_timeline_and_nothing_else() -> None:
     with pytest.raises(DocumentError, match="not a known field here"):
         parse_document({**DISASTER, "kind": "stack"})
+
+
+# --------------------------------------------------------------------------
+# Relating two cells of a grid
+# --------------------------------------------------------------------------
+
+
+PROCESS = {
+    "version": 1,
+    "kind": "matrix",
+    "title": "What each phase produces",
+    "columns": ["Plan", "Do"],
+    "cells": [
+        {"id": "plan", "text": "Agree", "column": 0, "row": 0},
+        {"id": "do", "text": "Make", "column": 1, "row": 0},
+        {"id": "criteria", "text": "Criteria", "column": 0, "row": 1},
+        {"id": "change", "text": "A change", "column": 1, "row": 1},
+    ],
+    "edges": [
+        {"from": "plan", "to": "do", "label": "then"},
+        {"from": "plan", "to": "criteria", "role": "owns"},
+    ],
+}
+
+
+def _matrix_scene(**changes: object) -> Scene:
+    return grid_scene(parse_document({**PROCESS, **changes}), THEME, MEASURER)
+
+
+def test_a_matrix_can_say_that_one_cell_precedes_another() -> None:
+    """The grid places the cells; the relations are a separate thing, and a
+    matrix that dropped them left a table where the source drew a process."""
+    built = _matrix_scene()
+    labels = {run.text for run in built.primitives if isinstance(run, TextRun)}
+    assert "then" in labels
+
+
+def test_an_edge_across_a_row_runs_horizontally_between_the_two_cells() -> None:
+    built = _matrix_scene()
+    runs = [item for item in built.primitives if isinstance(item, Path) and len(item.points) == 2]
+    across = [run for run in runs if run.points[0][1] == pytest.approx(run.points[1][1])]
+    assert across, "no horizontal run between the two cells of the top row"
+    assert all(run.points[0][0] < run.points[1][0] for run in across)
+
+
+def test_an_edge_down_a_column_runs_vertically() -> None:
+    built = _matrix_scene()
+    runs = [item for item in built.primitives if isinstance(item, Path) and len(item.points) == 2]
+    down = [run for run in runs if run.points[0][0] == pytest.approx(run.points[1][0])]
+    assert down, "no vertical run between the phase and what it produces"
+
+
+def test_a_matrix_with_edges_stands_its_cells_apart() -> None:
+    """A table's cells share a border; a grid of related boxes cannot, or the
+    arrow between two of them has nowhere to be."""
+    joined = [item for item in _matrix_scene().primitives if isinstance(item, Polygon)]
+    plain = [item for item in _matrix_scene(edges=[]).primitives if isinstance(item, Polygon)]
+    assert _extent_of(joined[0]) < _extent_of(plain[0])
+
+
+def _extent_of(cell: Polygon) -> float:
+    xs = [x for x, _ in cell.points]
+    return max(xs) - min(xs)
+
+
+def test_an_edge_naming_a_cell_that_is_not_there_is_refused() -> None:
+    with pytest.raises(DocumentError, match="not the id of any cell"):
+        parse_document({**PROCESS, "edges": [{"from": "plan", "to": "nowhere"}]})
+
+
+def test_two_cells_sharing_an_id_are_refused() -> None:
+    cells = [*PROCESS["cells"], {"id": "plan", "text": "Again", "column": 0, "row": 2}]  # type: ignore[misc]
+    with pytest.raises(DocumentError, match="duplicate cell id"):
+        parse_document({**PROCESS, "cells": cells})
