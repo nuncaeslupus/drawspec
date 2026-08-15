@@ -110,6 +110,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
+| `spans` | array of [span](#span-object) | no | Named distances between two waypoints, drawn as a capped line with the name beside it. For the quantity that is the gap itself: a cost variance is not a point on the drawing, it is how far one curve is from another, and a caption saying so states it without showing it. Either way round — two waypoints at one moment measure vertically, two at one value measure along. |
 | `axes` | [axes object](#axes-object) | **yes** | Both axes. A named shape still needs saying what it is a shape of. |
 | `curves` | array of [curve](#curve-object), at least 1 | **yes** | The shapes drawn, each through its own waypoints. |
 
@@ -187,6 +188,7 @@ name, so a misspelt key is an error at the point it was written.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
+| `id` | string | no | Optional, and only needed to measure from this point: a span names the two waypoints it runs between. Unique within the document. |
 | `text` | string | no | What to call this point. Omit for a point that only shapes the curve. |
 | `across` | number | **yes** | Where this sits on the horizontal axis. Data, not a coordinate. |
 | `up` | number | **yes** | Where this sits on the vertical axis. Data, not a coordinate. |

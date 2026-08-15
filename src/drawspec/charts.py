@@ -112,6 +112,9 @@ HEADROOM: Final = 0.08
 #: is enough for that to stop moving, and the third is the belt.
 _LABEL_PASSES: Final = 3
 
+#: How close two coordinates have to be before they count as the same one.
+_TOLERANCE: Final = 1e-9
+
 #: The most decimals a point label may carry. Past this the label is wider than
 #: the room beside its own point, and values that close needed a different chart.
 MAXIMUM_DECIMALS: Final = 3
@@ -1339,6 +1342,8 @@ def _curve(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
             placed.append(box)
             primitives.append(primitive)
 
+    primitives.extend(_curve_spans(document, across, up, theme, measurer))
+
     return Scene(
         width=width,
         height=height,
@@ -1346,6 +1351,85 @@ def _curve(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         title=document.title,
         description=document.description,
     )
+
+
+def _curve_spans(
+    document: Document,
+    across: Scale,
+    up: Scale,
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> list[Primitive]:
+    """The named distances between two waypoints, capped at both ends.
+
+    On the earned-value original the two quantities the drawing exists to
+    explain are gaps: the cost variance is how far the earned value is below
+    the actual cost, and the schedule variance is how far behind it is. Neither
+    is a point, so neither could be said, and both were pushed into the caption
+    as formulas — which states them and does not show them.
+
+    The two are not the same shape either: one is vertical and one horizontal.
+    That is why this measures between two **waypoints** rather than along an
+    axis: two points at one moment give a vertical bar, two at one value give a
+    horizontal one, and neither case is special.
+
+    The label sits beside the middle of the bar, pushed off it by the theme's
+    own clearance, always to the right of a vertical bar and below a horizontal
+    one. Fixed rather than derived from the bar's own direction: two spans that
+    meet at a shared waypoint — which is exactly what a cost variance and a
+    schedule variance do — otherwise take normals that both point into the
+    corner they share, and the two labels land on each other.
+    """
+    if not document.spans:
+        return []
+    marked = {
+        point.id: (across.to_pixels(point.across), up.to_pixels(point.up))
+        for curve in document.curves
+        for point in curve.waypoints
+        if point.id
+    }
+    size = theme.scale["label"]
+    cap = theme.edge.head_length * MARKER_FRACTION * 2
+    primitives: list[Primitive] = []
+    for span in document.spans:
+        start, finish = marked[span.start], marked[span.end]
+        length = math.hypot(finish[0] - start[0], finish[1] - start[1])
+        if length <= 0:
+            continue
+        towards = ((finish[0] - start[0]) / length, (finish[1] - start[1]) / length)
+        sideways = (-towards[1] * cap, towards[0] * cap)
+        # Right for a vertical bar, down for a horizontal one.
+        normal = (-towards[1], towards[0])
+        if normal[0] < -_TOLERANCE or (abs(normal[0]) <= _TOLERANCE and normal[1] < 0):
+            normal = (-normal[0], -normal[1])
+        primitives.append(Path(AXIS_ROLE, points=(start, finish)))
+        for end in (start, finish):
+            primitives.append(
+                Path(
+                    AXIS_ROLE,
+                    points=(
+                        (end[0] - sideways[0] / 2, end[1] - sideways[1] / 2),
+                        (end[0] + sideways[0] / 2, end[1] + sideways[1] / 2),
+                    ),
+                )
+            )
+        extents = measurer.measure(span.text, theme.font.default, size)
+        away = theme.edge.clearance + (
+            extents.width / 2 if abs(normal[0]) > abs(normal[1]) else extents.height / 2
+        )
+        middle = ((start[0] + finish[0]) / 2, (start[1] + finish[1]) / 2)
+        primitives.append(
+            TextRun(
+                AXIS_ROLE,
+                x=middle[0] + normal[0] * away,
+                y=middle[1] + normal[1] * away + (extents.ascent - extents.descent) / 2,
+                text=span.text,
+                level="label",
+                font=theme.font.default,
+                anchor="middle",
+            )
+        )
+    return primitives
 
 
 def _smooth(points: list[tuple[float, float]]) -> tuple[tuple[float, float], ...]:

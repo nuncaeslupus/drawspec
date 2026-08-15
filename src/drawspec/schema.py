@@ -278,6 +278,14 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
     ),
     "waypoint": (
         FieldSpec(
+            "id",
+            "string",
+            description=(
+                "Optional, and only needed to measure from this point: a span names the "
+                "two waypoints it runs between. Unique within the document."
+            ),
+        ),
+        FieldSpec(
             "text",
             "string",
             description="What to call this point. Omit for a point that only shapes the curve.",
@@ -672,6 +680,19 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
     ),
     ("curve",): (
         FieldSpec(
+            "spans",
+            "array",
+            item_ref="span",
+            description=(
+                "Named distances between two waypoints, drawn as a capped line with the "
+                "name beside it. For the quantity that is the gap itself: a cost variance "
+                "is not a point on the drawing, it is how far one curve is from another, "
+                "and a caption saying so states it without showing it. Either way round — "
+                "two waypoints at one moment measure vertically, two at one value measure "
+                "along."
+            ),
+        ),
+        FieldSpec(
             "axes",
             "object",
             required=True,
@@ -793,6 +814,8 @@ class Waypoint:
     across: float
     up: float
     text: str = ""
+    id: str = ""
+    """Optional; only needed when a span measures from this point."""
 
 
 @dataclass(frozen=True)
@@ -1086,6 +1109,46 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                     f"around. Use a flow.",
                 )
             )
+    if kind == "curve":
+        marked: set[str] = set()
+        for curve_index, entry in enumerate(document.get("curves", ()) or ()):
+            if not isinstance(entry, dict):
+                continue
+            for point_index, point in enumerate(entry.get("waypoints", ()) or ()):
+                if not isinstance(point, dict) or not isinstance(point.get("id"), str):
+                    continue
+                if not point["id"]:
+                    continue
+                if point["id"] in marked:
+                    found.append(
+                        Violation(
+                            f"/curves/{curve_index}/waypoints/{point_index}/id",
+                            f"duplicate waypoint id {point['id']!r}",
+                        )
+                    )
+                marked.add(point["id"])
+        for index, span in enumerate(document.get("spans", ()) or ()):
+            if not isinstance(span, dict):
+                continue
+            start, end = span.get("from"), span.get("to")
+            for role, value in (("from", start), ("to", end)):
+                if isinstance(value, str) and value not in marked:
+                    found.append(
+                        Violation(
+                            f"/spans/{index}/{role}",
+                            f"{value!r} is not the id of any waypoint in this document. A "
+                            f"span measures between two points, so both need naming — give "
+                            f"the waypoints ids.",
+                        )
+                    )
+            if isinstance(start, str) and start == end:
+                found.append(
+                    Violation(
+                        f"/spans/{index}/to",
+                        "a span between a point and itself has no distance to name.",
+                    )
+                )
+        return found
     if kind == "timeline":
         entries = document.get("items")
         spans = document.get("spans")
@@ -1382,6 +1445,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
                         across=float(point["across"]),
                         up=float(point["up"]),
                         text=point.get("text", ""),
+                        id=point.get("id", ""),
                     )
                     for point in entry["waypoints"]
                 ),

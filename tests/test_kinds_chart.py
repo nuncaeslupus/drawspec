@@ -1028,3 +1028,95 @@ def test_a_category_that_cannot_be_broken_small_enough_is_refused() -> None:
     """A refusal naming the label beats illegible output, which is the promise."""
     with pytest.raises(FitError, match="does not fit"):
         _categorical(["Unsplittableliteralrunofcharactersthatgoesonandon", "b", "c", "d", "e", "f"])
+
+
+# --------------------------------------------------------------------------
+# A named distance between two waypoints
+# --------------------------------------------------------------------------
+
+
+VARIANCE = {
+    "version": 1,
+    "kind": "curve",
+    "title": "Where a project has got to",
+    "axes": {"horizontal": {"label": "Time"}, "vertical": {"label": "Cost"}},
+    "curves": [
+        {
+            "name": "Planned",
+            "waypoints": [
+                {"across": 0.0, "up": 0.0},
+                {"id": "pv", "across": 0.55, "up": 0.45},
+                {"across": 1.0, "up": 1.0},
+            ],
+        },
+        {
+            "name": "Spent",
+            "waypoints": [{"across": 0.0, "up": 0.0}, {"id": "ac", "across": 0.72, "up": 0.72}],
+        },
+        {
+            "name": "Earned",
+            "waypoints": [{"across": 0.0, "up": 0.0}, {"id": "ev", "across": 0.72, "up": 0.45}],
+        },
+    ],
+    "spans": [
+        {"text": "Cost variance", "from": "ac", "to": "ev"},
+        {"text": "Schedule variance", "from": "ev", "to": "pv"},
+    ],
+}
+
+
+def _variance(**changes: object) -> Scene:
+    return chart_scene(parse_document({**VARIANCE, **changes}), THEME, MEASURER)
+
+
+def test_a_span_measures_the_gap_between_two_curves() -> None:
+    """Both quantities the drawing exists to explain are gaps rather than
+    points, and both used to be pushed into the caption as formulas — which
+    states them and does not show them."""
+    written = {run.text for run in texts(_variance())}
+    assert {"Cost variance", "Schedule variance"} <= written
+
+
+def test_one_span_measures_down_and_the_other_along() -> None:
+    """A vertical-only span would leave the schedule variance as unsayable as
+    it was: the two are not the same shape."""
+    runs = [item for item in _variance().primitives if isinstance(item, Path)]
+    bars = [run for run in runs if len(run.points) == 2]
+    vertical = [b for b in bars if b.points[0][0] == pytest.approx(b.points[1][0])]
+    horizontal = [b for b in bars if b.points[0][1] == pytest.approx(b.points[1][1])]
+    assert vertical and horizontal
+
+
+def test_two_spans_meeting_at_one_point_do_not_label_each_other() -> None:
+    """A cost variance and a schedule variance share the earned-value waypoint,
+    so normals derived from each bar's own direction both point into the corner
+    they share."""
+    labels = [run for run in texts(_variance()) if "variance" in run.text]
+    (first, second) = labels
+    apart = max(abs(first.x - second.x), abs(first.y - second.y))
+    assert apart > THEME.scale["label"]
+
+
+def test_a_span_naming_a_waypoint_that_is_not_there_is_refused() -> None:
+    with pytest.raises(DocumentError, match="not the id of any waypoint"):
+        parse_document({**VARIANCE, "spans": [{"text": "X", "from": "ac", "to": "nowhere"}]})
+
+
+def test_a_span_between_a_point_and_itself_is_refused() -> None:
+    with pytest.raises(DocumentError, match="no distance to name"):
+        parse_document({**VARIANCE, "spans": [{"text": "X", "from": "ac", "to": "ac"}]})
+
+
+def test_two_waypoints_sharing_an_id_are_refused() -> None:
+    curves = [
+        {
+            "name": "One",
+            "waypoints": [{"id": "same", "across": 0.0, "up": 0.0}, {"across": 1.0, "up": 1.0}],
+        },
+        {
+            "name": "Two",
+            "waypoints": [{"id": "same", "across": 0.0, "up": 0.5}, {"across": 1.0, "up": 0.5}],
+        },
+    ]
+    with pytest.raises(DocumentError, match="duplicate waypoint id"):
+        parse_document({**VARIANCE, "curves": curves, "spans": []})
