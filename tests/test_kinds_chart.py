@@ -618,12 +618,12 @@ def test_a_quadrant_still_needs_both_axes_labelled() -> None:
 # --------------------------------------------------------------------------
 
 
-def curve(*curves: Mapping[str, object]) -> Scene:
+def curve(*curves: Mapping[str, object], axes: Mapping[str, object] | None = None) -> Scene:
     document = {
         "version": 1,
         "kind": "curve",
         "title": "A curve",
-        "axes": {"horizontal": {"label": "Time"}, "vertical": {"label": "How much"}},
+        "axes": axes or {"horizontal": {"label": "Time"}, "vertical": {"label": "How much"}},
         "curves": list(curves),
     }
     return chart_scene(parse_document(document), THEME, MEASURER)
@@ -668,6 +668,82 @@ def test_a_curve_diagram_has_no_ticks() -> None:
     """Nobody has the numbers behind a hype cycle."""
     numbers = [run.text for run in texts(curve(HYPE)) if re.fullmatch(r"-?\d+(\.\d+)?", run.text)]
     assert numbers == []
+
+
+def test_a_curve_draws_the_categories_named_on_its_axis() -> None:
+    """It used to accept them and draw nothing, which is the one outcome refused.
+
+    *dia 1* and *últim dia* are two places on the axis, named — not numbers read
+    off a shape nobody measured, which is what `test_a_curve_diagram_has_no_ticks`
+    keeps out.
+    """
+    built = curve(
+        STRAIGHT,
+        axes={
+            "horizontal": {"label": "Temps", "categories": ["dia 1", "últim dia"]},
+            "vertical": {"label": "Nivell"},
+        },
+    )
+    drawn = {run.text for run in texts(built)}
+    assert {"dia 1", "últim dia"} <= drawn
+
+
+def test_a_curves_first_and_last_mark_land_where_the_curve_does() -> None:
+    """Spread over the waypoints' range, not the plot's — *dia 1* is where the
+    line leaves the corner, and a margin's width away from it means somewhere else."""
+    built = curve(
+        STRAIGHT,
+        axes={
+            "horizontal": {"label": "Temps", "categories": ["first", "last"]},
+            "vertical": {"label": "Nivell"},
+        },
+    )
+    (path,) = [line for line in lines(built) if line.role == "step"]
+    first = next(run for run in texts(built) if run.text == "first")
+    last = next(run for run in texts(built) if run.text == "last")
+    assert abs(first.x - path.points[0][0]) < 0.5
+    assert abs(last.x - path.points[-1][0]) < 0.5
+
+
+def test_a_curve_refuses_an_axis_mark_that_would_run_off_the_sheet() -> None:
+    """The first mark sits at the left end of the axis, so a long name centred on
+    it goes off the canvas — text off the sheet, refused rather than drawn."""
+    with pytest.raises(FitError, match="past the edge"):
+        curve(
+            STRAIGHT,
+            axes={
+                "horizontal": {
+                    "label": "Temps",
+                    "categories": [
+                        "a very long name indeed for one single place on the axis",
+                        "and another name just as long for the place beside it",
+                    ],
+                },
+                "vertical": {"label": "Nivell"},
+            },
+        )
+
+
+def test_a_curve_refuses_two_axis_marks_that_would_overlap() -> None:
+    """Text over text is one of the two failures the tool exists to prevent, and
+    no stroke is involved, so the clearance pass cannot save it."""
+    with pytest.raises(FitError, match="overlap"):
+        curve(
+            STRAIGHT,
+            axes={
+                "horizontal": {
+                    "label": "Temps",
+                    "categories": [
+                        "one",
+                        "a name long enough to touch",
+                        "a moderately long name here",
+                        "and one more",
+                        "five",
+                    ],
+                },
+                "vertical": {"label": "Nivell"},
+            },
+        )
 
 
 def test_only_named_waypoints_are_marked() -> None:

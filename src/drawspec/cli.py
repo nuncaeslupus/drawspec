@@ -21,6 +21,12 @@ confirmation. That is what makes `drawspec render doc.json > doc.svg` safe.
 violation with its JSON pointer, so a failure names the exact location and the
 exact field the way an HTML validator names a line and an attribute. Every
 violation, not the first — one pass should be one edit.
+
+**One pass being one edit is why `validate` draws the document and discards it.**
+Its answer is "would `render` refuse this?", not "does this satisfy the schema",
+because a validator that passes what the renderer then rejects has spent the
+author's round of edits for nothing — which is exactly what two groups sharing
+one member used to do.
 """
 
 from __future__ import annotations
@@ -160,7 +166,16 @@ def _render(arguments: argparse.Namespace) -> int:
 
 
 def _validate(arguments: argparse.Namespace) -> int:
-    """Parse and check, and draw nothing at all.
+    """Every refusal `render` has, and none of its output.
+
+    **`validate` answers "would `render` refuse this?"** — so it draws the
+    document and throws the drawing away, rather than re-checking a subset of
+    what drawing checks. It used to parse the schema and stop, which meant it
+    could hand back *a valid flow document* for a document `render` then refused:
+    two groups claiming one member validated and failed to draw, because the
+    containment check lives where the containment is built. Every check that a
+    kind, a layout, a fit or the emitter makes is now on this path, and there is
+    no list of them here to fall out of step with the ones that exist.
 
     A theme is loaded when one is named, because a theme that will not load is a
     reason this document cannot be rendered, and finding that out at validation
@@ -170,6 +185,7 @@ def _validate(arguments: argparse.Namespace) -> int:
         document = load_document(arguments.document)
         if arguments.theme:
             load_theme(arguments.theme)
+        render_document(document, arguments.theme or None)
     except DocumentError as error:
         return _refuse(error)
     except DrawspecError as error:
