@@ -275,3 +275,22 @@ def test_two_top_level_groups_keep_the_order_their_members_were_written_in() -> 
     earlier = frame_named(built, "first")
     later = frame_named(built, "second")
     assert (earlier.y, earlier.x) < (later.y, later.x)
+
+
+def test_a_group_sits_where_its_earliest_member_was_written_not_its_first() -> None:
+    """A group has no position of its own — `groups` is a second array — so it
+    takes the earliest position its content occupies.
+
+    Not `members[0]`: that would tie a container's place among its siblings to
+    which of its own members it happens to list first, so reordering the inside
+    of a container would move the container. Here `late` lists `d` first and
+    `a` second, and it still sorts before the loose node `b`, because `a` is
+    where its content starts.
+    """
+    document = flow(
+        [("a", "One"), ("b", "Two"), ("c", "Three"), ("d", "Four")],
+        [],
+        [("late", "Lists d first", ("d", "a"))],
+    )
+    nesting = nesting_of(document)
+    assert nesting.roots == ("late", "b", "c")

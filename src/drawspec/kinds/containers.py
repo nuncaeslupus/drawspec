@@ -119,30 +119,36 @@ class Nesting:
     def roots(self) -> tuple[str, ...]:
         """Nothing contains these, in the order the document declares them.
 
-        A loose node sits where it was written; a group sits where its first
-        member was written, because that is the only position the document
-        gives it. Iterating `groups` instead would be iterating a `frozenset`
-        of strings — an order that changes with the interpreter's hash seed,
-        so the same document rendered twice could differ.
+        A loose node sits where it was written. A group has no position of its
+        own — `groups` is a second array, not a place in `nodes` — so it sits
+        where its **earliest member** was written, wherever in its member list
+        that one appears. Ordering on `members[0]` instead would tie a group's
+        place among its siblings to which of its own members it happens to list
+        first, so reordering the inside of a container would move the container;
+        the earliest position its content occupies does not move.
+
+        Iterating `groups` instead of sorting would be iterating a `frozenset`
+        of strings — an order that changes with the interpreter's hash seed, so
+        the same document rendered twice could differ.
         """
+        positions = {node: index for index, node in enumerate(self._nodes)}
+
+        def declared(identifier: str) -> tuple[int, str]:
+            if identifier in positions:
+                return (positions[identifier], identifier)
+            buried = [
+                positions[member] for member in self.descendants(identifier) if member in positions
+            ]
+            return (min(buried, default=len(positions)), identifier)
+
         roots = [
             identifier
             for identifier in (*self.groups, *self._nodes)
             if identifier not in self.parent
         ]
-        return tuple(sorted(roots, key=self._declared))
+        return tuple(sorted(roots, key=declared))
 
     _nodes: tuple[str, ...] = ()
-
-    def _declared(self, identifier: str) -> tuple[int, str]:
-        """Where `identifier` was written: its own position, or its first member's."""
-        positions = {node: index for index, node in enumerate(self._nodes)}
-        if identifier in positions:
-            return (positions[identifier], identifier)
-        buried = [
-            positions[member] for member in self.descendants(identifier) if member in positions
-        ]
-        return (min(buried, default=len(positions)), identifier)
 
     def descendants(self, identifier: str) -> tuple[str, ...]:
         """Every id under `identifier`, groups included, depth first."""

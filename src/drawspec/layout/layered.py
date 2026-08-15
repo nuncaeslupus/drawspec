@@ -195,8 +195,9 @@ def _barycentre(neighbours: Sequence[str], reference: dict[str, int]) -> float:
     """The average position of `neighbours`, or a large value when it has none.
 
     A node with no neighbour in the adjacent rank has nothing to be pulled
-    towards, so it sorts after the ones that do — and then on its id, which is
-    what keeps the result reproducible.
+    towards, so it sorts after the ones that do. Which of two such nodes comes
+    first is then decided by `_order`'s tie-break — the document's own order —
+    not here.
     """
     positions = [reference[identifier] for identifier in neighbours if identifier in reference]
     if not positions:
