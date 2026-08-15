@@ -327,10 +327,18 @@ def test_family_curve_instead_of_a_right_angle_is_unrepresentable(name: str) -> 
     connectors; an arrow head is a mark whose geometry is the theme's, and an
     `open` head is a V by design. The claim is that an edge's *line* cannot be a
     curve, not that drawspec never draws a slope.
+
+    A role the theme routes **direct** is the declared exception, and it is not
+    a curve either: a mesh is drawn with chords on purpose, so a straight
+    diagonal is the answer rather than the failure. What is still refused
+    everywhere is a bend that is neither a right angle nor a chord.
     """
     drawing = graph_drawing(load_document(REFERENCE_DIR / f"{name}.json"), STRICT, MEASURER)
     assert drawing.routes
     for route in drawing.routes:
+        if STRICT.edge_roles[route.role].routing == "direct":
+            assert len(route.points) == 2, "a chord is one straight run or it is not a chord"
+            continue
         for first, second in pairwise(route.points):
             assert first[0] == pytest.approx(second[0]) or first[1] == pytest.approx(second[1])
 

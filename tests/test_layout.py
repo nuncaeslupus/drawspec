@@ -455,3 +455,63 @@ def test_packing_keeps_one_box_per_row_when_nothing_fits_beside_it() -> None:
     result = best_layout(ENGINE, graph_nodes, [], max_width=400.0)
     assert result.ranks == (("wide",), ("also",))
     assert not result.fits
+
+
+# --------------------------------------------------------------------------
+# Alignment: a box sits under what it hangs from
+# --------------------------------------------------------------------------
+
+
+def test_a_lone_child_sits_directly_under_its_parent() -> None:
+    """The reviewer raised it twice: *"I would have expected a straight arrow
+    instead of even more angled."*
+
+    Packing a rank sequentially and centring the block keeps the boxes apart and
+    does nothing else, so a branch with one child had that child wherever the
+    packing put it — and the one arrow that could have been a straight drop
+    dog-legged instead.
+    """
+    graph_nodes = nodes("root", "a", "b", "c", "under_a", "under_c")
+    graph_edges = edges("root->a", "root->b", "root->c", "a->under_a", "c->under_c")
+    result = ENGINE.layout(graph_nodes, graph_edges)
+    for parent, child in (("a", "under_a"), ("c", "under_c")):
+        assert result.placements[parent].centre[0] == pytest.approx(
+            result.placements[child].centre[0]
+        )
+
+
+def test_a_fan_of_children_is_centred_under_its_parent() -> None:
+    """Three children cannot all be under one parent, so they straddle it."""
+    graph_nodes = nodes("root", "a", "b", "c")
+    result = ENGINE.layout(graph_nodes, edges("root->a", "root->b", "root->c"))
+    children = [result.placements[i].centre[0] for i in ("a", "b", "c")]
+    assert sum(children) / len(children) == pytest.approx(result.placements["root"].centre[0])
+
+
+def test_alignment_never_lets_two_boxes_touch() -> None:
+    """The gate is still the gate: pulling boxes toward their parents may not
+    pull them into each other."""
+    random = Random(7)
+    for _ in range(50):
+        count = random.randint(2, 10)
+        graph_nodes = [
+            LayoutNode(f"n{index}", random.uniform(40.0, 200.0), random.uniform(20.0, 60.0))
+            for index in range(count)
+        ]
+        graph_edges = [
+            LayoutEdge(f"n{random.randrange(count)}", f"n{random.randrange(count)}")
+            for _ in range(random.randint(1, count * 2))
+        ]
+        result = ENGINE.layout(graph_nodes, graph_edges)
+        assert result.overlaps() == ()
+        for layer in result.ranks:
+            for first, second in pairwise(layer):
+                gap = result.placements[second].x - result.placements[first].right
+                assert gap >= SPACING.node_gap - 1e-6
+
+
+def test_alignment_keeps_the_drawing_off_the_left_edge() -> None:
+    """Pulling a rank left may not pull it past the origin: the canvas starts there."""
+    graph_nodes = nodes("root", "a", "b", "c", "under_a")
+    result = ENGINE.layout(graph_nodes, edges("root->a", "root->b", "root->c", "a->under_a"))
+    assert min(place.x for place in result.placements.values()) >= -1e-9
