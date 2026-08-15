@@ -74,6 +74,13 @@
           "items": {
             "$ref": "#/$defs/group"
           }
+        },
+        "bands": {
+          "type": "array",
+          "description": "Named things that run alongside a set of boxes rather than containing them — drawn as a labelled bar beside the boxes they accompany. For the activity that goes on throughout: a source sheet with one continuous concern above its steps and another below says the steps are *surrounded* by them, and two such bands are peers. A `group` cannot say that — a box sits inside one container or none, so two groups over the same members had to be nested, which draws a hierarchy that is not there.",
+          "items": {
+            "$ref": "#/$defs/band"
+          }
         }
       },
       "required": [
@@ -761,6 +768,28 @@
       },
       "required": [
         "label"
+      ],
+      "additionalProperties": false
+    },
+    "band": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "members": {
+          "type": "array",
+          "description": "The ids of the nodes this band accompanies. Unlike a group's, they are a set rather than a container: a band names something that runs alongside those boxes, and the same box may be under any number of bands.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "text",
+        "members"
       ],
       "additionalProperties": false
     },

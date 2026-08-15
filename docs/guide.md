@@ -357,6 +357,26 @@ else:
     Path("diagram.svg").write_text(svg, encoding="utf-8")
 ```
 
+## Groups and bands
+
+Both take a set of nodes, and they say different things about them.
+
+| | Says | Drawn as | A box may be in |
+|---|---|---|---|
+| `groups` | These are **inside** this | a dashed frame with a caption | one group, or none |
+| `bands` | This runs **alongside** these | a bar beside them, with its name outside it | any number of bands |
+
+The distinction is worth the second field because containment is exclusive and
+company is not. A process with one continuous concern above its steps and another
+below has two things of equal rank accompanying the same six boxes; written as
+groups, one has to be nested inside the other, and the drawing then claims a
+hierarchy nobody stated. Written as bands they are peers, which is what they are.
+
+A band runs *along* the reading direction and is placed *across* it, so a process
+read across the page gets its bands above and below, and the same process read
+down gets them left and right. See
+[`reference/flow-bands.json`](reference/flow-bands.json).
+
 ## Asking for a wide drawing instead of a tall one
 
 Reading direction is part of what a diagram says, and some processes read across

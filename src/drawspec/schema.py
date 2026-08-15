@@ -221,6 +221,22 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "band": (
+        _text(required=True),
+        FieldSpec(
+            "members",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=1,
+            description=(
+                "The ids of the nodes this band accompanies. Unlike a group's, they "
+                "are a set rather than a container: a band names something that runs "
+                "alongside those boxes, and the same box may be under any number of "
+                "bands."
+            ),
+        ),
+    ),
     "item": (
         FieldSpec("id", "string", description="Optional; generated from position when absent."),
         _text(),
@@ -535,6 +551,21 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             item_ref="group",
             description="Boxes drawn around sets of nodes, each with its own caption.",
         ),
+        FieldSpec(
+            "bands",
+            "array",
+            item_ref="band",
+            description=(
+                "Named things that run alongside a set of boxes rather than "
+                "containing them — drawn as a labelled bar beside the boxes they "
+                "accompany. For the activity that goes on throughout: a source sheet "
+                "with one continuous concern above its steps and another below says "
+                "the steps are *surrounded* by them, and two such bands are peers. "
+                "A `group` cannot say that — a box sits inside one container or none, "
+                "so two groups over the same members had to be nested, which draws a "
+                "hierarchy that is not there."
+            ),
+        ),
     ),
     ("stack", "timeline", "columns"): (
         FieldSpec(
@@ -768,6 +799,22 @@ class Group:
 
 
 @dataclass(frozen=True)
+class Band:
+    """Something that runs alongside a set of boxes rather than containing them.
+
+    A `Group` is a container: a box sits inside one or none, and drawing two over
+    the same members means nesting one in the other, which claims a hierarchy the
+    author did not. A band claims nothing but company — it accompanies its members
+    — so any number of them may cover the same box and they are peers by
+    construction. That is what a source sheet means when its own description says
+    the steps are *surrounded* by two continuous activities.
+    """
+
+    text: str
+    members: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class Item:
     text: str
     id: str = ""
@@ -877,6 +924,7 @@ class Document:
     nodes: tuple[Node, ...] = ()
     edges: tuple[Edge, ...] = ()
     groups: tuple[Group, ...] = ()
+    bands: tuple[Band, ...] = ()
     items: tuple[Item, ...] = ()
     levels: tuple[Item, ...] = ()
     rings: tuple[Item, ...] = ()
@@ -1372,6 +1420,26 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                             f"{member!r} is not the id of any node or group in this document",
                         )
                     )
+
+    bands = document.get("bands")
+    if isinstance(bands, list):
+        # A band's members are nodes and nothing else. It runs *beside* boxes, so
+        # naming a group would be asking it to run beside a frame, which is a
+        # different drawing and not one this says how to make.
+        for index, band in enumerate(bands):
+            if not isinstance(band, dict):
+                continue
+            members = band.get("members")
+            if not isinstance(members, list):
+                continue
+            for position, member in enumerate(members):
+                if isinstance(member, str) and member not in seen:
+                    found.append(
+                        Violation(
+                            _pointer("bands", index, "members", position),
+                            f"{member!r} is not the id of any node in this document",
+                        )
+                    )
     return found
 
 
@@ -1426,6 +1494,10 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         groups=tuple(
             Group(id=entry["id"], members=tuple(entry["members"]), text=entry.get("text", ""))
             for entry in document.get("groups", ())
+        ),
+        bands=tuple(
+            Band(text=entry["text"], members=tuple(entry["members"]))
+            for entry in document.get("bands", ())
         ),
         items=_items(document.get("items", ())),
         levels=_items(document.get("levels", ())),
@@ -1692,6 +1764,7 @@ __all__ = [
     "SCHEMA_ID",
     "SHAPE_KINDS",
     "Axis",
+    "Band",
     "Cell",
     "Curve",
     "Document",
