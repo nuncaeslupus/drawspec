@@ -31,10 +31,18 @@ import xml.etree.ElementTree as ET
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Final
 
-from collisions import SVG_NS, _number, _runs, _segments, _stack
-
-from drawspec.text.measure import TextMeasurer
+from collisions import (
+    SVG_NS,
+    Measurers,
+    _local,
+    _number,
+    _path_points,
+    _polygon_points,
+    _rect_points,
+    line_box,
+)
 
 #: Ink has to reach this far past the canvas edge to be reported, in user units.
 #: The `viewBox` is widened by half the *heaviest* stroke in the scene, so a
@@ -114,42 +122,76 @@ def _rotation(element: ET.Element) -> tuple[float, tuple[float, float]]:
 
 
 def _text_ink(root: ET.Element, search_paths: Sequence[Path] | None) -> Iterator[Overflow | None]:
-    """Every `<text>` as its measured line box, in final coordinates."""
+    """Every `<text>` as its measured line box, in final coordinates.
+
+    Each run is measured in its own family — see `collisions.line_box`. A label
+    measured entirely in the parent's sans understates a monospace span by about
+    a fifth, and an understated box is a clipped label the checker calls clean.
+    """
+    measurers = Measurers(search_paths)
     for element in root.iter(f"{{{SVG_NS}}}text"):
-        size = _number(element.get("font-size"), 11.0)
-        stack = _stack(element.get("font-family"))
-        measurer = TextMeasurer({"sans": stack}, search_paths=search_paths)
-        runs = _runs(element)
-        if not runs:
+        text, x0, y0, x1, y1 = line_box(element, measurers)
+        if not text:
             continue
-        text = "".join(run for run, _ in runs)
-        if not text.strip():
-            continue
-        width = sum(measurer.advance(run, "sans", size, weight) for run, weight in runs)
-        extents = measurer.measure(text, "sans", size, runs[0][1])
-        x = _number(element.get("x"))
-        y = _number(element.get("y"))
-        anchor = element.get("text-anchor", "start")
-        if anchor == "middle":
-            x -= width / 2
-        elif anchor == "end":
-            x -= width
-        box = (x, y - extents.ascent, x + width, y + extents.descent)
         angle, about = _rotation(element)
-        yield _overflow("label", text, _rotated(box, angle, about), root)
+        yield _overflow("label", text, _rotated((x0, y0, x1, y1), angle, about), root)
 
 
-def _stroke_ink(root: ET.Element) -> Iterator[Overflow | None]:
-    """Every stroked segment as the bounds of the paint it lays down."""
-    for segment in _segments(root):
-        (x0, y0), (x1, y1) = segment.start, segment.finish
-        box = (
-            min(x0, x1) - segment.reach,
-            min(y0, y1) - segment.reach,
-            max(x0, x1) + segment.reach,
-            max(y0, y1) + segment.reach,
-        )
-        yield _overflow("a stroke", "", box, root)
+#: Elements whose bounds this knows how to take. `<ellipse>` is here and not in
+#: `collisions._segments` because that one asks whether a *stroke* runs through a
+#: word, and answers it by walking straight segments; an arc has none to walk.
+#: Being outside the canvas is a question about bounds, and an ellipse has those.
+_SHAPES: Final = ("path", "polygon", "polyline", "rect", "ellipse")
+
+
+def _shape_ink(root: ET.Element) -> Iterator[Overflow | None]:
+    """Every drawn shape as the bounds of the ink it lays down.
+
+    Wider than the stroke walker on purpose, in two ways it had to be.
+
+    **Fill without stroke counts.** Every arrow head drawspec draws is a polygon
+    with `fill="currentColor"` and `stroke="none"` — a stroked head would be a
+    head with an outline — so a checker that skips unstroked elements is blind to
+    a clipped arrow head, which is the one piece of ink a reader cannot infer from
+    what is left.
+
+    **An ellipse counts.** A chart's point marks are `<ellipse>`, and neither the
+    segment walker nor anything else in the suite has ever looked at one.
+    """
+    for element in root.iter():
+        tag = _local(element.tag)
+        if tag not in _SHAPES:
+            continue
+        stroked = element.get("stroke", "none") != "none"
+        filled = element.get("fill", "none") != "none"
+        if not stroked and not filled:
+            continue
+        # A stroke is paint around a centreline; a fill stops at the geometry.
+        reach = _number(element.get("stroke-width"), 1.0) / 2 if stroked else 0.0
+        points = _points(element, tag)
+        if not points:
+            continue
+        xs = [x for x, _ in points]
+        ys = [y for _, y in points]
+        box = (min(xs) - reach, min(ys) - reach, max(xs) + reach, max(ys) + reach)
+        yield _overflow(f"a {'stroke' if stroked else 'filled shape'}", "", box, root)
+
+
+def _points(element: ET.Element, tag: str) -> list[tuple[float, float]]:
+    """The geometry of one shape, as the points its bounds are taken from.
+
+    An ellipse is given as the four extremes of its own box, which are on it —
+    the bounds of an axis-aligned ellipse are the bounds of that box.
+    """
+    if tag == "ellipse":
+        cx, cy = _number(element.get("cx")), _number(element.get("cy"))
+        rx, ry = _number(element.get("rx")), _number(element.get("ry"))
+        return [(cx - rx, cy - ry), (cx + rx, cy + ry)]
+    if tag == "rect":
+        return _rect_points(element)
+    if tag in ("polygon", "polyline"):
+        return _polygon_points(element.get("points", ""))
+    return [point for subpath in _path_points(element.get("d", "")) for point in subpath]
 
 
 def _overflow(
@@ -180,7 +222,7 @@ def clipped(svg: str, *, search_paths: Sequence[Path] | None = None) -> list[Ove
     """Every piece of ink outside the canvas, in one rendered document."""
     root = ET.fromstring(svg)  # drawspec's own output, not third-party input
     found = [
-        item for item in (*_text_ink(root, search_paths), *_stroke_ink(root)) if item is not None
+        item for item in (*_text_ink(root, search_paths), *_shape_ink(root)) if item is not None
     ]
     return sorted(found, key=lambda item: -item.worst)
 

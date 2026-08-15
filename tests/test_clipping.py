@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 from clipping import TOLERANCE, clipped
+from collisions import Measurers
 
 from drawspec.render import render_file
 
@@ -101,3 +102,70 @@ def test_a_document_with_no_viewbox_is_an_error_rather_than_a_pass() -> None:
 def test_no_reference_drawing_puts_ink_outside_its_canvas(document: Path) -> None:
     found = clipped(render_file(document, profile="standalone"))
     assert found == [], "\n".join(str(item) for item in found)
+
+
+# -- what the first version of this checker could not see --------------------
+
+
+def test_a_monospace_span_is_measured_in_monospace() -> None:
+    """Measured as the parent's sans, a mono run comes out about a fifth narrow.
+
+    A box too small in the direction an overflow happens is a clipped label the
+    checker calls clean, so this is a false negative rather than a near miss.
+    """
+    word = "identificacio_del_registre"
+    mono = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {CANVAS} {CANVAS}">'
+        f'<text x="60" y="100" font-family="\'DejaVu Sans\', sans-serif" font-size="10">'
+        f"<tspan font-family=\"'DejaVu Sans Mono', monospace\">{word}</tspan></text></svg>"
+    )
+    sans = mono.replace("<tspan font-family=\"'DejaVu Sans Mono', monospace\">", "<tspan>")
+
+    assert clipped(sans) == [], "in sans the word fits, which is why this had to be measured"
+    (found,) = clipped(mono)
+    assert found.right > 0, "in its own face it does not"
+
+
+def test_a_filled_arrow_head_outside_the_canvas_is_reported() -> None:
+    """Every head drawspec draws is a fill with `stroke="none"` — a stroked head
+    would be a head with an outline — and a head is the one piece of ink a reader
+    cannot infer from what is left."""
+    head = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {CANVAS} {CANVAS}">'
+        f'<polygon points="210,100 202,103.6 202,96.4" fill="currentColor" stroke="none"/></svg>'
+    )
+    (found,) = clipped(head)
+
+    assert found.right == pytest.approx(10.0)
+    assert "filled shape" in str(found)
+
+
+def test_an_ellipse_outside_the_canvas_is_reported() -> None:
+    """A chart's point marks are ellipses, and an arc has no straight segments for
+    a segment walker to walk."""
+    mark = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {CANVAS} {CANVAS}">'
+        f'<ellipse cx="100" cy="{CANVAS}" rx="3" ry="3" fill="currentColor" stroke="none"/></svg>'
+    )
+    (found,) = clipped(mark)
+
+    assert found.bottom == pytest.approx(3.0)
+
+
+def test_a_shape_with_neither_fill_nor_stroke_lays_down_no_ink() -> None:
+    invisible = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {CANVAS} {CANVAS}">'
+        f'<rect x="300" y="300" width="50" height="50" fill="none" stroke="none"/></svg>'
+    )
+    assert clipped(invisible) == []
+
+
+def test_one_measurer_is_built_per_font_stack_and_reused() -> None:
+    """A measurer caches its faces on the instance, so one per label throws the
+    cache away on every label."""
+    measurers = Measurers()
+    sans = ("DejaVu Sans", "sans-serif")
+    mono = ("DejaVu Sans Mono", "monospace")
+
+    assert measurers.of(sans) is measurers.of(sans)
+    assert measurers.of(sans) is not measurers.of(mono)
