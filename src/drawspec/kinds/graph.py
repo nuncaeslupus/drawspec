@@ -172,6 +172,7 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         max_width=width - margin * 2,
         prefer=PREFERRED_DIRECTION,
         entered=crossed([(edge.source, edge.target) for edge in document.edges], nesting),
+        centre=next((node.id for node in document.nodes if node.centre), ""),
     )
     # The top level's own layout, with every leaf from every level in it — the
     # ranks and reversed edges are the top level's, which is what a caller

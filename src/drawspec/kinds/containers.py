@@ -258,6 +258,7 @@ def arrange(
     prefer: str,
     entered: frozenset[str] = frozenset(),
     depth: int = 0,
+    centre: str = "",
 ) -> Arrangement:
     """Lay out one level, laying out any group in it first.
 
@@ -281,6 +282,7 @@ def arrange(
                 prefer,
                 entered,
                 depth + 1,
+                centre,
             )
             inner[identifier] = sub
             caption = captions.get(identifier)
@@ -310,6 +312,7 @@ def arrange(
         [LayoutEdge(source=s, target=t) for s, t in sorted(lifted)],
         max_width=max_width,
         prefer=prefer,
+        centre=centre,
     )
 
     places: dict[str, Placement] = {}

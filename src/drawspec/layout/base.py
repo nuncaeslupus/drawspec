@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
+from math import cos, pi, sin
 from typing import Final, Protocol, runtime_checkable
 
 from drawspec.errors import LayoutError
@@ -30,6 +31,10 @@ from drawspec.errors import LayoutError
 #: across. When arrows will not fit one way, the answer is the other one —
 #: never a smaller gap, which is what costs an arrow its shaft.
 DIRECTIONS: Final = ("down", "right")
+
+#: Where the first peer of a hub goes: the top, reading clockwise, the same
+#: convention `cycle` uses and the same one a clock face does.
+_TOP: Final = -pi / 2
 
 
 @dataclass(frozen=True)
@@ -385,6 +390,75 @@ def pack(
     )
 
 
+def radial(
+    nodes: Sequence[LayoutNode],
+    spacing: Spacing,
+    *,
+    centre: str,
+) -> Layout:
+    """One box in the middle, the rest around it, in declaration order clockwise.
+
+    For the diagram whose subject **is** the middle. A post holds a unit above
+    it, a function to its left, a cost centre to its right and a person below,
+    with a named arrow to each: there is no sequence and no hierarchy, the four
+    relations are peers, and the reading starts in the middle rather than at the
+    top.
+
+    Ranked instead, the middle object becomes just another row — and worse, it
+    would not draw at all: four labelled edges out of one box in a layered
+    layout ran out of room for the fourth label, and the drawing only rendered
+    once two of the arrows were turned round, which left two arrowheads pointing
+    the wrong way. Around the middle each label has its own quadrant.
+
+    Peers sit on an ellipse whose radii clear the centre box, the peer's own
+    half-extent and the rank gap, so nothing overlaps whatever the shapes are.
+    The first peer is placed at the top and the rest run clockwise, which is how
+    a clock face and every hub diagram in the corpus are read.
+    """
+    middle = next((node for node in nodes if node.id == centre), None)
+    if middle is None:
+        raise LayoutError(f"no node {centre!r} to put in the middle")
+    peers = [node for node in nodes if node.id != centre]
+    if not peers:
+        return Layout(
+            placements={middle.id: Placement(0.0, 0.0, middle.width, middle.height, 0)},
+            width=middle.width,
+            height=middle.height,
+        )
+
+    widest = max(node.width for node in peers)
+    tallest = max(node.height for node in peers)
+    across = middle.width / 2 + spacing.rank_gap + widest / 2
+    down = middle.height / 2 + spacing.rank_gap + tallest / 2
+
+    angles = [_TOP + 2 * pi * index / len(peers) for index in range(len(peers))]
+    spots = {
+        node.id: (across * cos(angle), down * sin(angle))
+        for node, angle in zip(peers, angles, strict=True)
+    }
+    spots[middle.id] = (0.0, 0.0)
+
+    sizes = {node.id: node for node in nodes}
+    left = min(x - sizes[key].width / 2 for key, (x, _) in spots.items())
+    top = min(y - sizes[key].height / 2 for key, (_, y) in spots.items())
+    placements = {
+        key: Placement(
+            x=x - sizes[key].width / 2 - left,
+            y=y - sizes[key].height / 2 - top,
+            width=sizes[key].width,
+            height=sizes[key].height,
+            rank=0 if key == middle.id else 1,
+        )
+        for key, (x, y) in spots.items()
+    }
+    return Layout(
+        placements=placements,
+        width=max(place.right for place in placements.values()),
+        height=max(place.bottom for place in placements.values()),
+        ranks=((middle.id,), tuple(node.id for node in peers)),
+    )
+
+
 def best_layout(
     engine: LayoutEngine,
     nodes: Sequence[LayoutNode],
@@ -392,6 +466,7 @@ def best_layout(
     *,
     max_width: float,
     prefer: str = "down",
+    centre: str = "",
 ) -> Layout:
     """Lay out in whichever direction fits `max_width`, preferring `prefer`.
 
@@ -409,6 +484,9 @@ def best_layout(
     """
     if prefer not in DIRECTIONS:
         raise LayoutError(f"unknown direction {prefer!r}; expected {', '.join(DIRECTIONS)}")
+
+    if centre and any(node.id == centre for node in nodes):
+        return replace(radial(nodes, engine.spacing, centre=centre), direction=prefer)
 
     if nodes and not edges:
         return replace(pack(nodes, engine.spacing, max_width=max_width), direction=prefer)
@@ -437,6 +515,7 @@ __all__ = [
     "break_cycles",
     "long_edges",
     "pack",
+    "radial",
     "rank_nodes",
     "validate",
 ]

@@ -24,7 +24,7 @@ from spike_layout import REFERENCE_DIR
 
 from drawspec import render
 from drawspec.emit import check_embedding_safety
-from drawspec.errors import DrawspecError, FitError
+from drawspec.errors import DocumentError, DrawspecError, FitError
 from drawspec.geometry import Box
 from drawspec.kinds import IMPLEMENTED, scene_for
 from drawspec.kinds.graph import NODE_WIDTH_SHARE, graph_drawing, graph_scene
@@ -244,3 +244,85 @@ def _inside(box: tuple[float, float, float, float], place: Box) -> bool:
         and right <= place.x + place.width + 1e-6
         and bottom <= place.y + place.height + 1e-6
     )
+
+
+# --------------------------------------------------------------------------
+# A subject with named relations on every side
+# --------------------------------------------------------------------------
+
+
+HUB = {
+    "version": 1,
+    "kind": "flow",
+    "title": "What a post is defined by",
+    "nodes": [
+        {"id": "post", "text": "The post", "centre": True},
+        {"id": "unit", "text": "The unit"},
+        {"id": "cost", "text": "The cost centre"},
+        {"id": "person", "text": "The person"},
+        {"id": "role", "text": "The job description"},
+    ],
+    "edges": [
+        {"from": "unit", "to": "post", "label": "contains"},
+        {"from": "post", "to": "cost", "label": "charged to"},
+        {"from": "person", "to": "post", "label": "holds"},
+        {"from": "role", "to": "post", "label": "describes"},
+    ],
+}
+
+
+def test_a_centre_node_is_surrounded_rather_than_ranked() -> None:
+    """Ranked top to bottom the middle object becomes just another row, and the
+    centrality — which is the whole content — is lost."""
+    built = graph_drawing(parse_document(HUB), THEME, MEASURER)
+    middle = built.boxes["post"]
+    around = [built.boxes[key] for key in ("unit", "cost", "person", "role")]
+    assert any(box.y + box.height <= middle.y for box in around), "nothing above"
+    assert any(box.y >= middle.y + middle.height for box in around), "nothing below"
+    assert any(box.x + box.width <= middle.x for box in around), "nothing to the left"
+    assert any(box.x >= middle.x + middle.width for box in around), "nothing to the right"
+
+
+def test_every_relation_of_a_hub_keeps_its_label() -> None:
+    """Four labelled edges out of one box ran out of room for the fourth, and
+    the drawing only rendered once two arrows were turned round — which left two
+    arrowheads pointing the wrong way."""
+    built = graph_drawing(parse_document(HUB), THEME, MEASURER)
+    assert {label.text for label in built.labels} == {
+        "contains",
+        "charged to",
+        "holds",
+        "describes",
+    }
+
+
+def test_a_hub_draws_each_arrow_the_way_the_author_wrote_it() -> None:
+    built = graph_drawing(parse_document(HUB), THEME, MEASURER)
+    drawn = {(route.source, route.target) for route in built.routes}
+    assert ("unit", "post") in drawn
+    assert ("post", "cost") in drawn
+
+
+def test_a_hub_never_overlaps_its_peers() -> None:
+    built = graph_drawing(parse_document(HUB), THEME, MEASURER)
+    boxes = list(built.boxes.values())
+    for index, first in enumerate(boxes):
+        for second in boxes[index + 1 :]:
+            assert not (
+                first.x < second.x + second.width
+                and second.x < first.x + first.width
+                and first.y < second.y + second.height
+                and second.y < first.y + first.height
+            )
+
+
+def test_two_centres_are_refused() -> None:
+    nodes = [{**node, "centre": True} for node in HUB["nodes"][:2]]  # type: ignore[index]
+    with pytest.raises(DocumentError, match="one subject"):
+        parse_document({**HUB, "nodes": [*nodes, *HUB["nodes"][2:]]})  # type: ignore[index]
+
+
+def test_a_tree_may_not_name_a_centre() -> None:
+    """A tree is ranked from its root, so it has no middle to arrange around."""
+    with pytest.raises(DocumentError, match="no middle to arrange around"):
+        parse_document({**HUB, "kind": "tree"})

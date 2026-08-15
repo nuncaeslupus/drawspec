@@ -185,6 +185,17 @@ def _role(vocabulary: tuple[str, ...], default: str) -> FieldSpec:
 OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
     "node": (
         FieldSpec("id", "string", required=True, description="Unique within the document."),
+        FieldSpec(
+            "centre",
+            "boolean",
+            description=(
+                "Whether this node is the subject the rest are arranged around. One node "
+                "per document may say so, and only a `flow`. For the diagram that starts "
+                "in the middle rather than at the top: a thing with named relations on "
+                "every side, where the relations are peers and there is no sequence "
+                "between them. Ranked instead, the middle object becomes just another row."
+            ),
+        ),
         _text(),
         _role(NODE_ROLES, "step"),
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
@@ -713,6 +724,9 @@ class Node:
     id: str
     text: str
     role: str = "step"
+    centre: bool = False
+    """Whether the rest of a `flow` is arranged around this one."""
+
     note: str = ""
     """Accepted for v1 compatibility; only `timeline` items are drawn."""
 
@@ -1050,6 +1064,28 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
 def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
     """The checks JSON Schema cannot express: unique ids, and edges that land."""
     found: list[Violation] = []
+    if kind in GRAPH_KINDS:
+        middles = [
+            index
+            for index, node in enumerate(document.get("nodes", ()) or ())
+            if isinstance(node, dict) and node.get("centre")
+        ]
+        for index in middles[1:]:
+            found.append(
+                Violation(
+                    _pointer("nodes", index, "centre"),
+                    "a second node says it is the centre. A diagram arranged around a "
+                    "subject has one subject.",
+                )
+            )
+        if middles and kind != "flow":
+            found.append(
+                Violation(
+                    _pointer("nodes", middles[0], "centre"),
+                    f"a {kind} is ranked from its root, so it has no middle to arrange "
+                    f"around. Use a flow.",
+                )
+            )
     if kind == "timeline":
         entries = document.get("items")
         spans = document.get("spans")
@@ -1285,6 +1321,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
                 id=entry["id"],
                 text=entry["text"],
                 role=entry.get("role", "step"),
+                centre=bool(entry.get("centre", False)),
                 note=entry.get("note", ""),
             )
             for entry in document.get("nodes", ())
