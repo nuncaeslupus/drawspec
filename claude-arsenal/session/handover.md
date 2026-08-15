@@ -3,7 +3,10 @@
 <!-- Written at session end. A new session reading this file can resume without additional context. -->
 
 **Date**: 2026-08-15 · **Branch**: `claude/drawspec-graphics-schemas-sp577b`
-**PR**: [#46](https://github.com/nuncaeslupus/drawspec/pull/46) — open · Qodo found **3**, all fixed in `de06bd9`, re-review reports **0**
+**PR**: [#46](https://github.com/nuncaeslupus/drawspec/pull/46) — **merged** as `ee58e27`, CI green ·
+Qodo found **3**, all fixed in `de06bd9`, re-review reported **0**
+**Consumer side**: [`nuncaeslupus/opos#145`](https://github.com/nuncaeslupus/opos/pull/145) — **merged**,
+the four rewritten sheets and their `revision.jsonl` rows
 **Suite**: 1 468 passing, 1 skipped · lint + strict mypy clean
 **Gates**: 0 collisions **and 0 outside the canvas**, across 33 references *and* the consumer's 87
 
@@ -71,15 +74,38 @@ because it moves all 33 drawings.
 
 Four opos sheets rewritten in the round-four vocabulary, from the real Catalan
 source — **51** (two sibling `bands`, read across), **88** (`aside`), **41** (span
-markup), **06** (curve `categories`). Verified clean on both gates. Handed to the
-owner as files; **not** pushed to `opos` — that needs permission.
+markup), **06** (curve `categories`). **Landed in `opos#145`**, along with a
+`revision.jsonl` row each and a README section documenting how that ledger is
+read: `decision` is the round-three note, `ronda4`/`ronda5` are theirs, and
+`status` is the only field that states today. **06** went `blocked` → `fixed` and
+**51** `partial` → `fixed`.
+
+One thing declined there, on purpose. The review asked for the historical
+`decision` fields to be rewritten so they agree with the new `status`. They are
+per-round snapshots — three rows on `main` already paired `fixed` with a
+"cannot be drawn" decision before this branch — so rewriting them would make a
+document lie about its own date. The convention got documented instead. The
+review also asked for the layout rationale inline beside `width`/`height`/
+`height_binding`: a drawspec document **refuses unknown keys**, so a comment
+there would stop the document rendering. It went in the ledger row, with the
+three numbers checked by removing them one at a time.
 
 Still refused, and checked against this build rather than assumed:
 `edge-from-a-group` (an edge may only name a node) — sheets **39** and **44**.
 
 ## Next session
 
-Nothing mid-flight. If #46 is green, the natural next step is the owner's call on
-the outer-margin question, and landing the four rewritten sheets in `opos`.
+Nothing mid-flight; both PRs merged. The two open items are queue tasks now —
+**R5-1** `lo-2382` (the outer margin) and **R5-2** `lo-0e91`
+(`edge-from-a-group`) — and R5-1 wants an owner's decision before code, because
+it moves all 33 reference drawings.
+
+**Worth knowing before touching the queue:** it is stale. All 24 of the original
+`T1`–`T18` / `G1`–`G6` rows are still `open` and every one of them shipped rounds
+ago. It was seeded once from the plan and never released, so `queue-status` says
+nothing is done when nearly everything is. `release.sh done` needs a PR URL per
+task, so this is a deliberate reconciliation pass, not a sweep — and until it
+happens the two real tasks above are buried among 24 false ones.
+
 Content decisions unchanged and still the owner's: **01**, **27**, the glosses on
 **53 / 74 / 81**, and the English-against-Catalan redraws **27, 83, 86**.
