@@ -314,8 +314,15 @@ def test_reference_graphs_route_without_an_anchor_violation(document: str, direc
                 f"{route.source}->{route.target} does not touch {identifier}"
             )
         assert shaft_length(route, theme) >= theme.edge.min_shaft_length - 1e-9
+        direct = theme.edge_roles[route.role].routing == "direct"
         for first, second in pairwise(route.points):
-            assert first[0] == pytest.approx(second[0]) or first[1] == pytest.approx(second[1])
+            # A role the theme routes direct is a chord by design — one straight
+            # run at whatever angle the two boxes put it at.
+            assert (
+                direct
+                or first[0] == pytest.approx(second[0])
+                or first[1] == pytest.approx(second[1])
+            )
             for box in obstacles:
                 assert not _enters(first, second, box), (
                     f"{route.source}->{route.target} passes through {box.id}"

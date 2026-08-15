@@ -34,12 +34,13 @@ of it.
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from typing import Final
 
 from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, size_box
 from drawspec.kinds.common import text_runs
-from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene
+from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextRun
 from drawspec.schema import Document, Item
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme
@@ -130,8 +131,82 @@ def _canvas_width(document: Document, theme: Theme) -> float:
     return document.width if document.width else theme.canvas.width
 
 
+def _gate_divider(
+    text: str,
+    start: tuple[float, float],
+    end: tuple[float, float],
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> tuple[Primitive, ...]:
+    """One divider, broken in the middle to let its name through.
+
+    A stage-gate funnel names the *gaps*, not the stages: the source writes
+    *porta* three times, once between each pair, and without them a reader sees
+    four stages getting smaller and no reason why. The name belongs to neither
+    stage, so it cannot go in either box.
+
+    It goes on the divider, and the divider steps aside for it — the line is
+    drawn as two segments with the words between them, which is how a boundary
+    is labelled everywhere else and the only placement that puts no text over a
+    line. When the name is longer than the divider, the divider disappears
+    entirely and the words are the whole of it, which is still a threshold and
+    still legible.
+    """
+    (x1, y1), (x2, y2) = start, end
+    if not text:
+        return (Path(GATE_ROLE, points=(start, end)),)
+
+    size = theme.scale[SHAPE_LEVEL]
+    extents = measurer.measure(text, theme.font.default, size)
+    middle = ((x1 + x2) / 2, (y1 + y2) / 2)
+    half = extents.width / 2 + theme.box.padding.horizontal / 2
+    length = math.hypot(x2 - x1, y2 - y1)
+
+    label = TextRun(
+        GATE_ROLE,
+        x=middle[0],
+        y=middle[1] + (extents.ascent - extents.descent) / 2,
+        text=text,
+        level=SHAPE_LEVEL,
+        font=theme.font.default,
+        anchor="middle",
+    )
+    if length <= half * 2:
+        return (label,)
+
+    fraction = half / length
+    towards = ((x2 - x1) * fraction, (y2 - y1) * fraction)
+    return (
+        Path(GATE_ROLE, points=(start, (middle[0] - towards[0], middle[1] - towards[1]))),
+        Path(GATE_ROLE, points=((middle[0] + towards[0], middle[1] + towards[1]), end)),
+        label,
+    )
+
+
+def _peers_lead(items: Sequence[Item]) -> bool:
+    """Whether this set of peers is a set of names, each with room for a detail.
+
+    One member with a second line used to be the only member set as a name: the
+    three rings of *Governança* / *SVS* / *Cadena de valor i pràctiques* came
+    out with the first in bold and the other two not, because the first happens
+    to carry an explanation under it and they do not. They are three names of
+    the same rank, and whether one of them needed explaining is incidental.
+
+    So the question is asked of the *set*, not of each label — if any member has
+    a lead, every member's first paragraph is one.
+    """
+    return any("\n" in item.text for item in items)
+
+
 def _label(
-    item: Item, theme: Theme, measurer: TextMeasurer, span: float, where: str, why: str
+    item: Item,
+    theme: Theme,
+    measurer: TextMeasurer,
+    span: float,
+    where: str,
+    why: str,
+    *,
+    lead: bool | None = None,
 ) -> Box:
     """Size one label to `span`, or refuse with a message naming what to do."""
     if span <= theme.box.padding.horizontal:
@@ -150,6 +225,7 @@ def _label(
             # The family draws the outline; the text is sized in a plain
             # rectangle inside the span the family worked out for it.
             shape="rect",
+            lead=lead,
         )
     except FitError as error:
         raise FitError(f"{where}: {error} {why}") from None
@@ -187,6 +263,7 @@ def _pyramid(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
             f"pyramid level {index + 1} of {count} ({item.text[:32]!r})",
             "The top level is the narrowest, so it takes the shortest label — "
             "shorten it, use fewer levels, or give the diagram more width.",
+            lead=_peers_lead(levels),
         )
         for index, item in enumerate(levels)
     ]
@@ -342,6 +419,7 @@ def _funnel_down(document: Document, theme: Theme, measurer: TextMeasurer) -> Sc
             f"funnel stage {index + 1} of {count} ({item.text[:32]!r})",
             "The last stage is the narrowest, so it takes the shortest label — "
             "shorten it, use fewer stages, or give the diagram more width.",
+            lead=_peers_lead(stages),
         )
         for index, item in enumerate(stages)
     ]
@@ -368,10 +446,13 @@ def _funnel_down(document: Document, theme: Theme, measurer: TextMeasurer) -> Sc
     ]
     for index in range(1, count):
         gate = index * stage_height
-        primitives.append(
-            Path(
-                GATE_ROLE,
-                points=((middle - span(index) / 2, gate), (middle + span(index) / 2, gate)),
+        primitives.extend(
+            _gate_divider(
+                stages[index - 1].gate,
+                (middle - span(index) / 2, gate),
+                (middle + span(index) / 2, gate),
+                theme,
+                measurer,
             )
         )
     for index, box in enumerate(boxes):
@@ -416,6 +497,7 @@ def _funnel_right(document: Document, theme: Theme, measurer: TextMeasurer) -> S
             slice_width - theme.box.padding.horizontal,
             f"stage {index + 1} of {count} ({item.text[:32]!r})",
             "Shorten the label, use fewer stages, or give the diagram more width.",
+            lead=_peers_lead(stages),
         )
         for index, item in enumerate(stages)
     ]
@@ -440,8 +522,14 @@ def _funnel_right(document: Document, theme: Theme, measurer: TextMeasurer) -> S
     ]
     for index in range(1, count):
         gate = index * slice_width
-        primitives.append(
-            Path(GATE_ROLE, points=((gate, middle - edge(gate)), (gate, middle + edge(gate))))
+        primitives.extend(
+            _gate_divider(
+                stages[index - 1].gate,
+                (gate, middle - edge(gate)),
+                (gate, middle + edge(gate)),
+                theme,
+                measurer,
+            )
         )
     for index, box in enumerate(boxes):
         # The right edge is the narrowest part of a stage, so that is what its
@@ -510,7 +598,13 @@ def _rings(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
             # The one label that is centred — it has no band, only its own circle.
             span = _ring_span(radii, index) - theme.box.padding.horizontal
             box = _label(
-                item, theme, measurer, span, f"the innermost ring ({item.text[:32]!r})", ""
+                item,
+                theme,
+                measurer,
+                span,
+                f"the innermost ring ({item.text[:32]!r})",
+                "",
+                lead=_peers_lead(rings),
             )
             placed = box.resized(width=span).moved_to(centre - span / 2, centre - box.height / 2)
             primitives.extend(text_runs(placed, theme, measurer))
@@ -531,6 +625,7 @@ def _rings(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
             f"ring {index + 1} of {count} ({item.text[:32]!r})",
             "An outer ring's band is narrow near the top — shorten the label, use "
             "fewer rings, or give the diagram more width.",
+            lead=_peers_lead(rings),
         )
         if box.height > band - theme.box.padding.vertical:
             raise FitError(

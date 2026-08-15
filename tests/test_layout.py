@@ -135,18 +135,57 @@ def test_layout_is_deterministic_across_runs() -> None:
         assert first == second
 
 
-def test_layout_is_deterministic_when_the_input_order_changes() -> None:
-    """The same graph described in a different order is the same graph.
-
-    A cycle has no canonical entry point, so which edge gets reversed has to be
-    imposed rather than discovered — otherwise the same document renders
+def test_layout_breaks_the_same_cycle_edge_whatever_order_it_is_described_in() -> None:
+    """A cycle has no canonical entry point, so which edge gets reversed has to
+    be imposed rather than discovered — otherwise the same loop renders
     differently depending on how its edges happened to be listed.
+
+    Note what this does *not* say. Sibling order **is** taken from the document
+    (see below), so reordering the nodes of a rank is a real change and moves
+    them. Which edge closes a cycle is not something the author states, so it
+    may not move.
     """
     graph_nodes, graph_edges = CYCLE
     forward = ENGINE.layout(graph_nodes, graph_edges)
     shuffled = ENGINE.layout(list(reversed(graph_nodes)), list(reversed(graph_edges)))
     assert forward.reversed_edges == shuffled.reversed_edges
-    assert forward.placements == shuffled.placements
+
+
+# --------------------------------------------------------------------------
+# Sibling order
+# --------------------------------------------------------------------------
+
+
+def test_layout_orders_siblings_as_the_document_declares_them() -> None:
+    """Three children of one parent all share a barycentre, so the tie decides
+    the order of every fan there is. It breaks on declaration order.
+
+    Before this, it broke on id: *Alcalde, Comissió de Govern, 10 Districtes*
+    came out in whatever order their ids sorted in, which is no order at all.
+    """
+    graph_nodes = nodes("root", "zebra", "middle", "alpha")
+    graph_edges = edges("root->zebra", "root->middle", "root->alpha")
+    result = ENGINE.layout(graph_nodes, graph_edges)
+    assert result.ranks[1] == ("zebra", "middle", "alpha")
+
+    rewritten = nodes("root", "alpha", "middle", "zebra")
+    assert ENGINE.layout(rewritten, graph_edges).ranks[1] == ("alpha", "middle", "zebra")
+
+
+def test_layout_orders_unconnected_nodes_as_the_document_declares_them() -> None:
+    """With no edges there is no barycentre to compute, so every node is a tie."""
+    graph_nodes = nodes("gamma", "alpha", "beta")
+    assert ENGINE.layout(graph_nodes, []).ranks == (("gamma", "alpha", "beta"),)
+
+
+def test_layout_still_reorders_a_rank_when_that_removes_a_crossing() -> None:
+    """Declaration order is the tie-break, not an override: a barycentre that
+    differs still wins, or the ordering pass would do nothing."""
+    graph_nodes = nodes("a", "b", "x", "y")
+    graph_edges = edges("a->y", "b->x")
+    result = ENGINE.layout(graph_nodes, graph_edges)
+    assert result.ranks == (("a", "b"), ("y", "x"))
+    assert result.crossings(graph_edges) == 0
 
 
 # --------------------------------------------------------------------------
@@ -380,3 +419,99 @@ def test_best_layout_result_is_a_layout() -> None:
 def test_best_layout_rejects_an_unknown_preference() -> None:
     with pytest.raises(LayoutError, match="direction"):
         best_layout(ENGINE, *CHAIN, max_width=400.0, prefer="upwards")
+
+
+# --------------------------------------------------------------------------
+# Packing a set with nothing ordering it
+# --------------------------------------------------------------------------
+
+
+def test_layout_of_a_graph_with_no_edges_packs_into_rows() -> None:
+    """Ranking turns a relation into a position, and there is no relation here.
+
+    Thirteen components and not one arrow is the Kubernetes control plane, and
+    ranked it comes out as a line — thirteen ranks of one, or one rank of
+    thirteen — neither of which fits a fixed-width sheet at a legible size.
+    """
+    graph_nodes = nodes(*(f"n{index}" for index in range(7)), width=120.0)
+    result = best_layout(ENGINE, graph_nodes, [], max_width=420.0)
+    assert result.ranks == (("n0", "n1", "n2"), ("n3", "n4", "n5"), ("n6",))
+    assert result.width <= 420.0
+    assert result.fits
+    assert result.overlaps() == ()
+
+
+def test_a_packed_row_is_separated_by_the_node_gap_not_the_rank_gap() -> None:
+    """The rank gap buys an arrow its shaft, and there are no arrows."""
+    graph_nodes = nodes("a", "b", "c", width=120.0, height=40.0)
+    result = best_layout(ENGINE, graph_nodes, [], max_width=270.0)
+    assert result.ranks == (("a", "b"), ("c",))
+    assert result.placements["c"].y - result.placements["a"].bottom == SPACING.node_gap
+
+
+def test_packing_keeps_one_box_per_row_when_nothing_fits_beside_it() -> None:
+    """A box wider than the sheet still gets a row; `fits` reports the truth."""
+    graph_nodes = nodes("wide", "also", width=500.0)
+    result = best_layout(ENGINE, graph_nodes, [], max_width=400.0)
+    assert result.ranks == (("wide",), ("also",))
+    assert not result.fits
+
+
+# --------------------------------------------------------------------------
+# Alignment: a box sits under what it hangs from
+# --------------------------------------------------------------------------
+
+
+def test_a_lone_child_sits_directly_under_its_parent() -> None:
+    """The reviewer raised it twice: *"I would have expected a straight arrow
+    instead of even more angled."*
+
+    Packing a rank sequentially and centring the block keeps the boxes apart and
+    does nothing else, so a branch with one child had that child wherever the
+    packing put it — and the one arrow that could have been a straight drop
+    dog-legged instead.
+    """
+    graph_nodes = nodes("root", "a", "b", "c", "under_a", "under_c")
+    graph_edges = edges("root->a", "root->b", "root->c", "a->under_a", "c->under_c")
+    result = ENGINE.layout(graph_nodes, graph_edges)
+    for parent, child in (("a", "under_a"), ("c", "under_c")):
+        assert result.placements[parent].centre[0] == pytest.approx(
+            result.placements[child].centre[0]
+        )
+
+
+def test_a_fan_of_children_is_centred_under_its_parent() -> None:
+    """Three children cannot all be under one parent, so they straddle it."""
+    graph_nodes = nodes("root", "a", "b", "c")
+    result = ENGINE.layout(graph_nodes, edges("root->a", "root->b", "root->c"))
+    children = [result.placements[i].centre[0] for i in ("a", "b", "c")]
+    assert sum(children) / len(children) == pytest.approx(result.placements["root"].centre[0])
+
+
+def test_alignment_never_lets_two_boxes_touch() -> None:
+    """The gate is still the gate: pulling boxes toward their parents may not
+    pull them into each other."""
+    random = Random(7)
+    for _ in range(50):
+        count = random.randint(2, 10)
+        graph_nodes = [
+            LayoutNode(f"n{index}", random.uniform(40.0, 200.0), random.uniform(20.0, 60.0))
+            for index in range(count)
+        ]
+        graph_edges = [
+            LayoutEdge(f"n{random.randrange(count)}", f"n{random.randrange(count)}")
+            for _ in range(random.randint(1, count * 2))
+        ]
+        result = ENGINE.layout(graph_nodes, graph_edges)
+        assert result.overlaps() == ()
+        for layer in result.ranks:
+            for first, second in pairwise(layer):
+                gap = result.placements[second].x - result.placements[first].right
+                assert gap >= SPACING.node_gap - 1e-6
+
+
+def test_alignment_keeps_the_drawing_off_the_left_edge() -> None:
+    """Pulling a rank left may not pull it past the origin: the canvas starts there."""
+    graph_nodes = nodes("root", "a", "b", "c", "under_a")
+    result = ENGINE.layout(graph_nodes, edges("root->a", "root->b", "root->c", "a->under_a"))
+    assert min(place.x for place in result.placements.values()) >= -1e-9

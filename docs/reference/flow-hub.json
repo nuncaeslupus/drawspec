@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "kind": "flow",
+  "title": "What a post is defined by",
+  "description": "A post is the subject: the unit that contains it, the function that describes it, the cost centre it is charged to and the person who holds it are all defined by their relation to it. There is no sequence between them and no hierarchy — the four relations are peers, and the reading starts in the middle.",
+  "nodes": [
+    { "id": "post", "text": "**The post**", "role": "emphasis", "centre": true },
+    { "id": "unit", "text": "The unit" },
+    { "id": "cost", "text": "The cost centre" },
+    { "id": "person", "text": "The person" },
+    { "id": "role", "text": "The job description" }
+  ],
+  "edges": [
+    { "from": "unit", "to": "post", "label": "contains" },
+    { "from": "post", "to": "cost", "label": "charged to" },
+    { "from": "person", "to": "post", "label": "holds" },
+    { "from": "role", "to": "post", "label": "describes" }
+  ]
+}

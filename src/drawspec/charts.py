@@ -46,6 +46,7 @@ from drawspec.legend import entries_for, height_of, primitives_for
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextRun
 from drawspec.schema import Axis, Document, Position, Series
 from drawspec.text.measure import Extents, TextMeasurer
+from drawspec.text.wrap import TextBlock, wrap
 from drawspec.theme import Theme
 
 #: Axis lines and tick marks are plain connectors — no direction, no head — which
@@ -105,6 +106,11 @@ LABEL_DAYLIGHT: Final = 2.0
 #: is usually the one the chart is about. Only the top: a bar has to stand on its
 #: baseline, so the bottom of the range is not ours to move.
 HEADROOM: Final = 0.08
+
+#: How many passes the horizontal labels get to settle. Their height decides
+#: where the plot ends, and the plot's end decides how much room they have; two
+#: is enough for that to stop moving, and the third is the belt.
+_LABEL_PASSES: Final = 3
 
 #: The most decimals a point label may carry. Past this the label is wider than
 #: the room beside its own point, and values that close needed a different chart.
@@ -197,11 +203,26 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
 
     widest = _widest(up_ticks, theme, measurer, label_size)
     left = line.height + gap + widest + gap + tick
-    bottom = tick + gap + line.height + _caption_band(line, gap) + legend
     top = line.height + gap
-    # Half the last tick label hangs past the end of its own axis, so the canvas
-    # has to hold it. Without this the reader loses the right-hand digit.
-    right = max(_widest(across_ticks, theme, measurer, label_size) / 2, line.height)
+
+    # The labels under the horizontal axis, wrapped to the room they have. That
+    # room depends on where the plot ends, which depends on how tall the labels
+    # come out — so it settles rather than being computed in one go. Two passes
+    # is the whole of it: the first assumes the tightest right gutter, the
+    # second uses the width the wrapped labels actually want.
+    across_labels = _band_labels(
+        across_ticks, horizontal, width - left - line.height, theme, measurer
+    )
+    for _ in range(_LABEL_PASSES):
+        right = max(_block_widest(across_labels) / 2, line.height)
+        room = width - left - right
+        settled = _band_labels(across_ticks, horizontal, room, theme, measurer)
+        if settled == across_labels:
+            break
+        across_labels = settled
+    right = max(_block_widest(across_labels) / 2, line.height)
+    band = max((block.height for block in across_labels), default=line.height)
+    bottom = tick + gap + band + _caption_band(line, gap) + legend
 
     plot_left, plot_right = left, width - right
     plot_top, plot_bottom = top, height - bottom
@@ -231,7 +252,16 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
         *_axes(plot_left, plot_right, plot_top, plot_bottom),
         *_tick_marks(across_ticks, up_ticks, across, up, plot_left, plot_bottom, theme),
         *_tick_labels(
-            across_ticks, up_ticks, across, up, plot_left, plot_bottom, theme, measurer, gap
+            across_ticks,
+            across_labels,
+            up_ticks,
+            across,
+            up,
+            plot_left,
+            plot_bottom,
+            theme,
+            measurer,
+            gap,
         ),
         *_axis_labels(
             horizontal,
@@ -429,6 +459,7 @@ def _tick_marks(
 
 def _tick_labels(
     across_ticks: tuple[tuple[float, str], ...],
+    across_labels: Sequence[TextBlock],
     up_ticks: tuple[tuple[float, str], ...],
     across: Scale,
     up: Scale,
@@ -441,18 +472,22 @@ def _tick_labels(
     size = theme.scale["label"]
     extents = measurer.measure("0", theme.font.default, size)
     labels: list[Primitive] = []
-    for value, text in across_ticks:
-        labels.append(
-            TextRun(
-                FURNITURE_ROLE,
-                x=across.to_pixels(value),
-                y=bottom + theme.edge.head_length + gap + extents.ascent,
-                text=text,
-                level="label",
-                font=theme.font.default,
-                anchor="middle",
+    top = bottom + theme.edge.head_length + gap
+    for index, (value, text) in enumerate(across_ticks):
+        block = across_labels[index] if index < len(across_labels) else None
+        lines = [line.text for line in block] if block is not None else [text]
+        for row, content in enumerate(lines):
+            labels.append(
+                TextRun(
+                    FURNITURE_ROLE,
+                    x=across.to_pixels(value),
+                    y=top + extents.ascent + row * (block.advance if block else 0.0),
+                    text=content,
+                    level="label",
+                    font=theme.font.default,
+                    anchor="middle",
+                )
             )
-        )
     for value, text in up_ticks:
         labels.append(
             TextRun(
@@ -475,6 +510,51 @@ def _widest(
         (measurer.measure(text, theme.font.default, size).width for _, text in ticks),
         default=0.0,
     )
+
+
+def _block_widest(blocks: Sequence[TextBlock]) -> float:
+    return max((block.width for block in blocks), default=0.0)
+
+
+def _band_labels(
+    ticks: tuple[tuple[float, str], ...],
+    axis: Axis,
+    room: float,
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> tuple[TextBlock, ...]:
+    """The horizontal axis's labels, each wrapped to the share of the axis it owns.
+
+    A number is short and a category is a sentence — *Suspensió PROVISIONAL
+    (mesura cautelar)* — and nothing used to stop one running into the next.
+    Four of those at the default width overlapped by 27 units and the first
+    began 55 units outside the canvas: text over text, and text off the sheet,
+    which are the two failures the whole tool exists to make impossible.
+
+    So a label gets the band its own tick owns, less a gap so two neighbours
+    cannot touch, and is wrapped into it. A numeric axis is left alone: its
+    labels are short by construction, and wrapping `1,000` would be worse than
+    the problem.
+
+    Raises:
+        FitError: a single unbreakable word is wider than its band. Refusing is
+            the promise being kept, not broken — the caller is told which label
+            and how much room it had.
+    """
+    if not axis.categories or not ticks:
+        return ()
+    share = max(room / len(ticks) - theme.box.padding.horizontal, 1.0)
+    blocks: list[TextBlock] = []
+    for _, text in ticks:
+        try:
+            blocks.append(wrap(text, share, measurer, theme=theme, level="label"))
+        except FitError as error:
+            raise FitError(
+                f"the category {text!r} does not fit the {share:.0f} units this axis gives "
+                f"each of its {len(ticks)} labels, and it cannot be broken smaller. Shorten "
+                f"it, give the chart more width, or use fewer categories."
+            ) from error
+    return tuple(blocks)
 
 
 def _axis_labels(

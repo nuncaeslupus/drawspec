@@ -91,6 +91,22 @@ What a document *may* size is the canvas: `width` and `height` at the top level
 are a budget for the whole drawing, and the same names on a node are refused,
 because how big one box is follows from its text and the theme's padding.
 
+### The one placement you do control: which comes first
+
+No document names a position, but the *order* it writes things in is content,
+and drawspec reads it. Where two boxes end up on the same rank — three children
+of one parent, four members of a group, a row of boxes nothing connects — they
+are drawn in the order the document lists them, left to right or top to bottom
+as the direction requires. The same goes for a group's `members`.
+
+It is a tie-break, not an override. An edge that would cross still moves a box:
+the layout reduces crossings first and reads your order only where that leaves
+it a free choice — which, for a fan of siblings, is every time.
+
+So write a list in the order it is meant to be read. If the subject lists three
+bodies in a fixed order, and the reader will be asked about them in that order,
+that order is part of the diagram and the document is where it goes.
+
 ### A box with a lead and a detail
 
 Labels often carry two things: a name, and what the name means. Write them as

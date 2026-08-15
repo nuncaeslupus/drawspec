@@ -117,14 +117,46 @@ class Nesting:
 
     @property
     def roots(self) -> tuple[str, ...]:
-        """Nothing contains these."""
-        return tuple(
+        """Nothing contains these, in the order the document declares them.
+
+        A loose node sits where it was written. A group has no position of its
+        own — `groups` is a second array, not a place in `nodes` — so it sits
+        where its **earliest member** was written, wherever in its member list
+        that one appears. Ordering on `members[0]` instead would tie a group's
+        place among its siblings to which of its own members it happens to list
+        first, so reordering the inside of a container would move the container;
+        the earliest position its content occupies does not move.
+
+        Iterating `groups` instead of sorting would be iterating a `frozenset`
+        of strings — an order that changes with the interpreter's hash seed, so
+        the same document rendered twice could differ.
+        """
+        positions = {node: index for index, node in enumerate(self._nodes)}
+
+        def declared(identifier: str) -> tuple[int, str]:
+            if identifier in positions:
+                return (positions[identifier], identifier)
+            buried = [
+                positions[member] for member in self.descendants(identifier) if member in positions
+            ]
+            return (min(buried, default=len(positions)), identifier)
+
+        roots = [
             identifier
             for identifier in (*self.groups, *self._nodes)
             if identifier not in self.parent
-        )
+        ]
+        return tuple(sorted(roots, key=declared))
 
     _nodes: tuple[str, ...] = ()
+
+    def descendants(self, identifier: str) -> tuple[str, ...]:
+        """Every id under `identifier`, groups included, depth first."""
+        found: list[str] = []
+        for member in self.members.get(identifier, ()):
+            found.append(member)
+            found.extend(self.descendants(member))
+        return tuple(found)
 
     def lift(self, identifier: str, level: frozenset[str]) -> str | None:
         """The ancestor of `identifier` that belongs to `level`, if any.
@@ -183,7 +215,7 @@ def nesting_of(document: Document) -> Nesting:
         members=members,
         parent=parent,
         groups=frozenset(groups),
-        _nodes=tuple(sorted(identifiers)),
+        _nodes=tuple(node.id for node in document.nodes),
     )
 
 
@@ -226,6 +258,7 @@ def arrange(
     prefer: str,
     entered: frozenset[str] = frozenset(),
     depth: int = 0,
+    centre: str = "",
 ) -> Arrangement:
     """Lay out one level, laying out any group in it first.
 
@@ -249,6 +282,7 @@ def arrange(
                 prefer,
                 entered,
                 depth + 1,
+                centre,
             )
             inner[identifier] = sub
             caption = captions.get(identifier)
@@ -278,6 +312,7 @@ def arrange(
         [LayoutEdge(source=s, target=t) for s, t in sorted(lifted)],
         max_width=max_width,
         prefer=prefer,
+        centre=centre,
     )
 
     places: dict[str, Placement] = {}

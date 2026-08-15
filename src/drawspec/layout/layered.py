@@ -22,7 +22,9 @@ arrangement this can produce in which two boxes intersect.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from itertools import pairwise
+from typing import Final
 
 from drawspec.layout.base import (
     Layout,
@@ -34,6 +36,9 @@ from drawspec.layout.base import (
     rank_nodes,
     validate,
 )
+
+#: How close two coordinates have to be before they are the same one.
+_TOLERANCE: Final = 1e-9
 
 #: Barycentre sweeps to run. Four (two down, two up) is where the corpus's
 #: largest graph stops improving; more passes only cost determinism arguments.
@@ -74,7 +79,7 @@ class LayeredEngine:
         ranked_edges, reversed_edges = break_cycles(working, edges)
         ranks = rank_nodes(working, ranked_edges)
         order = self._order(working, ranked_edges, ranks)
-        placements, width, height = self._place(working, order)
+        placements, width, height = self._place(working, order, ranked_edges)
 
         if transposed:
             placements = {
@@ -108,13 +113,20 @@ class LayeredEngine:
         """Node ids per rank, ordered to reduce crossings.
 
         Barycentre sweeps: a node moves to the average position of its
-        neighbours in the adjacent rank, alternating direction. Ties break on id,
-        so the result is the same on every run — which matters more here than the
-        last crossing, because the coordinates end up in committed SVG.
+        neighbours in the adjacent rank, alternating direction. Ties break on
+        **declaration order** — the position the node holds in the document — so
+        the result is the same on every run, and so a tie means the author's
+        order rather than an alphabetical accident.
+
+        That tie is not a corner case: three children of one parent all sit at
+        the same barycentre, so it decides the order of every fan in the corpus.
+        Ordering them by id put *Alcalde, Comissió de Govern, 10 Districtes* into
+        the order their ids happened to sort in, which is no order at all.
         """
         depth = max(ranks.values(), default=0) + 1
+        declared = {node.id: position for position, node in enumerate(nodes)}
         layers: list[list[str]] = [[] for _ in range(depth)]
-        for node in sorted(nodes, key=lambda item: item.id):
+        for node in nodes:
             layers[ranks[node.id]].append(node.id)
 
         successors: dict[str, list[str]] = {node.id: [] for node in nodes}
@@ -138,7 +150,7 @@ class LayeredEngine:
                     layers[index],
                     key=lambda identifier: (
                         _barycentre(neighbours[identifier], reference),
-                        identifier,
+                        declared[identifier],
                     ),
                 )
 
@@ -147,7 +159,10 @@ class LayeredEngine:
     # -- placement --------------------------------------------------------
 
     def _place(
-        self, nodes: Sequence[LayoutNode], order: tuple[tuple[str, ...], ...]
+        self,
+        nodes: Sequence[LayoutNode],
+        order: tuple[tuple[str, ...], ...],
+        edges: Sequence[LayoutEdge] = (),
     ) -> tuple[dict[str, Placement], float, float]:
         """Sequential within a rank, disjoint bands between ranks."""
         sizes = {node.id: node for node in nodes}
@@ -159,17 +174,16 @@ class LayeredEngine:
         ]
         total_width = max(widths, default=0.0)
 
+        centres = self._aligned(sizes, order, edges, total_width)
+
         placements: dict[str, Placement] = {}
         y = 0.0
         for rank, layer in enumerate(order):
             band = max((sizes[identifier].height for identifier in layer), default=0.0)
-            # Each rank is centred on the widest one, so a diagram reads down its
-            # own middle rather than being flushed left.
-            x = (total_width - widths[rank]) / 2
             for identifier in layer:
                 node = sizes[identifier]
                 placements[identifier] = Placement(
-                    x=x,
+                    x=centres[identifier] - node.width / 2,
                     # Boxes of differing heights sit centred in their band, so a
                     # rank of peers lines up on its middle.
                     y=y + (band - node.height) / 2,
@@ -177,19 +191,122 @@ class LayeredEngine:
                     height=node.height,
                     rank=rank,
                 )
-                x += node.width + self.spacing.node_gap
             y += band + self.spacing.rank_gap
 
+        left = min((place.x for place in placements.values()), default=0.0)
+        if abs(left) > _TOLERANCE:
+            placements = {
+                identifier: replace(place, x=place.x - left)
+                for identifier, place in placements.items()
+            }
+        extent = max((place.right for place in placements.values()), default=0.0)
         height = max(y - self.spacing.rank_gap, 0.0)
-        return placements, total_width, height
+        return placements, max(extent, total_width), height
+
+    def _aligned(
+        self,
+        sizes: dict[str, LayoutNode],
+        order: tuple[tuple[str, ...], ...],
+        edges: Sequence[LayoutEdge],
+        total_width: float,
+    ) -> dict[str, float]:
+        """Where each box's centre goes: under what it hangs from, if it can.
+
+        Packing a rank sequentially and centring the block is enough to keep the
+        boxes apart and no more. It is why a branch with **one** child had that
+        child sitting wherever the packing put it — often half a box sideways —
+        so the one arrow in the diagram that could have been a straight drop
+        dog-legged instead. The reviewer raised it twice: *"I would have
+        expected a straight arrow instead of even more angled."*
+
+        So each rank after the first asks to sit under its own parents: a node's
+        wanted centre is the mean of the centres it hangs from, and the rank is
+        then placed as close to those wants as the order and the gaps allow.
+
+        That last part is the whole difficulty, and it is a known problem with a
+        known answer — isotonic regression. The boxes must keep their order and
+        their gaps, so their centres must be non-decreasing by at least
+        `width/2 + gap + width/2` each; subtract the running minimum and it is
+        the plain "fit a non-decreasing sequence closest to what was asked for"
+        problem, which pool-adjacent-violators solves exactly in one pass. A
+        lone child lands *exactly* under its parent, because nothing else is
+        pulling on it; a fan of three lands centred under theirs, spread by the
+        gap.
+        """
+        parents: dict[str, list[str]] = {identifier: [] for identifier in sizes}
+        for edge in edges:
+            if edge.target in parents and edge.source in sizes:
+                parents[edge.target].append(edge.source)
+
+        centres: dict[str, float] = {}
+        for rank, layer in enumerate(order):
+            span = sum(sizes[identifier].width for identifier in layer) + self.spacing.node_gap * (
+                len(layer) - 1
+            )
+            if rank == 0:
+                x = (total_width - span) / 2
+                for identifier in layer:
+                    centres[identifier] = x + sizes[identifier].width / 2
+                    x += sizes[identifier].width + self.spacing.node_gap
+                continue
+
+            default = (total_width - span) / 2
+            wanted: list[float] = []
+            running = default
+            for identifier in layer:
+                above = [centres[parent] for parent in parents[identifier] if parent in centres]
+                half = sizes[identifier].width / 2
+                wanted.append(
+                    sum(above) / len(above) if above else running + half,
+                )
+                running += sizes[identifier].width + self.spacing.node_gap
+
+            # The minimum centre-to-centre distance between each pair, so the
+            # problem below is about a sequence that only has to be increasing.
+            floors = [0.0]
+            for first, second in pairwise(layer):
+                floors.append(
+                    floors[-1]
+                    + sizes[first].width / 2
+                    + self.spacing.node_gap
+                    + sizes[second].width / 2
+                )
+            for identifier, position in zip(
+                layer,
+                _isotonic([want - floor for want, floor in zip(wanted, floors, strict=True)]),
+                strict=True,
+            ):
+                centres[identifier] = position + floors[layer.index(identifier)]
+        return centres
+
+
+def _isotonic(wanted: Sequence[float]) -> list[float]:
+    """The non-decreasing sequence closest to `wanted`, by least squares.
+
+    Pool adjacent violators: walk left to right keeping blocks of a mean and a
+    weight, and whenever a block's mean is below the one before it the two
+    cannot both have what they asked for, so they are merged and share the
+    average. One pass, exact, and deterministic — which matters as much here as
+    exactness, because these coordinates are committed.
+    """
+    blocks: list[tuple[float, int]] = []
+    for value in wanted:
+        total, count = value, 1
+        while blocks and blocks[-1][0] >= total / count:
+            previous, weight = blocks.pop()
+            total += previous * weight
+            count += weight
+        blocks.append((total / count, count))
+    return [mean for mean, count in blocks for _ in range(count)]
 
 
 def _barycentre(neighbours: Sequence[str], reference: dict[str, int]) -> float:
     """The average position of `neighbours`, or a large value when it has none.
 
     A node with no neighbour in the adjacent rank has nothing to be pulled
-    towards, so it sorts after the ones that do — and then on its id, which is
-    what keeps the result reproducible.
+    towards, so it sorts after the ones that do. Which of two such nodes comes
+    first is then decided by `_order`'s tie-break — the document's own order —
+    not here.
     """
     positions = [reference[identifier] for identifier in neighbours if identifier in reference]
     if not positions:

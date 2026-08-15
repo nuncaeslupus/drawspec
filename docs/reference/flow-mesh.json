@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "kind": "flow",
+  "title": "Every leaf reaches every spine",
+  "description": "A spine-leaf fabric: three spine switches across the top, four leaf switches under them, and a link from each leaf to each of the spines. The crossings are the content — twelve links is what 'every leaf reaches every spine' looks like.",
+  "caption": "A link has no head and no direction, so the theme draws it as a chord rather than routing it.",
+  "nodes": [
+    { "id": "spine1", "text": "Spine 1" },
+    { "id": "spine2", "text": "Spine 2" },
+    { "id": "spine3", "text": "Spine 3" },
+    { "id": "leaf1", "text": "Leaf 1" },
+    { "id": "leaf2", "text": "Leaf 2" },
+    { "id": "leaf3", "text": "Leaf 3" },
+    { "id": "leaf4", "text": "Leaf 4" }
+  ],
+  "edges": [
+    { "from": "leaf1", "to": "spine1", "role": "link" },
+    { "from": "leaf1", "to": "spine2", "role": "link" },
+    { "from": "leaf1", "to": "spine3", "role": "link" },
+    { "from": "leaf2", "to": "spine1", "role": "link" },
+    { "from": "leaf2", "to": "spine2", "role": "link" },
+    { "from": "leaf2", "to": "spine3", "role": "link" },
+    { "from": "leaf3", "to": "spine1", "role": "link" },
+    { "from": "leaf3", "to": "spine2", "role": "link" },
+    { "from": "leaf3", "to": "spine3", "role": "link" },
+    { "from": "leaf4", "to": "spine1", "role": "link" },
+    { "from": "leaf4", "to": "spine2", "role": "link" },
+    { "from": "leaf4", "to": "spine3", "role": "link" }
+  ]
+}

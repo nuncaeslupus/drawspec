@@ -17,13 +17,14 @@ so a consumer retunes their diagrams by editing a theme file.
 
 from __future__ import annotations
 
+import math
 from itertools import pairwise
 
 from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
 from drawspec.kinds.common import box_primitives, text_runs
 from drawspec.legend import entries_for, height_of, primitives_for
-from drawspec.scene import Path, Polygon, Primitive, Scene, TextLine, TextSpan
+from drawspec.scene import Path, Polygon, Primitive, Scene, TextLine, TextRun, TextSpan
 from drawspec.schema import Cell, Document, Item
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
@@ -161,7 +162,7 @@ def _timeline(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
     later. It is all or nothing — a timeline with some entries placed and some
     not would have a reader measuring one gap and counting the next.
 
-    Sizes stay normalised either way, because peers being the same size is this
+    Widths stay normalised either way, because peers sharing an edge is this
     family's rule and irregular *spacing* is not irregular *labels*. When two of
     those equal labels will not fit the gap their values ask for, that is a
     `FitError` naming the pair rather than an overlap.
@@ -216,7 +217,75 @@ def _timeline(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
         primitives.extend(_note_runs(notes, centres, below + theme.box.padding.top))
         below += theme.box.padding.top + _note_band(notes)
 
+    if document.spans:
+        bars, below = _span_bars(document, centres, below, theme, measurer)
+        primitives.extend(bars)
+
     return _scene(document, primitives, width, below)
+
+
+def _span_bars(
+    document: Document,
+    centres: list[float],
+    top: float,
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> tuple[list[Primitive], float]:
+    """The named intervals, in lanes under the axis.
+
+    A span is the quantity that is not a thing on the diagram but the
+    **distance** between two things on it. A recovery point objective is not an
+    event: it is how much lies between the last backup and the disaster, and on
+    the disaster-timeline original it is the entire content — four instants
+    without their intervals are four words, which is why that sheet was the one
+    of eighty-nine with no document at all.
+
+    Each bar runs between its two entries' marks, capped at both ends so a
+    reader can see where it starts and stops, with its name centred above it.
+    Two spans that overlap go in different lanes: `MTD = RTO + WRT` is a span
+    over two spans, and the arithmetic is only visible when the wider one is
+    drawn clear of the two it covers. Lanes are assigned in declaration order,
+    so the document decides which interval sits nearest the axis.
+    """
+    order = {item.id: index for index, item in enumerate(document.items) if item.id}
+    cap = theme.edge.head_length * TICK_FRACTION
+    size = theme.scale["label"]
+    line = measurer.measure("0", theme.font.default, size)
+    gap = theme.box.padding.top
+
+    lanes: list[list[tuple[float, float]]] = []
+    placed: list[tuple[int, float, float, str]] = []
+    for span in document.spans:
+        left, right = centres[order[span.start]], centres[order[span.end]]
+        for index, lane in enumerate(lanes):
+            if all(right <= start or left >= end for start, end in lane):
+                lane.append((left, right))
+                placed.append((index, left, right, span.text))
+                break
+        else:
+            lanes.append([(left, right)])
+            placed.append((len(lanes) - 1, left, right, span.text))
+
+    depth = gap + line.height + gap
+    primitives: list[Primitive] = []
+    for row, left, right, text in placed:
+        base = top + gap + row * depth
+        bar = base + line.height + gap / 2
+        primitives.append(Path(AXIS_ROLE, points=((left, bar), (right, bar))))
+        for end in (left, right):
+            primitives.append(Path(AXIS_ROLE, points=((end, bar - cap / 2), (end, bar + cap / 2))))
+        primitives.append(
+            TextRun(
+                AXIS_ROLE,
+                x=(left + right) / 2,
+                y=base + line.ascent,
+                text=text,
+                level="label",
+                font=theme.font.default,
+                anchor="middle",
+            )
+        )
+    return primitives, top + gap + len(lanes) * depth
 
 
 def _notes(
@@ -423,12 +492,21 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         )
         primitives.extend(text_runs(band, theme, measurer))
 
+    # A matrix that carries relations is a grid of boxes rather than a solid
+    # table, so its cells stand apart far enough for an arrow to live in the
+    # join. Only then: the tables that have no edges keep the shared borders
+    # that make them read as tables.
+    inset = theme.edge.clearance if document.edges else 0.0
+    placements: dict[str, tuple[float, float, float, float]] = {}
+
     for cell in cells:
-        left = heading_width + cell.column * column_width
-        cell_width = column_width * cell.across
-        top = tops[cell.row]
-        cell_height = tops[cell.row + cell.down] - top
+        left = heading_width + cell.column * column_width + inset
+        cell_width = column_width * cell.across - inset * 2
+        top = tops[cell.row] + inset
+        cell_height = tops[cell.row + cell.down] - tops[cell.row] - inset * 2
         right, bottom = left + cell_width, top + cell_height
+        if cell.id:
+            placements[cell.id] = (left, top, right, bottom)
         # Polygons rather than rects: adjacent cells share an edge, and the
         # theme's corner radius would leave a gap at every junction and a row of
         # lozenges where a table should be. The radius belongs to boxes.
@@ -446,10 +524,20 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         )
         primitives.extend(text_runs(placed, theme, measurer))
 
+    primitives.extend(_cell_edges(document, placements, theme, measurer))
+
     # What the fills stand for. A matrix's whole content is a comparison between
     # groups of cells, so a matrix with two groups and no key is a drawing whose
     # subject is undrawn — the original this kind replaces carried one.
-    key = entries_for([(group, "step", True) for group in _named_groups(cells)], theme)
+    #
+    # A group's own name is the fallback and not the intent: `group` is how a
+    # cell says which other cells are like it, and an id-shaped one — `carrega`,
+    # `capcalera` — was being read out to the reader as though it were prose. A
+    # `key` entry gives the group a name meant for reading.
+    named = {entry.group: entry.text for entry in document.key}
+    key = entries_for(
+        [(named.get(group, group), "step", True) for group in _named_groups(cells)], theme
+    )
     primitives.extend(primitives_for(key, theme, measurer, 0.0, tops[-1], width))
     return _scene(document, primitives, width, tops[-1] + height_of(key, theme, measurer, width))
 
@@ -543,3 +631,94 @@ def _heading_width(document: Document, theme: Theme, measurer: TextMeasurer, wid
         size_box(heading, theme=theme, measurer=measurer, max_width=width / 3, shape="rect").width
         for heading in document.rows
     )
+
+
+def _cell_edges(
+    document: Document,
+    placements: dict[str, tuple[float, float, float, float]],
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> list[Primitive]:
+    """The relations between cells, drawn over the grid that placed them.
+
+    A grid's cells are not always only cells. On the process original the upper
+    one **produces** the lower and the left one **precedes** the right, and a
+    `matrix` that drew the boxes and dropped all three relations left the reader
+    with a table where the source had a process. Drawn as a `flow` instead, with
+    one group per phase, every relation survived and the drawing came out four
+    times taller than the sheet.
+
+    So the grid keeps placing the cells and the relations are drawn on top: a
+    straight run between the two cells' facing edges, at the theme's own head,
+    with the label beside it. Facing edges rather than centres, because two
+    cells of a grid are almost always neighbours — the run is short, and a line
+    from centre to centre would be a line inside two boxes.
+    """
+    if not document.edges:
+        return []
+    primitives: list[Primitive] = []
+    size = theme.scale["label"]
+    for edge in document.edges:
+        source, target = placements[edge.source], placements[edge.target]
+        start, finish = _facing(source, target)
+        role = edge.role
+        span = math.hypot(finish[0] - start[0], finish[1] - start[1])
+        if span <= 0:
+            continue
+        towards = ((finish[0] - start[0]) / span, (finish[1] - start[1]) / span)
+        if theme.edge_roles[role].has_head:
+            back = min(theme.edge.head_length, span)
+            shaft = (finish[0] - towards[0] * back, finish[1] - towards[1] * back)
+            wing = theme.edge.head_length / 2
+            across = (-towards[1] * wing, towards[0] * wing)
+            primitives.append(Path(role, points=(start, shaft)))
+            primitives.append(
+                Polygon(
+                    role,
+                    points=(
+                        finish,
+                        (shaft[0] + across[0], shaft[1] + across[1]),
+                        (shaft[0] - across[0], shaft[1] - across[1]),
+                    ),
+                )
+            )
+        else:
+            primitives.append(Path(role, points=(start, finish)))
+
+        if edge.label:
+            extents = measurer.measure(edge.label, theme.font.default, size)
+            away = theme.edge.clearance + extents.ascent
+            middle = ((start[0] + finish[0]) / 2, (start[1] + finish[1]) / 2)
+            primitives.append(
+                TextRun(
+                    role,
+                    x=middle[0] - towards[1] * away,
+                    y=middle[1] + towards[0] * away,
+                    text=edge.label,
+                    level="label",
+                    font=theme.font.default,
+                    anchor="middle",
+                )
+            )
+    return primitives
+
+
+def _facing(
+    source: tuple[float, float, float, float], target: tuple[float, float, float, float]
+) -> tuple[tuple[float, float], tuple[float, float]]:
+    """The two points on the cells' facing edges, on whichever axis separates them.
+
+    A grid puts its cells beside or above each other, so one axis is the answer
+    and the other is a tie: the wider separation wins, and equal separation
+    means diagonal neighbours, where the horizontal reads better than a corner
+    to corner run.
+    """
+    sx1, sy1, sx2, sy2 = source
+    tx1, ty1, tx2, ty2 = target
+    across = max(tx1 - sx2, sx1 - tx2)
+    down = max(ty1 - sy2, sy1 - ty2)
+    if across >= down:
+        y = (max(sy1, ty1) + min(sy2, ty2)) / 2
+        return ((sx2, y), (tx1, y)) if tx1 >= sx2 else ((sx1, y), (tx2, y))
+    x = (max(sx1, tx1) + min(sx2, tx2)) / 2
+    return ((x, sy2), (x, ty1)) if ty1 >= sy2 else ((x, sy1), (x, ty2))

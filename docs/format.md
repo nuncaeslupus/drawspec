@@ -47,7 +47,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `nodes` | array of [node](#node-object), at least 1 | **yes** | The boxes. Order is not position — the layout decides that. |
+| `nodes` | array of [node](#node-object), at least 1 | **yes** | The boxes. Order is not a coordinate — the layout decides where a box goes — but it is the order siblings are drawn in: where nothing else separates two boxes of the same rank, they read in the order written here. |
 | `edges` | array of [edge](#edge-object) | no | What connects to what. A `tree` takes one edge per child. |
 | `groups` | array of [group](#group-object) | no | Boxes drawn around sets of nodes, each with its own caption. |
 
@@ -57,6 +57,12 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 |---|---|---|---|
 | `items` | array of [item](#item-object), at least 1 | **yes** | The entries, in the order they are meant to be read: down for `stack`, along for `timeline` and `columns`. |
 
+### `timeline`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `spans` | array of [span](#span-object) | no | Named intervals between two entries, drawn as bars under the axis. For the quantity that is not a thing on the diagram but the distance between two things on it: a recovery objective is not an event, it is how much lies between the last backup and the disaster. |
+
 ### `matrix`
 
 | Field | Type | Required | What it is |
@@ -64,6 +70,8 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `cells` | array of [cell](#cell-object), at least 1 | **yes** | What is in the grid. A cell states where it starts, not where it is drawn. |
 | `columns` | array of string | no | Column headings, left to right. Omit for a matrix with none. |
 | `rows` | array of string | no | Row headings, top to bottom. |
+| `edges` | array of [edge](#edge-object) | no | What connects to what, between cells that carry an `id`. The cells of a grid are not always only cells: one may produce another, or come before it. The grid places them; the relations are a separate thing, and without them a reader sees a table where the source drew a process. |
+| `key` | array of [key](#key-object) | no | What each group of cells is called, for the key drawn under the grid. Without one, a group is announced to the reader under the name the cells use for it — which is fine when that name is a name, and is how an id-shaped key like `carrega` ends up as visible text. |
 
 ### `pyramid`
 
@@ -115,6 +123,7 @@ name, so a misspelt key is an error at the point it was written.
 | Field | Type | Required | What it is |
 |---|---|---|---|
 | `id` | string | **yes** | Unique within the document. |
+| `centre` | boolean | no | Whether this node is the subject the rest are arranged around. One node per document may say so, and only a `flow`. For the diagram that starts in the middle rather than at the top: a thing with named relations on every side, where the relations are peers and there is no sequence between them. Ranked instead, the middle object becomes just another row. |
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 | `note` | string | no | A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead. |
@@ -134,7 +143,7 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `id` | string | **yes** | Unique within the document. |
 | `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
-| `members` | array of string, at least 1 | **yes** | The ids of the nodes this group contains. |
+| `members` | array of string, at least 1 | **yes** | The ids of the nodes this group contains, in the order they are meant to read — the members of a container are an ordered set. |
 
 ### `item` object
 
@@ -165,6 +174,7 @@ name, so a misspelt key is an error at the point it was written.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
+| `id` | string | no | Optional, and only needed to join this cell to another: an edge names the two cells it runs between. Unique within the document. |
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `column` | integer | **yes** | Which column this cell starts in, counting from zero. |
 | `row` | integer | **yes** | Which row it starts in, from zero. |
@@ -204,7 +214,23 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `gate` | string | no | What stands between this stage and the next — the threshold a thing has to pass to get from one to the other, which is what makes a stage-gate model one. Drawn on the divider, which breaks to let it through. The last stage has no next stage, so it may not carry one. |
 | `note` | string | no | A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead. |
+
+### `span` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `from` | string | **yes** | The id of the entry the interval starts at. |
+| `to` | string | **yes** | The id of the entry it ends at. Must come after `from`. |
+
+### `key` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `group` | string | **yes** | Which group this names. Some cell must belong to it. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 
 ### `axis` object
 

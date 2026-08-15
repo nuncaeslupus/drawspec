@@ -185,6 +185,17 @@ def _role(vocabulary: tuple[str, ...], default: str) -> FieldSpec:
 OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
     "node": (
         FieldSpec("id", "string", required=True, description="Unique within the document."),
+        FieldSpec(
+            "centre",
+            "boolean",
+            description=(
+                "Whether this node is the subject the rest are arranged around. One node "
+                "per document may say so, and only a `flow`. For the diagram that starts "
+                "in the middle rather than at the top: a thing with named relations on "
+                "every side, where the relations are peers and there is no sequence "
+                "between them. Ranked instead, the middle object becomes just another row."
+            ),
+        ),
         _text(),
         _role(NODE_ROLES, "step"),
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
@@ -204,7 +215,10 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             required=True,
             item_kind="string",
             min_items=1,
-            description="The ids of the nodes this group contains.",
+            description=(
+                "The ids of the nodes this group contains, in the order they are "
+                "meant to read — the members of a container are an ordered set."
+            ),
         ),
     ),
     "item": (
@@ -231,6 +245,14 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         _role(NODE_ROLES, "step"),
     ),
     "cell": (
+        FieldSpec(
+            "id",
+            "string",
+            description=(
+                "Optional, and only needed to join this cell to another: an edge names "
+                "the two cells it runs between. Unique within the document."
+            ),
+        ),
         _text(),
         FieldSpec(
             "column",
@@ -311,7 +333,41 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
     "stage": (
         _text(),
         _role(NODE_ROLES, "step"),
+        FieldSpec(
+            "gate",
+            "string",
+            description=(
+                "What stands between this stage and the next — the threshold a thing "
+                "has to pass to get from one to the other, which is what makes a "
+                "stage-gate model one. Drawn on the divider, which breaks to let it "
+                "through. The last stage has no next stage, so it may not carry one."
+            ),
+        ),
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
+    ),
+    "span": (
+        _text(),
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description="The id of the entry the interval starts at.",
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description="The id of the entry it ends at. Must come after `from`.",
+        ),
+    ),
+    "key": (
+        FieldSpec(
+            "group",
+            "string",
+            required=True,
+            description="Which group this names. Some cell must belong to it.",
+        ),
+        _text(),
     ),
     "axis": (
         FieldSpec(
@@ -452,7 +508,12 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             required=True,
             item_ref="node",
             min_items=1,
-            description="The boxes. Order is not position — the layout decides that.",
+            description=(
+                "The boxes. Order is not a coordinate — the layout decides where a "
+                "box goes — but it is the order siblings are drawn in: where nothing "
+                "else separates two boxes of the same rank, they read in the order "
+                "written here."
+            ),
         ),
         FieldSpec(
             "edges",
@@ -480,6 +541,19 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    ("timeline",): (
+        FieldSpec(
+            "spans",
+            "array",
+            item_ref="span",
+            description=(
+                "Named intervals between two entries, drawn as bars under the axis. "
+                "For the quantity that is not a thing on the diagram but the distance "
+                "between two things on it: a recovery objective is not an event, it is "
+                "how much lies between the last backup and the disaster."
+            ),
+        ),
+    ),
     ("matrix",): (
         FieldSpec(
             "cells",
@@ -498,6 +572,28 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             description="Column headings, left to right. Omit for a matrix with none.",
         ),
         FieldSpec("rows", "array", item_kind="string", description="Row headings, top to bottom."),
+        FieldSpec(
+            "edges",
+            "array",
+            item_ref="edge",
+            description=(
+                "What connects to what, between cells that carry an `id`. The cells of a "
+                "grid are not always only cells: one may produce another, or come before "
+                "it. The grid places them; the relations are a separate thing, and "
+                "without them a reader sees a table where the source drew a process."
+            ),
+        ),
+        FieldSpec(
+            "key",
+            "array",
+            item_ref="key",
+            description=(
+                "What each group of cells is called, for the key drawn under the grid. "
+                "Without one, a group is announced to the reader under the name the "
+                "cells use for it — which is fine when that name is a name, and is how "
+                "an id-shaped key like `carrega` ends up as visible text."
+            ),
+        ),
     ),
     ("pyramid",): (
         FieldSpec(
@@ -595,11 +691,22 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
 
 
 def payload_for(kind: str) -> tuple[FieldSpec, ...]:
-    """The payload fields legal for `kind`."""
-    for kinds, fields in KIND_PAYLOADS.items():
-        if kind in kinds:
-            return fields
-    raise KeyError(kind)
+    """The payload fields legal for `kind`, from every group that names it.
+
+    Accumulated rather than first-match, so a family's shared fields and one
+    member's own can be written as two entries: `timeline` takes `items` with
+    the rest of the grid kinds and `spans` by itself, and neither entry has to
+    know about the other.
+
+    Raises:
+        KeyError: no group names this kind.
+    """
+    found = tuple(
+        field for kinds, fields in KIND_PAYLOADS.items() if kind in kinds for field in fields
+    )
+    if not found:
+        raise KeyError(kind)
+    return found
 
 
 def fields_for(kind: str) -> tuple[FieldSpec, ...]:
@@ -617,6 +724,9 @@ class Node:
     id: str
     text: str
     role: str = "step"
+    centre: bool = False
+    """Whether the rest of a `flow` is arranged around this one."""
+
     note: str = ""
     """Accepted for v1 compatibility; only `timeline` items are drawn."""
 
@@ -643,6 +753,8 @@ class Item:
     role: str = "step"
     note: str = ""
     at: float | None = None
+    gate: str = ""
+    """For a `funnel` stage: what separates it from the next one."""
 
 
 @dataclass(frozen=True)
@@ -650,10 +762,28 @@ class Cell:
     text: str
     column: int
     row: int
+    id: str = ""
     across: int = 1
     down: int = 1
     group: str = ""
     role: str = "step"
+
+
+@dataclass(frozen=True)
+class Span:
+    """A named interval between two entries of a timeline."""
+
+    text: str
+    start: str
+    end: str
+
+
+@dataclass(frozen=True)
+class Key:
+    """What one group of cells is called, where a reader can see it."""
+
+    group: str
+    text: str
 
 
 @dataclass(frozen=True)
@@ -731,6 +861,8 @@ class Document:
     cells: tuple[Cell, ...] = ()
     columns: tuple[str, ...] = ()
     rows: tuple[str, ...] = ()
+    key: tuple[Key, ...] = ()
+    spans: tuple[Span, ...] = ()
     positions: tuple[Position, ...] = ()
     curves: tuple[Curve, ...] = ()
     axes: tuple[Axis, ...] = ()
@@ -932,6 +1064,141 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
 def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
     """The checks JSON Schema cannot express: unique ids, and edges that land."""
     found: list[Violation] = []
+    if kind in GRAPH_KINDS:
+        middles = [
+            index
+            for index, node in enumerate(document.get("nodes", ()) or ())
+            if isinstance(node, dict) and node.get("centre")
+        ]
+        for index in middles[1:]:
+            found.append(
+                Violation(
+                    _pointer("nodes", index, "centre"),
+                    "a second node says it is the centre. A diagram arranged around a "
+                    "subject has one subject.",
+                )
+            )
+        if middles and kind != "flow":
+            found.append(
+                Violation(
+                    _pointer("nodes", middles[0], "centre"),
+                    f"a {kind} is ranked from its root, so it has no middle to arrange "
+                    f"around. Use a flow.",
+                )
+            )
+    if kind == "timeline":
+        entries = document.get("items")
+        spans = document.get("spans")
+        if not isinstance(entries, list) or not isinstance(spans, list):
+            return found
+        order = {
+            str(entry["id"]): index
+            for index, entry in enumerate(entries)
+            if isinstance(entry, dict) and isinstance(entry.get("id"), str) and entry["id"]
+        }
+        for index, span in enumerate(spans):
+            if not isinstance(span, dict):
+                continue
+            start, end = span.get("from"), span.get("to")
+            for role, value in (("from", start), ("to", end)):
+                if isinstance(value, str) and value not in order:
+                    found.append(
+                        Violation(
+                            f"/spans/{index}/{role}",
+                            f"{value!r} is not the id of any entry on this timeline. A span "
+                            f"runs between two of its moments, so both need naming — give "
+                            f"the entries ids.",
+                        )
+                    )
+            if (
+                isinstance(start, str)
+                and isinstance(end, str)
+                and start in order
+                and end in order
+                and order[start] >= order[end]
+            ):
+                found.append(
+                    Violation(
+                        f"/spans/{index}/to",
+                        f"{end!r} is not after {start!r} on this timeline, so there is no "
+                        f"interval between them to name. A span runs forwards.",
+                    )
+                )
+        return found
+    if kind == "matrix":
+        cells = document.get("cells")
+        if not isinstance(cells, list):
+            return found
+        identified: set[str] = set()
+        for index, cell in enumerate(cells):
+            if not isinstance(cell, dict) or not isinstance(cell.get("id"), str) or not cell["id"]:
+                continue
+            if cell["id"] in identified:
+                found.append(
+                    Violation(_pointer("cells", index, "id"), f"duplicate cell id {cell['id']!r}")
+                )
+            identified.add(cell["id"])
+        for index, edge in enumerate(document.get("edges", ()) or ()):
+            if not isinstance(edge, dict):
+                continue
+            for end in ("from", "to"):
+                target = edge.get(end)
+                if isinstance(target, str) and target not in identified:
+                    found.append(
+                        Violation(
+                            _pointer("edges", index, end),
+                            f"{target!r} is not the id of any cell in this document. An edge "
+                            f"on a matrix joins two cells, and a cell needs an `id` before "
+                            f"anything can name it.",
+                        )
+                    )
+        entries = document.get("key")
+        if not isinstance(entries, list):
+            return found
+        cell_groups = {
+            str(cell["group"])
+            for cell in cells
+            if isinstance(cell, dict) and isinstance(cell.get("group"), str) and cell["group"]
+        }
+        seen_groups: set[str] = set()
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                continue
+            group = entry.get("group")
+            if not isinstance(group, str):
+                continue
+            if group not in cell_groups:
+                found.append(
+                    Violation(
+                        f"/key/{index}/group",
+                        f"no cell belongs to the group {group!r}, so naming it puts a line "
+                        f"in the key for a fill that is not in the drawing. Groups here: "
+                        f"{', '.join(sorted(cell_groups)) or 'none'}.",
+                    )
+                )
+            elif group in seen_groups:
+                found.append(
+                    Violation(
+                        f"/key/{index}/group",
+                        f"the group {group!r} is named twice. One group, one line in the key.",
+                    )
+                )
+            seen_groups.add(group)
+        return found
+    if kind == "funnel":
+        stages = document.get("stages")
+        if isinstance(stages, list) and stages:
+            last = stages[-1]
+            if isinstance(last, dict) and last.get("gate"):
+                found.append(
+                    Violation(
+                        f"/stages/{len(stages) - 1}/gate",
+                        "the last stage has no next stage, so nothing stands between it "
+                        "and one. A gate names the threshold *after* a stage; drop it, or "
+                        "add the stage it leads to.",
+                    )
+                )
+        return found
     if kind not in GRAPH_KINDS:
         return found
 
@@ -1054,6 +1321,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
                 id=entry["id"],
                 text=entry["text"],
                 role=entry.get("role", "step"),
+                centre=bool(entry.get("centre", False)),
                 note=entry.get("note", ""),
             )
             for entry in document.get("nodes", ())
@@ -1078,6 +1346,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         cells=tuple(
             Cell(
                 text=entry["text"],
+                id=entry.get("id", ""),
                 column=int(entry["column"]),
                 row=int(entry["row"]),
                 across=int(entry.get("across", 1)),
@@ -1089,6 +1358,13 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         ),
         columns=tuple(document.get("columns", ())),
         rows=tuple(document.get("rows", ())),
+        key=tuple(
+            Key(group=entry["group"], text=entry["text"]) for entry in document.get("key", ())
+        ),
+        spans=tuple(
+            Span(text=entry["text"], start=entry["from"], end=entry["to"])
+            for entry in document.get("spans", ())
+        ),
         positions=tuple(
             Position(
                 text=entry["text"],
@@ -1135,6 +1411,7 @@ def _items(entries: Sequence[Mapping[str, Any]]) -> tuple[Item, ...]:
             role=entry.get("role", "step"),
             note=entry.get("note", ""),
             at=None if entry.get("at") is None else float(entry["at"]),
+            gate=entry.get("gate", ""),
         )
         for entry in entries
     )
@@ -1239,9 +1516,18 @@ def build_schema() -> dict[str, Any]:
     a real node) are outside JSON Schema's reach and are documented as such
     rather than silently missing.
     """
+    # One branch per *set of legal fields*, not per entry in the table above: a
+    # kind may draw its fields from more than one entry — `timeline` takes
+    # `items` with the other grid kinds and `spans` on its own — and a kind
+    # appearing in two branches would match both, which `oneOf` reads as invalid.
+    grouped: dict[tuple[str, ...], list[str]] = {}
+    for kind in KINDS:
+        grouped.setdefault(tuple(field.name for field in payload_for(kind)), []).append(kind)
+
     variants = []
-    for kinds in KIND_PAYLOADS:
-        specs = list(COMMON_FIELDS + KIND_PAYLOADS[kinds])
+    for names, kinds in grouped.items():
+        by_name = {field.name: field for field in payload_for(kinds[0])}
+        specs = list(COMMON_FIELDS) + [by_name[name] for name in names]
         variant = _object_schema(specs, title=" / ".join(kinds))
         variant["properties"]["kind"] = {"type": "string", "enum": list(kinds)}
         variant["properties"]["version"] = {"const": DOCUMENT_VERSION}

@@ -18,7 +18,7 @@ import pytest
 
 from drawspec import render
 from drawspec.emit import check_embedding_safety
-from drawspec.errors import DrawspecError, FitError
+from drawspec.errors import DocumentError, DrawspecError, FitError
 from drawspec.geometry import size_box
 from drawspec.kinds.common import line_bounds
 from drawspec.kinds.shape import (
@@ -31,7 +31,7 @@ from drawspec.kinds.shape import (
     SHAPE_LEVEL,
     shape_scene,
 )
-from drawspec.scene import Ellipse, Path, Polygon, Scene, TextLine
+from drawspec.scene import Ellipse, Path, Polygon, Scene, TextLine, TextRun
 from drawspec.schema import parse_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import Theme, load_theme
@@ -639,3 +639,112 @@ def test_a_vertical_stage_uses_the_whole_width_of_its_narrow_edge() -> None:
     # fewer lines than the double-charged span would have allowed.
     bottom = [run for run in runs_of(built) if run.y > built.height * (count - 1) / count]
     assert len(bottom) <= 2, [run.text for run in bottom]
+
+
+# --------------------------------------------------------------------------
+# The gate between two stages
+# --------------------------------------------------------------------------
+
+
+def gated(theme: Theme = THEME) -> Scene:
+    document = {
+        "version": 1,
+        "kind": "funnel",
+        "title": "A stage-gate funnel",
+        "stages": [
+            {"text": "Generació", "gate": "porta"},
+            {"text": "Avaluació i selecció", "gate": "porta"},
+            {"text": "Validació del concepte", "gate": "porta"},
+            {"text": "Desenvolupament i explotació"},
+        ],
+    }
+    return shape_scene(parse_document(document), theme, MEASURER)
+
+
+@pytest.mark.parametrize("theme", [THEME, SIDEWAYS])
+def test_a_gate_is_named_once_between_each_pair_of_stages(theme: Theme) -> None:
+    """The source writes *porta* three times for four stages, and it is the
+    three words that make it a stage-gate model rather than a narrowing."""
+    written = [
+        item.text for item in gated(theme).primitives if isinstance(item, TextRun) and item.text
+    ]
+    assert written.count("porta") == 3
+
+
+@pytest.mark.parametrize("theme", [THEME, SIDEWAYS])
+def test_a_gate_label_sits_on_no_line(theme: Theme) -> None:
+    """The divider breaks to let its name through, rather than running under it."""
+    built = gated(theme)
+    labels = [item for item in built.primitives if isinstance(item, TextRun)]
+    size = THEME.scale[SHAPE_LEVEL]
+    for label in labels:
+        half = MEASURER.measure(label.text, THEME.font.default, size).width / 2
+        for path in gates_of(built):
+            for (x1, y1), (x2, y2) in pairwise(path.points):
+                if abs(y1 - y2) < 1e-6 and abs(y1 - label.y) < size:
+                    assert max(x1, x2) <= label.x - half or min(x1, x2) >= label.x + half
+                if abs(x1 - x2) < 1e-6 and abs(x1 - label.x) < half:
+                    assert min(y1, y2) >= label.y or max(y1, y2) <= label.y - size
+
+
+def test_a_gate_on_the_last_stage_is_refused() -> None:
+    """Nothing stands between the last stage and a stage that is not there."""
+    with pytest.raises(DocumentError, match="no next stage"):
+        parse_document(
+            {
+                "version": 1,
+                "kind": "funnel",
+                "stages": [{"text": "One"}, {"text": "Two", "gate": "porta"}],
+            }
+        )
+
+
+def test_an_unnamed_divider_is_still_drawn_whole() -> None:
+    """A funnel without gates is the funnel it always was."""
+    built = funnel(*STAGES, theme=THEME)
+    assert len(gates_of(built)) == len(STAGES) - 1
+
+
+# --------------------------------------------------------------------------
+# A name is a name, whether or not it needed explaining
+# --------------------------------------------------------------------------
+
+
+def _weights(built: Scene) -> dict[str, str]:
+    return {
+        span.text: span.weight
+        for item in built.primitives
+        if isinstance(item, TextLine)
+        for span in item.spans
+    }
+
+
+def test_a_bare_ring_name_is_set_like_the_one_that_carries_a_detail() -> None:
+    """Three ring names of the same rank, one of which happens to be explained.
+
+    It used to be the only one in bold, because a lead was decided per label:
+    *Governança* had a second line and *SVS* did not, so the two came out set
+    differently for a reason that is about the explanation rather than about
+    the name.
+    """
+    document = {
+        "version": 1,
+        "kind": "rings",
+        "title": "Governance around the system",
+        "rings": [
+            {"text": "Value chain and practices"},
+            {"text": "SVS"},
+            {"text": "Governance\nevaluate, direct, monitor"},
+        ],
+    }
+    weights = _weights(shape_scene(parse_document(document), THEME, MEASURER))
+    assert weights["Governance"] == "bold"
+    assert weights["SVS"] == "bold"
+    assert weights["Value chain and"] == "bold"
+    assert weights["evaluate, direct,"] == "normal"
+
+
+def test_a_set_with_no_detail_anywhere_is_left_plain() -> None:
+    """The rule only fires when the set has said it is names-and-details."""
+    weights = _weights(funnel(*STAGES, theme=THEME))
+    assert set(weights.values()) == {"normal"}

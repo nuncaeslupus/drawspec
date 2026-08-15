@@ -172,6 +172,7 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         max_width=width - margin * 2,
         prefer=PREFERRED_DIRECTION,
         entered=crossed([(edge.source, edge.target) for edge in document.edges], nesting),
+        centre=next((node.id for node in document.nodes if node.centre), ""),
     )
     # The top level's own layout, with every leaf from every level in it — the
     # ranks and reversed edges are the top level's, which is what a caller
@@ -247,7 +248,7 @@ def _spacing(theme: Theme) -> Spacing:
 def _sized(
     document: Document, theme: Theme, measurer: TextMeasurer, limit: float
 ) -> dict[str, Box]:
-    """One box per node, with peers normalised to a common size.
+    """One box per node, with peers normalised to a common width.
 
     Peers here are nodes sharing a role, which is the best available stand-in for
     "the same kind of thing" before ranks exist — the layout has not run yet, so

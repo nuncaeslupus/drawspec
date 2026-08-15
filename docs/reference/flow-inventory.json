@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "kind": "flow",
+  "title": "What lives where",
+  "description": "Two racks and what is in each. Nothing happens after anything else here: the only relation is that a thing sits inside a container, and the drawing exists to show what belongs where.",
+  "caption": "A set with no order is a shape, not a sequence — so it packs rather than ranks.",
+  "nodes": [
+    { "id": "api", "text": "API server" },
+    { "id": "store", "text": "Key-value store" },
+    { "id": "scheduler", "text": "Scheduler" },
+    { "id": "controllers", "text": "Controller manager" },
+    { "id": "cloud", "text": "Cloud controller" },
+    { "id": "kubelet", "text": "Node agent" },
+    { "id": "proxy", "text": "Network proxy" },
+    { "id": "runtime", "text": "Container runtime" },
+    { "id": "cni", "text": "Network plugin" },
+    { "id": "csi", "text": "Storage plugin" }
+  ],
+  "groups": [
+    {
+      "id": "plane",
+      "text": "The control plane",
+      "members": ["api", "store", "scheduler", "controllers", "cloud"]
+    },
+    {
+      "id": "node",
+      "text": "Every worker node",
+      "members": ["kubelet", "proxy", "runtime", "cni", "csi"]
+    }
+  ]
+}

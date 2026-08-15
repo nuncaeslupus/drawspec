@@ -2,11 +2,11 @@
   "version": 1,
   "kind": "funnel",
   "title": "The innovation funnel",
-  "description": "Many ideas go in at the throat and few deployed solutions come out at the mouth. The dashed dividers are the gates each idea has to pass.",
+  "description": "Many ideas go in at the throat and few deployed solutions come out at the mouth. Between each pair of stages is a gate, where an idea is carried on, sent back, or stopped.",
   "stages": [
-    { "text": "Many **ideas**" },
-    { "text": "Assessed and chosen" },
-    { "text": "Validated" },
+    { "text": "Many **ideas**", "gate": "gate" },
+    { "text": "Assessed and chosen", "gate": "gate" },
+    { "text": "Validated", "gate": "gate" },
     { "text": "**Deployed**" }
   ]
 }

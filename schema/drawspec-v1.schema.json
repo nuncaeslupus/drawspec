@@ -55,7 +55,7 @@
         },
         "nodes": {
           "type": "array",
-          "description": "The boxes. Order is not position — the layout decides that.",
+          "description": "The boxes. Order is not a coordinate — the layout decides where a box goes — but it is the order siblings are drawn in: where nothing else separates two boxes of the same rank, they read in the order written here.",
           "items": {
             "$ref": "#/$defs/node"
           },
@@ -85,7 +85,7 @@
     },
     {
       "type": "object",
-      "title": "stack / timeline / columns",
+      "title": "stack / columns",
       "properties": {
         "$schema": {
           "type": "string",
@@ -98,7 +98,6 @@
           "type": "string",
           "enum": [
             "stack",
-            "timeline",
             "columns"
           ]
         },
@@ -139,6 +138,76 @@
             "$ref": "#/$defs/item"
           },
           "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "items"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "timeline",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "timeline"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "items": {
+          "type": "array",
+          "description": "The entries, in the order they are meant to be read: down for `stack`, along for `timeline` and `columns`.",
+          "items": {
+            "$ref": "#/$defs/item"
+          },
+          "minItems": 1
+        },
+        "spans": {
+          "type": "array",
+          "description": "Named intervals between two entries, drawn as bars under the axis. For the quantity that is not a thing on the diagram but the distance between two things on it: a recovery objective is not an event, it is how much lies between the last backup and the disaster.",
+          "items": {
+            "$ref": "#/$defs/span"
+          }
         }
       },
       "required": [
@@ -215,6 +284,20 @@
           "description": "Row headings, top to bottom.",
           "items": {
             "type": "string"
+          }
+        },
+        "edges": {
+          "type": "array",
+          "description": "What connects to what, between cells that carry an `id`. The cells of a grid are not always only cells: one may produce another, or come before it. The grid places them; the relations are a separate thing, and without them a reader sees a table where the source drew a process.",
+          "items": {
+            "$ref": "#/$defs/edge"
+          }
+        },
+        "key": {
+          "type": "array",
+          "description": "What each group of cells is called, for the key drawn under the grid. Without one, a group is announced to the reader under the name the cells use for it — which is fine when that name is a name, and is how an id-shaped key like `carrega` ends up as visible text.",
+          "items": {
+            "$ref": "#/$defs/key"
           }
         }
       },
@@ -677,6 +760,10 @@
     "cell": {
       "type": "object",
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Optional, and only needed to join this cell to another: an edge names the two cells it runs between. Unique within the document."
+        },
         "text": {
           "type": "string",
           "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
@@ -803,7 +890,7 @@
         },
         "members": {
           "type": "array",
-          "description": "The ids of the nodes this group contains.",
+          "description": "The ids of the nodes this group contains, in the order they are meant to read — the members of a container are an ordered set.",
           "items": {
             "type": "string"
           },
@@ -854,6 +941,24 @@
       ],
       "additionalProperties": false
     },
+    "key": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "type": "string",
+          "description": "Which group this names. Some cell must belong to it."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "group",
+        "text"
+      ],
+      "additionalProperties": false
+    },
     "level": {
       "type": "object",
       "properties": {
@@ -890,6 +995,10 @@
         "id": {
           "type": "string",
           "description": "Unique within the document."
+        },
+        "centre": {
+          "type": "boolean",
+          "description": "Whether this node is the subject the rest are arranged around. One node per document may say so, and only a `flow`. For the diagram that starts in the middle rather than at the top: a thing with named relations on every side, where the relations are peers and there is no sequence between them. Ranked instead, the middle object becomes just another row."
         },
         "text": {
           "type": "string",
@@ -1034,6 +1143,29 @@
       ],
       "additionalProperties": false
     },
+    "span": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "from": {
+          "type": "string",
+          "description": "The id of the entry the interval starts at."
+        },
+        "to": {
+          "type": "string",
+          "description": "The id of the entry it ends at. Must come after `from`."
+        }
+      },
+      "required": [
+        "text",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    },
     "stage": {
       "type": "object",
       "properties": {
@@ -1053,6 +1185,10 @@
             "note",
             "group"
           ]
+        },
+        "gate": {
+          "type": "string",
+          "description": "What stands between this stage and the next — the threshold a thing has to pass to get from one to the other, which is what makes a stage-gate model one. Drawn on the divider, which breaks to let it through. The last stage has no next stage, so it may not carry one."
         },
         "note": {
           "type": "string",

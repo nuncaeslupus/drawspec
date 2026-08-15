@@ -3,11 +3,11 @@
   "version": 1,
   "kind": "rings",
   "title": "What is in scope",
-  "description": "The centre is fixed; the outer rings are where the arguments happen.",
+  "description": "The centre is fixed; the outer rings are where the arguments happen. The outermost ring names what it is and then says what that means; the two inside it only need naming, and are named the same way.",
   "caption": "Continuous consultation and review sit outside every ring.",
   "rings": [
     {
-      "text": "Everything a theme can express"
+      "text": "Everything a theme can express\ntype, weight, shape, dash, fill"
     },
     {
       "text": "The nine diagram kinds"

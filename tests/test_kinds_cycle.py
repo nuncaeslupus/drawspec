@@ -22,7 +22,7 @@ from drawspec import render
 from drawspec.emit import check_embedding_safety
 from drawspec.errors import DrawspecError, FitError, ThemeError
 from drawspec.kinds.cycle import MINIMUM_NODES, START_ANGLE, cycle_scene
-from drawspec.scene import Path, Polygon, Rect, Scene, TextLine, extents
+from drawspec.scene import Path, Polygon, Rect, Scene, TextLine, TextRun, extents
 from drawspec.schema import parse_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
@@ -230,8 +230,9 @@ def test_cycle_with_an_open_chain_is_refused() -> None:
         cycle_scene(parsed, THEME, MEASURER)
 
 
-def test_cycle_with_a_forking_step_is_refused() -> None:
-    """Every step has exactly one next step, or it is not one loop."""
+def test_a_fork_with_no_way_round_is_refused() -> None:
+    """A step may now have two outgoing edges — but one of the ways round still
+    has to be a loop through every node, and here neither is."""
     parsed = parse_document(
         {
             "version": 1,
@@ -240,7 +241,7 @@ def test_cycle_with_a_forking_step_is_refused() -> None:
             "edges": [{"from": "a", "to": "b"}, {"from": "a", "to": "c"}, {"from": "b", "to": "a"}],
         }
     )
-    with pytest.raises(DrawspecError, match="more than one outgoing edge"):
+    with pytest.raises(DrawspecError, match="do not close one loop"):
         cycle_scene(parsed, THEME, MEASURER)
 
 
@@ -254,7 +255,7 @@ def test_cycle_that_closes_early_is_refused() -> None:
             "edges": [{"from": "a", "to": "b"}, {"from": "b", "to": "a"}, {"from": "c", "to": "c"}],
         }
     )
-    with pytest.raises(DrawspecError, match="shorter loop"):
+    with pytest.raises(DrawspecError, match="do not close one loop"):
         cycle_scene(parsed, THEME, MEASURER)
 
 
@@ -445,3 +446,71 @@ def test_the_same_document_draws_either_way_without_being_edited() -> None:
 def test_an_unknown_connector_is_refused_by_the_theme() -> None:
     with pytest.raises(ThemeError, match="connector"):
         load_theme({"version": 1, "name": "bad", "cycle": {"connector": "squiggle"}})
+
+
+# --------------------------------------------------------------------------
+# A loop with one documented exception
+# --------------------------------------------------------------------------
+
+
+NIST = {
+    "version": 1,
+    "kind": "cycle",
+    "title": "The incident lifecycle",
+    "nodes": [
+        {"id": "prep", "text": "1. Preparation"},
+        {"id": "detect", "text": "2. Detection and analysis"},
+        {"id": "contain", "text": "3. Containment"},
+        {"id": "after", "text": "4. Post-incident activity"},
+    ],
+    "edges": [
+        {"from": "prep", "to": "detect"},
+        {"from": "detect", "to": "contain"},
+        {"from": "contain", "to": "after"},
+        {"from": "after", "to": "prep"},
+        {"from": "contain", "to": "detect", "role": "weak", "label": "if new indicators appear"},
+    ],
+}
+
+
+def test_a_cycle_may_carry_an_edge_that_is_not_part_of_the_ring() -> None:
+    """Four phases round a loop plus one dashed return is a cycle with a
+    shortcut, and it used to be neither: the ring refused it, and a `flow`
+    broke the loop open and read the phases 3, 4, 1, 2 down the page."""
+    built = cycle_scene(parse_document(NIST), THEME, MEASURER)
+    assert len(boxes(built)) == 4
+    assert "if new indicators appear" in {
+        span.text for item in built.primitives if isinstance(item, TextLine) for span in item.spans
+    } | {item.text for item in built.primitives if isinstance(item, TextRun)}
+
+
+def test_the_shortcut_is_drawn_across_the_ring_not_along_it() -> None:
+    """Along is what the ring already means: another arc would be
+    indistinguishable from the loop it is an exception to."""
+    built = cycle_scene(parse_document(NIST), THEME, MEASURER)
+    chords = [item for item in built.primitives if isinstance(item, Path) and len(item.points) == 2]
+    assert len(chords) == 1
+    (start, end) = chords[0].points
+    centre = (
+        float(dict(built.metadata)["centre_x"]),
+        float(dict(built.metadata)["centre_y"]),
+    )
+    radius = float(dict(built.metadata)["radius"])
+    middle = ((start[0] + end[0]) / 2, (start[1] + end[1]) / 2)
+    assert math.dist(middle, centre) < radius
+
+
+def test_the_ring_is_still_the_loop_through_every_step() -> None:
+    """The extra edge must not be mistaken for one of the four."""
+    built = cycle_scene(parse_document(NIST), THEME, MEASURER)
+    arcs = [item for item in built.primitives if isinstance(item, Path) and len(item.points) > 2]
+    assert len(arcs) == 4
+
+
+def test_the_ring_is_found_whichever_order_the_edges_are_written_in() -> None:
+    """The shortcut listed first must not be walked as though it were the ring."""
+    shuffled = dict(NIST)
+    shuffled["edges"] = [NIST["edges"][-1], *NIST["edges"][:-1]]  # type: ignore[index]
+    built = cycle_scene(parse_document(shuffled), THEME, MEASURER)
+    arcs = [item for item in built.primitives if isinstance(item, Path) and len(item.points) > 2]
+    assert len(arcs) == 4

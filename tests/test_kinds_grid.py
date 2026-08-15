@@ -21,11 +21,11 @@ import pytest
 
 from drawspec import render
 from drawspec.emit import check_embedding_safety
-from drawspec.errors import DrawspecError, FitError
+from drawspec.errors import DocumentError, DrawspecError, FitError
 from drawspec.kinds import IMPLEMENTED, scene_for
 from drawspec.kinds.common import line_bounds
 from drawspec.kinds.grid import AXIS_ROLE, grid_scene
-from drawspec.scene import Path, Polygon, Rect, Scene, TextLine
+from drawspec.scene import Path, Polygon, Rect, Scene, TextLine, TextRun
 from drawspec.schema import KINDS, parse_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
@@ -690,3 +690,158 @@ def test_a_note_is_set_at_the_label_size_not_the_body_size() -> None:
         if isinstance(run, TextLine) and run.spans and run.spans[0].text == "March"
     )
     assert note.level == "label"
+
+
+# --------------------------------------------------------------------------
+# Named intervals between two moments
+# --------------------------------------------------------------------------
+
+
+DISASTER = {
+    "version": 1,
+    "kind": "timeline",
+    "title": "An outage",
+    "items": [
+        {"id": "backup", "text": "Last backup"},
+        {"id": "failure", "text": "It fails"},
+        {"id": "back", "text": "Systems back"},
+        {"id": "working", "text": "Working again"},
+    ],
+    "spans": [
+        {"text": "RPO", "from": "backup", "to": "failure"},
+        {"text": "RTO", "from": "failure", "to": "back"},
+        {"text": "WRT", "from": "back", "to": "working"},
+        {"text": "MTD", "from": "failure", "to": "working"},
+    ],
+}
+
+
+def _timeline_scene(**changes: object) -> Scene:
+    return grid_scene(parse_document({**DISASTER, **changes}), THEME, MEASURER)
+
+
+def test_a_span_names_the_distance_between_two_moments() -> None:
+    """The four instants without their intervals are four words, which is why
+    the disaster sheet was the one of eighty-nine with no document at all."""
+    written = {run.text for run in _timeline_scene().primitives if isinstance(run, TextRun)}
+    assert {"RPO", "RTO", "WRT", "MTD"} <= written
+
+
+def test_a_span_runs_between_the_marks_of_the_entries_it_names() -> None:
+    built = _timeline_scene()
+    marks = {run.text: run.x for run in built.primitives if isinstance(run, TextRun) and run.text}
+    labels = [line for line in built.primitives if isinstance(line, TextLine)]
+    positions = {"".join(span.text for span in line.spans): line.x for line in labels}
+    assert positions["Last backup"] < marks["RPO"] < positions["It fails"]
+    assert positions["It fails"] < marks["RTO"] < positions["Systems back"]
+
+
+def test_a_span_over_two_others_gets_its_own_lane() -> None:
+    """MTD is RTO plus WRT, and the arithmetic is only visible when the wider
+    bar is drawn clear of the two it covers."""
+    built = _timeline_scene()
+    rows = {run.text: run.y for run in built.primitives if isinstance(run, TextRun) and run.text}
+    assert rows["RTO"] == rows["WRT"] == rows["RPO"]
+    assert rows["MTD"] > rows["RTO"]
+
+
+def test_two_spans_that_do_not_overlap_share_a_lane() -> None:
+    """A lane per span would make a four-span timeline four bars deep for nothing."""
+    built = _timeline_scene(
+        spans=[
+            {"text": "First", "from": "backup", "to": "failure"},
+            {"text": "Second", "from": "back", "to": "working"},
+        ]
+    )
+    rows = {run.text: run.y for run in built.primitives if isinstance(run, TextRun) and run.text}
+    assert rows["First"] == rows["Second"]
+
+
+def test_a_span_naming_an_entry_that_is_not_there_is_refused() -> None:
+    with pytest.raises(DocumentError, match="not the id of any entry"):
+        parse_document({**DISASTER, "spans": [{"text": "X", "from": "backup", "to": "nowhere"}]})
+
+
+def test_a_span_that_runs_backwards_is_refused() -> None:
+    """There is no interval between a moment and one before it to name."""
+    with pytest.raises(DocumentError, match="A span runs forwards"):
+        parse_document({**DISASTER, "spans": [{"text": "X", "from": "working", "to": "backup"}]})
+
+
+def test_spans_belong_to_the_timeline_and_nothing_else() -> None:
+    with pytest.raises(DocumentError, match="not a known field here"):
+        parse_document({**DISASTER, "kind": "stack"})
+
+
+# --------------------------------------------------------------------------
+# Relating two cells of a grid
+# --------------------------------------------------------------------------
+
+
+PROCESS = {
+    "version": 1,
+    "kind": "matrix",
+    "title": "What each phase produces",
+    "columns": ["Plan", "Do"],
+    "cells": [
+        {"id": "plan", "text": "Agree", "column": 0, "row": 0},
+        {"id": "do", "text": "Make", "column": 1, "row": 0},
+        {"id": "criteria", "text": "Criteria", "column": 0, "row": 1},
+        {"id": "change", "text": "A change", "column": 1, "row": 1},
+    ],
+    "edges": [
+        {"from": "plan", "to": "do", "label": "then"},
+        {"from": "plan", "to": "criteria", "role": "owns"},
+    ],
+}
+
+
+def _matrix_scene(**changes: object) -> Scene:
+    return grid_scene(parse_document({**PROCESS, **changes}), THEME, MEASURER)
+
+
+def test_a_matrix_can_say_that_one_cell_precedes_another() -> None:
+    """The grid places the cells; the relations are a separate thing, and a
+    matrix that dropped them left a table where the source drew a process."""
+    built = _matrix_scene()
+    labels = {run.text for run in built.primitives if isinstance(run, TextRun)}
+    assert "then" in labels
+
+
+def test_an_edge_across_a_row_runs_horizontally_between_the_two_cells() -> None:
+    built = _matrix_scene()
+    runs = [item for item in built.primitives if isinstance(item, Path) and len(item.points) == 2]
+    across = [run for run in runs if run.points[0][1] == pytest.approx(run.points[1][1])]
+    assert across, "no horizontal run between the two cells of the top row"
+    assert all(run.points[0][0] < run.points[1][0] for run in across)
+
+
+def test_an_edge_down_a_column_runs_vertically() -> None:
+    built = _matrix_scene()
+    runs = [item for item in built.primitives if isinstance(item, Path) and len(item.points) == 2]
+    down = [run for run in runs if run.points[0][0] == pytest.approx(run.points[1][0])]
+    assert down, "no vertical run between the phase and what it produces"
+
+
+def test_a_matrix_with_edges_stands_its_cells_apart() -> None:
+    """A table's cells share a border; a grid of related boxes cannot, or the
+    arrow between two of them has nowhere to be."""
+    joined = [item for item in _matrix_scene().primitives if isinstance(item, Polygon)]
+    plain = [item for item in _matrix_scene(edges=[]).primitives if isinstance(item, Polygon)]
+    assert _extent_of(joined[0]) < _extent_of(plain[0])
+
+
+def _extent_of(cell: Polygon) -> float:
+    xs = [x for x, _ in cell.points]
+    return max(xs) - min(xs)
+
+
+def test_an_edge_naming_a_cell_that_is_not_there_is_refused() -> None:
+    with pytest.raises(DocumentError, match="not the id of any cell"):
+        parse_document({**PROCESS, "edges": [{"from": "plan", "to": "nowhere"}]})
+
+
+def test_two_cells_sharing_an_id_are_refused() -> None:
+    cells = [*PROCESS["cells"], {"id": "plan", "text": "Again", "column": 0, "row": 2}]  # type: ignore[misc]
+    with pytest.raises(DocumentError, match="duplicate cell id"):
+        parse_document({**PROCESS, "cells": cells})
