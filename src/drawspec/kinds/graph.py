@@ -37,6 +37,7 @@ from drawspec.geometry import Box, normalise, size_box
 from drawspec.kinds.common import box_primitives
 from drawspec.kinds.containers import (
     Frame,
+    Nesting,
     arrange,
     border_obstacles,
     caption_obstacle,
@@ -157,9 +158,8 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
 
     width = document.width if document.width else theme.canvas.width
     margin = theme.box.padding.horizontal
-    boxes = _sized(document, theme, measurer, width * NODE_WIDTH_SHARE)
-
     nesting = nesting_of(document)
+    boxes = _sized(document, theme, measurer, width * NODE_WIDTH_SHARE, nesting)
     spacing = _spacing(theme)
     arrangement = arrange(
         nesting.roots,
@@ -250,14 +250,34 @@ def _spacing(theme: Theme) -> Spacing:
 
 
 def _sized(
-    document: Document, theme: Theme, measurer: TextMeasurer, limit: float
+    document: Document,
+    theme: Theme,
+    measurer: TextMeasurer,
+    limit: float,
+    nesting: Nesting,
 ) -> dict[str, Box]:
     """One box per node, with peers normalised to a common width.
 
-    Peers here are nodes sharing a role, which is the best available stand-in for
+    Peers are nodes that share a role **and a container**. The role stands in for
     "the same kind of thing" before ranks exist — the layout has not run yet, so
     rank-based normalisation is not available, and normalising afterwards would
     invalidate the positions it was computed from.
+
+    **The container is the other half, and it used to be missing.** Sharing a
+    width is what makes peers read as peers, and it is also what gives a long
+    label the room to need fewer lines — but across a whole document it becomes
+    one long paragraph setting the width of every box in the drawing. Seven boxes
+    on the nested-boxes sheet all came out 243.5 wide, the one holding the word
+    *AGE* included, because a three-line paragraph lived in a different box
+    somewhere else. The three administrations then would not share a row until
+    the canvas was 880 wide, and at 640 the packer put them in two rows and left
+    one stranded — so the author loses either the source's arrangement or a
+    legible type size, which is the trade the tool exists to prevent.
+
+    A container is the scope an author already declared, and the one a reader
+    compares within: boxes side by side inside a frame are being set against each
+    other, and a box in another frame is not. Same alignment, and it stops
+    travelling across the drawing.
     """
     boxes = {
         node.id: size_box(
@@ -271,10 +291,10 @@ def _sized(
         )
         for node in document.nodes
     }
-    by_role: dict[str, list[str]] = {}
+    peers: dict[tuple[str, str], list[str]] = {}
     for node in document.nodes:
-        by_role.setdefault(node.role, []).append(node.id)
-    for identifiers in by_role.values():
+        peers.setdefault((nesting.parent.get(node.id, ""), node.role), []).append(node.id)
+    for identifiers in peers.values():
         for identifier, box in zip(
             identifiers, normalise([boxes[i] for i in identifiers]), strict=True
         ):
