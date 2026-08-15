@@ -214,6 +214,56 @@ def test_every_reference_document_is_drawn_to_the_same_canvas_width(name: str) -
     assert width == pytest.approx(drawn + theme.edge.stroke_width, abs=1.6)
 
 
+def test_a_drawing_wider_than_the_canvas_is_refused_rather_than_emitted() -> None:
+    """The other half of the same property, and the one that had a hole in it.
+
+    A family checks its *layout* against the width. The drawing is not the
+    layout: a band's bar and name sit beside the boxes, are measured after
+    placement, and are in nobody's budget — so a layout that exactly fills the
+    canvas produces a drawing that does not fit in it, and `centred` leaves a
+    scene already at the canvas alone by design. It went out as an oversized
+    `viewBox`, which is `canvas_width_variance == 0` failing quietly.
+
+    Eight packed steps and a long band came out 90 units over. Refused now, after
+    the elastic fit has tried every smaller type scale first.
+    """
+    packed = {
+        "version": 1,
+        "kind": "flow",
+        "title": "packed with a band",
+        "nodes": [{"id": f"n{index}", "text": f"Step number {index}"} for index in range(8)],
+        "edges": [],
+        "bands": [
+            {
+                "text": "A continuous activity that runs alongside every one of these steps",
+                "members": [f"n{index}" for index in range(8)],
+            }
+        ],
+    }
+    with pytest.raises(FitError, match="the canvas is"):
+        render(packed)
+
+
+def test_a_drawing_sized_on_its_own_may_be_any_width() -> None:
+    """`ink` mode has no canvas to overflow — that is what the setting means."""
+    theme = load_theme()
+    theme = replace(theme, canvas=replace(theme.canvas, width_mode="ink"))
+    wide = {
+        "version": 1,
+        "kind": "flow",
+        "title": "packed with a band",
+        "nodes": [{"id": f"n{index}", "text": f"Step number {index}"} for index in range(8)],
+        "edges": [],
+        "bands": [
+            {
+                "text": "A continuous activity that runs alongside every one of these steps",
+                "members": [f"n{index}" for index in range(8)],
+            }
+        ],
+    }
+    assert "<svg" in render(wide, theme)
+
+
 def test_a_narrow_diagram_is_centred_on_the_canvas_rather_than_cropped_to_it() -> None:
     """The margin a fixed canvas buys is shared between the two sides.
 

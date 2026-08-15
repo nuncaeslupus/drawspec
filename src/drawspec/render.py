@@ -28,7 +28,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import replace
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 from drawspec.clearance import cleared
 from drawspec.emit import emit
@@ -83,10 +83,59 @@ def render_document(
     measurer = TextMeasurer(resolved.font.stacks())
     fitted = fit(
         resolved,
-        lambda scaled: _within_height(scene_for(document, scaled, measurer), document),
+        lambda scaled: _within_height(
+            _within_width(scene_for(document, scaled, measurer), scaled), document
+        ),
     )
     placed = framed(centred(fitted.value, fitted.theme), fitted.theme)
     return emit(cleared(placed, fitted.theme, measurer), fitted.theme, profile)
+
+
+#: How far over the canvas a drawing may measure before it is refused, in user
+#: units. Not a tolerance for overflow — a hundredth of a unit is a rounding
+#: difference between two ways of adding up the same layout, and is a tenth of a
+#: rendered pixel at any size these are read at.
+_WIDTH_EPSILON: Final = 0.01
+
+
+def _within_width(scene: Scene, theme: Theme) -> Scene:
+    """`scene`, or a `FitError` when it is wider than the canvas it must share.
+
+    A family checks its **layout** against the width — `max_width` on the graph
+    engine, an equal share per column, a plot area — but the drawing is not the
+    layout. A back edge routed around the outside, an edge label placed left of
+    the leftmost box, a band's bar and name beside the chain: all of these are
+    measured *after* placement and none of them is in any family's budget. So a
+    layout that exactly fills the width produces a drawing that does not fit in
+    it, and `centred` leaves a scene already at or over the canvas alone — by
+    design, since its whole job is to add margin rather than remove it. The
+    oversized scene goes straight out as an oversized `viewBox`.
+
+    That breaks the one property this project checks across kinds rather than
+    within one: `canvas_width_variance == 0`. A figure 90 units wider than its
+    neighbours is read at a different type size on the same page, which is the
+    corpus's most repeated complaint arriving by the back door.
+
+    Checked here, once, for every kind — the same argument `_within_height`
+    makes, and the same lever: raising `FitError` inside the fit loop makes the
+    elastic fit try a smaller type scale first and only then refuse. A family
+    doing its own checking would have to reimplement that, and the two that
+    produce ink outside their own placements would have had to agree.
+
+    `width_mode = "ink"` is exempt, because a drawing sized on its own has no
+    canvas to overflow — that is what the setting means.
+    """
+    if theme.canvas.width_mode != "fixed":
+        return scene
+    if scene.width > theme.canvas.width + _WIDTH_EPSILON:
+        raise FitError(
+            f"this drawing measures {scene.width:.0f} units across and the canvas is "
+            f"{theme.canvas.width:.0f}. What is over the edge is drawn beside the boxes "
+            f"rather than by them — a label, a back edge, a band's name — so it is not in "
+            f"the layout's own budget. Shorten the longest label, split the diagram, or "
+            f"give it more width."
+        )
+    return scene
 
 
 def framed(scene: Scene, theme: Theme) -> Scene:
@@ -142,6 +191,15 @@ def _within_height(scene: Scene, document: Document) -> Scene:
 
     `height` on its own stays advisory, which is what it says. Only the chart
     kinds read it as a plot height, and none of them treated it as a ceiling.
+
+    **It bounds the drawing, not the emitted canvas** — the file comes out
+    `margin * 2` taller, the same way a `width` of 640 comes out a 664-wide file.
+    That is deliberate and it is what keeps the two fields meaning the same kind
+    of thing: `[canvas] margin` frames the drawing from outside, so both `width`
+    and `height` describe what is inside the frame. Bounding the canvas here
+    instead would make a binding height quietly shrink whenever a theme widened
+    its margin, which is the coupling the frame was moved out of the families to
+    remove.
     """
     if not document.height_binding or not document.height:
         return scene
