@@ -1111,6 +1111,7 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
             )
     if kind == "curve":
         marked: set[str] = set()
+        located: dict[str, tuple[Any, Any]] = {}
         for curve_index, entry in enumerate(document.get("curves", ()) or ()):
             if not isinstance(entry, dict):
                 continue
@@ -1127,6 +1128,7 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                         )
                     )
                 marked.add(point["id"])
+                located[point["id"]] = (point.get("across"), point.get("up"))
         for index, span in enumerate(document.get("spans", ()) or ()):
             if not isinstance(span, dict):
                 continue
@@ -1146,6 +1148,21 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                     Violation(
                         f"/spans/{index}/to",
                         "a span between a point and itself has no distance to name.",
+                    )
+                )
+            elif (
+                isinstance(start, str)
+                and isinstance(end, str)
+                and start in located
+                and end in located
+                and located[start] == located[end]
+            ):
+                found.append(
+                    Violation(
+                        f"/spans/{index}/to",
+                        f"{start!r} and {end!r} are two names for the same place, so there "
+                        f"is no distance between them to draw. A span makes a gap visible; "
+                        f"this one has no gap.",
                     )
                 )
         return found
@@ -1215,6 +1232,14 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                             f"anything can name it.",
                         )
                     )
+            if isinstance(edge.get("from"), str) and edge["from"] == edge.get("to"):
+                found.append(
+                    Violation(
+                        _pointer("edges", index, "to"),
+                        f"the cell {edge['from']!r} is joined to itself, and a grid has "
+                        f"nowhere to draw that: the two ends are the same square.",
+                    )
+                )
         entries = document.get("key")
         if not isinstance(entries, list):
             return found

@@ -654,6 +654,14 @@ class MarkStyle:
                 f"colours out and every mark is drawn in the page's ink."
             )
         painted = tuple(_colour(entry, "[mark] colours") for entry in colours)
+        if "none" in painted:
+            raise ThemeError(
+                "[mark] colours: 'none' is not a colour a mark can be drawn in. It is "
+                "meaningful for a role's fill — a box that is not filled — but the ink "
+                "a pattern is drawn with is what makes the pattern visible, and a "
+                "pattern nobody can see defeats the distinctness the fills are "
+                "checked for. Use `currentColor` for the page's own ink."
+            )
         gap = _number(mapping.get("gap", defaults.gap), "[mark] gap", positive=False)
         if not 0.0 <= gap < 1.0:
             raise ThemeError(f"[mark] gap: expected a fraction below 1, got {gap!r}")

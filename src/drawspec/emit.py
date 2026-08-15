@@ -195,7 +195,11 @@ def _fill_paint(
     if pattern in PATTERN_FILLS:
         return f"url(#{_pattern_id(namespace, pattern, colour)})"
     if pattern == "solid":
-        return _resolve(role.fill, theme, profile)
+        # `solid` is a legal entry in `[mark] fills`, so a mark can be a flat
+        # wash rather than a hatch — and then the mark's own colour is the whole
+        # of what tells it from its neighbour. The role's fill is the fallback,
+        # for a shape that is filled because its *role* says so.
+        return _resolve(colour or role.fill, theme, profile)
     return "none"
 
 

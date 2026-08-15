@@ -1120,3 +1120,76 @@ def test_two_waypoints_sharing_an_id_are_refused() -> None:
     ]
     with pytest.raises(DocumentError, match="duplicate waypoint id"):
         parse_document({**VARIANCE, "curves": curves, "spans": []})
+
+
+def test_a_span_label_takes_the_other_side_rather_than_leaving_the_canvas() -> None:
+    """A span against the right-hand edge has no room on its right, and a label
+    written there is a label the canvas clips — the failure this whole family
+    exists to prevent."""
+    document = {
+        **VARIANCE,
+        "curves": [
+            {
+                "name": "Spent",
+                "waypoints": [{"across": 0.0, "up": 0.0}, {"id": "ac", "across": 1.0, "up": 1.0}],
+            },
+            {
+                "name": "Earned",
+                "waypoints": [{"across": 0.0, "up": 0.0}, {"id": "ev", "across": 1.0, "up": 0.2}],
+            },
+        ],
+        "spans": [{"text": "A very long variance name", "from": "ac", "to": "ev"}],
+    }
+    built = chart_scene(parse_document(document), THEME, MEASURER)
+    (label,) = [run for run in texts(built) if "variance" in run.text]
+    width = MEASURER.advance(label.text, THEME.font.default, THEME.scale[label.level])
+    assert label.x - width / 2 >= 0
+    assert label.x + width / 2 <= built.width
+
+
+def test_a_span_whose_name_fits_on_neither_side_is_refused() -> None:
+    """Refusing names the span; clipping says nothing at all."""
+    document = {
+        **VARIANCE,
+        "width": 200,
+        "curves": [
+            {
+                "name": "A",
+                "waypoints": [{"across": 0.0, "up": 0.0}, {"id": "ac", "across": 1.0, "up": 1.0}],
+            },
+            {
+                "name": "B",
+                "waypoints": [{"across": 0.0, "up": 0.0}, {"id": "ev", "across": 1.0, "up": 0.2}],
+            },
+        ],
+        "spans": [
+            {
+                "text": "A name far too long for two hundred units of canvas",
+                "from": "ac",
+                "to": "ev",
+            }
+        ],
+    }
+    with pytest.raises(FitError, match="no room for its name"):
+        chart_scene(parse_document(document), THEME, MEASURER)
+
+
+def test_two_waypoints_at_one_place_are_refused_rather_than_dropped() -> None:
+    """A span that quietly vanishes is worse than one that cannot be drawn: the
+    author asked for exactly that gap to be visible."""
+    document = {
+        **VARIANCE,
+        "curves": [
+            {
+                "name": "A",
+                "waypoints": [{"across": 0.0, "up": 0.0}, {"id": "ac", "across": 0.5, "up": 0.5}],
+            },
+            {
+                "name": "B",
+                "waypoints": [{"across": 0.0, "up": 0.1}, {"id": "ev", "across": 0.5, "up": 0.5}],
+            },
+        ],
+        "spans": [{"text": "Nothing", "from": "ac", "to": "ev"}],
+    }
+    with pytest.raises(DocumentError, match="no distance between them"):
+        parse_document(document)

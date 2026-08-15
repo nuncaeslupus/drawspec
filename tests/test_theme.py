@@ -14,7 +14,9 @@ from typing import Any
 
 import pytest
 
+from drawspec.emit import emit
 from drawspec.errors import ThemeError
+from drawspec.scene import Polygon, Scene
 from drawspec.theme import (
     DEFAULT_THEME_PATH,
     EDGE_HEADS,
@@ -571,3 +573,44 @@ def test_a_mark_colour_is_declared_so_the_emitter_will_pass_it() -> None:
 def test_the_accent_theme_still_survives_greyscale() -> None:
     """Adding colour to the marks may not weaken the invariant it lives under."""
     assert load_theme("accent").ambiguous_role_pairs() == ()
+
+
+def test_a_mark_may_not_be_drawn_in_no_colour_at_all() -> None:
+    """`none` is meaningful for a role's fill — a box that is not filled — and
+    meaningless for the ink a pattern is drawn with. A pattern nobody can see
+    defeats the distinctness the fills are checked for."""
+    with pytest.raises(ThemeError, match="not a colour a mark can be drawn in"):
+        MarkStyle.from_mapping({"fills": ["hatch", "dots"], "colours": ["none", "#2A6FC0"]})
+
+
+def test_a_mark_may_be_drawn_in_the_page_ink() -> None:
+    """`currentColor` is a colour: it is whatever the page is set in."""
+    style = MarkStyle.from_mapping(
+        {"fills": ["hatch", "dots"], "colours": ["currentColor", "#2A6FC0"]}
+    )
+    assert style.colour_for(0) == "currentColor"
+
+
+def test_a_solid_mark_is_painted_in_its_own_colour() -> None:
+    """`solid` is a legal mark fill, and then the colour is the whole of what
+    tells one mark from its neighbour."""
+    theme = load_theme(
+        {
+            **default_mapping(),
+            "mark": {"fills": ["solid", "hatch"], "colours": ["#C0452A", "#2A6FC0"]},
+        }
+    )
+    painted = theme.mark.colour_for(0)
+    scene = Scene(
+        width=40,
+        height=20,
+        primitives=(
+            Polygon(
+                "step",
+                points=((0.0, 0.0), (10.0, 0.0), (10.0, 10.0)),
+                fill="solid",
+                fill_colour=painted,
+            ),
+        ),
+    )
+    assert f'fill="{painted}"' in emit(scene, theme)

@@ -680,7 +680,14 @@ def _cell_edges(
         role = edge.role
         span = math.hypot(finish[0] - start[0], finish[1] - start[1])
         if span <= 0:
-            continue
+            # Two cells at one place cannot happen — `_check_cells` refuses an
+            # overlap — so this is a cell joined to itself. Refused rather than
+            # dropped: an edge the author wrote and nobody drew is worse than an
+            # edge that could not be drawn.
+            raise DrawspecError(
+                f"the edge from {edge.source!r} to {edge.target!r} joins a cell to "
+                f"itself, so there is nothing between them to draw."
+            )
         towards = ((finish[0] - start[0]) / span, (finish[1] - start[1]) / span)
         if theme.edge_roles[role].has_head:
             back = min(theme.edge.head_length, span)

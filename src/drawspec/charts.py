@@ -1345,7 +1345,7 @@ def _curve(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
             placed.append(box)
             primitives.append(primitive)
 
-    primitives.extend(_curve_spans(document, across, up, theme, measurer))
+    primitives.extend(_curve_spans(document, across, up, width, height, theme, measurer))
 
     return Scene(
         width=width,
@@ -1360,6 +1360,8 @@ def _curve_spans(
     document: Document,
     across: Scale,
     up: Scale,
+    width: float,
+    height: float,
     theme: Theme,
     measurer: TextMeasurer,
 ) -> list[Primitive]:
@@ -1377,11 +1379,21 @@ def _curve_spans(
     horizontal one, and neither case is special.
 
     The label sits beside the middle of the bar, pushed off it by the theme's
-    own clearance, always to the right of a vertical bar and below a horizontal
-    one. Fixed rather than derived from the bar's own direction: two spans that
-    meet at a shared waypoint — which is exactly what a cost variance and a
+    own clearance, preferring the right of a vertical bar and below a horizontal
+    one. Preferring rather than deriving from the bar's own direction: two spans
+    that meet at a shared waypoint — which is exactly what a cost variance and a
     schedule variance do — otherwise take normals that both point into the
     corner they share, and the two labels land on each other.
+
+    **Preferring, not insisting.** A span against the right-hand edge of the
+    plot has no room on its right, and a label written there is a label the
+    canvas clips — the failure this whole family exists to prevent. So the other
+    side is tried, and when neither fits the drawing is refused with the span
+    named.
+
+    Raises:
+        FitError: a span's two waypoints are the same point, so there is no
+            distance to draw; or its name fits on neither side of the bar.
     """
     if not document.spans:
         return []
@@ -1397,8 +1409,18 @@ def _curve_spans(
     for span in document.spans:
         start, finish = marked[span.start], marked[span.end]
         length = math.hypot(finish[0] - start[0], finish[1] - start[1])
-        if length <= 0:
-            continue
+        if length <= _TOLERANCE:
+            # Two different waypoints at one place. The schema catches the pair
+            # whose coordinates are written the same; this catches the pair that
+            # *lands* the same once the scale has been applied. Refused either
+            # way rather than dropped: a span that quietly vanishes is the one
+            # outcome worse than a span that cannot be drawn, because the author
+            # asked for exactly this gap to be visible.
+            raise FitError(
+                f"the span {span.text[:32]!r} runs between two waypoints that land on the "
+                f"same point, so there is no distance to draw. Check that {span.start!r} "
+                f"and {span.end!r} are where you meant them."
+            )
         towards = ((finish[0] - start[0]) / length, (finish[1] - start[1]) / length)
         sideways = (-towards[1] * cap, towards[0] * cap)
         # Right for a vertical bar, down for a horizontal one.
@@ -1421,11 +1443,27 @@ def _curve_spans(
             extents.width / 2 if abs(normal[0]) > abs(normal[1]) else extents.height / 2
         )
         middle = ((start[0] + finish[0]) / 2, (start[1] + finish[1]) / 2)
+        for side in (normal, (-normal[0], -normal[1])):
+            x = middle[0] + side[0] * away
+            y = middle[1] + side[1] * away
+            if (
+                x - extents.width / 2 >= 0
+                and x + extents.width / 2 <= width
+                and y - extents.ascent >= 0
+                and y + extents.descent <= height
+            ):
+                break
+        else:
+            raise FitError(
+                f"the span {span.text[:32]!r} has no room for its name on either side of "
+                f"the {length:.0f} units it measures. Shorten it, or give the diagram "
+                f"more width."
+            )
         primitives.append(
             TextRun(
                 AXIS_ROLE,
-                x=middle[0] + normal[0] * away,
-                y=middle[1] + normal[1] * away + (extents.ascent - extents.descent) / 2,
+                x=x,
+                y=y + (extents.ascent - extents.descent) / 2,
                 text=span.text,
                 level="label",
                 font=theme.font.default,
