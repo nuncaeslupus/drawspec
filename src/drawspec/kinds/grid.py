@@ -161,7 +161,7 @@ def _timeline(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
     later. It is all or nothing — a timeline with some entries placed and some
     not would have a reader measuring one gap and counting the next.
 
-    Sizes stay normalised either way, because peers being the same size is this
+    Widths stay normalised either way, because peers sharing an edge is this
     family's rule and irregular *spacing* is not irregular *labels*. When two of
     those equal labels will not fit the gap their values ask for, that is a
     `FitError` naming the pair rather than an overlap.

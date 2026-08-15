@@ -13,9 +13,11 @@ size. Half the size is the approximation that leaves a box looking bottom-heavy,
 and it is why a box of "ace" and a box of "Agile" would otherwise sit at
 different heights.
 
-**Peers are the same size.** Boxes that mean the same kind of thing are
-normalised to one width and one height by `normalise`, and the text re-centres in
-the larger box rather than staying where it was.
+**Peers share an edge, not a height.** Boxes that mean the same kind of thing
+are normalised to one width by `normalise`, and the text re-centres in the wider
+box rather than staying where it was. Each keeps the height its own text needs:
+a shared height makes one long sentence grow every box in the diagram, which is
+the single most repeated complaint the corpus review produced.
 
 **Elastic fit is one factor for the whole diagram.** `fit` searches the theme's
 band for the largest factor at which the content fits, and applies it through
@@ -214,8 +216,9 @@ class Box:
     def _block_top(self) -> float:
         """The top of the text block, centred in the content area.
 
-        The extra height a normalised box carries is split evenly above and
-        below, which is what keeps a group of peers looking like peers.
+        The extra height a box carries beyond its own text is split evenly
+        above and below, which is what keeps a group of peers looking like
+        peers when something else has set their height.
         """
         content_top = self.usable_top + self.padding.top
         return content_top + (self.content_height - self.block.height) / 2
@@ -468,17 +471,32 @@ def _positive(budget: float, shape: str, limit: float) -> float:
     return budget
 
 
-def normalise(boxes: Sequence[Box]) -> tuple[Box, ...]:
-    """Grow every box in a group to the largest width and height among them.
+def normalise(boxes: Sequence[Box], *, height: bool = False) -> tuple[Box, ...]:
+    """Grow every box in a group to the largest **width** among them.
 
-    Boxes at the same level, representing the same kind of thing, are the same
-    size — a rule the author does not have to state and could not enforce.
+    Boxes at the same level, representing the same kind of thing, share an
+    edge — a rule the author does not have to state and could not enforce. The
+    shared width is that rule: a column of boxes that start and end at the same
+    x reads as a set, and it is also what gives a long label the room to need
+    fewer lines.
+
+    The shared **height** is not the same rule, and it used to be applied
+    anyway. It made one long sentence anywhere in the diagram grow every other
+    box to match: across the eighty-six corpus redraws, 13% of boxes came out
+    taller than their own text, the worst by three times over, and 19% of all box area
+    existed only because a peer needed it. A two-letter terminal does not
+    become a four-line box because a twelve-word one is its sibling.
+
+    Pass `height=True` where a set really must be one slab — a band whose rows
+    are read across rather than as separate boxes.
     """
     if not boxes:
         return ()
     width = max(item.width for item in boxes)
-    height = max(item.height for item in boxes)
-    return tuple(item.resized(width=width, height=height) for item in boxes)
+    if not height:
+        return tuple(item.resized(width=width) for item in boxes)
+    tallest = max(item.height for item in boxes)
+    return tuple(item.resized(width=width, height=tallest) for item in boxes)
 
 
 # ---------------------------------------------------------------------------

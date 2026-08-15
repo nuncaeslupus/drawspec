@@ -220,7 +220,12 @@ def _edge_role(document: Document, source: str, target: str) -> str:
 def _boxes(
     document: Document, theme: Theme, measurer: TextMeasurer, width: float
 ) -> dict[str, Box]:
-    """One box per node, all normalised: every step in a cycle is a peer."""
+    """One box per node, normalised to a common width: every step is a peer.
+
+    A common *height* is not part of that: the ring already centres each box on
+    its own spoke, so a two-word step does not need to be as tall as the
+    longest one to look like its equal.
+    """
     limit = width * NODE_WIDTH_SHARE
     sized = [
         size_box(

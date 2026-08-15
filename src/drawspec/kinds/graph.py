@@ -247,7 +247,7 @@ def _spacing(theme: Theme) -> Spacing:
 def _sized(
     document: Document, theme: Theme, measurer: TextMeasurer, limit: float
 ) -> dict[str, Box]:
-    """One box per node, with peers normalised to a common size.
+    """One box per node, with peers normalised to a common width.
 
     Peers here are nodes sharing a role, which is the best available stand-in for
     "the same kind of thing" before ranks exist — the layout has not run yet, so
