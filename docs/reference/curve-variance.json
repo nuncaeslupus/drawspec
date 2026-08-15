@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "kind": "curve",
+  "title": "Where a project has got to",
+  "description": "Three curves at one moment: what was planned to have been spent by now, what has been spent, and what has actually been earned. The two gaps are the point of the drawing — how far under the earned value is against what was spent, and how far behind it is against the plan — and neither of them is a point on the diagram.",
+  "caption": "One gap is measured down and the other along, which is why a span runs between two points rather than along an axis.",
+  "axes": {
+    "horizontal": { "label": "Time" },
+    "vertical": { "label": "Cost" }
+  },
+  "curves": [
+    {
+      "name": "Planned",
+      "role": "note",
+      "waypoints": [
+        { "across": 0.0, "up": 0.0 },
+        { "id": "pv", "across": 0.55, "up": 0.45 },
+        { "across": 1.0, "up": 1.0 }
+      ]
+    },
+    {
+      "name": "Spent",
+      "waypoints": [
+        { "across": 0.0, "up": 0.0 },
+        { "across": 0.3, "up": 0.3 },
+        { "id": "ac", "across": 0.72, "up": 0.72 }
+      ]
+    },
+    {
+      "name": "Earned",
+      "role": "emphasis",
+      "waypoints": [
+        { "across": 0.0, "up": 0.0 },
+        { "across": 0.3, "up": 0.2 },
+        { "id": "ev", "across": 0.72, "up": 0.45 }
+      ]
+    }
+  ],
+  "spans": [
+    { "text": "Cost variance", "from": "ac", "to": "ev" },
+    { "text": "Schedule variance", "from": "ev", "to": "pv" }
+  ]
+}

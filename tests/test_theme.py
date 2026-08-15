@@ -14,13 +14,16 @@ from typing import Any
 
 import pytest
 
+from drawspec.emit import emit
 from drawspec.errors import ThemeError
+from drawspec.scene import Polygon, Scene
 from drawspec.theme import (
     DEFAULT_THEME_PATH,
     EDGE_HEADS,
     EDGE_ROLES,
     NODE_ROLES,
     TYPE_LEVELS,
+    MarkStyle,
     Theme,
     load_theme,
     relative_luminance,
@@ -523,3 +526,91 @@ def test_the_accent_theme_declares_every_colour_it_uses() -> None:
     for group in (accent.roles, accent.edge_roles):
         for role in group.values():
             assert role.stroke in declared
+
+
+# --------------------------------------------------------------------------
+# Mark colours: the one axis patterns could not cover
+# --------------------------------------------------------------------------
+
+
+def test_a_theme_may_give_each_mark_a_colour_beside_its_pattern() -> None:
+    """*"I can't differentiate the three colors"*, said of three cell groups
+    whose hatches read alike at cell size. A fourth pattern would not have
+    helped; at eight units square a grid and a cross are the same smudge."""
+    style = MarkStyle.from_mapping(
+        {"fills": ["hatch", "dots", "cross"], "colours": ["#C0452A", "#2A6FC0", "#3E7A4A"]}
+    )
+    assert style.colour_for(1) == "#2a6fc0"
+    assert style.colour_for(4) == "#2a6fc0", "cycles with the fills it travels with"
+
+
+def test_marks_are_drawn_in_the_page_ink_when_a_theme_names_no_colours() -> None:
+    assert MarkStyle().colours == ()
+    assert MarkStyle().colour_for(0) == ""
+
+
+def test_a_colour_per_mark_must_match_the_fills_it_travels_with() -> None:
+    """Two sequences a reader has to align by counting is two chances to be wrong."""
+    with pytest.raises(ThemeError, match="same length"):
+        MarkStyle.from_mapping({"fills": ["hatch", "dots"], "colours": ["#C0452A"]})
+
+
+def test_mark_colours_never_carry_on_their_own() -> None:
+    """The whole safety argument in one assertion: the pattern sequence is still
+    required to be distinct, so removing the colour removes the emphasis and
+    never the comparison."""
+    with pytest.raises(ThemeError, match="must be distinct"):
+        MarkStyle.from_mapping({"fills": ["hatch", "hatch"], "colours": ["#C0452A", "#2A6FC0"]})
+
+
+def test_a_mark_colour_is_declared_so_the_emitter_will_pass_it() -> None:
+    """Every colour in the output has to be one the theme declared — which is
+    what stops a colour being decided anywhere but in a theme file."""
+    accent = load_theme("accent")
+    assert set(accent.mark.colours) <= accent.declared_colours()
+
+
+def test_the_accent_theme_still_survives_greyscale() -> None:
+    """Adding colour to the marks may not weaken the invariant it lives under."""
+    assert load_theme("accent").ambiguous_role_pairs() == ()
+
+
+def test_a_mark_may_not_be_drawn_in_no_colour_at_all() -> None:
+    """`none` is meaningful for a role's fill — a box that is not filled — and
+    meaningless for the ink a pattern is drawn with. A pattern nobody can see
+    defeats the distinctness the fills are checked for."""
+    with pytest.raises(ThemeError, match="not a colour a mark can be drawn in"):
+        MarkStyle.from_mapping({"fills": ["hatch", "dots"], "colours": ["none", "#2A6FC0"]})
+
+
+def test_a_mark_may_be_drawn_in_the_page_ink() -> None:
+    """`currentColor` is a colour: it is whatever the page is set in."""
+    style = MarkStyle.from_mapping(
+        {"fills": ["hatch", "dots"], "colours": ["currentColor", "#2A6FC0"]}
+    )
+    assert style.colour_for(0) == "currentColor"
+
+
+def test_a_solid_mark_is_painted_in_its_own_colour() -> None:
+    """`solid` is a legal mark fill, and then the colour is the whole of what
+    tells one mark from its neighbour."""
+    theme = load_theme(
+        {
+            **default_mapping(),
+            "mark": {"fills": ["solid", "hatch"], "colours": ["#C0452A", "#2A6FC0"]},
+        }
+    )
+    painted = theme.mark.colour_for(0)
+    scene = Scene(
+        width=40,
+        height=20,
+        primitives=(
+            Polygon(
+                "step",
+                points=((0.0, 0.0), (10.0, 0.0), (10.0, 10.0)),
+                fill="solid",
+                fill_colour=painted,
+            ),
+        ),
+    )
+    assert f'fill="{painted}"' in emit(scene, theme)

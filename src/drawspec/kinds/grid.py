@@ -421,6 +421,7 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     if not cells:
         raise DrawspecError("a matrix needs at least one cell")
     fills = _group_fills(cells, theme)
+    inks = _group_colours(cells, theme)
 
     _check_cells(cells)
     across = max(max(cell.column + cell.across for cell in cells), len(document.columns))
@@ -515,6 +516,7 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
                 cell.role,
                 points=((left, top), (right, top), (right, bottom), (left, bottom)),
                 fill=fills[cell.group],
+                fill_colour=inks[cell.group],
             )
         )
         placed = (
@@ -566,6 +568,20 @@ def _group_fills(cells: tuple[Cell, ...], theme: Theme) -> dict[str, str]:
     for index, group in enumerate(named):
         fills[group] = theme.mark.fill_for(index)
     return fills
+
+
+def _group_colours(cells: tuple[Cell, ...], theme: Theme) -> dict[str, str]:
+    """The colour each group's fill is drawn in, when the theme declares any.
+
+    Empty everywhere in the bundled default, which paints every pattern in the
+    page's ink. A theme that declares mark colours is answering the one thing
+    patterns alone could not: three cell groups whose hatches are too alike at
+    cell size.
+    """
+    colours = {"": ""}
+    for index, group in enumerate(_named_groups(cells)):
+        colours[group] = theme.mark.colour_for(index)
+    return colours
 
 
 def _check_cells(cells: tuple[Cell, ...]) -> None:
@@ -664,7 +680,14 @@ def _cell_edges(
         role = edge.role
         span = math.hypot(finish[0] - start[0], finish[1] - start[1])
         if span <= 0:
-            continue
+            # Two cells at one place cannot happen — `_check_cells` refuses an
+            # overlap — so this is a cell joined to itself. Refused rather than
+            # dropped: an edge the author wrote and nobody drew is worse than an
+            # edge that could not be drawn.
+            raise DrawspecError(
+                f"the edge from {edge.source!r} to {edge.target!r} joins a cell to "
+                f"itself, so there is nothing between them to draw."
+            )
         towards = ((finish[0] - start[0]) / span, (finish[1] - start[1]) / span)
         if theme.edge_roles[role].has_head:
             back = min(theme.edge.head_length, span)

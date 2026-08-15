@@ -582,11 +582,19 @@ class MarkStyle:
     "this one hatched". So the theme declares the order, and a mark takes the
     entry at its own index.
 
-    The vocabulary is the fill patterns, not colours, and the entries must be
-    distinct — which makes greyscale legibility structural here rather than
-    checked afterwards. It is the same rule the role table lives under, arrived
-    at from the other direction: roles must differ in a non-colour channel, and
-    these differ in nothing else.
+    The vocabulary is the fill **patterns**, and they must be distinct — which
+    makes greyscale legibility structural here rather than checked afterwards.
+    It is the same rule the role table lives under, arrived at from the other
+    direction: roles must differ in a non-colour channel, and these differ in
+    nothing else.
+
+    A theme may add `colours` beside them. That is the one thing the review
+    asked for that patterns alone cannot give — *"I can't differentiate the
+    three colors"* was said of three cell groups whose hatches are too alike at
+    cell size — and it is safe here for the same reason the `accent` theme is
+    safe: the pattern sequence still has to be distinct on its own, so removing
+    the colour removes the emphasis and never the distinction. Print it in black
+    and white and the drawing still reads.
     """
 
     fills: tuple[str, ...] = ("hatch", "dots", "cross", "grid", "none")
@@ -597,6 +605,14 @@ class MarkStyle:
     that competes with the text over it makes the text illegible.
     """
 
+    colours: tuple[str, ...] = ()
+    """A colour per fill, in the same order, or empty for ink alone.
+
+    Same length as `fills` when given, so a mark's pattern and its colour travel
+    together as one entry rather than two sequences a reader has to align by
+    counting. Redundant by construction: the pattern is what carries.
+    """
+
     gap: float = 0.3
     """How much of a category's band is left empty around its bars, as a
     fraction. Zero draws bars that touch, which reads as one wide bar."""
@@ -605,9 +621,15 @@ class MarkStyle:
         """The fill for the `index`-th filled mark, cycling if there are more."""
         return self.fills[index % len(self.fills)]
 
+    def colour_for(self, index: int) -> str:
+        """The colour for the `index`-th filled mark, or empty for the page's ink."""
+        if not self.colours:
+            return ""
+        return self.colours[index % len(self.colours)]
+
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> MarkStyle:
-        _reject_unknown(mapping, ("fills", "gap"), "[mark]")
+        _reject_unknown(mapping, ("fills", "colours", "gap"), "[mark]")
         defaults = cls()
         fills = mapping.get("fills", list(defaults.fills))
         if not isinstance(fills, list) or not fills:
@@ -622,10 +644,28 @@ class MarkStyle:
                 "[mark] fills: the entries must be distinct — two marks sharing a fill "
                 "cannot be told apart, in greyscale or in colour."
             )
+        colours = mapping.get("colours", list(defaults.colours))
+        if not isinstance(colours, list):
+            raise ThemeError(f"[mark] colours: expected an array, got {colours!r}")
+        if colours and len(colours) != len(fills):
+            raise ThemeError(
+                f"[mark] colours: {len(colours)} colours for {len(fills)} fills. A mark "
+                f"takes one entry, so the two sequences are the same length — or leave "
+                f"colours out and every mark is drawn in the page's ink."
+            )
+        painted = tuple(_colour(entry, "[mark] colours") for entry in colours)
+        if "none" in painted:
+            raise ThemeError(
+                "[mark] colours: 'none' is not a colour a mark can be drawn in. It is "
+                "meaningful for a role's fill — a box that is not filled — but the ink "
+                "a pattern is drawn with is what makes the pattern visible, and a "
+                "pattern nobody can see defeats the distinctness the fills are "
+                "checked for. Use `currentColor` for the page's own ink."
+            )
         gap = _number(mapping.get("gap", defaults.gap), "[mark] gap", positive=False)
         if not 0.0 <= gap < 1.0:
             raise ThemeError(f"[mark] gap: expected a fraction below 1, got {gap!r}")
-        return cls(fills=tuple(fills), gap=gap)
+        return cls(fills=tuple(fills), colours=painted, gap=gap)
 
 
 @dataclass(frozen=True)
@@ -969,7 +1009,7 @@ class Theme:
         `stroke` in the output that is not in this set, which is what stops a
         colour being decided anywhere but here.
         """
-        colours: set[str] = {"currentColor", "none", self.canvas.ink}
+        colours: set[str] = {"currentColor", "none", self.canvas.ink, *self.mark.colours}
         for role in self.roles.values():
             colours.update(role.colours)
         for edge_role in self.edge_roles.values():

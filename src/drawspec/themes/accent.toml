@@ -59,3 +59,21 @@ stroke = "#C0452A"
 # An association rather than a consequence — quiet, and already headless.
 [edge_role.link]
 stroke = "#7C8794"
+
+# The one thing patterns alone could not do. Three cell groups whose hatches
+# read alike at cell size drew the review's *"I can't differentiate the three
+# colors"*, and a fourth pattern would not have helped: at eight units square a
+# grid and a cross are the same grey smudge.
+#
+# So a mark takes a colour as well as a pattern, from the same index. The
+# pattern sequence is still distinct on its own — the loader insists on it —
+# which is what makes this safe: print the drawing in black and white and you
+# lose the colour, not the comparison. Exactly the rule the roles above follow,
+# applied to the one axis that is a sequence rather than a vocabulary.
+#
+# Five, to match the five fills. The first three are the accent, a blue and a
+# green — far enough apart in hue and in luminance to separate on a screen —
+# and the last two step back to the muted grey, because a chart with five
+# filled series has already asked too much of its reader.
+[mark]
+colours = ["#C0452A", "#2A6FC0", "#3E7A4A", "#7C8794", "#7C8794"]

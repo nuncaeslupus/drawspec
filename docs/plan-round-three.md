@@ -25,9 +25,9 @@ rather than off.
 |---|---|---|
 | `sibling-order` | **D** ("boxes are not in the same order") | **built** |
 | `crossing` | **E** (straight lines, on purpose) | **was already built** — the report and this page were both wrong |
-| `spans` | **G** (`spans`, the clearest missing kind) | **built**, for the timeline |
+| `spans` | **G** (`spans`, the clearest missing kind) | **built**, for the timeline and the curve |
 | `uniform-box-size` | **A** (shapes too tall and too narrow) | **built** |
-| `role-vocabulary` | **H** (document the roles) | half-served by the guide; still open |
+| `role-vocabulary` | **H** (document the roles) | **built** — the guide's *Choosing a role*, and both vocabularies drawn |
 | `mark-above-label` | **G** (stars above the title) | **was already possible** — see below |
 
 Everything else on this page is new.
@@ -321,7 +321,8 @@ the sibling-order change, which orders a rank and does not centre it.
 
 Not in the report — asked alongside it, and it belongs here because two items
 above (`group-legend-names`, and round two's *"I can't differentiate the three
-colors"*) are really about the same seam.
+colors"*) are really about the same seam. **Built**, as set out below; the
+proposal at the foot of this section is what shipped.
 
 **Colour is already a theme capability, and always was.** A role's `stroke` and
 `fill` take a hex value, `[canvas] ink` is what `currentColor` resolves to
@@ -392,15 +393,19 @@ cost and what it moved:
 Seven reference drawings are new or changed, so every one of these is visible
 in `make gallery` rather than only in a test.
 
-**What is still open**, and named rather than quietly dropped:
+### And the three that were left over
 
-* **Sheet 69's spans.** `spans` is built for the timeline. The chart case wants
-  an interval between two *curves*, one horizontal and one vertical, and that
-  is a different placement problem in a different family.
-* **`role-vocabulary`** (round two's H). The guide documents the roles in prose;
-  the per-role drawing it asks for is not there.
-* **Colour.** Below — a theme question, and it wants an answer before it wants
-  an implementation.
+All three are now built as well, so nothing on this page is outstanding:
+
+| Item | What it took |
+|---|---|
+| **Sheet 69's spans** | A waypoint takes an `id` and `curve` takes the same `span` object. Between two *waypoints*, so one gap measures down and the other along — a vertical-only span would have left the schedule variance as unsayable as it was. |
+| **`role-vocabulary`** (round two's H) | The guide's **Choosing a role**: every node and edge role, what to reach for it *for*, and what the theme draws it as. Both vocabularies drawn in `flow-node-roles` and `flow-edge-roles`, with tests that fail if a role is added and not documented or not drawn. |
+| **Colour** | `[mark] colours`, taken by the same index as `fills` and the same length. The pattern sequence must still be distinct on its own, so colour is redundant by construction — and a theme naming two identical fills is refused even when their colours differ. |
+
+The node-role sheet is worth one note: it is only legible because an edgeless
+set now packs rather than ranking. A round-three change earning its keep on
+round three's own documentation.
 
 ---
 

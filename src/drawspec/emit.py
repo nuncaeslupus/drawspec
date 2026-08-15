@@ -172,7 +172,12 @@ def _resolve(colour: str, theme: Theme, profile: str) -> str:
 
 
 def _fill_paint(
-    role: NodeRole, namespace: str, theme: Theme, profile: str, chosen: str = ""
+    role: NodeRole,
+    namespace: str,
+    theme: Theme,
+    profile: str,
+    chosen: str = "",
+    colour: str = "",
 ) -> str:
     """The paint for a closed figure. `chosen` is a fill the geometry asked for.
 
@@ -180,12 +185,21 @@ def _fill_paint(
     does it wins over its role's. Nothing else about the role is overridden: the
     stroke, the dash and the weight are still the role's, so a bar still looks
     like the thing it is a bar of.
+
+    `colour` is the theme's colour for that fill, when it declares one. It
+    selects a differently-painted copy of the same pattern, so two marks that
+    differ in colour differ in hatch as well and the drawing survives being
+    printed.
     """
     pattern = chosen or role.fill_pattern
     if pattern in PATTERN_FILLS:
-        return f"url(#{namespace}-{pattern})"
+        return f"url(#{_pattern_id(namespace, pattern, colour)})"
     if pattern == "solid":
-        return _resolve(role.fill, theme, profile)
+        # `solid` is a legal entry in `[mark] fills`, so a mark can be a flat
+        # wash rather than a hatch — and then the mark's own colour is the whole
+        # of what tells it from its neighbour. The role's fill is the fallback,
+        # for a shape that is filled because its *role* says so.
+        return _resolve(colour or role.fill, theme, profile)
     return "none"
 
 
@@ -226,7 +240,17 @@ def _shape_attributes(
             return [("fill", _resolve(role.stroke, theme, profile)), ("stroke", "none")]
         head = isinstance(primitive, Path) and primitive.marker
         return [("fill", "none"), *_stroke_attributes(role, theme, profile, solid=head)]
-    fill = ("fill", _fill_paint(role, namespace, theme, profile, getattr(primitive, "fill", "")))
+    fill = (
+        "fill",
+        _fill_paint(
+            role,
+            namespace,
+            theme,
+            profile,
+            getattr(primitive, "fill", ""),
+            getattr(primitive, "fill_colour", ""),
+        ),
+    )
     if isinstance(primitive, Polygon) and primitive.region:
         return [fill, ("stroke", "none")]
     return [fill, *_stroke_attributes(role, theme, profile)]
@@ -397,29 +421,39 @@ _PATTERN_BODIES: Final = {
 }
 
 
+def _pattern_id(namespace: str, pattern: str, colour: str) -> str:
+    """The id of one pattern in one colour. Derived, so the same pair is one def."""
+    if not colour:
+        return f"{namespace}-{pattern}"
+    return f"{namespace}-{pattern}-{colour.lstrip('#')}"
+
+
 def _pattern_definitions(scene: Scene, namespace: str, theme: Theme, profile: str) -> list[str]:
     """`<pattern>` defs for the fill patterns this scene actually uses.
 
     Kept soft on purpose: a hatch that competes with the text on top of it makes
     the text illegible, so the strokes are thin and part-transparent. Opacity is
     not a colour, so this does not smuggle a value past the theme.
+
+    One def per *pattern and colour*, because a theme that declares mark colours
+    wants the same hatch in three inks — and a pattern is painted where it is
+    defined, not where it is used.
     """
     wanted = sorted(
         {
-            pattern
+            (pattern, getattr(primitive, "fill_colour", ""))
             for primitive in scene.primitives
             if isinstance(role := theme.role_for(primitive.role), NodeRole)
             and (pattern := getattr(primitive, "fill", "") or role.fill_pattern) in PATTERN_FILLS
         }
     )
-    ink = _resolve("currentColor", theme, profile)
     definitions = []
-    for pattern in wanted:
+    for pattern, colour in wanted:
         template, tile = _PATTERN_BODIES[pattern]
-        body = template.format(ink=ink)
+        body = template.format(ink=_resolve(colour or "currentColor", theme, profile))
         definitions.append(
-            f'<pattern id="{namespace}-{pattern}" width="{tile}" height="{tile}" '
-            f'patternUnits="userSpaceOnUse">{body}</pattern>'
+            f'<pattern id="{_pattern_id(namespace, pattern, colour)}" width="{tile}" '
+            f'height="{tile}" patternUnits="userSpaceOnUse">{body}</pattern>'
         )
     return definitions
 

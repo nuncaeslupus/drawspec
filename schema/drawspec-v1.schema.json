@@ -684,6 +684,13 @@
           "type": "string",
           "description": "A bundled theme name or the path of a theme file."
         },
+        "spans": {
+          "type": "array",
+          "description": "Named distances between two waypoints, drawn as a capped line with the name beside it. For the quantity that is the gap itself: a cost variance is not a point on the drawing, it is how far one curve is from another, and a caption saying so states it without showing it. Either way round — two waypoints at one moment measure vertically, two at one value measure along.",
+          "items": {
+            "$ref": "#/$defs/span"
+          }
+        },
         "axes": {
           "$ref": "#/$defs/axes",
           "description": "Both axes. A named shape still needs saying what it is a shape of."
@@ -1203,6 +1210,10 @@
     "waypoint": {
       "type": "object",
       "properties": {
+        "id": {
+          "type": "string",
+          "description": "Optional, and only needed to measure from this point: a span names the two waypoints it runs between. Unique within the document."
+        },
         "text": {
           "type": "string",
           "description": "What to call this point. Omit for a point that only shapes the curve."

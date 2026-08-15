@@ -112,6 +112,9 @@ HEADROOM: Final = 0.08
 #: is enough for that to stop moving, and the third is the belt.
 _LABEL_PASSES: Final = 3
 
+#: How close two coordinates have to be before they count as the same one.
+_TOLERANCE: Final = 1e-9
+
 #: The most decimals a point label may carry. Past this the label is wider than
 #: the room beside its own point, and values that close needed a different chart.
 MAXIMUM_DECIMALS: Final = 3
@@ -671,6 +674,7 @@ def _filled_marks(
         return Marked((), ())
 
     fills = {id(item): theme.mark.fill_for(index) for index, (item, _) in enumerate(filled)}
+    inks = {id(item): theme.mark.colour_for(index) for index, (item, _) in enumerate(filled)}
     primitives: list[Primitive] = []
 
     # Where each stack of areas has reached, per x. Separate from the bars' own
@@ -700,6 +704,7 @@ def _filled_marks(
                 item.role,
                 points=(*crest, *reversed(under)),
                 fill=fills[id(item)],
+                fill_colour=inks[id(item)],
                 region=True,
             )
         )
@@ -739,6 +744,7 @@ def _filled_marks(
                     item.role,
                     points=((left, low), (right, low), (right, high), (left, high)),
                     fill=fills[id(item)],
+                    fill_colour=inks[id(item)],
                 )
             )
             # `low` and `high` are sorted by y, and y grows downwards — so `low`
@@ -1339,6 +1345,8 @@ def _curve(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
             placed.append(box)
             primitives.append(primitive)
 
+    primitives.extend(_curve_spans(document, across, up, width, height, theme, measurer))
+
     return Scene(
         width=width,
         height=height,
@@ -1346,6 +1354,123 @@ def _curve(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         title=document.title,
         description=document.description,
     )
+
+
+def _curve_spans(
+    document: Document,
+    across: Scale,
+    up: Scale,
+    width: float,
+    height: float,
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> list[Primitive]:
+    """The named distances between two waypoints, capped at both ends.
+
+    On the earned-value original the two quantities the drawing exists to
+    explain are gaps: the cost variance is how far the earned value is below
+    the actual cost, and the schedule variance is how far behind it is. Neither
+    is a point, so neither could be said, and both were pushed into the caption
+    as formulas — which states them and does not show them.
+
+    The two are not the same shape either: one is vertical and one horizontal.
+    That is why this measures between two **waypoints** rather than along an
+    axis: two points at one moment give a vertical bar, two at one value give a
+    horizontal one, and neither case is special.
+
+    The label sits beside the middle of the bar, pushed off it by the theme's
+    own clearance, preferring the right of a vertical bar and below a horizontal
+    one. Preferring rather than deriving from the bar's own direction: two spans
+    that meet at a shared waypoint — which is exactly what a cost variance and a
+    schedule variance do — otherwise take normals that both point into the
+    corner they share, and the two labels land on each other.
+
+    **Preferring, not insisting.** A span against the right-hand edge of the
+    plot has no room on its right, and a label written there is a label the
+    canvas clips — the failure this whole family exists to prevent. So the other
+    side is tried, and when neither fits the drawing is refused with the span
+    named.
+
+    Raises:
+        FitError: a span's two waypoints are the same point, so there is no
+            distance to draw; or its name fits on neither side of the bar.
+    """
+    if not document.spans:
+        return []
+    marked = {
+        point.id: (across.to_pixels(point.across), up.to_pixels(point.up))
+        for curve in document.curves
+        for point in curve.waypoints
+        if point.id
+    }
+    size = theme.scale["label"]
+    cap = theme.edge.head_length * MARKER_FRACTION * 2
+    primitives: list[Primitive] = []
+    for span in document.spans:
+        start, finish = marked[span.start], marked[span.end]
+        length = math.hypot(finish[0] - start[0], finish[1] - start[1])
+        if length <= _TOLERANCE:
+            # Two different waypoints at one place. The schema catches the pair
+            # whose coordinates are written the same; this catches the pair that
+            # *lands* the same once the scale has been applied. Refused either
+            # way rather than dropped: a span that quietly vanishes is the one
+            # outcome worse than a span that cannot be drawn, because the author
+            # asked for exactly this gap to be visible.
+            raise FitError(
+                f"the span {span.text[:32]!r} runs between two waypoints that land on the "
+                f"same point, so there is no distance to draw. Check that {span.start!r} "
+                f"and {span.end!r} are where you meant them."
+            )
+        towards = ((finish[0] - start[0]) / length, (finish[1] - start[1]) / length)
+        sideways = (-towards[1] * cap, towards[0] * cap)
+        # Right for a vertical bar, down for a horizontal one.
+        normal = (-towards[1], towards[0])
+        if normal[0] < -_TOLERANCE or (abs(normal[0]) <= _TOLERANCE and normal[1] < 0):
+            normal = (-normal[0], -normal[1])
+        primitives.append(Path(AXIS_ROLE, points=(start, finish)))
+        for end in (start, finish):
+            primitives.append(
+                Path(
+                    AXIS_ROLE,
+                    points=(
+                        (end[0] - sideways[0] / 2, end[1] - sideways[1] / 2),
+                        (end[0] + sideways[0] / 2, end[1] + sideways[1] / 2),
+                    ),
+                )
+            )
+        extents = measurer.measure(span.text, theme.font.default, size)
+        away = theme.edge.clearance + (
+            extents.width / 2 if abs(normal[0]) > abs(normal[1]) else extents.height / 2
+        )
+        middle = ((start[0] + finish[0]) / 2, (start[1] + finish[1]) / 2)
+        for side in (normal, (-normal[0], -normal[1])):
+            x = middle[0] + side[0] * away
+            y = middle[1] + side[1] * away
+            if (
+                x - extents.width / 2 >= 0
+                and x + extents.width / 2 <= width
+                and y - extents.ascent >= 0
+                and y + extents.descent <= height
+            ):
+                break
+        else:
+            raise FitError(
+                f"the span {span.text[:32]!r} has no room for its name on either side of "
+                f"the {length:.0f} units it measures. Shorten it, or give the diagram "
+                f"more width."
+            )
+        primitives.append(
+            TextRun(
+                AXIS_ROLE,
+                x=x,
+                y=y + (extents.ascent - extents.descent) / 2,
+                text=span.text,
+                level="label",
+                font=theme.font.default,
+                anchor="middle",
+            )
+        )
+    return primitives
 
 
 def _smooth(points: list[tuple[float, float]]) -> tuple[tuple[float, float], ...]:
