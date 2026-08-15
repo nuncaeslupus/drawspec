@@ -175,6 +175,7 @@ one of `arrow`, `open`, `diamond`, `circle`, `bar`, `none`.
 | `weak` | `"open"` | `"none"` | `"currentColor"` | `"4 3"` | `1.5` | `"orthogonal"` |
 | `owns` | `"diamond"` | `"none"` | `"currentColor"` | `"none"` | `1.5` | `"orthogonal"` |
 | `strong` | `"arrow"` | `"none"` | `"currentColor"` | `"none"` | `2.5` | `"orthogonal"` |
+| `aside` | `"none"` | `"none"` | `"currentColor"` | `"4 3"` | `1.0` | `"orthogonal"` |
 
 ## The bundled themes
 

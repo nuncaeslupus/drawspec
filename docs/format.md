@@ -136,7 +136,7 @@ name, so a misspelt key is an error at the point it was written.
 | `from` | string | **yes** | The id of the source node. |
 | `to` | string | **yes** | The id of the target node. |
 | `label` | string | no | A short label placed along the edge. |
-| `role` | string — one of `flow`, `link`, `exchange`, `weak`, `owns`, `strong` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
+| `role` | string — one of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
 
 ### `group` object
 

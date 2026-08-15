@@ -43,7 +43,7 @@ from typing import Final
 
 from drawspec.errors import DrawspecError, FitError
 from drawspec.legend import entries_for, height_of, primitives_for
-from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextRun
+from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextRun, centred_lines
 from drawspec.schema import Axis, Document, Position, Series
 from drawspec.text.measure import Extents, TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
@@ -1549,7 +1549,6 @@ def _curve_spans(
         for point in curve.waypoints
         if point.id
     }
-    size = theme.scale["label"]
     cap = theme.edge.head_length * MARKER_FRACTION * 2
     primitives: list[Primitive] = []
     for span in document.spans:
@@ -1584,19 +1583,21 @@ def _curve_spans(
                     ),
                 )
             )
-        extents = measurer.measure(span.text, theme.font.default, size)
+        # Wrapped, like every other text field: `**bold**` and `` `code` `` are
+        # the author's to write, and a newline makes a lead over its detail.
+        block = wrap(span.text, width, measurer, theme=theme, level="label")
         away = theme.edge.clearance + (
-            extents.width / 2 if abs(normal[0]) > abs(normal[1]) else extents.height / 2
+            block.width / 2 if abs(normal[0]) > abs(normal[1]) else block.height / 2
         )
         middle = ((start[0] + finish[0]) / 2, (start[1] + finish[1]) / 2)
         for side in (normal, (-normal[0], -normal[1])):
             x = middle[0] + side[0] * away
             y = middle[1] + side[1] * away
             if (
-                x - extents.width / 2 >= 0
-                and x + extents.width / 2 <= width
-                and y - extents.ascent >= 0
-                and y + extents.descent <= height
+                x - block.width / 2 >= 0
+                and x + block.width / 2 <= width
+                and y - block.height / 2 >= 0
+                and y + block.height / 2 <= height
             ):
                 break
         else:
@@ -1605,17 +1606,7 @@ def _curve_spans(
                 f"the {length:.0f} units it measures. Shorten it, or give the diagram "
                 f"more width."
             )
-        primitives.append(
-            TextRun(
-                AXIS_ROLE,
-                x=x,
-                y=y + (extents.ascent - extents.descent) / 2,
-                text=span.text,
-                level="label",
-                font=theme.font.default,
-                anchor="middle",
-            )
-        )
+        primitives.extend(centred_lines(block, x, y - block.height / 2, AXIS_ROLE, "label"))
     return primitives
 
 

@@ -188,7 +188,11 @@ Two mistakes worth naming, both made in the corpus and both caught in review:
   typographic instruction in a document that has no field for one.
 
 The same holds for connectors, where the vocabulary answers *what kind of
-relation is this* and the theme answers whether it has a head:
+relation is this* and the theme answers whether it has a head. Two of the seven
+are worth reading together, because the difference is easy to miss and choosing
+wrong misstates the drawing: `weak` is dashed **and** directed, so it says *this
+may lead to that*; `aside` is dashed and **un**directed, so it says *this belongs
+with that* and nothing about which way.
 
 | Role | Use it for | Drawn as |
 |---|---|---|
@@ -198,6 +202,7 @@ relation is this* and the theme answers whether it has a head:
 | `exchange` | Both ways at once | a head at each end |
 | `weak` | A soft or conditional dependency | dashed, with an open head |
 | `owns` | This is a part of that | a diamond at the owning end |
+| `aside` | Loosely associated, and in no direction — a note, a source, a caveat hanging off the thing it is about | dashed, with no head |
 
 Both sets are drawn, one box per role, in
 [`reference/flow-node-roles.json`](reference/flow-node-roles.json) and

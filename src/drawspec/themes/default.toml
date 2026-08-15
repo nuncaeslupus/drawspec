@@ -219,6 +219,20 @@ stroke = "currentColor"
 dash = "4 3"
 stroke_width = 1.5
 
+# Dashed and headless — the one pairing the other six could not make, and the
+# gap an author kept falling into. `link` is headless but solid, so it states an
+# association more firmly than a note deserves; `weak` is dashed but carries an
+# open head, so it invents a direction the relation does not have. A dashed line
+# to a metadata note is neither: it says *this belongs with that*, softly, and
+# says nothing about which way. Drawn at `link`'s weight rather than `weak`'s,
+# because it is the quiet relation and not the tentative one.
+[edge_role.aside]
+head = "none"
+tail = "none"
+stroke = "currentColor"
+dash = "4 3"
+stroke_width = 1.0
+
 # The opposite end of the scale from `weak`: the one path through a network that
 # matters — a critical path, the route a request actually took. Heavier than
 # `flow` and otherwise identical, so it reads as the same relation drawn louder

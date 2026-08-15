@@ -22,7 +22,7 @@ from drawspec.charts import DIVIDER_ROLE, MARKER_FRACTION, _crosses, _label_box,
 from drawspec.emit import check_embedding_safety, emit
 from drawspec.errors import DocumentError, DrawspecError, FitError
 from drawspec.legend import SWATCH_ASPECT, SWATCH_SHARE
-from drawspec.scene import Ellipse, Path, Polygon, Rect, Scene, TextRun
+from drawspec.scene import Ellipse, Path, Polygon, Rect, Scene, TextLine, TextRun
 from drawspec.schema import parse_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
@@ -62,6 +62,17 @@ def markers(built: Scene) -> list[Ellipse]:
 
 def texts(built: Scene) -> list[TextRun]:
     return [item for item in built.primitives if isinstance(item, TextRun)]
+
+
+def labels(built: Scene) -> list[TextRun | TextLine]:
+    """Every piece of text, whichever primitive carries it.
+
+    A span's name is a `TextLine` because it is wrapped like every other text
+    field — it may hold `**bold**`, or a lead over a detail. Both primitives
+    carry `.text` and `.x`, and a test about where a label sits does not care
+    which of the two it is.
+    """
+    return [item for item in built.primitives if isinstance(item, (TextRun, TextLine))]
 
 
 def series_paths(built: Scene) -> list[Path]:
@@ -1149,7 +1160,7 @@ def test_a_span_measures_the_gap_between_two_curves() -> None:
     """Both quantities the drawing exists to explain are gaps rather than
     points, and both used to be pushed into the caption as formulas — which
     states them and does not show them."""
-    written = {run.text for run in texts(_variance())}
+    written = {run.text for run in labels(_variance())}
     assert {"Cost variance", "Schedule variance"} <= written
 
 
@@ -1167,8 +1178,8 @@ def test_two_spans_meeting_at_one_point_do_not_label_each_other() -> None:
     """A cost variance and a schedule variance share the earned-value waypoint,
     so normals derived from each bar's own direction both point into the corner
     they share."""
-    labels = [run for run in texts(_variance()) if "variance" in run.text]
-    (first, second) = labels
+    found = [run for run in labels(_variance()) if "variance" in run.text]
+    (first, second) = found
     apart = max(abs(first.x - second.x), abs(first.y - second.y))
     assert apart > THEME.scale["label"]
 
@@ -1217,7 +1228,7 @@ def test_a_span_label_takes_the_other_side_rather_than_leaving_the_canvas() -> N
         "spans": [{"text": "A very long variance name", "from": "ac", "to": "ev"}],
     }
     built = chart_scene(parse_document(document), THEME, MEASURER)
-    (label,) = [run for run in texts(built) if "variance" in run.text]
+    (label,) = [run for run in labels(built) if "variance" in run.text]
     width = MEASURER.advance(label.text, THEME.font.default, THEME.scale[label.level])
     assert label.x - width / 2 >= 0
     assert label.x + width / 2 <= built.width

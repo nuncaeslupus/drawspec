@@ -874,7 +874,8 @@
             "exchange",
             "weak",
             "owns",
-            "strong"
+            "strong",
+            "aside"
           ]
         }
       },
