@@ -440,6 +440,35 @@ def test_best_layout_is_deterministic() -> None:
     assert first == second
 
 
+def test_a_height_ceiling_turns_a_chain_that_width_alone_never_could() -> None:
+    """Width could only ever answer *down*, so `right` was unreachable.
+
+    A chain laid out downward is one box wide and fits every canvas there is —
+    chains of two through six at five widths, twenty-five combinations, all
+    vertical. The report that found it was right that a real height ceiling is
+    what the choice was missing.
+    """
+    assert best_layout(ENGINE, *CHAIN, max_width=760.0).direction == "down"
+    turned = best_layout(ENGINE, *CHAIN, max_width=760.0, max_height=150.0)
+    assert turned.direction == "right"
+    assert turned.fits
+    assert turned.height <= 150.0
+
+
+def test_no_height_ceiling_leaves_the_preference_alone() -> None:
+    """Zero means "nothing said", which has to be the old behaviour exactly."""
+    with_zero = best_layout(ENGINE, *CHAIN, max_width=760.0, max_height=0.0)
+    assert with_zero == best_layout(ENGINE, *CHAIN, max_width=760.0)
+
+
+def test_width_still_wins_when_no_direction_fits_the_height() -> None:
+    """A drawing wider than its canvas is clipped; one taller than asked is just
+    taller. So width binds here, and `render`'s own check refuses the height."""
+    result = best_layout(ENGINE, *CHAIN, max_width=760.0, max_height=1.0)
+    assert result.fits
+    assert result.width <= 760.0
+
+
 def test_best_layout_result_is_a_layout() -> None:
     """The direction choice rides along with the layout, not beside it."""
     result = best_layout(ENGINE, *CHAIN, max_width=400.0)

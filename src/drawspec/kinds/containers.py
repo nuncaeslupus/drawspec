@@ -259,11 +259,18 @@ def arrange(
     entered: frozenset[str] = frozenset(),
     depth: int = 0,
     centre: str = "",
+    max_height: float = 0.0,
 ) -> Arrangement:
     """Lay out one level, laying out any group in it first.
 
     The recursion is the whole design: a group is sized by arranging its own
     members, and is then just a node of that size to the level above.
+
+    `max_height` is a ceiling on the whole drawing, passed to the direction
+    choice — see `layout.base.best_layout`. It is *not* divided among nested
+    levels: a group's contents are as tall as they are, and the level above then
+    fits or does not. Only the top level's choice can be steered by it, which is
+    the one an author asking for a wide drawing means.
     """
     inner: dict[str, Arrangement] = {}
     sizes: dict[str, tuple[float, float]] = {}
@@ -313,6 +320,7 @@ def arrange(
         max_width=max_width,
         prefer=prefer,
         centre=centre,
+        max_height=max_height,
     )
 
     places: dict[str, Placement] = {}

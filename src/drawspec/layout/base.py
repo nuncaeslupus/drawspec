@@ -467,17 +467,31 @@ def best_layout(
     max_width: float,
     prefer: str = "down",
     centre: str = "",
+    max_height: float = 0.0,
 ) -> Layout:
-    """Lay out in whichever direction fits `max_width`, preferring `prefer`.
+    """Lay out in whichever direction fits, preferring `prefer`.
 
     T7's spike found that an engine takes a direction and does not choose one,
     while "if the arrows do not fit horizontally, the diagram goes vertical" is a
     real remedy someone has to apply. This is that someone.
 
-    When neither direction fits, the narrower attempt is returned with
-    `fits=False` rather than an exception: the elastic fit (T6) retries the whole
-    diagram at a smaller type scale, and only when that is exhausted is it time to
-    tell the author to restructure. Deciding that is the caller's.
+    **`max_height` is what makes the choice a choice.** Width alone could only
+    ever say *down*: a chain of six laid out downward is one box wide, so it fits
+    every canvas there is, and `right` was unreachable for any document — chains
+    of two through six at five widths, twenty-five combinations, all vertical.
+    That is not a preference, it is an outcome, and a source sheet reading across
+    the page in a 760-by-150 band could not be drawn. A height ceiling (an author
+    writing `height` with `height_binding`) gives the comparison a second
+    dimension, and then the same rule — first direction that fits — answers
+    *right* where it should.
+
+    Zero means no ceiling, which is the old behaviour exactly: an author who says
+    nothing about height still gets `prefer`.
+
+    When no direction fits, the narrower attempt is returned with `fits=False`
+    rather than an exception: the elastic fit (T6) retries the whole diagram at a
+    smaller type scale, and only when that is exhausted is it time to tell the
+    author to restructure. Deciding that is the caller's.
 
     Raises:
         LayoutError: `prefer` is not a known direction, or the graph is malformed.
@@ -495,6 +509,13 @@ def best_layout(
     attempts = [
         replace(engine.layout(nodes, edges, direction), direction=direction) for direction in order
     ]
+    for attempt in attempts:
+        if attempt.width <= max_width and (not max_height or attempt.height <= max_height):
+            return replace(attempt, fits=True)
+    # No direction satisfies both. Width is the binding one — a drawing wider
+    # than its canvas is clipped, while one taller than a requested height is
+    # merely taller than asked — so a direction that fits the width still wins
+    # here, and `render`'s height check is what refuses it afterwards.
     for attempt in attempts:
         if attempt.width <= max_width:
             return replace(attempt, fits=True)

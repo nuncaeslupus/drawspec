@@ -282,6 +282,46 @@ def test_a_height_without_the_binding_flag_stays_advisory() -> None:
     assert "<svg" in render({**_TALL, "height": 80})
 
 
+def test_a_binding_height_is_what_makes_a_chain_read_across() -> None:
+    """The other half of the same lever, end to end — a source sheet's own shape.
+
+    Six steps in one row, 760 by 150. Without a height ceiling the direction
+    choice has only width to go on, and a chain going down is one box wide, so it
+    fits every canvas and *down* is the only answer any document could get. The
+    drawing came out 640 by 658 — a column where the sheet is a band.
+    """
+    chain = {
+        "version": 1,
+        "kind": "flow",
+        "title": "six steps in one row",
+        "width": 760,
+        "nodes": [{"id": step, "text": step.title()} for step in ("one", "two", "three", "four")],
+        "edges": [
+            {"from": "one", "to": "two"},
+            {"from": "two", "to": "three"},
+            {"from": "three", "to": "four"},
+        ],
+    }
+
+    def columns(svg: str) -> set[float]:
+        """The distinct left edges of the boxes — one of them means a column."""
+        root = ElementTree.fromstring(svg)
+        return {
+            round(float(rect.get("x", "0")), 1)
+            for rect in root.iter("{http://www.w3.org/2000/svg}rect")
+        }
+
+    def height(svg: str) -> float:
+        return float(ElementTree.fromstring(svg).get("viewBox", "").split()[3])
+
+    down = render(chain)
+    across = render({**chain, "height": 150, "height_binding": True})
+
+    assert len(columns(down)) == 1, "without a ceiling every box shares one x"
+    assert len(columns(across)) == 4, "with one, each step gets its own"
+    assert height(across) < height(down)
+
+
 @pytest.mark.parametrize("name", FIXTURES)
 def test_every_kind_sets_its_text_at_the_same_level(name: str) -> None:
     """One type size for the text inside a shape, whatever kind the shape is.

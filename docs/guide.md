@@ -357,6 +357,32 @@ else:
     Path("diagram.svg").write_text(svg, encoding="utf-8")
 ```
 
+## Asking for a wide drawing instead of a tall one
+
+Reading direction is part of what a diagram says, and some processes read across
+the page rather than down it. drawspec will not take an instruction to lay a
+`flow` out horizontally — that is an arrangement, and arrangements are its output.
+What it takes is the **constraint** the arrangement has to satisfy:
+
+```json
+{ "width": 760, "height": 150, "height_binding": true }
+```
+
+`height` on its own is advisory. With `height_binding`, it is a ceiling: the
+direction choice now has two dimensions to compare instead of one, and a chain
+that would have gone down goes across because down does not fit. Six steps in a
+760-by-150 band come out as a band.
+
+Two things follow from it being a constraint rather than a switch:
+
+* **A ceiling nothing satisfies is a refusal, not a squeeze.** The elastic fit
+  tries smaller type first; when the band is exhausted you get a message naming
+  the height it reached and the height you asked for. It will not overlap boxes
+  or shorten arrows to make the number come true.
+* **Without a ceiling, down always wins, and that is correct.** A chain laid out
+  downward is one box wide, so it fits every canvas — there is no width at which
+  the tool should guess that you wanted it turned.
+
 ## When it refuses
 
 A refusal is a designed outcome and the message is meant to be actionable. The

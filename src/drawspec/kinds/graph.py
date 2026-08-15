@@ -173,6 +173,10 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         prefer=PREFERRED_DIRECTION,
         entered=crossed([(edge.source, edge.target) for edge in document.edges], nesting),
         centre=next((node.id for node in document.nodes if node.centre), ""),
+        # A binding height is the only thing that can make a chain read across
+        # rather than down: see `layout.base.best_layout`. An advisory height is
+        # not passed, because it is advisory.
+        max_height=(document.height or 0.0) if document.height_binding else 0.0,
     )
     # The top level's own layout, with every leaf from every level in it — the
     # ranks and reversed edges are the top level's, which is what a caller
