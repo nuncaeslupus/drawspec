@@ -10,9 +10,12 @@ design in one place:
    applying it to all four type levels together, and raise `FitError` if there is
    none rather than shrinking past the band or letting text overflow.
 4. **Render** to a `Scene` with whichever family the kind selects.
-5. **Clear**: break every stroke that would be drawn through a word, which is the
+5. **Frame**: centre the drawing on the canvas and give it the theme's outer
+   margin on all four sides — the two things about a figure's edge that must be
+   the same for every kind, and were not while each family decided its own.
+6. **Clear**: break every stroke that would be drawn through a word, which is the
    one defect a family cannot see because it only knows its own primitives.
-6. **Emit**, which is the only place styling happens and therefore the only place
+7. **Emit**, which is the only place styling happens and therefore the only place
    embedding safety is enforced.
 
 Every failure has its own type and is raised as early as it can be detected, so
@@ -71,7 +74,10 @@ def render_document(
     resolved = load_theme(theme if theme is not None else (document.theme or None))
     if document.width:
         # The document may override the canvas width and nothing else: width is
-        # binding, because a build renders one document at several widths.
+        # binding, because a build renders one document at several widths. It is
+        # put on the theme here and read from there by everything downstream, so
+        # a family never has to ask which of the two won — and so the margin
+        # below comes out of whichever width that was.
         resolved = replace(resolved, canvas=replace(resolved.canvas, width=document.width))
 
     measurer = TextMeasurer(resolved.font.stacks())
@@ -79,8 +85,44 @@ def render_document(
         resolved,
         lambda scaled: _within_height(scene_for(document, scaled, measurer), document),
     )
-    placed = centred(fitted.value, fitted.theme)
+    placed = framed(centred(fitted.value, fitted.theme), fitted.theme)
     return emit(cleared(placed, fitted.theme, measurer), fitted.theme, profile)
+
+
+def framed(scene: Scene, theme: Theme) -> Scene:
+    """`scene` in its channel of blank: the theme's outer margin, on all four sides.
+
+    The one place a drawing is given that channel. Every family used to decide it
+    for itself and they disagreed — 24 units for a flow chart, 10 for a cycle,
+    none at all for a stack — which is invisible in any one diagram and obvious
+    the moment two of them share a page: a timeline above a flow chart bled to the
+    edge beside a quarter-inch of white.
+
+    It goes **around** `[canvas] width` rather than being taken out of it, and
+    that is the whole of the difference between the two ways to do this. Taken
+    out, every drawing loses the margin from its layout budget: the families that
+    deliberately span the canvas would each need to know about it, and a timeline
+    already within ten units of the width its own tick spacing demands stops
+    fitting — a document that used to draw would refuse, because the theme grew a
+    frame. Added around, `width` keeps meaning the width of the *drawing*,
+    `height` and `height_binding` keep meaning the height of the drawing, no
+    layout budget moves, and the emitted canvas is `width + margin * 2` for every
+    kind alike. Two diagrams on one page are still one width, which is the
+    property `width` exists for.
+
+    Applied after `centred`, because centring is what makes the drawing the
+    canvas's width; framing before it would hand `centred` a scene already wider
+    than the canvas and it would decline to centre anything.
+    """
+    margin = theme.canvas.margin
+    if not margin:
+        return scene
+    return replace(
+        scene,
+        width=scene.width + margin * 2,
+        height=scene.height + margin * 2,
+        primitives=tuple(moved(primitive, margin, margin) for primitive in scene.primitives),
+    )
 
 
 def _within_height(scene: Scene, document: Document) -> Scene:
@@ -152,4 +194,4 @@ def render_file(
     return render_document(load_document(path), theme, profile)
 
 
-__all__ = ["centred", "render", "render_document", "render_file"]
+__all__ = ["centred", "framed", "render", "render_document", "render_file"]

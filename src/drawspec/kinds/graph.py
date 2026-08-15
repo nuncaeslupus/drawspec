@@ -236,7 +236,6 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         raise DrawspecError(f"a {document.kind} needs at least one node")
 
     width = document.width if document.width else theme.canvas.width
-    margin = theme.box.padding.horizontal
     nesting = nesting_of(document)
     boxes = _sized(document, theme, measurer, width * NODE_WIDTH_SHARE, nesting)
     spacing = _spacing(theme)
@@ -248,7 +247,7 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         captions_for(document, nesting, theme, measurer, width * NODE_WIDTH_SHARE),
         theme,
         spacing,
-        max_width=width - margin * 2,
+        max_width=width,
         prefer=PREFERRED_DIRECTION,
         entered=crossed([(edge.source, edge.target) for edge in document.edges], nesting),
         centre=next((node.id for node in document.nodes if node.centre), ""),
@@ -263,7 +262,7 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
     layout = replace(arrangement.layout, placements=arrangement.places)
     if not layout.fits:
         raise FitError(
-            f"this {document.kind} needs {layout.width + margin * 2:.0f} at its narrowest "
+            f"this {document.kind} needs {layout.width:.0f} at its narrowest "
             f"and the canvas is {width:.0f}. Both directions were tried. Shorten the "
             f"longest label, split the diagram, or give it more width — drawspec will not "
             f"overlap the boxes or shorten the arrows to make it fit."
@@ -318,7 +317,6 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         obstacles,
         routes,
         labels,
-        margin,
         arrangement.frames,
         _bands(document, layout, theme, measurer),
     )
@@ -558,16 +556,20 @@ def _framed(
     obstacles: Sequence[Obstacle],
     routes: Sequence[Route],
     labels: Sequence[Label],
-    margin: float,
     frames: Sequence[Frame] = (),
     bands: Sequence[BandBar] = (),
 ) -> GraphDrawing:
-    """Shift everything so the drawing starts at the margin, and measure it.
+    """Shift everything so the drawing starts at its own ink, and measure it.
 
     The layout's own extents are not the drawing's: a back edge routed around the
     outside and a label placed to the left of the leftmost box both live outside
     them, and either would be clipped by a canvas sized to the boxes alone. So
     the frame is taken from what was actually produced.
+
+    The result is flush to that ink. The outer margin used to be added here, out
+    of `[box] padding`, which made a flow chart's channel of blank a decision the
+    graph family took on its own — see `render.framed` for the one place it is
+    taken now.
     """
     xs: list[float] = []
     ys: list[float] = []
@@ -592,8 +594,8 @@ def _framed(
         xs += [left, right]
         ys += [top, bottom]
 
-    offset_x = margin - min(xs, default=0.0)
-    offset_y = margin - min(ys, default=0.0)
+    offset_x = -min(xs, default=0.0)
+    offset_y = -min(ys, default=0.0)
     return GraphDrawing(
         layout=layout,
         boxes={
@@ -612,8 +614,8 @@ def _framed(
         labels=tuple(
             replace(label, left=label.left + offset_x, top=label.top + offset_y) for label in labels
         ),
-        width=max(xs, default=0.0) + offset_x + margin,
-        height=max(ys, default=0.0) + offset_y + margin,
+        width=max(xs, default=0.0) + offset_x,
+        height=max(ys, default=0.0) + offset_y,
         frames=tuple(frame.moved(offset_x, offset_y) for frame in frames),
         bands=tuple(bar.moved(offset_x, offset_y) for bar in bands),
     )

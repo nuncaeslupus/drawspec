@@ -28,6 +28,15 @@ width = 640.0
 # cost is empty margin beside a small diagram; the gain is one type size across
 # a document. Set to "ink" for a diagram that is meant to be sized on its own.
 width_mode = "fixed"
+# The channel between the drawing and the edge of the canvas, on all four sides.
+# One number applied once: before it existed each family invented its own, so the
+# same theme framed a flow in 24 units, a cycle in 10, and a stack in none, and a
+# timeline above a flow chart bled to the edge beside a quarter-inch of white.
+# It is [box] padding one level out — the gap a box gives its text, the figure
+# gives the page — so the default is that padding's side value. It goes around
+# the width above, so the emitted canvas is 640 + 12 * 2 and every kind is framed
+# alike. Set 0 for a page that pads its own figures.
+margin = 12.0
 # Below this, type is not legible at the sizes these diagrams are read at.
 # Content that cannot fit above it is a FitError, never a smaller size.
 min_legible_size = 9.0

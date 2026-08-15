@@ -137,15 +137,17 @@ def cycle_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     # Framed against the ink rather than against the steps: with five steps the
     # lowest point of the drawing is the bottom of the arc *between* the two
     # lowest boxes, and a canvas measured from the boxes cuts that arc in half.
-    margin = theme.box.padding.top
+    # Flush to that ink — the channel of blank around it is `render.framed`'s, and
+    # was this family's own ten units of `[box] padding` while every other family
+    # had a different answer.
     _, top, _, bottom = extents(primitives)
-    shift = margin - top
+    shift = -top
     primitives = [moved(primitive, 0.0, shift) for primitive in primitives]
     centre = (centre[0], centre[1] + shift)
 
     return Scene(
         width=extent,
-        height=bottom + shift + margin,
+        height=bottom + shift,
         primitives=tuple(primitives),
         title=document.title,
         description=document.description,

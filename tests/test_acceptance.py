@@ -205,8 +205,13 @@ def test_every_reference_document_is_drawn_to_the_same_canvas_width(name: str) -
     theme = load_theme()
     svg = render_document(load_document(REFERENCE_DIR / f"{name}.json"), profile="standalone")
     width = float(ElementTree.fromstring(svg).get("width", "0"))
-    # The ink inset is half a stroke either side of the drawing — see `emit`.
-    assert width == pytest.approx(theme.canvas.width + theme.edge.stroke_width, abs=1.6)
+    # The outer margin frames the drawing on both sides — see `theme.Canvas.margin`,
+    # which is why it is *added* to the width rather than taken out of it: taken
+    # out, this equality would still hold and every drawing would have lost the
+    # margin from its own budget. The ink inset is half a stroke either side of
+    # that again — see `emit`.
+    drawn = theme.canvas.width + theme.canvas.margin * 2
+    assert width == pytest.approx(drawn + theme.edge.stroke_width, abs=1.6)
 
 
 def test_a_narrow_diagram_is_centred_on_the_canvas_rather_than_cropped_to_it() -> None:
@@ -267,9 +272,15 @@ def test_a_binding_height_that_cannot_be_met_is_refused() -> None:
     tall, exit 0, no refusal — the third outcome the format page promises never to
     produce. The refusal now names the height it got and the height it was asked
     for.
+
+    Eighty is no longer the number that cannot be met: the graph family used to
+    take its own outer margin out of the layout budget, and now that
+    `[canvas] margin` frames every kind from outside, those forty-eight units are
+    width the four ranks can read across in. So the ask here is one no
+    arrangement can meet — thirty units is shorter than a single box.
     """
     with pytest.raises(FitError, match="height_binding"):
-        render({**_TALL, "height": 80, "height_binding": True})
+        render({**_TALL, "height": 30, "height_binding": True})
 
 
 def test_a_binding_height_that_can_be_met_draws() -> None:

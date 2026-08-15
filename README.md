@@ -123,6 +123,11 @@ two below the same type size at the same column width — and it is the whole
 reason the width belongs to the theme. Set `[canvas] width_mode = "ink"` for a
 diagram meant to be sized on its own.
 
+Every kind is also framed alike: `[canvas] margin` is the blank between the
+drawing and the edge of the figure, one number applied in one place. Before it
+existed each family invented its own, so a timeline above a flow chart bled to
+the edge beside the flow's quarter-inch of white.
+
 <p align="center">
   <img src="docs/gallery/flow-validation.svg" alt="A flow chart: a request arrives, is validated, and is either queued or rejected" width="420">
   <br>

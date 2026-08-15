@@ -121,7 +121,11 @@ def _rotation(element: ET.Element) -> tuple[float, tuple[float, float]]:
     return angle, (cx, cy)
 
 
-def _text_ink(root: ET.Element, search_paths: Sequence[Path] | None) -> Iterator[Overflow | None]:
+#: One piece of ink: what it is, what it says, and the box it occupies.
+Ink = tuple[str, str, tuple[float, float, float, float]]
+
+
+def _text_ink(root: ET.Element, search_paths: Sequence[Path] | None) -> Iterator[Ink]:
     """Every `<text>` as its measured line box, in final coordinates.
 
     Each run is measured in its own family — see `collisions.line_box`. A label
@@ -134,7 +138,7 @@ def _text_ink(root: ET.Element, search_paths: Sequence[Path] | None) -> Iterator
         if not text:
             continue
         angle, about = _rotation(element)
-        yield _overflow("label", text, _rotated((x0, y0, x1, y1), angle, about), root)
+        yield "label", text, _rotated((x0, y0, x1, y1), angle, about)
 
 
 #: Elements whose bounds this knows how to take. `<ellipse>` is here and not in
@@ -144,7 +148,20 @@ def _text_ink(root: ET.Element, search_paths: Sequence[Path] | None) -> Iterator
 _SHAPES: Final = ("path", "polygon", "polyline", "rect", "ellipse")
 
 
-def _shape_ink(root: ET.Element) -> Iterator[Overflow | None]:
+def _defined(root: ET.Element) -> set[int]:
+    """Every element inside a `<defs>`, which is a template rather than a drawing.
+
+    A fill pattern's tile is a `<rect>` a few units square at the origin, and its
+    coordinates are in the pattern's own space — they say nothing about where the
+    fill lands on the page. Measured as if they were canvas coordinates, a tile is
+    ink pinned to the top-left corner of every chart that has a bar or an area in
+    it, which is why the outer gutter of those five reference drawings read as
+    zero while their drawings were framed like everything else.
+    """
+    return {id(node) for parent in root.iter(f"{{{SVG_NS}}}defs") for node in parent.iter()}
+
+
+def _shape_ink(root: ET.Element) -> Iterator[Ink]:
     """Every drawn shape as the bounds of the ink it lays down.
 
     Wider than the stroke walker on purpose, in two ways it had to be.
@@ -158,9 +175,10 @@ def _shape_ink(root: ET.Element) -> Iterator[Overflow | None]:
     **An ellipse counts.** A chart's point marks are `<ellipse>`, and neither the
     segment walker nor anything else in the suite has ever looked at one.
     """
+    templates = _defined(root)
     for element in root.iter():
         tag = _local(element.tag)
-        if tag not in _SHAPES:
+        if tag not in _SHAPES or id(element) in templates:
             continue
         stroked = element.get("stroke", "none") != "none"
         filled = element.get("fill", "none") != "none"
@@ -174,7 +192,7 @@ def _shape_ink(root: ET.Element) -> Iterator[Overflow | None]:
         xs = [x for x, _ in points]
         ys = [y for _, y in points]
         box = (min(xs) - reach, min(ys) - reach, max(xs) + reach, max(ys) + reach)
-        yield _overflow(f"a {'stroke' if stroked else 'filled shape'}", "", box, root)
+        yield f"a {'stroke' if stroked else 'filled shape'}", "", box
 
 
 def _points(element: ET.Element, tag: str) -> list[tuple[float, float]]:
@@ -194,11 +212,9 @@ def _points(element: ET.Element, tag: str) -> list[tuple[float, float]]:
     return [point for subpath in _path_points(element.get("d", "")) for point in subpath]
 
 
-def _overflow(
-    what: str, text: str, box: tuple[float, float, float, float], root: ET.Element
-) -> Overflow | None:
-    x0, y0, x1, y1 = box
-    vx, vy, vw, vh = _canvas(root)
+def _overflow(item: Ink, canvas: tuple[float, float, float, float]) -> Overflow | None:
+    what, text, (x0, y0, x1, y1) = item
+    vx, vy, vw, vh = canvas
     found = Overflow(
         what=what,
         text=text,
@@ -221,10 +237,38 @@ def _canvas(root: ET.Element) -> tuple[float, float, float, float]:
 def clipped(svg: str, *, search_paths: Sequence[Path] | None = None) -> list[Overflow]:
     """Every piece of ink outside the canvas, in one rendered document."""
     root = ET.fromstring(svg)  # drawspec's own output, not third-party input
+    canvas = _canvas(root)
     found = [
-        item for item in (*_text_ink(root, search_paths), *_shape_ink(root)) if item is not None
+        overflow
+        for item in (*_text_ink(root, search_paths), *_shape_ink(root))
+        if (overflow := _overflow(item, canvas)) is not None
     ]
     return sorted(found, key=lambda item: -item.worst)
+
+
+def gutters(svg: str, *, search_paths: Sequence[Path] | None = None) -> tuple[float, ...]:
+    """The blank between each canvas edge and the nearest ink — left, top, right, bottom.
+
+    The same measurement as `clipped`, read the other way round. Where that one
+    asks whether any ink is *past* an edge, this asks how far the ink stops
+    *short* of it, which is the question an outer margin is the answer to. A
+    negative number here is a clipped drawing and would be reported by `clipped`
+    as an overflow.
+
+    Empty — no ink at all — is `()` rather than four zeros, because a drawing with
+    nothing in it has no margins rather than no margin.
+    """
+    root = ET.fromstring(svg)
+    boxes = [box for _, _, box in (*_text_ink(root, search_paths), *_shape_ink(root))]
+    if not boxes:
+        return ()
+    vx, vy, vw, vh = _canvas(root)
+    return (
+        min(box[0] for box in boxes) - vx,
+        min(box[1] for box in boxes) - vy,
+        (vx + vw) - max(box[2] for box in boxes),
+        (vy + vh) - max(box[3] for box in boxes),
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:

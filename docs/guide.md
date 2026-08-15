@@ -319,6 +319,13 @@ understanding before you change anything else:
 
 * **`[canvas] width`** is why two diagrams on one page are the same type size.
   It belongs to the theme rather than to a document on purpose.
+* **`[canvas] margin`** is the channel of blank between the drawing and the edge
+  of the figure, on all four sides. It sits *around* `width`, so the emitted
+  canvas is `width + margin * 2` and the drawing keeps every unit of its own
+  budget — set `width` to your column less twice this to fill a measure exactly.
+  Set it to `0` for a page that pads its own figures. It exists because without
+  it each kind framed itself: a timeline above a flow chart bled to the edge
+  beside a quarter-inch of white.
 * **`[canvas] width_mode`** decides whether a narrow drawing keeps that canvas
   (`fixed`, centred in it) or is cropped to its own ink (`ink`). Cropping is
   what makes a page scale two diagrams by different factors and read one label

@@ -128,6 +128,11 @@ def shape_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
 
 
 def _canvas_width(document: Document, theme: Theme) -> float:
+    """The width to draw to. The document may override the theme; nothing else may.
+
+    The outer margin `render.framed` gives every drawing goes *around* this, so a
+    family never has to account for it — see `theme.Canvas.margin`.
+    """
     return document.width if document.width else theme.canvas.width
 
 
