@@ -165,10 +165,41 @@ def test_validate_of_a_valid_document_exits_zero(
     assert "stack" in capsys.readouterr().out
 
 
-def test_validate_renders_nothing(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    """Validation is not a render with the output thrown away."""
+def test_validate_prints_no_svg(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """It draws the document to find every refusal, and prints none of it.
+
+    `render doc.json > doc.svg` is only safe because nothing but the thing asked
+    for goes to stdout, and that holds for `validate` too — it draws in order to
+    check, and hands back one line.
+    """
     assert main(["validate", str(write(tmp_path / "doc.json", VALID))]) == 0
     assert "<svg" not in capsys.readouterr().out
+
+
+def test_validate_refuses_what_render_refuses(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The defect: *a valid flow document*, and then `render` would not draw it.
+
+    Two groups claiming one member is a document drawspec cannot draw, and the
+    check that says so lives where the containment is built — so schema-only
+    validation passed it and spent the author's round of edits for nothing.
+    """
+    document = {
+        "version": 1,
+        "kind": "flow",
+        "title": "two bands over the same boxes",
+        "nodes": [{"id": "a", "text": "A"}, {"id": "b", "text": "B"}],
+        "edges": [{"from": "a", "to": "b"}],
+        "groups": [
+            {"id": "g1", "text": "one", "members": ["a", "b"]},
+            {"id": "g2", "text": "two", "members": ["a", "b"]},
+        ],
+    }
+    path = write(tmp_path / "doc.json", document)
+    assert main(["validate", str(path)]) == 1
+    assert "member of both" in capsys.readouterr().err
+    assert main(["render", str(path)]) == 1
 
 
 # --------------------------------------------------------------------------

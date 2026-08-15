@@ -1,0 +1,31 @@
+{
+  "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "flow",
+  "title": "An incident, and what runs alongside it",
+  "description": "Four steps read across the page, with two continuous activities beside them: keeping the reporter informed, which runs above, and recording what was done, which runs below. Neither contains the steps and neither contains the other — they are peers, and a band is how that is said. A group could not: a box sits inside one container or none, so two groups over the same four boxes would have to nest, which draws a hierarchy that is not there.",
+  "caption": "A band accompanies its members; a group contains them. The bar spans what it names and the words sit outside it, so a long name never reaches back over the boxes.",
+  "height": 240,
+  "height_binding": true,
+  "nodes": [
+    { "id": "detect", "text": "Detected" },
+    { "id": "triage", "text": "Triaged" },
+    { "id": "contain", "text": "Contained" },
+    { "id": "close", "text": "Closed" }
+  ],
+  "edges": [
+    { "from": "detect", "to": "triage" },
+    { "from": "triage", "to": "contain" },
+    { "from": "contain", "to": "close" }
+  ],
+  "bands": [
+    {
+      "text": "Keeping the reporter informed",
+      "members": ["detect", "triage", "contain", "close"]
+    },
+    {
+      "text": "Recording what was done",
+      "members": ["detect", "triage", "contain", "close"]
+    }
+  ]
+}

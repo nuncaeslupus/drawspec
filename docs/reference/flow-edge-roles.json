@@ -2,28 +2,101 @@
   "version": 1,
   "kind": "flow",
   "title": "Every edge role, drawn",
-  "description": "The six roles a connector may take, each drawn between a pair of boxes: flow is the ordinary arrow; strong is the same relation at a heavier weight; link has no head at all and is the one role the default theme draws as a straight chord rather than routing; exchange has a head at both ends; weak is dashed with an open head; and owns carries a diamond. The head, the weight, the dash and the routing all follow from the role.",
+  "description": "The seven roles a connector may take, each drawn between a pair of boxes: flow is the ordinary arrow; strong is the same relation at a heavier weight; link has no head at all and is the one role the default theme draws as a straight chord rather than routing; exchange has a head at both ends; weak is dashed with an open head; owns carries a diamond; and aside is dashed with no head, which is the pairing none of the other six could make. The head, the weight, the dash and the routing all follow from the role.",
   "caption": "An author says what the relation is; whether it has a head is the theme's answer.",
   "nodes": [
-    { "id": "f1", "text": "flow" },
-    { "id": "f2", "text": "then this" },
-    { "id": "s1", "text": "strong" },
-    { "id": "s2", "text": "the path with no slack" },
-    { "id": "l1", "text": "link" },
-    { "id": "l2", "text": "merely associated" },
-    { "id": "x1", "text": "exchange" },
-    { "id": "x2", "text": "both ways" },
-    { "id": "w1", "text": "weak" },
-    { "id": "w2", "text": "a soft dependency" },
-    { "id": "o1", "text": "owns" },
-    { "id": "o2", "text": "a part of it" }
+    {
+      "id": "f1",
+      "text": "flow"
+    },
+    {
+      "id": "f2",
+      "text": "then this"
+    },
+    {
+      "id": "s1",
+      "text": "strong"
+    },
+    {
+      "id": "s2",
+      "text": "the path with no slack"
+    },
+    {
+      "id": "l1",
+      "text": "link"
+    },
+    {
+      "id": "l2",
+      "text": "merely associated"
+    },
+    {
+      "id": "x1",
+      "text": "exchange"
+    },
+    {
+      "id": "x2",
+      "text": "both ways"
+    },
+    {
+      "id": "w1",
+      "text": "weak"
+    },
+    {
+      "id": "w2",
+      "text": "a soft dependency"
+    },
+    {
+      "id": "o1",
+      "text": "owns"
+    },
+    {
+      "id": "o2",
+      "text": "a part of it"
+    },
+    {
+      "id": "a1",
+      "text": "aside"
+    },
+    {
+      "id": "a2",
+      "text": "and this belongs with it"
+    }
   ],
   "edges": [
-    { "from": "f1", "to": "f2", "role": "flow" },
-    { "from": "s1", "to": "s2", "role": "strong" },
-    { "from": "l1", "to": "l2", "role": "link" },
-    { "from": "x1", "to": "x2", "role": "exchange" },
-    { "from": "w1", "to": "w2", "role": "weak" },
-    { "from": "o1", "to": "o2", "role": "owns" }
+    {
+      "from": "f1",
+      "to": "f2",
+      "role": "flow"
+    },
+    {
+      "from": "s1",
+      "to": "s2",
+      "role": "strong"
+    },
+    {
+      "from": "l1",
+      "to": "l2",
+      "role": "link"
+    },
+    {
+      "from": "x1",
+      "to": "x2",
+      "role": "exchange"
+    },
+    {
+      "from": "w1",
+      "to": "w2",
+      "role": "weak"
+    },
+    {
+      "from": "o1",
+      "to": "o2",
+      "role": "owns"
+    },
+    {
+      "from": "a1",
+      "to": "a2",
+      "role": "aside"
+    }
   ]
 }

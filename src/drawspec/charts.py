@@ -43,7 +43,7 @@ from typing import Final
 
 from drawspec.errors import DrawspecError, FitError
 from drawspec.legend import entries_for, height_of, primitives_for
-from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextRun
+from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextRun, centred_lines
 from drawspec.schema import Axis, Document, Position, Series
 from drawspec.text.measure import Extents, TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
@@ -1227,6 +1227,15 @@ def _curve(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     Bézier, which is how `cycle` already draws its arcs: the smoothing is
     drawspec's business, and a reader's renderer should be handed the shape
     rather than a recipe for it.
+
+    **`categories` name marks along an axis, and are the one thing that goes on
+    one.** *Bare* above means bare of *numbers*: a tick reading `0.6` on a shape
+    nobody measured is the false precision this kind exists to avoid, and *dia 1*
+    and *últim dia* are not that — they are two places on the axis, named, which
+    is what the source sheets label. So a curve axis draws its categories and
+    never draws computed ticks. The field used to be accepted here and silently
+    do nothing, which the format page promises not to do: refused by name rather
+    than ignored.
     """
     curves = document.curves
     if not curves:
@@ -1248,9 +1257,26 @@ def _curve(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     across = _quadrant_scale(horizontal, [point.across for point in every])
     up = _quadrant_scale(vertical, [point.up for point in every])
 
-    plot_left = line.height + gap
+    # Named marks take room in the gutters they sit in, measured before the plot
+    # is placed rather than drawn over it afterwards.
+    tick = theme.edge.head_length
+    across_names = _curve_marks(horizontal, [point.across for point in every])
+    up_names = _curve_marks(vertical, [point.up for point in every])
+    across_band = line.height + tick + gap if across_names else 0.0
+    up_band = (
+        max(
+            (measurer.measure(text, theme.font.default, size).width for _, text in up_names),
+            default=0.0,
+        )
+        + tick
+        + gap
+        if up_names
+        else 0.0
+    )
+
+    plot_left = line.height + gap + up_band
     plot_top = line.height + gap
-    plot_bottom = height - _caption_band(line, gap)
+    plot_bottom = height - _caption_band(line, gap) - across_band
     # Room on the right for the name that sits at the end of each curve.
     plot_right = width - names - gap * 2
     if plot_right - plot_left <= 0 or plot_bottom - plot_top <= 0:
@@ -1346,6 +1372,22 @@ def _curve(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
             primitives.append(primitive)
 
     primitives.extend(_curve_spans(document, across, up, width, height, theme, measurer))
+    primitives.extend(
+        _curve_mark_primitives(
+            across_names,
+            up_names,
+            across,
+            up,
+            plot_left,
+            plot_bottom,
+            tick,
+            gap,
+            width,
+            height,
+            theme,
+            measurer,
+        )
+    )
 
     return Scene(
         width=width,
@@ -1354,6 +1396,135 @@ def _curve(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         title=document.title,
         description=document.description,
     )
+
+
+def _curve_marks(axis: Axis, values: Sequence[float]) -> tuple[tuple[float, str], ...]:
+    """`axis.categories` as (value, name) pairs spread along the range drawn.
+
+    Spread over the range the *waypoints* occupy rather than over the plot's
+    pixels, so the first and last name land exactly where the curve starts and
+    ends. On the EVM and burn-down sheets those two points are the whole subject —
+    *dia 1* is where the line leaves the corner — and a name sitting a margin's
+    width away from it would be naming somewhere else.
+
+    One category is placed at the midpoint: with nothing to span between, the
+    middle is the only position that is not a claim about which end it means.
+    """
+    if not axis.categories:
+        return ()
+    low = min(values, default=0.0)
+    high = max(values, default=1.0)
+    count = len(axis.categories)
+    if count == 1:
+        return ((low + (high - low) / 2, axis.categories[0]),)
+    return tuple(
+        (low + (high - low) * index / (count - 1), name)
+        for index, name in enumerate(axis.categories)
+    )
+
+
+def _curve_mark_primitives(
+    across_names: tuple[tuple[float, str], ...],
+    up_names: tuple[tuple[float, str], ...],
+    across: Scale,
+    up: Scale,
+    left: float,
+    bottom: float,
+    tick: float,
+    gap: float,
+    width: float,
+    height: float,
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> tuple[Primitive, ...]:
+    """A tick and its name for each named mark, outside the plot.
+
+    Each name is centred on the tick it belongs to, because a mark names one
+    place on the axis and anything but centred is a claim about a different one.
+
+    Raises:
+        FitError: two neighbouring names would overlap, or one would run off the
+            sheet. Those are the two failures a mark can have, and both are
+            refused rather than drawn: they are text over text and text outside
+            the canvas, which the clearance pass cannot help with because neither
+            of them is a stroke. The message names the mark and the shortfall.
+    """
+    size = theme.scale["label"]
+    line = measurer.measure("0", theme.font.default, size)
+    primitives: list[Primitive] = []
+
+    across_edges: list[tuple[float, float, str]] = []
+    for value, text in across_names:
+        x = across.to_pixels(value)
+        extents = measurer.measure(text, theme.font.default, size)
+        primitives.append(Path(AXIS_ROLE, points=((x, bottom), (x, bottom + tick))))
+        primitives.append(
+            TextRun(
+                FURNITURE_ROLE,
+                x=x,
+                y=bottom + tick + gap + line.ascent,
+                text=text,
+                level="label",
+                font=theme.font.default,
+                anchor="middle",
+            )
+        )
+        across_edges.append((x - extents.width / 2, x + extents.width / 2, text))
+
+    up_edges: list[tuple[float, float, str]] = []
+    for value, text in up_names:
+        y = up.to_pixels(value)
+        baseline = y + (line.ascent - line.descent) / 2
+        primitives.append(Path(AXIS_ROLE, points=((left - tick, y), (left, y))))
+        primitives.append(
+            TextRun(
+                FURNITURE_ROLE,
+                x=left - tick - gap,
+                y=baseline,
+                text=text,
+                level="label",
+                font=theme.font.default,
+                anchor="end",
+            )
+        )
+        up_edges.append((baseline - line.ascent, baseline + line.descent, text))
+
+    # Both axes, the same two checks. The vertical one is not a symmetry for its
+    # own sake: `up` maps values to pixels *downwards*, so two categories a
+    # reader would call adjacent are adjacent in the opposite order, and a pair
+    # of names close together on a short axis stack on each other exactly as two
+    # long names do side by side.
+    _refuse_bad_marks(across_edges, width, "width", "shorten them")
+    _refuse_bad_marks(up_edges, height, "height", "shorten them")
+    return tuple(primitives)
+
+
+def _refuse_bad_marks(
+    edges: Sequence[tuple[float, float, str]], extent: float, axis: str, remedy: str
+) -> None:
+    """Refuse any mark that leaves the sheet, or any pair that overlaps.
+
+    `edges` are `(near, far, name)` along the direction the marks are spread in —
+    left-to-right for the horizontal axis, top-to-bottom for the vertical one.
+
+    Raises:
+        FitError: naming the mark and the shortfall in units.
+    """
+    for near, far, text in edges:
+        over = max(-near, far - extent)
+        if over > 0:
+            raise FitError(
+                f"the axis mark {text!r} needs {over:.0f} units past the edge of a "
+                f"{extent:.0f}-unit {axis} to be centred on the place it names. Give the "
+                f"diagram more {axis}, or shorten it."
+            )
+    for (_, far, first), (following, _, second) in pairwise(sorted(edges)):
+        if following < far:
+            raise FitError(
+                f"the axis marks {first!r} and {second!r} overlap by "
+                f"{far - following:.0f} units. Give the diagram more {axis}, {remedy}, "
+                f"or name fewer places on the axis."
+            )
 
 
 def _curve_spans(
@@ -1403,7 +1574,6 @@ def _curve_spans(
         for point in curve.waypoints
         if point.id
     }
-    size = theme.scale["label"]
     cap = theme.edge.head_length * MARKER_FRACTION * 2
     primitives: list[Primitive] = []
     for span in document.spans:
@@ -1438,19 +1608,21 @@ def _curve_spans(
                     ),
                 )
             )
-        extents = measurer.measure(span.text, theme.font.default, size)
+        # Wrapped, like every other text field: `**bold**` and `` `code` `` are
+        # the author's to write, and a newline makes a lead over its detail.
+        block = wrap(span.text, width, measurer, theme=theme, level="label")
         away = theme.edge.clearance + (
-            extents.width / 2 if abs(normal[0]) > abs(normal[1]) else extents.height / 2
+            block.width / 2 if abs(normal[0]) > abs(normal[1]) else block.height / 2
         )
         middle = ((start[0] + finish[0]) / 2, (start[1] + finish[1]) / 2)
         for side in (normal, (-normal[0], -normal[1])):
             x = middle[0] + side[0] * away
             y = middle[1] + side[1] * away
             if (
-                x - extents.width / 2 >= 0
-                and x + extents.width / 2 <= width
-                and y - extents.ascent >= 0
-                and y + extents.descent <= height
+                x - block.width / 2 >= 0
+                and x + block.width / 2 <= width
+                and y - block.height / 2 >= 0
+                and y + block.height / 2 <= height
             ):
                 break
         else:
@@ -1459,17 +1631,7 @@ def _curve_spans(
                 f"the {length:.0f} units it measures. Shorten it, or give the diagram "
                 f"more width."
             )
-        primitives.append(
-            TextRun(
-                AXIS_ROLE,
-                x=x,
-                y=y + (extents.ascent - extents.descent) / 2,
-                text=span.text,
-                level="label",
-                font=theme.font.default,
-                anchor="middle",
-            )
-        )
+        primitives.extend(centred_lines(block, x, y - block.height / 2, AXIS_ROLE, "label"))
     return primitives
 
 

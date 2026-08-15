@@ -294,3 +294,51 @@ def test_a_group_sits_where_its_earliest_member_was_written_not_its_first() -> N
     )
     nesting = nesting_of(document)
     assert nesting.roots == ("late", "b", "c")
+
+
+def test_a_long_label_does_not_set_the_width_of_a_box_in_another_container() -> None:
+    """The half of `uniform-box-size` that round three left: the shared width.
+
+    Sharing a width is what makes peers read as peers, and across a whole document
+    it became one long paragraph setting the width of every box in the drawing.
+    Seven boxes on the nested-boxes sheet all came out 243.5 wide, the one holding
+    the word *AGE* included, because a three-line paragraph lived somewhere else.
+    """
+    built = drawing(
+        flow(
+            [
+                ("age", "AGE"),
+                ("ccaa", "CCAA"),
+                ("eell", "EELL"),
+                (
+                    "note",
+                    "Each administration keeps its own inventory of processing "
+                    "activities, and the register of them is public.",
+                ),
+            ],
+            [("age", "note")],
+            [("admins", "Administrations", ("age", "ccaa", "eell"))],
+        )
+    )
+    inside = [built.boxes[name].width for name in ("age", "ccaa", "eell")]
+    assert len(set(inside)) == 1, "peers in one container still share an edge"
+    assert built.boxes["note"].width > inside[0] * 2, "and the paragraph keeps its own width"
+
+
+def test_peers_in_the_same_container_still_share_an_edge() -> None:
+    """The alignment is the point of normalising; only its scope changed."""
+    built = drawing(FLAT)
+    assert built.boxes["a"].width == built.boxes["b"].width
+
+
+def test_two_containers_are_normalised_apart() -> None:
+    """A box is compared against what sits beside it, not against the whole page."""
+    built = drawing(
+        flow(
+            [("a", "x"), ("b", "y"), ("c", "a very much longer label than the others here")],
+            [("a", "c")],
+            [("left", "Left", ("a", "b")), ("right", "Right", ("c",))],
+        )
+    )
+    assert built.boxes["a"].width == built.boxes["b"].width
+    assert built.boxes["c"].width > built.boxes["a"].width

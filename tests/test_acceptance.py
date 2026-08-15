@@ -247,6 +247,81 @@ def test_the_ink_width_mode_leaves_a_narrow_diagram_alone() -> None:
     assert centred(drawn, theme) is drawn
 
 
+# --------------------------------------------------------------------------
+# A binding height binds
+# --------------------------------------------------------------------------
+
+_TALL: Final = {
+    "version": 1,
+    "kind": "flow",
+    "title": "four ranks",
+    "nodes": [{"id": letter, "text": letter.upper()} for letter in "abcd"],
+    "edges": [{"from": "a", "to": "b"}, {"from": "b", "to": "c"}, {"from": "c", "to": "d"}],
+}
+
+
+def test_a_binding_height_that_cannot_be_met_is_refused() -> None:
+    """`height_binding` was parsed, documented as a constraint, and read by nothing.
+
+    A four-node flow asking for eighty units came back three hundred and thirty
+    tall, exit 0, no refusal — the third outcome the format page promises never to
+    produce. The refusal now names the height it got and the height it was asked
+    for.
+    """
+    with pytest.raises(FitError, match="height_binding"):
+        render({**_TALL, "height": 80, "height_binding": True})
+
+
+def test_a_binding_height_that_can_be_met_draws() -> None:
+    """A constraint, not a ban: the same document inside a height it fits renders."""
+    assert "<svg" in render({**_TALL, "height": 400, "height_binding": True})
+
+
+def test_a_height_without_the_binding_flag_stays_advisory() -> None:
+    """Which is what `height` says of itself, and what every kind but the charts did."""
+    assert "<svg" in render({**_TALL, "height": 80})
+
+
+def test_a_binding_height_is_what_makes_a_chain_read_across() -> None:
+    """The other half of the same lever, end to end — a source sheet's own shape.
+
+    Six steps in one row, 760 by 150. Without a height ceiling the direction
+    choice has only width to go on, and a chain going down is one box wide, so it
+    fits every canvas and *down* is the only answer any document could get. The
+    drawing came out 640 by 658 — a column where the sheet is a band.
+    """
+    chain = {
+        "version": 1,
+        "kind": "flow",
+        "title": "six steps in one row",
+        "width": 760,
+        "nodes": [{"id": step, "text": step.title()} for step in ("one", "two", "three", "four")],
+        "edges": [
+            {"from": "one", "to": "two"},
+            {"from": "two", "to": "three"},
+            {"from": "three", "to": "four"},
+        ],
+    }
+
+    def columns(svg: str) -> set[float]:
+        """The distinct left edges of the boxes — one of them means a column."""
+        root = ElementTree.fromstring(svg)
+        return {
+            round(float(rect.get("x", "0")), 1)
+            for rect in root.iter("{http://www.w3.org/2000/svg}rect")
+        }
+
+    def height(svg: str) -> float:
+        return float(ElementTree.fromstring(svg).get("viewBox", "").split()[3])
+
+    down = render(chain)
+    across = render({**chain, "height": 150, "height_binding": True})
+
+    assert len(columns(down)) == 1, "without a ceiling every box shares one x"
+    assert len(columns(across)) == 4, "with one, each step gets its own"
+    assert height(across) < height(down)
+
+
 @pytest.mark.parametrize("name", FIXTURES)
 def test_every_kind_sets_its_text_at_the_same_level(name: str) -> None:
     """One type size for the text inside a shape, whatever kind the shape is.

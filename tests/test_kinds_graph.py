@@ -27,7 +27,12 @@ from drawspec.emit import check_embedding_safety
 from drawspec.errors import DocumentError, DrawspecError, FitError
 from drawspec.geometry import Box
 from drawspec.kinds import IMPLEMENTED, scene_for
-from drawspec.kinds.graph import NODE_WIDTH_SHARE, graph_drawing, graph_scene
+from drawspec.kinds.graph import (
+    NODE_WIDTH_SHARE,
+    GraphDrawing,
+    graph_drawing,
+    graph_scene,
+)
 from drawspec.scene import Path, Scene, TextRun
 from drawspec.schema import load_document, parse_document
 from drawspec.text import TextMeasurer
@@ -326,3 +331,91 @@ def test_a_tree_may_not_name_a_centre() -> None:
     """A tree is ranked from its root, so it has no middle to arrange around."""
     with pytest.raises(DocumentError, match="no middle to arrange around"):
         parse_document({**HUB, "kind": "tree"})
+
+
+# --------------------------------------------------------------------------
+# Bands
+# --------------------------------------------------------------------------
+
+
+def _banded(*bands: str, **extra: object) -> dict[str, object]:
+    """A chain of three, accompanied by however many bands are named."""
+    return {
+        "version": 1,
+        "kind": "flow",
+        "title": "steps and what surrounds them",
+        "nodes": [{"id": name, "text": name.title()} for name in ("one", "two", "three")],
+        "edges": [{"from": "one", "to": "two"}, {"from": "two", "to": "three"}],
+        "bands": [{"text": text, "members": ["one", "two", "three"]} for text in bands],
+        **extra,
+    }
+
+
+def _band_drawing(document: dict[str, object]) -> GraphDrawing:
+    return graph_drawing(parse_document(document), THEME, MEASURER)
+
+
+#: Enough width and little enough height that the chain reads across, which is
+#: the arrangement the source sheet has and the one whose bands are horizontal.
+ACROSS: dict[str, object] = {"width": 760, "height": 150, "height_binding": True}
+
+
+def test_two_bands_over_the_same_boxes_are_peers() -> None:
+    """What a `group` could not say. Two groups over one set had to nest, and
+    nesting draws a hierarchy the author did not claim — the source sheet's own
+    description says the steps are *surrounded* by the two."""
+    built = _band_drawing(_banded("Above it", "Below it", **ACROSS))
+    assert built.layout.direction == "right"
+    assert len(built.bands) == 2
+    # One on each side of the boxes, so neither is inside the other.
+    top = min(box.y for box in built.boxes.values())
+    bottom = max(box.y + box.height for box in built.boxes.values())
+    sides = sorted(bar.points[0][1] for bar in built.bands)
+    assert sides[0] < top, "the first band sits above the boxes"
+    assert sides[1] > bottom, "and the second below them"
+
+
+def test_a_band_spans_the_boxes_it_names_and_no_further() -> None:
+    built = _band_drawing(
+        {
+            **_banded(**ACROSS),
+            "bands": [{"text": "Only the first two", "members": ["one", "two"]}],
+        }
+    )
+    (bar,) = built.bands
+    start, finish = bar.points[0][0], bar.points[-1][0]
+    covered = [built.boxes[name] for name in ("one", "two")]
+    assert start <= min(box.x for box in covered) + 1
+    assert finish >= max(box.x + box.width for box in covered) - 1
+    assert finish < built.boxes["three"].x
+
+
+def test_a_band_names_a_box_that_is_not_there_is_refused_at_parse_time() -> None:
+    """The pointer names the member, the way every other reference failure does."""
+    with pytest.raises(DocumentError, match="/bands/0/members/0"):
+        parse_document({**_banded(), "bands": [{"text": "X", "members": ["nowhere"]}]})
+
+
+def test_a_document_with_no_bands_draws_none() -> None:
+    assert _band_drawing(_banded()).bands == ()
+
+
+def test_a_band_is_drawn_with_its_name() -> None:
+    """A field accepted and not drawn is the one outcome the format page refuses."""
+    svg = render(_banded("The thing that goes on throughout"))
+    assert "The thing that goes on throughout" in svg
+
+
+def test_a_band_runs_along_the_reading_direction_whichever_it_is() -> None:
+    """A band placed across the reading direction would be another rank. Down the
+    page the bars are vertical and beside the boxes; across, horizontal and above
+    and below them."""
+    down = _band_drawing(_banded("Alongside"))
+    (bar,) = down.bands
+    assert bar.points[0][0] == bar.points[-1][0], "a down-reading flow gets a vertical bar"
+    assert bar.rotate == -90.0, "and its name is set along it"
+
+    across = _band_drawing(_banded("Alongside", **ACROSS))
+    (turned,) = across.bands
+    assert turned.points[0][1] == turned.points[-1][1], "reading across, the bar is horizontal"
+    assert turned.rotate == 0.0

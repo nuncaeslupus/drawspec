@@ -24,7 +24,16 @@ from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
 from drawspec.kinds.common import box_primitives, text_runs
 from drawspec.legend import entries_for, height_of, primitives_for
-from drawspec.scene import Path, Polygon, Primitive, Scene, TextLine, TextRun, TextSpan
+from drawspec.scene import (
+    Path,
+    Polygon,
+    Primitive,
+    Scene,
+    TextLine,
+    TextRun,
+    TextSpan,
+    centred_lines,
+)
 from drawspec.schema import Cell, Document, Item
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
@@ -246,6 +255,13 @@ def _span_bars(
     over two spans, and the arithmetic is only visible when the wider one is
     drawn clear of the two it covers. Lanes are assigned in declaration order,
     so the document decides which interval sits nearest the axis.
+
+    **The name is wrapped, not emitted raw.** `span.text` is a text field like
+    every other one, so it takes `**bold**` and `` `code` `` and a newline makes
+    the first paragraph a lead over its detail. Passing it straight to a
+    `TextRun` drew `**RPO**` with the asterisks showing and put *RPO* and *dades
+    perdudes* on one line with nothing to tell them apart — the format page's
+    promise about text fields, broken in the one place that skipped the wrapper.
     """
     order = {item.id: index for index, item in enumerate(document.items) if item.id}
     cap = theme.edge.head_length * TICK_FRACTION
@@ -266,25 +282,22 @@ def _span_bars(
             lanes.append([(left, right)])
             placed.append((len(lanes) - 1, left, right, span.text))
 
-    depth = gap + line.height + gap
+    # Wrapped at the whole diagram's width: a span's name is as wide as it needs
+    # to be — `MTD = RTO + WRT` is wider than several of the bars it covers — so
+    # the width is a backstop against running off the sheet, not a column.
+    room = (document.width if document.width else theme.canvas.width) - gap * 2
+    blocks = [wrap(text, room, measurer, theme=theme, level="label") for *_, text in placed]
+    band = max((block.height for block in blocks), default=line.height)
+
+    depth = gap + band + gap
     primitives: list[Primitive] = []
-    for row, left, right, text in placed:
+    for (row, left, right, _), block in zip(placed, blocks, strict=True):
         base = top + gap + row * depth
-        bar = base + line.height + gap / 2
+        bar = base + band + gap / 2
         primitives.append(Path(AXIS_ROLE, points=((left, bar), (right, bar))))
         for end in (left, right):
             primitives.append(Path(AXIS_ROLE, points=((end, bar - cap / 2), (end, bar + cap / 2))))
-        primitives.append(
-            TextRun(
-                AXIS_ROLE,
-                x=(left + right) / 2,
-                y=base + line.ascent,
-                text=text,
-                level="label",
-                font=theme.font.default,
-                anchor="middle",
-            )
-        )
+        primitives.extend(centred_lines(block, (left + right) / 2, base, AXIS_ROLE, "label"))
     return primitives, top + gap + len(lanes) * depth
 
 

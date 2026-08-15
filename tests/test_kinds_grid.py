@@ -720,27 +720,36 @@ def _timeline_scene(**changes: object) -> Scene:
     return grid_scene(parse_document({**DISASTER, **changes}), THEME, MEASURER)
 
 
+def _labels(built: Scene) -> dict[str, TextRun | TextLine]:
+    """Every piece of text in the drawing, by the words in it.
+
+    A span's name is a `TextLine` and not a `TextRun` because it is wrapped like
+    every other text field — see `_span_bars`. Both carry `.text`, and a test
+    about where a label sits does not care which of the two it is.
+    """
+    found: dict[str, TextRun | TextLine] = {}
+    for item in built.primitives:
+        if isinstance(item, (TextRun, TextLine)) and item.text:
+            found[item.text] = item
+    return found
+
+
 def test_a_span_names_the_distance_between_two_moments() -> None:
     """The four instants without their intervals are four words, which is why
     the disaster sheet was the one of eighty-nine with no document at all."""
-    written = {run.text for run in _timeline_scene().primitives if isinstance(run, TextRun)}
-    assert {"RPO", "RTO", "WRT", "MTD"} <= written
+    assert {"RPO", "RTO", "WRT", "MTD"} <= set(_labels(_timeline_scene()))
 
 
 def test_a_span_runs_between_the_marks_of_the_entries_it_names() -> None:
-    built = _timeline_scene()
-    marks = {run.text: run.x for run in built.primitives if isinstance(run, TextRun) and run.text}
-    labels = [line for line in built.primitives if isinstance(line, TextLine)]
-    positions = {"".join(span.text for span in line.spans): line.x for line in labels}
-    assert positions["Last backup"] < marks["RPO"] < positions["It fails"]
-    assert positions["It fails"] < marks["RTO"] < positions["Systems back"]
+    at = {text: item.x for text, item in _labels(_timeline_scene()).items()}
+    assert at["Last backup"] < at["RPO"] < at["It fails"]
+    assert at["It fails"] < at["RTO"] < at["Systems back"]
 
 
 def test_a_span_over_two_others_gets_its_own_lane() -> None:
     """MTD is RTO plus WRT, and the arithmetic is only visible when the wider
     bar is drawn clear of the two it covers."""
-    built = _timeline_scene()
-    rows = {run.text: run.y for run in built.primitives if isinstance(run, TextRun) and run.text}
+    rows = {text: item.y for text, item in _labels(_timeline_scene()).items()}
     assert rows["RTO"] == rows["WRT"] == rows["RPO"]
     assert rows["MTD"] > rows["RTO"]
 
@@ -753,8 +762,36 @@ def test_two_spans_that_do_not_overlap_share_a_lane() -> None:
             {"text": "Second", "from": "back", "to": "working"},
         ]
     )
-    rows = {run.text: run.y for run in built.primitives if isinstance(run, TextRun) and run.text}
+    rows = {text: item.y for text, item in _labels(built).items()}
     assert rows["First"] == rows["Second"]
+
+
+def test_a_span_name_takes_inline_bold_like_every_other_text_field() -> None:
+    """`**RPO**` used to draw with the asterisks showing: the one text field that
+    skipped the wrapper, and so the one that kept none of a text field's promises."""
+    built = _timeline_scene(spans=[{"text": "**RPO**", "from": "backup", "to": "failure"}])
+    line = next(
+        item for item in built.primitives if isinstance(item, TextLine) and item.text == "RPO"
+    )
+    assert [span.weight for span in line.spans] == ["bold"]
+
+
+def test_a_span_name_with_a_newline_is_a_lead_over_its_detail() -> None:
+    """*RPO* is what it is called and *dades perdudes* is what it measures. On one
+    line with nothing to tell them apart, the sheet says neither."""
+    built = _timeline_scene(
+        spans=[{"text": "RPO\ndades perdudes", "from": "backup", "to": "failure"}]
+    )
+    written = [
+        item
+        for item in built.primitives
+        if isinstance(item, TextLine) and item.text in ("RPO", "dades perdudes")
+    ]
+    assert len(written) == 2, "the two paragraphs should be two lines"
+    lead, detail = sorted(written, key=lambda line: line.y)
+    assert lead.text == "RPO"
+    assert detail.text == "dades perdudes"
+    assert lead.spans[0].weight == "bold", "a lead is set as one"
 
 
 def test_a_span_naming_an_entry_that_is_not_there_is_refused() -> None:

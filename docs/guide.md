@@ -188,7 +188,11 @@ Two mistakes worth naming, both made in the corpus and both caught in review:
   typographic instruction in a document that has no field for one.
 
 The same holds for connectors, where the vocabulary answers *what kind of
-relation is this* and the theme answers whether it has a head:
+relation is this* and the theme answers whether it has a head. Two of the seven
+are worth reading together, because the difference is easy to miss and choosing
+wrong misstates the drawing: `weak` is dashed **and** directed, so it says *this
+may lead to that*; `aside` is dashed and **un**directed, so it says *this belongs
+with that* and nothing about which way.
 
 | Role | Use it for | Drawn as |
 |---|---|---|
@@ -198,6 +202,7 @@ relation is this* and the theme answers whether it has a head:
 | `exchange` | Both ways at once | a head at each end |
 | `weak` | A soft or conditional dependency | dashed, with an open head |
 | `owns` | This is a part of that | a diamond at the owning end |
+| `aside` | Loosely associated, and in no direction — a note, a source, a caveat hanging off the thing it is about | dashed, with no head |
 
 Both sets are drawn, one box per role, in
 [`reference/flow-node-roles.json`](reference/flow-node-roles.json) and
@@ -351,6 +356,52 @@ except DrawspecError as refusal:
 else:
     Path("diagram.svg").write_text(svg, encoding="utf-8")
 ```
+
+## Groups and bands
+
+Both take a set of nodes, and they say different things about them.
+
+| | Says | Drawn as | A box may be in |
+|---|---|---|---|
+| `groups` | These are **inside** this | a dashed frame with a caption | one group, or none |
+| `bands` | This runs **alongside** these | a bar beside them, with its name outside it | any number of bands |
+
+The distinction is worth the second field because containment is exclusive and
+company is not. A process with one continuous concern above its steps and another
+below has two things of equal rank accompanying the same six boxes; written as
+groups, one has to be nested inside the other, and the drawing then claims a
+hierarchy nobody stated. Written as bands they are peers, which is what they are.
+
+A band runs *along* the reading direction and is placed *across* it, so a process
+read across the page gets its bands above and below, and the same process read
+down gets them left and right. See
+[`reference/flow-bands.json`](reference/flow-bands.json).
+
+## Asking for a wide drawing instead of a tall one
+
+Reading direction is part of what a diagram says, and some processes read across
+the page rather than down it. drawspec will not take an instruction to lay a
+`flow` out horizontally — that is an arrangement, and arrangements are its output.
+What it takes is the **constraint** the arrangement has to satisfy:
+
+```json
+{ "width": 760, "height": 150, "height_binding": true }
+```
+
+`height` on its own is advisory. With `height_binding`, it is a ceiling: the
+direction choice now has two dimensions to compare instead of one, and a chain
+that would have gone down goes across because down does not fit. Six steps in a
+760-by-150 band come out as a band.
+
+Two things follow from it being a constraint rather than a switch:
+
+* **A ceiling nothing satisfies is a refusal, not a squeeze.** The elastic fit
+  tries smaller type first; when the band is exhausted you get a message naming
+  the height it reached and the height you asked for. It will not overlap boxes
+  or shorten arrows to make the number come true.
+* **Without a ceiling, down always wins, and that is correct.** A chain laid out
+  downward is one box wide, so it fits every canvas — there is no width at which
+  the tool should guess that you wanted it turned.
 
 ## When it refuses
 

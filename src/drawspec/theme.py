@@ -42,8 +42,12 @@ THEME_VERSION: Final = 1
 #: from — see specification §5.1.
 NODE_ROLES: Final = ("start", "step", "decision", "terminal", "emphasis", "note", "group")
 
-#: Semantic edge roles. `link` is how "merely associated" is said.
-EDGE_ROLES: Final = ("flow", "link", "exchange", "weak", "owns", "strong")
+#: Semantic edge roles. `link` is how "merely associated" is said, and `aside`
+#: how "loosely associated, and in no direction" is: dashed and headless, which
+#: is a pairing the other six could not make. `link` has no head but is solid,
+#: and `weak` is dashed but carries one, so an author annotating a diagram with a
+#: soft undirected association had to misstate one or the other.
+EDGE_ROLES: Final = ("flow", "link", "exchange", "weak", "owns", "strong", "aside")
 
 #: Shapes a node role may take.
 NODE_SHAPES: Final = ("rect", "pill", "diamond", "ellipse", "none")

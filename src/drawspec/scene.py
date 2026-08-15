@@ -21,6 +21,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 from typing import Final
 
+from drawspec.text.wrap import TextBlock
+
 #: Where a text run is anchored horizontally, in SVG's own vocabulary.
 TEXT_ANCHORS: Final = ("start", "middle", "end")
 
@@ -115,6 +117,19 @@ class Path(Primitive):
 
     points: tuple[tuple[float, float], ...] = ()
     closed: bool = False
+    started_at: float = 0.0
+    """How far along the stroke this path *began*, when it is a piece of a longer one.
+
+    Not styling — a length, in user units, and the only thing that lets a broken
+    stroke keep one rhythm. `drawspec.clearance` cuts a dashed line into pieces to
+    let a label through, and SVG restarts a dash pattern at the start of every
+    `<path>`: three pieces of one dashed curve come out as three fresh dash
+    cycles, so the dashes either side of a gap no longer line up with the ones
+    before it and the line reads as several lines. The emitter turns this into the
+    dash offset that continues the pattern instead. Zero — an unbroken stroke, or
+    the first piece of one — emits nothing.
+    """
+
     marker: bool = False
     """Whether this path is an end treatment rather than a length of line.
 
@@ -198,6 +213,43 @@ class TextLine(Primitive):
     @property
     def text(self) -> str:
         return "".join(span.text for span in self.spans)
+
+
+def centred_lines(
+    block: TextBlock, x: float, top: float, role: str, level: str
+) -> tuple[TextLine, ...]:
+    """A wrapped block as one `TextLine` per line, centred on `x` from `top` down.
+
+    The step from "text, wrapped" to "primitives, placed", for the labels that do
+    not live in a box — a span's name, a note under a tick. `kinds.common.
+    text_runs` is the same step for the ones that do, and takes its geometry from
+    the box instead of from two numbers.
+
+    It exists as one function because it is where a text field's promises are
+    kept: the inline spans survive into `TextSpan`s, and a second paragraph gets
+    its own line rather than being flattened. A caller that built a bare `TextRun`
+    from `span.text` instead drew `**RPO**` with the asterisks showing.
+    """
+    lines: list[TextLine] = []
+    for index, line in enumerate(block.lines):
+        spans = tuple(
+            TextSpan(text=span.text, font=span.font, weight=span.weight)
+            for span in line.spans
+            if span.text
+        )
+        if not spans:
+            continue
+        lines.append(
+            TextLine(
+                role,
+                x=x,
+                y=top + index * block.advance + block.ascent,
+                spans=spans,
+                level=level,
+                anchor="middle",
+            )
+        )
+    return tuple(lines)
 
 
 def moved(primitive: Primitive, dx: float, dy: float) -> Primitive:
@@ -287,6 +339,7 @@ __all__ = [
     "TextLine",
     "TextRun",
     "TextSpan",
+    "centred_lines",
     "extents",
     "moved",
 ]

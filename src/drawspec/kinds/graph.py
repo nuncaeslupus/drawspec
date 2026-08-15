@@ -37,6 +37,7 @@ from drawspec.geometry import Box, normalise, size_box
 from drawspec.kinds.common import box_primitives
 from drawspec.kinds.containers import (
     Frame,
+    Nesting,
     arrange,
     border_obstacles,
     caption_obstacle,
@@ -57,7 +58,7 @@ from drawspec.routing import (
     place_labels,
     route_edges,
 )
-from drawspec.scene import Primitive, Scene
+from drawspec.scene import Path, Primitive, Scene, TextRun
 from drawspec.schema import Document
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme
@@ -88,6 +89,42 @@ NODE_WIDEN: Final = 2.0
 PREFERRED_DIRECTION: Final = "down"
 
 
+#: The role a band's bar is drawn in. A band is not a relation between two boxes,
+#: so it has no head and no direction — which is what `link` means, and the same
+#: reasoning that makes a timeline's axis a `link`.
+BAND_ROLE: Final = "link"
+
+#: The role a band's name is tagged with. A `TextRun` takes no styling from its
+#: role — its level and font decide how it is set — but every primitive must carry
+#: a role the theme declares, and there is no role for "furniture".
+BAND_TEXT_ROLE: Final = "step"
+
+
+@dataclass(frozen=True)
+class BandBar:
+    """One band, placed: a bar beside the boxes it accompanies, and its name.
+
+    The name sits *beside* the bar rather than on it, on the far side from the
+    drawing. A gate breaks its divider to let its name through because a gate's
+    name belongs to the threshold itself; a band's name belongs to the whole
+    length of it, and outside is where there is room for the words at any length.
+    """
+
+    text: str
+    points: tuple[tuple[float, float], ...]
+    label_x: float
+    label_y: float
+    rotate: float = 0.0
+
+    def moved(self, dx: float, dy: float) -> BandBar:
+        return replace(
+            self,
+            points=tuple((x + dx, y + dy) for x, y in self.points),
+            label_x=self.label_x + dx,
+            label_y=self.label_y + dy,
+        )
+
+
 @dataclass(frozen=True)
 class GraphDrawing:
     """Everything a graph scene is made of, before it becomes primitives.
@@ -106,6 +143,9 @@ class GraphDrawing:
     height: float
     frames: tuple[Frame, ...] = ()
     """The group containers, outermost first — empty when the author declared none."""
+
+    bands: tuple[BandBar, ...] = ()
+    """The bands, in declaration order — empty when the author declared none."""
 
 
 def graph_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
@@ -132,6 +172,10 @@ def graph_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
         primitives.extend(box_primitives(drawing.boxes[identifier], theme, measurer))
     for label in drawing.labels:
         primitives.extend(label_primitives(label))
+    # Bands last: they sit outside the boxes, so nothing is over them, and the
+    # clearance pass has the whole scene either way.
+    for bar in drawing.bands:
+        primitives.extend(band_primitives(bar, theme))
 
     return Scene(
         width=drawing.width,
@@ -157,9 +201,8 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
 
     width = document.width if document.width else theme.canvas.width
     margin = theme.box.padding.horizontal
-    boxes = _sized(document, theme, measurer, width * NODE_WIDTH_SHARE)
-
     nesting = nesting_of(document)
+    boxes = _sized(document, theme, measurer, width * NODE_WIDTH_SHARE, nesting)
     spacing = _spacing(theme)
     arrangement = arrange(
         nesting.roots,
@@ -173,6 +216,10 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         prefer=PREFERRED_DIRECTION,
         entered=crossed([(edge.source, edge.target) for edge in document.edges], nesting),
         centre=next((node.id for node in document.nodes if node.centre), ""),
+        # A binding height is the only thing that can make a chain read across
+        # rather than down: see `layout.base.best_layout`. An advisory height is
+        # not passed, because it is advisory.
+        max_height=(document.height or 0.0) if document.height_binding else 0.0,
     )
     # The top level's own layout, with every leaf from every level in it — the
     # ranks and reversed edges are the top level's, which is what a caller
@@ -229,7 +276,121 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         measurer,
     )
 
-    return _framed(layout, boxes, obstacles, routes, labels, margin, arrangement.frames)
+    return _framed(
+        layout,
+        boxes,
+        obstacles,
+        routes,
+        labels,
+        margin,
+        arrangement.frames,
+        _bands(document, layout, theme, measurer),
+    )
+
+
+def _bands(
+    document: Document,
+    layout: Layout,
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> tuple[BandBar, ...]:
+    """One bar per band, beside the boxes it accompanies, alternating sides.
+
+    A band runs **along** the reading direction and is placed **across** it, which
+    is the only arrangement that makes it a band rather than another rank: a
+    process read across the page has its continuous activities above and below it,
+    and the same process read down the page has them left and right. So the axis
+    it spans is the layout's own direction, and nothing here needs to know which
+    one the author got.
+
+    Sides alternate in declaration order, and that is what makes two bands peers.
+    The first goes on one side, the second on the other, the third outside the
+    first — so the commonest case, the two the source sheets draw, comes out
+    *surrounding* the steps exactly as the original's own description says. A
+    `group` could not say this at all: a box sits inside one container or none, so
+    two groups over the same members had to nest, drawing a hierarchy that is not
+    there.
+
+    Raises:
+        DrawspecError: a band names no member that was placed. Every id is checked
+            against the document at parse time, so this is the empty-band case
+            rather than a typo, and it is refused rather than drawn as a bar of no
+            length beside nothing.
+    """
+    if not document.bands:
+        return ()
+    places = layout.placements
+    across = layout.direction == "right"
+    gap = theme.box.padding.horizontal
+    size = theme.scale["label"]
+    line = measurer.measure("0", theme.font.default, size)
+    # One band's whole claim on the cross axis: the bar, the gap to its name, and
+    # the name. Every band gets the same, so two on opposite sides are symmetric.
+    step = gap + line.height + gap
+
+    everything = list(places.values())
+    near = min((place.y if across else place.x) for place in everything)
+    far = max((place.bottom if across else place.right) for place in everything)
+
+    bars: list[BandBar] = []
+    for index, band in enumerate(document.bands):
+        members = [places[member] for member in band.members if member in places]
+        if not members:
+            raise DrawspecError(
+                f"the band {band.text[:32]!r} names no box that this drawing placed, so "
+                f"there is nothing for it to run alongside. Give it members that are "
+                f"nodes of this document."
+            )
+        start = min((place.x if across else place.y) for place in members)
+        finish = max((place.right if across else place.bottom) for place in members)
+        # Outward: even-numbered bands on the near side, odd on the far side, each
+        # pair a step further out than the last.
+        rank = index // 2
+        outward = gap + rank * step
+        cross = near - outward if index % 2 == 0 else far + outward
+        middle = (start + finish) / 2
+        # The name goes on the far side of the bar from the drawing, so a longer
+        # name never reaches back over the boxes.
+        away = gap + line.ascent
+        text_at = cross - away if index % 2 == 0 else cross + away
+
+        if across:
+            bars.append(
+                BandBar(
+                    text=band.text,
+                    points=((start, cross), (finish, cross)),
+                    label_x=middle,
+                    label_y=text_at,
+                )
+            )
+        else:
+            bars.append(
+                BandBar(
+                    text=band.text,
+                    points=((cross, start), (cross, finish)),
+                    label_x=text_at,
+                    label_y=middle,
+                    rotate=-90.0,
+                )
+            )
+    return tuple(bars)
+
+
+def band_primitives(bar: BandBar, theme: Theme) -> tuple[Primitive, ...]:
+    """A band's bar and its name."""
+    return (
+        Path(BAND_ROLE, points=bar.points),
+        TextRun(
+            BAND_TEXT_ROLE,
+            x=bar.label_x,
+            y=bar.label_y,
+            text=bar.text,
+            level="label",
+            font=theme.font.default,
+            anchor="middle",
+            rotate=bar.rotate,
+        ),
+    )
 
 
 def _spacing(theme: Theme) -> Spacing:
@@ -246,14 +407,34 @@ def _spacing(theme: Theme) -> Spacing:
 
 
 def _sized(
-    document: Document, theme: Theme, measurer: TextMeasurer, limit: float
+    document: Document,
+    theme: Theme,
+    measurer: TextMeasurer,
+    limit: float,
+    nesting: Nesting,
 ) -> dict[str, Box]:
     """One box per node, with peers normalised to a common width.
 
-    Peers here are nodes sharing a role, which is the best available stand-in for
+    Peers are nodes that share a role **and a container**. The role stands in for
     "the same kind of thing" before ranks exist — the layout has not run yet, so
     rank-based normalisation is not available, and normalising afterwards would
     invalidate the positions it was computed from.
+
+    **The container is the other half, and it used to be missing.** Sharing a
+    width is what makes peers read as peers, and it is also what gives a long
+    label the room to need fewer lines — but across a whole document it becomes
+    one long paragraph setting the width of every box in the drawing. Seven boxes
+    on the nested-boxes sheet all came out 243.5 wide, the one holding the word
+    *AGE* included, because a three-line paragraph lived in a different box
+    somewhere else. The three administrations then would not share a row until
+    the canvas was 880 wide, and at 640 the packer put them in two rows and left
+    one stranded — so the author loses either the source's arrangement or a
+    legible type size, which is the trade the tool exists to prevent.
+
+    A container is the scope an author already declared, and the one a reader
+    compares within: boxes side by side inside a frame are being set against each
+    other, and a box in another frame is not. Same alignment, and it stops
+    travelling across the drawing.
     """
     boxes = {
         node.id: size_box(
@@ -267,10 +448,10 @@ def _sized(
         )
         for node in document.nodes
     }
-    by_role: dict[str, list[str]] = {}
+    peers: dict[tuple[str, str], list[str]] = {}
     for node in document.nodes:
-        by_role.setdefault(node.role, []).append(node.id)
-    for identifiers in by_role.values():
+        peers.setdefault((nesting.parent.get(node.id, ""), node.role), []).append(node.id)
+    for identifiers in peers.values():
         for identifier, box in zip(
             identifiers, normalise([boxes[i] for i in identifiers]), strict=True
         ):
@@ -286,6 +467,7 @@ def _framed(
     labels: Sequence[Label],
     margin: float,
     frames: Sequence[Frame] = (),
+    bands: Sequence[BandBar] = (),
 ) -> GraphDrawing:
     """Shift everything so the drawing starts at the margin, and measure it.
 
@@ -308,6 +490,11 @@ def _framed(
     for frame in frames:
         xs += [frame.x, frame.right]
         ys += [frame.y, frame.bottom]
+    for bar in bands:
+        xs += [point[0] for point in bar.points]
+        ys += [point[1] for point in bar.points]
+        xs.append(bar.label_x)
+        ys.append(bar.label_y)
 
     offset_x = margin - min(xs, default=0.0)
     offset_y = margin - min(ys, default=0.0)
@@ -332,6 +519,7 @@ def _framed(
         width=max(xs, default=0.0) + offset_x + margin,
         height=max(ys, default=0.0) + offset_y + margin,
         frames=tuple(frame.moved(offset_x, offset_y) for frame in frames),
+        bands=tuple(bar.moved(offset_x, offset_y) for bar in bands),
     )
 
 
@@ -340,7 +528,9 @@ __all__ = [
     "NODE_WIDEN",
     "NODE_WIDTH_SHARE",
     "PREFERRED_DIRECTION",
+    "BandBar",
     "GraphDrawing",
+    "band_primitives",
     "graph_drawing",
     "graph_scene",
 ]
