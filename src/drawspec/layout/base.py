@@ -168,6 +168,11 @@ class LayoutEngine(Protocol):
         """How this engine identifies itself in a report or a decision record."""
         ...
 
+    @property
+    def spacing(self) -> Spacing:
+        """The gaps it was built with — what a caller needs to lay out beside it."""
+        ...
+
     def layout(
         self,
         nodes: Sequence[LayoutNode],
@@ -320,6 +325,66 @@ def long_edges(layout: Layout, edges: Sequence[LayoutEdge]) -> tuple[LayoutEdge,
     )
 
 
+def pack(
+    nodes: Sequence[LayoutNode],
+    spacing: Spacing,
+    *,
+    max_width: float,
+) -> Layout:
+    """Fill rows to `max_width`, in the order the nodes were declared.
+
+    For a set of boxes with **nothing ordering them**. Ranking is what turns a
+    relation into a position, and with no edges there is no relation: the
+    Kubernetes control plane is thirteen components and not one arrow, and the
+    only thing the drawing says is *these live in here*.
+
+    Ranked instead, that comes out as a line — thirteen ranks of one going down,
+    or one rank of thirteen going across, neither of which fits a fixed-width
+    sheet at a legible size. The original was compact and two-dimensional
+    because a set with no order is a *shape*, not a sequence.
+
+    Rows are separated by `node_gap`, not `rank_gap`: the rank gap exists to
+    give an arrow a visible shaft, and there are no arrows here.
+    """
+    rows: list[list[LayoutNode]] = []
+    used = 0.0
+    for node in nodes:
+        extra = node.width if not rows else spacing.node_gap + node.width
+        if rows and used + extra <= max_width:
+            rows[-1].append(node)
+            used += extra
+        else:
+            rows.append([node])
+            used = node.width
+
+    widths = [sum(node.width for node in row) + spacing.node_gap * (len(row) - 1) for row in rows]
+    total_width = max(widths, default=0.0)
+
+    placements: dict[str, Placement] = {}
+    y = 0.0
+    for index, row in enumerate(rows):
+        band = max(node.height for node in row)
+        x = (total_width - widths[index]) / 2
+        for node in row:
+            placements[node.id] = Placement(
+                x=x,
+                y=y + (band - node.height) / 2,
+                width=node.width,
+                height=node.height,
+                rank=index,
+            )
+            x += node.width + spacing.node_gap
+        y += band + spacing.node_gap
+
+    return Layout(
+        placements=placements,
+        width=total_width,
+        height=max(y - spacing.node_gap, 0.0),
+        ranks=tuple(tuple(node.id for node in row) for row in rows),
+        fits=total_width <= max_width,
+    )
+
+
 def best_layout(
     engine: LayoutEngine,
     nodes: Sequence[LayoutNode],
@@ -345,6 +410,9 @@ def best_layout(
     if prefer not in DIRECTIONS:
         raise LayoutError(f"unknown direction {prefer!r}; expected {', '.join(DIRECTIONS)}")
 
+    if nodes and not edges:
+        return replace(pack(nodes, engine.spacing, max_width=max_width), direction=prefer)
+
     order = (prefer, *(d for d in DIRECTIONS if d != prefer))
     attempts = [
         replace(engine.layout(nodes, edges, direction), direction=direction) for direction in order
@@ -368,6 +436,7 @@ __all__ = [
     "best_layout",
     "break_cycles",
     "long_edges",
+    "pack",
     "rank_nodes",
     "validate",
 ]

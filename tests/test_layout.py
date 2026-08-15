@@ -419,3 +419,39 @@ def test_best_layout_result_is_a_layout() -> None:
 def test_best_layout_rejects_an_unknown_preference() -> None:
     with pytest.raises(LayoutError, match="direction"):
         best_layout(ENGINE, *CHAIN, max_width=400.0, prefer="upwards")
+
+
+# --------------------------------------------------------------------------
+# Packing a set with nothing ordering it
+# --------------------------------------------------------------------------
+
+
+def test_layout_of_a_graph_with_no_edges_packs_into_rows() -> None:
+    """Ranking turns a relation into a position, and there is no relation here.
+
+    Thirteen components and not one arrow is the Kubernetes control plane, and
+    ranked it comes out as a line — thirteen ranks of one, or one rank of
+    thirteen — neither of which fits a fixed-width sheet at a legible size.
+    """
+    graph_nodes = nodes(*(f"n{index}" for index in range(7)), width=120.0)
+    result = best_layout(ENGINE, graph_nodes, [], max_width=420.0)
+    assert result.ranks == (("n0", "n1", "n2"), ("n3", "n4", "n5"), ("n6",))
+    assert result.width <= 420.0
+    assert result.fits
+    assert result.overlaps() == ()
+
+
+def test_a_packed_row_is_separated_by_the_node_gap_not_the_rank_gap() -> None:
+    """The rank gap buys an arrow its shaft, and there are no arrows."""
+    graph_nodes = nodes("a", "b", "c", width=120.0, height=40.0)
+    result = best_layout(ENGINE, graph_nodes, [], max_width=270.0)
+    assert result.ranks == (("a", "b"), ("c",))
+    assert result.placements["c"].y - result.placements["a"].bottom == SPACING.node_gap
+
+
+def test_packing_keeps_one_box_per_row_when_nothing_fits_beside_it() -> None:
+    """A box wider than the sheet still gets a row; `fits` reports the truth."""
+    graph_nodes = nodes("wide", "also", width=500.0)
+    result = best_layout(ENGINE, graph_nodes, [], max_width=400.0)
+    assert result.ranks == (("wide",), ("also",))
+    assert not result.fits
