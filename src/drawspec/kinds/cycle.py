@@ -31,7 +31,7 @@ from typing import Final
 from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
 from drawspec.kinds.common import box_primitives
-from drawspec.scene import Path, Polygon, Primitive, Scene, extents, moved
+from drawspec.scene import Path, Polygon, Primitive, Scene, TextRun, extents, moved
 from drawspec.schema import Document
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme
@@ -127,6 +127,10 @@ def cycle_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
                 theme,
             )
         )
+    # Shortcuts before the boxes for the same reason the arcs are: a step is
+    # drawn over the line that reaches it.
+    for source, target, role, label in _shortcuts(document, order):
+        primitives.extend(_shortcut(placed[source], placed[target], role, label, theme, measurer))
     for node_id in order:
         primitives.extend(box_primitives(placed[node_id], theme, measurer))
 
@@ -167,47 +171,77 @@ def _ring_order(document: Document) -> tuple[str, ...]:
     rather than the order the nodes happen to be listed in, so an author can
     write the nodes in any order and still get the loop they described.
 
-    Raises:
-        DrawspecError: the edges do not form one closed loop through every node.
-    """
-    following: dict[str, str] = {}
-    for edge in document.edges:
-        if edge.source in following:
-            raise DrawspecError(
-                f"node {edge.source!r} has more than one outgoing edge. A cycle is one "
-                f"loop: every step has exactly one next step."
-            )
-        following[edge.source] = edge.target
+    **A step may have more than one outgoing edge.** It used to be refused
+    outright — *"a cycle is one loop: every step has exactly one next step"* —
+    which is true of the ring and false of the diagram: the NIST incident cycle
+    is four phases round a loop *plus* a dashed return from containment to
+    detection, labelled *when new indicators appear*. Drawn as a `flow` instead,
+    the loop breaks open and the four phases read 3, 4, 1, 2 down the page, so
+    the author had to choose between the cycle and its one exception.
 
+    So the ring is now *found* rather than read off: the walk tries each
+    outgoing edge in the order the document lists them and backtracks, and the
+    first closed loop through every node is the ring. Every edge not on it is a
+    shortcut, drawn inside. Trying declaration order first is what makes the
+    answer predictable — an author who lists the ring edges first gets the ring
+    they wrote.
+
+    Raises:
+        DrawspecError: no closed loop through every node exists.
+    """
     identifiers = [node.id for node in document.nodes]
-    if len(document.edges) != len(identifiers):
+    if len(document.edges) < len(identifiers):
         raise DrawspecError(
             f"a cycle of {len(identifiers)} nodes needs {len(identifiers)} edges to "
             f"close the loop; this one has {len(document.edges)}."
         )
 
-    start = identifiers[0]
-    order = [start]
-    seen = {start}
-    current = start
-    while len(order) < len(identifiers):
-        target = following.get(current)
-        if target is None:
-            raise DrawspecError(f"node {current!r} has no outgoing edge, so the loop is open")
-        if target in seen:
-            raise DrawspecError(
-                f"the edges close back to {target!r} before reaching every node, so this "
-                f"is a shorter loop with extra nodes beside it rather than one cycle"
-            )
-        order.append(target)
-        seen.add(target)
-        current = target
+    known = set(identifiers)
+    following: dict[str, list[str]] = {identifier: [] for identifier in identifiers}
+    for edge in document.edges:
+        if edge.source in known and edge.target in known:
+            following[edge.source].append(edge.target)
 
-    if following.get(order[-1]) != start:
+    start = identifiers[0]
+    order: list[str] = [start]
+    seen = {start}
+
+    def walk(current: str) -> bool:
+        if len(order) == len(identifiers):
+            return start in following[current]
+        for target in following[current]:
+            if target in seen:
+                continue
+            order.append(target)
+            seen.add(target)
+            if walk(target):
+                return True
+            seen.discard(target)
+            order.pop()
+        return False
+
+    if not walk(start):
         raise DrawspecError(
-            f"the last step {order[-1]!r} does not return to {start!r}, so the loop is open"
+            f"these edges do not close one loop through every node, so this is not a "
+            f"cycle: no way round from {start!r} visits all {len(identifiers)} steps and "
+            f"comes back. A cycle returns to where it started, having been everywhere."
         )
     return tuple(order)
+
+
+def _shortcuts(document: Document, order: tuple[str, ...]) -> tuple[tuple[str, str, str, str], ...]:
+    """Every edge that is not part of the ring, as `(source, target, role, label)`.
+
+    A cycle plus a shortcut is still a cycle. What the shortcut is *not* is
+    another step of the loop, which is why it is drawn across the ring rather
+    than along it.
+    """
+    ring = {(node, order[(index + 1) % len(order)]) for index, node in enumerate(order)}
+    return tuple(
+        (edge.source, edge.target, edge.role, edge.label)
+        for edge in document.edges
+        if (edge.source, edge.target) not in ring
+    )
 
 
 def _edge_role(document: Document, source: str, target: str) -> str:
@@ -215,6 +249,95 @@ def _edge_role(document: Document, source: str, target: str) -> str:
         if edge.source == source and edge.target == target:
             return edge.role
     return "flow"
+
+
+def _shortcut(
+    source: Box,
+    target: Box,
+    role: str,
+    label: str,
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> tuple[Primitive, ...]:
+    """One edge across the ring: a straight run between two steps' outlines.
+
+    Across rather than along, because along is what the ring already means. A
+    shortcut drawn as another arc would be indistinguishable from the loop it is
+    an exception to; drawn as a chord it reads as what it is — a way of going
+    back early, inside the circle the four steps make.
+
+    Its label sits at the middle of the chord, pushed off the line by the same
+    daylight every other label keeps, and the whole thing is refused if the
+    chord would run through a step it does not join. That refusal is the point
+    of drawing this at all: the alternative was a caption saying the loop has an
+    exception, which tells the reader it exists without ever showing it.
+    """
+    start = _outline_point(source, _centre(target))
+    finish = _outline_point(target, _centre(source))
+    head = theme.edge_roles[role].has_head
+    span = math.hypot(finish[0] - start[0], finish[1] - start[1])
+    if span <= theme.edge.min_shaft_length:
+        raise FitError(
+            f"the shortcut between these two steps has {span:.0f} units of room and needs "
+            f"{theme.edge.min_shaft_length:.0f} for a visible shaft. Give the diagram more "
+            f"width, or shorten the step labels so the ring is bigger."
+        )
+
+    towards = ((finish[0] - start[0]) / span, (finish[1] - start[1]) / span)
+    tip = finish
+    if head:
+        back = theme.edge.head_length
+        shaft_end = (finish[0] - towards[0] * back, finish[1] - towards[1] * back)
+        wing = theme.edge.head_length / 2
+        across = (-towards[1] * wing, towards[0] * wing)
+        primitives: list[Primitive] = [
+            Path(role, points=(start, shaft_end)),
+            Polygon(
+                role,
+                points=(
+                    tip,
+                    (shaft_end[0] + across[0], shaft_end[1] + across[1]),
+                    (shaft_end[0] - across[0], shaft_end[1] - across[1]),
+                ),
+            ),
+        ]
+    else:
+        primitives = [Path(role, points=(start, finish))]
+
+    if label:
+        size = theme.scale["label"]
+        extents_of = measurer.measure(label, theme.font.default, size)
+        away = theme.edge.clearance + extents_of.ascent
+        middle = ((start[0] + finish[0]) / 2, (start[1] + finish[1]) / 2)
+        primitives.append(
+            TextRun(
+                role,
+                x=middle[0] - towards[1] * away,
+                y=middle[1] + towards[0] * away,
+                text=label,
+                level="label",
+                font=theme.font.default,
+                anchor="middle",
+            )
+        )
+    return tuple(primitives)
+
+
+def _centre(box: Box) -> tuple[float, float]:
+    return (box.x + box.width / 2, box.y + box.height / 2)
+
+
+def _outline_point(box: Box, towards: tuple[float, float]) -> tuple[float, float]:
+    """Where the line from `box`'s centre to `towards` leaves the box."""
+    centre = _centre(box)
+    dx, dy = towards[0] - centre[0], towards[1] - centre[1]
+    if dx == 0 and dy == 0:
+        return centre
+    scale = min(
+        (box.width / 2) / abs(dx) if dx else math.inf,
+        (box.height / 2) / abs(dy) if dy else math.inf,
+    )
+    return (centre[0] + dx * scale, centre[1] + dy * scale)
 
 
 def _boxes(
