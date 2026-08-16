@@ -24,7 +24,9 @@ import pytest
 
 from drawspec.errors import DocumentError
 from drawspec.schema import (
+    CONTAINER_KINDS,
     DOCUMENT_VERSION,
+    GRAPH_KINDS,
     KINDS,
     OBJECTS,
     REJECTED_FIELDS,
@@ -453,6 +455,22 @@ REFERENTIAL_CASES: list[tuple[str, dict[str, Any]]] = [
             groups=[{"id": "g", "text": "Both", "members": ["in", "chk"]}],
         ),
     ),
+    # …and the widened id space stops where the frame does. A `cycle` is a graph
+    # kind to the schema and a parametric template to the renderer, so it draws
+    # no container for an arrow to anchor on.
+    (
+        "edge naming a group in a cycle, which draws none",
+        flow_document(
+            kind="cycle",
+            edges=[
+                {"from": "in", "to": "chk"},
+                {"from": "chk", "to": "ok"},
+                {"from": "ok", "to": "in"},
+                {"from": "in", "to": "g"},
+            ],
+            groups=[{"id": "g", "text": "A container", "members": ["chk"]}],
+        ),
+    ),
 ]
 
 
@@ -670,3 +688,9 @@ def test_the_published_schema_says_an_edge_end_may_be_a_group() -> None:
     edge = build_schema()["$defs"]["edge"]["properties"]
     assert "group" in edge["from"]["description"]
     assert "group" in edge["to"]["description"]
+
+
+def test_the_edge_id_space_widens_only_where_containers_are_drawn() -> None:
+    """`CONTAINER_KINDS` is the boundary, and it is narrower than `GRAPH_KINDS`."""
+    assert set(CONTAINER_KINDS) < set(GRAPH_KINDS)
+    assert "cycle" not in CONTAINER_KINDS

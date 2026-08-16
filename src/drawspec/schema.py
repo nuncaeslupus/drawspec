@@ -53,6 +53,15 @@ SCHEMA_ID: Final = "https://drawspec.dev/schema/drawspec-v1.schema.json"
 SCHEMA_FILENAME: Final = "drawspec-v1.schema.json"
 
 GRAPH_KINDS: Final = ("flow", "tree", "cycle")
+
+#: The graph kinds that *draw* their containers, and so may name a group at an
+#: edge's end — R5-2. `cycle` is a graph kind to the schema and a parametric
+#: template to the renderer (D-1): it places its steps on a ring and draws no
+#: frame, so there is no border for an arrow to anchor on and no placement for
+#: the id to resolve to. Accepting a group there would hand the renderer an id
+#: it cannot place, which is a crash rather than a drawing.
+CONTAINER_KINDS: Final = ("flow", "tree")
+
 GRID_KINDS: Final = ("stack", "timeline", "columns", "matrix")
 SHAPE_KINDS: Final = ("pyramid", "rings", "funnel")
 CHART_KINDS: Final = ("chart", "quadrant", "curve")
@@ -206,10 +215,11 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             "string",
             required=True,
             description=(
-                "The id of the source node — or, in a graph kind, of a group: an edge "
-                "may name a container, for a relation that belongs to the whole of it "
-                "rather than to any one box inside. It may not join a container to "
-                "something already within it."
+                "The id of the source node — or, in a `flow` or a `tree`, of a group: "
+                "an edge may name a container, for a relation that belongs to the whole "
+                "of it rather than to any one box inside. It may not join a container to "
+                "something already within it. A `cycle` draws no containers, so an edge "
+                "in one names a node."
             ),
         ),
         FieldSpec(
@@ -217,8 +227,8 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             "string",
             required=True,
             description=(
-                "The id of the target node — or, in a graph kind, of a group. The same "
-                "id space as `from`."
+                "The id of the target node — or, in a `flow` or a `tree`, of a group. "
+                "The same id space as `from`."
             ),
         ),
         FieldSpec("label", "string", description="A short label placed along the edge."),
@@ -1383,6 +1393,14 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         if isinstance(group, dict) and isinstance(group.get("id"), str)
     }
 
+    # A group is a name an edge may resolve to, because a relation can belong to
+    # the whole container rather than to any one box in it — R5-2. The frame is
+    # already a box with an extent and a border, so the only thing that was
+    # missing was saying so. Only where the frame is *drawn*, though: see
+    # `CONTAINER_KINDS`. A `cycle` accepts `groups` in its payload and draws
+    # none, so a group id at an edge's end is an id its renderer cannot place.
+    endpoints = containers if kind in CONTAINER_KINDS else frozenset()
+
     edges = document.get("edges")
     if isinstance(edges, list):
         for index, edge in enumerate(edges):
@@ -1390,18 +1408,20 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                 continue
             for end in ("from", "to"):
                 target = edge.get(end)
-                # A group is a name an edge may resolve to, because a relation
-                # can belong to the whole container rather than to any one box
-                # in it — R5-2. The frame is already a box with an extent and a
-                # border, so the only thing that was missing was saying so.
-                if isinstance(target, str) and target not in seen and target not in containers:
-                    found.append(
-                        Violation(
-                            _pointer("edges", index, end),
-                            f"{target!r} is not the id of any node or group in this document",
-                        )
+                if not isinstance(target, str) or target in seen or target in endpoints:
+                    continue
+                found.append(
+                    Violation(
+                        _pointer("edges", index, end),
+                        f"{target!r} is a group, and a {kind} is drawn as a ring of steps "
+                        f"with no containers in it, so an edge here may only name a node"
+                        if target in containers
+                        else f"{target!r} is not the id of any node"
+                        + (" or group" if kind in CONTAINER_KINDS else "")
+                        + " in this document",
                     )
-        found.extend(_self_containment(edges, groups, containers))
+                )
+        found.extend(_self_containment(edges, groups, endpoints))
 
     if isinstance(groups, list):
         # A group id is a name a member may resolve to, and the renderer keys its
@@ -1838,6 +1858,7 @@ __all__ = [
     "AXIS_ORDER",
     "CHART_KINDS",
     "COMMON_FIELDS",
+    "CONTAINER_KINDS",
     "DOCUMENT_VERSION",
     "GRAPH_KINDS",
     "GRID_KINDS",

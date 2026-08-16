@@ -509,3 +509,72 @@ def test_an_edge_may_join_two_containers() -> None:
     for point, frame in ((route.points[0], first), (route.points[-1], second)):
         assert frame.x - 1e-6 <= point[0] <= frame.right + 1e-6
         assert frame.y - 1e-6 <= point[1] <= frame.bottom + 1e-6
+
+
+def test_a_cycle_refuses_a_group_at_an_edge_end_rather_than_crashing() -> None:
+    """The widened id space stops where the frame does.
+
+    `cycle` is a graph kind to the schema and a parametric template to the
+    renderer — D-1 — so it places its steps on a ring and draws no frame. It
+    accepts `groups` in its payload and ignores them, so a group id reached
+    `cycle_scene`'s placement map, which holds nodes only, as a `KeyError`. An
+    internal crash where the format's own rule used to give a located refusal.
+    """
+    with pytest.raises(DocumentError) as error:
+        parse_document(
+            {
+                "version": 1,
+                "kind": "cycle",
+                "nodes": [
+                    {"id": "a", "text": "One"},
+                    {"id": "b", "text": "Two"},
+                    {"id": "c", "text": "Three"},
+                ],
+                "edges": [
+                    {"from": "a", "to": "b"},
+                    {"from": "b", "to": "c"},
+                    {"from": "c", "to": "a"},
+                    {"from": "a", "to": "g"},
+                ],
+                "groups": [{"id": "g", "text": "A container", "members": ["b"]}],
+            }
+        )
+    assert "/edges/3/to" in str(error.value)
+    assert "'g' is a group" in str(error.value)
+    assert "may only name a node" in str(error.value)
+
+
+def test_a_cycle_still_names_an_unresolvable_id_the_way_it_always_did() -> None:
+    """Narrowing the id space back for `cycle` did not change its other message."""
+    with pytest.raises(DocumentError) as error:
+        parse_document(
+            {
+                "version": 1,
+                "kind": "cycle",
+                "nodes": [{"id": "a", "text": "One"}, {"id": "b", "text": "Two"}],
+                "edges": [{"from": "a", "to": "b"}, {"from": "b", "to": "zz"}],
+            }
+        )
+    assert "'zz' is not the id of any node in this document" in str(error.value)
+
+
+def test_a_tree_may_name_a_group_too() -> None:
+    """Both kinds that draw containers, not just the one the reference uses."""
+    document = parse_document(
+        {
+            "version": 1,
+            "kind": "tree",
+            "nodes": [
+                {"id": "root", "text": "The root"},
+                {"id": "a", "text": "One"},
+                {"id": "b", "text": "Two"},
+            ],
+            "edges": [{"from": "root", "to": "branch"}],
+            "groups": [{"id": "branch", "text": "A branch", "members": ["a", "b"]}],
+        }
+    )
+    built = drawing(document)
+    (route,) = built.routes
+    frame = frame_named(built, "branch")
+    assert frame.x - 1e-6 <= route.points[-1][0] <= frame.right + 1e-6
+    assert frame.y - 1e-6 <= route.points[-1][1] <= frame.bottom + 1e-6

@@ -316,6 +316,28 @@ An id that is neither a node nor a group is still refused by name. The id space
 grew; it did not open — the message now says *node or group*, which is the whole
 of what changed for an author who typoed one.
 
+### And review caught where the widened id space had to stop
+
+The first cut widened it for `GRAPH_KINDS`, which is three kinds and not two.
+`cycle` is a graph kind to the schema and a parametric template to the renderer
+— D-1 — so it places its steps on a ring, draws no frame, and its placement map
+holds nodes only. It also accepts `groups` in its payload and ignores them. So a
+valid ring plus one shortcut edge naming a group passed validation and reached
+`cycle_scene` as a bare `KeyError`: an internal crash standing exactly where the
+format's own located refusal used to be. **A widened id space is a promise the
+renderer has to be able to keep**, and only two of the three kinds could keep it.
+
+`CONTAINER_KINDS = ("flow", "tree")` is that boundary, and the refusal for a
+`cycle` says which of the two things the author has rather than claiming the id
+does not exist: *`'g'` is a group, and a cycle is drawn as a ring of steps with
+no containers in it.*
+
+A second finding from the same review — an edge naming one group at **both**
+ends — was checked and declined. It draws a self-loop out of the frame's border,
+around the outside, and back to the border, which is the treatment a node has
+had since T9 and is entirely outside the frame. The containment rule is about a
+line arriving *within* a border; this one never goes in.
+
 ### The caption keeps its corner
 
 A frame's caption sits in its top-left at its own width and is already an

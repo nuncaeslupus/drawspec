@@ -410,6 +410,10 @@ An edge between a container and something already inside it is refused, at any
 depth of nesting: it would leave a border and arrive within the same border,
 which is not a relation between two things. Draw it from a member instead.
 
+This is `flow` and `tree` only. A `cycle` accepts `groups` and draws none — it
+places its steps on a ring — so an edge in one names a node, and a group id at
+either end is refused with a message that says which of the two you have.
+
 A band runs *along* the reading direction and is placed *across* it, so a process
 read across the page gets its bands above and below, and the same process read
 down gets them left and right. See
