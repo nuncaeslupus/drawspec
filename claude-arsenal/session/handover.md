@@ -2,98 +2,80 @@
 
 <!-- Written at session end. A new session reading this file can resume without additional context. -->
 
-**Date**: 2026-08-15 · **Branch**: `claude/drawspec-graphics-schemas-sp577b`
-**PRs**: [#47](https://github.com/nuncaeslupus/drawspec/pull/47) — **merged** as `c99347f` (handover only) ·
-[#49](https://github.com/nuncaeslupus/drawspec/pull/49) — **merged** as `d13b1c7`, CI green
-**Suite**: 1 546 passing, 1 skipped · lint + strict mypy clean
-**Gates**: 0 collisions **and 0 outside the canvas**, across 34 references *and* the consumer's 87
+**Date**: 2026-08-16 · **Branch**: `claude/continuation-hkhyz8`
+**PR**: [#51](https://github.com/nuncaeslupus/drawspec/pull/51) — open, CI running at hand-off
+**Suite**: 1 564 passing, 1 skipped · lint + strict mypy clean
+**Gates**: 0 collisions **and** 0 outside the canvas across 34 references · `gate_run.sh lo-0e91` passed
 
 ## What this session was
 
-R5-1 got its decision and was built, review of it found a second defect worth
-fixing, and a consumer issue arrived and was answered with a third change. All
-three are in #49.
+One task: **R5-2 `lo-0e91` — `edge-from-a-group`**, the last open row in the
+queue. It is recorded `done` against #51 with its gate re-run and passed.
+**The queue is now empty of open tasks.**
 
-## The three
+## The change
 
-| | What | Where |
-|---|---|---|
-| **`[canvas] margin`** | one outer margin, read from the theme, applied in one place. Four emergent answers — 0 / 10.5 / ~22 / 24.5 — become one | `theme.Canvas.margin`, `render.framed` |
-| **`_within_width`** | a drawing wider than the canvas is refused instead of emitted as an oversized `viewBox` | `render._within_width` |
-| **`[box] lead = "rule"`** | a third lead treatment: a line between a label's two parts, so a box can be a name over what belongs to it | `text.wrap`, `geometry.span_at`, `kinds/common.lead_rule` |
+`{"from": "watch", "to": "plane"}` where `plane` is a declared group validates,
+routes, and draws an arrow that stops on the frame's border — the reverse
+direction too, and group to group. `gap4` on the consumer's sheets **39** and
+**44**; 44 had been `blocked` on it for five rounds.
 
 ## The thing worth carrying forward
 
-**Where a frame comes from matters more than what it is set to.** The obvious
-implementation of R5-1 takes the margin *out* of `[canvas] width`: families lay
-out against `width - margin * 2` and the emitted canvas stays 640, which is the
-tidier story because the number a consumer sets to match their column is the
-number the file comes out. It breaks a document that used to draw.
-`timeline-disaster` sizes every label to its **tightest** pair of marks and needs
-630 of its 640, so twelve units a side refused a diagram nobody had touched — and
-it could not be given more width either, because `canvas_width_variance == 0` is
-this project's own acceptance gate, so the escape hatch and the invariant are the
-same field.
+**Routing asks two questions about a box and had only ever needed one answer.**
+*May a line cross you* and *may a line land on you* — `route_edges` built its
+endpoint lookup **out of** its obstacle list, so the two were the same set by
+construction. A frame has never been allowed in that list (every edge reaching a
+box inside a group crosses that border to get there), so it could not be an
+endpoint either. That, and nothing about geometry, is why the feature was
+missing: `Frame` already had an extent, `border_obstacles` already treated its
+sides as geometry, `crossed` already lifted edges to the level holding both ends.
 
-So the margin goes **around** the width. `width` and `height` keep describing the
-drawing, the canvas is `width + margin * 2` for every kind alike, and no layout
-budget moved except the one that was wrong: `kinds/graph` had been charging every
-flow and tree 48 units for a gutter it no longer draws.
+So the fix is one keyword-only `route_edges(..., anchors=…)` and
+`kinds/containers.frame_anchors` as its only use. Ports, stubs, lanes, the grid
+and label placement already keyed off `route.source`/`route.target` rather than
+off membership of the obstacle list, so none of them needed to know. **Ranking
+needed nothing at all** — a group is one node of its own size in its parent's
+layout and `Nesting.lift` returns it unchanged.
 
-Measured over the 33 references: smallest outer gutter **0.00 → 12.00**, spread of
-the tightest side **24.50 → 6.00**. The residue is interior — half a stroke, and
-`[edge] clearance` around a matrix's outermost cells, which cannot come off
-without making the edge cells wider than the middle ones.
+Two refusals came with it: a container joined to something already inside it (at
+any depth — it would leave a border and arrive within it), and, still, an id that
+is neither a node nor a group. The id space grew; it did not open.
 
-## Review found one real defect, and it predates the branch
+`docs/reference/flow-groups.json` is the demonstration — a monitoring platform
+arriving on the control plane itself, clear of the caption in its corner.
+`docs/plan-round-five.md` carries the full record; `docs/guide.md` has the
+paragraph an author would look for.
 
-A family checks its *layout* against the width; the drawing is not the layout. A
-band's bar and name sit beside the boxes, are measured after placement, and are
-in nobody's budget — so a layout that exactly fills the canvas produces a drawing
-that does not, and `centred` leaves an oversized scene alone by design. The
-reproducer is **7 units over on `main`** and **90 with the graph cushion gone**.
-`_within_width` refuses it after the elastic fit has tried every smaller scale,
-`width_mode = "ink"` exempt. Two other findings were declined with the check
-written into the thread; a third was intended and is now said out loud
-(`height_binding` bounds the drawing, not the canvas).
+## Queue state, and one thing to fix
 
-Also a fourth hole in `tools/clipping.py`, found by pointing the new measurement
-at the gallery: a fill pattern's tile lives in `<defs>` in the pattern's own
-coordinate space, and measuring it as canvas coordinates pinned phantom ink to the
-top-left corner of five chart drawings.
+`queue_doctor.sh` reports **4 ERROR [missing-payload]** — `lo-ee92`, `lo-1b55`,
+`lo-b67b`, `lo-1270` (G3–G6) reference payload files that are not on the
+coordination branch. All four are `done` with merged PRs, so nothing is blocked;
+it is a ledger inconsistency to clear, not work. Pre-existing — it predates this
+session.
 
-## The consumer issue
-
-[#48](https://github.com/nuncaeslupus/drawspec/issues/48) — no way to say *who
-performs a step*. The diagnosis holds and was checked: a node role is four
-non-colour channels and they are exactly the four the greyscale invariant
-compares, all four already spent, so ownership would need a fifth channel rather
-than a ninth role.
-
-Answered with `[box] lead = "rule"` rather than with an `actor` field. No new
-document field — the same blank-free newline the format already reads as *these
-are two things*, with the theme deciding what separates them. That covers the
-**content** half and not the scannable half, which is written into the reply, so
-the issue stays **open**. `actor` remains available as a separate additive step.
+`reconcile_merged.sh` cannot run here (`gh` is not installed in this
+environment), so `done` rows never flip to `merged`. Run it from the laptop to
+settle the board.
 
 ## Next session
 
-`docs/plan-round-five.md` carries the full record of R5-1, including the rejected
-alternative. **R5-2 `lo-0e91` (`edge-from-a-group`) is the one open task** — still
-refused, still `gap4` on the consumer's sheets 39 and 44.
+**Nothing is open.** Round five is finished on this side: R5-1 (#49) and R5-2
+(#51) are both done. Before seeding anything new, ask — there is no plan file
+with unstarted rows.
 
-**Two things about the queue that cost time this session, so they are written
-down:**
+Standing carry-overs, unchanged and still the owner's: content decisions on
+sheets **01** and **27**, the glosses on **53 / 74 / 81**, and the
+English-against-Catalan redraws **27, 83, 86**.
+[#48](https://github.com/nuncaeslupus/drawspec/issues/48) stays **open** — `[box]
+lead = "rule"` covered its content half and not its scannable half, and `actor`
+remains available as a separate additive step.
 
-* The coordination branch (`arsenal-queue`) is **not** stale — `T1`–`T18` /
-  `G1`–`G6` are all `done` there. It is the copy on `main` that still shows them
-  `open`. The previous handover said the queue was stale; that was reading the
-  wrong copy.
-* The R5 tasks were authored on `main` during a feature-branch session, so they
-  were invisible to the coordination branch until `queue_sync.sh` ported them.
-  Run step 1b of the protocol before trusting `queue_eval.sh`.
+**Two queue facts still worth knowing** (they cost the last session time and are
+unchanged):
 
-`lo-2382` is recorded `done` against #49 with its gate re-run and passed.
-
-Content decisions unchanged and still the owner's: **01**, **27**, the glosses on
-**53 / 74 / 81**, and the English-against-Catalan redraws **27, 83, 86**.
+* The coordination branch `arsenal-queue` is the source of truth. The copy of
+  `tasks.jsonl` on `main` is stale and shows finished tasks `open`.
+* Tasks authored on `main` during a feature-branch session are invisible to the
+  coordination branch until `queue_sync.sh` ports them — protocol step 1b.
