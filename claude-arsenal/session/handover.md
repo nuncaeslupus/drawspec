@@ -42,6 +42,21 @@ Two refusals came with it: a container joined to something already inside it (at
 any depth — it would leave a border and arrive within it), and, still, an id that
 is neither a node nor a group. The id space grew; it did not open.
 
+**And review found where it had to stop, which is the second thing worth
+carrying.** The first cut widened it for `GRAPH_KINDS` — three kinds, not two.
+`cycle` draws no frame and its placement map holds nodes only, so a valid ring
+plus one shortcut naming a group reached `cycle_scene` as a bare `KeyError`: an
+internal crash standing exactly where the format's own located refusal used to
+be. **A widened id space is a promise the renderer has to be able to keep.**
+`CONTAINER_KINDS = ("flow", "tree")` is the boundary now, and the cycle refusal
+says which of the two things the author has rather than claiming the id does not
+exist. Fixed in `f06799f` with three regression tests.
+
+A second review finding — one group named at **both** ends of an edge — was
+checked and declined: it draws a self-loop entirely *outside* the frame, which is
+the treatment a node has had since T9. The check is written into
+`docs/plan-round-five.md` rather than only into the PR thread.
+
 `docs/reference/flow-groups.json` is the demonstration — a monitoring platform
 arriving on the control plane itself, clear of the caption in its corner.
 `docs/plan-round-five.md` carries the full record; `docs/guide.md` has the
