@@ -43,6 +43,7 @@ from drawspec.kinds.containers import (
     caption_obstacle,
     captions_for,
     crossed,
+    frame_anchors,
     frame_primitives,
     nesting_of,
 )
@@ -294,6 +295,10 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         ),
         theme,
         direction=layout.direction,
+        # …and yet an edge may *end* on one. A frame is a box with an extent and
+        # a border, which is everything an endpoint needs; what it must not be is
+        # something to route around. `anchors` is that distinction — R5-2.
+        anchors=frame_anchors(arrangement.frames),
     )
     # Labels avoid the frames as well as the boxes — only the frames' borders,
     # so a label belonging to an edge inside a group can still sit inside it.

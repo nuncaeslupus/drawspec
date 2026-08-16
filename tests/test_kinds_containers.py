@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from drawspec.errors import DrawspecError
+from drawspec.errors import DocumentError, DrawspecError
 from drawspec.kinds.common import line_bounds
 from drawspec.kinds.containers import GROUP_ROLE, Frame, nesting_of
 from drawspec.kinds.graph import GraphDrawing, graph_drawing, graph_scene
@@ -342,3 +342,170 @@ def test_two_containers_are_normalised_apart() -> None:
     )
     assert built.boxes["a"].width == built.boxes["b"].width
     assert built.boxes["c"].width > built.boxes["a"].width
+
+
+# ---------------------------------------------------------------------------
+# R5-2 — an edge may name a container, not only a node
+# ---------------------------------------------------------------------------
+
+
+WATCHED = flow(
+    [("a", "The first"), ("b", "The second"), ("watch", "The monitoring platform")],
+    [("a", "b"), ("watch", "cluster")],
+    [("cluster", "The cluster", ("a", "b"))],
+)
+
+
+def test_an_edge_may_name_a_group() -> None:
+    """The whole of R5-2: a relation that belongs to the container is sayable.
+
+    `gap4` on two of the consumer's sheets, and one of them stayed blocked on it
+    for five rounds. Before this the id was refused by name — correctly, by the
+    format's own rule — and there was nothing to say instead.
+    """
+    built = drawing(WATCHED)
+    named = [route for route in built.routes if route.target == "cluster"]
+    assert len(named) == 1, [(r.source, r.target) for r in built.routes]
+
+
+def test_an_edge_to_a_group_anchors_on_the_frame_and_not_on_a_member() -> None:
+    """Anchored on the container's border: that is what makes it not a member's.
+
+    Drawn from a member the diagram says something narrower and wrong, and which
+    member is a coordinate decision the author must not have to take.
+    """
+    built = drawing(WATCHED)
+    frame = frame_named(built, "cluster")
+    (route,) = [r for r in built.routes if r.target == "cluster"]
+    end = route.points[-1]
+    on_border = (
+        abs(end[1] - frame.y) < 1e-6
+        or abs(end[1] - frame.bottom) < 1e-6
+        or abs(end[0] - frame.x) < 1e-6
+        or abs(end[0] - frame.right) < 1e-6
+    )
+    assert on_border, (end, (frame.x, frame.y, frame.right, frame.bottom))
+    assert frame.x - 1e-6 <= end[0] <= frame.right + 1e-6
+    assert frame.y - 1e-6 <= end[1] <= frame.bottom + 1e-6
+    for member in ("a", "b"):
+        box = built.boxes[member]
+        assert not (
+            box.x - 1e-6 <= end[0] <= box.x + box.width + 1e-6
+            and box.y - 1e-6 <= end[1] <= box.y + box.height + 1e-6
+        ), f"the arrow landed on {member!r} rather than on the frame"
+
+
+def test_an_edge_out_of_a_group_is_drawn_the_same_way() -> None:
+    """The reverse direction. A container is an endpoint, not a destination."""
+    built = drawing(
+        flow(
+            [("a", "The first"), ("b", "The second"), ("report", "The capacity report")],
+            [("a", "b"), ("service", "report")],
+            [("service", "The service", ("a", "b"))],
+        )
+    )
+    frame = frame_named(built, "service")
+    (route,) = [r for r in built.routes if r.source == "service"]
+    start = route.points[0]
+    assert frame.x - 1e-6 <= start[0] <= frame.right + 1e-6
+    assert frame.y - 1e-6 <= start[1] <= frame.bottom + 1e-6
+
+
+def test_a_frame_an_edge_ends_on_still_obstructs_nothing() -> None:
+    """Being an endpoint did not make a frame something to route around.
+
+    The two roles a box plays are separable, and this is the one that must not
+    change: every edge reaching a box inside a group crosses that border, so a
+    frame that blocked would make the diagram undrawable rather than tidy.
+    """
+    built = drawing(
+        flow(
+            [("a", "The first"), ("b", "The second"), ("watch", "The monitoring platform")],
+            [("watch", "a"), ("watch", "cluster")],
+            [("cluster", "The cluster", ("a", "b"))],
+        )
+    )
+    frame = frame_named(built, "cluster")
+    (inside,) = [r for r in built.routes if r.target == "a"]
+    end = inside.points[-1]
+    assert frame.x < end[0] < frame.right
+    assert frame.y < end[1] < frame.bottom
+
+
+def test_an_edge_to_a_group_ranks_against_the_group() -> None:
+    """A group is one node of its size to the layout that holds it, so it ranks.
+
+    The arrow reads as an arrow — the frame is below what points at it — rather
+    than as a line that happens to touch a border.
+    """
+    built = drawing(WATCHED)
+    frame = frame_named(built, "cluster")
+    watcher = built.boxes["watch"]
+    assert watcher.y + watcher.height <= frame.y + 1e-6
+
+
+def test_an_edge_between_a_group_and_a_node_inside_it_is_refused() -> None:
+    """It would leave a border and arrive within it: no geometry, no sentence."""
+    for edge in ({"from": "cluster", "to": "a"}, {"from": "a", "to": "cluster"}):
+        with pytest.raises(DocumentError) as error:
+            parse_document(
+                {
+                    "version": 1,
+                    "kind": "flow",
+                    "nodes": [{"id": "a", "text": "One"}, {"id": "b", "text": "Two"}],
+                    "edges": [edge],
+                    "groups": [{"id": "cluster", "text": "Both", "members": ["a", "b"]}],
+                }
+            )
+        assert "contains" in str(error.value)
+        assert "cluster" in str(error.value) and "'a'" in str(error.value)
+
+
+def test_an_edge_to_an_enclosing_group_is_refused_at_any_depth() -> None:
+    """Containment is transitive; the refusal follows it rather than one level."""
+    with pytest.raises(DocumentError) as error:
+        parse_document(
+            {
+                "version": 1,
+                "kind": "flow",
+                "nodes": [{"id": "a", "text": "One"}, {"id": "b", "text": "Two"}],
+                "edges": [{"from": "a", "to": "outer"}],
+                "groups": [
+                    {"id": "inner", "text": "In", "members": ["a", "b"]},
+                    {"id": "outer", "text": "Out", "members": ["inner"]},
+                ],
+            }
+        )
+    assert "'outer' contains 'a'" in str(error.value)
+
+
+def test_an_edge_naming_neither_a_node_nor_a_group_is_still_refused_by_name() -> None:
+    """The id space grew; it did not stop being closed."""
+    with pytest.raises(DocumentError) as error:
+        parse_document(
+            {
+                "version": 1,
+                "kind": "flow",
+                "nodes": [{"id": "a", "text": "One"}],
+                "edges": [{"from": "a", "to": "nowhere"}],
+                "groups": [{"id": "cluster", "text": "Both", "members": ["a"]}],
+            }
+        )
+    assert "/edges/0/to" in str(error.value)
+    assert "'nowhere' is not the id of any node or group in this document" in str(error.value)
+
+
+def test_an_edge_may_join_two_containers() -> None:
+    """Neither end has to be a box. Two frames are two endpoints."""
+    built = drawing(
+        flow(
+            [("a", "One"), ("b", "Two"), ("c", "Three"), ("d", "Four")],
+            [("left", "right")],
+            [("left", "The first pair", ("a", "b")), ("right", "The second", ("c", "d"))],
+        )
+    )
+    (route,) = built.routes
+    first, second = frame_named(built, "left"), frame_named(built, "right")
+    for point, frame in ((route.points[0], first), (route.points[-1], second)):
+        assert frame.x - 1e-6 <= point[0] <= frame.right + 1e-6
+        assert frame.y - 1e-6 <= point[1] <= frame.bottom + 1e-6

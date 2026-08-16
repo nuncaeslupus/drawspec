@@ -2,7 +2,7 @@
   "version": 1,
   "kind": "flow",
   "title": "What a group is for",
-  "description": "A control plane holding four components, and two workers holding two each. The frames are the containers; the arrows cross them to reach the boxes inside.",
+  "description": "A control plane holding four components, and two workers holding two each. The frames are the containers; the arrows cross them to reach the boxes inside — except the one that names a container, which stops on the frame's border because it is about the whole of it.",
   "nodes": [
     { "id": "api", "text": "The **API** everything talks to", "role": "emphasis" },
     { "id": "store", "text": "The store of record" },
@@ -11,7 +11,8 @@
     { "id": "agent1", "text": "Its agent" },
     { "id": "runtime1", "text": "Its runtime", "role": "note" },
     { "id": "agent2", "text": "Its agent" },
-    { "id": "runtime2", "text": "Its runtime", "role": "note" }
+    { "id": "runtime2", "text": "Its runtime", "role": "note" },
+    { "id": "watch", "text": "The monitoring platform", "role": "note" }
   ],
   "edges": [
     { "from": "api", "to": "store", "label": "reads and writes", "role": "exchange" },
@@ -20,7 +21,8 @@
     { "from": "api", "to": "agent1", "label": "assigns work" },
     { "from": "api", "to": "agent2", "label": "assigns work" },
     { "from": "agent1", "to": "runtime1", "role": "owns" },
-    { "from": "agent2", "to": "runtime2", "role": "owns" }
+    { "from": "agent2", "to": "runtime2", "role": "owns" },
+    { "from": "watch", "to": "plane", "label": "watches" }
   ],
   "groups": [
     { "id": "plane", "text": "The control plane", "members": ["api", "store", "scheduler", "controllers"] },

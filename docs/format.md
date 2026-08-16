@@ -134,8 +134,8 @@ name, so a misspelt key is an error at the point it was written.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `from` | string | **yes** | The id of the source node. |
-| `to` | string | **yes** | The id of the target node. |
+| `from` | string | **yes** | The id of the source node — or, in a graph kind, of a group: an edge may name a container, for a relation that belongs to the whole of it rather than to any one box inside. It may not join a container to something already within it. |
+| `to` | string | **yes** | The id of the target node — or, in a graph kind, of a group. The same id space as `from`. |
 | `label` | string | no | A short label placed along the edge. |
 | `role` | string — one of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
 

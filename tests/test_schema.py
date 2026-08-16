@@ -435,6 +435,24 @@ REFERENTIAL_CASES: list[tuple[str, dict[str, Any]]] = [
         "group id that is also a node id",
         flow_document(groups=[{"id": "in", "text": "Ambiguous", "members": ["chk"]}]),
     ),
+    # R5-2 widened the id space an edge may name to include groups. It did not
+    # open it: a name that resolves to neither is still refused by name, and a
+    # container joined to something already inside it is refused for saying
+    # nothing — an edge that leaves a border and arrives within it.
+    (
+        "edge to a container that holds its other end",
+        flow_document(
+            edges=[{"from": "g", "to": "chk"}],
+            groups=[{"id": "g", "text": "Both", "members": ["in", "chk"]}],
+        ),
+    ),
+    (
+        "edge out of a node into the container that holds it",
+        flow_document(
+            edges=[{"from": "chk", "to": "g"}],
+            groups=[{"id": "g", "text": "Both", "members": ["in", "chk"]}],
+        ),
+    ),
 ]
 
 
@@ -613,3 +631,42 @@ def _without(document: dict[str, Any], key: str) -> dict[str, Any]:
 def _without_key(document: dict[str, Any], key: str, index: int, name: str) -> dict[str, Any]:
     document[key][index].pop(name, None)
     return document
+
+
+# --------------------------------------------------------------------------
+# R5-2 — the id space an edge may name
+# --------------------------------------------------------------------------
+
+
+def test_an_edge_may_name_a_group_as_well_as_a_node() -> None:
+    """A relation can belong to the whole container rather than to a box in it."""
+    document = flow_document(
+        nodes=[
+            {"id": "in", "text": "Request arrives"},
+            {"id": "chk", "text": "Is the payload valid?"},
+            {"id": "watch", "text": "The monitoring platform"},
+        ],
+        edges=[{"from": "watch", "to": "g", "label": "watches"}],
+        groups=[{"id": "g", "text": "The cluster", "members": ["in", "chk"]}],
+    )
+    assert accepted_by_parser(document)
+    assert parse_document(document).edges[0].target == "g"
+
+
+def test_an_edge_naming_neither_a_node_nor_a_group_says_so() -> None:
+    """The message names the id space it checked against, not just the id."""
+    with pytest.raises(DocumentError) as error:
+        parse_document(
+            flow_document(
+                edges=[{"from": "in", "to": "ghost"}],
+                groups=[{"id": "g", "text": "Both", "members": ["in", "chk"]}],
+            )
+        )
+    assert "'ghost' is not the id of any node or group in this document" in str(error.value)
+
+
+def test_the_published_schema_says_an_edge_end_may_be_a_group() -> None:
+    """An editor completing `from` should not have to find this out by rendering."""
+    edge = build_schema()["$defs"]["edge"]["properties"]
+    assert "group" in edge["from"]["description"]
+    assert "group" in edge["to"]["description"]

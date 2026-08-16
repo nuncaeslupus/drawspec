@@ -32,7 +32,7 @@ documents the gap rather than pretending to cover it.
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Sequence, Set
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
@@ -201,8 +201,26 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
     ),
     "edge": (
-        FieldSpec("from", "string", required=True, description="The id of the source node."),
-        FieldSpec("to", "string", required=True, description="The id of the target node."),
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description=(
+                "The id of the source node — or, in a graph kind, of a group: an edge "
+                "may name a container, for a relation that belongs to the whole of it "
+                "rather than to any one box inside. It may not join a container to "
+                "something already within it."
+            ),
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description=(
+                "The id of the target node — or, in a graph kind, of a group. The same "
+                "id space as `from`."
+            ),
+        ),
         FieldSpec("label", "string", description="A short label placed along the edge."),
         _role(EDGE_ROLES, "flow"),
     ),
@@ -1355,6 +1373,16 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
             )
         seen.add(identifier)
 
+    groups = document.get("groups")
+    # A member may name a node or another group: a container that contains a
+    # container is how the corpus draws three frames deep, and refusing it
+    # would make the nesting the renderer supports unsayable.
+    containers = {
+        group["id"]
+        for group in (groups if isinstance(groups, list) else ())
+        if isinstance(group, dict) and isinstance(group.get("id"), str)
+    }
+
     edges = document.get("edges")
     if isinstance(edges, list):
         for index, edge in enumerate(edges):
@@ -1362,24 +1390,20 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                 continue
             for end in ("from", "to"):
                 target = edge.get(end)
-                if isinstance(target, str) and target not in seen:
+                # A group is a name an edge may resolve to, because a relation
+                # can belong to the whole container rather than to any one box
+                # in it — R5-2. The frame is already a box with an extent and a
+                # border, so the only thing that was missing was saying so.
+                if isinstance(target, str) and target not in seen and target not in containers:
                     found.append(
                         Violation(
                             _pointer("edges", index, end),
-                            f"{target!r} is not the id of any node in this document",
+                            f"{target!r} is not the id of any node or group in this document",
                         )
                     )
+        found.extend(_self_containment(edges, groups, containers))
 
-    groups = document.get("groups")
     if isinstance(groups, list):
-        # A member may name a node or another group: a container that contains a
-        # container is how the corpus draws three frames deep, and refusing it
-        # would make the nesting the renderer supports unsayable.
-        containers = {
-            group.get("id")
-            for group in groups
-            if isinstance(group, dict) and isinstance(group.get("id"), str)
-        }
         # A group id is a name a member may resolve to, and the renderer keys its
         # containment tree and its captions by it. So a repeated one does not
         # draw twice — the second silently replaces the first, and the drawing
@@ -1440,6 +1464,66 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                             f"{member!r} is not the id of any node in this document",
                         )
                     )
+    return found
+
+
+def _self_containment(edges: Sequence[Any], groups: Any, containers: Set[str]) -> list[Violation]:
+    """Edges between a container and something already inside it.
+
+    An edge naming a group says *this relation belongs to the whole of it* — a
+    platform that watches the cluster rather than one pod of it. That reading
+    only holds against something **outside** the container: an edge from a frame
+    to a box within it would leave a border and arrive inside the same border,
+    which is not a relation between two things but a line from a thing to part of
+    itself. There is no geometry for it, and no sentence it draws.
+
+    Refused by name rather than dropped, for the same reason an id that resolves
+    to nothing is: the author meant something, and only they can say what.
+    """
+    parent: dict[str, str] = {}
+    for group in groups if isinstance(groups, list) else ():
+        if not isinstance(group, dict) or not isinstance(group.get("id"), str):
+            continue
+        members = group.get("members")
+        if not isinstance(members, list):
+            continue
+        for member in members:
+            # First claim wins. A member claimed twice is its own violation and
+            # is reported by the group checks; walking either chain would answer
+            # this question the same way.
+            if isinstance(member, str) and member not in parent:
+                parent[member] = group["id"]
+
+    def encloses(container: str, identifier: str) -> bool:
+        """Whether `container` is an ancestor of `identifier`, at any depth."""
+        walked: set[str] = set()
+        current = parent.get(identifier)
+        while current is not None and current not in walked:
+            if current == container:
+                return True
+            walked.add(current)
+            current = parent.get(current)
+        return False
+
+    found: list[Violation] = []
+    for index, edge in enumerate(edges):
+        if not isinstance(edge, dict):
+            continue
+        source, target = edge.get("from"), edge.get("to")
+        if not isinstance(source, str) or not isinstance(target, str):
+            continue
+        for end, container, inside in (("from", source, target), ("to", target, source)):
+            if container in containers and encloses(container, inside):
+                found.append(
+                    Violation(
+                        _pointer("edges", index, end),
+                        f"{container!r} contains {inside!r}, so an edge between them would "
+                        f"leave a border and arrive inside it. An edge naming a container is "
+                        f"about the whole of it, which only says something against what is "
+                        f"outside — draw it from a member instead, or point it elsewhere.",
+                    )
+                )
+                break
     return found
 
 
