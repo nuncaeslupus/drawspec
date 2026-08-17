@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How do I write a document?
+    url: https://github.com/nuncaeslupus/drawspec/blob/main/docs/guide.md
+    about: The guide is meant to be enough on its own — install, first diagram, kinds, roles, embedding, theming.
+  - name: What fields may a document carry?
+    url: https://github.com/nuncaeslupus/drawspec/blob/main/docs/format.md
+    about: Every field by kind, and every field that is refused, with the reason.

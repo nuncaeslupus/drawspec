@@ -1,0 +1,47 @@
+name: Bug report
+description: A diagram drew wrong, refused wrongly, or crashed.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **The most useful thing you can give us is the document.** A drawspec bug
+        is almost always reproducible from the JSON alone — more useful than a
+        screenshot, and much more than a description.
+
+  - type: textarea
+    id: document
+    attributes:
+      label: The document
+      description: The JSON you rendered. Trim it if you can, but keep it renderable.
+      render: json
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what you got
+      description: |
+        For a wrong drawing, say what is wrong with it — a line through a word, a
+        box off the canvas, an arrow that stops short. Attaching the SVG helps.
+        For a wrong refusal, paste the message: it carries a JSON pointer.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `drawspec --version`.
+    validations:
+      required: true
+
+  - type: textarea
+    id: theme
+    attributes:
+      label: Theme
+      description: The theme file, if you are not using the bundled default.
+      render: toml
+    validations:
+      required: false
