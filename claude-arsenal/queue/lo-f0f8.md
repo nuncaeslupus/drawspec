@@ -52,3 +52,31 @@ delivery, not rendering.
 
 GitHub repository settings (Pages), `README.md`, and possibly a
 `.github/workflows/pages.yml` depending on the decision above.
+
+---
+
+## Confirmed from a cloud session, 2026-08-17
+
+Same finding as C1: no Pages tool on the available GitHub MCP surface, so this is
+`laptop` work. The cheapest thing that works, and the recommendation:
+
+**Settings → Pages → Source: Deploy from a branch → `main` / `/docs`.** No
+workflow, no build step, and the committed gallery stays the published one —
+which preserves the property that a diff of `docs/gallery/` shows what a change
+did to the pictures.
+
+That serves the whole of `docs/`, so these all become real URLs:
+
+| | |
+|---|---|
+| gallery | `https://nuncaeslupus.github.io/drawspec/gallery/` |
+| guide | `https://nuncaeslupus.github.io/drawspec/guide.html` |
+| format reference | `https://nuncaeslupus.github.io/drawspec/format.html` |
+
+Confirm first that the round-plan documents and `kinds-wanted.md` reading as
+public is intended — they are already public in the repository, so this is a
+question of prominence rather than of disclosure.
+
+The README link is **not** pre-written: pointing at a page that does not exist
+yet is worse than not linking, so add it once Pages is live. That is also the
+value for C1's homepage field, which is why C1 depends on this one.
