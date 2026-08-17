@@ -381,6 +381,39 @@ else:
     Path("diagram.svg").write_text(svg, encoding="utf-8")
 ```
 
+## Using it from an agent: the MCP server
+
+If the thing writing your documents is a language model rather than a person,
+there is a third interface. `drawspec-mcp` serves the same work as three MCP
+tools over stdio:
+
+| Tool | Answers |
+|---|---|
+| `validate` | would `render` refuse this, and **where** — every violation as `{"pointer", "message"}` |
+| `render` | the SVG, with the same optional `theme`, `width` and `height` |
+| `kinds` | every kind and what it is for, so a model chooses one instead of guessing |
+
+```bash
+pip install 'drawspec[mcp]'
+```
+
+Then point a client at it. For anything that reads the conventional JSON config:
+
+```json
+{
+  "mcpServers": {
+    "drawspec": { "command": "drawspec-mcp" }
+  }
+}
+```
+
+**`validate` is the one that earns the server.** Shelling out to the CLI works,
+and it hands a model prose on stderr that it has to read to discover that
+`/edges/2/to` names nothing. As a tool the same refusal comes back as data, in
+the model's own loop, and the write-validate-fix cycle closes without a shell in
+it. It is the same check the CLI runs — the server does not describe the format a
+second time, and a refusal here says exactly what a refusal there says.
+
 ## Groups and bands
 
 Both take a set of nodes, and they say different things about them.

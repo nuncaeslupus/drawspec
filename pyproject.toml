@@ -52,6 +52,11 @@ Changelog = "https://github.com/nuncaeslupus/drawspec/blob/main/CHANGELOG.md"
 
 [project.scripts]
 drawspec = "drawspec.cli:main"
+# Declared whether or not the `mcp` extra is installed, because a client's config
+# names a command before anything runs it — and a missing command and a missing
+# extra are indistinguishable to whoever pasted the config. This way the failure
+# is `pip install 'drawspec[mcp]'` in the last line of the log.
+drawspec-mcp = "drawspec.mcp:main"
 
 [project.optional-dependencies]
 dev = [
@@ -61,6 +66,15 @@ dev = [
 ]
 spike = [
     "grandalf>=0.8",
+]
+# The MCP server, and the only dependency drawspec has beyond fonttools. It is
+# an extra rather than a dependency because it is a delivery mechanism, not part
+# of the format: nobody rendering a diagram from Python should pay for starlette.
+# The floor is 2.0 rather than something older because `drawspec.mcp` is written
+# against the callback API (`on_list_tools` / `on_call_tool`) 2.0 introduced —
+# a wider range would resolve to something that imports and then fails to serve.
+mcp = [
+    "mcp>=2.0",
 ]
 
 [build-system]

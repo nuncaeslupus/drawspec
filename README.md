@@ -233,6 +233,12 @@ to do. It is written to be read in a single pass rather than navigated, which is
 what the guide and the references are for. [`llms.txt`](llms.txt) is the index
 that points at it.
 
+And if your client speaks **MCP**, `pip install 'drawspec[mcp]'` gives you
+`drawspec-mcp`: `validate`, `render` and `kinds` as tools, so a refusal arrives as
+`{"pointer": "/edges/0/to", "message": …}` in the model's own loop instead of as
+prose on stderr it has to read. Same checks, same messages, no shell. See
+[the guide](docs/guide.md#using-it-from-an-agent-the-mcp-server).
+
 It cannot drift either: a test asserts that every kind in the vocabulary is named
 in it, that every role the theme declares appears, and that **every example in it
 is a document that still validates**. An agent copying from a stale brief is the
