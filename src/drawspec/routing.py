@@ -593,8 +593,16 @@ def route_edges(
     theme: Theme,
     *,
     direction: str = "down",
+    anchors: Sequence[Obstacle] = (),
 ) -> tuple[Route, ...]:
     """Route every connector around every obstacle, in the order given.
+
+    `anchors` are boxes a connector may **name** without their standing in
+    anyone's way — a group's frame, and nothing else so far. The two roles a box
+    plays here have always been separable and until R5-2 nothing needed them
+    apart: an obstacle is somewhere a line cannot go, an endpoint is something a
+    line may land on. A frame is the second and must not be the first, because
+    every edge reaching a box inside it has to cross that border to get there.
 
     Raises:
         LayoutError: a connector names a box that is not there, two boxes share
@@ -603,7 +611,7 @@ def route_edges(
             arrangement rather than about the router — see `minimum_rank_gap`.
     """
     boxes: dict[str, Obstacle] = {}
-    for box in obstacles:
+    for box in (*obstacles, *anchors):
         if box.id in boxes:
             raise LayoutError(f"two boxes share the id {box.id!r}")
         boxes[box.id] = box

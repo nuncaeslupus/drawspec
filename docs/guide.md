@@ -396,6 +396,24 @@ below has two things of equal rank accompanying the same six boxes; written as
 groups, one has to be nested inside the other, and the drawing then claims a
 hierarchy nobody stated. Written as bands they are peers, which is what they are.
 
+**An edge may name a group.** `from` and `to` take a group's id as readily as a
+node's, and the arrow then stops on the frame's border rather than on any box
+inside it. That is for the relation that belongs to the whole container — a
+platform that watches *the cluster* rather than one pod of it, a report produced
+by *the service* rather than by one of its components. Drawn from a member the
+diagram says something narrower, and choosing which member is exactly the
+coordinate decision drawspec exists to spare an author. See
+[`reference/flow-groups.json`](reference/flow-groups.json), whose monitoring
+platform arrives on the control plane itself.
+
+An edge between a container and something already inside it is refused, at any
+depth of nesting: it would leave a border and arrive within the same border,
+which is not a relation between two things. Draw it from a member instead.
+
+This is `flow` and `tree` only. A `cycle` accepts `groups` and draws none — it
+places its steps on a ring — so an edge in one names a node, and a group id at
+either end is refused with a message that says which of the two you have.
+
 A band runs *along* the reading direction and is placed *across* it, so a process
 read across the page gets its bands above and below, and the same process read
 down gets them left and right. See

@@ -714,3 +714,49 @@ def test_a_lighter_edge_gets_a_smaller_head() -> None:
 def test_the_widest_head_covers_every_edge_role() -> None:
     """Routing reserves room for a head before it knows which role will use it."""
     assert THEME.widest_head == max(THEME.head_length_for(name) for name in THEME.edge_roles)
+
+
+# --------------------------------------------------------------------------
+# Anchors — a box a route may end on without standing in anyone's way
+# --------------------------------------------------------------------------
+
+
+def test_an_anchor_is_an_endpoint_a_route_may_name() -> None:
+    """R5-2's whole addition to the router: a second id space for endpoints.
+
+    A group's frame is a box with an extent and a border, which is everything an
+    endpoint needs. `anchors` says so without saying the other thing a box in
+    `obstacles` says.
+    """
+    frame = Obstacle("frame", x=90.0, y=40.0 + GAP, width=300.0, height=40.0 + GAP + 40.0)
+    (route,) = route_edges((Connector("a", "frame"),), COLUMN[:1], THEME, anchors=(frame,))
+    assert route.points[-1][1] == pytest.approx(frame.y)
+    assert frame.x <= route.points[-1][0] <= frame.right
+
+
+def test_an_anchor_never_blocks_a_route() -> None:
+    """The half that must not change: a frame is not something to route around.
+
+    The anchor here wraps `b` and `c` entirely, so every route into either of
+    them crosses it. Given as an obstacle it would make the drawing impossible;
+    given as an anchor it is simply not in the way.
+    """
+    frame = Obstacle("frame", x=90.0, y=40.0 + GAP - 8.0, width=140.0, height=80.0 + GAP + 16.0)
+    built = route_edges((Connector("a", "b"), Connector("b", "c")), COLUMN, THEME, anchors=(frame,))
+    assert len(built) == 2
+    for route in built:
+        assert route.points[0] != route.points[-1]
+
+
+def test_an_anchor_that_repeats_an_obstacle_id_is_refused() -> None:
+    """One id, one box. The two roles are separable; the name space is not."""
+    with pytest.raises(LayoutError) as error:
+        route_edges((Connector("a", "b"),), COLUMN, THEME, anchors=(COLUMN[0],))
+    assert "'a'" in str(error.value)
+
+
+def test_a_connector_naming_nothing_at_all_still_goes_nowhere() -> None:
+    frame = Obstacle("frame", x=90.0, y=200.0, width=140.0, height=40.0)
+    with pytest.raises(LayoutError) as error:
+        route_edges((Connector("a", "absent"),), COLUMN, THEME, anchors=(frame,))
+    assert "goes nowhere" in str(error.value)

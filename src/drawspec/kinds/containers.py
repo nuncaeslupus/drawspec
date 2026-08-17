@@ -29,6 +29,14 @@ there, and a frame that blocked it would make the diagram undrawable rather than
 tidy. The cost is that an edge may clip a frame it has no business in; the
 alternative — per-edge obstacle sets — buys less than it complicates, and the
 corpus this was built for does not contain the case.
+
+**A frame still obstructs nothing and is now somewhere an edge may end.** Those
+are two questions about a box, not one, and R5-2 is what made the difference
+load-bearing: an edge may name a group, for the relation that belongs to the
+whole container rather than to any one box inside it. `frame_anchors` hands the
+frames to routing as endpoints only — see it, and `routing.route_edges`'s
+`anchors`. An edge between a container and something already inside it is
+refused by the schema, because it would leave a border and arrive within it.
 """
 
 from __future__ import annotations
@@ -444,6 +452,30 @@ def caption_obstacle(frame: Frame) -> tuple[Obstacle, ...]:
     )
 
 
+def frame_anchors(frames: Sequence[Frame]) -> tuple[Obstacle, ...]:
+    """Each frame as a box an edge may **end on**, and only that.
+
+    Routing keeps two questions about a box apart — *may a line cross you* and
+    *may a line land on you* — and a frame answers no to the first and yes to the
+    second. It has always answered no: an edge reaching a member has to cross the
+    border to get there, and a frame that blocked it would make the diagram
+    undrawable rather than tidy. What R5-2 added is the yes.
+
+    An edge that names a group is the relation that belongs to the container
+    rather than to any one box in it — a platform that watches the cluster, a
+    report produced by the service. Drawn from a member it says something
+    narrower and wrong, and picking which member is exactly the coordinate
+    decision an author must not have to make.
+
+    A rectangle with no `shape`, because a frame is drawn as one: the outline is
+    a `Rect` and the border an arrow lands on is that rectangle.
+    """
+    return tuple(
+        Obstacle(frame.id, x=frame.x, y=frame.y, width=frame.width, height=frame.height)
+        for frame in frames
+    )
+
+
 def border_obstacles(frame: Frame, theme: Theme) -> tuple[Obstacle, ...]:
     """The four sides of a frame, as thin obstacles.
 
@@ -499,6 +531,7 @@ __all__ = [
     "border_obstacles",
     "caption_obstacle",
     "captions_for",
+    "frame_anchors",
     "frame_primitives",
     "nesting_of",
 ]

@@ -169,7 +169,8 @@ belongs in `[canvas]` beside `width` — for the same reason `width` lives there
 Not taken unilaterally because it moves all 33 drawings.
 
 R5-1 has since been decided — *the figure carries its own channel* — and done;
-what that took is the section after this one. R5-2 is still open.
+what that took is the section after this one. R5-2 has since been done too, and
+what it turned on is the section after *that*.
 
 **R5-2 — `edge-from-a-group`.** Still refused, checked rather than assumed. It is
 the oldest item on the consumer's list that is not closed, `gap4` on sheets 39
@@ -262,3 +263,87 @@ reporting a number anyway.
 Content decisions on sheets **01** and **27**; the glosses on **53 / 74 / 81**;
 and the three redraws written in English against a Catalan source — **27, 83,
 86**. Round five went nowhere near any of them.
+
+---
+
+## R5-2, done: an edge may name a container
+
+`{"from": "watch", "to": "plane"}` where `plane` is a declared group now
+validates, routes, and draws an arrow that stops on the frame's border. The
+reverse direction too, and group-to-group. It is the oldest item on the
+consumer's list that was not closed — `gap4` on sheets **39** and **44**, and 44
+had been `blocked` on it for five rounds.
+
+### What it turned on: a box plays two roles, and only one of them was named
+
+Routing has always asked two different questions about a box, and until now every
+box answered both the same way:
+
+* **may a line cross you** — the obstacle question;
+* **may a line land on you** — the endpoint question.
+
+`route_edges` built its endpoint lookup *out of* its obstacle list, so the two
+were the same set by construction. A frame has never been allowed in that list:
+every edge reaching a box inside a group has to cross that border to get there,
+and a frame that blocked would make the diagram undrawable rather than tidy. So
+a frame could not be an endpoint either, and that — not anything about geometry —
+is why the feature was missing. `Frame` already had an extent, `border_obstacles`
+already treated its sides as geometry, and `crossed` already lifted edges to the
+level that holds both ends.
+
+The change is one keyword-only argument. `route_edges(..., anchors=…)` takes
+boxes a connector may **name** without their standing in anyone's way;
+`kinds/containers.frame_anchors` is the only caller's only use of it. Everything
+downstream — ports, stubs, lanes, the grid, label placement — already keyed off
+`route.source` / `route.target` rather than off membership of the obstacle list,
+so none of it needed to know.
+
+Ranking needed nothing at all. A group is laid out as one node of its own size in
+its parent's layout, and `Nesting.lift` returns a group unchanged when the level
+already contains it — so an edge to a container ranks against the container, and
+the arrow reads as an arrow rather than as a line that happens to touch a border.
+
+### The refusal that came with it
+
+An edge between a container and something already **inside** it is refused, at
+any depth, with a message that says why: it would leave a border and arrive
+within the same border, which is not a relation between two things but a line
+from a thing to part of itself. There is no geometry for it and no sentence it
+draws. It is a `DocumentError` with a JSON pointer at the container's end, like
+every other referential violation.
+
+An id that is neither a node nor a group is still refused by name. The id space
+grew; it did not open — the message now says *node or group*, which is the whole
+of what changed for an author who typoed one.
+
+### And review caught where the widened id space had to stop
+
+The first cut widened it for `GRAPH_KINDS`, which is three kinds and not two.
+`cycle` is a graph kind to the schema and a parametric template to the renderer
+— D-1 — so it places its steps on a ring, draws no frame, and its placement map
+holds nodes only. It also accepts `groups` in its payload and ignores them. So a
+valid ring plus one shortcut edge naming a group passed validation and reached
+`cycle_scene` as a bare `KeyError`: an internal crash standing exactly where the
+format's own located refusal used to be. **A widened id space is a promise the
+renderer has to be able to keep**, and only two of the three kinds could keep it.
+
+`CONTAINER_KINDS = ("flow", "tree")` is that boundary, and the refusal for a
+`cycle` says which of the two things the author has rather than claiming the id
+does not exist: *`'g'` is a group, and a cycle is drawn as a ring of steps with
+no containers in it.*
+
+A second finding from the same review — an edge naming one group at **both**
+ends — was checked and declined. It draws a self-loop out of the frame's border,
+around the outside, and back to the border, which is the treatment a node has
+had since T9 and is entirely outside the frame. The containment rule is about a
+line arriving *within* a border; this one never goes in.
+
+### The caption keeps its corner
+
+A frame's caption sits in its top-left at its own width and is already an
+obstacle to routing, so an arrow arriving on the top border comes in beside the
+words rather than through them — the mechanism that was built for edges reaching
+*into* a group covers edges stopping *on* it unchanged. `flow-groups` is the
+reference: a monitoring platform arriving on the control plane itself, over the
+caption's right and clear of it. Gallery gates unmoved at **0 collisions and 0
+outside the canvas across 34 references**.

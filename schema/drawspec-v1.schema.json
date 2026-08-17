@@ -884,11 +884,11 @@
       "properties": {
         "from": {
           "type": "string",
-          "description": "The id of the source node."
+          "description": "The id of the source node — or, in a `flow` or a `tree`, of a group: an edge may name a container, for a relation that belongs to the whole of it rather than to any one box inside. It may not join a container to something already within it. A `cycle` draws no containers, so an edge in one names a node."
         },
         "to": {
           "type": "string",
-          "description": "The id of the target node."
+          "description": "The id of the target node — or, in a `flow` or a `tree`, of a group. The same id space as `from`."
         },
         "label": {
           "type": "string",
