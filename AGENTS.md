@@ -84,6 +84,13 @@ name either.
 Use `decision` for a question with branching answers, `note` for an aside that is
 not a step, `link` for a connection with no direction.
 
+**Who performs a step is not a role.** Use `actor` — free text on a node,
+orthogonal to `role`, drawn as the box's lead so the names line up in a column:
+`{"id": "approve", "text": "Sign off", "actor": "A release manager"}`. Do not
+reach for `decision` to make a human step stand out; a diamond promises a branch.
+A box has one lead, so a node with an `actor` may not also put a newline in its
+`text`.
+
 ## Worked examples
 
 A flow — `role` is the only appearance decision in the file:

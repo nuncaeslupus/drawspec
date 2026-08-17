@@ -26,6 +26,13 @@ against it would stop working. Everything below is about the *package*.
   `{"pointer", "message"}` objects rather than as prose on stderr, so an agent's
   write-validate-fix cycle closes without a shell in it. An optional extra: the
   library gains no dependency for anyone who does not install it.
+- **`actor` on a node** — who performs a step, orthogonal to `role`, answering
+  [#48](https://github.com/nuncaeslupus/drawspec/issues/48). Drawn as the box's
+  lead so the names line up in a column. Free text rather than an enum on
+  purpose: an actor is told apart by its **name**, which is legible in greyscale,
+  so ownership costs none of the four non-colour channels the roles are told
+  apart by and the greyscale invariant is untouched. A box has one lead, so a
+  node naming an actor may not also write its own; that is refused by pointer.
 - `CONTRIBUTING.md` and this changelog.
 
 ## 0.1.0 — unreleased

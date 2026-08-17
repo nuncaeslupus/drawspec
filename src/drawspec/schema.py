@@ -182,6 +182,18 @@ def _text(name: str = "text", *, required: bool = True) -> FieldSpec:
 #: of meaning that ships as v2. What can change now is that an author reads this
 #: before writing one, in their editor, rather than finding out by rendering and
 #: seeing nothing.
+_ACTOR_DESCRIPTION: Final = (
+    "Who performs this step — free text, and orthogonal to `role`. `role` says what kind "
+    "of step it is; this says whose it is, and the two are independent: a human step can "
+    "be routine and an automated one can be the critical path. Drawn as the box's **lead**, "
+    "the name over what belongs to it, so the same words sit in the same place in every box "
+    "and a reader can scan a column of them. Free text rather than an enum on purpose: an "
+    "actor is told apart by its **name**, which is legible in greyscale and in any medium, "
+    "so it costs none of the four non-colour channels the roles are told apart by. "
+    "**Only a `flow`, a `tree` or a `cycle` draws one**, and a node that names an actor may "
+    "not also write its own lead — the box has one lead and this is it."
+)
+
 _NOTE_DESCRIPTION: Final = (
     "A short aside attached to this element. **Only `timeline` draws one** — it goes "
     "under the axis, beside the entry's own mark. Every other kind accepts the field "
@@ -219,6 +231,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         ),
         _text(),
         _role(NODE_ROLES, "step"),
+        FieldSpec("actor", "string", description=_ACTOR_DESCRIPTION),
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
     ),
     "edge": (
@@ -822,6 +835,30 @@ class Node:
     note: str = ""
     """Accepted for v1 compatibility; only `timeline` items are drawn."""
 
+    actor: str = ""
+    """Who performs this step. Free text, and empty when nobody was named."""
+
+    @property
+    def label(self) -> str:
+        """The words this node's box is sized and drawn from.
+
+        An actor is the box's **lead**: the name over what belongs to it, which is
+        the compartment a hand-drawn class box, record or component already uses.
+        Written here rather than by each family, so `flow`, `tree` and `cycle`
+        cannot disagree about where the actor sits.
+        """
+        return f"{self.actor}\n{self.text}" if self.actor else self.text
+
+    @property
+    def lead(self) -> bool | None:
+        """Whether this node's first paragraph is a lead.
+
+        `True` when an actor supplied one, and `None` — meaning *ask the text* —
+        otherwise. Never `False`: a node without an actor may still have written
+        its own lead, and answering for it would take that away.
+        """
+        return True if self.actor else None
+
 
 @dataclass(frozen=True)
 class Edge:
@@ -1189,6 +1226,23 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                     "subject has one subject.",
                 )
             )
+        # An actor is drawn as the box's lead, and a box has one lead. A node
+        # that wrote its own is not refused a *field* — it is told that the two
+        # are the same slot, which is a different mistake and a different fix.
+        for index, node in enumerate(document.get("nodes", ()) or ()):
+            if not isinstance(node, dict) or not node.get("actor"):
+                continue
+            text = node.get("text")
+            if isinstance(text, str) and "\n" in text.strip():
+                found.append(
+                    Violation(
+                        _pointer("nodes", index, "actor"),
+                        "this node names an actor and also writes its own lead — the "
+                        "newline in its 'text' says the first paragraph is one. A box "
+                        "has a single lead and the actor is it: either drop the actor, "
+                        "or join the text into one paragraph.",
+                    )
+                )
         if middles and kind != "flow":
             found.append(
                 Violation(
@@ -1595,6 +1649,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
                 role=entry.get("role", "step"),
                 centre=bool(entry.get("centre", False)),
                 note=entry.get("note", ""),
+                actor=entry.get("actor", ""),
             )
             for entry in document.get("nodes", ())
         ),

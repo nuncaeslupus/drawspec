@@ -1,0 +1,21 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "flow",
+  "title": "A release pipeline, and where it waits for a person",
+  "description": "Five steps, four of them automatic and one not, and that distinction is the whole reason to draw it. `actor` says who performs a step and is orthogonal to `role`: every box here is a plain `step`, because they are all the same kind of step — what differs is whose. Encoding ownership as a role would have cost the role, which is what made `decision` (a diamond, implying a branch that is not there) and `emphasis` (this matters, which is a different fact) both wrong.",
+  "caption": "The actor is the box's lead, so the same words sit in the same place in every box and the odd one out is found by scanning one column rather than by reading five labels.",
+  "nodes": [
+    { "id": "build", "text": "Build the artefact", "actor": "CI" },
+    { "id": "test", "text": "Run the suite", "actor": "CI" },
+    { "id": "stage", "text": "Deploy to staging", "actor": "CI" },
+    { "id": "approve", "text": "Sign off the release", "actor": "A release manager" },
+    { "id": "prod", "text": "Deploy to production", "actor": "CI" }
+  ],
+  "edges": [
+    { "from": "build", "to": "test" },
+    { "from": "test", "to": "stage" },
+    { "from": "stage", "to": "approve" },
+    { "from": "approve", "to": "prod" }
+  ]
+}
