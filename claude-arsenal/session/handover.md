@@ -8,37 +8,23 @@
 [#53](https://github.com/nuncaeslupus/drawspec/pull/53) `fe011e0` ·
 [#54](https://github.com/nuncaeslupus/drawspec/pull/54) `ba1c0aa` ·
 [#59](https://github.com/nuncaeslupus/drawspec/pull/59) `25e7eb2` ·
-[#60](https://github.com/nuncaeslupus/drawspec/pull/60) `e297771`
-**Suite**: 1 611 passing, 1 skipped · lint + strict mypy clean
-**Gates**: 0 collisions **and** 0 outside the canvas, across 35 references
-**Queue**: 37 of 43 terminal · `queue_doctor.sh` reports **0 findings**
+[#60](https://github.com/nuncaeslupus/drawspec/pull/60) `e297771` ·
+[#61](https://github.com/nuncaeslupus/drawspec/pull/61) `614ffd4` ·
+[#62](https://github.com/nuncaeslupus/drawspec/pull/62) `c924dfa`
+**Suite**: 1 645 passing, 1 skipped · lint + strict mypy clean
+**Gates**: 0 collisions **and** 0 outside the canvas, across 37 references
+**Queue**: 38 of 43 terminal · `queue_doctor.sh` reports **0 findings**
 
 ---
 
-## Read this first: what you can and cannot do here
+## Read this first
 
-Six tasks are open. **One is real work a cloud session can do today**, and five
-need a laptop, a browser or a purchase.
+**Every open task now needs a laptop.** Five remain and there is no code work
+left in the queue — the cloud side is finished. Do not go hunting: `B3` (the MCP
+server) and `F1` (`actor`) both shipped this session, and what is left is a
+settings switch, a credential and a sweep.
 
-### Doable now, no laptop
-
-| | |
-|---|---|
-| **F1** `lo-3b60` | Build `actor` on a node — issue #48's scannable half |
-
-**Its payload changed shape this session and that is the point.** It used to open
-with three options and *"decide before building"*. The decision is made, on
-measured evidence, and is
-[public on the issue](https://github.com/nuncaeslupus/drawspec/issues/48#issuecomment-5319931957).
-**Do not re-open it** — the payload now specifies one thing to build, including
-the design point that unblocks it (an actor is told apart by *its name*, so it
-needs no fifth appearance channel and the greyscale invariant is untouched). The
-hard part named in the payload is not the field; it is reserving the tag's space
-at measure time.
-
-**B3 shipped** — see below.
-
-### Needs a laptop, and one switch unblocks four of them
+**One switch unblocks four of the five.**
 
 > **Settings → Pages → Source: Deploy from a branch → `main` / `/` (root)**
 
@@ -117,20 +103,29 @@ It closes a *convenience* gap, not a reach gap: an agent still has to know
 drawspec exists, which `A3` and `C1` address far more cheaply. **Still do those
 first.**
 
-## F1: decided, not built
+## F1 shipped: `actor` (#62), and issue #48 is answered
 
-The design half is done and is the reason this task is cheaper than it looks now.
-Bands were tried as swimlanes on the exact document in issue #48 and failed
-twice — a band's bar spans its members' *extent*, so a discontiguous owner's bar
-runs straight past the step it does not own (the drawing says the opposite of the
-document), and a band over a single node cannot be named because the name has to
-fit the members' span. Real swimlanes were considered and are not justified.
+The thing worth carrying forward is **why it was stuck for two rounds and why it
+turned out to be small.** The diagnosis was: four non-colour channels, all spent
+on the eight roles, therefore no room for ownership. That was true, and it
+assumed ownership must be encoded as **appearance**. It need not be — the tag
+carries the actor's *name*, and text is distinguishable in greyscale by
+construction. So it costs none of the four channels and `theme check` needed no
+new axis, which is why the field is free text rather than an enum.
 
-The build is `actor` on a node, and the payload carries the one insight that
-makes it tractable: the earlier "all four non-colour channels are spent"
-diagnosis was true but assumed ownership must be *appearance*. It need not be —
-the tag carries the actor's **name**, and text is distinguishable in greyscale by
-construction.
+Drawn as the box's **lead**, so the existing lead machinery reserves the space at
+measure time — the part that would otherwise have been hard.
+
+**Bands were measured, not argued about,** and both failures are now tests so
+nobody re-proposes them: a band's bar spans its members' *extent*, so a
+discontiguous owner's bar runs straight past a step it does not own; and a band
+over a single node cannot be named, because the name has to fit its members'
+span. Swimlanes remain deliberately unbuilt — revisit only with evidence that a
+per-node marker is not enough.
+
+Two reference documents carry it: `flow-actors` (the issue's pipeline) and
+`flow-actor-handover`, which is the same four steps `flow-bands` draws so the two
+sit side by side as *accompanying* versus *owning*.
 
 ## After those
 
