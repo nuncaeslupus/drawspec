@@ -5,38 +5,48 @@
 **Date**: 2026-08-17 · **Branch**: `claude/continuation-hkhyz8`
 **Merged this session**: [#51](https://github.com/nuncaeslupus/drawspec/pull/51) `a140c0f` ·
 [#52](https://github.com/nuncaeslupus/drawspec/pull/52) `b90414a` ·
-[#53](https://github.com/nuncaeslupus/drawspec/pull/53) `fe011e0`
+[#53](https://github.com/nuncaeslupus/drawspec/pull/53) `fe011e0` ·
+[#54](https://github.com/nuncaeslupus/drawspec/pull/54) `ba1c0aa`
 **Suite**: 1 600 passing, 1 skipped · lint + strict mypy clean
 **Gates**: 0 collisions **and** 0 outside the canvas, across 35 references
 **Queue**: 36 of 42 terminal · `queue_doctor.sh` reports **0 findings**
 
 ---
 
-## Read this first: everything left needs a laptop
+## Read this first: what you can and cannot do here
 
-Six tasks are open. **Five cannot be done from a cloud session at all**, and the
-sixth should not be started yet. If you are a cloud session, there is no code
-work waiting for you — check with the owner before inventing some.
+Seven tasks are open. **Two are real work a cloud session can do today**, and
+five need a laptop, a browser or a purchase. Start with the two.
 
-The single action that unblocks most of it is one switch:
+### Doable now, no laptop
+
+| | | Size |
+|---|---|---|
+| **B3** `lo-fbbb` | An MCP server: `validate`, `render`, `kinds` as callable tools | the larger one |
+| **F1** `lo-3b60` | Issue #48's scannable half — who performs a step | design first |
+
+`B3` is fully specified with a gate that drives the server over stdio. `F1` is
+the last open consumer request and its first option is *do not add a field* —
+read the payload before reaching for one.
+
+### Needs a laptop, and one switch unblocks four of them
 
 > **Settings → Pages → Source: Deploy from a branch → `main` / `/` (root)**
-
-## The six, in the order they should happen
 
 | | | Blocked on |
 |---|---|---|
 | **C2** `lo-f0f8` | Flip Pages on, open the gallery, look at it | the switch |
 | **C3** `lo-70ef` | Run its gate; it fetches `SCHEMA_ID` and compares to the committed artefact | C2 |
-| **C1** `lo-2158` | Topics, homepage, description — values are paste-ready in the payload | C2 (supplies the homepage) |
+| **C1** `lo-2158` | Topics, homepage, description — values are paste-ready | C2 (supplies the homepage) |
 | **C4** `lo-52fa` | Sweep the consumer's 87 documents onto the new `$schema` | C2 |
 | **A3** `lo-666f` | PyPI: configure the trusted publisher, bump, tag, push | C3 |
-| **B3** `lo-fbbb` | An MCP server. **Reassess before starting** — see below | nothing, but low priority |
 
 Every payload is self-contained: exact values, exact commands, and why the order
 is what it is. `C1` and `C2` are `laptop` because **the GitHub tooling in a cloud
 session has no repository-settings API** — no topics setter, no Pages toggle.
-That is a capability limit, not an oversight.
+That is a capability limit, not an oversight. `A3` is `laptop` because a cloud
+session cannot hold a PyPI credential; everything else about the release is
+built and merged.
 
 ## What this session did
 
@@ -93,20 +103,21 @@ But it closes a *convenience* gap, not a reach gap. An agent still has to know
 drawspec exists — which `A3` and `C1` address far more cheaply. **Do those
 first.**
 
-## After the six
+## After those
 
-The queue is then genuinely empty and the next round needs a decision, not a
-task. Candidates, in the order I would back them:
+Two of the three candidates the last session identified are now queued as `B3`
+and `F1`. What is left is not a task and should not be invented as one:
 
-1. **Measure whether the readiness round worked.** Does an agent handed only
-   `AGENTS.md` actually produce valid documents? That is the claim the whole
-   project rests on, it is testable, and nothing has tested it.
-2. **[#48](https://github.com/nuncaeslupus/drawspec/issues/48)**, still open.
-   `[box] lead = "rule"` covered its content half, not its scannable half;
-   `actor` remains available as a separate additive step.
-3. The owner's standing content decisions — sheets **01** and **27**, the glosses
-   on **53 / 74 / 81**, the English-against-Catalan redraws **27, 83, 86**.
-   Untouched across five rounds because they are judgement calls, not work.
+* **Measure whether the readiness round worked.** Does an agent handed only
+  `AGENTS.md` produce valid documents? It is the claim the whole project rests
+  on and nothing has tested it — but *how* to test it is a real design question
+  (what counts as the subject, what counts as a pass), so it wants a decision
+  before a task. Checked, and deliberately not queued: a corpus re-measurement
+  would **not** serve here — `docs/kinds-wanted.md` already records all five
+  vocabulary gaps as closed, so re-running it would confirm what is written.
+* The owner's standing content decisions — sheets **01** and **27**, the glosses
+  on **53 / 74 / 81**, the English-against-Catalan redraws **27, 83, 86**.
+  Untouched across five rounds because they are judgement calls, not work.
 
 ## Queue mechanics worth knowing
 
