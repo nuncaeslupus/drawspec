@@ -122,3 +122,28 @@ def test_the_declared_python_floor_matches_the_versions_that_are_classified(
     assert f"{minimum.group(1)}.{minimum.group(2)}" in versions, (
         f"requires-python is {floor} but the classifiers list {sorted(versions)}"
     )
+
+
+def test_every_bundled_resource_the_code_reaches_for_by_path_is_in_the_wheel(
+    wheel_names: frozenset[str],
+) -> None:
+    """Themes and fonts, which are found relative to `__file__` at runtime.
+
+    `theme._THEMES_DIR` and `text.fontlib._FONTS_DIR` both resolve against the
+    installed package, so a packaging change that dropped either directory would
+    build a wheel that installs cleanly and then fails on the first render —
+    `load_theme()` with no default to load, or a measurer with no faces. The
+    suite would not notice, because it runs against the source tree where the
+    files are always there.
+
+    Derived from what is on disk rather than from a list, so a new theme or a
+    new face is covered the day it is added.
+    """
+    expected = {
+        f"drawspec/{directory}/{path.name}"
+        for directory, pattern in (("themes", "*.toml"), ("fonts", "*.ttf"))
+        for path in (ROOT / "src" / "drawspec" / directory).glob(pattern)
+    }
+    assert expected, "no bundled themes or fonts were found in the source tree"
+    missing = sorted(expected - wheel_names)
+    assert not missing, f"the wheel is missing bundled resources: {missing}"

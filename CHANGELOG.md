@@ -8,7 +8,7 @@ The **document format** is versioned separately and independently: a document
 declares `"version": 1`, and that number changes only when a document written
 against it would stop working. Everything below is about the *package*.
 
-## [Unreleased]
+## Unreleased
 
 ### Added
 
@@ -16,9 +16,14 @@ against it would stop working. Everything below is about the *package*.
   already proves. Without the marker, PEP 561 requires a checker to treat the
   package as untyped, and every call into it resolved to `Any`.
 - PyPI metadata: keywords, trove classifiers, project URLs and authors.
+- `drawspec kinds` and `drawspec example <kind>`, for a caller that has the
+  package but not the documentation. `validate` now reads `-` as stdin, so
+  `drawspec example flow | drawspec validate -` is a toolchain smoke test.
+- `AGENTS.md` and `llms.txt` — the whole format on one page, for an agent
+  writing documents. Gated so it cannot drift from the code.
 - `CONTRIBUTING.md` and this changelog.
 
-## [0.1.0] — unreleased
+## 0.1.0 — unreleased
 
 The first release. Thirteen diagram kinds, a published JSON Schema, a themeable
 renderer, and a CLI.
@@ -50,5 +55,6 @@ renderer, and a CLI.
 - **Bundled subsetted fonts**, so text measures identically on a laptop and in a
   container with no fonts installed. No system dependency of any kind.
 
-[Unreleased]: https://github.com/nuncaeslupus/drawspec/compare/main...HEAD
-[0.1.0]: https://github.com/nuncaeslupus/drawspec/releases/tag/v0.1.0
+<!-- Compare links are added by the release, once there is a tag to compare
+     against. `main...HEAD` compares the default branch with itself, and a
+     link to an unpushed tag is a 404: both show a reader nothing. -->
