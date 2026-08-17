@@ -116,6 +116,11 @@ registered yet):
    ```
 4. Watch the run. If `check` fails, no upload happened — fix and re-tag.
 
+Every action in that workflow is pinned to a commit SHA rather than a tag,
+with the tag in a trailing comment. A tag moves; this workflow holds
+`id-token: write` against PyPI, so what it runs should not be able to change
+without a diff here. Dependabot moves the pins monthly.
+
 **If the first upload is rejected**, the usual cause is the trusted publisher
 not being configured, or being configured against a different environment name.
 The workflow's environment is `pypi`.

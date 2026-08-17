@@ -11,6 +11,11 @@ on:
   # So the whole path except the upload can be exercised without cutting a tag.
   workflow_dispatch:
 
+# Every action is pinned to a commit SHA with its tag in a trailing comment.
+# A tag is mutable: `@release/v1` is whatever that ref points at on the day the
+# job runs, and this workflow hands an action `id-token: write` against PyPI.
+# `.github/dependabot.yml` moves the pins, because a pin nothing updates is a
+# workflow quietly running old code.
 permissions:
   contents: read
 
@@ -19,15 +24,20 @@ jobs:
     name: The suite, before anything is published
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
           enable-cache: true
 
+      # The floor rather than the newest: a release gated on 3.12 is gated on
+      # the oldest interpreter `requires-python` promises to support.
+      - name: Set up Python
+        run: uv python install 3.12
+
       - name: Sync dependencies
-        run: uv sync --all-extras
+        run: uv sync --all-extras --python 3.12
 
       - name: Lint
         run: |
@@ -62,18 +72,21 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+
+      - name: Set up Python
+        run: uv python install 3.12
 
       - name: Build the wheel and the sdist
-        run: uv build
+        run: uv build --python 3.12
 
       - name: twine check
         run: uv run --with twine twine check dist/*
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: distribution
           path: dist/
@@ -94,13 +107,13 @@ jobs:
       # configured once on PyPI — see the Releasing section of CONTRIBUTING.md.
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: distribution
           path: dist/
 
       - name: Upload
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
 
   announce:
     name: Cut the GitHub release
@@ -110,9 +123,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: distribution
           path: dist/
