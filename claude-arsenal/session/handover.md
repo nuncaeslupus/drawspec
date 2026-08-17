@@ -3,98 +3,118 @@
 <!-- Written at session end. A new session reading this file can resume without additional context. -->
 
 **Date**: 2026-08-17 · **Branch**: `claude/continuation-hkhyz8`
-**Merged**: [#51](https://github.com/nuncaeslupus/drawspec/pull/51) — R5-2, as `a140c0f`
-**Open**: [#52](https://github.com/nuncaeslupus/drawspec/pull/52) — the readiness round, CI green
-**Suite**: 1 598 passing, 1 skipped · lint + strict mypy clean
+**Merged this session**: [#51](https://github.com/nuncaeslupus/drawspec/pull/51) `a140c0f` ·
+[#52](https://github.com/nuncaeslupus/drawspec/pull/52) `b90414a` ·
+[#53](https://github.com/nuncaeslupus/drawspec/pull/53) `fe011e0`
+**Suite**: 1 600 passing, 1 skipped · lint + strict mypy clean
 **Gates**: 0 collisions **and** 0 outside the canvas, across 35 references
+**Queue**: 36 of 42 terminal · `queue_doctor.sh` reports **0 findings**
 
-## What this session was
+---
 
-Two things. R5-2 (`edge-from-a-group`) was finished, reviewed and merged — that
-closed the last open row of the old queue. Then the owner asked whether the
-project was in good shape to show people, so it was audited and the answer was
-seeded as an eleven-task round tagged **`readiness`**. Seven are done in #52.
+## Read this first: everything left needs a laptop
 
-## The audit's finding, in one line
+Six tasks are open. **Five cannot be done from a cloud session at all**, and the
+sixth should not be started yet. If you are a cloud session, there is no code
+work waiting for you — check with the owner before inventing some.
 
-**The problem was never quality — it was that almost none of the quality was
-reachable.** Strict mypy that no consumer's checker could see; a 34-drawing
-gallery you had to clone the repo to look at; a format an agent could not learn
-without reading 800 lines; and `pip install drawspec` returning nothing.
+The single action that unblocks most of it is one switch:
 
-## What landed in #52
+> **Settings → Pages → Source: Deploy from a branch → `main` / `/` (root)**
 
-| | |
-|---|---|
-| `A1` | `py.typed` — PEP 561 meant the whole strict build reached consumers as `Any` |
-| `A2` | keywords, classifiers, `[project.urls]`, authors — the entire PyPI discovery surface was absent |
-| `B1` | **`AGENTS.md`** (185 lines) + `llms.txt`. Gated: every kind named, every role named, every example still validates |
-| `B2` | `drawspec kinds` and `drawspec example <kind>`; `validate` now reads `-`, so the two compose as a smoke test |
-| `D1` | CONTRIBUTING, CHANGELOG, issue templates (the bug one asks for the *document*) |
-| `D2` | stray root `flow.svg` deleted; layout table now accounts for every top-level directory |
-| `E1` | README shows three specs each directly above **its own** drawing |
+## The six, in the order they should happen
 
-The E1 finding is worth keeping: the README had been showing a **four-node spec
-beside the render of the seven-node document**. Two tests now assert the pairing,
-not just that both halves exist.
+| | | Blocked on |
+|---|---|---|
+| **C2** `lo-f0f8` | Flip Pages on, open the gallery, look at it | the switch |
+| **C3** `lo-70ef` | Run its gate; it fetches `SCHEMA_ID` and compares to the committed artefact | C2 |
+| **C1** `lo-2158` | Topics, homepage, description — values are paste-ready in the payload | C2 (supplies the homepage) |
+| **C4** `lo-52fa` | Sweep the consumer's 87 documents onto the new `$schema` | C2 |
+| **A3** `lo-666f` | PyPI: configure the trusted publisher, bump, tag, push | C3 |
+| **B3** `lo-fbbb` | An MCP server. **Reassess before starting** — see below | nothing, but low priority |
 
-## The thing worth carrying forward
+Every payload is self-contained: exact values, exact commands, and why the order
+is what it is. `C1` and `C2` are `laptop` because **the GitHub tooling in a cloud
+session has no repository-settings API** — no topics setter, no Pages toggle.
+That is a capability limit, not an oversight.
 
-**A brief for agents rots unless it is gated like generated code.** `AGENTS.md`
-is hand-written prose, so it was held to the same standard as `docs/format.md`:
-a test asserts every kind in `KINDS` is named, every theme role appears, and
-every JSON example still parses. That gate caught a defect on its first run — the
-skeleton document had `"nodes": []`, which is refused, and the file would have
-shipped instructing agents to write an invalid document.
+## What this session did
 
-## Four tasks left, and all four need a laptop
+**R5-2** (`edge-from-a-group`) closed the old queue. Then the owner asked whether
+the project was in good shape to show people; it was audited, and the answer
+became an eleven-task round tagged `readiness`, of which seven shipped in #52 and
+two more in #53.
 
-Tagged **`laptop`**, which `release.sh` enforces — a cloud session physically
-cannot record them done.
+**The audit's finding, which is the thing to carry forward:** the problem was
+never quality — it was that almost none of the quality was **reachable**. Strict
+mypy no consumer's checker could see; a 34-drawing gallery you had to clone to
+look at; a format an agent could not learn without reading 800 lines; a schema
+`$id` naming a domain that does not resolve; and `pip install drawspec` returning
+nothing.
 
-* **`A3` PyPI.** The name is free (verified: `pypi.org/pypi/drawspec/json` → 404).
-  No tags, no releases. Needs an account and a token. Everything up to
-  `twine upload` is ready.
-* **`C1` shopfront.** Zero topics, no homepage, and the description claims
-  drawspec *"wraps a real layout engine"* — it does not; `LayeredEngine` is its
-  own and grandalf is T7's rejected candidate, unshipped because only its EPL arm
-  is MIT-compatible. Exact paste-ready values are in the payload.
-* **`C2` GitHub Pages.** Serve `main` `/docs`; no workflow needed. URLs in the
-  payload. **Do this before `C1`** — it supplies the homepage value.
-* **`C3` the schema URL.** `SCHEMA_ID` and the guide both point at
-  `https://drawspec.dev/schema/drawspec-v1.schema.json` and **nobody has checked
-  it resolves** — the agent proxy refused the connection, so this is *unknown*,
-  not broken. If dead, every author copying the recommended `$schema` line gets
-  no editor completion. Open it in a browser first.
+Shipped: `py.typed` and full PyPI metadata · **`AGENTS.md`** (185 lines, gated so
+it cannot drift) and `llms.txt` · `drawspec kinds` and `drawspec example <kind>`,
+with `validate` reading `-` so they compose · a README that shows three specs
+each above **its own** drawing · CONTRIBUTING, CHANGELOG, issue templates · the
+schema and gallery repointed at GitHub Pages · and a tag-triggered release
+workflow with trusted publishing.
 
-`C1` and `C2` are laptop work for a mechanical reason worth writing down: **the
-GitHub MCP surface in a cloud session has no repository-settings tool** — no
-`update_repository`, no topics setter, no Pages toggle.
+## Three things that cost time, so they are written down
 
-**`B3`** (a consumer-facing skill) is open and carries a recommendation: *do not
-build one.* `AGENTS.md` already delivers the content tool-agnostically, and the
-remaining gap is reach, which `A3` and `C1` close more cheaply. If anything is
-built later it should be an MCP server, not a skill — that adds a capability a
-document cannot.
+* **A gate's zero means nothing until something has tried to get past it.** This
+  bit twice. `AGENTS.md`'s example gate caught a skeleton document with
+  `"nodes": []` on its first run — the file would have shipped telling agents to
+  write something invalid. And the Pages coupling test I wrote was **vacuous**:
+  it searched the README for `SCHEMA_ID`'s host, which the README always
+  contains because it quotes `SCHEMA_ID` in full. Review caught it. It now parses
+  the gallery link out and compares hosts, verified by deleting the link and
+  watching it fail.
+* **A gate block containing a fenced ` ```json ` block must spell the fence in
+  hex** (`\x60\x60\x60`). A nested fence closes the outer one and the gate dies
+  on a `SyntaxError` instead of reporting a verdict. Two payloads hit this.
+* **`gate_run.sh` hardens the environment**, which breaks anything needing the
+  network — `uv build` fails TLS with `UnknownIssuer`. Use
+  `ARSENAL_GATE_INHERIT_ENV=1` for gates that fetch or build.
 
-## Next session
+## B3, and why it is open rather than done
 
-Nothing is blocked. Start with `/continue readiness` on a laptop for the four
-above; the cloud-runnable work in that round is finished.
+It was *"a consumer-facing skill"*; it is now **an MCP server**, and the change of
+mind is recorded in the payload. A skill would have been a document, and the
+document already exists — shipping one would be a second copy of the format to
+keep current, for a narrower audience.
 
-Standing carry-overs, unchanged and still the owner's: content decisions on
-sheets **01** and **27**, the glosses on **53 / 74 / 81**, the
-English-against-Catalan redraws **27, 83, 86**, and
-[#48](https://github.com/nuncaeslupus/drawspec/issues/48), which stays open —
-`[box] lead = "rule"` covered its content half, not its scannable half.
+An MCP server adds what no document can: `validate`'s refusals come back as
+**structured violations in the agent's own loop** instead of prose it has to
+scrape out of stderr. Three tools, `validate` / `render` / `kinds`, with a gate
+that drives the server over stdio and asserts a refusal survives with its JSON
+pointer intact.
 
-**Two queue facts that keep costing time:**
+But it closes a *convenience* gap, not a reach gap. An agent still has to know
+drawspec exists — which `A3` and `C1` address far more cheaply. **Do those
+first.**
 
-* `arsenal-queue` is the source of truth; the copy of `tasks.jsonl` on `main` is
-  stale and shows finished tasks `open`.
-* `queue_doctor.sh` reports four pre-existing `missing-payload` errors —
-  `lo-ee92`, `lo-1b55`, `lo-b67b`, `lo-1270` (G3–G6). All `done` with merged PRs,
-  so nothing is blocked; it is a ledger inconsistency to clear.
-* Gate blocks that contain a fenced ```` ```json ```` block must spell the fence
-  in hex (`\x60\x60\x60`) — a nested fence closes the outer one and the gate dies
-  on a syntax error. Two payloads hit this.
+## After the six
+
+The queue is then genuinely empty and the next round needs a decision, not a
+task. Candidates, in the order I would back them:
+
+1. **Measure whether the readiness round worked.** Does an agent handed only
+   `AGENTS.md` actually produce valid documents? That is the claim the whole
+   project rests on, it is testable, and nothing has tested it.
+2. **[#48](https://github.com/nuncaeslupus/drawspec/issues/48)**, still open.
+   `[box] lead = "rule"` covered its content half, not its scannable half;
+   `actor` remains available as a separate additive step.
+3. The owner's standing content decisions — sheets **01** and **27**, the glosses
+   on **53 / 74 / 81**, the English-against-Catalan redraws **27, 83, 86**.
+   Untouched across five rounds because they are judgement calls, not work.
+
+## Queue mechanics worth knowing
+
+* **`arsenal-queue` is the source of truth.** The copy of `tasks.jsonl` on `main`
+  is stale and shows finished tasks `open`. Run `queue_sync.sh` (protocol step
+  1b) before trusting `queue_eval.sh`.
+* `reconcile_merged.sh` cannot run here — `gh` is not installed — so `done` rows
+  never flip to `merged` from a cloud session. Run it from the laptop.
+* The four `missing-payload` errors that had been reported for months are gone:
+  `lo-ee92`, `lo-1b55`, `lo-b67b`, `lo-1270` (G3–G6) now carry reconstructed
+  payloads saying so. `queue_doctor.sh` is at **0 findings** — keep it there.

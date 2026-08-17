@@ -77,6 +77,54 @@ while being partly drawn off the canvas.
   comparison cannot say why anyone cared. A docstring recording the drawing that
   went wrong is the convention, not clutter.
 
+## Releasing
+
+`.github/workflows/release.yml` does the work; a tag is the only input. Pushing
+`v0.1.0` runs the suite, builds, checks, publishes 0.1.0 to PyPI and cuts a
+GitHub release. A `workflow_dispatch` run does everything except the upload, so
+the path can be exercised without cutting a tag.
+
+**Once, before the first release.** PyPI needs a trusted publisher configured —
+this is what lets the workflow upload with no API token stored anywhere. On
+PyPI, under the project (or as a *pending* publisher, since `drawspec` is not
+registered yet):
+
+| Field | Value |
+|---|---|
+| Owner | `nuncaeslupus` |
+| Repository | `drawspec` |
+| Workflow | `release.yml` |
+| Environment | `pypi` |
+
+**Each release.**
+
+1. Bump `version` in `pyproject.toml` **and** `__version__` in
+   `src/drawspec/__init__.py`. A test pins them together, and the workflow
+   checks both against the tag before it publishes anything — a tag that
+   disagrees with the package cannot be withdrawn once uploaded.
+2. In `CHANGELOG.md`, retitle `## Unreleased` to the version and date, open a
+   fresh `## Unreleased`, and add the compare links at the bottom — they are
+   deliberately absent until there is a tag to compare against:
+   ```markdown
+   [Unreleased]: https://github.com/nuncaeslupus/drawspec/compare/v0.1.0...HEAD
+   [0.1.0]: https://github.com/nuncaeslupus/drawspec/releases/tag/v0.1.0
+   ```
+   Restore the brackets on the headings so the references resolve.
+3. Merge that, then tag the merge commit and push:
+   ```bash
+   git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
+   ```
+4. Watch the run. If `check` fails, no upload happened — fix and re-tag.
+
+Every action in that workflow is pinned to a commit SHA rather than a tag,
+with the tag in a trailing comment. A tag moves; this workflow holds
+`id-token: write` against PyPI, so what it runs should not be able to change
+without a diff here. Dependabot moves the pins monthly.
+
+**If the first upload is rejected**, the usual cause is the trusted publisher
+not being configured, or being configured against a different environment name.
+The workflow's environment is `pypi`.
+
 ## Reporting a bug
 
 Please include **the document**. A drawspec bug is almost always reproducible
