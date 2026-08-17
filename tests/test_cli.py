@@ -12,14 +12,16 @@ something failed.
 
 from __future__ import annotations
 
+import io
 import json
 from pathlib import Path
 
 import pytest
 
-from drawspec import __version__
+from drawspec import __version__, render_document
 from drawspec.cli import build_parser, main
-from drawspec.schema import SCHEMA_ID
+from drawspec.examples import EXAMPLES
+from drawspec.schema import KINDS, SCHEMA_ID, parse_document
 
 VALID = {
     "version": 1,
@@ -270,3 +272,67 @@ def test_version_flag_exits_zero() -> None:
 
 def test_version_is_set() -> None:
     assert __version__
+
+
+# --------------------------------------------------------------------------
+# kinds and example — B2
+# --------------------------------------------------------------------------
+
+
+def test_kinds_names_every_kind_in_the_vocabulary(capsys: pytest.CaptureFixture[str]) -> None:
+    """A kind missing from the listing is a kind a reader will not reach for."""
+    assert main(["kinds"]) == 0
+    listed = capsys.readouterr().out
+    for kind in KINDS:
+        assert kind in listed, kind
+
+
+def test_every_kind_has_a_minimal_example_and_it_renders() -> None:
+    """These are the documents a stranger copies first, so they have to work.
+
+    Rendered rather than merely validated: `validate` already draws and throws
+    the drawing away, but going through the CLI proves the whole path — a fit
+    failure or a missing payload field would surface here and nowhere else.
+    """
+    for kind in KINDS:
+        assert kind in EXAMPLES, f"no example document for {kind}"
+        render_document(parse_document(dict(EXAMPLES[kind])))
+
+
+def test_example_writes_a_document_that_validate_accepts_through_a_pipe(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`drawspec example flow | drawspec validate -` is the toolchain smoke test.
+
+    It is the first thing a caller with no files yet can run, so the two halves
+    have to compose — which they only do because `validate` reads `-`.
+    """
+    assert main(["example", "flow"]) == 0
+    written = capsys.readouterr().out
+    monkeypatch.setattr("sys.stdin", io.StringIO(written))
+    assert main(["validate", "-"]) == 0
+    assert "a valid flow document" in capsys.readouterr().out
+
+
+def test_example_output_is_json_a_file_can_be_made_of(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """`drawspec example flow > diagram.json` is the expected next move."""
+    assert main(["example", "timeline"]) == 0
+    document = json.loads(capsys.readouterr().out)
+    assert document["kind"] == "timeline"
+    assert document["version"] == 1
+
+
+def test_an_unknown_kind_is_a_usage_error_not_a_refusal() -> None:
+    """Exit 2 is about the invocation; nothing was read, so nothing can be said
+    about a document. The split is the CLI's contract."""
+    assert main(["example", "octagon"]) == 2
+
+
+def test_malformed_json_on_stdin_is_refused_the_way_a_file_would_be(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr("sys.stdin", io.StringIO("{not json"))
+    assert main(["validate", "-"]) == 1
+    assert "not valid JSON" in capsys.readouterr().err
