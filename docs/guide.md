@@ -381,6 +381,44 @@ else:
     Path("diagram.svg").write_text(svg, encoding="utf-8")
 ```
 
+## Saying who performs a step
+
+`role` says what kind of step a box is. `actor` says whose it is, and the two are
+independent — a human step can be routine and an automated one can be the
+critical path:
+
+```json
+{ "id": "approve", "text": "Sign off the release", "actor": "A release manager" }
+```
+
+It is drawn as the box's **lead**: the name over what belongs to it. So the same
+words sit in the same place in every box, and the odd one out in a pipeline is
+found by scanning one column rather than by reading five labels.
+
+Free text, not an enum, and that is load-bearing. **An actor is told apart by its
+name** — `CI` does not look like `A release manager` in colour, in greyscale or
+read aloud — so ownership costs none of the four non-colour channels the *roles*
+are told apart by, and the greyscale invariant needs nothing new. An enum would
+have thrown that away, and would not have covered `"Finance"` or
+`"The customer"`.
+
+Two things it deliberately is not:
+
+* **Not a swimlane.** Nothing is partitioned; the layout is unchanged. Lanes are
+  a layout constraint interacting with direction, groups and routing at once, and
+  nothing yet shows this is not enough.
+* **Not a band.** A band says *this runs alongside these*, and its bar spans its
+  members' extent — so an owner holding the first, second and fourth step would
+  draw a bar straight across the third, claiming a step it does not perform.
+  Ownership belongs to one box. Compare
+  [`flow-bands`](reference/flow-bands.json) with
+  [`flow-actor-handover`](reference/flow-actor-handover.json): same four steps,
+  opposite statements.
+
+A box has one lead, so a node that names an actor may not also write its own with
+a newline in `text`. That is refused by pointer rather than resolved silently —
+picking a winner would be drawspec deciding which of two things you meant.
+
 ## Using it from an agent: the MCP server
 
 If the thing writing your documents is a language model rather than a person,

@@ -534,13 +534,14 @@ def _sized(
     """
     boxes = {
         node.id: size_box(
-            node.text,
+            node.label,
             theme=theme,
             measurer=measurer,
             role=node.role,
             level="body",
             max_width=limit,
             widen=NODE_WIDEN,
+            lead=node.lead,
         )
         for node in document.nodes
     }
