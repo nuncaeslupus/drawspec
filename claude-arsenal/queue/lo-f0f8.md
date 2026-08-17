@@ -80,3 +80,23 @@ question of prominence rather than of disclosure.
 The README link is **not** pre-written: pointing at a page that does not exist
 yet is worse than not linking, so add it once Pages is live. That is also the
 value for C1's homepage field, which is why C1 depends on this one.
+
+---
+
+## Repository side done in #53, 2026-08-17 — one switch left
+
+Everything that can be done from a repository is in **#53**: `_config.yml` for a
+root-served Pages site, and the gallery link at the top of the README's gallery
+section.
+
+**Deliberately not recorded `done`.** The page 404s until Pages is enabled, and
+recording done for an unreachable URL is the false-`done` this queue exists to
+prevent. The payload always said a human has to open it once — a 200 is not
+proof the page renders.
+
+**The switch: Settings → Pages → Source: Deploy from a branch → `main` / `/`
+(root).** Root rather than `/docs`, because the schema at
+`schema/drawspec-v1.schema.json` has to be served too — see C3, which shares the
+host.
+
+Then open `https://nuncaeslupus.github.io/drawspec/docs/gallery/` and look at it.

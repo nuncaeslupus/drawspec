@@ -58,3 +58,25 @@ test, mark it for an opt-in marker rather than the default run.
 
 `src/drawspec/schema.py` (`SCHEMA_ID`), `schema/drawspec-v1.schema.json`,
 `docs/guide.md`, and DNS if the answer is to register the domain.
+
+---
+
+## Answered and repointed in #53, 2026-08-17
+
+**The question is settled: `drawspec.dev` does not serve.** Confirmed from two
+sides — the owner could not load it either — so this is no longer *unknown*.
+
+`SCHEMA_ID` is now
+`https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json`, with
+the eleven reference documents and the generated artefacts following from it.
+Done before the first release on purpose: an `$id` is an identity, and once a
+version is on PyPI moving it stops being a find-and-replace.
+
+**Still open, and it cannot be closed from a cloud session.** The gate fetches
+the URL and compares it against the committed artefact, and the agent proxy
+refuses the connection to `github.io` exactly as it refused `drawspec.dev` — so
+a cloud run gets *could not run*, never *passed*. Run the gate from the laptop
+after Pages is enabled (**C2**).
+
+Until that switch is flipped this trades one dead URL for another; the
+difference is that this one goes live on a toggle rather than on a purchase.
