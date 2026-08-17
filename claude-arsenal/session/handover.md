@@ -6,28 +6,37 @@
 **Merged this session**: [#51](https://github.com/nuncaeslupus/drawspec/pull/51) `a140c0f` ·
 [#52](https://github.com/nuncaeslupus/drawspec/pull/52) `b90414a` ·
 [#53](https://github.com/nuncaeslupus/drawspec/pull/53) `fe011e0` ·
-[#54](https://github.com/nuncaeslupus/drawspec/pull/54) `ba1c0aa`
-**Suite**: 1 600 passing, 1 skipped · lint + strict mypy clean
+[#54](https://github.com/nuncaeslupus/drawspec/pull/54) `ba1c0aa` ·
+[#59](https://github.com/nuncaeslupus/drawspec/pull/59) `25e7eb2` ·
+[#60](https://github.com/nuncaeslupus/drawspec/pull/60) `e297771`
+**Suite**: 1 611 passing, 1 skipped · lint + strict mypy clean
 **Gates**: 0 collisions **and** 0 outside the canvas, across 35 references
-**Queue**: 36 of 42 terminal · `queue_doctor.sh` reports **0 findings**
+**Queue**: 37 of 43 terminal · `queue_doctor.sh` reports **0 findings**
 
 ---
 
 ## Read this first: what you can and cannot do here
 
-Seven tasks are open. **Two are real work a cloud session can do today**, and
-five need a laptop, a browser or a purchase. Start with the two.
+Six tasks are open. **One is real work a cloud session can do today**, and five
+need a laptop, a browser or a purchase.
 
 ### Doable now, no laptop
 
-| | | Size |
-|---|---|---|
-| **B3** `lo-fbbb` | An MCP server: `validate`, `render`, `kinds` as callable tools | the larger one |
-| **F1** `lo-3b60` | Issue #48's scannable half — who performs a step | design first |
+| | |
+|---|---|
+| **F1** `lo-3b60` | Build `actor` on a node — issue #48's scannable half |
 
-`B3` is fully specified with a gate that drives the server over stdio. `F1` is
-the last open consumer request and its first option is *do not add a field* —
-read the payload before reaching for one.
+**Its payload changed shape this session and that is the point.** It used to open
+with three options and *"decide before building"*. The decision is made, on
+measured evidence, and is
+[public on the issue](https://github.com/nuncaeslupus/drawspec/issues/48#issuecomment-5319931957).
+**Do not re-open it** — the payload now specifies one thing to build, including
+the design point that unblocks it (an actor is told apart by *its name*, so it
+needs no fifth appearance channel and the greyscale invariant is untouched). The
+hard part named in the payload is not the field; it is reserving the tag's space
+at measure time.
+
+**B3 shipped** — see below.
 
 ### Needs a laptop, and one switch unblocks four of them
 
@@ -86,27 +95,46 @@ workflow with trusted publishing.
   network — `uv build` fails TLS with `UnknownIssuer`. Use
   `ARSENAL_GATE_INHERIT_ENV=1` for gates that fetch or build.
 
-## B3, and why it is open rather than done
+## B3 shipped: the MCP server (#60)
 
-It was *"a consumer-facing skill"*; it is now **an MCP server**, and the change of
-mind is recorded in the payload. A skill would have been a document, and the
-document already exists — shipping one would be a second copy of the format to
-keep current, for a narrower audience.
+`pip install 'drawspec[mcp]'` and `drawspec-mcp` — `validate`, `render`, `kinds`
+over stdio, behind an extra so nobody rendering from Python pays for starlette.
+`validate`'s refusals now arrive as `{"pointer", "message"}` in the agent's own
+loop instead of as prose on stderr.
 
-An MCP server adds what no document can: `validate`'s refusals come back as
-**structured violations in the agent's own loop** instead of prose it has to
-scrape out of stderr. Three tools, `validate` / `render` / `kinds`, with a gate
-that drives the server over stdio and asserts a refusal survives with its JSON
-pointer intact.
+Two things about it worth not relearning:
 
-But it closes a *convenience* gap, not a reach gap. An agent still has to know
-drawspec exists — which `A3` and `C1` address far more cheaply. **Do those
+* **`mcp>=2.0`, not looser.** The 2.0 SDK's server is the `on_list_tools` /
+  `on_call_tool` callback API; a wider floor resolves to something that imports
+  and then fails to serve. Also: construct its models with the **snake_case**
+  field names (`input_schema`, `is_error`) — mypy rejects the camelCase aliases,
+  and pydantic still puts camelCase on the wire.
+* **The tests drive the process over a pipe** rather than calling the handlers.
+  Every failure this server can have is a transport one, and none of those are
+  visible from inside the process.
+
+It closes a *convenience* gap, not a reach gap: an agent still has to know
+drawspec exists, which `A3` and `C1` address far more cheaply. **Still do those
 first.**
+
+## F1: decided, not built
+
+The design half is done and is the reason this task is cheaper than it looks now.
+Bands were tried as swimlanes on the exact document in issue #48 and failed
+twice — a band's bar spans its members' *extent*, so a discontiguous owner's bar
+runs straight past the step it does not own (the drawing says the opposite of the
+document), and a band over a single node cannot be named because the name has to
+fit the members' span. Real swimlanes were considered and are not justified.
+
+The build is `actor` on a node, and the payload carries the one insight that
+makes it tractable: the earlier "all four non-colour channels are spent"
+diagnosis was true but assumed ownership must be *appearance*. It need not be —
+the tag carries the actor's **name**, and text is distinguishable in greyscale by
+construction.
 
 ## After those
 
-Two of the three candidates the last session identified are now queued as `B3`
-and `F1`. What is left is not a task and should not be invented as one:
+What is left is not a task and should not be invented as one:
 
 * **Measure whether the readiness round worked.** Does an agent handed only
   `AGENTS.md` produce valid documents? It is the claim the whole project rests
