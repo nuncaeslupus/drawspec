@@ -41,3 +41,33 @@ test to cover the skill's documents too.
 ## Location
 
 To be decided by the first half of this task.
+
+---
+
+## Recommendation, 2026-08-17 — after B1 landed
+
+B1 changed what this task is worth, so the analysis is recorded before anything
+is built.
+
+**`AGENTS.md` + `llms.txt` already deliver most of what a skill would.** They are
+the tool-agnostic convention: every coding agent that looks for repository
+instructions finds `AGENTS.md`, and it is now gated so it cannot rot. A skill
+would reach a narrower audience for the same content, and would be a *second*
+copy of the format to keep current — which is the failure this project keeps
+designing out.
+
+**So the recommendation is: do not ship a skill from this repository.** The
+remaining gap is not knowledge, it is *reach*: an agent has to already know
+drawspec exists. That gap is closed by **A3** (so `pip install drawspec` works)
+and **C1** (so GitHub search finds it), not by a skill.
+
+**If something is built later, build the MCP server rather than the skill.** A
+skill is a document — and the document already exists, one directory up. An MCP
+server would add what no document can: `render` and `validate` as callable tools,
+so an agent gets the JSON-pointer refusal back in its own loop instead of having
+to shell out and parse stderr. That is a real capability, it is client-agnostic,
+and it is worth its maintenance in a way a second copy of the brief is not.
+
+Left **open** rather than closed: the owner may want the reach for a specific
+client, and that is their call. But it should not be picked up as routine work —
+reassess after A3 and C1 are done, since they address the same gap more cheaply.
