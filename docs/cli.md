@@ -3,7 +3,8 @@
 # The command line
 
 ```
-usage: drawspec [-h] [--version] {render,validate,theme,schema} ...
+usage: drawspec [-h] [--version]
+                {render,validate,theme,schema,kinds,example} ...
 ```
 
 Nothing is printed to stdout but the thing that was asked for — the SVG, the
@@ -98,6 +99,27 @@ usage: drawspec schema [-h] [--out OUT]
 | Argument | What it does |
 |---|---|
 | `--out` | Write here instead of stdout. |
+
+### `drawspec kinds`
+
+One line per kind: the claim that kind of diagram makes.
+
+```
+usage: drawspec kinds [-h]
+```
+
+### `drawspec example`
+
+Write the smallest document of that kind that renders, to stdout. Pipe it straight back in: drawspec example flow | drawspec validate -
+
+```
+usage: drawspec example [-h]
+                        {flow,tree,cycle,stack,timeline,columns,matrix,pyramid,rings,funnel,chart,quadrant,curve}
+```
+
+| Argument | What it does |
+|---|---|
+| `kind` | Which kind to write. One of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `curve`. |
 
 ## Embedding profiles
 

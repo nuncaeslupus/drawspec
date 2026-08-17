@@ -1,0 +1,18 @@
+{
+  "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "flow",
+  "title": "Triaging a report",
+  "description": "The smallest flow that is still a flow: something arrives, one question is asked about it, and it goes one of two ways. The reference set's other flows are large on purpose — this one exists to be read whole.",
+  "nodes": [
+    {"id": "arrive", "text": "A report arrives", "role": "start"},
+    {"id": "repro", "text": "Does it reproduce?", "role": "decision"},
+    {"id": "fix", "text": "Schedule a fix", "role": "step"},
+    {"id": "ask", "text": "Ask for the document", "role": "terminal"}
+  ],
+  "edges": [
+    {"from": "arrive", "to": "repro"},
+    {"from": "repro", "to": "fix", "label": "yes"},
+    {"from": "repro", "to": "ask", "label": "no"}
+  ]
+}

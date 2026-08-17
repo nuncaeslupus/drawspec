@@ -19,13 +19,14 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import json
+import re
 from pathlib import Path
 
 import pytest
 
 import docs
 from drawspec.cli import build_parser
-from drawspec.schema import KINDS, OBJECTS, REJECTED_FIELDS
+from drawspec.schema import KINDS, OBJECTS, REJECTED_FIELDS, parse_document
 from drawspec.theme import _TOP_LEVEL_KEYS, EDGE_ROLES, NODE_ROLES, load_theme
 
 GENERATED = docs.generate()
@@ -135,3 +136,107 @@ def test_every_role_is_drawn_somewhere_in_the_reference_set() -> None:
         linking.update(edge.get("role", "flow") for edge in document.get("edges", ()))
     assert set(NODE_ROLES) <= drawn, set(NODE_ROLES) - drawn
     assert set(EDGE_ROLES) <= linking, set(EDGE_ROLES) - linking
+
+
+# --------------------------------------------------------------------------
+# The README's examples — E1
+# --------------------------------------------------------------------------
+
+
+def test_every_json_example_in_the_readme_is_a_document_that_validates() -> None:
+    """A trimmed snippet that no longer parses is worse than no example.
+
+    The README used to show a four-node `flow` beside a render of the seven-node
+    reference document — the reader was shown a spec, then shown a picture, and
+    left to infer a relationship that was not there. Pairing them is only worth
+    anything if the pairing is true, so both halves are checked: the spec has to
+    parse, and the drawing beside it has to exist.
+    """
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    blocks = re.findall(r"```json\n(.*?)```", readme, re.DOTALL)
+    assert len(blocks) >= 2, f"only {len(blocks)} example document(s) in the README"
+    kinds = set()
+    for block in blocks:
+        document = parse_document(json.loads(block))
+        kinds.add(document.kind)
+    assert len(kinds) >= 2, f"every README example is the same kind: {kinds}"
+
+    drawings = re.findall(r'src="(docs/gallery/[^"]+\.svg)"', readme)
+    assert len(drawings) >= len(blocks), f"{len(blocks)} specs but {len(drawings)} drawings"
+    for path in drawings:
+        assert (Path(__file__).resolve().parents[1] / path).exists(), (
+            f"the README points at a drawing that is not there: {path}"
+        )
+
+
+def test_each_readme_example_is_the_render_of_the_document_beside_it() -> None:
+    """The pairing itself, not just that both halves exist.
+
+    Every README example names a drawing under `docs/gallery/`, and every such
+    drawing is `make gallery`'s render of the reference document of the same
+    name. So the spec shown must be the reference document — otherwise the
+    picture drifts from the text the first time either is edited, which is the
+    failure this whole arrangement exists to prevent.
+    """
+    root = Path(__file__).resolve().parents[1]
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    pairs = re.findall(r"```json\n(.*?)```.*?src=\"docs/gallery/([^\"]+)\.svg\"", readme, re.DOTALL)
+    assert pairs, "no spec is paired with a drawing in the README"
+    for block, name in pairs:
+        reference = root / "docs" / "reference" / f"{name}.json"
+        assert reference.exists(), f"README pairs a spec with {name}.svg, which has no document"
+        shown = json.loads(block)
+        actual = json.loads(reference.read_text(encoding="utf-8"))
+        for field in ("kind", "nodes", "edges", "items", "series", "axes"):
+            if field in shown:
+                assert shown[field] == actual.get(field), (
+                    f"the README's {name} example differs from docs/reference/{name}.json "
+                    f"at {field!r} — the picture is not the render of the spec shown"
+                )
+
+
+# --------------------------------------------------------------------------
+# AGENTS.md — B1
+# --------------------------------------------------------------------------
+
+
+def test_agents_md_names_every_kind_in_the_vocabulary() -> None:
+    """A brief that silently omits a kind is worse than one that omits the list.
+
+    It is the file an agent reads *instead of* the references, so a kind missing
+    from it is a kind that does not exist as far as its reader is concerned. The
+    check is against `KINDS` rather than a copy, so adding a kind breaks this
+    until the brief is updated.
+    """
+    text = (Path(__file__).resolve().parents[1] / "AGENTS.md").read_text(encoding="utf-8")
+    missing = [kind for kind in KINDS if f"`{kind}`" not in text]
+    assert not missing, f"AGENTS.md never names: {missing}"
+
+
+def test_every_example_in_agents_md_is_a_document_that_validates() -> None:
+    """The brief is held to the standard the generated references are.
+
+    Its whole value is that an agent can copy from it, so an example that no
+    longer parses is worse than no example at all — the reader has no way to
+    tell, and neither did we until this ran.
+    """
+    text = (Path(__file__).resolve().parents[1] / "AGENTS.md").read_text(encoding="utf-8")
+    blocks = re.findall(r"```json\n(.*?)```", text, re.DOTALL)
+    assert blocks, "AGENTS.md carries no example, so nothing pins it to the format"
+    for block in blocks:
+        parse_document(json.loads(block))
+
+
+def test_agents_md_still_fits_in_a_context_window() -> None:
+    """The constraint that makes it useful. Length is the feature."""
+    text = (Path(__file__).resolve().parents[1] / "AGENTS.md").read_text(encoding="utf-8")
+    lines = len(text.splitlines())
+    assert lines <= 200, f"AGENTS.md is {lines} lines; it has to be readable in one go"
+
+
+def test_agents_md_lists_the_roles_the_theme_actually_declares() -> None:
+    """A role an agent writes that the theme does not declare is a hard refusal,
+    so the two vocabularies have to be the same one."""
+    text = (Path(__file__).resolve().parents[1] / "AGENTS.md").read_text(encoding="utf-8")
+    for role in (*NODE_ROLES, *EDGE_ROLES):
+        assert f"`{role}`" in text, f"AGENTS.md never names the role {role!r}"

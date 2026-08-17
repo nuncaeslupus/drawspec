@@ -32,6 +32,7 @@ one member used to do.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections.abc import Sequence
 from dataclasses import replace
@@ -41,9 +42,15 @@ from typing import Final, TextIO
 from drawspec import __version__
 from drawspec.emit import PROFILES
 from drawspec.errors import DocumentError, DrawspecError, ThemeError
+from drawspec.examples import EXAMPLES, PURPOSE
 from drawspec.render import render_document
-from drawspec.schema import load_document, schema_json
+from drawspec.schema import KINDS, Document, load_document, parse_document, schema_json
 from drawspec.theme import load_theme
+
+#: The conventional name for standard input, as a document argument. Reading a
+#: document from a pipe is what makes `example` and `validate` compose, which is
+#: how a caller with no files yet checks that its toolchain works.
+STDIN: Final = "-"
 
 #: What the shell gets back. Named, because these are the contract.
 OK: Final = 0
@@ -103,6 +110,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
     schema.add_argument("--out", help="write here instead of stdout")
 
+    # `kinds` and `example` are the pair that lets a reader with no documentation
+    # to hand find out what a document looks like. `schema` already answers
+    # "what is legal", exhaustively and at thirty thousand characters; these
+    # answer "what do I write", which is a different question and the one asked
+    # first.
+    commands.add_parser(
+        "kinds",
+        help="list the diagram kinds and what each is for",
+        description="One line per kind: the claim that kind of diagram makes.",
+    )
+
+    example = commands.add_parser(
+        "example",
+        help="write a minimal valid document of a given kind",
+        description=(
+            "Write the smallest document of that kind that renders, to stdout. "
+            "Pipe it straight back in: drawspec example flow | drawspec validate -"
+        ),
+    )
+    example.add_argument("kind", choices=KINDS, help="which kind to write")
+
     return parser
 
 
@@ -127,6 +155,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _render(arguments)
     if arguments.command == "validate":
         return _validate(arguments)
+    if arguments.command == "kinds":
+        return _kinds()
+    if arguments.command == "example":
+        return _example(arguments)
     if arguments.command == "theme":
         if getattr(arguments, "theme_command", None) != "check":
             parser.print_usage(sys.stderr)
@@ -149,7 +181,7 @@ def _render(arguments: argparse.Namespace) -> int:
     it after the fact would scale a picture that had already decided it fitted.
     """
     try:
-        document = load_document(arguments.document)
+        document = _read(arguments.document)
         if arguments.width is not None:
             document = replace(document, width=arguments.width)
         if arguments.height is not None:
@@ -183,15 +215,57 @@ def _validate(arguments: argparse.Namespace) -> int:
     the whole of it.
     """
     try:
-        document = load_document(arguments.document)
+        document = _read(arguments.document)
         render_document(document, arguments.theme or None)
     except DocumentError as error:
         return _refuse(error)
     except DrawspecError as error:
         return _refuse(error)
 
-    print(f"{arguments.document}: a valid {document.kind} document")
+    name = "stdin" if arguments.document == STDIN else arguments.document
+    print(f"{name}: a valid {document.kind} document")
     return OK
+
+
+def _kinds() -> int:
+    """The vocabulary, one line each.
+
+    Ordered by `KINDS` rather than alphabetically, because that order groups the
+    families — graph, grid, shape, chart — and a reader choosing between `flow`
+    and `tree` is helped by their being adjacent.
+    """
+    width = max(len(kind) for kind in KINDS)
+    for kind in KINDS:
+        print(f"{kind:<{width}}  {PURPOSE[kind]}")
+    return OK
+
+
+def _example(arguments: argparse.Namespace) -> int:
+    """The smallest document of one kind, on stdout, ready to be edited.
+
+    Two spaces and a trailing newline, so the output is a file rather than a
+    blob: the expected next move is `drawspec example flow > diagram.json`.
+    """
+    print(json.dumps(EXAMPLES[arguments.kind], indent=2))
+    return OK
+
+
+def _read(source: str) -> Document:
+    """A document from a path, or from stdin when the path is `-`.
+
+    Reading a pipe is what makes the commands compose — `drawspec example flow |
+    drawspec validate -` is how a caller with no files yet confirms the toolchain
+    works before writing anything. Malformed JSON on stdin is refused with the
+    same message a file gets, minus a path it does not have.
+    """
+    if source != STDIN:
+        return load_document(source)
+    text = sys.stdin.read()
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise DocumentError(f"document is not valid JSON: stdin ({error})", ()) from None
+    return parse_document(parsed)
 
 
 def _theme_check(arguments: argparse.Namespace) -> int:

@@ -1,0 +1,40 @@
+name: A diagram I cannot express
+description: The format has no way to say something you need to draw.
+labels: ["vocabulary"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The vocabulary is closed on purpose and opened on **evidence**. The four
+        kinds added since v1 each cleared hand-drawn originals that nothing here
+        could draw — see `docs/kinds-wanted.md`. So the useful shape of this
+        request is *here are the diagrams*, not *here is the feature*.
+
+  - type: textarea
+    id: originals
+    attributes:
+      label: The diagrams you are trying to draw
+      description: |
+        Describe them, or attach them. More than one is much stronger than one:
+        a single diagram is usually better served by rephrasing it, and a
+        recurring shape is what justifies new vocabulary.
+    validations:
+      required: true
+
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What you tried
+      description: |
+        Which existing kind you reached for, and where it fell short. If drawspec
+        refused something, paste the message.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you think it needs
+      description: A new kind, a new field on an existing one, or you are not sure.
+    validations:
+      required: false

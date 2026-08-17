@@ -1,0 +1,33 @@
+# drawspec
+
+> A declarative diagram format and renderer: you write a JSON document that says
+> what a diagram means, and drawspec decides every coordinate. Thirteen diagram
+> kinds, themeable SVG output, no system dependencies. Built so that a language
+> model can produce correct diagrams without placing anything.
+
+drawspec exists because LLMs drawing SVG directly fail at placement, not at
+content — arrows with no shaft, text escaping its box, lines stopping short. The
+format has no coordinates in it, and 26 placement and styling fields are refused
+by name with a JSON pointer, so those mistakes cannot be expressed.
+
+## Start here
+
+- [Instructions for agents](AGENTS.md): the whole format in one page — the rule,
+  the thirteen kinds, the roles, worked examples, and what each refusal means.
+  Read this one if you are writing documents.
+
+## Reference
+
+- [The document format](docs/format.md): every field a document may carry, by
+  kind, and every field that is refused, with the reason. Generated from the code.
+- [The command line](docs/cli.md): every command, argument and exit code.
+- [The theme reference](docs/theme.md): every key a theme may set.
+- [JSON Schema](schema/drawspec-v1.schema.json): published, versioned, and the
+  same source of truth the validator uses.
+
+## For humans
+
+- [The guide](docs/guide.md): install, first diagram, choosing a kind, embedding,
+  validating in a build, writing a theme.
+- [The brief](docs/brief.md): the measured failure taxonomy this was built from.
+- [Example documents](docs/reference/): one per kind, and what the gallery renders.
