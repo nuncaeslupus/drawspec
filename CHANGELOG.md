@@ -21,6 +21,11 @@ against it would stop working. Everything below is about the *package*.
   `drawspec example flow | drawspec validate -` is a toolchain smoke test.
 - `AGENTS.md` and `llms.txt` — the whole format on one page, for an agent
   writing documents. Gated so it cannot drift from the code.
+- **An MCP server** — `pip install 'drawspec[mcp]'` and `drawspec-mcp`, serving
+  `validate`, `render` and `kinds` over stdio. `validate`'s violations arrive as
+  `{"pointer", "message"}` objects rather than as prose on stderr, so an agent's
+  write-validate-fix cycle closes without a shell in it. An optional extra: the
+  library gains no dependency for anyone who does not install it.
 - `CONTRIBUTING.md` and this changelog.
 
 ## 0.1.0 — unreleased

@@ -10,6 +10,11 @@ drawspec validate diagram.json                # every violation, with a JSON poi
 drawspec schema --out schema.json             # the full JSON Schema
 ```
 
+**If your client speaks MCP**, `drawspec-mcp` serves the same three things as
+tools — `validate`, `render`, `kinds` — and `validate`'s violations arrive as
+`{"pointer": "/edges/0/to", "message": …}` rather than as text to read. Install
+it with `pip install 'drawspec[mcp]'`; see [`docs/guide.md`](docs/guide.md).
+
 ## The one rule
 
 **You may not write anything you would need to see the output to get right.**
