@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tomllib
@@ -441,17 +442,34 @@ def test_the_published_gallery_and_the_schema_id_are_served_from_one_place() -> 
     Two independent URLs written by hand in two files is two chances to point at
     a host that serves nothing — which is exactly how `SCHEMA_ID` came to name a
     domain that does not resolve, for long enough that every author who copied
-    the recommended `$schema` line got silence instead of completion. Tying them
-    together means a move can only be made in both places at once.
+    the recommended `$schema` line got silence instead of completion.
+
+    The gallery link is parsed out and its host compared, rather than the
+    `SCHEMA_ID` host merely being searched for in the file. The first version of
+    this test did the latter and was **vacuous**: the README quotes `SCHEMA_ID`
+    in full, so the host was always present and the gallery link was never
+    looked at at all. That is this project's own recurring failure — a gate
+    reporting zero because it did not look — reproduced inside the guard written
+    to prevent it.
     """
     from urllib.parse import urlparse
 
     from drawspec.schema import SCHEMA_ID
 
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    host = urlparse(SCHEMA_ID).netloc
-    assert host, SCHEMA_ID
-    assert f"https://{host}/" in readme, (
-        f"the README publishes no link on {host}, which is where SCHEMA_ID says "
-        f"the schema is served from"
-    )
+
+    # The recommended `$schema` line has to be the constant itself, character for
+    # character — a README that teaches a URL the code does not use is the same
+    # defect one level up.
+    assert SCHEMA_ID in readme, f"the README does not quote SCHEMA_ID ({SCHEMA_ID})"
+
+    published = [
+        url for url in re.findall(r"\]\((https?://[^)]+)\)", readme) if "docs/gallery" in url
+    ]
+    assert published, "the README publishes no link to the gallery"
+    expected = urlparse(SCHEMA_ID).netloc
+    for url in published:
+        assert urlparse(url).netloc == expected, (
+            f"the gallery is published on {urlparse(url).netloc} and the schema on "
+            f"{expected}; one switch cannot serve both"
+        )
