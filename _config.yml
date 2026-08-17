@@ -1,0 +1,32 @@
+# GitHub Pages, serving this repository from `main` at the root.
+#
+# Root rather than `/docs`, for one reason that decided it: the published JSON
+# Schema lives at `schema/drawspec-v1.schema.json`, and `SCHEMA_ID` has to be a
+# URL that actually serves it. Serving `/docs` would leave the schema unreachable
+# and force a second copy of it inside `docs/`, which is exactly the drift the
+# single-artefact arrangement exists to prevent.
+#
+# Serving the root also makes README.md the landing page, which is the page most
+# worth landing on. `jekyll-relative-links` is in the default GitHub Pages plugin
+# set, so its links to `docs/guide.md` resolve to the built `docs/guide.html`
+# without anything being rewritten by hand.
+
+title: drawspec
+description: >-
+  Declarative diagram spec to clean, themeable SVG. Thirteen diagram kinds, no
+  coordinates in the format, writable by an LLM.
+theme: jekyll-theme-minimal
+
+# Development machinery and source that has no business on a documentation site.
+# `schema/` is deliberately absent from this list — excluding it would break the
+# URL every document's `$schema` points at.
+exclude:
+  - .claude/
+  - claude-arsenal/
+  - corpus/
+  - src/
+  - tests/
+  - tools/
+  - Makefile
+  - pyproject.toml
+  - uv.lock

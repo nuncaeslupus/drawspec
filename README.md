@@ -151,17 +151,22 @@ drawspec theme check default                  # including the greyscale invarian
 drawspec schema --out drawspec-v1.schema.json # for editor completion
 ```
 
-Put `"$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json"` at the top
+Put `"$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json"` at the top
 of a document and any editor with JSON Schema support completes the fields and
 flags a refused one *while you type it*, rather than after a render.
 
 ## The gallery
 
+**[Every kind, drawn, on one page →](https://nuncaeslupus.github.io/drawspec/docs/gallery/)**
+
 One document per kind lives in [`docs/reference`](docs/reference), and `make
-gallery` renders every one of them into a single page —
-`docs/gallery/index.html` — which is the fastest way to see the whole vocabulary,
-and the fastest way to see what a change did. Looking at that page is how four
-rendering defects were found that no gate had caught.
+gallery` renders every one of them into `docs/gallery/index.html`, which is what
+that link publishes. It is the fastest way to see the whole vocabulary, and the
+fastest way to see what a change did — looking at it is how four rendering
+defects were found that no gate had caught.
+
+It is committed as well as published, so a diff shows what a change did to the
+pictures.
 
 Every kind is drawn to the theme's one canvas width, and a diagram narrower than
 it is centred in it rather than cropped to its own ink. That is what makes the

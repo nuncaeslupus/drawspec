@@ -433,3 +433,25 @@ def _inside_a_shape(line: TextLine, shapes: Sequence[Rect | Polygon]) -> bool:
         if bounds[0] <= line.x <= bounds[2] and bounds[1] <= line.y <= bounds[3]:
             return True
     return False
+
+
+def test_the_published_gallery_and_the_schema_id_are_served_from_one_place() -> None:
+    """Both come off GitHub Pages, so both live or die by the same switch.
+
+    Two independent URLs written by hand in two files is two chances to point at
+    a host that serves nothing — which is exactly how `SCHEMA_ID` came to name a
+    domain that does not resolve, for long enough that every author who copied
+    the recommended `$schema` line got silence instead of completion. Tying them
+    together means a move can only be made in both places at once.
+    """
+    from urllib.parse import urlparse
+
+    from drawspec.schema import SCHEMA_ID
+
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    host = urlparse(SCHEMA_ID).netloc
+    assert host, SCHEMA_ID
+    assert f"https://{host}/" in readme, (
+        f"the README publishes no link on {host}, which is where SCHEMA_ID says "
+        f"the schema is served from"
+    )
