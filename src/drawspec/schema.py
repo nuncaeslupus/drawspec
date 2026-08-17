@@ -47,7 +47,19 @@ DOCUMENT_VERSION: Final = 1
 #: `"$schema": "<this>"` gets completion and inline errors in any editor with
 #: JSON Schema support — the author is told `font_size` is not allowed *while
 #: typing it*, rather than after a render.
-SCHEMA_ID: Final = "https://drawspec.dev/schema/drawspec-v1.schema.json"
+#:
+#: **An `$id` has to be a URL that actually serves the document**, and this one
+#: did not: it named `drawspec.dev`, which nobody had ever checked and which does
+#: not resolve. Every author who copied the recommended `$schema` line got
+#: silence instead of completion — the one feature that most makes this format
+#: pleasant to write by hand, absent, with nothing to say so.
+#:
+#: It is now the GitHub Pages URL, which serves `schema/drawspec-v1.schema.json`
+#: from the default branch: free, already the project's own domain, and no
+#: second copy of the artefact anywhere. Changed *before* the first release
+#: rather than after, because an `$id` is an identity — once a version is on
+#: PyPI it is in the wild, and moving it stops being a find-and-replace.
+SCHEMA_ID: Final = "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json"
 
 #: Where the generated artefact is committed, relative to the repository root.
 SCHEMA_FILENAME: Final = "drawspec-v1.schema.json"

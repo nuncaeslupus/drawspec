@@ -33,7 +33,7 @@ The smallest document that renders:
 `version` (always `1`) and `kind` are required, and so is the payload the kind
 selects — a `flow` with no `nodes` is refused rather than drawn empty. `title`,
 `description` and `caption` are optional and always allowed. Add
-`"$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json"` for editor
+`"$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json"` for editor
 completion.
 
 `text` anywhere carries `**bold**` and `` `code` `` spans, and nothing else. A

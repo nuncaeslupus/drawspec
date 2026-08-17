@@ -55,7 +55,7 @@ A document says what the diagram **means**. Write `diagram.json`:
 
 ```json
 {
-  "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json",
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
   "version": 1,
   "kind": "flow",
   "title": "Request validation",

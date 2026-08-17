@@ -10,11 +10,11 @@ the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
 13 kinds. The machine-readable form of this page is the published
-JSON Schema, `https://drawspec.dev/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
+JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
 ```json
-{ "$schema": "https://drawspec.dev/schema/drawspec-v1.schema.json", "version": 1, "kind": "flow", "nodes": [] }
+{ "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json", "version": 1, "kind": "flow", "nodes": [] }
 ```
 
 `drawspec validate doc.json` prints every violation with the JSON pointer of
