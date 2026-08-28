@@ -2,39 +2,36 @@
 
 <!-- Written at session end. A new session reading this file can resume without additional context. -->
 
-**Date**: 2026-08-17 · **Branch**: `claude/continuation-hkhyz8`
-**Merged this session**: [#51](https://github.com/nuncaeslupus/drawspec/pull/51) `a140c0f` ·
-[#52](https://github.com/nuncaeslupus/drawspec/pull/52) `b90414a` ·
-[#53](https://github.com/nuncaeslupus/drawspec/pull/53) `fe011e0` ·
-[#54](https://github.com/nuncaeslupus/drawspec/pull/54) `ba1c0aa` ·
-[#59](https://github.com/nuncaeslupus/drawspec/pull/59) `25e7eb2` ·
-[#60](https://github.com/nuncaeslupus/drawspec/pull/60) `e297771` ·
-[#61](https://github.com/nuncaeslupus/drawspec/pull/61) `614ffd4` ·
-[#62](https://github.com/nuncaeslupus/drawspec/pull/62) `c924dfa`
-**Suite**: 1 645 passing, 1 skipped · lint + strict mypy clean
-**Gates**: 0 collisions **and** 0 outside the canvas, across 37 references
-**Queue**: 38 of 43 terminal · `queue_doctor.sh` reports **0 findings**
+**Date**: 2026-08-28 · **Branch**: `claude/github-coderabbit-limits-huuu88`
+**This session**: migrated `claude-arsenal` from the coordination-branch queue
+(v0.23.1) to the GitHub-issues task board (v2.4.23) — [#70](https://github.com/nuncaeslupus/drawspec/pull/70)
+— and added a `scatter` kind, requested by `integral-job-search` — [#71](https://github.com/nuncaeslupus/drawspec/pull/71).
+**Suite**: 1 662 passing, 1 skipped · lint + strict mypy clean
+**Tasks**: 6 live (issues #64–#69, `arsenal:task`), 38 terminal (archived in
+`arsenal/tasks/_history/`)
 
 ---
 
 ## Read this first
 
-**Every open task now needs a laptop.** Five remain and there is no code work
-left in the queue — the cloud side is finished. Do not go hunting: `B3` (the MCP
-server) and `F1` (`actor`) both shipped this session, and what is left is a
-settings switch, a credential and a sweep.
+**The task board is GitHub issues now, not a queue file.** List issues labelled
+`arsenal:task` (open and closed), then `python3 claude-arsenal/scripts/task_select.py`
+picks the next unblocked one — see `claude-arsenal/AGENTS.md`'s session-start
+protocol. The five pre-existing tasks below are unchanged in substance; only the
+mechanics of finding and claiming them changed.
 
-**One switch unblocks four of the five.**
+**Every one of the five pre-existing tasks still needs a laptop** — no code work
+is left for them. **One switch unblocks four of the five.**
 
 > **Settings → Pages → Source: Deploy from a branch → `main` / `/` (root)**
 
 | | | Blocked on |
 |---|---|---|
-| **C2** `lo-f0f8` | Flip Pages on, open the gallery, look at it | the switch |
-| **C3** `lo-70ef` | Run its gate; it fetches `SCHEMA_ID` and compares to the committed artefact | C2 |
-| **C1** `lo-2158` | Topics, homepage, description — values are paste-ready | C2 (supplies the homepage) |
-| **C4** `lo-52fa` | Sweep the consumer's 87 documents onto the new `$schema` | C2 |
-| **A3** `lo-666f` | PyPI: configure the trusted publisher, bump, tag, push | C3 |
+| **C2** `lo-f0f8` (#66) | Flip Pages on, open the gallery, look at it | the switch |
+| **C3** `lo-70ef` (#67) | Run its gate; it fetches `SCHEMA_ID` and compares to the committed artefact | C2 |
+| **C1** `lo-2158` (#65) | Topics, homepage, description — values are paste-ready | C2 (supplies the homepage) |
+| **C4** `lo-52fa` (#68) | Sweep the consumer's 87 documents onto the new `$schema` | C2 |
+| **A3** `lo-666f` (#69) | PyPI: configure the trusted publisher, bump, tag, push | C3 |
 
 Every payload is self-contained: exact values, exact commands, and why the order
 is what it is. `C1` and `C2` are `laptop` because **the GitHub tooling in a cloud
@@ -42,6 +39,12 @@ session has no repository-settings API** — no topics setter, no Pages toggle.
 That is a capability limit, not an oversight. `A3` is `laptop` because a cloud
 session cannot hold a PyPI credential; everything else about the release is
 built and merged.
+
+**The sixth task, `scatter` (`lo-825e` / #64), is done** — merged (or pending
+review) as #71. It needed no laptop: a 2-D kind, two continuous ticked axes,
+reusing `quadrant`'s axis machinery and `chart`'s tick furniture almost
+unchanged. See the task's archived file in `arsenal/tasks/_history/` once #71
+merges for the full design reasoning.
 
 ## What this session did
 
@@ -142,13 +145,24 @@ What is left is not a task and should not be invented as one:
   on **53 / 74 / 81**, the English-against-Catalan redraws **27, 83, 86**.
   Untouched across five rounds because they are judgement calls, not work.
 
-## Queue mechanics worth knowing
+## Task-board mechanics worth knowing
 
-* **`arsenal-queue` is the source of truth.** The copy of `tasks.jsonl` on `main`
-  is stale and shows finished tasks `open`. Run `queue_sync.sh` (protocol step
-  1b) before trusting `queue_eval.sh`.
-* `reconcile_merged.sh` cannot run here — `gh` is not installed — so `done` rows
-  never flip to `merged` from a cloud session. Run it from the laptop.
-* The four `missing-payload` errors that had been reported for months are gone:
-  `lo-ee92`, `lo-1b55`, `lo-b67b`, `lo-1270` (G3–G6) now carry reconstructed
-  payloads saying so. `queue_doctor.sh` is at **0 findings** — keep it there.
+* **GitHub issues are the source of truth now, not a branch.** The old
+  `arsenal-queue` coordination branch, `claude-arsenal/queue/tasks.jsonl`,
+  `queue_sync.sh` and `queue_eval.sh` are gone — removed by the v2.4.23
+  migration. A task's state is its issue's open/closed state plus its
+  `arsenal:claimed` label; `python3 claude-arsenal/scripts/query_status.py`
+  reads the board.
+* Each live task file (`arsenal/tasks/<id>.md`) carries an `arsenal-task: <id>`
+  line in its linked issue's body — that is the whole of how an issue resolves
+  to a task, so never strip it when editing an issue by hand.
+* PR #70 (the migration itself) had a CodeRabbit review flag ~14 real bugs in
+  the *vendored* bundle content it brought in (`claude-arsenal/`, the skills
+  under `.claude/skills/`, `.github/workflows/arsenal-queue.yml`) — things like
+  an unquoted curl arg, a `pull_request_target` authorization gap, and a
+  skill-edit gate that does not recognize `git restore`. None of that is
+  drawspec's to hand-patch (upstream owns that prefix and overwrites it on the
+  next refresh); filed upstream instead. Check
+  [nuncaeslupus/claude-arsenal](https://github.com/nuncaeslupus/claude-arsenal/issues)
+  for the tracking issue before assuming those are still open — a bundle
+  refresh may have already pulled the fixes in.
