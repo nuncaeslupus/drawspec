@@ -1,6 +1,6 @@
 ---
 name: github
-description: Use whenever the user is creating commits, opening pull requests, or waiting on PR review/CI feedback — applies Conventional Commits + branch naming, then polls the open PR for review-bot reactions and CI status, addresses each comment inline or replies, and reports when the PR is ready to merge. Triggers — "open a PR", "address review comments", "wait for Gemini / CodeRabbit", "is CI done?". Owns scripts — query_pr_state.py, query_project_type.py. Do NOT use for engineering review of a diff (see review), generic git mechanics like branching/worktrees (see execution), or hardcoding a Co-Authored-By model name (refused — the harness supplies model identity).
+description: Use whenever the user is creating commits, opening pull requests, or waiting on PR review/CI feedback — applies Conventional Commits + branch naming, then polls the PR for review-bot comments and CI status until it is ready to merge. Triggers — "open a PR", "address review comments". Do NOT use for engineering review of a diff (see review) or generic git mechanics (see execution).
 metadata:
   type: workflow
 ---
@@ -69,9 +69,9 @@ Handle each state per the rubric in [pr-review-loop](references/pr-review-loop.m
 
 - `bot_eyeing` → loop continues. Bot owns clearing `:eyes:` by acting again. Exception: with `--unresolved-only`, when every comment the bot wrote is filtered out and the bot did review at some point, the script promotes the state to `bot_approved` / `ready_to_merge` — the loop has done its part and stale eyes lose their blocking force.
 - `bot_commented` → for each comment in `bot_line_comments`, judge: **already addressed** (reply "addressed in <sha>"), **agree** (fix + push + **reply** "addressed in <sha>" — the reply is what `--unresolved-only` anchors on), **disagree** (reply with rationale via `gh api .../pulls/<N>/comments/<id>/replies`), or **ambiguous** (reply asking for clarification + ping the user). Loop continues after action. **Every fix or dismissal MUST be paired with a reply on the thread.**
-- `conflicts` → the PR branch conflicts with its base. Rebase onto (or merge) the base branch, resolve the conflicts, and push. Loop continues. A conflicted PR cannot merge regardless of CI/review state, so this is surfaced first.
+- `conflicts` → the PR branch conflicts with its base. Rebase onto (or merge) the base branch, resolve the conflicts, and push. Loop continues. A conflicted PR cannot merge regardless of CI/review state, so this is surfaced first. When the branch is stacked on a PR that already merged, use `rebase_stack.sh` (see *Multi-PR stacking* below) rather than replaying by hand — it skips the merged commits and knows which conflicts are regenerable.
 - `ci_failed` → fetch the failed log via `gh run view --log-failed <run-id>`, fix, push. Reply on any comments the fix relates to. Loop continues.
-- `ready_to_merge` → exit the loop, tell the user "PR #N ready to merge".
+- `ready_to_merge` → exit the loop, tell the user "PR #N ready to merge". In a repo carrying `arsenal/config.toml`, handing back is not automatically the right ending: `merge-policy` there is the host's standing answer to whether an agent may merge it, and the vendored protocol's completion step gives the rule for each value. Read it before asking a question the host already answered.
 - `merged` / `closed` → exit the loop immediately. PR is no longer open; nothing to do.
 
 ## Multi-PR stacking — autonomous sequential work
@@ -89,7 +89,9 @@ After each merge, immediately rebase the next waiting branch onto `main` to skip
 bash "${CLAUDE_SKILL_DIR}/../../init/assets/bin/rebase_stack.sh" fix/iss-B fix/iss-A
 ```
 
-`rebase_stack.sh <branch> <old-base>` computes the fork point, runs `git rebase --onto origin/main`, and force-pushes with lease in one step. Cascade it down the remaining stack (B→C, C→D, …) after each merge.
+`rebase_stack.sh <branch> <old-base>` computes the fork point, runs `git rebase --onto origin/main`, runs the repo's `host-gate`, and force-pushes with lease in one step. Cascade it down the remaining stack (B→C, C→D, …) after each merge. `--no-push` rebases only.
+
+A repo that uses evidence gates conflicts on its own evidence files on almost every replay — both sides moved, and hand-merging two measurements of a tree is meaningless. When every conflicted path is one a task declares as `evidence:`, the script takes the branch's side, re-runs `host-gate` to regenerate, and continues. Anything outside that set stops the rebase and is named: that is a real conflict, and a human resolves it.
 
 ## Project type — Classic vs v2
 

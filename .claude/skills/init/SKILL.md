@@ -46,19 +46,30 @@ python3 "${CLAUDE_SKILL_DIR}/scripts/init.py" --workspace BACKEND --root ./backe
 The script:
 1. Creates `claude-arsenal/` structure: `bin/`, `project/`, `queue/`, `session/`, `agents/`.
 2. Copies bundle scripts from the plugin into `claude-arsenal/bin/` (checksum-based; refreshes stale files only).
-3. Creates empty `claude-arsenal/queue/tasks.jsonl` and `claude-arsenal/session/handover.md`.
+3. Scaffolds the host-owned `arsenal/` tree — `tasks/`, `specs/`, `plans/`, `session/handover.md` — and seeds `arsenal/config.toml`. Upstream owns `claude-arsenal/` and may overwrite it on every re-run; it never writes into `arsenal/` again, so an upgrade cannot touch the host repo's tasks or settings.
 4. Writes a permissive `surface_profile.json` (gitignored) so all tasks are eligible on any surface.
 5. Adds `.gitignore` entries for `surface_profile.json` and the statusLine-written `rate_limits.json`.
 6. Registers `statusline_capture.sh` as the host `statusLine` command (skipped if one already exists) so `budget_check.sh` can read quota.
 7. Injects the session-start protocol block + `@claude-arsenal/AGENTS.md` import into `CLAUDE.md`.
+8. Declares the `claude-arsenal` marketplace and enables `core` + `skill-workshop` in `.claude/settings.json`, pinned to `ref: v<bundle-version>`. An existing declaration is left alone — a consumer who pinned an older ref, a fork, or a local directory meant it.
+
+**Retiring vendored skill copies:**
+```bash
+python3 "${CLAUDE_SKILL_DIR}/scripts/init.py" --repo-path . --migrate-plugins yes
+```
+A repo set up before plugins reached cloud sessions has copies of these skills under `.claude/skills/`, each carrying a `.arsenal-vendored` marker. Once the plugin is declared, both sets are live at once: the plugin's are namespaced (`core:specify`), the vendored ones are not (`specify`), so every skill answers twice and costs listing budget twice.
+
+Init never removes them on its own. When it finds them it prints what it found and stops — **ask the user** whether to remove the vendored copies, then re-run with `--migrate-plugins yes` (or `no` to keep them and stop being asked). The choice is recorded as `plugin-migration` in `arsenal/config.toml`. Only folders carrying the marker are ever removed; a skill the consumer authored is never touched.
 
 With `--workspace NAME`, additionally:
-- Creates `claude-arsenal/project/<NAME>/` with `spec.md`, `plan.md`, `context.md`, `handover.md` stubs.
-- Upserts `claude-arsenal/project/overview.md` workspace index.
+- Creates `arsenal/project/<NAME>/` with `spec.md`, `plan.md`, `context.md`, `handover.md` stubs.
+- Upserts `arsenal/project/overview.md` workspace index.
 
 ## Gotchas
 
 - **Bundle scripts are authoritative.** Re-running `init` refreshes any `claude-arsenal/bin/` file whose checksum differs from the plugin bundle. Project data (`project/`, `queue/`, `session/handover.md`) is never touched on re-run.
+- **Cloud sessions need the declaration, not an install.** A cloud session (web, desktop and mobile apps, Claude Tag, routines) runs on a fresh clone and never sees `~/.claude/`, so a plugin installed with `/plugin install` does not reach it — that install state is user-scoped. What reaches it is the repo's committed `.claude/settings.json`, which is why init writes the declaration there. It resolves at session start and needs network access to the marketplace source.
+- **Shared project settings outrank user settings.** The declaration init writes wins over a same-named marketplace in the user's own `~/.claude/settings.json` — including a local `directory` source pointed at a working copy. Developing against a checkout in a repo that has been init'd means editing that pin.
 - **CC Web without hooks**: `detect_surface.sh` won't auto-run on web, but init writes a permissive `surface_profile.json` so all tasks remain eligible.
 - **CLAUDE.md block must be at root.** The injected block appears in the host root `CLAUDE.md`, not a nested file.
-- **Auto-refresh on session start.** The session-start protocol (AGENTS.md step 0) runs `init.py --silent` automatically. When the plugin is updated to a new version, the next session start detects the version mismatch, refreshes the stale scripts, and reports what changed. No manual `/init` is required for bundle-script updates — only for new workspace registration or major changes to `CLAUDE.md`.
+- **Auto-refresh on session start.** The session-start protocol (AGENTS.md step 0) runs `init.py --silent` automatically. When the plugin is updated to a new version, the next session start detects the version mismatch, refreshes the stale scripts, and reports what changed. No manual `/init` is required for bundle-script updates — only for new workspace registration or major changes to `CLAUDE.md`. A refresh only ever moves **forward**: when the host's committed bundle is newer than this skill's vendored copies, init writes nothing and says so, because the checksum comparison cannot tell a stale file from an upstream fix that has not reached the plugin yet. Update the plugin instead; `--allow-downgrade` overwrites the newer install and is for recovering a broken one.
