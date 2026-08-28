@@ -723,6 +723,24 @@ def test_a_scatter_still_needs_both_axes_labelled() -> None:
         )
 
 
+def test_a_scatter_refuses_categorical_axes() -> None:
+    """`categories` would be accepted and never drawn — a scatter axis is
+    always a measurement, which is the whole difference from `quadrant`."""
+    with pytest.raises(DocumentError, match="categories"):
+        parse_document(
+            {
+                "version": 1,
+                "kind": "scatter",
+                "title": "A scatter",
+                "axes": {
+                    "horizontal": {"label": "Cost", "categories": ["low", "high"]},
+                    "vertical": {"label": "Impact"},
+                },
+                "positions": [{"text": "One", "across": 0.5, "up": 0.5}],
+            }
+        )
+
+
 # --------------------------------------------------------------------------
 # curve
 # --------------------------------------------------------------------------

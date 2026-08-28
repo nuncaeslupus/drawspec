@@ -1328,6 +1328,22 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                     )
                 )
         return found
+    if kind == "scatter":
+        axes = document.get("axes")
+        if isinstance(axes, dict):
+            for side in ("horizontal", "vertical"):
+                axis = axes.get(side)
+                if isinstance(axis, dict) and axis.get("categories"):
+                    found.append(
+                        Violation(
+                            _pointer("axes", side, "categories"),
+                            "a scatter axis reads only measured values — `categories` "
+                            "would be accepted and never drawn, which this format "
+                            "promises not to do. `chart` draws a categorical axis; "
+                            "`curve` draws named waypoint marks.",
+                        )
+                    )
+        return found
     if kind == "timeline":
         entries = document.get("items")
         spans = document.get("spans")
@@ -1872,14 +1888,16 @@ def build_schema() -> dict[str, Any]:
     # kind may draw its fields from more than one entry — `timeline` takes
     # `items` with the other grid kinds and `spans` on its own — and a kind
     # appearing in two branches would match both, which `oneOf` reads as invalid.
-    grouped: dict[tuple[str, ...], list[str]] = {}
+    # Grouped by the full field tuple, not just names: `quadrant` and `scatter`
+    # both take `axes` + `positions`, but with different descriptions for what
+    # those mean, and merging on name alone silently dropped one kind's prose.
+    grouped: dict[tuple[FieldSpec, ...], list[str]] = {}
     for kind in KINDS:
-        grouped.setdefault(tuple(field.name for field in payload_for(kind)), []).append(kind)
+        grouped.setdefault(payload_for(kind), []).append(kind)
 
     variants = []
-    for names, kinds in grouped.items():
-        by_name = {field.name: field for field in payload_for(kinds[0])}
-        specs = list(COMMON_FIELDS) + [by_name[name] for name in names]
+    for specs_for_kind, kinds in grouped.items():
+        specs = list(COMMON_FIELDS) + list(specs_for_kind)
         variant = _object_schema(specs, title=" / ".join(kinds))
         variant["properties"]["kind"] = {"type": "string", "enum": list(kinds)}
         variant["properties"]["version"] = {"const": DOCUMENT_VERSION}

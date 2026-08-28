@@ -148,7 +148,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Thirteen exist, and they fall into four families:
+fields are legal. Fourteen exist, and they fall into four families:
 
 | Family | Kinds | What they are for |
 |---|---|---|

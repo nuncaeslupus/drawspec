@@ -578,7 +578,7 @@
     },
     {
       "type": "object",
-      "title": "quadrant / scatter",
+      "title": "quadrant",
       "properties": {
         "$schema": {
           "type": "string",
@@ -590,8 +590,7 @@
         "kind": {
           "type": "string",
           "enum": [
-            "quadrant",
-            "scatter"
+            "quadrant"
           ]
         },
         "title": {
@@ -631,6 +630,74 @@
         "positions": {
           "type": "array",
           "description": "The items placed in the plane, each by what it scores, not by where it goes.",
+          "items": {
+            "$ref": "#/$defs/position"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "axes",
+        "positions"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "scatter",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "scatter"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "axes": {
+          "$ref": "#/$defs/axes",
+          "description": "Both axes, each read as a measurement — unlike `quadrant`'s."
+        },
+        "positions": {
+          "type": "array",
+          "description": "The points, each placed by its two measured values.",
           "items": {
             "$ref": "#/$defs/position"
           },

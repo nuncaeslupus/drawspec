@@ -1,7 +1,7 @@
 # drawspec
 
 > A declarative diagram format and renderer: you write a JSON document that says
-> what a diagram means, and drawspec decides every coordinate. Thirteen diagram
+> what a diagram means, and drawspec decides every coordinate. Fourteen diagram
 > kinds, themeable SVG output, no system dependencies. Built so that a language
 > model can produce correct diagrams without placing anything.
 
