@@ -40,11 +40,14 @@ That is a capability limit, not an oversight. `A3` is `laptop` because a cloud
 session cannot hold a PyPI credential; everything else about the release is
 built and merged.
 
-**The sixth task, `scatter` (`lo-825e` / #64), is done** — merged (or pending
-review) as #71. It needed no laptop: a 2-D kind, two continuous ticked axes,
-reusing `quadrant`'s axis machinery and `chart`'s tick furniture almost
-unchanged. See the task's archived file in `arsenal/tasks/_history/` once #71
-merges for the full design reasoning.
+**The sixth task, `scatter` (`lo-825e` / #64), is implemented and its PR is
+open**: [#71](https://github.com/nuncaeslupus/drawspec/pull/71), pending
+review — not yet merged, so `lo-825e` is still a live task file, not archived.
+It needed no laptop: a 2-D kind, two continuous ticked axes, reusing
+`quadrant`'s axis machinery and `chart`'s tick furniture almost unchanged.
+Once #71 merges, `open_task_pr.sh`'s archival moves the task file to
+`arsenal/tasks/_history/` and closes #64 automatically — nothing to do by
+hand.
 
 ## What this session did
 
@@ -148,11 +151,15 @@ What is left is not a task and should not be invented as one:
 ## Task-board mechanics worth knowing
 
 * **GitHub issues are the source of truth now, not a branch.** The old
-  `arsenal-queue` coordination branch, `claude-arsenal/queue/tasks.jsonl`,
-  `queue_sync.sh` and `queue_eval.sh` are gone — removed by the v2.4.23
-  migration. A task's state is its issue's open/closed state plus its
-  `arsenal:claimed` label; `python3 claude-arsenal/scripts/query_status.py`
-  reads the board.
+  `claude-arsenal/queue/tasks.jsonl`, `queue_sync.sh` and `queue_eval.sh` are
+  gone from the tree — removed by the v2.4.23 migration. The `arsenal-queue`
+  coordination branch is obsolete and no longer authoritative, but its
+  **remote deletion is still pending manual cleanup** — this session's push
+  access is restricted to its own branch, so `git push origin --delete
+  arsenal-queue` needs a human or a session without that restriction. Do not
+  read from it or push to it in the meantime; a task's real state is its
+  issue's open/closed state plus its `arsenal:claimed` label —
+  `python3 claude-arsenal/scripts/query_status.py` reads the board.
 * Each live task file (`arsenal/tasks/<id>.md`) carries an `arsenal-task: <id>`
   line in its linked issue's body — that is the whole of how an issue resolves
   to a task, so never strip it when editing an issue by hand.
