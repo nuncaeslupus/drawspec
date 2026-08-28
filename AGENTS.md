@@ -62,6 +62,7 @@ Pick by what the diagram **claims**, not by what it looks like.
 | `funnel` | Narrowing stages, with thresholds between | `stages` |
 | `chart` | A small number you already know | `axes` + `series` |
 | `quadrant` | Items placed against two named axes | `axes` + `positions` |
+| `scatter` | Points placed by two measured values | `axes` + `positions` |
 | `curve` | A named shape with labelled waypoints | `axes` + `curves` |
 
 `flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may

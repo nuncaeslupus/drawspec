@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-13 kinds. The machine-readable form of this page is the published
+14 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `curve` | **yes** | Which of the thirteen diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve` | **yes** | Which of the fourteen diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -106,6 +106,13 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 |---|---|---|---|
 | `axes` | [axes object](#axes-object) | **yes** | The two named axes whose crossing makes the four quadrants. |
 | `positions` | array of [position](#position-object), at least 1 | **yes** | The items placed in the plane, each by what it scores, not by where it goes. |
+
+### `scatter`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `axes` | [axes object](#axes-object) | **yes** | Both axes, each read as a measurement — unlike `quadrant`'s. |
+| `positions` | array of [position](#position-object), at least 1 | **yes** | The points, each placed by its two measured values. |
 
 ### `curve`
 

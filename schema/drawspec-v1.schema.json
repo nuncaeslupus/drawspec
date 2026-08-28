@@ -578,7 +578,7 @@
     },
     {
       "type": "object",
-      "title": "quadrant",
+      "title": "quadrant / scatter",
       "properties": {
         "$schema": {
           "type": "string",
@@ -590,7 +590,8 @@
         "kind": {
           "type": "string",
           "enum": [
-            "quadrant"
+            "quadrant",
+            "scatter"
           ]
         },
         "title": {

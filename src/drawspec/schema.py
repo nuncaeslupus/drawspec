@@ -76,7 +76,7 @@ CONTAINER_KINDS: Final = ("flow", "tree")
 
 GRID_KINDS: Final = ("stack", "timeline", "columns", "matrix")
 SHAPE_KINDS: Final = ("pyramid", "rings", "funnel")
-CHART_KINDS: Final = ("chart", "quadrant", "curve")
+CHART_KINDS: Final = ("chart", "quadrant", "scatter", "curve")
 
 #: How a series may be drawn. `line` is the default and was the only one until
 #: the corpus asked for the others; `area` is a line whose fill reaches the
@@ -88,11 +88,14 @@ MARKS: Final = ("line", "bar", "area")
 #: whose iteration order a reader has to trust.
 AXIS_ORDER: Final = ("horizontal", "vertical")
 
-#: The kinds. Closed: a new one needs evidence, not a preference — and the
-#: evidence is `docs/kinds-wanted.md`, which sorts the 89 hand-drawn originals by
-#: the kind that would have to draw them. The four that opened the vocabulary
-#: from nine to thirteen — `matrix`, `funnel`, `quadrant`, `curve` — each cleared
-#: originals nothing here could draw.
+#: The kinds. Closed: a new one needs evidence, not a preference. For most of
+#: these the evidence is `docs/kinds-wanted.md`, which sorts the 89 hand-drawn
+#: originals by the kind that would have to draw them — the four that opened
+#: the vocabulary from nine to thirteen (`matrix`, `funnel`, `quadrant`,
+#: `curve`) each cleared originals nothing here could draw. `scatter` is the
+#: first exception: no original asked for it, but a consumer project did (a
+#: Pareto-frontier view needs two continuous, ticked axes, which `quadrant`
+#: deliberately refuses to draw) — evidence external to the corpus, not absent.
 KINDS: Final = GRAPH_KINDS + GRID_KINDS + SHAPE_KINDS + CHART_KINDS
 
 #: Fields an author might reach for that drawspec refuses, and why. Not used for
@@ -538,7 +541,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the thirteen diagrams this is. It selects the fields that are "
+            "Which of the fourteen diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -760,6 +763,23 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             description=(
                 "The items placed in the plane, each by what it scores, not by where it goes."
             ),
+        ),
+    ),
+    ("scatter",): (
+        FieldSpec(
+            "axes",
+            "object",
+            required=True,
+            ref="axes",
+            description="Both axes, each read as a measurement — unlike `quadrant`'s.",
+        ),
+        FieldSpec(
+            "positions",
+            "array",
+            required=True,
+            item_ref="position",
+            min_items=1,
+            description="The points, each placed by its two measured values.",
         ),
     ),
     ("curve",): (

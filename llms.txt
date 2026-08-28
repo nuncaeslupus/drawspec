@@ -13,7 +13,7 @@ by name with a JSON pointer, so those mistakes cannot be expressed.
 ## Start here
 
 - [Instructions for agents](AGENTS.md): the whole format in one page — the rule,
-  the thirteen kinds, the roles, worked examples, and what each refusal means.
+  the fourteen kinds, the roles, worked examples, and what each refusal means.
   Read this one if you are writing documents.
 
 ## Reference

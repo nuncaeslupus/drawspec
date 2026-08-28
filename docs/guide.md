@@ -155,7 +155,7 @@ fields are legal. Thirteen exist, and they fall into four families:
 | Graph | `flow`, `tree`, `cycle` | Things connected to other things: a process, a hierarchy, a loop that comes round again. |
 | Grid | `stack`, `timeline`, `columns`, `matrix` | Things in an arrangement: layers, events in order, side-by-side comparison, rows against columns. |
 | Shape | `pyramid`, `rings`, `funnel` | Things in a proportion: levels narrowing to an apex, scopes nested inside scopes, stages narrowing to an outcome. |
-| Plot | `chart`, `quadrant`, `curve` | Things with numbers: series against axes, items placed in a plane, a named shape with labelled waypoints. |
+| Plot | `chart`, `quadrant`, `scatter`, `curve` | Things with numbers: series against axes, items placed in a plane, points by two measured values, a named shape with labelled waypoints. |
 
 One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see

@@ -114,12 +114,12 @@ Write the smallest document of that kind that renders, to stdout. Pipe it straig
 
 ```
 usage: drawspec example [-h]
-                        {flow,tree,cycle,stack,timeline,columns,matrix,pyramid,rings,funnel,chart,quadrant,curve}
+                        {flow,tree,cycle,stack,timeline,columns,matrix,pyramid,rings,funnel,chart,quadrant,scatter,curve}
 ```
 
 | Argument | What it does |
 |---|---|
-| `kind` | Which kind to write. One of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `curve`. |
+| `kind` | Which kind to write. One of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`. |
 
 ## Embedding profiles
 

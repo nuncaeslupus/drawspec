@@ -1,0 +1,7 @@
+{
+  "surface": "unknown",
+  "capabilities": [
+    "surface:cli",
+    "surface:web"
+  ]
+}
