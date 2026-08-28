@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "kind": "scatter",
+  "title": "Which initiatives are worth doing first",
+  "description": "Nine initiatives placed by their measured cost and expected impact. A quadrant would only say which quarter each sits in; a scatter's ticks let a reader read the actual numbers off it.",
+  "caption": "Cost in person-weeks; impact as a 0-10 score from the planning review.",
+  "axes": {
+    "horizontal": { "label": "Cost", "unit": "person-weeks" },
+    "vertical": { "label": "Impact", "unit": "score" }
+  },
+  "positions": [
+    { "text": "Cache the slow query", "across": 1, "up": 6, "role": "emphasis" },
+    { "text": "Fix the flaky test", "across": 1, "up": 3 },
+    { "text": "Tune the CI cache", "across": 2, "up": 4 },
+    { "text": "Add dark mode", "across": 3, "up": 2 },
+    { "text": "Add SSO", "across": 4, "up": 6, "role": "emphasis" },
+    { "text": "Redesign onboarding", "across": 5, "up": 5 },
+    { "text": "Rewrite the importer", "across": 7, "up": 6 },
+    { "text": "Migrate the database", "across": 8, "up": 4 },
+    { "text": "Ship the mobile app", "across": 9, "up": 8, "role": "emphasis" }
+  ]
+}

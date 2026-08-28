@@ -516,6 +516,29 @@ def test_schema_documents_the_referential_rules_it_cannot_express() -> None:
     assert "beyond JSON Schema" in build_schema()["description"]
 
 
+def test_kinds_sharing_field_names_keep_their_own_descriptions() -> None:
+    """`quadrant` and `scatter` both take `axes` + `positions`, but mean
+    different things by them. Grouping schema variants by field name alone
+    merged the two and silently kept only one kind's prose."""
+    schema = build_schema()
+    quadrant_variant = next(
+        variant
+        for variant in schema["oneOf"]
+        if variant["properties"]["kind"]["enum"] == ["quadrant"]
+    )
+    scatter_variant = next(
+        variant
+        for variant in schema["oneOf"]
+        if variant["properties"]["kind"]["enum"] == ["scatter"]
+    )
+    assert quadrant_variant is not scatter_variant
+    assert (
+        quadrant_variant["properties"]["axes"]["description"]
+        != scatter_variant["properties"]["axes"]["description"]
+    )
+    assert "measurement" in scatter_variant["properties"]["axes"]["description"]
+
+
 def test_every_valid_fixture_is_accepted_by_both() -> None:
     for kind, document in VALID_DOCUMENTS.items():
         assert accepted_by_parser(document), kind

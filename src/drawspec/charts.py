@@ -166,6 +166,8 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     """
     if document.kind == "quadrant":
         return _quadrant(document, theme, measurer)
+    if document.kind == "scatter":
+        return _scatter(document, theme, measurer)
     if document.kind == "curve":
         return _curve(document, theme, measurer)
     if document.kind != "chart":
@@ -1133,6 +1135,100 @@ def _quadrant_scale(axis: Axis, values: list[float]) -> Scale:
         low, high = low - 0.5, low + 0.5
     margin = (high - low) * QUADRANT_MARGIN
     return Scale(low - margin, high + margin, 0.0, 1.0)
+
+
+def _scatter(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
+    """Two continuous axes, and points placed by what they measure.
+
+    Nearest `quadrant` in shape — two named axes, each item one labelled point —
+    and nearest `chart` in what it draws: real ticks. A scatter's whole point is
+    reading approximate values off it, which is exactly what `quadrant` refuses
+    to invite, so it reuses chart's ticked-axis furniture for both axes (neither
+    is categorical here, so the horizontal one needs none of chart's label
+    wrapping — `_tick_labels` falls back to a tick's own short text whenever it
+    is handed no wrapped blocks) and `quadrant`'s label placement with no
+    dividers to dodge, only the other labels.
+    """
+    positions = document.positions
+    if not positions:
+        raise DrawspecError("a scatter needs at least one position")
+    horizontal, vertical = document.axes
+
+    width = document.width if document.width else theme.canvas.width
+    height = document.height if document.height else width * QUADRANT_ASPECT
+
+    label_size = theme.scale["label"]
+    gap = theme.box.padding.top
+    tick = theme.edge.head_length
+    line = measurer.measure("0", theme.font.default, label_size)
+
+    across = _scale_for(horizontal, [item.across for item in positions], headroom=True)
+    up = _scale_for(vertical, [item.up for item in positions], headroom=True)
+    across_ticks = _ticks(across.low, across.high)
+    up_ticks = _ticks(up.low, up.high)
+
+    widest = _widest(up_ticks, theme, measurer, label_size)
+    left = line.height + gap + widest + gap + tick
+    top = line.height + gap
+    right = max(_widest(across_ticks, theme, measurer, label_size) / 2, line.height) + gap
+    bottom = tick + gap + line.height + _caption_band(line, gap)
+
+    plot_left, plot_right = left, width - right
+    plot_top, plot_bottom = top, height - bottom
+    if plot_right - plot_left <= 0 or plot_bottom - plot_top <= 0:
+        raise FitError(
+            f"a scatter {width:.0f} x {height:.0f} has no room left for the plot once its "
+            f"axis labels and ticks are measured. Give the diagram more width or height."
+        )
+
+    across = Scale(across.low, across.high, plot_left, plot_right)
+    up = Scale(up.low, up.high, plot_bottom, plot_top)
+
+    primitives: list[Primitive] = [
+        *_axes(plot_left, plot_right, plot_top, plot_bottom),
+        *_tick_marks(across_ticks, up_ticks, across, up, plot_left, plot_bottom, theme),
+        *_tick_labels(
+            across_ticks, (), up_ticks, across, up, plot_left, plot_bottom, theme, measurer, gap
+        ),
+        *_axis_labels(
+            horizontal,
+            vertical,
+            plot_left,
+            plot_right,
+            plot_top,
+            plot_bottom,
+            height,
+            theme,
+            measurer,
+            gap,
+        ),
+    ]
+
+    radius = theme.edge.head_length * MARKER_FRACTION
+    placed: list[tuple[float, float, float, float]] = []
+    for item in positions:
+        x, y = across.to_pixels(item.across), up.to_pixels(item.up)
+        primitives.append(Ellipse(item.role, cx=x, cy=y, rx=radius, ry=radius))
+        label = _place_label(
+            item, x, y, placed, (), theme, measurer, plot_left, plot_right, plot_top, plot_bottom
+        )
+        if label is None:
+            raise FitError(
+                f"the label {item.text[:32]!r} has nowhere to sit that is inside the "
+                f"plot and clear of the other labels. Move it, shorten it, or give "
+                f"the diagram more room."
+            )
+        box, primitive = label
+        placed.append(box)
+        primitives.append(primitive)
+
+    return Scene(
+        width=width,
+        height=height,
+        primitives=tuple(primitives),
+        title=document.title,
+        description=document.description,
+    )
 
 
 def _place_label(

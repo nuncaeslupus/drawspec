@@ -40,6 +40,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "funnel": "narrowing stages, with named thresholds between them",
     "chart": "a small number you already know — not for exploring data",
     "quadrant": "items placed against two named axes",
+    "scatter": "points placed by two measured values — a quadrant with real ticks",
     "curve": "a named shape with labelled waypoints",
 }
 
@@ -175,6 +176,19 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"text": "Do this first", "across": 0.2, "up": 0.8},
             {"text": "Do this if there is time", "across": 0.8, "up": 0.7},
             {"text": "Do not", "across": 0.8, "up": 0.2},
+        ],
+    },
+    "scatter": {
+        "version": 1,
+        "kind": "scatter",
+        "axes": {
+            "horizontal": {"label": "Cost"},
+            "vertical": {"label": "Impact"},
+        },
+        "positions": [
+            {"text": "Cache the slow query", "across": 1, "up": 6},
+            {"text": "Migrate the database", "across": 9, "up": 4},
+            {"text": "Ship the mobile app", "across": 7, "up": 8},
         ],
     },
     "curve": {

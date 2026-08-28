@@ -1,7 +1,7 @@
 # drawspec
 
 > A declarative diagram format and renderer: you write a JSON document that says
-> what a diagram means, and drawspec decides every coordinate. Thirteen diagram
+> what a diagram means, and drawspec decides every coordinate. Fourteen diagram
 > kinds, themeable SVG output, no system dependencies. Built so that a language
 > model can produce correct diagrams without placing anything.
 
@@ -13,7 +13,7 @@ by name with a JSON pointer, so those mistakes cannot be expressed.
 ## Start here
 
 - [Instructions for agents](AGENTS.md): the whole format in one page — the rule,
-  the thirteen kinds, the roles, worked examples, and what each refusal means.
+  the fourteen kinds, the roles, worked examples, and what each refusal means.
   Read this one if you are writing documents.
 
 ## Reference

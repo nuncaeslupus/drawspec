@@ -76,7 +76,7 @@ CONTAINER_KINDS: Final = ("flow", "tree")
 
 GRID_KINDS: Final = ("stack", "timeline", "columns", "matrix")
 SHAPE_KINDS: Final = ("pyramid", "rings", "funnel")
-CHART_KINDS: Final = ("chart", "quadrant", "curve")
+CHART_KINDS: Final = ("chart", "quadrant", "scatter", "curve")
 
 #: How a series may be drawn. `line` is the default and was the only one until
 #: the corpus asked for the others; `area` is a line whose fill reaches the
@@ -88,11 +88,14 @@ MARKS: Final = ("line", "bar", "area")
 #: whose iteration order a reader has to trust.
 AXIS_ORDER: Final = ("horizontal", "vertical")
 
-#: The kinds. Closed: a new one needs evidence, not a preference — and the
-#: evidence is `docs/kinds-wanted.md`, which sorts the 89 hand-drawn originals by
-#: the kind that would have to draw them. The four that opened the vocabulary
-#: from nine to thirteen — `matrix`, `funnel`, `quadrant`, `curve` — each cleared
-#: originals nothing here could draw.
+#: The kinds. Closed: a new one needs evidence, not a preference. For most of
+#: these the evidence is `docs/kinds-wanted.md`, which sorts the 89 hand-drawn
+#: originals by the kind that would have to draw them — the four that opened
+#: the vocabulary from nine to thirteen (`matrix`, `funnel`, `quadrant`,
+#: `curve`) each cleared originals nothing here could draw. `scatter` is the
+#: first exception: no original asked for it, but a consumer project did (a
+#: Pareto-frontier view needs two continuous, ticked axes, which `quadrant`
+#: deliberately refuses to draw) — evidence external to the corpus, not absent.
 KINDS: Final = GRAPH_KINDS + GRID_KINDS + SHAPE_KINDS + CHART_KINDS
 
 #: Fields an author might reach for that drawspec refuses, and why. Not used for
@@ -485,6 +488,48 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         ),
         FieldSpec("vertical", "object", required=True, ref="axis", description="The axis up."),
     ),
+    # `scatter`'s own axis type, not `axis` above: it has no `categories`, so a
+    # document that sets one fails the published schema directly rather than
+    # passing it and only failing `drawspec validate` — the same
+    # `additionalProperties: false` teaching this contract uses everywhere else,
+    # rather than a runtime-only check for something the schema can say itself.
+    "axis-continuous": (
+        FieldSpec(
+            "label",
+            "string",
+            required=True,
+            description="Required: an unlabelled axis cannot be read.",
+        ),
+        FieldSpec(
+            "unit", "string", description="What the numbers are in, written after the label."
+        ),
+        FieldSpec(
+            "min",
+            "number",
+            description="Where the axis starts. Omit to take it from the data.",
+        ),
+        FieldSpec(
+            "max",
+            "number",
+            description="Where the axis ends. Omit to take it from the data.",
+        ),
+    ),
+    "axes-continuous": (
+        FieldSpec(
+            "horizontal",
+            "object",
+            required=True,
+            ref="axis-continuous",
+            description="The axis across, read as a measurement — unlike `quadrant`'s.",
+        ),
+        FieldSpec(
+            "vertical",
+            "object",
+            required=True,
+            ref="axis-continuous",
+            description="The axis up, read as a measurement — unlike `quadrant`'s.",
+        ),
+    ),
     "series": (
         FieldSpec(
             "name",
@@ -538,7 +583,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the thirteen diagrams this is. It selects the fields that are "
+            "Which of the fourteen diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -760,6 +805,23 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             description=(
                 "The items placed in the plane, each by what it scores, not by where it goes."
             ),
+        ),
+    ),
+    ("scatter",): (
+        FieldSpec(
+            "axes",
+            "object",
+            required=True,
+            ref="axes-continuous",
+            description="Both axes, each read as a measurement — unlike `quadrant`'s.",
+        ),
+        FieldSpec(
+            "positions",
+            "array",
+            required=True,
+            item_ref="position",
+            min_items=1,
+            description="The points, each placed by its two measured values.",
         ),
     ),
     ("curve",): (
@@ -1852,14 +1914,16 @@ def build_schema() -> dict[str, Any]:
     # kind may draw its fields from more than one entry — `timeline` takes
     # `items` with the other grid kinds and `spans` on its own — and a kind
     # appearing in two branches would match both, which `oneOf` reads as invalid.
-    grouped: dict[tuple[str, ...], list[str]] = {}
+    # Grouped by the full field tuple, not just names: `quadrant` and `scatter`
+    # both take `axes` + `positions`, but with different descriptions for what
+    # those mean, and merging on name alone silently dropped one kind's prose.
+    grouped: dict[tuple[FieldSpec, ...], list[str]] = {}
     for kind in KINDS:
-        grouped.setdefault(tuple(field.name for field in payload_for(kind)), []).append(kind)
+        grouped.setdefault(payload_for(kind), []).append(kind)
 
     variants = []
-    for names, kinds in grouped.items():
-        by_name = {field.name: field for field in payload_for(kinds[0])}
-        specs = list(COMMON_FIELDS) + [by_name[name] for name in names]
+    for specs_for_kind, kinds in grouped.items():
+        specs = list(COMMON_FIELDS) + list(specs_for_kind)
         variant = _object_schema(specs, title=" / ".join(kinds))
         variant["properties"]["kind"] = {"type": "string", "enum": list(kinds)}
         variant["properties"]["version"] = {"const": DOCUMENT_VERSION}

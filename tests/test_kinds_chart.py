@@ -625,6 +625,123 @@ def test_a_quadrant_still_needs_both_axes_labelled() -> None:
 
 
 # --------------------------------------------------------------------------
+# scatter
+# --------------------------------------------------------------------------
+
+
+def scatter(*positions: Mapping[str, object]) -> Scene:
+    document = {
+        "version": 1,
+        "kind": "scatter",
+        "title": "A scatter",
+        "axes": {
+            "horizontal": {"label": "Cost"},
+            "vertical": {"label": "Impact"},
+        },
+        "positions": list(positions),
+    }
+    return chart_scene(parse_document(document), THEME, MEASURER)
+
+
+POINTS: tuple[Mapping[str, object], ...] = (
+    {"text": "Low cost, low impact", "across": 1.0, "up": 1.0},
+    {"text": "Middling", "across": 5.0, "up": 5.0},
+    {"text": "High cost, high impact", "across": 9.0, "up": 9.0},
+)
+
+
+def test_a_scatter_marks_every_position_it_was_given() -> None:
+    assert len(markers(scatter(*POINTS))) == len(POINTS)
+
+
+def test_a_scatter_labels_every_position_it_marks() -> None:
+    said = {run.text for run in texts(scatter(*POINTS))}
+    for item in POINTS:
+        assert item["text"] in said
+
+
+def test_a_scatter_plots_points_by_two_continuous_values() -> None:
+    """Unlike `quadrant`, the measured values place the markers, in order.
+
+    A higher `up` sits higher on the page, so its pixel y is *smaller* — the
+    same "up is up" convention `quadrant` already uses.
+    """
+    ordered = (
+        {"text": "Low across, high up", "across": 1.0, "up": 8.0},
+        {"text": "Middling", "across": 5.0, "up": 5.0},
+        {"text": "High across, low up", "across": 9.0, "up": 2.0},
+    )
+    marks = markers(scatter(*ordered))
+    assert [mark.cx for mark in marks] == sorted(mark.cx for mark in marks)
+    assert [mark.cy for mark in marks] == sorted(mark.cy for mark in marks)
+
+
+def test_a_scatter_has_ticks_unlike_quadrant() -> None:
+    """A scatter's whole point is reading approximate values off it."""
+    numbers = [
+        run.text for run in texts(scatter(*POINTS)) if re.fullmatch(r"-?\d+(\.\d+)?", run.text)
+    ]
+    assert numbers
+
+
+def test_a_scatter_draws_no_midlines() -> None:
+    """Unlike `quadrant`, there is nothing to compare against — only values."""
+    assert not [line for line in lines(scatter(*POINTS)) if line.role == DIVIDER_ROLE]
+
+
+def test_two_scatter_labels_never_overlap() -> None:
+    built = scatter(*POINTS)
+    named = {str(item["text"]) for item in POINTS}
+    boxes = []
+    for run in texts(built):
+        if run.text not in named:
+            continue
+        extents = MEASURER.measure(run.text, THEME.font.default, THEME.scale[run.level])
+        boxes.append(
+            _label_box(run.x, run.y, run.anchor, extents.width, extents.height, extents.width / 2)
+        )
+    for first, second in combinations(boxes, 2):
+        assert not (
+            first[0] < second[2]
+            and second[0] < first[2]
+            and first[1] < second[3]
+            and second[1] < first[3]
+        )
+
+
+def test_a_scatter_still_needs_both_axes_labelled() -> None:
+    """The rule holds wherever there is an axis."""
+    with pytest.raises(DocumentError):
+        parse_document(
+            {
+                "version": 1,
+                "kind": "scatter",
+                "title": "A scatter",
+                "axes": {"horizontal": {"label": "x"}, "vertical": {}},
+                "positions": [{"text": "One", "across": 0.5, "up": 0.5}],
+            }
+        )
+
+
+def test_a_scatter_refuses_categorical_axes() -> None:
+    """`categories` would be accepted and never drawn — a scatter axis is
+    always a measurement, which is the whole difference from `quadrant`."""
+    with pytest.raises(DocumentError, match="categories"):
+        parse_document(
+            {
+                "version": 1,
+                "kind": "scatter",
+                "title": "A scatter",
+                "axes": {
+                    "horizontal": {"label": "Cost", "categories": ["low", "high"]},
+                    "vertical": {"label": "Impact"},
+                },
+                "positions": [{"text": "One", "across": 0.5, "up": 0.5}],
+            }
+        )
+
+
+# --------------------------------------------------------------------------
 # curve
 # --------------------------------------------------------------------------
 

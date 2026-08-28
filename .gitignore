@@ -236,7 +236,6 @@ originals/
 # repository's source. The reference documents in `docs/reference` are what
 # drawspec ships as its own examples.
 docs/corpus/
-
 arsenal/session/surface_profile.json
 
 arsenal/session/rate_limits.json
