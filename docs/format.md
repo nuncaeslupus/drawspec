@@ -111,7 +111,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `axes` | [axes object](#axes-object) | **yes** | Both axes, each read as a measurement — unlike `quadrant`'s. |
+| `axes` | [axes-continuous object](#axes-continuous-object) | **yes** | Both axes, each read as a measurement — unlike `quadrant`'s. |
 | `positions` | array of [position](#position-object), at least 1 | **yes** | The points, each placed by its two measured values. |
 
 ### `curve`
@@ -266,6 +266,22 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `horizontal` | [axis object](#axis-object) | **yes** | The axis across. |
 | `vertical` | [axis object](#axis-object) | **yes** | The axis up. |
+
+### `axis-continuous` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `label` | string | **yes** | Required: an unlabelled axis cannot be read. |
+| `unit` | string | no | What the numbers are in, written after the label. |
+| `min` | number | no | Where the axis starts. Omit to take it from the data. |
+| `max` | number | no | Where the axis ends. Omit to take it from the data. |
+
+### `axes-continuous` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `horizontal` | [axis-continuous object](#axis-continuous-object) | **yes** | The axis across, read as a measurement — unlike `quadrant`'s. |
+| `vertical` | [axis-continuous object](#axis-continuous-object) | **yes** | The axis up, read as a measurement — unlike `quadrant`'s. |
 
 ### `series` object
 

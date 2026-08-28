@@ -488,6 +488,48 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         ),
         FieldSpec("vertical", "object", required=True, ref="axis", description="The axis up."),
     ),
+    # `scatter`'s own axis type, not `axis` above: it has no `categories`, so a
+    # document that sets one fails the published schema directly rather than
+    # passing it and only failing `drawspec validate` — the same
+    # `additionalProperties: false` teaching this contract uses everywhere else,
+    # rather than a runtime-only check for something the schema can say itself.
+    "axis-continuous": (
+        FieldSpec(
+            "label",
+            "string",
+            required=True,
+            description="Required: an unlabelled axis cannot be read.",
+        ),
+        FieldSpec(
+            "unit", "string", description="What the numbers are in, written after the label."
+        ),
+        FieldSpec(
+            "min",
+            "number",
+            description="Where the axis starts. Omit to take it from the data.",
+        ),
+        FieldSpec(
+            "max",
+            "number",
+            description="Where the axis ends. Omit to take it from the data.",
+        ),
+    ),
+    "axes-continuous": (
+        FieldSpec(
+            "horizontal",
+            "object",
+            required=True,
+            ref="axis-continuous",
+            description="The axis across, read as a measurement — unlike `quadrant`'s.",
+        ),
+        FieldSpec(
+            "vertical",
+            "object",
+            required=True,
+            ref="axis-continuous",
+            description="The axis up, read as a measurement — unlike `quadrant`'s.",
+        ),
+    ),
     "series": (
         FieldSpec(
             "name",
@@ -770,7 +812,7 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             "axes",
             "object",
             required=True,
-            ref="axes",
+            ref="axes-continuous",
             description="Both axes, each read as a measurement — unlike `quadrant`'s.",
         ),
         FieldSpec(
@@ -1327,22 +1369,6 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                         f"this one has no gap.",
                     )
                 )
-        return found
-    if kind == "scatter":
-        axes = document.get("axes")
-        if isinstance(axes, dict):
-            for side in ("horizontal", "vertical"):
-                axis = axes.get(side)
-                if isinstance(axis, dict) and axis.get("categories"):
-                    found.append(
-                        Violation(
-                            _pointer("axes", side, "categories"),
-                            "a scatter axis reads only measured values — `categories` "
-                            "would be accepted and never drawn, which this format "
-                            "promises not to do. `chart` draws a categorical axis; "
-                            "`curve` draws named waypoint marks.",
-                        )
-                    )
         return found
     if kind == "timeline":
         entries = document.get("items")

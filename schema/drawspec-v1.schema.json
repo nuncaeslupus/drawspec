@@ -692,7 +692,7 @@
           "description": "A bundled theme name or the path of a theme file."
         },
         "axes": {
-          "$ref": "#/$defs/axes",
+          "$ref": "#/$defs/axes-continuous",
           "description": "Both axes, each read as a measurement — unlike `quadrant`'s."
         },
         "positions": {
@@ -807,6 +807,24 @@
       ],
       "additionalProperties": false
     },
+    "axes-continuous": {
+      "type": "object",
+      "properties": {
+        "horizontal": {
+          "$ref": "#/$defs/axis-continuous",
+          "description": "The axis across, read as a measurement — unlike `quadrant`'s."
+        },
+        "vertical": {
+          "$ref": "#/$defs/axis-continuous",
+          "description": "The axis up, read as a measurement — unlike `quadrant`'s."
+        }
+      },
+      "required": [
+        "horizontal",
+        "vertical"
+      ],
+      "additionalProperties": false
+    },
     "axis": {
       "type": "object",
       "properties": {
@@ -832,6 +850,31 @@
           "items": {
             "type": "string"
           }
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    "axis-continuous": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Required: an unlabelled axis cannot be read."
+        },
+        "unit": {
+          "type": "string",
+          "description": "What the numbers are in, written after the label."
+        },
+        "min": {
+          "type": "number",
+          "description": "Where the axis starts. Omit to take it from the data."
+        },
+        "max": {
+          "type": "number",
+          "description": "Where the axis ends. Omit to take it from the data."
         }
       },
       "required": [
