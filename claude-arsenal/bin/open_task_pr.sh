@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # open_task_pr.sh <task_id> <title> [<type>]
 # Commit a worker's task changes on a feature branch cut from the host DEFAULT
-# branch (origin/main, NOT arsenal-queue), push it, and open a PR.
+# branch (origin/main), push it, and open a PR that closes the task's issue.
 #
 # Prints ONE line on stdout, consumed by the caller and recorded on the queue
-# row via `release.sh done --pr <value>`:
+# task's issue via the PR body's `Closes #<issue>` line:
 #   <pr-url>            — a PR was created (a `gh` backend was available).
 #   branch:<name>       — the branch was pushed but no PR backend exists here;
 #                         the orchestrator/operator opens the PR (github skill /
@@ -15,9 +15,28 @@
 # ARSENAL_COAUTHOR ("Name <email>") when the caller exports the active model
 # identity supplied by the harness. Absent it, no trailer is written.
 #
+# The PR body AND the commit message both carry `Closes #<issue>`, because that
+# is the whole completion mechanism: GitHub closes the task's issue when the PR
+# merges, so no session has to remember to update the queue afterwards. The
+# number is resolved here rather than left to the caller — this used to be an
+# instruction in the worker's prose ("make sure the body carries Closes #N")
+# with no data path behind it, so every PR this script opened closed nothing and
+# every merged task stayed `claimed` until a human noticed. Both places on
+# purpose: the body fires on a merge into the default branch, the commit message
+# survives a squash and fires for a stacked PR whose base is another branch.
+#
+# It also moves the task file into `tasks/_history/` with `status: merged` as
+# part of the PR's own diff, so the archive lands exactly when the merge does
+# and no follow-up commit is owed to anyone.
+#
 # Env: ARSENAL_QUEUE_REMOTE (default origin); ARSENAL_COAUTHOR (optional);
+#      ARSENAL_TASK_ISSUE (issue number, when the caller already knows it);
+#      ARSENAL_ISSUES_JSON (saved issue list, default /tmp/arsenal-issues.json);
+#      ARSENAL_HOME (task tree, default arsenal);
+#      ARSENAL_ALLOW_UNLINKED_PR=1 (open a PR that closes nothing — see below);
 #      ARSENAL_ALLOW_SHARED_ADD (operator escape hatch, see the guard below).
-# Exit: 0 branch pushed (PR opened or branch emitted), 1 on push failure / usage.
+# Exit: 0 branch pushed (PR opened or branch emitted), 1 on push failure /
+#       usage / an unresolvable issue handle.
 
 set -uo pipefail
 
@@ -26,6 +45,116 @@ TASK_ID="${1:?open_task_pr.sh requires <task_id>}"
 TITLE="${2:?open_task_pr.sh requires <title>}"
 TYPE="${3:-feat}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null || echo .)"
+BUNDLE_SCRIPTS="$(cd "${SCRIPT_DIR}/../scripts" && pwd 2>/dev/null || echo "${SCRIPT_DIR}/../scripts")"
+ARSENAL_HOME="${ARSENAL_HOME:-arsenal}"
+
+# Every path this script handles is repo-root-relative by contract: ARSENAL_HOME,
+# a task's gate block, the session sentinel. Anchoring the whole run at the root
+# is what makes that contract true. Resolving only the gates there — the first
+# fix for this — left `_archive_task_file` resolving `${ARSENAL_HOME}/tasks/…`
+# against the CALLER's cwd, so invoked from a subdirectory the archive silently
+# missed (or, in a monorepo, hit a different tree that exists) while the PR body
+# promised it and the merge closed the issue (#239). SCRIPT_DIR and
+# BUNDLE_SCRIPTS are resolved absolute above; this depends on that ordering.
+# Not being in a repository is not a degraded mode this script has an answer
+# for: every step below is a git operation or a gate resolved from the root.
+# The old `|| pwd` fallback made that case indistinguishable from success — the
+# `cd` into the caller's own cwd always works, so the host gate and the task
+# gate ran against whatever tree the caller happened to be standing in and the
+# operator got a gate result instead of "you are not in a repository" (#244).
+# Refusing here is the only honest answer.
+_repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+[[ -n "${_repo_root}" ]] || {
+    echo "open_task_pr: not inside a git repository (git rev-parse --show-toplevel failed) — run this from the repo that owns the task." >&2
+    exit 1
+}
+cd "${_repo_root}" || {
+    echo "open_task_pr: cannot enter the repository root ${_repo_root}" >&2
+    exit 1
+}
+
+# ---------------------------------------------------------------------------
+# Gates, before anything touches git.
+#
+# worker.md step 4 asks a worker to run the host lint gate and then gate_run.sh,
+# and to open no PR if either fails. AGENTS.md goes further and states the
+# payload gate "is a hard precondition" because this script re-runs it. Neither
+# was true: nothing here ran either gate, so both were instructions with no data
+# path behind them — which this project already names as the thing that makes a
+# step not happen. A worker that forgot step 4, or ran only the `make lint` the
+# prose gives as its example, opened a perfectly valid PR over a red repo.
+#
+# The refusal is the load-bearing half. A worker that *cannot* open a PR over a
+# red repo needs no discipline; one that is asked to check first needs it every
+# single time — and one handed a skip flag reaches for it precisely when the
+# repo is red.
+#
+# SECURITY: host-gate runs verbatim, like a payload's gate block. It comes from
+# arsenal/config.toml, which is host-owned and reviewed like any other file in
+# the repo — but it is code, not data.
+_gate_fail() {
+    echo "open_task_pr: $1 — no PR opened" >&2
+    echo "open_task_pr: fix it and re-run; this is the same refusal a failing payload gate gets" >&2
+    exit 1
+}
+
+# There is deliberately no way to skip this. An escape hatch would be reached
+# for exactly when a repo is red, which is the case the refusal exists for.
+#
+# 1. The host's own gate, when the repo declares one. Absent by default, so a
+#    repo without one is unaffected.
+# Anchored to the git root, not the cwd: this script is routinely invoked from a
+# worktree or a subdirectory, and arsenal_config.py resolves arsenal/config.toml
+# relative to --repo-root (default: cwd). And errors are NOT swallowed — a
+# malformed config or a missing python3 must not read as "no gate declared".
+# Silently skipping the enforcement is the exact failure this whole change
+# exists to remove; it would just move it one layer out.
+host_gate=""
+# Both the read and the RUN are anchored to the git root. The read was, and the
+# run was not: a gate declared as `make lint` — or any of the relative forms a
+# gate block is conventionally written in — was read correctly from a
+# subdirectory and then executed there, where there is no Makefile. The refusal
+# a worker got was `host gate failed (make lint)` over a green repo, and the
+# only ways out are editing config.toml or cd-ing, the first being the one
+# somebody under pressure reaches for. A linked worktree was never affected:
+# its cwd and its `--show-toplevel` are the same directory. Both are anchored by
+# the process cwd now — the subshells that anchored only these two call sites
+# left every other relative path in the file reading from the caller's cwd.
+if [[ -f "${BUNDLE_SCRIPTS}/arsenal_config.py" ]]; then
+    if ! host_gate="$(python3 "${BUNDLE_SCRIPTS}/arsenal_config.py" \
+            --repo-root "${_repo_root}" --get host-gate 2>&1)"; then
+        _gate_fail "could not read host-gate from ${_repo_root}/${ARSENAL_HOME}/config.toml: ${host_gate}"
+    fi
+fi
+if [[ -n "${host_gate}" ]]; then
+    echo "open_task_pr: running host gate: ${host_gate}" >&2
+    if ! bash -c "${host_gate}" >&2; then
+        _gate_fail "host gate failed (${host_gate})"
+    fi
+fi
+
+# 2. The task's own mechanical gate — the precondition AGENTS.md already claims
+#    this script enforces.
+if [[ -f "${SCRIPT_DIR}/gate_run.sh" ]]; then
+    # Gate chatter goes to stderr: this script's stdout is a contract that
+    # callers parse (`branch:…`, the PR URL), and a `gate: passed` line in it
+    # breaks them.
+    # Resolve the task file from the default branch where it exists there: the
+    # gate is a precondition the board sets, and a worker that could edit its
+    # own gate on its own branch would be certifying itself. gate_run.sh still
+    # falls back to the working copy for a task that has not merged yet.
+    # Same anchor as the host gate above: a task's gate block is written
+    # relative to the repo root (`bash tests/foo.sh`), and `${ARSENAL_HOME}` is
+    # a repo-root-relative path in every other script that reads it.
+    ARSENAL_GATE_FROM_DEFAULT=1 bash "${SCRIPT_DIR}/gate_run.sh" "${TASK_ID}" >&2
+    _rc=$?
+    case ${_rc} in
+        0) ;;
+        3) _gate_fail "the task gate could not run or reports its metric unmeasured (exit 3); nothing was verified" ;;
+        2) _gate_fail "the task gate could not read ${ARSENAL_HOME}/tasks/${TASK_ID}.md (gate_run.sh exit 2). A repo still on the pre-v0.25 claude-arsenal/queue/ layout must run arsenal_migrate.py first" ;;
+        *) _gate_fail "the task gate failed (gate_run.sh exit ${_rc})" ;;
+    esac
+fi
 
 # Snapshot the working tree to a permanent refs/arsenal-rescue/… ref. Used
 # before the stale-base replay below, which force-moves HEAD across the tree.
@@ -59,7 +188,7 @@ BRANCH="arsenal/${TASK_ID}-${slug}"
 
 # Resolve the host default branch from the remote's published HEAD symref, then
 # fetch it so we branch off its real tip. NEVER fall back to the current HEAD:
-# the worker runs on arsenal-queue, and branching off it would drag the entire
+# the worker may run in the orchestrator's tree, and branching off it would drag the entire
 # queue-coordination history into the PR. Fail fast instead.
 default_branch="$(git ls-remote --symref "${REMOTE}" HEAD 2>/dev/null \
     | sed -n 's|^ref:[[:space:]]*refs/heads/\([^[:space:]]*\).*|\1|p')"
@@ -120,6 +249,103 @@ _carry_onto() {
     return 0
 }
 
+# Refuse a shared checkout BEFORE anything mutates git.
+#
+# Safety guard: git add -A stages everything in the working tree, which risks
+# sweeping a CONCURRENT worker's files or secrets into this commit when workers
+# share one checkout. The guard used to require ARSENAL_SURFACE=worktree — but
+# nothing set it, so every worker hit the refusal and exported it itself. A
+# guard the guarded party certifies is not a guard. So derive the answer:
+#
+#   1. A linked worktree (`git worktree add`) IS the isolation → allow.
+#   2. Serialized in-place mode → allow. Not the caller's word for it: the
+#      sentinel is written by worktree_probe.sh / worker_postcheck.sh (the
+#      orchestrator's own probes), and `unavailable` is exactly what clamps
+#      task_select.py to one worker — so there is no concurrent worker to
+#      clobber.
+#   3. Otherwise refuse. ARSENAL_ALLOW_SHARED_ADD=1 is the operator escape
+#      hatch for a bespoke setup, named so it reads as what it is.
+_isolation_sentinel() {
+    local dir="${ARSENAL_SESSION_DIR:-${ARSENAL_HOME:-arsenal}/session}"
+    [[ -f "${dir}/worktree_isolation" ]] || return 1
+    [[ "$(tr -d '[:space:]' < "${dir}/worktree_isolation" 2>/dev/null)" == "unavailable" ]]
+}
+if _in_linked_worktree; then
+    :
+elif [[ "${ARSENAL_WORKTREE_ISOLATION:-}" == "unavailable" ]] || _isolation_sentinel; then
+    :
+elif [[ "${ARSENAL_ALLOW_SHARED_ADD:-}" == "1" ]]; then
+    :
+else
+    echo "open_task_pr: git add -A refused on shared checkout — not running in a linked git worktree and serialized in-place mode is not recorded (arsenal/session/worktree_isolation). Run from an isolated worktree, or set ARSENAL_ALLOW_SHARED_ADD=1 if you have verified no other worker shares this checkout." >&2
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# Resolve the task's issue number BEFORE touching git.
+#
+# Everything below this point mutates the tree, and a PR that cannot close its
+# issue is worse than no PR at all: it merges, the work lands, and the board
+# still shows the task claimed — the exact drift the next session pays to find.
+# Failing here instead leaves the worker's edits untouched and the fix obvious.
+#
+# Three sources, cheapest first. The saved issue list is the common case: the
+# session-start protocol already fetched every `arsenal:task` issue, so the
+# answer is usually sitting on disk.
+_resolve_issue() {
+    local out
+
+    if [[ -n "${ARSENAL_TASK_ISSUE:-}" ]]; then
+        printf '%s' "${ARSENAL_TASK_ISSUE}"
+        return 0
+    fi
+
+    local resolver="${BUNDLE_SCRIPTS}/issue_for_task.py"
+    [[ -f "${resolver}" ]] || return 1
+
+    local saved="${ARSENAL_ISSUES_JSON:-/tmp/arsenal-issues.json}"
+    if [[ -s "${saved}" ]] \
+        && out="$(python3 "${resolver}" --task "${TASK_ID}" --issues "${saved}" 2>/dev/null)"; then
+        printf '%s' "${out}"
+        return 0
+    fi
+
+    # Nothing saved (or the task is newer than the snapshot) — ask GitHub over
+    # whatever channel this surface has. `none` exits 5 here and falls through
+    # to the refusal below, which tells the caller to pass --issue: on a surface
+    # with no scriptable channel the model holds the number, not the script.
+    local slug
+    slug="$(bash "${SCRIPT_DIR}/github_channel.sh" --slug 2>/dev/null)" || return 1
+    if out="$(bash "${SCRIPT_DIR}/github_channel.sh" --api GET \
+                "/repos/${slug}/issues?labels=arsenal:task&state=all&per_page=100" 2>/dev/null)"; then
+        if out="$(printf '%s' "${out}" | python3 "${resolver}" --task "${TASK_ID}" --issues - 2>/dev/null)"; then
+            printf '%s' "${out}"
+            return 0
+        fi
+    fi
+    return 1
+}
+
+ISSUE=""
+if ! ISSUE="$(_resolve_issue)" || [[ -z "${ISSUE}" ]]; then
+    if [[ "${ARSENAL_ALLOW_UNLINKED_PR:-}" == "1" ]]; then
+        ISSUE=""
+        echo "open_task_pr: no issue handle for ${TASK_ID}; opening an UNLINKED PR because ARSENAL_ALLOW_UNLINKED_PR=1 — merging it will NOT close the task, so close the issue by hand" >&2
+    else
+        cat >&2 <<EOF
+open_task_pr: cannot resolve the issue handle for ${TASK_ID}, so a PR opened now
+would merge without closing its task and leave the queue claiming work that is
+already done. Nothing has been committed — your edits are untouched.
+
+Fix one of these, then re-run:
+  * pass the number you already have:  ARSENAL_TASK_ISSUE=<n> open_task_pr.sh ...
+  * point at the session's issue list: ARSENAL_ISSUES_JSON=/tmp/arsenal-issues.json
+  * create the missing handle:         python3 ${BUNDLE_SCRIPTS}/handle_sync.py --issues <file>
+EOF
+        exit 1
+    fi
+fi
+
 current="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
 if [[ "${current}" != "${BRANCH}" ]]; then
     if git rev-parse --verify --quiet "${BRANCH}" >/dev/null 2>&1; then
@@ -133,39 +359,179 @@ if [[ "${current}" != "${BRANCH}" ]]; then
     fi
 fi
 
-# Stage and commit. A dynamic Co-Authored-By is added only when supplied.
+# Archive the task file as part of THIS PR's diff.
 #
-# Safety guard: git add -A stages everything in the working tree, which risks
-# sweeping a CONCURRENT worker's files or secrets into this commit when workers
-# share one checkout. The guard used to require ARSENAL_SURFACE=worktree — but
-# nothing set it, so every worker hit the refusal and exported it itself. A
-# guard the guarded party certifies is not a guard. So derive the answer:
+# A finished task's file is not work any more — it is what makes a dep on
+# completed work resolve instead of reading as unknown, and what keeps its gate
+# on disk. `task_select.py` already reads `tasks/_history/` and already treats a
+# `status: merged` front-matter key as terminal; nothing ever wrote either. So
+# the archive was a step owed to some later session, and later sessions do not
+# run it.
 #
-#   1. A linked worktree (`git worktree add`) IS the isolation → allow.
-#   2. Serialized in-place mode → allow. Not the caller's word for it: the
-#      sentinel is written by worktree_probe.sh / worker_postcheck.sh (the
-#      orchestrator's own probes), and `unavailable` is exactly what clamps
-#      queue_batch.sh to one worker — so there is no concurrent worker to
-#      clobber.
-#   3. Otherwise refuse. ARSENAL_ALLOW_SHARED_ADD=1 is the operator escape
-#      hatch for a bespoke setup, named so it reads as what it is.
-_isolation_sentinel() {
-    local dir="${ARSENAL_SESSION_DIR:-claude-arsenal/session}"
-    [[ -f "${dir}/worktree_isolation" ]] || return 1
-    [[ "$(tr -d '[:space:]' < "${dir}/worktree_isolation" 2>/dev/null)" == "unavailable" ]]
+# Riding it in the PR fixes the timing exactly: the rename lands on the default
+# branch at the moment the merge does, and if the PR never merges the task file
+# never moves. No follow-up commit, no push to a protected branch, nothing to
+# reconcile.
+_ARCHIVED_LIVE=""
+_ARCHIVED_DEST=""
+_ARCHIVED_BACKUP=""
+_ARCHIVED_INDEX=""
+
+_unarchive_task_file() {
+    [[ -n "${_ARCHIVED_BACKUP}" && -f "${_ARCHIVED_BACKUP}" ]] || return 0
+    # Restore FIRST, delete second. Deleting the archive before the copy
+    # succeeds is the one ordering where a failure leaves the task file at
+    # neither path — the tree would come out of a refusal worse than it went in.
+    if ! cp "${_ARCHIVED_BACKUP}" "${_ARCHIVED_LIVE}"; then
+        echo "open_task_pr: could not restore ${_ARCHIVED_LIVE} from ${_ARCHIVED_BACKUP} — the archived copy at ${_ARCHIVED_DEST} is being left in place. Move it back by hand; the backup is at ${_ARCHIVED_BACKUP}." >&2
+        return 1
+    fi
+    rm -f "${_ARCHIVED_DEST}" "${_ARCHIVED_BACKUP}"
+    # Put the INDEX back where it was, rather than staging the rollback: the
+    # task file may have been untracked (a task added by this very PR) or
+    # carrying unstaged edits, and `git add -A` would turn either into a staged
+    # change the worker never made.
+    local index_ok=1
+    git rm -q --cached --ignore-unmatch -- "${_ARCHIVED_LIVE}" "${_ARCHIVED_DEST}" 2>/dev/null || index_ok=0
+    if [[ -n "${_ARCHIVED_INDEX}" ]]; then
+        printf '%s\n' "${_ARCHIVED_INDEX}" | git update-index --index-info 2>/dev/null || index_ok=0
+    fi
+    # Assert the outcome rather than the commands: `cp` succeeding is not the
+    # same fact as the tree being back. An `rm` that fails leaves the archived
+    # copy in place — the state `task_select.py` reads as finished work — and
+    # every caller here treats this function's status as proof of restoration,
+    # so a success returned over a half-undone tree is the claim that misleads.
+    if [[ ! -f "${_ARCHIVED_LIVE}" || -e "${_ARCHIVED_DEST}" || "${index_ok}" != 1 ]]; then
+        echo "open_task_pr: the rollback did not complete — ${_ARCHIVED_LIVE} should be present and ${_ARCHIVED_DEST} should be gone; check both, and the index, by hand." >&2
+        return 1
+    fi
+    echo "open_task_pr: restored ${_ARCHIVED_LIVE} — the archive was undone" >&2
 }
-if _in_linked_worktree; then
-    :
-elif [[ "${ARSENAL_WORKTREE_ISOLATION:-}" == "unavailable" ]] || _isolation_sentinel; then
-    :
-elif [[ "${ARSENAL_ALLOW_SHARED_ADD:-}" == "1" ]]; then
-    :
-else
-    echo "open_task_pr: git add -A refused on shared checkout — not running in a linked git worktree and serialized in-place mode is not recorded (claude-arsenal/session/worktree_isolation). Run from an isolated worktree, or set ARSENAL_ALLOW_SHARED_ADD=1 if you have verified no other worker shares this checkout." >&2
+
+_archive_task_file() {
+    local live="${ARSENAL_HOME}/tasks/${TASK_ID}.md"
+    local hist_dir="${ARSENAL_HOME}/tasks/_history"
+    local dest="${hist_dir}/${TASK_ID}.md"
+
+    # An unlinked PR closes nothing, so archiving would record work as merged
+    # while its issue stays open — a contradiction this script exists to prevent.
+    # Leave the task file live: the PR is then just code, and the task is still
+    # open, which is the truth.
+    if [[ -z "${ISSUE}" ]]; then
+        echo "open_task_pr: unlinked PR — leaving ${live} live, since merging it completes nothing" >&2
+        return 0
+    fi
+
+    # No task file is legitimate (a task worked from a payload elsewhere); a
+    # file that exists and cannot be archived is not. Every failure below is
+    # fatal, because the PR body promises the archive and a half-done one leaves
+    # exactly the drift this whole change removes.
+    [[ -f "${live}" ]] || return 0
+
+    # Keep a byte-exact copy OUTSIDE the tree. The archive is the last thing to
+    # change the tree before the commit, so it is also the only thing that can
+    # need undoing when the re-check below refuses — and a refusal that leaves
+    # the task file moved contradicts this script's own "nothing has been
+    # committed".
+    _ARCHIVED_BACKUP="$(mktemp -t "arsenal-task-${TASK_ID}-XXXXXX.md")"
+    cp "${live}" "${_ARCHIVED_BACKUP}" || { echo "open_task_pr: cannot back up ${live}" >&2; return 1; }
+    _ARCHIVED_LIVE="${live}"
+    _ARCHIVED_DEST="${dest}"
+    # The index entry as it stands before the move — empty when the file is
+    # untracked, which is itself the state to restore.
+    _ARCHIVED_INDEX="$(git ls-files -s -- "${live}" 2>/dev/null || true)"
+
+    mkdir -p "${hist_dir}" || { echo "open_task_pr: cannot create ${hist_dir}" >&2; return 1; }
+    if ! git mv "${live}" "${dest}" 2>/dev/null; then
+        mv "${live}" "${dest}" 2>/dev/null \
+            || { echo "open_task_pr: cannot move ${live} to ${dest}" >&2; return 1; }
+    fi
+
+    # Stamp the terminal status inside the front matter, so the record survives
+    # even if the issue is later deleted or the repo is read without GitHub.
+    python3 - "${dest}" <<'PY' || { echo "open_task_pr: cannot stamp 'status: merged' into ${dest}" >&2; return 1; }
+import re
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+match = re.match(r"\A---\r?\n(.*?)\r?\n---\r?\n", text, re.DOTALL)
+if not match:
+    sys.exit(0)
+front = match.group(1)
+if re.search(r"^status:", front, re.MULTILINE):
+    front = re.sub(r"^status:.*$", "status: merged", front, count=1, flags=re.MULTILINE)
+else:
+    front = front + "\nstatus: merged"
+path.write_text(text[: match.start(1)] + front + text[match.end(1) :], encoding="utf-8")
+PY
+    # Assert the outcome rather than assume it: the PR body tells a reader the
+    # gate lives at the archived path, and `task_select.py` only treats the file
+    # as finished work when it parses a terminal `status`.
+    if [[ ! -f "${dest}" ]] || ! grep -q '^status: merged$' "${dest}"; then
+        echo "open_task_pr: ${dest} is not a complete archive (missing, or no 'status: merged')" >&2
+        return 1
+    fi
+    echo "open_task_pr: archived ${live} -> ${dest} (status: merged)" >&2
+}
+if ! _archive_task_file; then
+    # The undo belongs here, not at each `return 1` inside the function. Two of
+    # those fire after `git mv` has already succeeded — the stamp, and the
+    # re-check of it — and neither used to roll back, so the run refused while
+    # leaving the task file in `_history/`. `task_select.py` reads it there as
+    # finished work, so the task left the queue with nothing merged: the outcome
+    # the backup was added to prevent, reached through a different door. One
+    # call site covers every path out of the function, including later ones.
+    restored=""
+    if [[ -n "${_ARCHIVED_DEST}" && -e "${_ARCHIVED_DEST}" ]]; then
+        if _unarchive_task_file; then
+            restored=" The task file has been restored to ${ARSENAL_HOME}/tasks/."
+        else
+            restored=" THE ROLLBACK ALSO FAILED — see above; the tree needs a hand before re-running."
+        fi
+    fi
+    echo "open_task_pr: refusing to open a PR whose task file could not be archived — the merge would close the issue and leave the task file live.${restored} Fix the error above and re-run; nothing has been committed." >&2
     exit 1
 fi
+
+# The host gate ran at the top, over a tree that did not yet contain the
+# archive. Then the archive moved a tracked file — so the gate certified one
+# tree and the commit carries another. Any host measurement over the repo's own
+# files (a file count, a coverage denominator, a lint sweep) is then stale by
+# exactly that file, and the host's next run fails on a branch whose gate had
+# just passed (#220). Re-run it here, where the tree is final: a gate that
+# regenerates its evidence writes the right numbers into this commit, and one
+# that only checks confirms the tree being committed is the certified one.
+if [[ -n "${host_gate}" && -n "${_ARCHIVED_DEST}" ]]; then
+    echo "open_task_pr: re-running host gate over the archived tree: ${host_gate}" >&2
+    if ! bash -c "${host_gate}" >&2; then
+        # Say which of the two happened. Claiming the restoration unconditionally
+        # told a reader the tree was back the way it started in exactly the case
+        # where it is not, and that is the case where they have to act.
+        if _unarchive_task_file; then
+            restored="The task file has been restored to ${ARSENAL_HOME}/tasks/ — nothing was committed."
+        else
+            restored="THE ROLLBACK ALSO FAILED — see above; the tree needs a hand before re-running. Nothing was committed."
+        fi
+        echo "open_task_pr: host gate failed after the task file was archived (${host_gate}) — no PR opened. ${restored} A gate that passes before the archive and fails after it is measuring the repo's own files; re-run once the measurement accounts for ${ARSENAL_HOME}/tasks/_history/." >&2
+        exit 1
+    fi
+fi
+[[ -n "${_ARCHIVED_BACKUP}" ]] && rm -f "${_ARCHIVED_BACKUP}"
+
+# Stage and commit — the shared-checkout guard above already cleared `git add
+# -A`, and a dynamic Co-Authored-By is added only when supplied.
 git add -A
+
+# `Closes #<issue>` goes in the commit message as well as the PR body. The body
+# form only fires on a merge into the default branch; the commit form survives a
+# squash merge and is what closes the issue for a stacked PR based on another
+# branch. Writing both costs one line and removes a caveat nobody remembers.
 commit_args=(-m "${TYPE}: ${TITLE}")
+if [[ -n "${ISSUE}" ]]; then
+    commit_args+=(-m "Closes #${ISSUE}")
+fi
 if [[ -n "${ARSENAL_COAUTHOR:-}" ]]; then
     commit_args+=(-m "Co-Authored-By: ${ARSENAL_COAUTHOR}")
 fi
@@ -187,16 +553,49 @@ if [[ "${pushed}" -ne 1 ]]; then
     exit 1
 fi
 
-# Open the PR when a CLI backend is present; otherwise hand the branch back so
-# the orchestrator opens it via the github skill / MCP.
+# The PR body. `Closes #<issue>` is the first line of the summary rather than a
+# trailer, because a squash merge that truncates the body still keeps the top.
+closes_line=""
+[[ -n "${ISSUE}" ]] && closes_line="Closes #${ISSUE}"
+if [[ -n "${ISSUE}" ]]; then
+    gate_note="$(printf 'Acceptance gate in `%s/tasks/_history/%s.md` (archived by this PR); it passed before the PR was opened.' "${ARSENAL_HOME}" "${TASK_ID}")"
+else
+    gate_note="$(printf 'Acceptance gate in `%s/tasks/%s.md`; it passed before the PR was opened. This PR closes no issue, so merging it does NOT complete the task.' "${ARSENAL_HOME}" "${TASK_ID}")"
+fi
+BODY="$(printf '## Summary\n\n%s\n\n%s\n\n## Test plan\n\n%s\n' \
+    "${closes_line}" "${TITLE}" "${gate_note}")"
+PR_TITLE="${TYPE}: ${TITLE}"
+
+# Open the PR over whichever channel exists. `gh` first, then REST — the REST
+# leg matters because the push-only outcome is not a completed task: it hands
+# back a branch nobody has opened a PR for, and if the session ends there the
+# task stays claimed with its work sitting on an orphan branch. Every surface
+# that can reach the API should close that gap itself rather than delegate it.
 if command -v gh >/dev/null 2>&1; then
-    body="$(printf '## Summary\n\n%s\n\n## Test plan\n\nSee acceptance gate in claude-arsenal/queue/%s.md.\n' "${TITLE}" "${TASK_ID}")"
     if url="$(gh pr create --base "${default_base}" --head "${BRANCH}" \
-                --title "${TYPE}: ${TITLE}" --body "${body}" 2>/dev/null)"; then
+                --title "${PR_TITLE}" --body "${BODY}" 2>/dev/null)"; then
         echo "${url}"
         exit 0
     fi
 fi
 
+if slug="$(bash "${SCRIPT_DIR}/github_channel.sh" --slug 2>/dev/null)" && [[ -n "${slug}" ]]; then
+    payload="$(python3 -c 'import json,sys; print(json.dumps({"title":sys.argv[1],"head":sys.argv[2],"base":sys.argv[3],"body":sys.argv[4]}))' \
+        "${PR_TITLE}" "${BRANCH}" "${default_base}" "${BODY}" 2>/dev/null || true)"
+    if [[ -n "${payload}" ]] \
+        && response="$(bash "${SCRIPT_DIR}/github_channel.sh" --api POST "/repos/${slug}/pulls" "${payload}" 2>/dev/null)"; then
+        url="$(printf '%s' "${response}" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin).get("html_url",""))' 2>/dev/null || true)"
+        if [[ -n "${url}" ]]; then
+            echo "${url}"
+            exit 0
+        fi
+    fi
+fi
+
+# No PR backend at all. Say what still has to happen, including the keyword —
+# the caller opening this PR by hand is the one path where the body is written
+# by someone other than this script.
+echo "open_task_pr: no PR backend here — open the PR for ${BRANCH} with a body containing '${closes_line:-Closes #<issue>}', or the merge will not close the task" >&2
 echo "branch:${BRANCH}"
 exit 0

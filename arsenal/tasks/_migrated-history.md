@@ -1,0 +1,42 @@
+# Completed before the migration
+
+Recorded so the history survives; these are not queue entries.
+
+- `lo-dcd5` — T1: Scene primitives, SVG emitter with both embedding profiles, and the embedding-safety validator (done) — https://github.com/nuncaeslupus/drawspec/pull/2
+- `lo-4f9b` — T2: Theme dataclass, TOML loader, node and edge role vocabularies, elastic-fit band, greyscale invariant (done) — https://github.com/nuncaeslupus/drawspec/pull/2
+- `lo-b94c` — T3: Text measurement from font files via fonttools, with replace-and-warn substitution (done) — https://github.com/nuncaeslupus/drawspec/pull/2
+- `lo-1c47` — T4: Document model, validation, and the published versioned JSON Schema (done) — https://github.com/nuncaeslupus/drawspec/pull/2
+- `lo-533d` — T5: Line breaking and text block sizing (done) — https://github.com/nuncaeslupus/drawspec/pull/2
+- `lo-b7a8` — T6: Box geometry from measured text, vertical centring, rank normalisation, elastic fit (done) — https://github.com/nuncaeslupus/drawspec/pull/3
+- `lo-4c51` — T7: SPIKE — implement LayoutEngine against grandalf and a direct layered implementation, compare, decide (done) — https://github.com/nuncaeslupus/drawspec/pull/3
+- `lo-e93c` — T8: The chosen default layout engine behind the protocol (done) — https://github.com/nuncaeslupus/drawspec/pull/4
+- `lo-7bfe` — T9: Orthogonal edge routing with border anchoring and minimum shaft length (done) — https://github.com/nuncaeslupus/drawspec/pull/12
+- `lo-9dd6` — T10: Edge label placement with overlap avoidance (done) — https://github.com/nuncaeslupus/drawspec/pull/13
+- `lo-b569` — T11: Graph kinds — flow, tree, cycle (done) — https://github.com/nuncaeslupus/drawspec/pull/14
+- `lo-2f7f` — T12: Grid kinds — stack, timeline, columns (done) — https://github.com/nuncaeslupus/drawspec/pull/5
+- `lo-f75a` — T13: Shape kinds — pyramid, concentric rings (done) — https://github.com/nuncaeslupus/drawspec/pull/10
+- `lo-0e20` — T14: Chart kind — scales, ticks, rotated axis labels, series and point labels (done) — https://github.com/nuncaeslupus/drawspec/pull/11
+- `lo-38d8` — T15: CLI — render, validate, theme check, schema, with width/height/profile overrides (done) — https://github.com/nuncaeslupus/drawspec/pull/15
+- `lo-1291` — T16: The acceptance suite — one test per failure family proving it cannot be expressed (done) — https://github.com/nuncaeslupus/drawspec/pull/16
+- `lo-30b0` — T17: Embedding targets — both profiles verified into Markdown, HTML and PDF (done) — https://github.com/nuncaeslupus/drawspec/pull/17
+- `lo-c107` — T18: Acceptance close-out — reference documents, README gallery, determinism and zero-dependency checks (done) — https://github.com/nuncaeslupus/drawspec/pull/18
+- `lo-a63e` — T6b: Diamond and ellipse usable span from the text's own height, as the pill already does (done) — https://github.com/nuncaeslupus/drawspec/pull/9
+- `lo-21c8` — D-1: cycle is a parametric radial template, not a layered graph layout (done) — https://github.com/nuncaeslupus/drawspec/pull/8
+- `lo-1c11` — T0: gallery — render every reference document and look at it, after every kind task (done) — https://github.com/nuncaeslupus/drawspec/pull/8
+- `lo-3ecf` — G1: group — a box that contains boxes (done) — https://github.com/nuncaeslupus/drawspec/pull/22
+- `lo-e854` — G2: chart marks — bars, then area and stacked (done) — https://github.com/nuncaeslupus/drawspec/pull/24
+- `lo-ee92` — G3: matrix — rows against columns with spanning cells (done) — https://github.com/nuncaeslupus/drawspec/pull/25
+- `lo-1b55` — G4: funnel — generalise the shape family and lay the pyramid down (done) — https://github.com/nuncaeslupus/drawspec/pull/23
+- `lo-b67b` — G5: quadrant — two named axes, items in the plane (done) — https://github.com/nuncaeslupus/drawspec/pull/26
+- `lo-1270` — G6: curve — a named shape with labelled waypoints (done) — https://github.com/nuncaeslupus/drawspec/pull/26
+- `lo-2382` — R5-1: an outer margin the theme owns, instead of four the families invent (done) — https://github.com/nuncaeslupus/drawspec/pull/49
+- `lo-0e91` — R5-2: edge-from-a-group — an edge may name a container, not only a node (merged) — https://github.com/nuncaeslupus/drawspec/pull/51
+- `lo-6e34` — A1: ship py.typed so a consumer gets the types the strict build already proves (done) — https://github.com/nuncaeslupus/drawspec/pull/52
+- `lo-4e89` — A2: pyproject metadata — keywords, classifiers, urls, authors (done) — https://github.com/nuncaeslupus/drawspec/pull/52
+- `lo-a204` — B1: AGENTS.md — the compact document-writing brief a coding agent can read in one go (done) — https://github.com/nuncaeslupus/drawspec/pull/52
+- `lo-1d28` — B2: drawspec kinds / drawspec example <kind> — self-orientation offline (done) — https://github.com/nuncaeslupus/drawspec/pull/52
+- `lo-fbbb` — B3: an MCP server — render and validate as tools an agent can call (done) — https://github.com/nuncaeslupus/drawspec/pull/60
+- `lo-88b7` — D1: CONTRIBUTING, CHANGELOG and issue templates (done) — https://github.com/nuncaeslupus/drawspec/pull/52
+- `lo-0727` — D2: repo tidy — the stray flow.svg, the home of status/, and a complete layout table (done) — https://github.com/nuncaeslupus/drawspec/pull/52
+- `lo-2f92` — E1: README — show the drawings beside the specs that made them (done) — https://github.com/nuncaeslupus/drawspec/pull/52
+- `lo-3b60` — F1: who performs a step — answer issue #48's scannable half (done) — https://github.com/nuncaeslupus/drawspec/pull/62
