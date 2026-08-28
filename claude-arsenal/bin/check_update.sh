@@ -20,6 +20,8 @@
 #     loudly. An untagged upstream version is never merged automatically —
 #     consumers pin to tags by contract — but they are told it exists.
 #   - genuinely current    → say so.
+# It also reports the one skew no other file can: a vendored init skill OLDER
+# than the bundle it would rewrite (#237).
 #
 # NEVER DOWNGRADES. The old check was `installed != latest`, so a consumer on a
 # hand-vendored 0.21.0 with a newest tag of v0.20.5 would "update" backwards.
@@ -27,7 +29,13 @@
 #
 # Env overrides (all optional):
 #   ARSENAL_REMOTE   git remote name pointing to claude-arsenal (default: arsenal)
-#   ARSENAL_PREFIX   git subtree prefix used when the subtree was added (default: claude-arsenal)
+#   ARSENAL_PREFIX   git subtree prefix used when the subtree was ADDED (default: claude-arsenal)
+#   ARSENAL_BUNDLE_DIR  where the ASSEMBLED bundle lives, holding .bundle-version
+#                    (default: ARSENAL_PREFIX). These are the same directory in a
+#                    plain install and different ones when the subtree is
+#                    vendored whole (say at vendor/claude-arsenal/) and the
+#                    bundle assembled out of it — a layout with no single value
+#                    that could satisfy both readings.
 #   ARSENAL_UPSTREAM_VERSION_PATH  path of .bundle-version inside the marketplace
 #                    repo, for the untagged-release probe
 #
@@ -35,9 +43,27 @@
 
 set -euo pipefail
 
+# `--check-only` reports and changes nothing. The session-start protocol
+# documents this script as reporting status, but the happy path performs a
+# subtree merge and commits — a history-writing side effect from a step
+# described as a read, landing in the very working tree the worker loop
+# requires to be clean.
+CHECK_ONLY=0
+for arg in "$@"; do
+    case "${arg}" in
+        --check-only) CHECK_ONLY=1 ;;
+        *) echo "check_update.sh: unknown argument '${arg}'" >&2; exit 0 ;;
+    esac
+done
+
 REMOTE="${ARSENAL_REMOTE:-arsenal}"
+# Two different paths that a single variable used to conflate. `PREFIX` is what
+# `git subtree merge --prefix` needs; `BUNDLE_DIR` is where the assembled bundle
+# records its version. Defaulting one to the other keeps every single-directory
+# install behaving exactly as before.
 PREFIX="${ARSENAL_PREFIX:-claude-arsenal}"
-VERSION_FILE="${PREFIX}/.bundle-version"
+BUNDLE_DIR="${ARSENAL_BUNDLE_DIR:-${PREFIX}}"
+VERSION_FILE="${BUNDLE_DIR}/.bundle-version"
 UPSTREAM_VERSION_PATH="${ARSENAL_UPSTREAM_VERSION_PATH:-plugins/core/skills/init/assets/.bundle-version}"
 
 _warn() { echo "check_update.sh: $*" >&2; }
@@ -96,15 +122,71 @@ _report_untagged_upstream() {
     return 0
 }
 
-# No remote → the check is inert. Say so: a hand-copied bundle has no upstream
-# to compare against, and silence here reads as "you are up to date".
-if ! git remote get-url "${REMOTE}" >/dev/null 2>&1; then
-    _warn "no '${REMOTE}' remote configured — update checking is INERT for this repo (the bundle was copied, not added as a git subtree). Wire it up with: git remote add ${REMOTE} <marketplace-url>"
-    exit 0
-fi
+# Was PREFIX added by `git subtree`? A separate question from whether a remote
+# is configured, and the script tests both — it just used to answer the first
+# with the second's message.
+_is_subtree() {
+    # `--basic-regexp` explicitly: `grep.patternType=fixed` in a consumer's git
+    # config applies to `git log --grep` too, and the trailer pattern is a
+    # regex — read literally it matches nothing, so every subtree would report
+    # as a copied bundle and the update path would refuse to merge one.
+    git log --basic-regexp --grep="git-subtree-dir: ${PREFIX}\(/\)\?$" \
+        --max-count=1 --format=%H 2>/dev/null | grep -q .
+}
 
 # Installed version
 installed="$(cat "${VERSION_FILE}" 2>/dev/null || echo "0.0.0")"
+
+# The skew that nothing inside the host can catch on its own. init.py refuses to
+# overwrite a newer installed bundle with its own older copies (#220) — but that
+# refusal shipped in v2.4.5 and lives in the very file that is stale, so a host
+# whose vendored skill predates it runs session-start step 0(b) and walks the
+# bundle backwards with an "Upgrading" banner (#237). This script is bundle-side:
+# in exactly the dangerous case it is the NEWER of the two files, which makes it
+# the only side that can report the drop. Runs before the remote gate and
+# regardless of --check-only — it is a local comparison and needs neither.
+_report_skill_skew() {
+    local installed="$1" ver_file skill_dir skill_ver
+    # The canonical location first. The `find` below is a fallback for a host
+    # that vendors the skills somewhere else, but it cannot be the primary
+    # lookup: its pattern is not anchored to `.claude/skills/init/`, so any
+    # other vendored skill carrying a nested `init/assets/.bundle-version`
+    # matches too, and `find` emits filesystem order — so `head -1` picked a
+    # DIFFERENT skill's version, compared the bundle against it, and returned
+    # false. The probe then stayed silent and step 0(b) downgraded the bundle:
+    # the exact failure this guard exists to catch, failing open (#244).
+    # `sort` in the fallback is load-bearing for the same reason — without it
+    # the same tree answers differently on different machines.
+    ver_file=".claude/skills/init/assets/.bundle-version"
+    [[ -f "${ver_file}" ]] \
+        || ver_file="$(find .claude/skills -path '*/init/assets/.bundle-version' 2>/dev/null | sort | head -1 || true)"
+    [[ -n "${ver_file}" ]] || return 0
+    skill_ver="$(tr -d '[:space:]' < "${ver_file}" 2>/dev/null || true)"
+    [[ -n "${skill_ver}" ]] || return 0
+    _semver_gt "${installed}" "${skill_ver}" || return 0
+    skill_dir="${ver_file%/assets/.bundle-version}"
+    _warn "VENDORED SKILL BEHIND BUNDLE — the bundle is v${installed}, but the init skill at ${skill_dir} is v${skill_ver}."
+    _warn "  Session-start step 0(b) runs that skill's init.py, which would rewrite the bundle back to v${skill_ver}. SKIP step 0(b) until the skill catches up."
+    _warn "  Fix: update the plugin (/plugin update claude-arsenal), re-vendor .claude/skills from it, then re-run this check."
+}
+_report_skill_skew "${installed}"
+
+# No remote → the check is inert. Say so: silence here reads as "you are up to
+# date". Say only what was tested, though: the old wording asserted that the
+# bundle "was copied, not added as a git subtree", which is a different fact
+# and frequently a false one — remotes are not cloned, so a genuine subtree
+# comes out of `git clone` with no remote at all. A session that believed it
+# concluded upgrades had to be done by copying files in, which is the exact
+# failure `verify-subtree` exists to catch, arrived at by trusting the tool
+# whose job is to know.
+if ! git remote get-url "${REMOTE}" >/dev/null 2>&1; then
+    if _is_subtree; then
+        _warn "no '${REMOTE}' remote configured — update checking is INERT for this repo. '${PREFIX}' IS a git subtree here; only the remote is missing, which is expected on a fresh clone. Wire it up with: git remote add ${REMOTE} <marketplace-url>"
+    else
+        _warn "no '${REMOTE}' remote configured — update checking is INERT for this repo, and '${PREFIX}' has no subtree merge in this history either, so it cannot be updated by merge even once the remote is added. Wire up the remote with: git remote add ${REMOTE} <marketplace-url>"
+    fi
+    exit 0
+fi
 
 # Latest strict-semver tag on the remote (vX.Y.Z only; pre-release tags ignored)
 latest="$(git ls-remote --tags "${REMOTE}" 'refs/tags/v*' 2>/dev/null \
@@ -147,12 +229,28 @@ if ! _semver_gt "${latest}" "${installed}"; then
     exit 0
 fi
 
+# The route out of date depends on how the bundle got here, and only one of the
+# two was ever printed. A plugin/assets install has no subtree at the tag root to
+# merge — the skill's assets ARE the distribution — so both halves of the subtree
+# command fail, and the consumer is sent down that route twice with nothing in
+# the text to tell them it cannot work here.
+_plugin_route="update the plugin (/plugin update claude-arsenal), re-vendor .claude/skills from it, then: python3 .claude/skills/init/scripts/init.py --repo-path . --silent"
+if _is_subtree; then
+    _manual_hint="git fetch ${REMOTE} refs/tags/v${latest}:refs/tags/v${latest} && git subtree merge --prefix=${PREFIX} \"v${latest}^{commit}\" --squash"
+else
+    _manual_hint="'${PREFIX}' is not a git subtree, so there is nothing to merge into — ${_plugin_route}"
+fi
+if [[ ${CHECK_ONLY} -eq 1 ]]; then
+    echo "claude-arsenal: installed=v${installed}, latest=v${latest} — UPDATE AVAILABLE"
+    echo "  run without --check-only, or: ${_manual_hint}"
+    exit 0
+fi
+
 echo "claude-arsenal: installed=v${installed}, latest=v${latest} — pulling update…"
 
 # Ensure the working tree is clean before the subtree update
-_manual="git fetch ${REMOTE} refs/tags/v${latest}:refs/tags/v${latest} && git subtree merge --prefix=${PREFIX} \"v${latest}^{commit}\" --squash"
 if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
-    _warn "working tree is dirty; skipping auto-update (run manually: ${_manual})"
+    _warn "working tree is dirty; skipping auto-update (run manually: ${_manual_hint})"
     exit 0
 fi
 
@@ -160,17 +258,48 @@ fi
 # bundle matches the version the latest-tag check gated on. Fetch the tag ref
 # explicitly first — this creates the local tag and sidesteps `git subtree` not
 # dereferencing annotated tags — then merge its dereferenced commit.
-if ! git fetch "${REMOTE}" "refs/tags/v${latest}:refs/tags/v${latest}" 2>&1 \
-    || ! git subtree merge --prefix="${PREFIX}" "v${latest}^{commit}" --squash \
-        -m "chore: update claude-arsenal to v${latest}" 2>&1; then
-    _warn "subtree update failed — run manually: ${_manual}"
+# A prefix that was never added as a subtree cannot be merged into, and no retry
+# fixes it. Saying so beats a `fatal:` that reads like a transient failure and a
+# manual command carrying the same wrong prefix.
+if ! _is_subtree; then
+    _warn "'${PREFIX}' was never added as a git subtree, so it cannot be updated by merge. If the subtree lives elsewhere, set ARSENAL_PREFIX to it (and ARSENAL_BUNDLE_DIR to where .bundle-version is). If the bundle came from the plugin instead: ${_plugin_route}"
     exit 0
 fi
 
-echo "claude-arsenal: updated to v${latest}"
+if ! git fetch "${REMOTE}" "refs/tags/v${latest}:refs/tags/v${latest}" 2>&1 \
+    || ! git subtree merge --prefix="${PREFIX}" "v${latest}^{commit}" --squash \
+        -m "chore: update claude-arsenal to v${latest}" 2>&1; then
+    _warn "subtree update failed — run manually: ${_manual_hint}"
+    exit 0
+fi
+
+# The subtree has moved. The assembled bundle has not yet — init.py builds it
+# from the vendored skills, and in a layout where those are a separate tree,
+# nothing has refreshed them. Re-vendoring first is what makes the upgrade
+# complete rather than a merge followed by a faithful rebuild of the old
+# version.
+vendor_sh="$(find "${PREFIX}/scripts" .claude/skills -name 'vendor-skills.sh' 2>/dev/null | head -1 || true)"
+if [[ "${BUNDLE_DIR}" != "${PREFIX}" && -n "${vendor_sh}" ]]; then
+    bash "${vendor_sh}" --src "${PREFIX}" --dest .claude/skills --plugins all >/dev/null 2>&1 \
+        || _warn "re-vendoring skills from ${PREFIX} failed; the bundle may still be on the old version"
+fi
 
 # Re-run init.py --silent so any new bundle scripts are propagated
 init_py="$(find .claude/skills -name 'init.py' -path '*/init/scripts/init.py' 2>/dev/null | head -1 || true)"
 if [[ -n "${init_py}" ]]; then
     python3 "${init_py}" --repo-path . --silent
 fi
+
+# Only now is "updated" a claim worth making. A success message that can print
+# while the version did not move is the part that hides a half-finished
+# upgrade: the subtree says the new version, the assembled bundle says the old
+# one, and nothing fails.
+now_installed="$(cat "${VERSION_FILE}" 2>/dev/null || echo "0.0.0")"
+if [[ "${now_installed}" != "${latest}" ]]; then
+    _warn "subtree merged to v${latest} but ${VERSION_FILE} still reads ${now_installed} — the bundle was NOT upgraded. Re-vendor the skills and re-run init.py:
+    bash ${PREFIX}/scripts/vendor-skills.sh --src ${PREFIX} --dest .claude/skills --plugins all
+    python3 .claude/skills/init/scripts/init.py --repo-path . --silent"
+    exit 0
+fi
+
+echo "claude-arsenal: updated to v${latest}"

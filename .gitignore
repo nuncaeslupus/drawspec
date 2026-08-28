@@ -237,8 +237,13 @@ originals/
 # drawspec ships as its own examples.
 docs/corpus/
 arsenal/session/surface_profile.json
-arsenal/session/host_branch
+
 arsenal/session/rate_limits.json
+
 arsenal/session/budget_iterations.json
+
 arsenal/session/worktree_isolation
+
+arsenal/session/host_branch
+
 arsenal/session/rescue_refs

@@ -1,0 +1,44 @@
+# claude-arsenal host configuration.
+#
+# This file is yours. Upstream never rewrites it, so anything set here survives
+# a bundle upgrade — which is the point: a preference stored in a vendored
+# skill disappears the next time that skill is refreshed.
+
+# How far must a task PR get before it may be merged?
+#   always              merge as soon as it is open
+#   after-review        merge once a review approves — for a repo with no CI, or
+#                       whose CI is unavailable rather than merely red
+#   after-ci            merge once CI is green
+#   after-ci-and-review require both
+#   never               never merge automatically; you review every PR
+merge-policy = "after-ci-and-review"
+
+# test-first writes a failing test before the change; test-after writes tests
+# alongside it.
+test-discipline = "test-first"
+
+# What /session-end leaves behind: handoff | ticket | none
+session-end = "handoff"
+
+# The skills-listing character budget the auditor enforces. The default is
+# 8000; raise it if your surface's real budget differs, rather than deleting
+# skills to fit a number that is not yours.
+listing-budget = 8000
+queue-automation = true
+
+# Shell command run before any task PR is opened; a non-zero exit means no PR.
+# Empty = no host gate. Point it at everything this repo actually checks,
+# matching .github/workflows/ci.yml's Lint + Type-check + Test steps.
+host-gate = "uv run ruff check . && uv run ruff format --check . && uv run mypy . && uv run pytest -q"
+
+# Which model runs what. An alias Claude Code resolves (opus | sonnet | haiku)
+# or a full model id.
+#
+# workers is enforced: the orchestrator exports it as CLAUDE_CODE_SUBAGENT_MODEL
+# before dispatching, so it governs every worker subagent in the session.
+#
+# orchestrator is advisory — a session cannot change the model it is already
+# running as. Leave it empty for "no opinion".
+[models]
+orchestrator = ""
+workers = "sonnet"
