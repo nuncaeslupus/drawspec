@@ -4,10 +4,13 @@
 
 **Date**: 2026-08-28 · **Branch**: `claude/github-coderabbit-limits-huuu88`
 **This session**: migrated `claude-arsenal` from the coordination-branch queue
-(v0.23.1) to the GitHub-issues task board (v2.4.23) — [#70](https://github.com/nuncaeslupus/drawspec/pull/70)
-— and added a `scatter` kind, requested by `integral-job-search` — [#71](https://github.com/nuncaeslupus/drawspec/pull/71).
-**Suite**: 1 662 passing, 1 skipped · lint + strict mypy clean
-**Tasks**: 6 live (issues #64–#69, `arsenal:task`), 38 terminal (archived in
+(v0.23.1) to the GitHub-issues task board (v2.4.23) — merged as
+[#70](https://github.com/nuncaeslupus/drawspec/pull/70) — and added a `scatter`
+kind, requested by `integral-job-search` — merged as
+[#71](https://github.com/nuncaeslupus/drawspec/pull/71), which closed #64 and
+archived its task file automatically.
+**Suite**: 1 664 passing, 1 skipped · lint + strict mypy clean
+**Tasks**: 5 live (issues #65–#69, `arsenal:task`), 39 terminal (archived in
 `arsenal/tasks/_history/`)
 
 ---
@@ -40,14 +43,12 @@ That is a capability limit, not an oversight. `A3` is `laptop` because a cloud
 session cannot hold a PyPI credential; everything else about the release is
 built and merged.
 
-**The sixth task, `scatter` (`lo-825e` / #64), is implemented and its PR is
-open**: [#71](https://github.com/nuncaeslupus/drawspec/pull/71), pending
-review — not yet merged, so `lo-825e` is still a live task file, not archived.
+**The sixth task, `scatter` (`lo-825e` / #64), is done — merged as
+[#71](https://github.com/nuncaeslupus/drawspec/pull/71)**, which closed #64 and
+archived the task file automatically — `.github/workflows/arsenal-queue.yml`'s
+merge-completion path, confirmed working end to end on its first real merge.
 It needed no laptop: a 2-D kind, two continuous ticked axes, reusing
 `quadrant`'s axis machinery and `chart`'s tick furniture almost unchanged.
-Once #71 merges, `open_task_pr.sh`'s archival moves the task file to
-`arsenal/tasks/_history/` and closes #64 automatically — nothing to do by
-hand.
 
 ## What this session did
 
@@ -173,3 +174,19 @@ What is left is not a task and should not be invented as one:
   [nuncaeslupus/claude-arsenal](https://github.com/nuncaeslupus/claude-arsenal/issues)
   for the tracking issue before assuming those are still open — a bundle
   refresh may have already pulled the fixes in.
+* PR #71 (`scatter`) had a real bug too, this time in drawspec's own code, not
+  vendored content: its `axes` field originally reused the same `axis` object
+  type `chart`/`quadrant`/`curve` share, so a document with `categories` on a
+  scatter axis passed the *published* schema and only failed
+  `drawspec validate` — schema and runtime validator disagreeing, which
+  `build_schema()`'s own docstring says this project avoids. Fixed
+  structurally (`axis-continuous`/`axes-continuous`, no `categories` field at
+  all — the same `additionalProperties: false` teaching every other
+  restriction in this format already uses), not with a Python-only check:
+  check both `accepted_by_schema` and `accepted_by_parser` on the same
+  document whenever a new kind reuses a shared object type but doesn't use
+  all of its fields. A second, unrelated bug in the same review:
+  `build_schema()` grouped `oneOf` variants by field *name* alone, so
+  `quadrant` and `scatter` — same field names, different meanings — silently
+  shared one kind's field descriptions. Fixed by grouping on the full field
+  spec instead of just names.
