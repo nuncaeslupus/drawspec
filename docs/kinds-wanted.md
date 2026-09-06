@@ -327,9 +327,13 @@ That is the general lesson, and it is worth more than the field: a kind that
 inventory below sorts by what a kind can hold. It cannot sort by what a kind
 says.
 
-`rise` closes the first of the two. The second still wants an ascending
-`timeline`, which is not the same field: a timeline's boxes sit on an axis, and
-what rises there is the label above the tick, not a column from a baseline.
+`rise` closes both, and the second one is worth the correction. This paragraph
+first said an ascending `timeline` was *not the same field* — a timeline's boxes
+sit on an axis, so what rises there is a label above a tick and not a column
+from a baseline. Writing the code showed that was a distinction without a
+difference: a timeline's labels **already** all end at the axis, so the axis is
+the common baseline and the ascent is the same arithmetic. One helper serves
+both, and the only thing each kind decides is where its floor is.
 
 ---
 

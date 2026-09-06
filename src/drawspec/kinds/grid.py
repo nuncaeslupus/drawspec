@@ -174,8 +174,12 @@ def _rising(count: int, natural: float, theme: Theme) -> list[float]:
 
     La más baja es la que el texto necesita, **no una fracción de la más alta**:
     así toda etiqueta cabe sea cual sea el `rise` del tema, y subirlo estira el
-    dibujo hacia arriba en vez de estrangular la primera columna. Con una sola
-    columna no hay serie y no hay ascenso.
+    dibujo hacia arriba en vez de estrangular la primera. Con un solo elemento
+    no hay serie y no hay ascenso.
+
+    La comparten `columns` y `timeline` porque el ascenso es el mismo: cajas
+    alineadas por abajo que crecen hacia arriba. Lo único que cambia es dónde
+    está esa base —el suelo del lienzo o el eje—, y eso ya lo decide cada uno.
     """
     if count < 2:
         return [natural]
@@ -231,7 +235,13 @@ def _timeline(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
         )
 
     boxes = normalise(_sized(document.items, theme, measurer, label_width))
-    band = max((box.height for box in boxes), default=0.0)
+    natural = max((box.height for box in boxes), default=0.0)
+    # Las etiquetas de un `timeline` ya se apoyan todas en el eje, así que
+    # ascender es exactamente lo mismo que en `columns`: cambia la altura de
+    # cada caja y no cambia nada más. El tick sigue saliendo de `band`, que es
+    # donde acaban todas.
+    heights = _rising(len(boxes), natural, theme) if document.rise else None
+    band = max(heights) if heights else natural
     tick = theme.edge.head_length * TICK_FRACTION
     axis_y = band + theme.box.padding.top
 
@@ -248,7 +258,10 @@ def _timeline(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
         # along here, and the reader is left to pair each label with the nearest
         # mark by eye. Touching both, it says which moment is which.
         primitives.append(Path(AXIS_ROLE, points=((centre, band), (centre, axis_y + tick / 2))))
-        placed = box.resized(width=label_width).moved_to(centre - label_width / 2, 0.0)
+        alto = heights[index] if heights else None
+        placed = box.resized(width=label_width, height=alto).moved_to(
+            centre - label_width / 2, band - (alto if alto else natural)
+        )
         primitives.extend(box_primitives(placed, theme, measurer))
 
     below = axis_y + tick / 2
