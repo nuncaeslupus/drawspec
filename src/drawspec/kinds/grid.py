@@ -148,13 +148,39 @@ def _columns(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         )
 
     boxes = normalise(_sized(document.items, theme, measurer, column))
+    heights = (
+        _rising(len(boxes), max((box.height for box in boxes), default=0.0), theme)
+        if document.rise
+        else None
+    )
+
     primitives: list[Primitive] = []
+    tallest = max(heights) if heights else max((box.height for box in boxes), default=0.0)
     for index, box in enumerate(boxes):
-        placed = box.resized(width=column).moved_to((column + gutter) * index, 0.0)
+        # Sobre una línea de base común: una serie que asciende se lee desde
+        # abajo, y alinearla por arriba dibujaría lo contrario —columnas que
+        # cuelgan— con las mismas alturas.
+        top = tallest - heights[index] if heights else 0.0
+        placed = box.resized(width=column, height=heights[index] if heights else None).moved_to(
+            (column + gutter) * index, top
+        )
         primitives.extend(box_primitives(placed, theme, measurer))
 
-    height = max((box.height for box in boxes), default=0.0)
-    return _scene(document, primitives, width, height)
+    return _scene(document, primitives, width, tallest)
+
+
+def _rising(count: int, natural: float, theme: Theme) -> list[float]:
+    """Alturas de una serie que asciende, de la natural a `natural * rise`.
+
+    La más baja es la que el texto necesita, **no una fracción de la más alta**:
+    así toda etiqueta cabe sea cual sea el `rise` del tema, y subirlo estira el
+    dibujo hacia arriba en vez de estrangular la primera columna. Con una sola
+    columna no hay serie y no hay ascenso.
+    """
+    if count < 2:
+        return [natural]
+    paso = natural * (theme.box.rise - 1.0) / (count - 1)
+    return [natural + paso * index for index in range(count)]
 
 
 # ---------------------------------------------------------------------------

@@ -297,6 +297,42 @@ because it changes every existing chart drawing, and those have been reviewed.
 
 ---
 
+## Found later, by drawing the corpus rather than sorting it
+
+This document asked *could drawspec draw them at all*, and answered by kind. It
+could not have found what follows, because the answer there was **yes** and the
+drawing still came out wrong.
+
+### An ascending scale — closed by `rise`
+
+Migrating the corpus for real turned up two originals that draw a scale by
+making each box taller than the last:
+
+| Original | Geometry | Drawn as | What the document itself says |
+|---|---|---|---|
+| The five stars of open data | heights `30·60·90·120·150` | `columns` | *each star adds a condition to the one before it* |
+| Degrees of digital transformation | heights `60·75·100`, under an axis labelled *depth of change* | `timeline` | *each degree changes more than the last* |
+
+`columns` gave five boxes of one height; `timeline` gave `51.7 · 51.7 · 66.55`,
+and the third only because its label took an extra line.
+
+**Nothing caught it.** Not the word check — every word was present. Not the
+collision check — nothing crossed anything. Not the clipping check — everything
+was on the canvas. Those three answer *is the text there and readable*, and here
+the text was fine and the **geometry was the message**. The only thing that
+found it was putting the old drawing beside the new one and looking.
+
+That is the general lesson, and it is worth more than the field: a kind that
+*can* hold every word of an original is not thereby the right kind for it. The
+inventory below sorts by what a kind can hold. It cannot sort by what a kind
+says.
+
+`rise` closes the first of the two. The second still wants an ascending
+`timeline`, which is not the same field: a timeline's boxes sit on an axis, and
+what rises there is the label above the tick, not a column from a baseline.
+
+---
+
 ## The inventory
 
 Every original, the kind that would draw it, and the reviewer's note where

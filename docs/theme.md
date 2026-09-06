@@ -95,6 +95,7 @@ Box geometry constants: margin, line spacing, corner treatment.
 | `line_height` | `1.35` | Baseline-to-baseline distance, as a multiple of the type size. |
 | `corner_radius` | `4.0` | Corner rounding for a `rect`. Zero draws square corners. |
 | `lead` | `"bold"` | How the first paragraph of a label with more than one is set. |
+| `rise` | `2.0` | How much taller the last column of a rising series is than the first. |
 | `widen_steps` | `1` | How far past the aspect floor a box may keep taking width to shed a line. |
 
 ### `[edge]`

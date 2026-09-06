@@ -525,6 +525,21 @@ class BoxStyle:
     a distinction the weight already carries.
     """
 
+    rise: float = 2.0
+    """How much taller the last column of a rising series is than the first.
+
+    A `columns` document with `rise` says the series ascends; this says by how
+    much, so the author never writes a height and cannot get one wrong. The
+    shortest column is whatever its own text needs, so every label fits whatever
+    this is set to, and the rest are spread evenly up to this multiple of it.
+
+    Two, and not the five the hand-drawn originals reached, because the ascent
+    has to read as *ascending* and not as *a chart*: at five the first column is
+    a sliver holding a full label and the drawing turns into a bar chart with no
+    axis, which is a claim about quantity that an ordinal scale does not make.
+    A page that wants the steeper look raises it.
+    """
+
     widen_steps: int = 1
     """How far past the aspect floor a box may keep taking width to shed a line.
 
@@ -544,7 +559,9 @@ class BoxStyle:
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> BoxStyle:
         _reject_unknown(
-            mapping, ("padding", "line_height", "corner_radius", "lead", "widen_steps"), "[box]"
+            mapping,
+            ("padding", "line_height", "corner_radius", "lead", "widen_steps", "rise"),
+            "[box]",
         )
         defaults = cls()
         padding = defaults.padding
@@ -578,6 +595,7 @@ class BoxStyle:
                     positive=False,
                 )
             ),
+            rise=_number(mapping.get("rise", defaults.rise), "[box] rise"),
         )
 
 
