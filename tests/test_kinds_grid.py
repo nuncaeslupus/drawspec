@@ -227,6 +227,33 @@ def test_a_rising_series_of_one_is_not_a_series() -> None:
     assert len(rects(built)) == 1
 
 
+def test_a_rising_timeline_lifts_its_labels_off_the_axis() -> None:
+    """The same ascent, and the axis is already the common baseline.
+
+    The original wanting this drew three boxes of `60·75·100` over an arrow
+    labelled *depth of the change*, and said in its own description that each
+    degree changes more than the last. A flat timeline says the three are peers
+    on a line, which is what the drawing was drawn to deny.
+
+    Nothing else moves: every label still ends where the axis is, so each tick
+    still runs from its own label's bottom edge to the line — which is what
+    pairs a label with its moment.
+    """
+    built = scene("timeline", "First", "Second", "Third", rise=True)
+    labels = sorted(rects(built), key=lambda label: label.x)
+
+    for shorter, taller in pairwise(labels):
+        assert taller.height > shorter.height
+    assert len({round(label.y + label.height, 6) for label in labels}) == 1
+    assert labels[-1].height == pytest.approx(labels[0].height * THEME.box.rise)
+
+
+def test_a_timeline_without_rise_keeps_one_band() -> None:
+    """The default is unchanged, and it is the one every existing drawing uses."""
+    built = scene("timeline", "First", "Second", "Third")
+    assert len({round(label.height, 6) for label in rects(built)}) == 1
+
+
 def test_too_many_columns_raises_fiterror_naming_the_remedies() -> None:
     with pytest.raises(FitError) as error:
         scene("columns", *[f"Column {index}" for index in range(30)])
