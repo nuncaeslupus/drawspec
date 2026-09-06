@@ -164,6 +164,69 @@ def test_columns_of_one_item_take_the_whole_width() -> None:
     assert rects(built)[0].width == pytest.approx(built.width)
 
 
+def test_a_rising_series_ascends_from_a_common_baseline() -> None:
+    """`rise` draws the order as height, which equal columns cannot say.
+
+    Two corpus originals drew an ordinal scale by making each box taller than
+    the last — five stars of open data at 30·60·90·120·150, three degrees of a
+    change at 60·75·100 — and both said in their own words that the growth was
+    the content: *each star adds a condition to the one before it*. Redrawn as
+    plain `columns` they came out flat, and nothing caught it: no word was lost
+    and no line crossed a word. What was lost was the geometry.
+
+    The ascent is strict and the baseline is shared. Aligning the tops instead
+    would draw the same heights as columns that *hang*, which reads as decay.
+    """
+    built = scene("columns", "One", "Two", "Three", "Four", rise=True)
+    columns = sorted(rects(built), key=lambda column: column.x)
+
+    for shorter, taller in pairwise(columns):
+        assert taller.height > shorter.height
+    baselines = {round(column.y + column.height, 6) for column in columns}
+    assert len(baselines) == 1
+
+
+def test_a_rising_series_reaches_the_themes_multiple_and_no_further() -> None:
+    """The tallest is `[box] rise` times the shortest — the author writes no height.
+
+    That is the whole point of the field being a boolean: a per-column number is
+    exactly the thing an author gets wrong, and it is what a generator exists to
+    take away. The shortest column is whatever its own text needs, so raising
+    the theme's multiple stretches the drawing upwards instead of starving the
+    first label.
+    """
+    built = scene("columns", "One", "Two", "Three", rise=True)
+    columns = sorted(rects(built), key=lambda column: column.x)
+    assert columns[-1].height == pytest.approx(columns[0].height * THEME.box.rise)
+
+    steeper = replace(THEME, box=replace(THEME.box, rise=4.0))
+    taller = grid_scene(
+        parse_document(document("columns", "One", "Two", "Three", rise=True)), steeper, MEASURER
+    )
+    subidas = sorted(rects(taller), key=lambda column: column.x)
+    # La más baja no se estrangula al subir el tema: sigue siendo la que su
+    # propio texto necesita, y lo que crece es el dibujo entero.
+    assert subidas[0].height == pytest.approx(columns[0].height)
+    assert subidas[-1].height == pytest.approx(columns[0].height * 4.0)
+
+
+def test_columns_without_rise_stay_equal() -> None:
+    """The default is unchanged: equal columns say the entries are peers.
+
+    Worth its own assertion because `rise` reaches into the shared sizing path,
+    and a scale drawn where the author said *peers* is the same defect in the
+    opposite direction.
+    """
+    built = scene("columns", "One", "Two", "Three")
+    assert len({round(column.height, 6) for column in rects(built)}) == 1
+
+
+def test_a_rising_series_of_one_is_not_a_series() -> None:
+    """One column has nothing to ascend from, and must not divide by zero."""
+    built = scene("columns", "Only", rise=True)
+    assert len(rects(built)) == 1
+
+
 def test_too_many_columns_raises_fiterror_naming_the_remedies() -> None:
     with pytest.raises(FitError) as error:
         scene("columns", *[f"Column {index}" for index in range(30)])

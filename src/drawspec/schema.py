@@ -678,6 +678,23 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    ("columns",): (
+        FieldSpec(
+            "rise",
+            "boolean",
+            description=(
+                "Whether the series ascends: each column drawn taller than the one "
+                "before it, all sitting on a common baseline. For a scale where the "
+                "order is the content and not merely the reading direction — five "
+                "levels of open data, three degrees of a change — and where equal "
+                "columns say the entries are peers, which is the opposite. "
+                "The author says the series rises; the theme's `[box] rise` says by "
+                "how much, so there is no per-column height to get wrong. Not a "
+                "`pyramid`: that draws the last level as the *narrowest*, which is "
+                "the right shape for a maturity model and the wrong one for a ladder."
+            ),
+        ),
+    ),
     ("timeline",): (
         FieldSpec(
             "spans",
@@ -1058,6 +1075,9 @@ class Document:
     height_binding: bool = False
     values: bool = True
     """Whether a `chart` writes each point's own number beside its mark."""
+
+    rise: bool = False
+    """Whether a `columns` series ascends, each column taller than the last."""
 
     theme: str = ""
     nodes: tuple[Node, ...] = ()
@@ -1703,6 +1723,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         height=_optional_number(document.get("height")),
         height_binding=bool(document.get("height_binding", False)),
         values=bool(document.get("values", True)),
+        rise=bool(document.get("rise", False)),
         theme=str(document.get("theme", "")),
         nodes=tuple(
             Node(

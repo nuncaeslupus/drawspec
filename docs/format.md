@@ -58,6 +58,12 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 |---|---|---|---|
 | `items` | array of [item](#item-object), at least 1 | **yes** | The entries, in the order they are meant to be read: down for `stack`, along for `timeline` and `columns`. |
 
+### `columns`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `rise` | boolean | no | Whether the series ascends: each column drawn taller than the one before it, all sitting on a common baseline. For a scale where the order is the content and not merely the reading direction — five levels of open data, three degrees of a change — and where equal columns say the entries are peers, which is the opposite. The author says the series rises; the theme's `[box] rise` says by how much, so there is no per-column height to get wrong. Not a `pyramid`: that draws the last level as the *narrowest*, which is the right shape for a maturity model and the wrong one for a ladder. |
+
 ### `timeline`
 
 | Field | Type | Required | What it is |

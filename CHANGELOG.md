@@ -12,6 +12,16 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`rise` on `columns`** — the series ascends, each column drawn taller than
+  the one before it on a common baseline, for a scale whose order is the
+  content. Two corpus originals drew one by hand and both said so in their own
+  words (*each star adds a condition to the one before it*); redrawn as plain
+  `columns` they came out flat, and nothing caught it — no word was lost and no
+  line crossed a word. What was lost was the geometry. It is a boolean, not a
+  height per column: the author says the series rises and the theme's new
+  `[box] rise` says by how much, so there is no number to get wrong. `pyramid`
+  is not a substitute — it draws the last level as the narrowest, which is right
+  for a maturity model and backwards for a ladder.
 - `py.typed`, so a consumer's type checker gets the types the strict build
   already proves. Without the marker, PEP 561 requires a checker to treat the
   package as untyped, and every call into it resolved to `Any`.

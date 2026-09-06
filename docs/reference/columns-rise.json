@@ -1,0 +1,16 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "columns",
+  "rise": true,
+  "title": "The five stars of open data",
+  "description": "Tim Berners-Lee's scale: each star adds a condition to the one before it.",
+  "caption": "Each star keeps everything the ones to its left require.",
+  "items": [
+    {"text": "★\nopen licence"},
+    {"text": "★★\nstructured"},
+    {"text": "★★★\nnon-proprietary"},
+    {"text": "★★★★\nURIs"},
+    {"text": "★★★★★\nlinked"}
+  ]
+}
