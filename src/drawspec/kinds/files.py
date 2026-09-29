@@ -237,7 +237,7 @@ def _drawn(
     }
     # Half the picture column. A label wider than the page widens its tag, and
     # every name moves out to clear the widest one so siblings still line up.
-    widest = max(widths.values(), default=0.0) / 2 + 1.5 * unit
+    widest = max(widths.values(), default=0.0) / 2 + 2 * unit
     tag = max(widest, (7 + TAG_OVERHANG) * unit) if widths else 0.0
     half = max(8 * unit, tag + 0.5 * unit) if icons else 0.0
     step = half + 12 * unit if icons else 20 * unit
@@ -428,13 +428,16 @@ def _labelled(
     bottom = middle + (ascent + descent) / 2 + 0.3 * u
     # Always wider than the page, so it reads as a tag stuck across it rather
     # than as a stripe printed on it: at least TAG_OVERHANG past either side.
-    half = max((7 + TAG_OVERHANG) * u, wide / 2 + 1.5 * u)
+    half = max((7 + TAG_OVERHANG) * u, wide / 2 + 2 * u)
 
     def at(*points: tuple[float, float]) -> tuple[tuple[float, float], ...]:
         return tuple((cx + x * u, cy + y * u) for x, y in points)
 
-    upper = ((cx - 7 * u, top), *at((-7, -9), (2, -9), (7, -4)), (cx + 7 * u, top))
-    lower = ((cx - 7 * u, bottom), *at((-7, 9), (7, 9)), (cx + 7 * u, bottom))
+    # The page's sides stop short of the tag rather than touching it, so the tag
+    # reads as laid across the page and not as a box joined to its outline.
+    gap = 1.2 * u
+    upper = ((cx - 7 * u, top - gap), *at((-7, -9), (2, -9), (7, -4)), (cx + 7 * u, top - gap))
+    lower = ((cx - 7 * u, bottom + gap), *at((-7, 9), (7, 9)), (cx + 7 * u, bottom + gap))
     tag = ((cx - half, top), (cx + half, top), (cx + half, bottom), (cx - half, bottom))
     return [
         Path(PICTURE, points=upper),
