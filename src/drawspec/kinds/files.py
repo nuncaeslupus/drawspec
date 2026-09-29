@@ -38,6 +38,9 @@ TAG: Final = "step"
 #: information, so nothing is lost where the tag cannot be read.
 TAG_SIZE: Final = 6.0
 
+#: How far, in units, a tag always reaches past each side of its page.
+TAG_OVERHANG: Final = 1.5
+
 #: Which picture a file's extension earns, when the theme asks for type
 #: pictures. Five families, not one per language: a tree is read at a glance,
 #: and a reader tells five shapes apart where fifty would each need learning.
@@ -234,7 +237,9 @@ def _drawn(
     }
     # Half the picture column. A label wider than the page widens its tag, and
     # every name moves out to clear the widest one so siblings still line up.
-    half = max(8 * unit, max(widths.values(), default=0.0) / 2 + 2 * unit) if icons else 0.0
+    widest = max(widths.values(), default=0.0) / 2 + 1.5 * unit
+    tag = max(widest, (7 + TAG_OVERHANG) * unit) if widths else 0.0
+    half = max(8 * unit, tag + 0.5 * unit) if icons else 0.0
     step = half + 12 * unit if icons else 20 * unit
     gap = 6 * unit
 
@@ -421,7 +426,9 @@ def _labelled(
     middle = cy + 1.5 * u
     top = middle - (ascent + descent) / 2 - 0.3 * u
     bottom = middle + (ascent + descent) / 2 + 0.3 * u
-    half = max(7 * u, wide / 2 + 1.5 * u)  # never narrower than the page it crosses
+    # Always wider than the page, so it reads as a tag stuck across it rather
+    # than as a stripe printed on it: at least TAG_OVERHANG past either side.
+    half = max((7 + TAG_OVERHANG) * u, wide / 2 + 1.5 * u)
 
     def at(*points: tuple[float, float]) -> tuple[tuple[float, float], ...]:
         return tuple((cx + x * u, cy + y * u) for x, y in points)
