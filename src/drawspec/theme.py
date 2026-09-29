@@ -887,7 +887,7 @@ class FilesStyle:
 
     types: str = "labels"
     """What a file's page says about its type. `labels` writes the extension on a
-    tag across the foot of the page — `PDF`, `JSON` — at the label type size;
+    small tag across the page — `PDF`, `JSON` — lettered as part of the picture;
     `pictures` draws one of five shapes (code, data, text, image, archive);
     `none` draws a plain page."""
 

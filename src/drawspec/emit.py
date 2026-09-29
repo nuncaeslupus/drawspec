@@ -351,7 +351,7 @@ def _text_element(run: TextRun, theme: Theme, profile: str) -> str:
         ("x", format_number(run.x)),
         ("y", format_number(run.y)),
         ("font-family", _font_family(theme.font.stacks()[run.font])),
-        ("font-size", format_number(theme.scale[run.level])),
+        ("font-size", format_number(run.size or theme.scale[run.level])),
         ("fill", _resolve(run.paint or "currentColor", theme, profile)),
     ]
     if run.weight != "normal":

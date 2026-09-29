@@ -28,6 +28,16 @@ PICTURE: Final = "step"
 GUIDE: Final = "link"
 STATUS: Final = "start"
 
+#: A tag is outlined like the page it is stuck to, and filled when the theme
+#: gives its type a colour.
+TAG: Final = "step"
+
+#: The size of a tag's letters, in units. Below the theme's legible minimum on
+#: purpose: these letters are part of the picture, like the lines of the page —
+#: the file's name, drawn beside it at the body size, is what carries the
+#: information, so nothing is lost where the tag cannot be read.
+TAG_SIZE: Final = 6.0
+
 #: Which picture a file's extension earns, when the theme asks for type
 #: pictures. Five families, not one per language: a tree is read at a glance,
 #: and a reader tells five shapes apart where fifty would each need learning.
@@ -218,13 +228,13 @@ def _drawn(
         else {}
     )
     widths = {
-        index: measurer.advance(label, "sans", metrics.label, "bold")
+        index: measurer.advance(label, "sans", TAG_SIZE * unit, "bold")
         for index, label in labels.items()
         if label
     }
     # Half the picture column. A label wider than the page widens its tag, and
     # every name moves out to clear the widest one so siblings still line up.
-    half = max(8 * unit, max(widths.values(), default=0.0) / 2 + 3 * unit) if icons else 0.0
+    half = max(8 * unit, max(widths.values(), default=0.0) / 2 + 2 * unit) if icons else 0.0
     step = half + 12 * unit if icons else 20 * unit
     gap = 6 * unit
 
@@ -392,40 +402,48 @@ def _picture(
 def _labelled(
     cx: float, cy: float, label: str, wide: float, colour: str, theme: Theme, metrics: _Metrics
 ) -> list[Primitive]:
-    """A page whose foot is a tag with the extension on it — `PDF` on red.
+    """A page with a tag across its lower half spelling the extension — `PDF` on red.
 
-    The tag *is* the bottom of the page, not a patch laid over it: the page's
-    outline stops where the tag starts, so no line runs through the letters. A
-    label wider than the page widens the tag past both sides, as a printed file
-    icon's does. With no colour for this type the tag is outlined and the letters
-    are in the page's ink; with one, the tag is filled solid and the letters take
-    the theme's `label_ink`.
+    The page stays a page: its foot shows below the tag, and its sides break
+    where the tag crosses them, so no line runs through the letters when the tag
+    is only outlined. A label wider than the page carries the tag past both
+    sides, as a printed file icon's does. With no colour for this type the tag is
+    outlined and the letters are in the page's ink; with one, the tag is filled
+    solid and the letters take the theme's `label_ink`.
     """
     u = metrics.unit
     style = theme.files
-    # Tall enough for the letters' whole extent, ascender to descender, so the
-    # tag's own edge never runs through them; its foot is the page's foot.
-    scale = metrics.label / metrics.body
-    ascent, descent = metrics.ascent * scale, metrics.descent * scale
-    bottom = cy + 10 * u
-    top = bottom - ascent - descent - 1.5 * u
-    half = max(7 * u, wide / 2 + 2.5 * u)
-    corner = ((-7, -9), (2, -9), (7, -4))
-    page = ((cx - 7 * u, top), *((cx + x * u, cy + y * u) for x, y in corner), (cx + 7 * u, top))
+    size = TAG_SIZE * u
+    # Just tall enough for the letters' whole extent, so its edge never runs
+    # through them, and high enough on the page that the page's foot shows.
+    ascent = metrics.ascent * size / metrics.body
+    descent = metrics.descent * size / metrics.body
+    middle = cy + 1.5 * u
+    top = middle - (ascent + descent) / 2 - 0.3 * u
+    bottom = middle + (ascent + descent) / 2 + 0.3 * u
+    half = max(7 * u, wide / 2 + 1.5 * u)  # never narrower than the page it crosses
+
+    def at(*points: tuple[float, float]) -> tuple[tuple[float, float], ...]:
+        return tuple((cx + x * u, cy + y * u) for x, y in points)
+
+    upper = ((cx - 7 * u, top), *at((-7, -9), (2, -9), (7, -4)), (cx + 7 * u, top))
+    lower = ((cx - 7 * u, bottom), *at((-7, 9), (7, 9)), (cx + 7 * u, bottom))
     tag = ((cx - half, top), (cx + half, top), (cx + half, bottom), (cx - half, bottom))
     return [
-        Path(PICTURE, points=page),
-        Path(GUIDE, points=tuple((cx + x * u, cy + y * u) for x, y in ((2, -9), (2, -4), (7, -4)))),
-        Polygon(PICTURE, points=tag, fill="solid" if colour else "", fill_colour=colour),
+        Path(PICTURE, points=upper),
+        Path(PICTURE, points=lower),
+        Path(GUIDE, points=at((2, -9), (2, -4), (7, -4))),
+        Polygon(TAG, points=tag, fill="solid" if colour else "", fill_colour=colour),
         TextRun(
             PICTURE,
             x=cx,
-            y=(top + bottom) / 2 + (ascent - descent) / 2,
+            y=middle + (ascent - descent) / 2,
             text=label,
             level="label",
             weight="bold",
             anchor="middle",
             paint=style.label_ink if colour else "",
+            size=size,
         ),
     ]
 

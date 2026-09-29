@@ -27,6 +27,6 @@ This page keeps the prior-art survey and the decisions behind it.
 | Root | `root` optional; without it, top-level entries have no branches. |
 | Look | `style`: `icons` (default), `plain`, `unicode`, `ascii`. Text also via `render --format text`. |
 | Folder fill, type marks, colour | Theme `[files]`: `tint`, `types`, `colours`, `label_ink`, `align`. Default theme monochrome; `accent` colours folders and types. |
-| Type labels | Default `types = "labels"`: the page's foot is a tag spelling the extension (≤ 4 letters) at the label size, widening past the page when needed — so it stays above the 9-point legible minimum. Coloured, the tag is solid and the letters take `label_ink` (white on a red `PDF`). `pictures` swaps in five drawn shapes (code, data, text, image, archive). |
+| Type labels | Default `types = "labels"`: a small tag across the page spells the extension (≤ 4 letters), widening past the page when needed; the page's foot stays visible below it. Its letters are sized with the picture (below the 9-point text minimum, on purpose): they are part of the icon, and the name beside it carries the information. Coloured, the tag is solid and the letters take `label_ink` (white on a red `PDF`). `pictures` swaps in five drawn shapes (code, data, text, image, archive). |
 | Placement | `align = "left"` (default) keeps the tree at the canvas's left edge; `centre` matches the other kinds. |
 | Refused | Absolute paths, empty / `.` / `..` segments, a path written twice, a file or link used as a folder, `...` mid-path. |

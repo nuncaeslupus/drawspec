@@ -19,8 +19,8 @@ against it would stop working. Everything below is about the *package*.
   target, `status` marks an entry `added`, `changed` or `removed` with a labelled
   pill (never colour alone), and `note` adds a comment in one aligned column.
   `sort` is `given` (default), `name` (natural) or `folders-first`. `style` is
-  `icons` (default: tinted folders, and pages whose foot is a tag spelling the
-  extension — `PDF`, `JSON`), `plain` (names and guides), or `unicode` /
+  `icons` (default: tinted folders, and pages with a small tag spelling the
+  extension — `PDF`, `JSON` — lettered as part of the picture), `plain` (names and guides), or `unicode` /
   `ascii` (monospace text, as `tree` prints it). Paths written twice, a file used
   as a folder, `..` segments and absolute paths are refused at their entry.
 - **`drawspec render --format text`** and `render_text()` — a `files` tree as

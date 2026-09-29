@@ -153,7 +153,7 @@ How a `files` tree draws its pictures. Appearance, so it lives here.
 | Key | Default | What it is |
 |---|---|---|
 | `tint` | `0.25` | How strongly a folder is filled, from 0 (an outline) to 1 (solid). The same strength paints a file whose type has a colour below. |
-| `types` | `"labels"` | What a file's page says about its type. `labels` writes the extension on a tag across the foot of the page — `PDF`, `JSON` — at the label type size; `pictures` draws one of five shapes (code, data, text, image, archive); `none` draws a plain page. One of `labels`, `pictures`, `none`. |
+| `types` | `"labels"` | What a file's page says about its type. `labels` writes the extension on a small tag across the page — `PDF`, `JSON` — lettered as part of the picture; `pictures` draws one of five shapes (code, data, text, image, archive); `none` draws a plain page. One of `labels`, `pictures`, `none`. |
 | `label_ink` | `""` | The colour a label's letters are drawn in when its tag is filled with a colour below — white on a red `PDF`, say. Empty is the page's ink. |
 | `align` | `"left"` | Where a tree sits on the canvas: `left`, as a listing reads, or `centre`, like every other kind. One of `left`, `centre`. |
 | `colours` | `{}` | Fill colour by extension (`pdf`), by type family (`code`, `data`, `text`, `image`, `archive`), or `folder`. An extension wins over its family. Anything not named is drawn in the page's ink. |
