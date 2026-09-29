@@ -862,6 +862,13 @@ class FunnelStyle:
         )
 
 
+#: What a `files` page says about its file's type.
+FILES_TYPES: Final = ("labels", "pictures", "none")
+
+#: Where a `files` tree sits on the canvas.
+FILES_ALIGNS: Final = ("left", "centre")
+
+
 @dataclass(frozen=True)
 class FilesStyle:
     """How a `files` tree draws its pictures. Appearance, so it lives here.
@@ -878,9 +885,19 @@ class FilesStyle:
     """How strongly a folder is filled, from 0 (an outline) to 1 (solid). The same
     strength paints a file whose type has a colour below."""
 
-    types: bool = True
-    """Whether a file's page carries a picture of its type — code, data, text,
-    image or archive, told apart by shape — or is drawn as a plain page."""
+    types: str = "labels"
+    """What a file's page says about its type. `labels` writes the extension on a
+    tag across the foot of the page — `PDF`, `JSON` — at the label type size;
+    `pictures` draws one of five shapes (code, data, text, image, archive);
+    `none` draws a plain page."""
+
+    label_ink: str = ""
+    """The colour a label's letters are drawn in when its tag is filled with a
+    colour below — white on a red `PDF`, say. Empty is the page's ink."""
+
+    align: str = "left"
+    """Where a tree sits on the canvas: `left`, as a listing reads, or `centre`,
+    like every other kind."""
 
     colours: Mapping[str, str] = MappingProxyType({})
     """Fill colour by extension (`pdf`), by type family (`code`, `data`, `text`,
@@ -892,14 +909,15 @@ class FilesStyle:
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> FilesStyle:
-        _reject_unknown(mapping, ("tint", "types", "colours"), "[files]")
+        _reject_unknown(mapping, ("tint", "types", "label_ink", "align", "colours"), "[files]")
         defaults = cls()
         tint = _number(mapping.get("tint", defaults.tint), "[files] tint", positive=False)
         if not 0 <= tint <= 1:
             raise ThemeError(f"[files] tint: expected a fraction from 0 to 1, got {tint!r}")
-        types = mapping.get("types", defaults.types)
-        if not isinstance(types, bool):
-            raise ThemeError(f"[files] types: expected true or false, got {types!r}")
+        types = _choice(mapping.get("types", defaults.types), FILES_TYPES, "[files] types")
+        align = _choice(mapping.get("align", defaults.align), FILES_ALIGNS, "[files] align")
+        ink = mapping.get("label_ink", defaults.label_ink)
+        label_ink = _colour(ink, "[files] label_ink") if ink else ""
         colours = mapping.get("colours", {})
         if not isinstance(colours, Mapping):
             raise ThemeError(f"[files] colours: expected a table, got {colours!r}")
@@ -911,7 +929,13 @@ class FilesStyle:
                     f"without its dot, as `pdf`, a type family such as `code`, or `folder`."
                 )
             painted[key] = _colour(value, f"[files] colours.{key}")
-        return cls(tint=tint, types=types, colours=MappingProxyType(painted))
+        return cls(
+            tint=tint,
+            types=types,
+            label_ink=label_ink,
+            align=align,
+            colours=MappingProxyType(painted),
+        )
 
 
 @dataclass(frozen=True)
@@ -1161,6 +1185,8 @@ class Theme:
             *self.mark.colours,
             *self.files.colours.values(),
         }
+        if self.files.label_ink:
+            colours.add(self.files.label_ink)
         for role in self.roles.values():
             colours.update(role.colours)
         for edge_role in self.edge_roles.values():

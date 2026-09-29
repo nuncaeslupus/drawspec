@@ -83,6 +83,7 @@ colours = ["#C0452A", "#2A6FC0", "#3E7A4A", "#7C8794", "#7C8794"]
 # so the tree reads the same printed in greyscale.
 [files]
 tint = 0.35
+label_ink = "#FFFFFF"
 
 [files.colours]
 folder = "#D9A21B"

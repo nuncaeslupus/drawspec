@@ -204,6 +204,36 @@ def test_a_themes_colours_reach_folders_and_types() -> None:
     assert accent.colour_for("code") in svg  # index.ts and Button.tsx
 
 
+def test_a_file_is_labelled_with_its_extension_by_default() -> None:
+    svg = render(PROJECT)
+    for label in (">TSX<", ">TS<", ">JSON<"):
+        assert label in svg
+    assert ">CFG<" in svg  # up to four letters, whatever the type
+
+
+def test_a_coloured_label_takes_the_themes_label_ink() -> None:
+    svg = render(document({"path": "guide.pdf"}), "accent")
+    ink = load_theme("accent").files.label_ink
+    assert f'fill="{ink}"' in svg and ">PDF<" in svg
+
+
+def test_pictures_and_none_draw_no_labels() -> None:
+    for types in ("pictures", "none"):
+        theme = replace(load_theme(), files=FilesStyle(types=types))
+        assert ">TS<" not in render(PROJECT, theme)
+
+
+def test_a_tree_sits_at_the_left_unless_the_theme_centres_it() -> None:
+    small = document({"path": "a"})
+
+    def first_x(theme: Theme) -> float:
+        return float(render(small, theme).split('<text x="', 1)[1].split('"', 1)[0])
+
+    left = first_x(load_theme())
+    centred = first_x(replace(load_theme(), files=FilesStyle(align="centre")))
+    assert left < 60 < centred
+
+
 def test_plain_style_draws_no_pictures() -> None:
     svg = render({**PROJECT, "style": "plain"})
     assert "<polygon" not in svg
@@ -220,7 +250,14 @@ def test_text_styles_keep_their_columns_without_relying_on_spaces() -> None:
 
 @pytest.mark.parametrize(
     "files",
-    [{"tint": 1.5}, {"types": "yes"}, {"colours": {"PDF": "#000000"}}, {"shade": 1}],
+    [
+        {"tint": 1.5},
+        {"types": "badges"},
+        {"align": "right"},
+        {"label_ink": "white-ish"},
+        {"colours": {"PDF": "#000000"}},
+        {"shade": 1},
+    ],
 )
 def test_a_bad_files_section_is_refused(files: dict[str, object]) -> None:
     with pytest.raises(ThemeError, match=r"\[files\]"):

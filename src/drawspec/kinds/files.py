@@ -110,6 +110,10 @@ TYPES: Final[dict[str, tuple[str, ...]]] = {
         "zip",
     ),
 }
+#: The longest extension a tag spells out. Past this it reads as a word rather
+#: than a type, and the page goes without one.
+LABEL_LETTERS: Final = 4
+
 FAMILY_OF: Final = {extension: family for family, names in TYPES.items() for extension in names}
 
 #: Words a status pill says, after its mark — the mark alone is a symbol a
@@ -208,7 +212,19 @@ def _drawn(
     metrics = _metrics(theme, measurer, "sans", 25 if icons else 22)
     unit = metrics.unit
 
-    half = 8 * unit if icons else 0.0
+    labels = (
+        {index: _label(row) for index, row in enumerate(tree)}
+        if icons and theme.files.types == "labels"
+        else {}
+    )
+    widths = {
+        index: measurer.advance(label, "sans", metrics.label, "bold")
+        for index, label in labels.items()
+        if label
+    }
+    # Half the picture column. A label wider than the page widens its tag, and
+    # every name moves out to clear the widest one so siblings still line up.
+    half = max(8 * unit, max(widths.values(), default=0.0) / 2 + 3 * unit) if icons else 0.0
     step = half + 12 * unit if icons else 20 * unit
     gap = 6 * unit
 
@@ -257,7 +273,10 @@ def _drawn(
         ends.append(end)
 
         if icons and row.kind != "more":
-            primitives.extend(_picture(row, centre(row), y, theme, metrics))
+            label = labels.get(index, "")
+            primitives.extend(
+                _picture(row, centre(row), y, label, widths.get(index, 0.0), theme, metrics)
+            )
 
     # Guides: a vertical from each parent down to its last child, and a stub
     # across to every child. Drawn from the rows, so a '...' row is joined too.
@@ -319,7 +338,17 @@ def _pill(
     return x + width
 
 
-def _picture(row: Row, cx: float, cy: float, theme: Theme, metrics: _Metrics) -> list[Primitive]:
+def _label(row: Row) -> str:
+    """The extension a file's tag spells, or nothing when it has none worth one."""
+    extension = _extension(row)
+    if row.kind != "file" or not 0 < len(extension) <= LABEL_LETTERS:
+        return ""
+    return extension.upper()
+
+
+def _picture(
+    row: Row, cx: float, cy: float, label: str, wide: float, theme: Theme, metrics: _Metrics
+) -> list[Primitive]:
     """A folder, or a page with what kind of file it is drawn on it — centred on (cx, cy)."""
     u = metrics.unit
     style = theme.files
@@ -341,8 +370,12 @@ def _picture(row: Row, cx: float, cy: float, theme: Theme, metrics: _Metrics) ->
         return [tinted(at((-8, -6), (-2, -6), (0, -4), (8, -4), (8, 6), (-8, 6)), colour)]
 
     extension = _extension(row)
-    family = FAMILY_OF.get(extension, "") if style.types else ""
+    family = FAMILY_OF.get(extension, "") if style.types != "none" else ""
     colour = style.colour_for(extension) or style.colour_for(family)
+    if label and row.kind == "file":
+        return _labelled(cx, cy, label, wide, colour, theme, metrics)
+    if style.types == "labels":
+        colour = ""  # a page without a tag stays white; colour belongs to the tag
     drawn: list[Primitive] = [
         tinted(at((-7, -9), (2, -9), (7, -4), (7, 9), (-7, 9)), colour),
         Path(GUIDE, points=at((2, -9), (2, -4), (7, -4))),
@@ -351,8 +384,50 @@ def _picture(row: Row, cx: float, cy: float, theme: Theme, metrics: _Metrics) ->
         drawn.append(Path(GUIDE, points=at((-3, 6), (-3, 1), (3, 1))))
         drawn.append(Path(GUIDE, points=at((0.5, -1.5), (3, 1), (0.5, 3.5)), marker=True))
         return drawn
-    drawn.extend(Path(GUIDE, points=at(*stroke)) for stroke in _PICTOGRAMS.get(family, ()))
+    if style.types == "pictures":
+        drawn.extend(Path(GUIDE, points=at(*stroke)) for stroke in _PICTOGRAMS.get(family, ()))
     return drawn
+
+
+def _labelled(
+    cx: float, cy: float, label: str, wide: float, colour: str, theme: Theme, metrics: _Metrics
+) -> list[Primitive]:
+    """A page whose foot is a tag with the extension on it — `PDF` on red.
+
+    The tag *is* the bottom of the page, not a patch laid over it: the page's
+    outline stops where the tag starts, so no line runs through the letters. A
+    label wider than the page widens the tag past both sides, as a printed file
+    icon's does. With no colour for this type the tag is outlined and the letters
+    are in the page's ink; with one, the tag is filled solid and the letters take
+    the theme's `label_ink`.
+    """
+    u = metrics.unit
+    style = theme.files
+    # Tall enough for the letters' whole extent, ascender to descender, so the
+    # tag's own edge never runs through them; its foot is the page's foot.
+    scale = metrics.label / metrics.body
+    ascent, descent = metrics.ascent * scale, metrics.descent * scale
+    bottom = cy + 10 * u
+    top = bottom - ascent - descent - 1.5 * u
+    half = max(7 * u, wide / 2 + 2.5 * u)
+    corner = ((-7, -9), (2, -9), (7, -4))
+    page = ((cx - 7 * u, top), *((cx + x * u, cy + y * u) for x, y in corner), (cx + 7 * u, top))
+    tag = ((cx - half, top), (cx + half, top), (cx + half, bottom), (cx - half, bottom))
+    return [
+        Path(PICTURE, points=page),
+        Path(GUIDE, points=tuple((cx + x * u, cy + y * u) for x, y in ((2, -9), (2, -4), (7, -4)))),
+        Polygon(PICTURE, points=tag, fill="solid" if colour else "", fill_colour=colour),
+        TextRun(
+            PICTURE,
+            x=cx,
+            y=(top + bottom) / 2 + (ascent - descent) / 2,
+            text=label,
+            level="label",
+            weight="bold",
+            anchor="middle",
+            paint=style.label_ink if colour else "",
+        ),
+    ]
 
 
 #: Each family's picture, as strokes in page units — the page runs from -7 to 7

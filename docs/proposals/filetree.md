@@ -26,6 +26,7 @@ This page keeps the prior-art survey and the decisions behind it.
 | Notes | `note` after the name, in one aligned column. |
 | Root | `root` optional; without it, top-level entries have no branches. |
 | Look | `style`: `icons` (default), `plain`, `unicode`, `ascii`. Text also via `render --format text`. |
-| Folder fill, type pictures, colour | Theme `[files]`: `tint`, `types`, `colours`. Default theme monochrome; `accent` colours folders and type families. |
-| Type badges (extension text on the page) | Rejected: at 16 units wide, three letters need type below the theme's 9-point legible minimum. Replaced by five stroke-drawn pictograms (code `</>`, data `{}`, text lines, image, archive); the name beside the picture already spells the extension. |
+| Folder fill, type marks, colour | Theme `[files]`: `tint`, `types`, `colours`, `label_ink`, `align`. Default theme monochrome; `accent` colours folders and types. |
+| Type labels | Default `types = "labels"`: the page's foot is a tag spelling the extension (≤ 4 letters) at the label size, widening past the page when needed — so it stays above the 9-point legible minimum. Coloured, the tag is solid and the letters take `label_ink` (white on a red `PDF`). `pictures` swaps in five drawn shapes (code, data, text, image, archive). |
+| Placement | `align = "left"` (default) keeps the tree at the canvas's left edge; `centre` matches the other kinds. |
 | Refused | Absolute paths, empty / `.` / `..` segments, a path written twice, a file or link used as a folder, `...` mid-path. |

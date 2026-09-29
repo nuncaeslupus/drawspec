@@ -169,6 +169,10 @@ class TextRun(Primitive):
     """Rotation in degrees about (x, y) — a chart's vertical axis label, and
     nothing else so far."""
 
+    paint: str = ""
+    """The colour the letters are drawn in, when the theme chose one for this run —
+    a `files` label's letters on its coloured tag. Empty is the page's ink."""
+
 
 @dataclass(frozen=True)
 class TextSpan:

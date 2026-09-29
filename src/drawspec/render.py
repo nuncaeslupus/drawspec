@@ -88,8 +88,21 @@ def render_document(
             _within_width(scene_for(document, scaled, measurer), scaled), document
         ),
     )
-    placed = framed(centred(fitted.value, fitted.theme), fitted.theme)
+    placed = framed(_placed(fitted.value, fitted.theme, document), fitted.theme)
     return emit(cleared(placed, fitted.theme, measurer), fitted.theme, profile)
+
+
+def _placed(scene: Scene, theme: Theme, document: Document) -> Scene:
+    """`centred`, except for a `files` tree the theme puts at the left.
+
+    A listing reads from its left edge the way the text around it does, so a
+    tree centred in a wide canvas starts halfway across the column. It keeps the
+    canvas width either way — only where the drawing sits on it changes.
+    """
+    left = document.kind in FILES_KINDS and theme.files.align == "left"
+    if left and theme.canvas.width_mode == "fixed" and scene.width < theme.canvas.width:
+        return _shifted(scene, 0.0, theme.canvas.width)
+    return centred(scene, theme)
 
 
 def render_text(document: Document) -> str:

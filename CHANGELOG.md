@@ -19,15 +19,18 @@ against it would stop working. Everything below is about the *package*.
   target, `status` marks an entry `added`, `changed` or `removed` with a labelled
   pill (never colour alone), and `note` adds a comment in one aligned column.
   `sort` is `given` (default), `name` (natural) or `folders-first`. `style` is
-  `icons` (default: tinted folders and pages with a picture of their type —
-  code, data, text, image, archive), `plain` (names and guides), or `unicode` /
+  `icons` (default: tinted folders, and pages whose foot is a tag spelling the
+  extension — `PDF`, `JSON`), `plain` (names and guides), or `unicode` /
   `ascii` (monospace text, as `tree` prints it). Paths written twice, a file used
   as a folder, `..` segments and absolute paths are refused at their entry.
 - **`drawspec render --format text`** and `render_text()` — a `files` tree as
   plain text for a code block.
 - **`[files]` theme section** — `tint` (folder fill strength, 0 for outlines),
-  `types` (type pictures on or off) and `colours` (by extension, type family or
-  `folder`). The `accent` theme sets them; the default stays monochrome.
+  `types` (`labels`, `pictures` — five drawn type shapes — or `none`),
+  `colours` (by extension, type family or `folder`; a coloured label is a
+  solid tag), `label_ink` (its letters' colour) and `align` (`left`, the
+  default, or `centre`). The `accent` theme colours them — white `PDF` on red;
+  the default stays monochrome.
 
 - **`rise` on `columns` and `timeline`** — the series ascends, each column drawn taller than
   the one before it on a common baseline, for a scale whose order is the
