@@ -32,11 +32,12 @@ from typing import Any, Final
 
 from drawspec.clearance import cleared
 from drawspec.emit import emit
-from drawspec.errors import FitError
+from drawspec.errors import DrawspecError, FitError
+from drawspec.filetree import rows, text
 from drawspec.geometry import fit
 from drawspec.kinds import scene_for
 from drawspec.scene import Scene, moved
-from drawspec.schema import Document, parse_document
+from drawspec.schema import FILES_KINDS, Document, parse_document
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme, load_theme
 
@@ -87,8 +88,41 @@ def render_document(
             _within_width(scene_for(document, scaled, measurer), scaled), document
         ),
     )
-    placed = framed(centred(fitted.value, fitted.theme), fitted.theme)
+    placed = framed(_placed(fitted.value, fitted.theme, document), fitted.theme)
     return emit(cleared(placed, fitted.theme, measurer), fitted.theme, profile)
+
+
+def _placed(scene: Scene, theme: Theme, document: Document) -> Scene:
+    """`centred`, except for a `files` tree the theme puts at the left.
+
+    A listing reads from its left edge the way the text around it does, so a
+    tree centred in a wide canvas starts halfway across the column. It keeps the
+    canvas width either way — only where the drawing sits on it changes.
+    """
+    left = document.kind in FILES_KINDS and theme.files.align == "left"
+    if left and theme.canvas.width_mode == "fixed" and scene.width < theme.canvas.width:
+        return _shifted(scene, 0.0, theme.canvas.width)
+    return centred(scene, theme)
+
+
+def render_text(document: Document) -> str:
+    """A `files` document as plain text, the way `tree` prints it.
+
+    The one kind with a text form, because it is the one whose usual home is a
+    code block: a README's layout section is read in a terminal as often as in a
+    browser. `ascii` style draws plain-ASCII branches; every other style draws
+    box-drawing ones.
+
+    Raises:
+        DrawspecError: the document is not a `files` tree.
+    """
+    if document.kind not in FILES_KINDS:
+        raise DrawspecError(
+            f"only a `files` document has a text form; this one is a {document.kind!r}. "
+            f"Render it as SVG."
+        )
+    charset = "ascii" if document.style == "ascii" else "unicode"
+    return text(rows(document.entries, document.root, document.order), charset)
 
 
 #: How far over the canvas a drawing may measure before it is refused, in user
@@ -252,4 +286,4 @@ def render_file(
     return render_document(load_document(path), theme, profile)
 
 
-__all__ = ["centred", "framed", "render", "render_document", "render_file"]
+__all__ = ["centred", "framed", "render", "render_document", "render_file", "render_text"]

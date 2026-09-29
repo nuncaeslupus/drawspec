@@ -92,6 +92,11 @@ class Polygon(Primitive):
     fill_colour: str = ""
     """As `Rect.fill_colour`: the colour that fill is drawn in."""
 
+    fill_opacity: float = 1.0
+    """How much of the fill shows, from 0 to 1. A tint rather than a colour: a
+    `files` folder is filled with the page's own ink, faintly, so it reads as a
+    solid shape in any theme without adding a colour the page did not choose."""
+
     region: bool = False
     """Whether this figure is an extent rather than a shape, so it is not outlined.
 
@@ -163,6 +168,16 @@ class TextRun(Primitive):
     rotate: float = 0.0
     """Rotation in degrees about (x, y) — a chart's vertical axis label, and
     nothing else so far."""
+
+    paint: str = ""
+    """The colour the letters are drawn in, when the theme chose one for this run —
+    a `files` label's letters on its coloured tag. Empty is the page's ink."""
+
+    size: float = 0.0
+    """A size of its own, for lettering that is part of a picture rather than text
+    — a `files` tag's `PDF`. Zero, for every run that is text, means *the level's*
+    size; a run set here is not read, it is recognised, and the words it stands
+    for are always written out beside it at a level size."""
 
 
 @dataclass(frozen=True)

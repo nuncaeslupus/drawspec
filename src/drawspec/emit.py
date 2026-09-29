@@ -269,9 +269,12 @@ def _shape_attributes(
             getattr(primitive, "fill_colour", ""),
         ),
     )
+    paints = [fill]
+    if isinstance(primitive, Polygon) and primitive.fill_opacity < 1 and fill[1] != "none":
+        paints.append(("fill-opacity", format_number(primitive.fill_opacity)))
     if isinstance(primitive, Polygon) and primitive.region:
-        return [fill, ("stroke", "none")]
-    return [fill, *_stroke_attributes(role, theme, profile)]
+        return [*paints, ("stroke", "none")]
+    return [*paints, *_stroke_attributes(role, theme, profile)]
 
 
 # ---------------------------------------------------------------------------
@@ -348,8 +351,8 @@ def _text_element(run: TextRun, theme: Theme, profile: str) -> str:
         ("x", format_number(run.x)),
         ("y", format_number(run.y)),
         ("font-family", _font_family(theme.font.stacks()[run.font])),
-        ("font-size", format_number(theme.scale[run.level])),
-        ("fill", _resolve("currentColor", theme, profile)),
+        ("font-size", format_number(run.size or theme.scale[run.level])),
+        ("fill", _resolve(run.paint or "currentColor", theme, profile)),
     ]
     if run.weight != "normal":
         attributes.append(("font-weight", run.weight))

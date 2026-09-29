@@ -43,6 +43,7 @@ Read a document, draw it, and write the SVG to stdout or to a file.
 ```
 usage: drawspec render [-h] [-o OUT] [--theme THEME] [--width WIDTH]
                        [--height HEIGHT] [--profile {inline,standalone}]
+                       [--format {svg,text}]
                        document
 ```
 
@@ -54,6 +55,7 @@ usage: drawspec render [-h] [-o OUT] [--theme THEME] [--width WIDTH]
 | `--width` | Override the document's width. |
 | `--height` | Override the document's height. |
 | `--profile` | The embedding profile. One of `inline`, `standalone`. Default `inline`. |
+| `--format` | Svg, or text for a `files` tree as plain text, for a code block. One of `svg`, `text`. Default `svg`. |
 
 ### `drawspec validate`
 
@@ -114,12 +116,12 @@ Write the smallest document of that kind that renders, to stdout. Pipe it straig
 
 ```
 usage: drawspec example [-h]
-                        {flow,tree,cycle,stack,timeline,columns,matrix,pyramid,rings,funnel,chart,quadrant,scatter,curve}
+                        {flow,tree,cycle,stack,timeline,columns,matrix,pyramid,rings,funnel,chart,quadrant,scatter,curve,files}
 ```
 
 | Argument | What it does |
 |---|---|
-| `kind` | Which kind to write. One of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`. |
+| `kind` | Which kind to write. One of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`. |
 
 ## Embedding profiles
 

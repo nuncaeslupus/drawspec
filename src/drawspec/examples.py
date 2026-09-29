@@ -42,6 +42,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "quadrant": "items placed against two named axes",
     "scatter": "points placed by two measured values — a quadrant with real ticks",
     "curve": "a named shape with labelled waypoints",
+    "files": "a directory listing — folders and files from their paths",
 }
 
 #: The smallest document of each kind that renders.
@@ -176,6 +177,17 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"text": "Do this first", "across": 0.2, "up": 0.8},
             {"text": "Do this if there is time", "across": 0.8, "up": 0.7},
             {"text": "Do not", "across": 0.8, "up": 0.2},
+        ],
+    },
+    "files": {
+        "version": 1,
+        "kind": "files",
+        "root": "project",
+        "entries": [
+            {"path": "src/main.py", "note": "entry point"},
+            {"path": "src/..."},
+            {"path": "tests/"},
+            {"path": "README.md"},
         ],
     },
     "scatter": {
