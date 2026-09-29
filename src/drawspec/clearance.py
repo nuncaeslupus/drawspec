@@ -132,13 +132,13 @@ def _boxes(
     boxes: list[Box] = []
     for primitive in primitives:
         if isinstance(primitive, TextRun):
-            if primitive.rotate:
+            # A rotated axis title sits outside the plot; lettering sized as part
+            # of a picture sits on its own tag, which the picture already keeps
+            # its strokes clear of — cutting them again would cut the picture.
+            if primitive.rotate or primitive.size:
                 continue
             width = measurer.advance(
-                primitive.text,
-                primitive.font,
-                primitive.size or theme.scale[primitive.level],
-                primitive.weight,
+                primitive.text, primitive.font, theme.scale[primitive.level], primitive.weight
             )
             boxes.append(
                 _box(primitive.x, primitive.y, width, primitive.anchor, primitive, theme, measurer)
@@ -172,11 +172,7 @@ def _box(
     font happened to come first sizes the box for the wrong one, and the gap in a
     stroke crossing it then lands slightly high or slightly low.
     """
-    size = (
-        primitive.size
-        if isinstance(primitive, TextRun) and primitive.size
-        else theme.scale[primitive.level]
-    )
+    size = theme.scale[primitive.level]
     if isinstance(primitive, TextRun):
         faces = [(primitive.font, primitive.weight)]
     else:
