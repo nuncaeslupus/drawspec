@@ -238,6 +238,9 @@ def _drawn(
     # Half the picture column. A label wider than the page widens its tag, and
     # every name moves out to clear the widest one so siblings still line up.
     widest = max(widths.values(), default=0.0) / 2 + 2 * unit
+    # One width for every tag in the tree, set by its widest label: tags of
+    # different widths overhang their pages by different amounts, and a column
+    # of them reads as uneven rather than as one kind of mark.
     tag = max(widest, (7 + TAG_OVERHANG) * unit) if widths else 0.0
     half = max(8 * unit, tag + 0.5 * unit) if icons else 0.0
     step = half + 12 * unit if icons else 20 * unit
@@ -289,9 +292,7 @@ def _drawn(
 
         if icons and row.kind != "more":
             label = labels.get(index, "")
-            primitives.extend(
-                _picture(row, centre(row), y, label, widths.get(index, 0.0), theme, metrics)
-            )
+            primitives.extend(_picture(row, centre(row), y, label, tag, theme, metrics))
 
     # Guides: a vertical from each parent down to its last child, and a stub
     # across to every child. Drawn from the rows, so a '...' row is joined too.
@@ -362,7 +363,7 @@ def _label(row: Row) -> str:
 
 
 def _picture(
-    row: Row, cx: float, cy: float, label: str, wide: float, theme: Theme, metrics: _Metrics
+    row: Row, cx: float, cy: float, label: str, tag: float, theme: Theme, metrics: _Metrics
 ) -> list[Primitive]:
     """A folder, or a page with what kind of file it is drawn on it — centred on (cx, cy)."""
     u = metrics.unit
@@ -388,7 +389,7 @@ def _picture(
     family = FAMILY_OF.get(extension, "") if style.types != "none" else ""
     colour = style.colour_for(extension) or style.colour_for(family)
     if label and row.kind == "file":
-        return _labelled(cx, cy, label, wide, colour, theme, metrics)
+        return _labelled(cx, cy, label, tag, colour, theme, metrics)
     if style.types == "labels":
         colour = ""  # a page without a tag stays white; colour belongs to the tag
     drawn: list[Primitive] = [
@@ -405,14 +406,14 @@ def _picture(
 
 
 def _labelled(
-    cx: float, cy: float, label: str, wide: float, colour: str, theme: Theme, metrics: _Metrics
+    cx: float, cy: float, label: str, half: float, colour: str, theme: Theme, metrics: _Metrics
 ) -> list[Primitive]:
     """A page with a tag across its lower half spelling the extension — `PDF` on red.
 
     The page stays a page: its foot shows below the tag, and its sides break
     where the tag crosses them, so no line runs through the letters when the tag
-    is only outlined. A label wider than the page carries the tag past both
-    sides, as a printed file icon's does. With no colour for this type the tag is
+    is only outlined. Every tag in a tree is one width, `half` either side, set by
+    the widest label and always past the page. With no colour for this type the tag is
     outlined and the letters are in the page's ink; with one, the tag is filled
     solid and the letters take the theme's `label_ink`.
     """
@@ -426,9 +427,6 @@ def _labelled(
     middle = cy + 1.5 * u
     top = middle - (ascent + descent) / 2 - 0.3 * u
     bottom = middle + (ascent + descent) / 2 + 0.3 * u
-    # Always wider than the page, so it reads as a tag stuck across it rather
-    # than as a stripe printed on it: at least TAG_OVERHANG past either side.
-    half = max((7 + TAG_OVERHANG) * u, wide / 2 + 2 * u)
 
     def at(*points: tuple[float, float]) -> tuple[tuple[float, float], ...]:
         return tuple((cx + x * u, cy + y * u) for x, y in points)
