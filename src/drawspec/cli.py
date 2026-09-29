@@ -43,7 +43,7 @@ from drawspec import __version__
 from drawspec.emit import PROFILES
 from drawspec.errors import DocumentError, DrawspecError, ThemeError
 from drawspec.examples import EXAMPLES, PURPOSE
-from drawspec.render import render_document
+from drawspec.render import render_document, render_text
 from drawspec.schema import KINDS, Document, load_document, parse_document, schema_json
 from drawspec.theme import load_theme
 
@@ -79,6 +79,12 @@ def build_parser() -> argparse.ArgumentParser:
     render.add_argument("--height", type=float, help="override the document's height")
     render.add_argument(
         "--profile", choices=PROFILES, default="inline", help="the embedding profile"
+    )
+    render.add_argument(
+        "--format",
+        choices=("svg", "text"),
+        default="svg",
+        help="svg, or text for a `files` tree as plain text, for a code block",
     )
 
     validate = commands.add_parser(
@@ -186,7 +192,10 @@ def _render(arguments: argparse.Namespace) -> int:
             document = replace(document, width=arguments.width)
         if arguments.height is not None:
             document = replace(document, height=arguments.height)
-        svg = render_document(document, arguments.theme, arguments.profile)
+        if arguments.format == "text":
+            svg = render_text(document).rstrip("\n")
+        else:
+            svg = render_document(document, arguments.theme, arguments.profile)
     except DrawspecError as error:
         return _refuse(error)
 

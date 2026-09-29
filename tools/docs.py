@@ -66,6 +66,7 @@ from drawspec.theme import (
     Canvas,
     CycleStyle,
     EdgeStyle,
+    FilesStyle,
     FitBand,
     FontStacks,
     FunnelStyle,
@@ -451,6 +452,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "title": TitleStyle,
     "cycle": CycleStyle,
     "funnel": FunnelStyle,
+    "files": FilesStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are

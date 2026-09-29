@@ -269,9 +269,12 @@ def _shape_attributes(
             getattr(primitive, "fill_colour", ""),
         ),
     )
+    paints = [fill]
+    if isinstance(primitive, Polygon) and primitive.fill_opacity < 1 and fill[1] != "none":
+        paints.append(("fill-opacity", format_number(primitive.fill_opacity)))
     if isinstance(primitive, Polygon) and primitive.region:
-        return [fill, ("stroke", "none")]
-    return [fill, *_stroke_attributes(role, theme, profile)]
+        return [*paints, ("stroke", "none")]
+    return [*paints, *_stroke_attributes(role, theme, profile)]
 
 
 # ---------------------------------------------------------------------------

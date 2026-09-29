@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-14 kinds. The machine-readable form of this page is the published
+15 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve` | **yes** | Which of the fourteen diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files` | **yes** | Which of the fifteen diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -112,6 +112,15 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 |---|---|---|---|
 | `axes` | [axes object](#axes-object) | **yes** | The two named axes whose crossing makes the four quadrants. |
 | `positions` | array of [position](#position-object), at least 1 | **yes** | The items placed in the plane, each by what it scores, not by where it goes. |
+
+### `files`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `root` | string | no | The folder everything is in, drawn as the top row. Omit it for a listing with several top-level entries and no common parent. |
+| `entries` | array of [entry](#entry-object), at least 1 | **yes** | The paths, one per entry. Siblings keep the order written here. |
+| `sort` | string — one of `given`, `name`, `folders-first` | no | How siblings are ordered: `given` (the default) keeps the order written, `name` sorts naturally (`file2` before `file10`), `folders-first` sorts by name with folders above files. A `...` row stays last. |
+| `style` | string — one of `icons`, `plain`, `unicode`, `ascii` | no | `icons` (the default) draws folder and file pictures; `plain` draws the names and guides only; `unicode` and `ascii` draw the tree as monospace text, with box-drawing or plain ASCII branches. |
 
 ### `scatter`
 
@@ -222,6 +231,15 @@ name, so a misspelt key is an error at the point it was written.
 | `name` | string | no | Drawn where the curve ends. Omit it when there is only one curve and the axes already say what it is. |
 | `waypoints` | array of [waypoint](#waypoint-object), at least 2 | **yes** | The points the curve passes through, in order. Two is a line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+
+### `entry` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `path` | string | **yes** | Where this sits, from the top of the tree: `src/app/main.py`. The folders it passes through are drawn without being listed. A trailing `/` makes it a folder — needed only for one with nothing listed inside. A last segment of `...` is a row standing for entries not listed. |
+| `note` | string | no | A short comment drawn after the name, in the smaller label type. |
+| `link` | string | no | Makes this entry a symbolic link, drawn with an arrow to this target. Written, never followed: the target need not be in the tree. |
+| `status` | string — one of `added`, `changed`, `removed` | no | What a change did to this entry, as a diff would say it. Drawn as a labelled mark after the name — never as a colour alone. |
 
 ### `position` object
 

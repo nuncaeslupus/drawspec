@@ -92,6 +92,11 @@ class Polygon(Primitive):
     fill_colour: str = ""
     """As `Rect.fill_colour`: the colour that fill is drawn in."""
 
+    fill_opacity: float = 1.0
+    """How much of the fill shows, from 0 to 1. A tint rather than a colour: a
+    `files` folder is filled with the page's own ink, faintly, so it reads as a
+    solid shape in any theme without adding a colour the page did not choose."""
+
     region: bool = False
     """Whether this figure is an extent rather than a shape, so it is not outlined.
 

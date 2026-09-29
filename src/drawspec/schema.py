@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import Any, Final
 
 from drawspec.errors import DocumentError
+from drawspec.filetree import ORDERS, STATUSES, Entry, problems
 from drawspec.theme import EDGE_ROLES, NODE_ROLES
 
 #: The document format version this module reads.
@@ -78,6 +79,16 @@ GRID_KINDS: Final = ("stack", "timeline", "columns", "matrix")
 SHAPE_KINDS: Final = ("pyramid", "rings", "funnel")
 CHART_KINDS: Final = ("chart", "quadrant", "scatter", "curve")
 
+#: A kind of its own: rows of names under a root, drawn like a file browser.
+#: Not a `tree` — that one is boxes and arrows for a hierarchy of ideas; this one
+#: is a listing, read top to bottom, whose structure is already written in paths.
+FILES_KINDS: Final = ("files",)
+
+#: How a `files` tree is drawn. `icons` is the file-browser look; `plain` keeps
+#: the guides and drops the pictures; `unicode` and `ascii` are the tree as text,
+#: set in the monospace face, the way `tree` prints it.
+FILES_STYLES: Final = ("icons", "plain", "unicode", "ascii")
+
 #: How a series may be drawn. `line` is the default and was the only one until
 #: the corpus asked for the others; `area` is a line whose fill reaches the
 #: baseline, and `bar` is a column per point. Closed, like every other
@@ -96,7 +107,9 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: first exception: no original asked for it, but a consumer project did (a
 #: Pareto-frontier view needs two continuous, ticked axes, which `quadrant`
 #: deliberately refuses to draw) — evidence external to the corpus, not absent.
-KINDS: Final = GRAPH_KINDS + GRID_KINDS + SHAPE_KINDS + CHART_KINDS
+#: `files` is the second, on the same footing: a directory listing is the figure
+#: every technical document draws by hand, and none of the others can draw it.
+KINDS: Final = GRAPH_KINDS + GRID_KINDS + SHAPE_KINDS + CHART_KINDS + FILES_KINDS
 
 #: Fields an author might reach for that drawspec refuses, and why. Not used for
 #: validation — `additionalProperties: false` already rejects them — but for the
@@ -394,6 +407,41 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         ),
         _role(NODE_ROLES, "step"),
     ),
+    "entry": (
+        FieldSpec(
+            "path",
+            "string",
+            required=True,
+            description=(
+                "Where this sits, from the top of the tree: `src/app/main.py`. The folders "
+                "it passes through are drawn without being listed. A trailing `/` makes it "
+                "a folder — needed only for one with nothing listed inside. A last segment "
+                "of `...` is a row standing for entries not listed."
+            ),
+        ),
+        FieldSpec(
+            "note",
+            "string",
+            description="A short comment drawn after the name, in the smaller label type.",
+        ),
+        FieldSpec(
+            "link",
+            "string",
+            description=(
+                "Makes this entry a symbolic link, drawn with an arrow to this target. "
+                "Written, never followed: the target need not be in the tree."
+            ),
+        ),
+        FieldSpec(
+            "status",
+            "string",
+            enum=STATUSES,
+            description=(
+                "What a change did to this entry, as a diff would say it. Drawn as a "
+                "labelled mark after the name — never as a colour alone."
+            ),
+        ),
+    ),
     "position": (
         _text(),
         FieldSpec(
@@ -583,7 +631,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the fourteen diagrams this is. It selects the fields that are "
+            "Which of the fifteen diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -822,6 +870,44 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             min_items=1,
             description=(
                 "The items placed in the plane, each by what it scores, not by where it goes."
+            ),
+        ),
+    ),
+    FILES_KINDS: (
+        FieldSpec(
+            "root",
+            "string",
+            description=(
+                "The folder everything is in, drawn as the top row. Omit it for a listing "
+                "with several top-level entries and no common parent."
+            ),
+        ),
+        FieldSpec(
+            "entries",
+            "array",
+            required=True,
+            item_ref="entry",
+            min_items=1,
+            description="The paths, one per entry. Siblings keep the order written here.",
+        ),
+        FieldSpec(
+            "sort",
+            "string",
+            enum=ORDERS,
+            description=(
+                "How siblings are ordered: `given` (the default) keeps the order written, "
+                "`name` sorts naturally (`file2` before `file10`), `folders-first` sorts "
+                "by name with folders above files. A `...` row stays last."
+            ),
+        ),
+        FieldSpec(
+            "style",
+            "string",
+            enum=FILES_STYLES,
+            description=(
+                "`icons` (the default) draws folder and file pictures; `plain` draws the "
+                "names and guides only; `unicode` and `ascii` draw the tree as monospace "
+                "text, with box-drawing or plain ASCII branches."
             ),
         ),
     ),
@@ -1100,6 +1186,14 @@ class Document:
     """The horizontal axis then the vertical one, for `chart`. Empty otherwise."""
 
     series: tuple[Series, ...] = ()
+    root: str = ""
+    """The top folder of a `files` tree, or empty for several top-level entries."""
+
+    entries: tuple[Entry, ...] = ()
+    order: str = "given"
+    """How a `files` tree orders siblings — the document's `sort`."""
+
+    style: str = "icons"
 
     @property
     def family(self) -> str:
@@ -1109,6 +1203,7 @@ class Document:
             ("grid", GRID_KINDS),
             ("shape", SHAPE_KINDS),
             ("chart", CHART_KINDS),
+            ("files", FILES_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -1295,6 +1390,29 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
 def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
     """The checks JSON Schema cannot express: unique ids, and edges that land."""
     found: list[Violation] = []
+    if kind in FILES_KINDS:
+        entries = document.get("entries", ())
+        # Only a well-formed list is worth reading for paths: the structural pass
+        # has already reported anything else, and would be reported twice here.
+        well_formed = isinstance(entries, list) and all(
+            isinstance(entry, dict)
+            and isinstance(entry.get("path"), str)
+            and all(isinstance(entry.get(name, ""), str) for name in ("note", "link", "status"))
+            for entry in entries
+        )
+        found.extend(
+            Violation(_pointer("entries", index, name), message)
+            for index, name, message in (problems(_entries(entries)) if well_formed else [])
+        )
+        root = document.get("root", "")
+        if isinstance(root, str) and ("/" in root.strip("/") or root.strip() != root):
+            found.append(
+                Violation(
+                    "/root",
+                    f"{root!r} is one folder's name, drawn as the top row — not a path. "
+                    "Put the folders below it in the entries' paths.",
+                )
+            )
     if kind in GRAPH_KINDS:
         middles = [
             index
@@ -1816,6 +1934,22 @@ def parse_document(document: Mapping[str, Any]) -> Document:
             )
             for entry in document.get("series", ())
         ),
+        root=str(document.get("root", "")),
+        entries=_entries(document.get("entries", ())),
+        order=str(document.get("sort", "given")),
+        style=str(document.get("style", "icons")),
+    )
+
+
+def _entries(entries: Sequence[Mapping[str, Any]]) -> tuple[Entry, ...]:
+    return tuple(
+        Entry(
+            path=entry["path"],
+            note=entry.get("note", ""),
+            link=entry.get("link", ""),
+            status=entry.get("status", ""),
+        )
+        for entry in entries
     )
 
 

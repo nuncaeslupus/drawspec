@@ -146,6 +146,16 @@ Which way a `funnel` tapers. Appearance, so it lives here.
 |---|---|---|
 | `direction` | `"down"` | `down` tapers towards the bottom of the page; `right`, towards its edge. One of `down`, `right`. |
 
+### `[files]`
+
+How a `files` tree draws its pictures. Appearance, so it lives here.
+
+| Key | Default | What it is |
+|---|---|---|
+| `tint` | `0.25` | How strongly a folder is filled, from 0 (an outline) to 1 (solid). The same strength paints a file whose type has a colour below. |
+| `types` | `true` | Whether a file's page carries a picture of its type — code, data, text, image or archive, told apart by shape — or is drawn as a plain page. |
+| `colours` | `{}` | Fill colour by extension (`pdf`), by type family (`code`, `data`, `text`, `image`, `archive`), or `folder`. An extension wins over its family. Anything not named is drawn in the page's ink. |
+
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The

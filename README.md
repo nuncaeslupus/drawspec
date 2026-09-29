@@ -3,14 +3,16 @@
 Declarative diagram spec → clean, themeable SVG. Writable by an LLM with no
 coordinates to get wrong.
 
-> **Status: it draws.** All fourteen kinds render — `flow`, `tree`, `cycle`,
+> **Status: it draws.** All fifteen kinds render — `flow`, `tree`, `cycle`,
 > `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`,
-> `chart`, `quadrant`, `scatter` and `curve` — and each of the eleven failure
-> families below has a test asserting it cannot be expressed. The vocabulary
+> `chart`, `quadrant`, `scatter`, `curve` and `files` — and each of the eleven
+> failure families below has a test asserting it cannot be expressed. The vocabulary
 > opened from nine to thirteen on evidence: see `docs/kinds-wanted.md`, which
 > sorts all 89 hand-drawn originals by the kind that would have to draw them.
 > `scatter` is the fourteenth, added on a different kind of evidence: a real
 > consumer's need for two continuous, ticked axes, which `quadrant` refuses.
+> `files` is the fifteenth: a directory listing drawn from its paths, as
+> pictures or as the `tree`-style text a code block wants.
 
 ## The problem
 
@@ -85,7 +87,7 @@ every diagram in your project changes with it.
 
 ### A timeline
 
-The fourteen kinds are the part people do not expect, so here is one that is not
+The fifteen kinds are the part people do not expect, so here is one that is not
 a box-and-arrow diagram at all:
 
 ```json
@@ -189,7 +191,7 @@ for several jobs it might look like it does.
 * **It is not a Graphviz replacement.** Graphviz is a graph-layout engine with
   decades of work behind its layered and force-directed placement, and it will
   lay out a hundred-node graph that drawspec refuses. drawspec's layout exists
-  to serve fourteen named diagram shapes at the sizes a document reads at; past
+  to serve fifteen named diagram shapes at the sizes a document reads at; past
   roughly twenty boxes it will tell you it cannot fit rather than produce
   something dense and unreadable, which is deliberate but is not what a graph
   tool does.
@@ -230,7 +232,7 @@ has.
 ### If you are an agent, or pointing one here
 
 [**`AGENTS.md`**](AGENTS.md) is the whole format on one page — the rule, the
-fourteen kinds, the roles, worked examples, and what each refusal is telling you
+fifteen kinds, the roles, worked examples, and what each refusal is telling you
 to do. It is written to be read in a single pass rather than navigated, which is
 what the guide and the references are for. [`llms.txt`](llms.txt) is the index
 that points at it.

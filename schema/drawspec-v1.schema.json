@@ -856,6 +856,92 @@
         "curves"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "files",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "files"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "root": {
+          "type": "string",
+          "description": "The folder everything is in, drawn as the top row. Omit it for a listing with several top-level entries and no common parent."
+        },
+        "entries": {
+          "type": "array",
+          "description": "The paths, one per entry. Siblings keep the order written here.",
+          "items": {
+            "$ref": "#/$defs/entry"
+          },
+          "minItems": 1
+        },
+        "sort": {
+          "type": "string",
+          "description": "How siblings are ordered: `given` (the default) keeps the order written, `name` sorts naturally (`file2` before `file10`), `folders-first` sorts by name with folders above files. A `...` row stays last.",
+          "enum": [
+            "given",
+            "name",
+            "folders-first"
+          ]
+        },
+        "style": {
+          "type": "string",
+          "description": "`icons` (the default) draws folder and file pictures; `plain` draws the names and guides only; `unicode` and `ascii` draw the tree as monospace text, with box-drawing or plain ASCII branches.",
+          "enum": [
+            "icons",
+            "plain",
+            "unicode",
+            "ascii"
+          ]
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "entries"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -1092,6 +1178,36 @@
       "required": [
         "from",
         "to"
+      ],
+      "additionalProperties": false
+    },
+    "entry": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Where this sits, from the top of the tree: `src/app/main.py`. The folders it passes through are drawn without being listed. A trailing `/` makes it a folder — needed only for one with nothing listed inside. A last segment of `...` is a row standing for entries not listed."
+        },
+        "note": {
+          "type": "string",
+          "description": "A short comment drawn after the name, in the smaller label type."
+        },
+        "link": {
+          "type": "string",
+          "description": "Makes this entry a symbolic link, drawn with an arrow to this target. Written, never followed: the target need not be in the tree."
+        },
+        "status": {
+          "type": "string",
+          "description": "What a change did to this entry, as a diff would say it. Drawn as a labelled mark after the name — never as a colour alone.",
+          "enum": [
+            "added",
+            "changed",
+            "removed"
+          ]
+        }
+      },
+      "required": [
+        "path"
       ],
       "additionalProperties": false
     },

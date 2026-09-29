@@ -77,3 +77,18 @@ stroke = "#7C8794"
 # filled series has already asked too much of its reader.
 [mark]
 colours = ["#C0452A", "#2A6FC0", "#3E7A4A", "#7C8794", "#7C8794"]
+
+# A file tree's pictures in colour: folders amber, each family of type its own
+# hue. Only ever a tint behind a shape or a badge that already says what it is,
+# so the tree reads the same printed in greyscale.
+[files]
+tint = 0.35
+
+[files.colours]
+folder = "#D9A21B"
+code = "#2A6FC0"
+data = "#3E7A4A"
+text = "#7C8794"
+image = "#8A4FB0"
+archive = "#7C8794"
+pdf = "#C0452A"

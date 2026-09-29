@@ -1,0 +1,20 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "files",
+  "title": "A small web app",
+  "description": "The source tree of a web app: components, an entry point, a linked utilities folder, tests and configuration.",
+  "root": "my-app",
+  "entries": [
+    {"path": "src/components/Button.tsx"},
+    {"path": "src/components/...", "note": "12 more"},
+    {"path": "src/index.ts", "note": "entry point"},
+    {"path": "src/utils", "link": "../shared/utils"},
+    {"path": "tests/index.test.ts", "status": "added"},
+    {"path": "dist/", "note": "empty, git-ignored"},
+    {"path": "docs/guide.pdf"},
+    {"path": ".gitignore"},
+    {"path": "package.json", "status": "changed"},
+    {"path": "README.md"}
+  ]
+}

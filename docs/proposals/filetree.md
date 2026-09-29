@@ -1,52 +1,31 @@
 # Proposal: `files` — a file/folder tree kind
 
-Status: draft, awaiting decisions (see *Open questions*). Mockups: `filetree-mock-*.svg`.
+Status: **implemented** (see `docs/format.md` → `files`, and `docs/theme.md` → `[files]`).
+This page keeps the prior-art survey and the decisions behind it.
 
 ## Prior art surveyed
 
-| Tool | What it teaches |
+| Tool | What it taught |
 |---|---|
-| Unix `tree` | `├── └── │` guides; `--dirsfirst`; `--charset=ascii`; `name -> target` for symlinks; summary line "3 directories, 5 files" |
-| `eza --tree`, `lsd --tree` | per-type icons (Nerd Font glyphs); natural sort; dotfiles as ordinary names |
-| Starlight `<FileTree>` / Nextra `<FileTree>` | docs-oriented: trailing `/` marks a directory, `…` placeholder row, **highlight** a name, trailing comment per row |
-| VS Code / GitHub file view | folders first, case-insensitive natural sort; *compact folders* (`src/main/java` on one row) |
-| PlantUML `salt` tree, tree.nathanfriend.io | indentation-based text input is easy to write and easy to get wrong |
+| Unix `tree` | `├── └── │` guides; `--dirsfirst`; `--charset=ascii`; `name -> target` for symlinks |
+| `eza --tree`, `lsd --tree` | per-type icons; natural sort; dotfiles as ordinary names |
+| Starlight / Nextra `<FileTree>` | trailing `/` marks a directory, `…` placeholder row, a comment per row |
+| VS Code / GitHub file view | folders first, case-insensitive natural sort |
+| PlantUML `salt`, ASCII tree generators | indentation-based input is easy to write and easy to get wrong |
 
-## Proposed spec (sketch)
+## Decisions
 
-```json
-{ "version": 1, "kind": "files",
-  "root": "my-app",
-  "entries": [
-    {"path": "src/components/Button.tsx"},
-    {"path": "src/components/", "more": 12},
-    {"path": "src/index.ts", "note": "entry point"},
-    {"path": "src/utils", "link": "../shared/utils"},
-    {"path": "tests/index.test.ts", "status": "added"},
-    {"path": "dist/", "note": "empty, git-ignored"},
-    {"path": "package.json", "status": "changed"}
-  ] }
-```
-
-Flat paths instead of nested JSON: no indentation or nesting depth to get wrong,
-intermediate folders are inferred. That matches the project rule "nothing the
-author can misplace".
-
-## Edge cases → rule
-
-| Case | Rule |
+| Question | Decision |
 |---|---|
-| File vs folder | Has children or trailing `/` → folder. Empty folder **must** end in `/`. |
-| Same path twice | Error. |
-| Path used as file *and* folder (`a` and `a/b`) | Error. |
-| "More files" | `more: N` on a folder → a muted `… N more files` row last in it; `more: true` → `…` with no count. |
-| Symlink | `link: "<target>"` → link glyph + `→ target`. Never followed or validated. Link to folder has no children. |
-| Order | Default: as written (author's meaning). `sort: "name"` (natural, case-insensitive) or `"folders-first"`. |
-| Dotfiles, spaces, unicode | Plain names; no special handling. Names containing `/` impossible by construction. |
-| Highlight / diff state | `status: added \| changed \| removed \| highlight` → pill with `+ ~ −` symbol text, never colour alone; `removed` also struck through. |
-| Annotation | `note` → muted italic after the name, notes aligned into one column. |
-| Single-child folder chains | Optional `compact: true` → `src/main/java/` on one row. Off by default. |
-| Several roots / no root | `root` optional; omitted → forest with no top row. |
-| Long trees | Width/height from content; a size budget refuses rather than shrinking text. |
-| Icons | Small monochrome set: folder, file, link, more (+ type badge in style B). No brand/Nerd-Font icons. |
-| ASCII | `style: "ascii"` → box-drawing text in SVG; `charset: "ascii"` → `|-- \`--`. Also exportable as plain text (for code blocks). |
+| Input | Flat `path` per entry; intermediate folders inferred. No nesting to get wrong. |
+| File vs folder | Has children or ends in `/` → folder. An empty folder must end in `/`. |
+| "More files" | A last segment of `...` (or `…`); its `note` becomes the row's label. Always last among siblings. |
+| Symlink | `link: "<target>"` → link picture + `→ target`. Never followed; has no children. |
+| Order | `sort`: `given` (default), `name` (natural, case-insensitive), `folders-first`. |
+| Diff state | `status`: `added` / `changed` / `removed` → pill with `+ ~ -` and the word; `removed` is struck through. |
+| Notes | `note` after the name, in one aligned column. |
+| Root | `root` optional; without it, top-level entries have no branches. |
+| Look | `style`: `icons` (default), `plain`, `unicode`, `ascii`. Text also via `render --format text`. |
+| Folder fill, type pictures, colour | Theme `[files]`: `tint`, `types`, `colours`. Default theme monochrome; `accent` colours folders and type families. |
+| Type badges (extension text on the page) | Rejected: at 16 units wide, three letters need type below the theme's 9-point legible minimum. Replaced by five stroke-drawn pictograms (code `</>`, data `{}`, text lines, image, archive); the name beside the picture already spells the extension. |
+| Refused | Absolute paths, empty / `.` / `..` segments, a path written twice, a file or link used as a folder, `...` mid-path. |
