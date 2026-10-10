@@ -295,6 +295,33 @@ TREEMAP_PART_ROLES: Final = ("step", "emphasis", "note")
 TREEMAP_PART_MAX: Final = 10
 TREEMAP_GROUP_MAX: Final = 4
 
+#: Sankey diagrams: where a known quantity goes — nodes in columns, joined by
+#: bands whose thickness is in proportion to the amount that flows. A small set
+#: of known flows, stated — not data to explore. A layout family of its own.
+SANKEY_KINDS: Final = ("sankey",)
+
+#: The roles a node may take: the default; the node the diagram is about, its
+#: bar outlined heavier and its words bold; and the remainder (`lost`, `idle`),
+#: drawn lighter along with the bands that reach it.
+SANKEY_NODE_ROLES: Final = ("step", "emphasis", "note")
+
+#: The roles a flow may take: the default band, and the path the diagram is
+#: about, drawn darker.
+SANKEY_FLOW_ROLES: Final = ("flow", "strong")
+
+#: The most nodes, flows and columns a sankey holds. Past fourteen nodes or four
+#: columns the bands are a tangle, not a picture of where something goes.
+SANKEY_NODE_MAX: Final = 14
+SANKEY_FLOW_MAX: Final = 24
+SANKEY_COLUMN_MAX: Final = 4
+
+#: The thickness, in units of the body size over eleven, of the fullest column's
+#: bands, and the thinnest band drawn. The scale is one factor for the whole
+#: drawing, so a flow under `SANKEY_MIN_BAND / SANKEY_BAND` of the fullest
+#: column's total is a hairline — refused while validating, not after a layout.
+SANKEY_BAND: Final = 240.0
+SANKEY_MIN_BAND: Final = 2.0
+
 #: How a `files` tree is drawn. `icons` is the file-browser look; `plain` keeps
 #: the guides and drops the pictures; `unicode` and `ascii` are the tree as text,
 #: set in the monospace face, the way `tree` prints it.
@@ -344,6 +371,8 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: a number on the feeling, and a `board` cannot draw the line through it.
 #: `treemap` is the twelfth: the parts of one known total by area — a `chart`'s
 #: bars compare the parts but do not show that they make one whole.
+#: `sankey` is the thirteenth: where a known quantity goes — a `flow` can say
+#: where, but not how much of it goes each way.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -360,6 +389,7 @@ KINDS: Final = (
     + VENN_KINDS
     + JOURNEY_KINDS
     + TREEMAP_KINDS
+    + SANKEY_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -447,6 +477,13 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
         ("parts", TREEMAP_PART_MAX),
         ("groups", TREEMAP_GROUP_MAX),
     ),  # [9 parts, 3 groups]
+    # Set by the proposal: past fourteen nodes the bands are a tangle. The four
+    # columns are derived, not written, so `SANKEY_COLUMN_MAX` is checked with the
+    # flows, at the node that makes the fifth.
+    "sankey": (
+        ("nodes", SANKEY_NODE_MAX),
+        ("flows", SANKEY_FLOW_MAX),
+    ),  # [10 nodes, 9 flows]
 }
 
 
@@ -1375,6 +1412,58 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "sankey-node": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the nodes; what a flow's `from` and `to` name.",
+        ),
+        _text(),
+        FieldSpec(
+            "role",
+            "string",
+            enum=SANKEY_NODE_ROLES,
+            description=(
+                "`step` (the default), `emphasis` (the node the diagram is about: its bar "
+                "outlined heavier, its words bold) or `note` (the remainder — `Lost`, "
+                "`Reserved, idle` — drawn lighter, with the bands that reach it)."
+            ),
+        ),
+    ),
+    "sankey-flow": (
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description="The id of the node the amount leaves.",
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description="The id of the node the amount reaches.",
+        ),
+        FieldSpec(
+            "amount",
+            "number",
+            required=True,
+            exclusive_minimum=0,
+            description=(
+                "How much flows, in the sankey's `unit`: the band's thickness is in proportion. "
+                "A number you already know, more than 0."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=SANKEY_FLOW_ROLES,
+            description=(
+                "`flow` (the default band) or `strong` (the path the diagram is about, drawn "
+                "darker)."
+            ),
+        ),
+    ),
     "treemap-group": (
         FieldSpec(
             "id",
@@ -1768,7 +1857,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the twenty-five diagrams this is. It selects the fields that are "
+            "Which of the twenty-six diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -2450,6 +2539,45 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    SANKEY_KINDS: (
+        FieldSpec(
+            "nodes",
+            "array",
+            required=True,
+            item_ref="sankey-node",
+            min_items=2,
+            description=(
+                "Where the quantity starts, passes and ends. A node's column is derived from the "
+                "flows — sources left, ends right — never written; the written order is where "
+                "the order down each column starts."
+            ),
+        ),
+        FieldSpec(
+            "flows",
+            "array",
+            required=True,
+            item_ref="sankey-flow",
+            min_items=1,
+            description=(
+                "How much goes from one node to another, each a band whose thickness is in "
+                "proportion to its `amount`. What reaches a node in the middle must all leave "
+                "it, and nothing flows back."
+            ),
+        ),
+        FieldSpec(
+            "unit",
+            "string",
+            description=(
+                "What the amounts are in — `tickets`, `cores`, `€ million` — written after "
+                "each total."
+            ),
+        ),
+        FieldSpec(
+            "values",
+            "boolean",
+            description="Whether to write each node's total under its name. Defaults to true.",
+        ),
+    ),
     ("scatter",): (
         FieldSpec(
             "axes",
@@ -2802,6 +2930,25 @@ class TreemapPart:
 
 
 @dataclass(frozen=True)
+class SankeyNode:
+    """One node of a `sankey`: a bar as tall as what passes through it."""
+
+    id: str
+    text: str
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class SankeyFlow:
+    """One flow of a `sankey`: a band from one node to another, as thick as its amount."""
+
+    source: str
+    target: str
+    amount: float
+    role: str = "flow"
+
+
+@dataclass(frozen=True)
 class TreemapGroup:
     """One group of a `treemap`: a captioned frame around the parts that name it."""
 
@@ -3034,7 +3181,13 @@ class Document:
     """A `treemap`'s groups, in the order written: the order their fills are taken in."""
 
     unit: str = ""
-    """What a `treemap`'s amounts are in, written after each one."""
+    """What a `treemap`'s or a `sankey`'s amounts are in, written after each one."""
+
+    sankey_nodes: tuple[SankeyNode, ...] = ()
+    """A `sankey`'s nodes, in the order written: where each column's order starts."""
+
+    sankey_flows: tuple[SankeyFlow, ...] = ()
+    """A `sankey`'s flows, in the order written."""
 
     @property
     def family(self) -> str:
@@ -3055,6 +3208,7 @@ class Document:
             ("venn", VENN_KINDS),
             ("journey", JOURNEY_KINDS),
             ("treemap", TREEMAP_KINDS),
+            ("sankey", SANKEY_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -3251,6 +3405,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_journey_refusal(violation) for violation in found]
     if kind in TREEMAP_KINDS:
         found = [_treemap_refusal(violation) for violation in found]
+    if kind in SANKEY_KINDS:
+        found = [_sankey_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -3316,6 +3472,15 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
         "Past ten parts the smallest are slivers no label fits, and the drawing is a "
         "disk-usage tool's output. Merge the smallest into one `note` part — `Everything "
         "else` — and say what it holds in the caption."
+    ),
+    ("sankey", "nodes"): (
+        "Past fourteen nodes the bands are a tangle. Merge the small ends into one `note` "
+        "node, or draw one sankey per stage — the middle column's nodes become the next "
+        "one's sources."
+    ),
+    ("sankey", "flows"): (
+        "Past twenty-four flows the bands are a tangle. Merge the small flows into one named "
+        "`other` flow, or draw one sankey per stage."
     ),
     ("treemap", "groups"): (
         "Past four groups the frames crowd out the parts they hold. Draw one treemap of the "
@@ -3466,6 +3631,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _journey_violations(document)
     if kind in TREEMAP_KINDS:
         return _treemap_violations(document)
+    if kind in SANKEY_KINDS:
+        return _sankey_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -5236,6 +5403,260 @@ def _treemap_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a sankey has no place for a field an author may reach for.
+SANKEY_REFUSED: Final = {
+    "edges": ("a sankey's connections are its `flows`, each with the `amount` that goes along it"),
+    "column": (
+        "a node's column is derived from the flows — sources on the left, ends on the right, "
+        "each node one column past the longest way in. Write the flows"
+    ),
+    "rank": (
+        "a node's column is derived from the flows — sources on the left, ends on the right, "
+        "each node one column past the longest way in. Write the flows"
+    ),
+    "percent": (
+        "drawspec draws each band from its `amount`, so the thicknesses cannot disagree with "
+        "the numbers. Write the amount"
+    ),
+    "share": (
+        "drawspec draws each band from its `amount`, so the thicknesses cannot disagree with "
+        "the numbers. Write the amount"
+    ),
+    "label": (
+        "a band carries no words: what goes where is read from the nodes' totals, written "
+        "beside each bar. Name the destination as a node instead"
+    ),
+}
+
+
+def _sankey_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a sankey, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    if name == "value" and parts[1:2] == ["flows"] and len(parts) == 4:
+        return Violation(
+            violation.pointer,
+            "'value': a flow's number is its `amount` — how much goes from one node to the "
+            "other, in the sankey's `unit`.",
+        )
+    if "is not a known field" in violation.message and name in SANKEY_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {SANKEY_REFUSED[name]}.")
+    if name == "amount" and parts[1:2] == ["flows"] and "greater than" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a flow's amount is its band's thickness, so it must be more than 0. A flow of "
+            "nothing is not drawn: leave it out.",
+        )
+    if parts[1:] == ["nodes"] and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a sankey needs at least 2 nodes: an amount goes from one to another.",
+        )
+    return violation
+
+
+def sankey_columns(ids: Sequence[str], flows: Sequence[tuple[str, str]]) -> dict[str, int]:
+    """Each node's column: one past the longest way in, every end in the last column.
+
+    `flows` must join known ids and close no loop. A node no flow touches is in the
+    first column. Ends — nodes with nothing leaving — are moved to the last column,
+    so every arrival lines up on the right edge, the way the quantity is read.
+    """
+    incoming: dict[str, list[str]] = {identifier: [] for identifier in ids}
+    leaving: set[str] = set()
+    for source, target in flows:
+        incoming[target].append(source)
+        leaving.add(source)
+    column: dict[str, int] = {}
+
+    def depth(identifier: str) -> int:
+        if identifier not in column:
+            column[identifier] = 0
+            column[identifier] = max(
+                (depth(source) + 1 for source in incoming[identifier]), default=0
+            )
+        return column[identifier]
+
+    for identifier in ids:
+        depth(identifier)
+    last = max(column.values(), default=0)
+    for identifier in ids:
+        if identifier not in leaving and incoming[identifier]:
+            column[identifier] = last
+    return column
+
+
+def sankey_amount(value: float, unit: str) -> str:
+    """An amount as written: no trailing zeros, the unit after a space (`%` after none)."""
+    text = f"{value:.10g}"
+    if not unit:
+        return text
+    return f"{text}{unit}" if unit == "%" else f"{text} {unit}"
+
+
+def _sankey_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Ids that land, no loop, every middle node balanced, four columns, no hairline.
+
+    Each is a fact about the numbers and the joins alone, so each is refused here,
+    at its pointer, before any layout runs: an imbalance, a loop or a band too thin
+    to see is never a question a smaller type size could answer.
+    """
+    found: list[Violation] = []
+    written = document.get("unit")
+    unit = written if isinstance(written, str) else ""
+    nodes: dict[str, int] = {}
+    for index, entry in enumerate(_listed(document, "nodes")):
+        identifier = entry.get("id") if isinstance(entry, dict) else None
+        if not isinstance(identifier, str):
+            continue
+        if identifier in nodes:
+            found.append(
+                Violation(_pointer("nodes", index, "id"), f"duplicate node id {identifier!r}")
+            )
+            continue
+        nodes[identifier] = index
+
+    # The flows that land, in written order: (index, from, to, amount).
+    flows: list[tuple[int, str, str, float]] = []
+    pairs: dict[tuple[str, str], int] = {}
+    balance: list[tuple[str, str, float]] = []
+    reaches: dict[str, set[str]] = {identifier: {identifier} for identifier in nodes}
+    for index, entry in enumerate(_listed(document, "flows")):
+        if not isinstance(entry, dict):
+            continue
+        ends = []
+        for side in ("from", "to"):
+            name = entry.get(side)
+            if not isinstance(name, str):
+                continue
+            if name not in nodes:
+                found.append(
+                    Violation(
+                        _pointer("flows", index, side),
+                        f"{name!r} is not the id of any node" + _closest(name, nodes),
+                    )
+                )
+                continue
+            ends.append(name)
+        if len(ends) != 2:
+            continue
+        source, target = ends
+        if source == target:
+            found.append(
+                Violation(
+                    _pointer("flows", index, "to"),
+                    f"a flow from {source!r} to itself: an amount that stays where it is does "
+                    "not flow. Leave it out.",
+                )
+            )
+            continue
+        amount = entry.get("amount")
+        number = float(amount) if isinstance(amount, int | float) else 0.0
+        balance.append((source, target, max(number, 0.0)))
+        if (source, target) in pairs:
+            found.append(
+                Violation(
+                    _pointer("flows", index),
+                    f"a second flow from {source!r} to {target!r} (the first is "
+                    f"/flows/{pairs[(source, target)]}): add the amounts into one flow.",
+                )
+            )
+            continue
+        if target in reaches[source]:
+            found.append(
+                Violation(
+                    _pointer("flows", index),
+                    f"the flow from {source!r} to {target!r} closes a loop — {target!r} already "
+                    "leads back to it. A quantity does not flow backwards in a sankey: leave "
+                    "this flow out, or draw the loop as a `cycle` or a `flow`.",
+                )
+            )
+            continue
+        pairs[(source, target)] = index
+        # Everything that reached `source` now reaches `target` and what it leads to.
+        downstream = {name for name, before in reaches.items() if target in before}
+        for name in downstream:
+            reaches[name] |= reaches[source]
+        flows.append((index, source, target, max(number, 0.0)))
+
+    touched = {name for _, source, target, _ in flows for name in (source, target)}
+    for identifier, index in nodes.items():
+        if identifier not in touched and not any(
+            isinstance(entry, dict) and identifier in (entry.get("from"), entry.get("to"))
+            for entry in _listed(document, "flows")
+        ):
+            found.append(
+                Violation(
+                    _pointer("nodes", index),
+                    f"no flow reaches or leaves {identifier!r}, so it would be a bar of "
+                    "nothing. Give it a flow, or leave it out.",
+                )
+            )
+
+    into: dict[str, float] = dict.fromkeys(nodes, 0.0)
+    out: dict[str, float] = dict.fromkeys(nodes, 0.0)
+    for source, target, amount in balance:
+        out[source] += amount
+        into[target] += amount
+    for identifier, index in nodes.items():
+        arrived, left = into[identifier], out[identifier]
+        if not (arrived and left) or abs(arrived - left) <= 1e-9 * max(arrived, left):
+            continue
+        more, verb = ("takes in", "sends on") if arrived > left else ("sends on", "takes in")
+        difference = abs(arrived - left)
+        found.append(
+            Violation(
+                _pointer("nodes", index),
+                f"{identifier!r} {more} {sankey_amount(max(arrived, left), unit)} and {verb} "
+                f"{sankey_amount(min(arrived, left), unit)}: the drawing would have to invent "
+                f"where the difference of {sankey_amount(difference, unit)} "
+                f"{'went' if arrived > left else 'came from'}. Add a flow of "
+                f"{sankey_amount(difference, unit)} "
+                f"{'to' if arrived > left else 'from'} a named node — `Lost`, `Idle`, a `note` "
+                "— or correct the amounts.",
+            )
+        )
+
+    columns = sankey_columns(list(nodes), [(source, target) for _, source, target, _ in flows])
+    for identifier, index in nodes.items():
+        if columns.get(identifier, 0) >= SANKEY_COLUMN_MAX:
+            found.append(
+                Violation(
+                    _pointer("nodes", index),
+                    f"{identifier!r} is {columns[identifier] + 1} steps from where the quantity "
+                    f"starts, and a sankey can be read at {SANKEY_COLUMN_MAX} columns at most. "
+                    "Draw one sankey per stage — the last column of one is the first of the "
+                    "next — or merge the steps between.",
+                )
+            )
+            break
+
+    # The fullest column's total sets the scale: every node is as tall as what
+    # passes through it, and a flow that skips a column passes through it too.
+    totals: dict[int, float] = {}
+    for identifier in nodes:
+        column = columns.get(identifier, 0)
+        totals[column] = totals.get(column, 0.0) + max(into[identifier], out[identifier])
+    for _, source, target, amount in flows:
+        for column in range(columns[source] + 1, columns[target]):
+            totals[column] = totals.get(column, 0.0) + amount
+    fullest = max(totals.values(), default=0.0)
+    least = fullest * SANKEY_MIN_BAND / SANKEY_BAND
+    ratio = round(SANKEY_BAND / SANKEY_MIN_BAND)
+    for index, source, target, amount in flows:
+        if 0 < amount < least:
+            found.append(
+                Violation(
+                    _pointer("flows", index, "amount"),
+                    f"the flow from {source!r} to {target!r} is {sankey_amount(amount, unit)} of "
+                    f"the {sankey_amount(fullest, unit)} in the fullest column — under 1/{ratio} "
+                    "of it, a band too thin to see. Merge the small flows into one flow to a "
+                    "named `note` node (`Other`), and say what it holds in the caption.",
+                )
+            )
+    return found
+
+
 def _is_number(value: object) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool)
 
@@ -5722,6 +6143,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _journey_document(document)
     if kind in TREEMAP_KINDS:
         return _treemap_document(document)
+    if kind in SANKEY_KINDS:
+        return _sankey_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -6209,6 +6632,35 @@ def _treemap_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _sankey_document(document: Mapping[str, Any]) -> Document:
+    """A sankey: its nodes and flows in the order written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        values=bool(document.get("values", True)),
+        theme=str(document.get("theme", "")),
+        unit=str(document.get("unit", "")),
+        sankey_nodes=tuple(
+            SankeyNode(id=entry["id"], text=entry["text"], role=entry.get("role", "step"))
+            for entry in document["nodes"]
+        ),
+        sankey_flows=tuple(
+            SankeyFlow(
+                source=entry["from"],
+                target=entry["to"],
+                amount=float(entry["amount"]),
+                role=entry.get("role", "flow"),
+            )
+            for entry in document["flows"]
+        ),
+    )
+
+
 def _hub(entry: Mapping[str, Any] | None) -> Node | None:
     if entry is None:
         return None
@@ -6451,6 +6903,11 @@ __all__ = [
     "PARTICIPANT_ROLES",
     "REGION_ROLES",
     "REJECTED_FIELDS",
+    "SANKEY_BAND",
+    "SANKEY_FLOW_ROLES",
+    "SANKEY_KINDS",
+    "SANKEY_MIN_BAND",
+    "SANKEY_NODE_ROLES",
     "SCHEMA_FILENAME",
     "SCHEMA_ID",
     "SEQUENCE_KINDS",
@@ -6486,6 +6943,8 @@ __all__ = [
     "Position",
     "Region",
     "Relation",
+    "SankeyFlow",
+    "SankeyNode",
     "Series",
     "Slice",
     "TreemapGroup",
@@ -6500,6 +6959,8 @@ __all__ = [
     "parse_document",
     "payload_for",
     "published_schema_path",
+    "sankey_amount",
+    "sankey_columns",
     "schema_json",
     "transition_label",
     "validate_document",

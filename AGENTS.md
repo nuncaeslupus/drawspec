@@ -41,8 +41,7 @@ completion.
 
 ## Should this be a diagram at all?
 
-Draw only what a picture says better than prose. Unrelated things are a bullet
-list; things with attributes are a table; one shape or one step is a sentence.
+Draw only what a picture says better than prose. Unrelated things are a bullet list; things with attributes are a table; one shape or one step is a sentence.
 If a reader learns no more from the picture than the paragraph, write the paragraph.
 
 ## Choosing a kind
@@ -79,6 +78,7 @@ Pick by what the reader must **understand**, not by what it looks like.
 | What two or three sets share, and what each holds alone | `venn` | `sets` (2 or 3, equal circles; no sizes) + `regions`, each named by `in`: exactly the set ids it is in; a region not listed is empty |
 | One person's feeling, stage by stage, against what they do: a user or citizen journey | `journey` | `feelings` (named levels, worst first; no scores) + 2–7 `stages`, each with a `feeling` (+ `rows`, filled by each stage's `details`: `{row, text}`); one person, no `edges` |
 | The parts of one known total by area — what dominates, and by how much | `treemap` | 2–10 `parts`, each an `amount` (+ `unit`, one level of `groups`); every label inside its cell, or merge the smallest into one `note` part |
+| Where a known quantity goes, and how much each way: a budget, tickets by outcome | `sankey` | `nodes` (columns derived, ≤ 4) + `flows` (`from`, `to`, `amount`; `strong`); a middle node's in = out, no loops, a `note` node for the remainder |
 
 `flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may
 branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring
@@ -196,5 +196,5 @@ Always run `drawspec validate` before calling a document done; it prints every p
 
 - Do not emit SVG yourself. The whole point is that you do not place anything.
 - Do not add fields hoping they are ignored — unknown fields are errors.
-- Do not use `chart` or `treemap` for exploring data. No statistics, dates, log scales or second axis. They state a few numbers you already know.
+- Do not use `chart`, `treemap` or `sankey` for exploring data. No statistics, dates, log scales or second axis. They state a few numbers you already know.
 - Do not use drawspec for anything whose point is *where things are* — a floor plan, a map. There is no declarative description of those.

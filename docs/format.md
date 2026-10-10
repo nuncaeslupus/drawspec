@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-25 kinds. The machine-readable form of this page is the published
+26 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap` | **yes** | Which of the twenty-five diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey` | **yes** | Which of the twenty-six diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -213,6 +213,15 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `unit` | string | no | What the values are in — `kB`, `GB`, `hours` — written after each one. |
 | `values` | boolean | no | Whether to write each part's amount under its words, and each group's total beside its name. Defaults to true. |
 
+### `sankey`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `nodes` | array of [sankey-node](#sankey-node-object), at least 2 | **yes** | Where the quantity starts, passes and ends. A node's column is derived from the flows — sources left, ends right — never written; the written order is where the order down each column starts. |
+| `flows` | array of [sankey-flow](#sankey-flow-object), at least 1 | **yes** | How much goes from one node to another, each a band whose thickness is in proportion to its `amount`. What reaches a node in the middle must all leave it, and nothing flows back. |
+| `unit` | string | no | What the amounts are in — `tickets`, `cores`, `€ million` — written after each total. |
+| `values` | boolean | no | Whether to write each node's total under its name. Defaults to true. |
+
 ### `scatter`
 
 | Field | Type | Required | What it is |
@@ -270,6 +279,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `venn` | 3 `sets`, 7 `regions` |
 | `journey` | 7 `stages`, 5 `feelings`, 4 `rows` |
 | `treemap` | 10 `parts`, 4 `groups` |
+| `sankey` | 14 `nodes`, 24 `flows` |
 
 ## Emphasis
 
@@ -533,6 +543,23 @@ name, so a misspelt key is an error at the point it was written.
 | `amount` | number, greater than 0 | **yes** | How much of the total this part is, in the treemap's `unit`: its area is in proportion. A number you already know, more than 0. |
 | `group` | string | no | The id of one of the treemap's `groups`: the part is laid out with the group's other parts inside its captioned frame. Omit it to sit beside the groups. |
 | `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the part the diagram is about — not automatically the largest: a heavier outline, its words bold) or `note` (the remainder, `Everything else`: a light dashed outline, laid out last). |
+
+### `sankey-node` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the nodes; what a flow's `from` and `to` name. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the node the diagram is about: its bar outlined heavier, its words bold) or `note` (the remainder — `Lost`, `Reserved, idle` — drawn lighter, with the bands that reach it). |
+
+### `sankey-flow` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | string | **yes** | The id of the node the amount leaves. |
+| `to` | string | **yes** | The id of the node the amount reaches. |
+| `amount` | number, greater than 0 | **yes** | How much flows, in the sankey's `unit`: the band's thickness is in proportion. A number you already know, more than 0. |
+| `role` | string — one of `flow`, `strong` | no | `flow` (the default band) or `strong` (the path the diagram is about, drawn darker). |
 
 ### `treemap-group` object
 

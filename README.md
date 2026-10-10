@@ -3,10 +3,10 @@
 Declarative diagram spec → clean, themeable SVG. Writable by an LLM with no
 coordinates to get wrong.
 
-> **Status: it draws.** All twenty-five kinds render — `flow`, `tree`, `cycle`,
+> **Status: it draws.** All twenty-six kinds render — `flow`, `tree`, `cycle`,
 > `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`,
 > `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`,
-> `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey` and `treemap` — and each of
+> `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap` and `sankey` — and each of
 > the eleven failure families below has a test asserting it cannot be expressed.
 > The vocabulary opened from nine to thirteen on evidence: see `docs/kinds-wanted.md`, which
 > sorts all 89 hand-drawn originals by the kind that would have to draw them.
@@ -36,6 +36,8 @@ coordinates to get wrong.
 > drawn as a line through every stage over what they do there — no scores.
 > `treemap` is the twenty-fifth: the parts of one known total, each a rectangle
 > by its area with its label inside it — a few proportions stated, not explored.
+> `sankey` is the twenty-sixth: where a known quantity goes, each flow a band as
+> thick as its amount, columns derived from the flows — a few flows stated, not explored.
 
 ## The problem
 
@@ -110,7 +112,7 @@ every diagram in your project changes with it.
 
 ### A timeline
 
-The twenty-five kinds are the part people do not expect, so here is one that is not
+The twenty-six kinds are the part people do not expect, so here is one that is not
 a box-and-arrow diagram at all:
 
 ```json
@@ -214,7 +216,7 @@ for several jobs it might look like it does.
 * **It is not a Graphviz replacement.** Graphviz is a graph-layout engine with
   decades of work behind its layered and force-directed placement, and it will
   lay out a hundred-node graph that drawspec refuses. drawspec's layout exists
-  to serve twenty-five named diagram shapes at the sizes a document reads at; past
+  to serve twenty-six named diagram shapes at the sizes a document reads at; past
   each kind's readability budget (fifteen boxes on a `flow`) it will tell you to
   split the diagram into an overview and details rather than produce something
   dense and unreadable, which is deliberate but is not what a graph tool does.
@@ -223,9 +225,11 @@ for several jobs it might look like it does.
   no log scales, no error bars, and no second axis. If you are exploring data,
   use a plotting library; if you are *stating* a small number you already know,
   this draws it in the same ink and at the same type size as every other
-  diagram on the page, which a plotting library will not. `treemap` is held to
-  the same line: ten parts and one level of groups at most, every part labelled
-  inside itself — a few proportions you already know, not a disk-usage explorer.
+  diagram on the page, which a plotting library will not. `treemap` and `sankey`
+  are held to the same line: ten parts and one level of groups at most, every part
+  labelled inside itself; fourteen nodes in four columns, every flow balanced and
+  thick enough to see — a few proportions and flows you already know, not a
+  disk-usage explorer or a flow analyser.
 * **It is not a drawing program.** A document has no coordinates in it, on
   purpose — see *The approach* above. Anything whose whole point is where things are
   (a floor plan, a map, a picture of two overlapping Wi-Fi cells) has no

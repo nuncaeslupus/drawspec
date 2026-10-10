@@ -1,7 +1,8 @@
 # Proposal: `sankey` — where a known quantity goes
 
-Status: **proposed, scope to be confirmed by the owner**. Size **L** (a new layout with a
-crossing-minimisation pass and banded ribbons).
+Status: **implemented** — see *As built* at the end for where it departs from this
+text. Scope decided by the owner: in, kept to stating a small set of known flows. Size
+**L** (a new layout with a crossing-minimisation pass and banded ribbons).
 
 ## The scope question first
 
@@ -153,3 +154,65 @@ are filled shapes in the theme's mark fills, so greyscale survives.
 * Band thickness proportional to value across the whole drawing.
 * Each refusal; the imbalance message gives the missing amount.
 * Deterministic output for the same document (byte-identical SVG over two runs).
+
+## As built
+
+Built in `kinds/sankey.py`, a layout family of its own. The owner's decision on
+scope: **in, kept to stating a small set of known flows — not data exploration**,
+consistent with the README's "not charting software" and with how `treemap` was
+decided; the guide, `AGENTS.md` and the README say so. The three use cases are
+`docs/reference/sankey-budget.json`, `sankey-tickets.json` and `sankey-cores.json`;
+`sankey-energy.json` (a data centre's power, course notes) is the largest, 10 nodes in
+four columns with two flows passing through a column. Where it departs from the text
+above:
+
+* **`amount`, not `value`.** As in `treemap`: `value` is refused by name everywhere,
+  so a flow's number is `amount`, and a `value` on a flow is refused naming it. The
+  top-level `values` switch keeps its `chart` name.
+* **Every numeric refusal happens while validating, not after a layout.** The scale
+  does not depend on the type: the fullest column's bands are always 240 units tall
+  (a unit being the body size over eleven), and label room is added *around* the
+  bands, not taken from them. So "a band thinner than the theme's minimum" is a plain
+  ratio — under 1/120 of the fullest column's total, counting the flows that pass
+  through it — and is a `DocumentError` at the flow's `amount`, like the loop, the
+  imbalance and the fifth column. A refused document never waits on a layout or on
+  the elastic fit's sixteen type sizes (treemap's sliver refusal, a `FitError`, has
+  to try them all). The only `FitError` left is a label too wide to leave the bands
+  room, and each try costs a few milliseconds.
+* **Ends go to the last column.** Longest-path columns alone left a sink fed early
+  (`Duplicate`, fed by first line) in an inner column with its label over the bands
+  running past it; every node nothing leaves is moved to the last column, so the
+  arrivals line up on the right.
+* **A flow that skips a column passes through it.** The sketch drew skipping bands as
+  one curve, which runs across any bar in between. Each such flow takes a slot in
+  every column it skips — ordered and spaced like a node, the way the layered engine
+  uses dummy nodes — and runs straight through it.
+* **Inner labels sit above the bar inside a column slot.** An inner column is as wide
+  as its widest label (at least 34 units), its bar in the middle, the bands straight
+  across the slot either side of it; a label above its bar therefore has only
+  straight bands below and above it, never a curve. The first column's labels are
+  right-aligned left of their bars, the last column's left of theirs on the right,
+  centred on the bar. Labels are wrapped to the widest of six widths (26 % of the
+  canvas down to 10 %) at which every run between columns keeps 56 units to bend in;
+  a run is at most 220 units, past which the drawing is centred instead.
+* **Crossing reduction** is barycentre sweeps over the columns, weighted by amount,
+  starting from the written order (nodes, then the flows passing through) and
+  keeping the order with the fewest crossings — the written order on a tie. Then each
+  column is relaxed towards what it is joined to, its items never overlapping.
+* **Roles drawn**: bands are unoutlined tints of the page's ink — `flow` 0.2,
+  `strong` 0.45, a band to or from a `note` node 0.1 — so they survive greyscale by
+  lightness, and two bands crossing read as the darker overlap. Bars are sharp
+  polygons in the node's role, tinted darker; `emphasis` has the heavier outline and
+  bold words, `note` the dashed outline and a light tint.
+* **No per-band label.** A band carries no words, and a flow's `label` is refused:
+  the totals written under each node name every amount the reader needs in these
+  diagrams, and words on a band are words on a fill. The proposal had none either;
+  the refusal says so.
+* **Refused by name** besides the proposal's list: a flow from a node to itself, a
+  second flow between the same two nodes (add the amounts), a node no flow touches,
+  duplicate ids, an unknown node (naming the closest), `percent`/`share`,
+  `column`/`rank` (derived), `edges` (naming `flows`). The caps live in the
+  readability budget — 14 nodes, 24 flows; the four columns, being derived, are
+  checked with the flows at the node that makes the fifth.
+* **No theme section.** The band height, bar, gaps and runs are fixed in units, so a
+  theme cannot change which documents are refused.

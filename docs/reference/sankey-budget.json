@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "kind": "sankey",
+  "title": "A town budget of €120 million",
+  "caption": "Illustrative figures for a town of 60,000.",
+  "unit": "€ million",
+  "nodes": [
+    {"id": "tax", "text": "Local taxes"},
+    {"id": "grants", "text": "State transfers"},
+    {"id": "fees", "text": "Fees"},
+    {"id": "budget", "text": "Budget", "role": "emphasis"},
+    {"id": "services", "text": "Public services"},
+    {"id": "staff", "text": "Staff"},
+    {"id": "invest", "text": "Investment"},
+    {"id": "debt", "text": "Debt service"}
+  ],
+  "flows": [
+    {"from": "tax", "to": "budget", "amount": 58},
+    {"from": "grants", "to": "budget", "amount": 47},
+    {"from": "fees", "to": "budget", "amount": 15},
+    {"from": "budget", "to": "staff", "amount": 46},
+    {"from": "budget", "to": "services", "amount": 41},
+    {"from": "budget", "to": "invest", "amount": 22},
+    {"from": "budget", "to": "debt", "amount": 11}
+  ]
+}

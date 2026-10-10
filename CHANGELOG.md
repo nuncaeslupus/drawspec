@@ -12,6 +12,24 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`sankey`, the twenty-sixth kind** — where a known quantity goes: `nodes`
+  joined by `flows`, each a band whose thickness is its `amount` (in the
+  document's `unit`) at one scale for the whole drawing, each bar as tall as what
+  passes through it with its total under its name (`"values": false` drops them).
+  For stating a few flows you already know, not for exploring data — it keeps to
+  `chart`'s line. Columns are derived (one past the longest way in, every end in
+  the last column); a flow that skips a column passes through it in a slot of its
+  own; the order down each column starts from the written order and barycentre
+  sweeps keep the one crossing fewest bands. Labels beside the outer columns'
+  bars and above the inner columns', never on a band. Node roles `step`,
+  `emphasis` (heavier outline, bold words), `note` (lighter, with its bands);
+  flow roles `flow` and `strong` (darker). Refused at their pointers, while
+  validating — a refused document never waits on a layout: a loop, a middle node
+  whose inflow is not its outflow (giving the difference), a band under 1/120 of
+  the fullest column, a fifth column, a self-flow, a repeated pair, an unknown
+  node (naming the closest), duplicate ids, a node no flow touches, an amount of
+  0 or less, `value` (naming `amount`), `percent`/`share`, `column`/`rank`, a
+  flow's `label`, `edges`. Budget: 14 nodes, 24 flows, 4 columns.
 - **`treemap`, the twenty-fifth kind** — the parts of one known total, each a
   rectangle whose area is in proportion to its `amount` (in the document's
   `unit`), labelled inside itself: its words top-left, its amount under them

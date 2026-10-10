@@ -19,6 +19,7 @@ from drawspec.kinds.gantt import gantt_scene
 from drawspec.kinds.graph import DRAWN_KINDS, graph_scene
 from drawspec.kinds.grid import grid_scene
 from drawspec.kinds.journey import journey_scene
+from drawspec.kinds.sankey import sankey_scene
 from drawspec.kinds.sequence import sequence_scene
 from drawspec.kinds.shape import shape_scene
 from drawspec.kinds.treemap import treemap_scene
@@ -33,6 +34,7 @@ from drawspec.schema import (
     GANTT_KINDS,
     GRID_KINDS,
     JOURNEY_KINDS,
+    SANKEY_KINDS,
     SEQUENCE_KINDS,
     SHAPE_KINDS,
     TREEMAP_KINDS,
@@ -59,6 +61,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *VENN_KINDS,
     *JOURNEY_KINDS,
     *TREEMAP_KINDS,
+    *SANKEY_KINDS,
     "cycle",
 )
 
@@ -104,6 +107,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return journey_scene(document, theme, measurer)
     if document.kind in TREEMAP_KINDS:
         return treemap_scene(document, theme, measurer)
+    if document.kind in SANKEY_KINDS:
+        return sankey_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -128,6 +133,7 @@ __all__ = [
     "graph_scene",
     "journey_scene",
     "outline",
+    "sankey_scene",
     "scene_for",
     "sequence_scene",
     "shape_scene",

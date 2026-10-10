@@ -148,7 +148,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Twenty-five exist, and they fall into fourteen families:
+fields are legal. Twenty-six exist, and they fall into fifteen families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -166,6 +166,7 @@ fields are legal. Twenty-five exist, and they fall into fourteen families:
 | Overlap | `venn` | Things that share: two or three sets as equal circles, each region named by the sets it is in. |
 | Experience | `journey` | How one person feels, stage by stage: a named feeling per stage as a line, over what they do there. |
 | Share | `treemap` | The parts of one known total: each a rectangle by its area, labelled inside itself. |
+| Quantity | `sankey` | Where a known quantity goes: nodes in derived columns, joined by bands as thick as their amounts. |
 
 One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see
@@ -1199,6 +1200,64 @@ label outside its cell, never a legend. See
 [`reference/treemap-disk.json`](reference/treemap-disk.json),
 [`reference/treemap-oncall.json`](reference/treemap-oncall.json) and
 [`reference/treemap-latency.json`](reference/treemap-latency.json).
+
+## A sankey
+
+"Where did the budget go" is one quantity split, and sometimes merged, along the
+way, and a sankey draws each flow as a band whose thickness is its amount. That
+is `sankey`:
+
+```json
+{
+  "version": 1,
+  "kind": "sankey",
+  "title": "64 reserved cores, by team and workload",
+  "unit": "cores",
+  "nodes": [
+    {"id": "search", "text": "Search team"},
+    {"id": "pay", "text": "Payments team"},
+    {"id": "api", "text": "APIs"},
+    {"id": "batch", "text": "Batch jobs"},
+    {"id": "idle", "text": "Reserved, idle", "role": "note"}
+  ],
+  "flows": [
+    {"from": "search", "to": "api", "amount": 18},
+    {"from": "search", "to": "batch", "amount": 14},
+    {"from": "search", "to": "idle", "amount": 8},
+    {"from": "pay", "to": "api", "amount": 16},
+    {"from": "pay", "to": "idle", "amount": 8}
+  ]
+}
+```
+
+Like `chart` and `treemap`, it is for **stating a small set of flows you already
+know** — not for exploring data: at most fourteen nodes, twenty-four flows and
+four columns. A node's column is never written: each sits one column past the
+longest way into it, and every end — a node nothing leaves — is in the last
+column. A flow that skips a column passes through it in a slot of its own, never
+across a bar. The order down each column starts from the written order and is
+rearranged only to cross fewer bands. Each flow's `amount` (more than 0, in the
+document's `unit`) sets its band's thickness, at one scale for the whole drawing,
+and each bar is as tall as what passes through it; its total is written under its
+name (`"values": false` drops them). The first column's labels sit left of their
+bars, the last column's right, and an inner column's above its bar — never on a
+band. Roles: a node's `emphasis` outlines its bar heavier and sets its words
+bold, and `note` (the remainder: `Lost`, `Idle`) draws it lighter, with its
+bands; a flow's `strong` draws the path the diagram is about darker.
+
+Refused, each at its pointer and before any layout: a flow that closes a loop; a
+middle node whose inflow is not its outflow (the message gives the difference —
+add a flow to a named `note` node); a flow under 1/120 of the fullest column, a
+band too thin to see (merge the small flows into one `Other`); a fifth column; a
+flow from a node to itself, or a second flow between the same two nodes; an
+unknown node (naming the closest), a duplicate id, a node no flow touches; an
+`amount` of 0 or less; `value` (it is called `amount`), `percent`, `share`,
+`column`, `rank`, a flow's `label`, `edges`. A label too wide to leave the bands
+room at every width tried is a `FitError` naming the node. See
+[`reference/sankey-budget.json`](reference/sankey-budget.json),
+[`reference/sankey-tickets.json`](reference/sankey-tickets.json),
+[`reference/sankey-cores.json`](reference/sankey-cores.json) and
+[`reference/sankey-energy.json`](reference/sankey-energy.json).
 
 ## Asking for a wide drawing instead of a tall one
 

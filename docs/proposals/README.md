@@ -31,7 +31,7 @@ regeneration, `AGENTS.md` row, and tests.
 | 11 | [`venn.md`](venn.md) | `venn`: two or three sets, regions named by membership — **built** | S | — |
 | 12 | [`journey.md`](journey.md) | `journey`: stages, a named-feeling line, detail rows — **built** | M | `curve`'s through-every-point spline (exists) |
 | 13 | [`treemap.md`](treemap.md) | `treemap`: one total by area — **built** | M | owner decision on scope (decided) |
-| 14 | [`sankey.md`](sankey.md) | `sankey`: where a known quantity goes | L | owner decision on scope; crossing reduction from the layered engine |
+| 14 | [`sankey.md`](sankey.md) | `sankey`: where a known quantity goes — **built** | L | owner decision on scope (decided); crossing reduction from the layered engine |
 
 Nothing here depends on another proposal, except that `states` (4) should land the
 self-loop geometry that `flow` then either adopts or refuses.
@@ -57,7 +57,9 @@ self-loop geometry that `flow` then either adopts or refuses.
    under "not charting software". — *Decided for `treemap`: in scope, kept to stating a
    small set of known proportions, not data exploration (10 parts, one level of groups,
    every part labelled inside itself), as the README's "not charting software" says.
-   Built. `sankey` still open.*
+   Built. Decided for `sankey` the same way: in scope, kept to stating a small set of
+   known flows, not data exploration (14 nodes, 4 derived columns, every middle node
+   balanced, no band too thin to see), as `treemap` was. Built.*
 2. **Dates in `gantt`.** Proposed: none (numbers in a named unit, plus `categories`).
    Allowing ISO dates means a calendar. — *Decided: no dates; built.*
 3. **Edge roles: global or per kind.** `entities` needs `inherits` and `realizes`;
