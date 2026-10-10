@@ -34,6 +34,19 @@ regeneration, `AGENTS.md` row, and tests.
 | 14 | [`sankey.md`](sankey.md) | `sankey`: where a known quantity goes — **built** | L | owner decision on scope (decided); crossing reduction from the layered engine |
 | 15 | [`theme-from.md`](theme-from.md) | `drawspec theme from`: a theme derived from a brand's CSS or design tokens — **built** | S | — |
 
+## Deferred, not proposed
+
+The survey's two remaining *feature* verdicts are left unbuilt on purpose, each until a
+real original asks for it (the *find the originals* rule below), not for size:
+
+| Type | Would be | Why deferred |
+|---|---|---|
+| waterfall | `chart` + a `bridge` mark (bars floating on a running total) | Charting-adjacent: a running total is arithmetic drawspec would do for the reader, against *not charting software*. Small to build, but none of the 89 originals in `docs/kinds-wanted.md` is one. |
+| wardley | `scatter`/`quadrant` + edges between positions | One niche strategy artefact; it needs routed edges on a numeric plane, which no chart kind has. Not small, and no original yet. |
+
+Also declined in the survey and not revisited: fan-in badges on `flow` (a count the
+reader can see), dumbbell bars, polar, radar and bubble charts (charting).
+
 Nothing here depends on another proposal, except that `states` (4) should land the
 self-loop geometry that `flow` then either adopts or refuses.
 
