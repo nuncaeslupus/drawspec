@@ -35,7 +35,13 @@ import pytest
 
 from drawspec import render
 from drawspec.errors import DocumentError, LayoutError
-from drawspec.geometry import Box, candidate_factors, size_box
+from drawspec.geometry import (
+    CYLINDER_CAP,
+    PARALLELOGRAM_SLANT,
+    Box,
+    candidate_factors,
+    size_box,
+)
 from drawspec.kinds import scene_for
 from drawspec.kinds.graph import graph_drawing
 from drawspec.routing import Connector, Obstacle, route_edges, shaft_length
@@ -293,7 +299,7 @@ def test_family_vertical_centring_is_unrepresentable() -> None:
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("name", ["flow-validation", "tree-decisions"])
+@pytest.mark.parametrize("name", ["flow-validation", "tree-decisions", "flow-meter-readings"])
 def test_family_line_not_reaching_the_box_is_unrepresentable(name: str) -> None:
     """By invariant: the endpoint *is* a point on the outline.
 
@@ -502,5 +508,20 @@ def _on_outline(point: tuple[float, float], box: Box, shape: str) -> bool:
         beyond = max(abs(point[0] - (left + width / 2)) - flat, 0.0)
         return math.isclose(
             math.hypot(beyond, point[1] - (top + height / 2)) / radius, 1.0, abs_tol=1e-6
+        )
+    if shape == "parallelogram":
+        slant = min(PARALLELOGRAM_SLANT, width / 2)
+        fall = (point[1] - top) / height
+        on_flat = math.isclose(down, 1.0, abs_tol=1e-6)
+        on_left = math.isclose(point[0], left + slant * (1 - fall), abs_tol=1e-6)
+        on_right = math.isclose(point[0], left + width - slant * fall, abs_tol=1e-6)
+        return on_flat or on_left or on_right
+    if shape == "cylinder":
+        cap = min(CYLINDER_CAP, height / 4)
+        rise = cap * (1 - math.sqrt(max(1 - min(across, 1.0) ** 2, 0.0)))
+        return (
+            math.isclose(across, 1.0, abs_tol=1e-6)
+            or math.isclose(point[1], top + rise, abs_tol=1e-6)
+            or math.isclose(point[1], top + height - rise, abs_tol=1e-6)
         )
     return math.isclose(across, 1.0, abs_tol=1e-6) or math.isclose(down, 1.0, abs_tol=1e-6)

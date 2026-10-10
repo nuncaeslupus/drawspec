@@ -308,7 +308,7 @@ def _element(primitive: Primitive, namespace: str, theme: Theme, profile: str) -
         # produces a box sized for a diamond's inscribed rectangle, so the label
         # floats in a lot of empty space. It happened, in T7's spike harness,
         # and survived review; hence a check rather than a convention.
-        if isinstance(role, NodeRole) and role.shape not in ("rect", "pill"):
+        if isinstance(role, NodeRole) and role.shape not in ("rect", "pill", "subroutine"):
             raise EmitError(
                 f"a Rect is tagged with role {primitive.role!r}, which theme "
                 f"{theme.name!r} draws as a {role.shape!r}. Build shapes with "

@@ -19,8 +19,11 @@ import pytest
 
 from drawspec.errors import FitError
 from drawspec.geometry import (
+    CYLINDER_CAP,
     FIT_STEP,
     MIN_ASPECT,
+    PARALLELOGRAM_SLANT,
+    SUBROUTINE_INSET,
     Box,
     candidate_factors,
     fit,
@@ -168,14 +171,17 @@ def test_box_moved_to_translates_everything_together() -> None:
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("shape", ["rect", "pill", "diamond", "ellipse"])
+ALL_SHAPES = ["rect", "pill", "diamond", "ellipse", "parallelogram", "subroutine", "cylinder"]
+
+
+@pytest.mark.parametrize("shape", ALL_SHAPES)
 def test_usable_span_never_exceeds_the_bounding_box(shape: str) -> None:
     width, height = usable_span(shape, 200.0, 60.0)
     assert 0 < width <= 200.0
     assert 0 < height <= 60.0
 
 
-@pytest.mark.parametrize("shape", ["rect", "pill", "diamond", "ellipse"])
+@pytest.mark.parametrize("shape", ALL_SHAPES)
 def test_outer_size_and_usable_span_are_inverses(shape: str) -> None:
     """Sizing a box and then asking what fits in it must agree."""
     width, height = outer_size(shape, 120.0, 30.0, THEME.box.padding)
@@ -184,7 +190,7 @@ def test_outer_size_and_usable_span_are_inverses(shape: str) -> None:
     assert usable[1] >= 30.0 + THEME.box.padding.vertical - 1e-6
 
 
-@pytest.mark.parametrize("shape", ["rect", "pill", "diamond", "ellipse"])
+@pytest.mark.parametrize("shape", ALL_SHAPES)
 def test_span_at_never_reaches_outside_the_shape(shape: str) -> None:
     """What a mark drawn across the box may span, at every height in it."""
     for step in range(21):
@@ -192,12 +198,34 @@ def test_span_at_never_reaches_outside_the_shape(shape: str) -> None:
         assert 0.0 <= span_at(shape, 200.0, 60.0, depth) <= 200.0 + 1e-9
 
 
-@pytest.mark.parametrize("shape", ["pill", "diamond", "ellipse"])
+@pytest.mark.parametrize("shape", ["pill", "diamond", "ellipse", "parallelogram"])
 def test_span_at_is_widest_across_the_middle_and_narrowest_at_the_ends(shape: str) -> None:
     """Every shape but the rect narrows away from its own middle, symmetrically."""
     middle = span_at(shape, 200.0, 60.0, 30.0)
     assert middle > span_at(shape, 200.0, 60.0, 6.0)
     assert span_at(shape, 200.0, 60.0, 6.0) == pytest.approx(span_at(shape, 200.0, 60.0, 54.0))
+
+
+@pytest.mark.parametrize("role", ["io", "subroutine", "store"])
+def test_a_flowchart_symbol_keeps_its_text_clear_of_its_own_outline(role: str) -> None:
+    """A parallelogram's text clears both slanted sides at its top and bottom
+    lines; a subroutine's clears the inner verticals; a drum's sits under the
+    front rim of its lid and above where the base curves."""
+    for text in ("Read the rows", "Validate every row against the published checks"):
+        box = size_box(text, theme=THEME, measurer=MEASURER, role=role, max_width=180.0)
+        left, top, right, bottom = box.content_bounds()
+        pad = THEME.box.padding
+        if role == "io":
+            for y in (top, bottom):
+                down = (y - box.y) / box.height
+                assert left >= box.x + PARALLELOGRAM_SLANT * (1 - down) + pad.left - 1e-6
+                assert right <= box.x + box.width - PARALLELOGRAM_SLANT * down - pad.right + 1e-6
+        elif role == "subroutine":
+            assert left >= box.x + SUBROUTINE_INSET + pad.left - 1e-6
+            assert right <= box.x + box.width - SUBROUTINE_INSET - pad.right + 1e-6
+        else:
+            assert top >= box.y + 2 * CYLINDER_CAP + pad.top - 1e-6
+            assert bottom <= box.y + box.height - CYLINDER_CAP - pad.bottom + 1e-6
 
 
 def test_span_at_gives_a_rect_its_whole_width_at_every_height() -> None:

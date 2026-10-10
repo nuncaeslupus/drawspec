@@ -103,8 +103,8 @@ Past it a document is refused even though it would fit: split it into an **overv
 A role is semantic. The theme turns it into a shape and a weight — you never
 name either.
 
-**Nodes** — `start`, `step` (default), `decision`, `terminal`, `emphasis`,
-`note`, `group`.
+**Nodes** — `start`, `step` (default), `decision`, `terminal`, `emphasis`, `note`, `group`;
+`io` (data in/out), `subroutine` (defined elsewhere), `store` (database, queue) in `flow`/`tree`/`lanes`.
 **Edges** — `flow` (default), `link`, `exchange`, `weak`, `owns`, `strong`,
 `aside`; `inherits` and `realizes` (hollow triangle) in `entities` only.
 

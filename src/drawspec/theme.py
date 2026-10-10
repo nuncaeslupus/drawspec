@@ -40,7 +40,22 @@ THEME_VERSION: Final = 1
 
 #: Semantic node roles. The closed vocabulary a document's `role` field draws
 #: from — see specification §5.1.
-NODE_ROLES: Final = ("start", "step", "decision", "terminal", "emphasis", "note", "group")
+#: `io`, `subroutine` and `store` are the flowchart symbols that carry meaning
+#: across standards (ISO 5807, DFDs, Mermaid): data in or out, a process defined
+#: elsewhere, and where data rests. The theme draws every role, but a document may
+#: name those three only where a box is a step of a process (`schema.SHAPED_ROLES`).
+NODE_ROLES: Final = (
+    "start",
+    "step",
+    "decision",
+    "terminal",
+    "emphasis",
+    "note",
+    "group",
+    "io",
+    "subroutine",
+    "store",
+)
 
 #: Semantic edge roles. `link` is how "merely associated" is said, and `aside`
 #: how "loosely associated, and in no direction" is: dashed and headless, which
@@ -64,7 +79,18 @@ EDGE_ROLES: Final = (
 )
 
 #: Shapes a node role may take.
-NODE_SHAPES: Final = ("rect", "pill", "diamond", "ellipse", "none")
+#: `parallelogram` slants its sides, `subroutine` is a box with doubled vertical
+#: sides, and `cylinder` is a drum with an elliptical lid.
+NODE_SHAPES: Final = (
+    "rect",
+    "pill",
+    "diamond",
+    "ellipse",
+    "parallelogram",
+    "subroutine",
+    "cylinder",
+    "none",
+)
 
 #: Fill treatments. A non-colour channel, so it counts toward greyscale safety.
 FILL_PATTERNS: Final = ("none", "solid", "hatch", "dots", "cross", "grid")

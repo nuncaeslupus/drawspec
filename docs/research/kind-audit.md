@@ -224,3 +224,12 @@ height (40 %), centred, unstroked, in `currentColor` at the theme's `[gantt] don
 fill opacity (new key, default 0.7): solid ink as proposed, but a theme can lighten it.
 `done: 0` draws no band. The old refusal of `progress` (status, not plan) is kept as a
 name refusal that now points at `done`.
+
+**Rank 3, shape roles** — built for `io`, `subroutine` and `store` (not `person`,
+owner question 2 still open), named on `flow`, `tree` and `lanes` nodes and refused by
+`cycle` at the role; every kind with a fixed role list refuses them as before. The
+geometry is lengths, not ratios, so a box grown to match its peers keeps its text room:
+the parallelogram leans 10 units (text inset by the lean at its own top and bottom
+lines), the subroutine's inner lines are 6 units in (charged on top of the padding),
+and the drum's lid and base are 6 units deep (text under the lid's front rim). Arrows
+land on the slanted sides and on the lid's curve; labels still avoid the whole box.

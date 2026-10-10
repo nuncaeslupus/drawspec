@@ -3950,7 +3950,10 @@
             "decision",
             "terminal",
             "emphasis",
-            "note"
+            "note",
+            "io",
+            "subroutine",
+            "store"
           ]
         },
         "actor": {
@@ -4215,7 +4218,10 @@
             "terminal",
             "emphasis",
             "note",
-            "group"
+            "group",
+            "io",
+            "subroutine",
+            "store"
           ]
         },
         "actor": {

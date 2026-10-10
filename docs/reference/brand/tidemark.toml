@@ -49,6 +49,15 @@ stroke_width = 0.83  # --border-width, scaled
 stroke = "#6b7a86"   # --color-muted
 stroke_width = 0.83  # --border-width, scaled
 
+[role.io]
+stroke_width = 1.25  # --border-width, scaled
+
+[role.subroutine]
+stroke_width = 1.25  # --border-width, scaled
+
+[role.store]
+stroke_width = 1.25  # --border-width, scaled
+
 [edge_role.flow]
 stroke_width = 1.25  # --border-width, scaled
 

@@ -12,6 +12,14 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **Three flowchart symbols as node roles**, on `flow`, `tree` and `lanes` nodes:
+  `io` (a parallelogram: data in or out), `subroutine` (a box with doubled vertical
+  sides: a process defined elsewhere) and `store` (a drum: a database, a queue, a file
+  kept). New theme shapes `parallelogram`, `subroutine` and `cylinder`; text is fitted
+  inside the slanted sides, the inner lines and under the lid, and arrows land on the
+  visible outline. A `cycle` refuses them at the node's `role`; every kind with its own
+  role vocabulary still does. See `reference/flow-meter-readings.json` and
+  `reference/lanes-appointment.json`.
 - **`gantt` tasks take `done`**, a number from 0 to 100: how much of the task is
   complete, drawn as a solid band through the middle of the bar from its start (MS
   Project's progress line). It is the page's ink at the strength of the new theme key

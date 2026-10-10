@@ -67,6 +67,20 @@ MIN_ASPECT: Final = 2.2
 #: How much of the offered width a widening step adds. Four steps to double.
 _WIDEN_STEP: Final = 0.25
 
+#: How far a `parallelogram`'s top edge sits right of its bottom edge. A length
+#: rather than an angle, so a box grown to match its peers keeps the text room it
+#: was sized with: a slant tied to the height would eat into it as the box grew.
+PARALLELOGRAM_SLANT: Final = 10.0
+
+#: How far inside a `subroutine`'s outline its two extra vertical lines are drawn.
+#: Charged on top of the padding, so the text keeps its usual distance from the
+#: inner line rather than from the outer one.
+SUBROUTINE_INSET: Final = 6.0
+
+#: The half-height of a `cylinder`'s elliptical lid and base. Fixed, as the slant
+#: is, so a wider drum keeps its text clear of the lid's front rim.
+CYLINDER_CAP: Final = 6.0
+
 
 # ---------------------------------------------------------------------------
 # Shapes whose usable span is narrower than their bounding box
@@ -121,7 +135,28 @@ def usable_span(
             return width * _SQRT_HALF, height * _SQRT_HALF
         ratio = min(content_height / height, 1.0) if height else 1.0
         return width * sqrt(max(1 - ratio**2, 0.0)), height
+    if shape == "parallelogram":
+        # Each slanted side reaches in by the slant times how far the text runs
+        # from the middle: half the slant for a line, all of it for a full box.
+        ratio = 1.0 if content_height is None or not height else min(content_height / height, 1.0)
+        return max(width - PARALLELOGRAM_SLANT * (1 + ratio), 0.0), height
+    if shape == "subroutine":
+        return max(width - 2 * SUBROUTINE_INSET, 0.0), height
+    if shape == "cylinder":
+        # The lid's front rim comes down to two caps' depth; the base curves up by
+        # one at the sides. See `usable_shift` for where the span sits.
+        return width, max(height - 3 * CYLINDER_CAP, 0.0)
     raise KeyError(f"unknown shape {shape!r}")
+
+
+def usable_shift(shape: str) -> float:
+    """How far below the box's middle the middle of its usable span sits.
+
+    Zero for every shape but the `cylinder`, whose lid takes more of the top than
+    its base takes of the bottom: the span runs from under the lid's front rim
+    (two caps down) to where the base starts curving (one cap up).
+    """
+    return CYLINDER_CAP / 2 if shape == "cylinder" else 0.0
 
 
 def span_at(shape: str, width: float, height: float, depth: float) -> float:
@@ -154,6 +189,14 @@ def span_at(shape: str, width: float, height: float, depth: float) -> float:
         return width * (1 - away)
     if shape == "ellipse":
         return width * sqrt(max(1 - away**2, 0.0))
+    if shape == "parallelogram":
+        # Centred on the box's middle, so the slanted side nearer the centre line
+        # is the one that bounds it: at the middle the two reach in equally.
+        return max(width - PARALLELOGRAM_SLANT * (1 + away), 0.0)
+    if shape == "subroutine":
+        return width if 0.0 <= depth <= height else 0.0
+    if shape == "cylinder":
+        return width if 0.0 <= depth <= height else 0.0
     raise KeyError(f"unknown shape {shape!r}")
 
 
@@ -173,6 +216,12 @@ def outer_size(
     height = content_height + padding.vertical
     if shape in ("rect", "none"):
         return width, height
+    if shape == "parallelogram":
+        return width + PARALLELOGRAM_SLANT * (1 + content_height / height), height
+    if shape == "subroutine":
+        return width + 2 * SUBROUTINE_INSET, height
+    if shape == "cylinder":
+        return width, height + 3 * CYLINDER_CAP
     if shape == "pill":
         # The inverse of `usable_span`'s pill case, solved for the bounding width.
         # The caps cost their own diameter less how far the text reaches into them.
@@ -228,11 +277,11 @@ class Box:
 
     @property
     def usable_top(self) -> float:
-        return self.y + (self.height - self._span[1]) / 2
+        return self.y + (self.height - self._span[1]) / 2 + usable_shift(self.shape)
 
     @property
     def usable_bottom(self) -> float:
-        return self.y + (self.height + self._span[1]) / 2
+        return self.y + (self.height + self._span[1]) / 2 + usable_shift(self.shape)
 
     @property
     def content_width(self) -> float:
@@ -645,7 +694,10 @@ def fit[T](theme: Theme, attempt: Callable[[Theme], T]) -> Fitted[T]:
 
 
 __all__ = [
+    "CYLINDER_CAP",
     "FIT_STEP",
+    "PARALLELOGRAM_SLANT",
+    "SUBROUTINE_INSET",
     "Box",
     "Fitted",
     "candidate_factors",
@@ -653,5 +705,6 @@ __all__ = [
     "normalise",
     "outer_size",
     "size_box",
+    "usable_shift",
     "usable_span",
 ]

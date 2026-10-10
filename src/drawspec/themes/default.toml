@@ -291,6 +291,34 @@ fill_pattern = "none"
 dash = "none"
 stroke_width = 2.5
 
+# A flowchart's three standard symbols beyond the box and the diamond, each told
+# apart by its outline alone: data coming in or going out is a parallelogram, a
+# process defined elsewhere is a box with doubled sides, and where data rests (a
+# database, a queue, a file) is a drum.
+[role.io]
+shape = "parallelogram"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "none"
+stroke_width = 1.5
+
+[role.subroutine]
+shape = "subroutine"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "none"
+stroke_width = 1.5
+
+[role.store]
+shape = "cylinder"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "none"
+stroke_width = 1.5
+
 # An aside is set beside the argument, not boxed off from it: a note is words on
 # the page, and the box drawspec used to draw round them was a border with
 # nothing on the other side of it. A grouping that *does* want a line round it is

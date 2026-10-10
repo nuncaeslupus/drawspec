@@ -320,8 +320,8 @@ How a RAG report draws a rating: a word, a shape and, optionally, a colour.
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The
-vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group`. `shape` is one of
-`rect`, `pill`, `diamond`, `ellipse`, `none` and `fill_pattern` one of `none`, `solid`, `hatch`, `dots`, `cross`, `grid`.
+vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group`, `io`, `subroutine`, `store`. `shape` is one of
+`rect`, `pill`, `diamond`, `ellipse`, `parallelogram`, `subroutine`, `cylinder`, `none` and `fill_pattern` one of `none`, `solid`, `hatch`, `dots`, `cross`, `grid`.
 
 | Role | `shape` | `stroke` | `fill` | `fill_pattern` | `dash` | `stroke_width` |
 |---|---|---|---|---|---|---|
@@ -332,6 +332,9 @@ vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note
 | `emphasis` | `"rect"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `2.5` |
 | `note` | `"none"` | `"currentColor"` | `"none"` | `"none"` | `"3 2"` | `1.0` |
 | `group` | `"rect"` | `"currentColor"` | `"none"` | `"none"` | `"6 3"` | `1.0` |
+| `io` | `"parallelogram"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
+| `subroutine` | `"subroutine"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
+| `store` | `"cylinder"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
 
 ## `[edge_role.*]` — the edge roles
 

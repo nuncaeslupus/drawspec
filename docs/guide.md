@@ -218,7 +218,7 @@ written down. Here it is.
 
 **A role says what a box is; the theme decides what that looks like.** So the
 question to ask is never "should this be a diamond" — it is "is this a
-question?". These are the seven, and the shape each one currently gets from the
+question?". These are the ten, and the shape each one currently gets from the
 bundled theme:
 
 | Role | Use it for | Drawn as |
@@ -230,6 +230,15 @@ bundled theme:
 | `emphasis` | The one box the diagram is about. One per drawing, two at most — a third is refused, because when three things say *look here first* none of them is first | a rectangle, heavier |
 | `note` | An aside — a caveat, a source, a reminder. Not part of the argument | no outline at all |
 | `group` | A container drawn around other boxes. Set by naming `members`; rarely written by hand | a dashed rectangle |
+| `io` | Data coming in or going out: a file read, a form filled in, a report sent | a parallelogram |
+| `subroutine` | A process defined elsewhere — a routine with its own chart, a job run by name | a box with doubled sides |
+| `store` | Where data rests: a database, a queue, a file kept | a drum (cylinder) |
+
+The last three are the flowchart symbols (ISO 5807, a data-flow diagram's store)
+and are named only on a `flow`, `tree` or `lanes` node; every other kind's boxes
+have a fixed vocabulary of their own, and a `cycle` refuses them. Reach for one
+only when the distinction is the point — a chart whose every box is `io` has
+said nothing.
 
 Two mistakes worth naming, both made in the corpus and both caught in review:
 

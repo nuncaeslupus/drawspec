@@ -46,6 +46,7 @@ from itertools import pairwise
 from typing import Final
 
 from drawspec.errors import FitError, LayoutError
+from drawspec.geometry import CYLINDER_CAP, PARALLELOGRAM_SLANT
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, TextRun
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme
@@ -386,6 +387,8 @@ def _anchor(box: Obstacle, side: str, fraction: float) -> tuple[float, float]:
     x, y = _port(box, side, fraction)
     centre_x, centre_y = box.centre
     half_width, half_height = box.width / 2, box.height / 2
+    if box.shape in ("parallelogram", "cylinder") and half_width and half_height:
+        return _round_point(_on_slanted_or_drum(box, side, x, y))
     if box.shape not in ("diamond", "ellipse", "pill") or not half_width or not half_height:
         return x, y
 
@@ -410,6 +413,36 @@ def _anchor(box: Obstacle, side: str, fraction: float) -> tuple[float, float]:
     depth = (1.0 - across) if box.shape == "diamond" else math.sqrt(max(1 - across**2, 0.0))
     step = -1.0 if side == "left" else 1.0
     return _round(centre_x + step * half_width * depth), _round(y)
+
+
+def _round_point(point: tuple[float, float]) -> tuple[float, float]:
+    return _round(point[0]), _round(point[1])
+
+
+def _on_slanted_or_drum(box: Obstacle, side: str, x: float, y: float) -> tuple[float, float]:
+    """Where a port on `box`'s rectangle meets a parallelogram's or a drum's outline.
+
+    A parallelogram's top and bottom are flat but shorter than the rectangle, so
+    a port there is held on the edge; its sides lean, so a port on one moves in
+    to where the side is at that height. A drum's sides are straight, and its lid
+    and base are half-ellipses: a port on either moves to the rim's height there.
+    """
+    if box.shape == "parallelogram":
+        slant = min(PARALLELOGRAM_SLANT, box.width / 2)
+        if side == "top":
+            return min(max(x, box.x + slant), box.right), y
+        if side == "bottom":
+            return min(max(x, box.x), box.right - slant), y
+        down = (y - box.y) / box.height
+        if side == "left":
+            return box.x + slant * (1 - down), y
+        return box.right - slant * down, y
+    if side in ("left", "right"):
+        return x, y
+    cap = min(CYLINDER_CAP, box.height / 4)
+    across = (x - box.centre[0]) / (box.width / 2)
+    rise = cap * (1 - math.sqrt(max(1 - across**2, 0.0)))
+    return (x, box.y + rise) if side == "top" else (x, box.bottom - rise)
 
 
 def _spread(index: int, count: int) -> float:

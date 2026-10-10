@@ -70,6 +70,15 @@ SCHEMA_FILENAME: Final = "drawspec-v1.schema.json"
 
 GRAPH_KINDS: Final = ("flow", "tree", "cycle")
 
+#: The node roles that draw a flowchart symbol — a parallelogram for data in or
+#: out, a doubled-sided box for a process defined elsewhere, a drum for where data
+#: rests. Named only where a box is a step of a process: a `flow`, a `tree` and a
+#: `lanes` node. Every other kind's roles are fixed by what it draws.
+SHAPED_ROLES: Final = ("io", "subroutine", "store")
+
+#: The node roles everywhere else a kind takes the general vocabulary.
+PLAIN_NODE_ROLES: Final = tuple(role for role in NODE_ROLES if role not in SHAPED_ROLES)
+
 #: The graph kinds that *draw* their containers, and so may name a group at an
 #: edge's end — R5-2. `cycle` is a graph kind to the schema and a parametric
 #: template to the renderer (D-1): it places its steps on a ring and draws no
@@ -1087,7 +1096,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
         _text(),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
     ),
     "state": (
         FieldSpec(
@@ -2552,7 +2561,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
     "item": (
         FieldSpec("id", "string", description="Optional; generated from position when absent."),
         _text(),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
         FieldSpec(
             "at",
@@ -2565,12 +2574,12 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
     ),
     "level": (
         _text(),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
     ),
     "ring": (
         _text(),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
     ),
     "cell": (
         FieldSpec(
@@ -2602,7 +2611,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
                 "author's decision."
             ),
         ),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
     ),
     "waypoint": (
         FieldSpec(
@@ -2648,7 +2657,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             min_items=2,
             description="The points the curve passes through, in order. Two is a line.",
         ),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
     ),
     "entry": (
         FieldSpec(
@@ -2699,11 +2708,11 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             required=True,
             description="Where this sits on the vertical axis. Data, not a coordinate.",
         ),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
     ),
     "stage": (
         _text(),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
         FieldSpec(
             "gate",
             "string",
@@ -2895,7 +2904,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             min_items=1,
             description="The values to plot, as [x, y] pairs. Data, not coordinates.",
         ),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
         FieldSpec(
             "mark",
             "string",
@@ -5713,6 +5722,7 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
     found.extend(_causal_violations(document, kind, seen))
 
     if kind == "cycle":
+        found.extend(_shaped_in_cycle(nodes))
         found.extend(_hub_violations(document, seen))
         hub = document.get("hub")
         if isinstance(hub, dict) and isinstance(hub.get("id"), str):
@@ -9680,6 +9690,20 @@ def _causal_violations(document: Mapping[str, Any], kind: str, nodes: set[str]) 
     return found
 
 
+def _shaped_in_cycle(nodes: Any) -> list[Violation]:
+    """A cycle step drawn as a flowchart symbol: a ring of boxes has no data in it."""
+    return [
+        Violation(
+            _pointer("nodes", index, "role"),
+            f"{node['role']!r} draws a flowchart symbol, and a cycle is a ring of steps "
+            f"that each lead to the next: there is no input, store or sub-process on it. "
+            f"Draw the process as a `flow` if those matter.",
+        )
+        for index, node in enumerate(nodes if isinstance(nodes, list) else ())
+        if isinstance(node, dict) and node.get("role") in SHAPED_ROLES
+    ]
+
+
 def _status_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
     """Where a change's marks contradict each other, or are on a kind with no change.
 
@@ -11116,6 +11140,7 @@ __all__ = [
     "PIE_PERCENT_TOLERANCE",
     "PIE_ROLES",
     "PIE_SHARE_MIN",
+    "PLAIN_NODE_ROLES",
     "POLARITIES",
     "POLARITY_EDGE_ROLES",
     "RAG_KINDS",
@@ -11132,6 +11157,7 @@ __all__ = [
     "SCHEMA_FILENAME",
     "SCHEMA_ID",
     "SEQUENCE_KINDS",
+    "SHAPED_ROLES",
     "SHAPE_KINDS",
     "STATES_KINDS",
     "STATE_ROLES",
