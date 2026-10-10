@@ -255,10 +255,11 @@ def test_a_timeline_without_rise_keeps_one_band() -> None:
 
 
 def test_too_many_columns_raises_fiterror_naming_the_remedies() -> None:
+    """Within the readability budget, so the narrow canvas is what refuses it."""
     with pytest.raises(FitError) as error:
-        scene("columns", *[f"Column {index}" for index in range(30)])
+        scene("columns", *[f"Column {index}" for index in range(6)], width=200)
     message = str(error.value)
-    assert "30 columns" in message
+    assert "6 columns" in message
     assert "fewer columns" in message
 
 
@@ -331,7 +332,7 @@ def test_timeline_of_one_moment_places_it_across_the_canvas() -> None:
 
 def test_too_many_timeline_entries_raises_fiterror_suggesting_a_vertical_kind() -> None:
     with pytest.raises(FitError) as error:
-        scene("timeline", *[f"Moment {index}" for index in range(40)])
+        scene("timeline", *[f"Moment {index}" for index in range(10)], width=240)
     assert "stack" in str(error.value)
 
 

@@ -192,9 +192,9 @@ for several jobs it might look like it does.
   decades of work behind its layered and force-directed placement, and it will
   lay out a hundred-node graph that drawspec refuses. drawspec's layout exists
   to serve fifteen named diagram shapes at the sizes a document reads at; past
-  roughly twenty boxes it will tell you it cannot fit rather than produce
-  something dense and unreadable, which is deliberate but is not what a graph
-  tool does.
+  each kind's readability budget (fifteen boxes on a `flow`) it will tell you to
+  split the diagram into an overview and details rather than produce something
+  dense and unreadable, which is deliberate but is not what a graph tool does.
 * **It is not charting software.** `chart` has lines, bars, areas, stacks,
   point labels and a legend. It has no statistics, no interactivity, no dates,
   no log scales, no error bars, and no second axis. If you are exploring data,

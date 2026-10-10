@@ -70,8 +70,8 @@ Pick by what the diagram **claims**, not by what it looks like.
 branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring
 through **every** node, and is refused if it does not.
 
-Past roughly twenty boxes drawspec will refuse rather than draw something dense.
-Split the diagram.
+Past its kind's readability budget (a `flow`: 15 nodes, 16 edges) a document is
+refused even though it would fit. Split it into an overview plus detail diagrams.
 
 ## Roles
 

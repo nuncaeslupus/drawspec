@@ -48,6 +48,7 @@ from drawspec.schema import (
     KIND_PAYLOADS,
     KINDS,
     OBJECTS,
+    READABILITY_BUDGET,
     REJECTED_FIELDS,
     SCHEMA_ID,
     FieldSpec,
@@ -237,6 +238,32 @@ def format_markdown() -> str:
         lines += [f"### {heading}", "", *_fields_table(fields), ""]
 
     lines += [
+        "## The readability budget",
+        "",
+        "A document that would draw can still be refused for holding too much to read.",
+        "Each kind has a budget — the most entries its counted arrays may hold — and a",
+        "document past it is refused with the pointer of the first entry over, before",
+        "any layout is tried. It is not the fit limit: a fit refusal says the canvas is",
+        "too small, and arrives later, around twenty boxes. This says the picture",
+        "would be searched rather than read.",
+        "",
+        "The remedy is to split: an **overview** that names each part once, plus a",
+        "**detail** diagram per part, each within the budget. There is no opt-out —",
+        "the top-level `width` and `height` size the canvas, and a wider canvas does",
+        "not make the drawing easier to take in. Every number below sits above the",
+        "largest reference document of its kind, so nothing in the gallery is refused.",
+        "",
+        *_table(
+            ("Kind", "At most"),
+            (
+                [
+                    f"`{kind}`",
+                    ", ".join(f"{limit} `{name}`" for name, limit in READABILITY_BUDGET[kind]),
+                ]
+                for kind in KINDS
+            ),
+        ),
+        "",
         "## The objects",
         "",
         "What the arrays above hold. Every one of them refuses a field it does not",

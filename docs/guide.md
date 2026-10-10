@@ -174,6 +174,19 @@ Two notes worth having before you pick:
   [`kinds-wanted.md`](kinds-wanted.md) is the inventory that decided which kinds
   exist and which requests were declined.
 
+### How much one diagram may hold
+
+Each kind has a **readability budget** — at most 15 nodes and 16 edges on a
+`flow`, 8 steps on a `cycle`, 6 `columns`, and so on; the whole table is in
+[the format reference](format.md#the-readability-budget). Past it, `drawspec
+validate` refuses the document with the pointer of the first entry over, even
+though the drawing would fit: a picture of twenty boxes is searched, not read.
+
+The fix is never a bigger canvas — `width` does not lift the budget — but a
+split: an **overview** that names each part once, plus a **detail** diagram per
+part. The numbers were measured against the reference documents and the corpus,
+so every diagram in the gallery is inside them with room to spare.
+
 ## Choosing a role
 
 *"I don't know what criteria you use to choose between circle and rectangle
@@ -528,12 +541,13 @@ Two things follow from it being a constraint rather than a switch:
 ## When it refuses
 
 A refusal is a designed outcome and the message is meant to be actionable. The
-three you will meet:
+ones you will meet:
 
 | It says | It means | Do this |
 |---|---|---|
 | A violation with a JSON pointer | A field is misspelt, missing, or not legal for this kind | Fix the field the pointer names. `additionalProperties` is closed everywhere, so a key that looks ignored is always an error instead. |
 | `… is the tool's output, never its input` | The document tried to place, size or colour something | Say what you mean instead — a `role` rather than a `stroke`, a `kind` rather than an arrangement. |
+| `… is past what one flow can be read at` | The document holds more than its kind's [readability budget](format.md#the-readability-budget) | Split it into an overview plus a detail diagram per part. A larger `width` does not lift it. |
 | A fit refusal | The content cannot be drawn above the legibility floor at this width | Shorten the text, split the diagram, or raise `width` — in that order. A smaller type size is not offered, on purpose. |
 
 ## What it is not
@@ -542,4 +556,4 @@ drawspec draws simple, declarative diagrams well, and is the wrong tool for
 several jobs it might look like it does: it is not a Graphviz replacement, not
 charting software, not a drawing program, and not a rich-text system. The
 [README](../README.md#what-it-is-not) says why for each, and it is worth reading
-before you push it past about twenty boxes.
+before you push it past its readability budget.

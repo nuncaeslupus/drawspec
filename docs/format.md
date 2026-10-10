@@ -137,6 +137,39 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `axes` | [axes object](#axes-object) | **yes** | Both axes. A named shape still needs saying what it is a shape of. |
 | `curves` | array of [curve](#curve-object), at least 1 | **yes** | The shapes drawn, each through its own waypoints. |
 
+## The readability budget
+
+A document that would draw can still be refused for holding too much to read.
+Each kind has a budget — the most entries its counted arrays may hold — and a
+document past it is refused with the pointer of the first entry over, before
+any layout is tried. It is not the fit limit: a fit refusal says the canvas is
+too small, and arrives later, around twenty boxes. This says the picture
+would be searched rather than read.
+
+The remedy is to split: an **overview** that names each part once, plus a
+**detail** diagram per part, each within the budget. There is no opt-out —
+the top-level `width` and `height` size the canvas, and a wider canvas does
+not make the drawing easier to take in. Every number below sits above the
+largest reference document of its kind, so nothing in the gallery is refused.
+
+| Kind | At most |
+|---|---|
+| `flow` | 15 `nodes`, 16 `edges` |
+| `tree` | 15 `nodes` |
+| `cycle` | 8 `nodes` |
+| `stack` | 8 `items` |
+| `timeline` | 10 `items` |
+| `columns` | 6 `items` |
+| `matrix` | 25 `cells` |
+| `pyramid` | 7 `levels` |
+| `rings` | 6 `rings` |
+| `funnel` | 7 `stages` |
+| `chart` | 6 `series` |
+| `quadrant` | 12 `positions` |
+| `scatter` | 20 `positions` |
+| `curve` | 4 `curves` |
+| `files` | 30 `entries` |
+
 ## The objects
 
 What the arrays above hold. Every one of them refuses a field it does not

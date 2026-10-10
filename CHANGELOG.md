@@ -12,6 +12,15 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **A readability budget per kind.** A document holding more than its kind can
+  be read at — 15 nodes and 16 edges on a `flow`, 15 on a `tree`, 8 on a
+  `cycle`, 6 `columns`, 25 `matrix` cells, and so on — is refused by
+  `drawspec validate` with the pointer of the first entry over and a message
+  telling the author to split it into an overview plus detail diagrams. It
+  comes before the physical fit limit (around twenty boxes), and the top-level
+  `width` does not lift it. Every limit sits above the largest reference
+  document of its kind; the table is generated into `docs/format.md`.
+
 - **`files`, the fifteenth kind** — a directory listing drawn from flat paths
   (`src/app/main.py`); the folders a path passes through are inferred, so there
   is no nesting depth to get wrong. A trailing `/` marks an empty folder, a last

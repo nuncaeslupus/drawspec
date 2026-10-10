@@ -111,6 +111,42 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: every technical document draws by hand, and none of the others can draw it.
 KINDS: Final = GRAPH_KINDS + GRID_KINDS + SHAPE_KINDS + CHART_KINDS + FILES_KINDS
 
+#: The readability budget: per kind, the most entries each counted array may
+#: hold before the document is refused as too much for one picture. This is not
+#: the fit limit — a `FitError` says the canvas is physically too small, and
+#: arrives around twenty boxes — but the earlier point at which a diagram stops
+#: being read and starts being searched.
+#:
+#: Measured, not chosen: every number sits at or above the largest document in
+#: `docs/reference/` (in brackets) with headroom, and above the largest drawing
+#: of that shape in `corpus/` — whose biggest box-and-arrow original has eleven
+#: boxes and ten connectors. `flow` is the tightest fit: `flow-edge-roles` has
+#: fourteen nodes (seven independent pairs) and `flow-mesh` twelve edges. A
+#: limit that refused a reference document would be a limit set too low, and a
+#: test renders every one of them.
+#:
+#: There is no opt-out. The top-level `width` and `height` are a budget for the
+#: canvas, and a wider canvas does not make twenty boxes easier to take in; the
+#: remedy is the one the refusal names — an overview plus detail diagrams.
+READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
+    "flow": (("nodes", 15), ("edges", 16)),  # [14 nodes, 12 edges]
+    "tree": (("nodes", 15),),  # [11]
+    "cycle": (("nodes", 8),),  # [5]
+    "stack": (("items", 8),),  # [3]
+    "timeline": (("items", 10),),  # [5]
+    "columns": (("items", 6),),  # [5]
+    "matrix": (("cells", 25),),  # [16]
+    "pyramid": (("levels", 7),),  # [4]
+    "rings": (("rings", 6),),  # [3]
+    "funnel": (("stages", 7),),  # [4]
+    "chart": (("series", 6),),  # [3]
+    "quadrant": (("positions", 12),),  # [5]
+    "scatter": (("positions", 20),),  # [9]
+    "curve": (("curves", 4),),  # [3]
+    "files": (("entries", 30),),  # [10]
+}
+
+
 #: Fields an author might reach for that drawspec refuses, and why. Not used for
 #: validation — `additionalProperties: false` already rejects them — but for the
 #: message, which is the teaching surface for an author working blind.
@@ -1384,7 +1420,32 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         )
 
     found.extend(_referential_violations(document, kind))
+    found.extend(_readability_violations(document, kind))
     return tuple(found)
+
+
+def _readability_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
+    """Every counted array that holds more than its kind's readability budget.
+
+    A refusal of a document that would draw: it says the picture would not be
+    read, which is a different claim from `FitError`'s and comes before it.
+    """
+    found: list[Violation] = []
+    for name, limit in READABILITY_BUDGET.get(kind, ()):
+        entries = document.get(name)
+        if not isinstance(entries, list) or len(entries) <= limit:
+            continue
+        found.append(
+            Violation(
+                _pointer(name, limit),
+                f"{len(entries)} {name} is past what one {kind} can be read at — "
+                f"{limit} at most. Past that a reader searches the diagram instead of "
+                f"taking it in. Split it: an overview that names each part once, plus a "
+                f"detail diagram per part, each within the budget. The budget is not a "
+                f"canvas size, so a larger top-level 'width' does not lift it.",
+            )
+        )
+    return found
 
 
 def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
@@ -2094,7 +2155,8 @@ def build_schema() -> dict[str, Any]:
             "decision that requires seeing the output — coordinates, type size, colour, "
             "arrow-head geometry, z-order — is taken by drawspec and has no field here. "
             "Referential rules (node ids are unique; an edge names nodes that exist) are "
-            "beyond JSON Schema and are enforced by `drawspec validate`."
+            "beyond JSON Schema and are enforced by `drawspec validate`, as is the "
+            "readability budget: the most entries each kind may hold (docs/format.md)."
         ),
         "oneOf": variants,
         "$defs": {name: _object_schema(specs) for name, specs in sorted(OBJECTS.items())},

@@ -287,7 +287,7 @@ def test_cycle_follows_the_edges_not_the_order_the_nodes_were_listed() -> None:
 
 def test_cycle_too_big_for_the_canvas_raises_fiterror_naming_the_remedies() -> None:
     with pytest.raises(FitError) as error:
-        scene(*[f"A rather long label for step number {index}" for index in range(9)], width=320.0)
+        scene(*[f"A rather long label for step number {index}" for index in range(8)], width=240.0)
     message = str(error.value)
     assert "shorten the labels" in message
     assert "fewer steps" in message

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
   "title": "drawspec document, version 1",
-  "description": "A declarative diagram. The author describes what the diagram means; every decision that requires seeing the output — coordinates, type size, colour, arrow-head geometry, z-order — is taken by drawspec and has no field here. Referential rules (node ids are unique; an edge names nodes that exist) are beyond JSON Schema and are enforced by `drawspec validate`.",
+  "description": "A declarative diagram. The author describes what the diagram means; every decision that requires seeing the output — coordinates, type size, colour, arrow-head geometry, z-order — is taken by drawspec and has no field here. Referential rules (node ids are unique; an edge names nodes that exist) are beyond JSON Schema and are enforced by `drawspec validate`, as is the readability budget: the most entries each kind may hold (docs/format.md).",
   "oneOf": [
     {
       "type": "object",
