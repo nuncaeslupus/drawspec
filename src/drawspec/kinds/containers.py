@@ -43,6 +43,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
+from types import MappingProxyType
 from typing import Final
 
 from drawspec.errors import DrawspecError
@@ -241,6 +242,11 @@ class Arrangement:
 
     frames: tuple[Frame, ...]
 
+    directions: Mapping[str, str] = MappingProxyType({})
+    """Leaf id → the direction of the level it was laid out in. A group lays out
+    its own members and may choose a different direction from the level above,
+    so a question about which way one box's neighbours sit is asked here."""
+
     @property
     def width(self) -> float:
         return self.layout.width
@@ -333,13 +339,16 @@ def arrange(
 
     places: dict[str, Placement] = {}
     frames: list[Frame] = []
+    directions: dict[str, str] = {}
     for identifier, place in layout.placements.items():
         if identifier not in inner:
             places[identifier] = place
+            directions[identifier] = layout.direction
             continue
         caption = captions.get(identifier)
         top, _ = _insets(caption, theme, spacing, identifier in entered)
         sub = inner[identifier]
+        directions.update(sub.directions)
         # The contents are centred in whatever width the engine gave the frame,
         # which is at least what they asked for and may be more once peers are
         # normalised. Centring rather than left-aligning keeps a group of two
@@ -365,7 +374,12 @@ def arrange(
             )
         )
 
-    return Arrangement(layout=layout, places=places, frames=tuple(frames))
+    return Arrangement(
+        layout=layout,
+        places=places,
+        frames=tuple(frames),
+        directions=MappingProxyType(directions),
+    )
 
 
 def crossed(edges: Sequence[tuple[str, str]], nesting: Nesting) -> frozenset[str]:

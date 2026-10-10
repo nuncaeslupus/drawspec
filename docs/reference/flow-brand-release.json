@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "kind": "flow",
+  "title": "Publishing next year's tide tables",
+  "description": "A theme derived from a site's own stylesheet with `drawspec theme from`: its typeface, its corner radius and its stroke weight, and its accent on the one box and the path that matter. Every other line is still the page's ink.",
+  "theme": "docs/reference/brand/tidemark.toml",
+  "nodes": [
+    { "id": "gauges", "text": "Pull a year of gauge readings", "role": "start" },
+    { "id": "fit", "text": "Fit the harmonic constants" },
+    { "id": "check", "text": "Within 5 cm of last year?", "role": "decision" },
+    { "id": "review", "text": "A hydrographer reviews the station", "role": "emphasis" },
+    { "id": "predict", "text": "Predict every high and low water" },
+    { "id": "publish", "text": "Publish the tables", "role": "terminal" },
+    { "id": "datum", "text": "Heights are above chart datum", "role": "note" }
+  ],
+  "edges": [
+    { "from": "gauges", "to": "fit" },
+    { "from": "fit", "to": "check" },
+    { "from": "check", "to": "predict", "label": "yes" },
+    { "from": "check", "to": "review", "label": "no", "role": "strong" },
+    { "from": "review", "to": "predict", "label": "constants corrected", "role": "strong" },
+    { "from": "predict", "to": "publish" },
+    { "from": "publish", "to": "datum", "role": "link" }
+  ]
+}

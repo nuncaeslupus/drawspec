@@ -26,6 +26,13 @@ body = 12.0        # everything else keeps the default
 `drawspec theme check house.toml` loads it and runs its invariants.
 [The guide](guide.md#writing-a-theme) walks through writing one.
 
+`drawspec theme from brand.css` writes one from a design system instead:
+CSS custom properties or W3C design tokens, mapped onto the keys below,
+with every token it left out reported and why — a background, say, because
+the drawing sits on the page's own. A brand colour is held to 3:1 against a
+white page and a near-black one, and darkened or lightened until it reads on
+both. [The guide](guide.md#matching-your-brand) has the mapping.
+
 ## The greyscale invariant
 
 Two roles may not be distinguishable **by colour alone**. The loader compares
@@ -119,6 +126,7 @@ How a chart tells one mark from another, and how much room bars get.
 | `fills` | `["dots", "hatch", "grid", "cross", "none"]` | The fills a chart's marks take, in order, one per filled mark. Each one of `none`, `solid`, `hatch`, `dots`, `cross`, `grid`. |
 | `colours` | `[]` | A colour per fill, in the same order, or empty for ink alone. |
 | `gap` | `0.3` | How much of a category's band is left empty around its bars, as a fraction. Zero draws bars that touch, which reads as one wide bar. |
+| `ramp` | `[0.08, 0.16, 0.24, 0.32, 0.4]` | The tones an ordered `scale` is filled with, lightest first: how much of the page's ink each step lays down, from 0 (blank) to 1. |
 
 ### `[title]`
 
@@ -158,6 +166,80 @@ How a `files` tree draws its pictures. Appearance, so it lives here.
 | `align` | `"left"` | Where a tree sits on the canvas: `left`, as a listing reads, or `centre`, like every other kind. One of `left`, `centre`. |
 | `colours` | `{}` | Fill colour by extension (`pdf`), by type family (`code`, `data`, `text`, `image`, `archive`), or `folder`. An extension wins over its family. Anything not named is drawn in the page's ink. |
 
+### `[states]`
+
+How a state machine's pseudo-states are drawn. Appearance, so it lives here.
+
+| Key | Default | What it is |
+|---|---|---|
+| `dot` | `10.0` | The diameter of the initial pseudo-state's filled dot, and of the dot inside a final pseudo-state's ring. |
+| `ring` | `3.0` | The daylight between a final pseudo-state's dot and the ring around it. |
+
+### `[sequence]`
+
+How a sequence diagram's lifelines and activation bars are drawn.
+
+| Key | Default | What it is |
+|---|---|---|
+| `activation` | `10.0` | The width of an activation bar. A nested bar is set half this to the right. |
+| `lifeline` | `"aside"` | The edge role a lifeline is drawn in, with no head: dashed and light by default, so the messages across it are what the eye follows. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+
+### `[lanes]`
+
+How a swimlane diagram lays its lanes out and divides them.
+
+| Key | Default | What it is |
+|---|---|---|
+| `orientation` | `"auto"` | `rows`, `columns`, or `auto`: rows when they fit the width, else columns. One of `rows`, `columns`, `auto`. |
+| `separator` | `"link"` | The edge role the line between two lanes is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+
+### `[entities]`
+
+How an entity diagram says *how many* at each end of a relation.
+
+| Key | Default | What it is |
+|---|---|---|
+| `notation` | `"crowsfoot"` | `crowsfoot` (marks across the line's end) or `numeric` (text beside it). One of `crowsfoot`, `numeric`. |
+
+### `[gantt]`
+
+How a plan draws the two marks that are not bars.
+
+| Key | Default | What it is |
+|---|---|---|
+| `milestone` | `"diamond"` | `diamond` or `circle`: the mark a task with `at` is drawn as, filled. One of `diamond`, `circle`. |
+| `marks` | `"weak"` | The edge role a mark's line across the rows is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+
+### `[board]`
+
+How a board draws the two lines that are not card borders.
+
+| Key | Default | What it is |
+|---|---|---|
+| `separator` | `"weak"` | The edge role the line between two rows (slices) is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `cut` | `"strong"` | The edge role the cut under a row is drawn in, with no head: the board's one heavy line. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+
+### `[fishbone]`
+
+How a fishbone draws its spine, its bones and the ticks its causes sit on.
+
+| Key | Default | What it is |
+|---|---|---|
+| `slant` | `60.0` | The angle, in degrees from the spine, each bone meets it at: 30 to 90. A fishbone's bones slant by convention — the one place drawspec draws a diagonal on purpose, because the slant *is* the shape. `90` draws a comb of upright bones for a theme that keeps right angles throughout. |
+| `spine` | `"strong"` | The edge role the spine is drawn in, with no head: from the far end of the last bone into the effect's box. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `bone` | `"flow"` | The edge role a category's bone is drawn in, with no head. The bone of a confirmed root cause (`emphasis`) is drawn in the spine's role from that cause to the spine, so the path from cause to effect is one weight. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `cause` | `"link"` | The edge role the tick a cause's words sit on is drawn in, with no head. A ruled-out cause (`note`) is drawn in `aside` instead: light and dashed. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+
+### `[journey]`
+
+How a journey draws the lines that are not words: the feeling line and its rules.
+
+| Key | Default | What it is |
+|---|---|---|
+| `line` | `"strong"` | The edge role the feeling line is drawn in, with no head: the one heavy line, through every stage's point. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `guide` | `"aside"` | The edge role each feeling level's guide is drawn in, across every stage: light, so the line and not the grid is what is read. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `separator` | `"link"` | The edge role the rule above each detail row is drawn in, across the whole map. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The
@@ -179,7 +261,7 @@ vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note
 The same arrangement for connectors, and it is where a connector that is *not*
 an arrow lives: an author says two things are merely associated (`link`) and
 the theme decides that means a line with no head. `head` and `tail` are each
-one of `arrow`, `open`, `diamond`, `circle`, `bar`, `none`.
+one of `arrow`, `open`, `diamond`, `circle`, `bar`, `triangle`, `none`.
 
 | Role | `head` | `tail` | `stroke` | `dash` | `stroke_width` | `routing` |
 |---|---|---|---|---|---|---|
@@ -190,6 +272,8 @@ one of `arrow`, `open`, `diamond`, `circle`, `bar`, `none`.
 | `owns` | `"diamond"` | `"none"` | `"currentColor"` | `"none"` | `1.5` | `"orthogonal"` |
 | `strong` | `"arrow"` | `"none"` | `"currentColor"` | `"none"` | `2.5` | `"orthogonal"` |
 | `aside` | `"none"` | `"none"` | `"currentColor"` | `"4 3"` | `1.0` | `"orthogonal"` |
+| `inherits` | `"triangle"` | `"none"` | `"currentColor"` | `"none"` | `1.5` | `"orthogonal"` |
+| `realizes` | `"triangle"` | `"none"` | `"currentColor"` | `"4 3"` | `1.5` | `"orthogonal"` |
 
 ## The bundled themes
 

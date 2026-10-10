@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "kind": "sequence",
+  "title": "Resolving a name the first time",
+  "caption": "Nothing is cached yet, so the resolver walks the hierarchy from the top.",
+  "participants": [
+    {"id": "laptop", "text": "Laptop"},
+    {"id": "resolver", "text": "Recursive resolver", "role": "emphasis"},
+    {"id": "root", "text": "Root server"},
+    {"id": "tld", "text": "`.org` server"},
+    {"id": "auth", "text": "Authoritative server"}
+  ],
+  "messages": [
+    {"from": "laptop", "to": "resolver", "text": "where is `wiki.example.org`?"},
+    {"from": "resolver", "to": "root", "text": "where is `wiki.example.org`?"},
+    {"from": "root", "to": "resolver", "text": "ask the `.org` servers", "role": "weak"},
+    {"from": "resolver", "to": "tld", "text": "where is `wiki.example.org`?"},
+    {"from": "tld", "to": "resolver", "text": "ask `ns1.example.org`", "role": "weak"},
+    {"from": "resolver", "to": "auth", "text": "where is `wiki.example.org`?"},
+    {"from": "auth", "to": "resolver", "text": "`203.0.113.7`", "role": "weak"},
+    {"from": "resolver", "to": "resolver", "text": "cache it for the TTL", "note": "the next lookup stops here"},
+    {"from": "resolver", "to": "laptop", "text": "`203.0.113.7`", "role": "weak"}
+  ]
+}

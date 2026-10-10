@@ -45,9 +45,12 @@ from drawspec.emit import PROFILES
 from drawspec.schema import (
     COMMON_FIELDS,
     DOCUMENT_VERSION,
+    EMPHASIS_CAP,
+    EMPHASIS_ROLE,
     KIND_PAYLOADS,
     KINDS,
     OBJECTS,
+    READABILITY_BUDGET,
     REJECTED_FIELDS,
     SCHEMA_ID,
     FieldSpec,
@@ -55,25 +58,37 @@ from drawspec.schema import (
 from drawspec.theme import (
     CYCLE_CONNECTORS,
     EDGE_HEADS,
+    EDGE_ROLES,
+    ENTITIES_NOTATIONS,
     FILES_ALIGNS,
     FILES_TYPES,
     FILL_PATTERNS,
     FONT_ROLES,
     FUNNEL_DIRECTIONS,
+    GANTT_MILESTONES,
+    LANES_ORIENTATIONS,
     NODE_SHAPES,
     THEME_VERSION,
     TYPE_LEVELS,
     WIDTH_MODES,
+    BoardStyle,
     BoxStyle,
     Canvas,
     CycleStyle,
     EdgeStyle,
+    EntitiesStyle,
     FilesStyle,
+    FishboneStyle,
     FitBand,
     FontStacks,
     FunnelStyle,
+    GanttStyle,
+    JourneyStyle,
+    LanesStyle,
     MarkStyle,
     Padding,
+    SequenceStyle,
+    StatesStyle,
     TitleStyle,
     TypeScale,
     load_theme,
@@ -97,6 +112,18 @@ BANNER: Final = (
 def _cell(text: str) -> str:
     """One table cell: no newlines, and no pipe that would end the column."""
     return " ".join(text.split()).replace("|", "\\|")
+
+
+def _budgeted(name: str, limit: int) -> str:
+    """One budget entry: `8 entities`, or `12 fields per entity` for a nested one."""
+    if "@" in name:
+        outer, per = name.split("@")
+        return f"{limit} `{outer}` per {per}"
+    if "/" not in name:
+        return f"{limit} `{name}`"
+    outer, inner = name.split("/")
+    each = outer[:-3] + "y" if outer.endswith("ies") else outer[:-1]
+    return f"{limit} `{inner}` per {each}"
 
 
 def _table(headings: Sequence[str], rows: Iterable[Sequence[str]]) -> list[str]:
@@ -237,6 +264,41 @@ def format_markdown() -> str:
         lines += [f"### {heading}", "", *_fields_table(fields), ""]
 
     lines += [
+        "## The readability budget",
+        "",
+        "A document that would draw can still be refused for holding too much to read.",
+        "Each kind has a budget — the most entries its counted arrays may hold — and a",
+        "document past it is refused with the pointer of the first entry over, before",
+        "any layout is tried. It is not the fit limit: a fit refusal says the canvas is",
+        "too small, and arrives later, around twenty boxes. This says the picture",
+        "would be searched rather than read.",
+        "",
+        "The remedy is to split: an **overview** that names each part once, plus a",
+        "**detail** diagram per part, each within the budget. There is no opt-out —",
+        "the top-level `width` and `height` size the canvas, and a wider canvas does",
+        "not make the drawing easier to take in. Every number below sits above the",
+        "largest reference document of its kind, so nothing in the gallery is refused.",
+        "",
+        *_table(
+            ("Kind", "At most"),
+            (
+                [
+                    f"`{kind}`",
+                    ", ".join(_budgeted(name, limit) for name, limit in READABILITY_BUDGET[kind]),
+                ]
+                for kind in KINDS
+            ),
+        ),
+        "",
+        "## Emphasis",
+        "",
+        f"At most {EMPHASIS_CAP} elements in a document may take the `{EMPHASIS_ROLE}` role —",
+        "nodes, items, levels, cells, positions, series and curves counted together.",
+        "Emphasis says *look here first*, and when three things say it none of them is",
+        "first. The third and every later one is refused at its `role`, with a message",
+        "saying to keep the one or two the diagram is about. The `strong` edge role is",
+        "not counted: it marks a path, which is several edges and reads as one line.",
+        "",
         "## The objects",
         "",
         "What the arrays above hold. Every one of them refuses a field it does not",
@@ -455,6 +517,14 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "cycle": CycleStyle,
     "funnel": FunnelStyle,
     "files": FilesStyle,
+    "states": StatesStyle,
+    "sequence": SequenceStyle,
+    "lanes": LanesStyle,
+    "entities": EntitiesStyle,
+    "gantt": GanttStyle,
+    "board": BoardStyle,
+    "fishbone": FishboneStyle,
+    "journey": JourneyStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are
@@ -469,6 +539,20 @@ THEME_VOCABULARIES: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("funnel", "direction"): FUNNEL_DIRECTIONS,
     ("files", "types"): FILES_TYPES,
     ("files", "align"): FILES_ALIGNS,
+    ("sequence", "lifeline"): EDGE_ROLES,
+    ("lanes", "orientation"): LANES_ORIENTATIONS,
+    ("lanes", "separator"): EDGE_ROLES,
+    ("entities", "notation"): ENTITIES_NOTATIONS,
+    ("gantt", "milestone"): GANTT_MILESTONES,
+    ("gantt", "marks"): EDGE_ROLES,
+    ("board", "separator"): EDGE_ROLES,
+    ("board", "cut"): EDGE_ROLES,
+    ("fishbone", "spine"): EDGE_ROLES,
+    ("fishbone", "bone"): EDGE_ROLES,
+    ("fishbone", "cause"): EDGE_ROLES,
+    ("journey", "line"): EDGE_ROLES,
+    ("journey", "guide"): EDGE_ROLES,
+    ("journey", "separator"): EDGE_ROLES,
 }
 
 
@@ -554,6 +638,13 @@ def theme_markdown() -> str:
         "",
         "`drawspec theme check house.toml` loads it and runs its invariants.",
         "[The guide](guide.md#writing-a-theme) walks through writing one.",
+        "",
+        "`drawspec theme from brand.css` writes one from a design system instead:",
+        "CSS custom properties or W3C design tokens, mapped onto the keys below,",
+        "with every token it left out reported and why — a background, say, because",
+        "the drawing sits on the page's own. A brand colour is held to 3:1 against a",
+        "white page and a near-black one, and darkened or lightened until it reads on",
+        "both. [The guide](guide.md#matching-your-brand) has the mapping.",
         "",
         "## The greyscale invariant",
         "",

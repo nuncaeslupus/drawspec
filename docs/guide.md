@@ -148,21 +148,36 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Fifteen exist, and they fall into five families:
+fields are legal. Twenty-six exist, and they fall into fifteen families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
-| Graph | `flow`, `tree`, `cycle` | Things connected to other things: a process, a hierarchy, a loop that comes round again. |
+| Graph | `flow`, `tree`, `cycle`, `lanes` | Things connected to other things: a process, a hierarchy, a loop that comes round again, a process drawn in one strip per party. |
 | Grid | `stack`, `timeline`, `columns`, `matrix` | Things in an arrangement: layers, events in order, side-by-side comparison, rows against columns. |
 | Shape | `pyramid`, `rings`, `funnel` | Things in a proportion: levels narrowing to an apex, scopes nested inside scopes, stages narrowing to an outcome. |
 | Plot | `chart`, `quadrant`, `scatter`, `curve` | Things with numbers: series against axes, items placed in a plane, points by two measured values, a named shape with labelled waypoints. |
 | Listing | `files` | Things in folders: a directory tree from its paths, drawn with pictures or as `tree`-style text (`drawspec render --format text`). |
+| Machine | `states` | Things that change state: the conditions something can be in, and the events that move it between them. |
+| Exchange | `sequence` | Things said in order: messages between a fixed set of participants, read down the page. |
+| Model | `entities` | Things with fields, and how they relate: an ER model, a database schema, a class diagram. |
+| Plan | `gantt` | Things that take time: one row per task, each an interval, with phases, milestones and what waits on what. |
+| Board | `board` | Things sorted, not joined: cards in columns — a kanban board, a retrospective, a story map sliced into releases. |
+| Cause | `fishbone` | Things that led to one effect: causes by category on bones slanting into a spine — a root-cause (Ishikawa) diagram. |
+| Overlap | `venn` | Things that share: two or three sets as equal circles, each region named by the sets it is in. |
+| Experience | `journey` | How one person feels, stage by stage: a named feeling per stage as a line, over what they do there. |
+| Share | `treemap` | The parts of one known total: each a rectangle by its area, labelled inside itself. |
+| Quantity | `sankey` | Where a known quantity goes: nodes in derived columns, joined by bands as thick as their amounts. |
 
 One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see
 what a kind actually looks like before committing a document to it.
 
-Two notes worth having before you pick:
+Two notes worth having before you pick — and one question before both: **should
+this be a diagram at all?** Things with no relation between them are a bullet
+list, things with attributes are a table, and one shape or one step is a
+sentence. A diagram earns its place when a reader learns more from it than from
+the paragraph it replaces. [`AGENTS.md`](../AGENTS.md) carries the same question
+and a table that routes from *what the reader must understand* to the kind.
 
 * **Read what the original is saying, not what it looks like.** A
   shared-responsibility diagram that looks like a grid is usually *how much of
@@ -173,6 +188,19 @@ Two notes worth having before you pick:
   a map, two overlapping Wi-Fi cells — has no declarative description.
   [`kinds-wanted.md`](kinds-wanted.md) is the inventory that decided which kinds
   exist and which requests were declined.
+
+### How much one diagram may hold
+
+Each kind has a **readability budget** — at most 15 nodes and 16 edges on a
+`flow`, 8 steps on a `cycle`, 6 `columns`, and so on; the whole table is in
+[the format reference](format.md#the-readability-budget). Past it, `drawspec
+validate` refuses the document with the pointer of the first entry over, even
+though the drawing would fit: a picture of twenty boxes is searched, not read.
+
+The fix is never a bigger canvas — `width` does not lift the budget — but a
+split: an **overview** that names each part once, plus a **detail** diagram per
+part. The numbers were measured against the reference documents and the corpus,
+so every diagram in the gallery is inside them with room to spare.
 
 ## Choosing a role
 
@@ -191,7 +219,7 @@ bundled theme:
 | `start` | Where the diagram begins — the trigger, the arrival, the input | a pill |
 | `terminal` | Where it ends. Not "the last box": the box after which nothing happens | a pill, heavier |
 | `decision` | A question, with named ways out. If the edges leaving it are not labelled, it is probably a `step` | a diamond |
-| `emphasis` | The one box the diagram is about. One per drawing, or it stops meaning anything | a rectangle, heavier |
+| `emphasis` | The one box the diagram is about. One per drawing, two at most — a third is refused, because when three things say *look here first* none of them is first | a rectangle, heavier |
 | `note` | An aside — a caveat, a source, a reminder. Not part of the argument | no outline at all |
 | `group` | A container drawn around other boxes. Set by naming `members`; rarely written by hand | a dashed rectangle |
 
@@ -206,8 +234,9 @@ Two mistakes worth naming, both made in the corpus and both caught in review:
   typographic instruction in a document that has no field for one.
 
 The same holds for connectors, where the vocabulary answers *what kind of
-relation is this* and the theme answers whether it has a head. Two of the seven
-are worth reading together, because the difference is easy to miss and choosing
+relation is this* and the theme answers whether it has a head. Roles are per
+kind: the last two below belong to `entities`, and a `flow` refuses them by name.
+Two of the others are worth reading together, because the difference is easy to miss and choosing
 wrong misstates the drawing: `weak` is dashed **and** directed, so it says *this
 may lead to that*; `aside` is dashed and **un**directed, so it says *this belongs
 with that* and nothing about which way.
@@ -221,6 +250,8 @@ with that* and nothing about which way.
 | `weak` | A soft or conditional dependency | dashed, with an open head |
 | `owns` | This is a part of that | a diamond at the owning end |
 | `aside` | Loosely associated, and in no direction — a note, a source, a caveat hanging off the thing it is about | dashed, with no head |
+| `inherits` | `entities` only: this class is a kind of that one | a hollow triangle at the general end |
+| `realizes` | `entities` only: this class implements that interface | dashed, with a hollow triangle |
 
 Both sets are drawn, one box per role, in
 [`reference/flow-node-roles.json`](reference/flow-node-roles.json) and
@@ -228,6 +259,13 @@ Both sets are drawn, one box per role, in
 gallery` renders them; that page is the fastest answer to "what does `owns`
 look like". The mechanical properties behind each row — shape, dash,
 stroke width — are in [the theme reference](theme.md).
+
+An edge whose `from` and `to` are the same box — a retry, a poll, a timer — is
+drawn as a loop on that box's side, across the reading direction (right or left
+in a drawing that reads down), leaving and returning on the same side so it
+never meets the box's own incoming arrow; its label goes outside it and the
+layout keeps room for both. A box may carry two, one per side; a loop on a
+group is refused. See [`reference/flow-retry.json`](reference/flow-retry.json).
 
 ## Embedding the output
 
@@ -354,6 +392,60 @@ understanding before you change anything else:
   `[canvas] min_legible_size` nothing is drawn at all: it is a refusal, with a
   message, rather than text nobody can read.
 
+## Matching your brand
+
+If your project already has a design system, derive the theme from it rather than
+copying values across by hand:
+
+```bash
+drawspec theme from site.css                          # the theme on stdout
+drawspec theme from site.css tokens.json -o house.toml --name house
+drawspec theme check house.toml
+```
+
+It reads **CSS custom properties** (`--color-accent: #0f7b8a` in a `.css` file)
+and **W3C design tokens** (a `.json` or `.tokens` file of `$value`s, aliases and
+inherited `$type`s), writes the theme as TOML with each key commented with the
+token it came from, and prints one line per token on stderr: `used`, `adjusted`,
+or `ignored` and why. Local files only — save the stylesheet first; drawspec
+fetches nothing. A later file wins a tie, so a tokens file can refine a stylesheet.
+
+| The brand says (by token name) | The theme gets |
+|---|---|
+| an `accent`, `primary` or `brand` colour | the stroke of `emphasis`, `terminal` and `strong`, and the first chart colour |
+| a `secondary`, `tertiary` colour | the second and third chart colours |
+| a `muted`, `subtle` or `neutral` colour | the stroke of `note`, `group` and `link`, and the last chart colours |
+| a `text` or `foreground` colour | `[canvas] ink` — the `standalone` profile only |
+| a `sans`/`body`, `serif`, `mono`/`code` font family | `[font] sans`, `serif`, `mono`; a serif body face also sets `default = "serif"` |
+| a `radius` | `[box] corner_radius`, at most 12 |
+| a `border-width` or `stroke-width` | every stroke weight, scaled together (0.75–1.5×) so the ratios hold |
+| a unitless `line-height` | `[box] line_height`, 1.2–1.6 |
+
+**What it will not take, and why.** A drawspec SVG inherits its page: strokes and
+text are `currentColor` and there is no background, which is what makes a diagram
+follow its page into dark mode. So a brand's background, surface and border
+colours are ignored — the drawing already sits on the page's own — and so are
+dark-mode overrides (`@media (prefers-color-scheme: dark)`, or any selector other
+than `:root`). Status colours (`success`, `danger`) are ignored because colour may
+point but never carry. Font sizes and spacing are ignored: the type scale is
+relative to the canvas, which the page scales to its column, so a CSS pixel says
+nothing about it.
+
+**Colour is held to the page, both pages.** A brand colour does not follow dark
+mode, so it has to read on both: at least **3:1**, WCAG's figure for lines and
+shapes, against white *and* against `#121212`. A pale brand yellow is darkened, a
+deep violet lightened, hue kept, until it does, and the report gives both ratios.
+Pass `--strict` to refuse instead. Colour lands only where the `accent` theme puts
+it — on roles already told apart by weight, dash or shape, and over chart fill
+patterns that stay distinct — so the greyscale rule holds with no help from you.
+
+Name the family your page is set in and drawspec measures with it if it is
+installed; if not, it measures with the next family in the stack and says so. The
+gallery's `*-brand-*` drawings use a theme derived from
+[`docs/reference/brand/tidemark.css`](reference/brand/tidemark.css). A relative
+`theme` path in a document file is read from the document's own folder when the
+theme is there, and from the working directory otherwise.
+
 ## Using it from Python
 
 The CLI is the supported interface, but the library underneath it is small and
@@ -405,9 +497,9 @@ have thrown that away, and would not have covered `"Finance"` or
 
 Two things it deliberately is not:
 
-* **Not a swimlane.** Nothing is partitioned; the layout is unchanged. Lanes are
-  a layout constraint interacting with direction, groups and routing at once, and
-  nothing yet shows this is not enough.
+* **Not a swimlane.** Nothing is partitioned; the layout is unchanged. When the
+  hand-offs between parties are the point, change the kind to `lanes` — the same
+  document, drawn with one strip per actor; see [Swimlanes](#swimlanes).
 * **Not a band.** A band says *this runs alongside these*, and its bar spans its
   members' extent — so an owner holding the first, second and fourth step would
   draw a bar straight across the third, claiming a step it does not perform.
@@ -452,6 +544,13 @@ and it hands a model prose on stderr that it has to read to discover that
 the model's own loop, and the write-validate-fix cycle closes without a shell in
 it. It is the same check the CLI runs — the server does not describe the format a
 second time, and a refusal here says exactly what a refusal there says.
+
+**For agents that load skills**, [`skills/drawspec/SKILL.md`](../skills/drawspec/SKILL.md)
+is an [Agent Skill](https://agentskills.io): copy the directory into your skills
+folder and the agent learns *when* to reach for drawspec and the loop to follow
+— install, read `AGENTS.md`, write the JSON, validate, render. It is a pointer,
+not a copy of the format, so it cannot drift from it, and a test holds every
+command it names to the CLI.
 
 ## Groups and bands
 
@@ -499,6 +598,721 @@ band has not got — so a long name beside a short bar comes back as two or thre
 lines rather than one long one. A single word longer than the bar is refused, and
 the message names the band rather than the diagram.
 
+## Drawing a change
+
+A design document proposing a change usually wants to say *what is new, what
+goes, what changes* — and hand-drawn, that is two diagrams side by side that the
+reader has to diff by eye. In a `flow` or a `tree`, draw the target state **once**
+and mark the change on it with `status`, the same vocabulary `files` uses:
+
+```json
+{
+  "version": 1,
+  "kind": "flow",
+  "nodes": [
+    {"id": "web", "text": "Web front end"},
+    {"id": "mono", "text": "Monolith", "status": "changed"},
+    {"id": "sess", "text": "Session service", "status": "added"},
+    {"id": "table", "text": "Sessions table", "status": "removed"}
+  ],
+  "edges": [
+    {"from": "web", "to": "mono"},
+    {"from": "web", "to": "sess", "status": "added"},
+    {"from": "mono", "to": "table", "status": "removed"}
+  ]
+}
+```
+
+A marked box carries a tag inside it — `+ added`, `~ changed`, `− removed`, a
+mark and a word, never a colour — and a removed box is also outlined dashed with
+its words struck through. A marked edge writes its mark before its label (or
+alone, mid-edge), and a removed edge is drawn dashed with no head whatever its
+role. When any edge is marked, a key of the statuses used goes under the drawing.
+
+The marks have to agree with each other: an edge touching a removed box must be
+`removed` (it cannot outlive what it connects), and one touching an added box must
+be `added` (an edge to something new is new). Either is refused at the edge's
+`status`. A `cycle` refuses `status` — a loop that changes is a different loop,
+so draw both. See [`reference/flow-status-search.json`](reference/flow-status-search.json),
+[`reference/flow-status-failover.json`](reference/flow-status-failover.json) and
+[`reference/tree-status-reorg.json`](reference/tree-status-reorg.json).
+
+## A grid whose cells say how much
+
+A `matrix` fills cells that share a `group` alike, and by default the groups are a
+set: *data*, *copy* and *parity* get three unrelated patterns. A heatmap, a risk
+matrix or a skills matrix needs the opposite — the groups are an **order**, and
+the eye should find the heavy cells without reading a word. Say so with `scale`,
+the group names weakest first:
+
+```json
+{
+  "version": 1,
+  "kind": "matrix",
+  "columns": ["Minor", "Severe"],
+  "rows": ["Likely", "Rare"],
+  "scale": ["low", "medium", "high"],
+  "cells": [
+    {"text": "Ledger totals disagree", "column": 1, "row": 0, "group": "high"},
+    {"text": "Dashboards lag", "column": 0, "row": 0, "group": "medium"},
+    {"text": "Symbols misplaced", "column": 0, "row": 1, "group": "low"},
+    {"text": "Not assessed", "column": 1, "row": 1}
+  ]
+}
+```
+
+The cells are then filled by **tone**, light to dark, from the theme's
+`[mark] ramp` — lightness is what survives greyscale, and patterns cannot carry
+an order. The key lists every step in scale order, with `key` texts where you
+give them. A cell with no `group` stays blank, for *not assessed*. Every cell
+`group` must be a step, a scale has 2 to 5 steps (past five, neighbouring greys
+merge in print), and there is no numeric `value` to colour by: bucket the
+numbers, name the buckets, and keep the number in the cell's text if it
+matters. See [`reference/matrix-scale-risk.json`](reference/matrix-scale-risk.json),
+[`reference/matrix-scale-ci.json`](reference/matrix-scale-ci.json) and
+[`reference/matrix-scale-skills.json`](reference/matrix-scale-skills.json).
+
+## A loop with something in its middle
+
+Many loops turn around something that is not a step: a quality cycle around the
+management system it improves, a data flywheel around the log it learns from. Put
+that on the ring and it becomes a fifth step; give a node `centre` and a `cycle`
+refuses it, because a ring has no node in the middle. Say it with `hub`:
+
+```json
+{
+  "version": 1,
+  "kind": "cycle",
+  "hub": {"id": "log", "text": "Interaction log"},
+  "nodes": [
+    {"id": "rank", "text": "Rank the items"},
+    {"id": "show", "text": "Show them"},
+    {"id": "click", "text": "User clicks or skips"},
+    {"id": "train", "text": "Retrain nightly"}
+  ],
+  "edges": [
+    {"from": "rank", "to": "show"},
+    {"from": "show", "to": "click"},
+    {"from": "click", "to": "train"},
+    {"from": "train", "to": "rank"},
+    {"from": "click", "to": "log", "role": "weak", "label": "written"}
+  ]
+}
+```
+
+The hub is drawn centred inside the ring, and the ring grows to make room for it.
+It is not a node: the check that the edges close one loop through every step
+ignores it. An edge may name it, but only as a **spoke**, in `aside`, `weak` or
+`link` — a solid arrow into the middle would read as one more step, so `flow`,
+`strong`, `exchange` and `owns` are refused at the edge's `role`. A hub needs at
+least three steps around it (two and a middle is a `flow`), and a shortcut whose
+chord would cross the middle is refused rather than drawn through the hub. See
+[`reference/cycle-hub-quality.json`](reference/cycle-hub-quality.json) and
+[`reference/cycle-hub-flywheel.json`](reference/cycle-hub-flywheel.json).
+
+## A state machine
+
+A `flow`'s boxes are things done, once each; a state machine's are conditions
+something *is in*, revisited, with every arrow labelled by what moves it. Say
+that with `states`:
+
+```json
+{
+  "version": 1,
+  "kind": "states",
+  "initial": "closed",
+  "states": [
+    {"id": "closed", "text": "Closed\ncalls go through"},
+    {"id": "open", "text": "Open\ncalls fail fast"},
+    {"id": "half", "text": "Half-open\none trial call"}
+  ],
+  "transitions": [
+    {"from": "closed", "to": "closed", "event": "call fails", "guard": "under the threshold", "action": "count it"},
+    {"from": "closed", "to": "open", "event": "call fails", "guard": "threshold reached"},
+    {"from": "open", "to": "half", "event": "cool-down elapses"},
+    {"from": "half", "to": "closed", "event": "trial succeeds"},
+    {"from": "half", "to": "open", "event": "trial fails"}
+  ]
+}
+```
+
+`initial` is drawn as a filled dot with an arrow to that state; each state in
+`final` gets an arrow to a ringed dot (the theme's `[states]` sizes both). A
+transition's label is composed from `event`, `guard` and `action` — one under
+the other, the guard in brackets and the action after a slash — so write the
+words and not the punctuation. A transition from a state to itself is a loop on
+the side of its box, across the reading direction, with its label outside it;
+a state may have two. Roles: `step`, `emphasis` or `terminal` on a state;
+`flow`, `strong` (the happy path) or `weak` (a rare or error path) on a
+transition.
+
+`groups` are composite states, and may nest. A transition **from** a group
+leaves it from whichever state inside is current; one **to** a group enters it at
+the group's own `initial`, which is drawn as a dot inside the frame — and is
+required when anything enters the group.
+
+Refused, each at its pointer: a state no transition reaches from `initial` (a
+bug in the machine — add the transition or delete the state); a `final` state
+with an outgoing transition; `final` naming a group; two transitions leaving one
+state on the same event and guard for different states (give them guards); a
+loop on a group, or a third loop on one state. A machine with parallel regions
+is two machines: draw two. See
+[`reference/states-breaker.json`](reference/states-breaker.json),
+[`reference/states-invoice.json`](reference/states-invoice.json) and
+[`reference/states-ticket.json`](reference/states-ticket.json).
+
+## A sequence diagram
+
+When the same few participants talk to each other several times and the order
+is the point — a protocol, a request through three services, a runbook's
+hand-offs — draw a `sequence`. Participants are columns in the order written,
+messages are rows in the order written, and nothing else is placed:
+
+```json
+{
+  "version": 1,
+  "kind": "sequence",
+  "participants": [
+    {"id": "client", "text": "Client"},
+    {"id": "service", "text": "Order service", "role": "emphasis"},
+    {"id": "db", "text": "Database"}
+  ],
+  "messages": [
+    {"id": "ask", "from": "client", "to": "service", "text": "get order 42"},
+    {"id": "read", "from": "service", "to": "db", "text": "read the row"},
+    {"id": "row", "from": "db", "to": "service", "text": "the row", "role": "weak"},
+    {"from": "service", "to": "client", "text": "the order", "role": "weak", "note": "cached for a minute"}
+  ],
+  "fragments": [
+    {"operator": "opt", "from": "read", "to": "row", "text": "not in the cache"}
+  ]
+}
+```
+
+A message's `role` says what it is: `flow` (the default) is a call, `weak` a
+reply — dashed with an open head — and `strong` the exchange that matters. A call
+answered later by a `weak` reply from the participant it called gives that
+participant an **activation bar** from the call's row to the reply's, nested when
+calls nest; you never write one. A call nobody answers has no bar, which is how
+an asynchronous message is drawn. A message `from` and `to` the same participant
+is a hook on the right of its lifeline, and a `note` is set on its message's row
+in one column right of the last lifeline.
+
+`fragments` frame a run of messages, by the ids of the first and last: `loop`,
+`opt`, `alt` or `par`, written in the frame's tab, with `text` as the condition
+beside it. An `alt` or `par` may be divided by `else` — `[{"at": "<id>", "text":
+…}]`, a dashed line above that message. If a reply inside one branch of an `alt`
+answers a call made before the frame, the bar runs on to the last answer in the
+frame. `groups` frame a run of neighbouring lifelines, named at the top.
+Participant roles are `step`, `emphasis`, or `note` for an outside system drawn
+as words with no box; the theme's `[sequence]` sets the bar's width and the role
+a lifeline is drawn in.
+
+Refused, each at its pointer: a message naming an unknown participant; a
+participant no message names; a fragment that ends before it starts, or that
+starts inside another and ends outside it; `else` on a `loop` or `opt`, or a
+divider outside its frame, at its top, or inside a nested frame; a group whose
+members are not neighbours in `participants` (the message names the one in the
+way), or a participant in two groups; any role with no single direction
+(`aside`, `link`, `exchange`, `owns`). Budget: 8 participants, 30 messages —
+past that it is a trace; split it into phases. See
+[`reference/sequence-dns.json`](reference/sequence-dns.json),
+[`reference/sequence-upload.json`](reference/sequence-upload.json),
+[`reference/sequence-drain.json`](reference/sequence-drain.json) and
+[`reference/sequence-checkout.json`](reference/sequence-checkout.json).
+
+## Swimlanes
+
+When what matters is *who hands off to whom* — a request crossing from support to
+engineering and back — draw `lanes`. It takes a `flow` document unchanged, with
+one difference: every node names its `actor`, and the actor is drawn once, as a
+strip of the page holding all of that party's steps, instead of as each box's
+lead. An arrow that crosses from one strip to another is a hand-off:
+
+```json
+{
+  "version": 1,
+  "kind": "lanes",
+  "lanes": ["Employee", "Manager", "Finance"],
+  "nodes": [
+    {"id": "submit", "text": "Submits receipts", "actor": "Employee", "role": "start"},
+    {"id": "approve", "text": "Approves?", "actor": "Manager", "role": "decision"},
+    {"id": "fix", "text": "Corrects the claim", "actor": "Employee"},
+    {"id": "pay", "text": "Pays it", "actor": "Finance", "role": "terminal"}
+  ],
+  "edges": [
+    {"from": "submit", "to": "approve"},
+    {"from": "approve", "to": "fix", "label": "no"},
+    {"from": "fix", "to": "approve", "role": "weak"},
+    {"from": "approve", "to": "pay", "label": "yes"}
+  ]
+}
+```
+
+The graph is ranked exactly as a `flow`'s, along the lanes; a box's lane decides
+the other coordinate, and two steps of one party at the same rank stack inside
+its strip. `lanes` gives the order of the strips — omit it and they come in the
+order their actors first appear. Since the actor is not in the box, `text` may
+use a newline for its own lead and detail again. Node and edge roles, edge
+labels, self-loops and `status` are a flow's.
+
+Whether the strips run across the page as rows (ranks reading left to right, a
+column of names at the left) or down it as columns (ranks reading down, a name
+over each) is the theme's `[lanes] orientation`: `auto`, the default, takes rows
+when they fit the width and columns when they do not. At the default width, a
+process of more than four or five steps in a row reads down. `[lanes] separator`
+is the edge role the line between two lanes is drawn in.
+
+Refused, each at its pointer: a node with no `actor` (the message points you back
+to `flow`); an actor not in `lanes`, naming the closest lane; a lane in `lanes`
+that no node names, or one listed twice; `groups`, `bands` and `centre`, because
+a lane is already the container and a frame or band would cross it; and the
+`group` node role. Budget: a flow's 15 nodes and 16 edges, and 6 lanes, counted
+from the actors when `lanes` is omitted. See
+[`reference/lanes-disclosure.json`](reference/lanes-disclosure.json),
+[`reference/lanes-tender.json`](reference/lanes-tender.json),
+[`reference/lanes-expense.json`](reference/lanes-expense.json) and
+[`reference/lanes-onboarding.json`](reference/lanes-onboarding.json).
+
+## Data models, schemas and class diagrams
+
+An ER model, a database schema and a class diagram are one drawing — a named box
+with a list in it, and typed relations between boxes — so they are one kind,
+`entities`, and a document uses the parts its vocabulary needs:
+
+```json
+{
+  "version": 1,
+  "kind": "entities",
+  "entities": [
+    {"id": "teams", "text": "`teams`", "fields": [
+      {"id": "t_id", "text": "`id`", "type": "uuid", "key": "primary"},
+      {"text": "`name`", "type": "text"}
+    ]},
+    {"id": "people", "text": "`people`", "fields": [
+      {"text": "`id`", "type": "uuid", "key": "primary"},
+      {"id": "p_team", "text": "`team_id`", "type": "uuid", "key": "foreign"},
+      {"text": "..."}
+    ]}
+  ],
+  "edges": [
+    {"from": "people", "from_field": "p_team", "to": "teams", "to_field": "t_id",
+     "from_end": "zero-or-many", "to_end": "one"}
+  ]
+}
+```
+
+Each entity is drawn as its name (bold, with an optional `tag` over it in
+guillemets — `«interface»`), a rule, its `fields` one row each, and its
+`operations` under a second rule. A field may carry a `type`, drawn right-aligned
+in the code face, and a `key` — `primary`, `foreign` or `unique`, drawn as the
+letters `PK`, `FK`, `UQ`. A last field of `...` is a row standing for the fields
+not shown. Rows never wrap: a row too wide for the entity's share of the canvas
+is a `FitError` naming it.
+
+A relation lands on the box — or, when it names `from_field` or `to_field`, on
+that **row**, at the side facing the other entity: a foreign key drawn from its
+own column. `from_end` and `to_end` say *how many of this end per one of the
+other* — `one`, `zero-or-one`, `many`, `zero-or-many`, `one-or-many` — and the
+theme's `[entities] notation` says how that is drawn: crow's-foot marks (the
+default) or UML's numbers (`1`, `0..1`, `*`, `0..*`, `1..*`). An end with a
+cardinality draws it in place of the role's head.
+
+Relation roles: `link` (the default — an association has no direction), `owns`
+(composition: `from` is a part of `to`, diamond at `to`), `weak` (dashed: a
+dependency, or a non-identifying relation), `strong` (the one that matters), and
+`inherits` and `realizes`, which only this kind accepts — a hollow triangle at the
+general end, solid for a subclass and dashed for an implementation. With a
+hierarchy in the diagram, general entities are placed above specific ones and it
+reads down; without one it reads across, the one side of each relation before
+its many side; either way the other direction is taken when the first does not
+fit.
+
+Refused, each at its pointer: a cardinality or a row on `inherits`/`realizes`; a
+hierarchy that loops (at the relation that closes it); a `from_field` that is a
+field of another entity; a relation of an entity to itself; a `to_end` on `owns`
+(the whole is always one); a `...` field that is not last, or that carries a
+type, key or id; a name on two lines; a `tag` over 16 characters; and aggregation
+(`aggregates`), which is not offered — say `owns` or `link`. Visibility is not a
+field: write `- name` in `text`. Entity roles are `step`, `emphasis` and `note` (an
+outside entity, drawn dashed). Budget: 8 entities, 12 edges, 12 fields and 8
+operations per entity. See
+[`reference/entities-library.json`](reference/entities-library.json),
+[`reference/entities-orders.json`](reference/entities-orders.json),
+[`reference/entities-shapes.json`](reference/entities-shapes.json) and
+[`reference/entities-enrolment.json`](reference/entities-enrolment.json).
+
+## A plan
+
+A `timeline` is one axis of instants: *when things happened*. A plan is one row
+per piece of work, each an interval, and what the reader looks for is overlap —
+what runs in parallel, what waits on what, what the plan looks like in week six.
+That is `gantt`:
+
+```json
+{
+  "version": 1,
+  "kind": "gantt",
+  "axis": {"label": "Week", "min": 0, "max": 10},
+  "tasks": [
+    {"id": "provision", "text": "Provision the cluster", "start": 0, "end": 2},
+    {"id": "backfill", "text": "Backfill history", "start": 2, "end": 6, "role": "emphasis"},
+    {"id": "cutover", "text": "Cut reads over", "at": 6},
+    {"id": "retire", "text": "Retire the old cluster", "start": 6, "end": 10}
+  ],
+  "edges": [
+    {"from": "provision", "to": "backfill"},
+    {"from": "backfill", "to": "cutover"},
+    {"from": "cutover", "to": "retire"}
+  ],
+  "marks": [{"text": "today", "at": 3}]
+}
+```
+
+**There are no dates.** A task's `start` and `end` are numbers in a unit the
+axis names — week 3, day 12, minute 45 — and a real calendar, with its weekends
+and month lengths, is a project tool's job. For a plan by month, sprint or term,
+name the periods in `axis.categories`: the first runs from 1 to 2, the second
+from 2 to 3, and each name is written in the middle of its period, so a task
+over the first three months is `"start": 1, "end": 4`. Categories set the range,
+so they take no `min` or `max`. Otherwise an end the author does not pin is taken
+out to the next tick.
+
+Rows are in the order written, labels in a column at the left (as wide as the
+widest, up to about a third of the canvas, then wrapped). A task with `at`
+instead of `start` and `end` is a **milestone**, drawn as a filled diamond (the
+theme's `[gantt] milestone` may make it a dot). An `actor` is the label's lead,
+as in a `flow` box. Task roles: `step` (the default bar), `strong` (on the
+critical path — heavier, the same word its dependencies take, and not counted by
+the emphasis cap), `emphasis` (the task the diagram is about — heavier and
+differently filled) and `note` (outside the plan — a light dashed outline).
+
+`edges` are finish-to-start: each is drawn from the end of one bar into the start
+of the other, and the line goes round the bars it can rather than through them.
+Roles `flow`, `strong` (the critical path) and `weak` (a soft dependency).
+`groups` are phases: each a run of consecutive tasks, drawn as a bold heading row
+with a bracket over the phase's span, its tasks indented under it. `marks` are
+named points — today, a deadline, a freeze — each a line across every row (in the
+theme's `[gantt] marks` edge role) with its name beside the top.
+
+Refused, each at its pointer: a string where a number belongs (a date, almost
+always — the message suggests a unit and `categories`); a task with both `at` and
+`start`/`end`, or neither, or only one end; an `end` not after its `start`; any
+value or mark off the axis; a dependency whose `to` starts before its `from` ends
+(either the plan or the dependency is wrong, and only the author knows which); a
+dependency on an unknown task or on itself; a phase whose tasks are not
+consecutive, a task in two phases, and — with phases — a task in none; a phase
+with no `text`; `progress`, which is status rather than plan; and a newline in a
+task's `text` when it has an actor. Budget: 16 tasks, 20 edges and 4 marks. See
+[`reference/gantt-migration.json`](reference/gantt-migration.json),
+[`reference/gantt-critical-path.json`](reference/gantt-critical-path.json),
+[`reference/gantt-upgrade.json`](reference/gantt-upgrade.json) and
+[`reference/gantt-semester.json`](reference/gantt-semester.json).
+
+## A board
+
+A kanban board, a retrospective and a story map are one picture: **cards sorted
+into columns, with no connectors**. That is `board`:
+
+```json
+{
+  "version": 1,
+  "kind": "board",
+  "columns": [
+    {"id": "todo", "text": "To do"},
+    {"id": "review", "text": "In review", "limit": 2},
+    {"id": "done", "text": "Published"}
+  ],
+  "cards": [
+    {"text": "Troubleshooting", "column": "todo"},
+    {"text": "Theming guide", "column": "review", "actor": "Ana"},
+    {"text": "MCP server", "column": "review", "role": "emphasis", "note": "blocked on a decision"},
+    {"text": "Gallery page", "column": "review"},
+    {"text": "Install guide", "column": "done"}
+  ]
+}
+```
+
+Columns are equal and left to right as written, each a bold heading over a
+rule. A column with a `limit` is **counted by drawspec**: the heading reads
+`3 / 2` here, and over its limit it takes `emphasis` (a heavier rule and a bold
+count) — never write the count yourself. Cards stack in each cell **in the order
+written**, top-aligned, so a short column looks short. Card roles: `step`,
+`emphasis` (blocked, at risk) and `note` (a placeholder or a summary such as
+`+ 6 more`, a light dashed card, not counted against a limit). An `actor` is the
+card's lead, as in a `flow` box; a card's `note` hangs under the card, smaller.
+
+With `rows` it is a **story map**: each row a slice across every column (a
+release), named in a margin at the left, and every card names its `row`. `cut`
+names the row the first release ends at; the board's one heavy line is drawn
+under it (the theme's `[board] cut`), and the other slices are parted by
+`[board] separator`.
+
+Refused, each at its pointer: `edges` — if the order between cards matters it is
+a `flow`, or `lanes`; a per-card `label`, `tag` or `colour` (a card's kind is its
+column); a card in an unknown column or row; a `row` on a board without rows, or
+a card without one on a board with them (half a story map is a mistake); a `cut`
+without rows, on an unknown row or on the last; and a newline in a card's `text`
+when it has an actor. Budget: 6 columns, 4 rows, 32 cards, and 8 cards in one
+cell — past that, end the cell with a summary card. See
+[`reference/board-migration.json`](reference/board-migration.json),
+[`reference/board-retrospective.json`](reference/board-retrospective.json),
+[`reference/board-story-map.json`](reference/board-story-map.json) and
+[`reference/board-onboarding.json`](reference/board-onboarding.json).
+
+## A fishbone
+
+A root-cause review has one claim, and it is fixed: **one effect; causes grouped
+into categories; nothing deeper**. Drawn as a two-level `tree`, the effect sits on
+top as if it owned its causes. `fishbone` draws it the other way round —
+everything flows into the head:
+
+```json
+{
+  "version": 1,
+  "kind": "fishbone",
+  "title": "Why the backup finished at 09:40",
+  "effect": {"text": "Nightly backup overran its window by 3 h 40 min"},
+  "categories": [
+    {"text": "Data", "causes": [
+      {"text": "Audit table grew 4× after the logging change", "role": "emphasis"},
+      {"text": "No retention on audit rows"}
+    ]},
+    {"text": "Infrastructure", "causes": [{"text": "Backup volume on slower storage tier"}]},
+    {"text": "Monitoring", "causes": [{"text": "Duration alert only at 6 h", "role": "note"}]}
+  ]
+}
+```
+
+The effect is the box at the head of the spine, always drawn as the emphasis (it
+takes no `role`). Categories are bones, alternately above and below the spine,
+**nearest the head first**, all one length and slanted at the theme's `[fishbone]
+slant` (60° by default; `90` draws upright bones). A cause is a tick off its bone
+with its words standing on it, listed from the category's name inwards. Cause
+roles: `step`, `emphasis` — the confirmed root cause, set bold, its tick and the
+rest of its bone to the spine drawn in the spine's heavy role — and `note`, a
+cause investigated and ruled out, on a light dashed tick. Keep the ruled-out
+causes: a fishbone records what was investigated.
+
+Refused, each at its pointer: `causes` inside a cause — a sub-cause of a cause is
+a second fishbone with that cause as its effect; a category with no causes (write
+`"nothing found"` as a `note` cause instead); fewer than 2 categories; `edges` (a
+cause that feeds another cause is a `flow`); a cause role with a shape
+(`decision`, `terminal`); a `role` on the effect. Budget: 6 categories and 5
+causes in one. When the causes will not fit the width, they wrap narrower; when no
+width works, `FitError` names the longest cause. See
+[`reference/fishbone-backup.json`](reference/fishbone-backup.json),
+[`reference/fishbone-late-orders.json`](reference/fishbone-late-orders.json),
+[`reference/fishbone-flaky-ci.json`](reference/fishbone-flaky-ci.json) and
+[`reference/fishbone-signups.json`](reference/fishbone-signups.json).
+
+## A Venn diagram
+
+"What do these share" is a Venn diagram, and with two or three sets it needs no
+coordinates at all: every region is fixed by **which sets it is in**. That is
+`venn`:
+
+```json
+{
+  "version": 1,
+  "kind": "venn",
+  "title": "Two frameworks, one breach",
+  "sets": [
+    {"id": "gdpr", "text": "Data protection regulation"},
+    {"id": "ens", "text": "National security framework"}
+  ],
+  "regions": [
+    {"in": ["gdpr"], "text": "Notify the supervisory authority within 72 h"},
+    {"in": ["ens"], "text": "Report to the national CERT"},
+    {"in": ["gdpr", "ens"], "text": "Keep an incident record", "role": "emphasis"}
+  ]
+}
+```
+
+`in` is the exact list of set ids a region belongs to, and no others: `["gdpr"]`
+is what only that set holds. The circles are equal — two side by side, or three
+in a triangle, their centres a radius apart — and as small as they can be while
+every region's words fit inside their region, clear of every outline. A region
+not listed is drawn empty. Set names are drawn outside, above two circles, or
+above the top one and below the other two of three. Roles: a set's `emphasis`
+draws a heavier outline; a region's `emphasis` sets its words bold and fills the
+region with the theme's first mark fill, along its exact outline.
+
+Refused, each at its pointer: one set, or four or more (no arrangement of four
+circles shows every region — use a `matrix`, sets as columns and items as rows);
+an `in` naming an unknown set, empty, or naming a set twice; the same membership
+twice; `subset_of` (a set inside another is `rings`); `size` or `value` (the
+circles are equal on purpose: a Venn diagram says what overlaps, not how much);
+`edges`. Words too long for their region at the largest size the width allows are
+a `FitError` naming the region. See
+[`reference/venn-frameworks.json`](reference/venn-frameworks.json),
+[`reference/venn-data-roles.json`](reference/venn-data-roles.json),
+[`reference/venn-parity.json`](reference/venn-parity.json) and
+[`reference/venn-telemetry.json`](reference/venn-telemetry.json).
+
+## A journey map
+
+"What does a citizen go through to get X, and how does it feel" is a journey map:
+one person's feeling across the stages of an experience, set against what they
+do at each. The feeling line is the reason to draw it, and the feeling is a
+**name**, not a score. That is `journey`:
+
+```json
+{
+  "version": 1,
+  "kind": "journey",
+  "title": "The first week, as the new starter lives it",
+  "feelings": ["lost", "neutral", "welcome"],
+  "rows": [{"id": "does", "text": "Does"}, {"id": "needs", "text": "Needs"}],
+  "stages": [
+    {"text": "Day 1", "feeling": "welcome", "details": [
+      {"row": "does", "text": "Meets the team"}, {"row": "needs", "text": "A buddy to ask"}]},
+    {"text": "Day 2", "feeling": "lost", "role": "emphasis", "details": [
+      {"row": "does", "text": "Waits for accounts"}, {"row": "needs", "text": "Access on day one"}]},
+    {"text": "Day 5", "feeling": "welcome", "details": [
+      {"row": "does", "text": "Ships a first change"}]}
+  ]
+}
+```
+
+`feelings` are the levels, **worst first**: each is a light guide across the map,
+named once on the left, the worst at the bottom. Every stage names one, and its
+point sits on that guide at the middle of its column; the heavy line passes
+through every point and never overshoots, so two neighbours at one level are
+joined by a flat segment. Stages are equal columns, left to right as written,
+each under its bold heading. `rows` are optional detail bands under the line —
+what the person does, where, what gets in the way — and a stage fills them with
+`details`, a `{row, text}` per row; a row a stage does not name is an empty cell.
+Without rows the map is the headings and the line. The `emphasis` stage — usually
+the trough — has its column framed and its point drawn larger and solid. The
+theme's `[journey]` section picks the line's, the guides' and the row rules' edge
+roles.
+
+Refused, each at its pointer: a number for a feeling, or a feeling not in
+`feelings` (naming the closest); a stage with no `feeling` (it is a `flow` or a
+`timeline`); `personas` (two lines cross and erase each other — one map per
+person); `score`; `edges` (the stages are already in order); a detail in a row
+that is not declared, or twice in one stage; one feeling or one stage. Budget:
+7 stages, 5 feelings, 4 rows — past that, split it into two journeys, before and
+after a hand-off. A word wider than its column is a `FitError`. See
+[`reference/journey-parking-permit.json`](reference/journey-parking-permit.json),
+[`reference/journey-first-week.json`](reference/journey-first-week.json),
+[`reference/journey-bug-report.json`](reference/journey-bug-report.json) and
+[`reference/journey-outpatient.json`](reference/journey-outpatient.json).
+
+## A treemap
+
+"What is in the bundle, and what dominates" is one total split into a few parts,
+and a treemap says it as one block whose parts are visibly a whole. That is
+`treemap`:
+
+```json
+{
+  "version": 1,
+  "kind": "treemap",
+  "title": "Why /var is full on the build server",
+  "unit": "GB",
+  "groups": [
+    {"id": "docker", "text": "`/var/lib/docker`"},
+    {"id": "log", "text": "`/var/log`"}
+  ],
+  "parts": [
+    {"text": "Dangling images", "amount": 61, "group": "docker", "role": "emphasis"},
+    {"text": "Build cache", "amount": 38, "group": "docker"},
+    {"text": "Journal", "amount": 9, "group": "log"},
+    {"text": "App logs", "amount": 6, "group": "log"},
+    {"text": "Other", "amount": 4, "role": "note"}
+  ]
+}
+```
+
+It is for **stating a small set of proportions you already know** — not for
+exploring data. drawspec is not charting software, and `treemap` keeps to the
+same line as `chart`: at most ten parts and one level of groups, and every part
+labelled inside itself. Each part's `amount` (more than 0, in the document's
+`unit`) sets its area; the gap between cells is taken from the cells and the
+areas corrected for it, so every drawn share is the amount's share of the total.
+Parts are laid out largest first — written order only breaks ties — and a
+`note` part, the remainder, goes last. The block is the canvas width wide and
+three fifths of it tall, a little taller if a label needs it, or the top-level
+`height`. A part's words sit top-left in its cell with its amount under them;
+`"values": false` drops the amounts. Roles: `emphasis` (the part the diagram is
+about, not automatically the largest) is outlined heavier with its words bold;
+`note` is a light dashed outline. A group is a captioned frame — its name and
+total at the top — and its parts take the theme's mark fills, one per group in
+the order written.
+
+Refused, each at its pointer: one part (it is the total); an `amount` of 0 or
+less; `value` (it is called `amount`); `percent` or `share` (drawspec computes
+the share); a `group` that is not declared (naming the closest), or a group no
+part names; duplicate group ids; a second level — `parts` or `groups` inside a
+group, or `children`; `edges`; `fill`. Budget: 10 parts, 4 groups. A part too
+small for its words at the tallest height tried is a `FitError` naming the part
+and its pointer, and saying which parts to merge into one `note` part — never a
+label outside its cell, never a legend. See
+[`reference/treemap-bundle.json`](reference/treemap-bundle.json),
+[`reference/treemap-disk.json`](reference/treemap-disk.json),
+[`reference/treemap-oncall.json`](reference/treemap-oncall.json) and
+[`reference/treemap-latency.json`](reference/treemap-latency.json).
+
+## A sankey
+
+"Where did the budget go" is one quantity split, and sometimes merged, along the
+way, and a sankey draws each flow as a band whose thickness is its amount. That
+is `sankey`:
+
+```json
+{
+  "version": 1,
+  "kind": "sankey",
+  "title": "64 reserved cores, by team and workload",
+  "unit": "cores",
+  "nodes": [
+    {"id": "search", "text": "Search team"},
+    {"id": "pay", "text": "Payments team"},
+    {"id": "api", "text": "APIs"},
+    {"id": "batch", "text": "Batch jobs"},
+    {"id": "idle", "text": "Reserved, idle", "role": "note"}
+  ],
+  "flows": [
+    {"from": "search", "to": "api", "amount": 18},
+    {"from": "search", "to": "batch", "amount": 14},
+    {"from": "search", "to": "idle", "amount": 8},
+    {"from": "pay", "to": "api", "amount": 16},
+    {"from": "pay", "to": "idle", "amount": 8}
+  ]
+}
+```
+
+Like `chart` and `treemap`, it is for **stating a small set of flows you already
+know** — not for exploring data: at most fourteen nodes, twenty-four flows and
+four columns. A node's column is never written: each sits one column past the
+longest way into it, and every end — a node nothing leaves — is in the last
+column. A flow that skips a column passes through it in a slot of its own, never
+across a bar. The order down each column starts from the written order and is
+rearranged only to cross fewer bands. Each flow's `amount` (more than 0, in the
+document's `unit`) sets its band's thickness, at one scale for the whole drawing,
+and each bar is as tall as what passes through it; its total is written under its
+name (`"values": false` drops them). The first column's labels sit left of their
+bars, the last column's right, and an inner column's above its bar — never on a
+band. Roles: a node's `emphasis` outlines its bar heavier and sets its words
+bold, and `note` (the remainder: `Lost`, `Idle`) draws it lighter, with its
+bands; a flow's `strong` draws the path the diagram is about darker.
+
+Refused, each at its pointer and before any layout: a flow that closes a loop; a
+middle node whose inflow is not its outflow (the message gives the difference —
+add a flow to a named `note` node); a flow under 1/120 of the fullest column, a
+band too thin to see (merge the small flows into one `Other`); a fifth column; a
+flow from a node to itself, or a second flow between the same two nodes; an
+unknown node (naming the closest), a duplicate id, a node no flow touches; an
+`amount` of 0 or less; `value` (it is called `amount`), `percent`, `share`,
+`column`, `rank`, a flow's `label`, `edges`. A label too wide to leave the bands
+room at every width tried is a `FitError` naming the node. See
+[`reference/sankey-budget.json`](reference/sankey-budget.json),
+[`reference/sankey-tickets.json`](reference/sankey-tickets.json),
+[`reference/sankey-cores.json`](reference/sankey-cores.json) and
+[`reference/sankey-energy.json`](reference/sankey-energy.json).
+
 ## Asking for a wide drawing instead of a tall one
 
 Reading direction is part of what a diagram says, and some processes read across
@@ -528,12 +1342,14 @@ Two things follow from it being a constraint rather than a switch:
 ## When it refuses
 
 A refusal is a designed outcome and the message is meant to be actionable. The
-three you will meet:
+ones you will meet:
 
 | It says | It means | Do this |
 |---|---|---|
 | A violation with a JSON pointer | A field is misspelt, missing, or not legal for this kind | Fix the field the pointer names. `additionalProperties` is closed everywhere, so a key that looks ignored is always an error instead. |
 | `… is the tool's output, never its input` | The document tried to place, size or colour something | Say what you mean instead — a `role` rather than a `stroke`, a `kind` rather than an arrangement. |
+| `… is past what one flow can be read at` | The document holds more than its kind's [readability budget](format.md#the-readability-budget) | Split it into an overview plus a detail diagram per part. A larger `width` does not lift it. |
+| `… elements say 'emphasis', and a diagram may have 2` | More than two elements are marked as the focus | Keep the one or two the diagram is about and give the rest their ordinary role. |
 | A fit refusal | The content cannot be drawn above the legibility floor at this width | Shorten the text, split the diagram, or raise `width` — in that order. A smaller type size is not offered, on purpose. |
 
 ## What it is not
@@ -542,4 +1358,4 @@ drawspec draws simple, declarative diagrams well, and is the wrong tool for
 several jobs it might look like it does: it is not a Graphviz replacement, not
 charting software, not a drawing program, and not a rich-text system. The
 [README](../README.md#what-it-is-not) says why for each, and it is worth reading
-before you push it past about twenty boxes.
+before you push it past its readability budget.

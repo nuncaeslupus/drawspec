@@ -1,0 +1,40 @@
+/* Tidemark's site palette: the design system a project's diagrams should match.
+   A sample brand for `drawspec theme from`; drawspec's own, not anyone else's. */
+
+@layer base {
+  :root {
+    --font-sans: "Tidemark Sans", "DejaVu Sans", system-ui, sans-serif;
+    --font-heading: "Tidemark Display", Georgia, serif;
+    --font-mono: "Tidemark Mono", "DejaVu Sans Mono", monospace;
+    --font-size-base: 1rem;
+    --line-height-body: 1.5;
+
+    --color-teal-600: #0f7b8a;
+    --color-accent: var(--color-teal-600);
+    --color-accent-hover: #0b5f6b;
+    --color-secondary: #f2c230;          /* too pale for a white page */
+    --color-tertiary: #5b4bb7;
+    --color-muted: #6b7a86;
+    --color-text: #1f2933;
+    --color-text-muted: #52606d;
+    --color-background: #fafaf7;
+    --color-surface: #ffffff;
+    --color-border: #e4e7eb;
+    --color-danger: #c62f2f;
+    --color-success: #2f8a4e;
+
+    --radius-md: 6px;
+    --radius-pill: 9999px;
+    --border-width: 1.25px;
+    --space-2: 0.5rem;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.08);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-accent: #4fc3d1;
+    --color-background: #101418;
+    --color-text: #e4e7eb;
+  }
+}

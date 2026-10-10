@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "kind": "entities",
+  "title": "Every shape can say its area",
+  "description": "A class diagram: an interface, an abstract class realising it, two subclasses, and a picture made of shapes. Inheritance and realisation are drawn with a hollow triangle at the general end; composition with a diamond at the whole.",
+  "entities": [
+    {"id": "drawable", "text": "Drawable", "tag": "interface", "operations": ["draw(canvas)"]},
+    {"id": "shape", "text": "Shape", "tag": "abstract", "fields": [{"text": "origin", "type": "Point"}], "operations": ["area() → float", "move(dx, dy)"]},
+    {"id": "circle", "text": "Circle", "fields": [{"text": "radius", "type": "float"}], "operations": ["area() → float"]},
+    {"id": "rect", "text": "Rectangle", "fields": [{"text": "width", "type": "float"}, {"text": "height", "type": "float"}], "operations": ["area() → float"]},
+    {"id": "picture", "text": "Picture", "operations": ["add(shape)", "total_area() → float"]}
+  ],
+  "edges": [
+    {"from": "shape", "to": "drawable", "role": "realizes"},
+    {"from": "circle", "to": "shape", "role": "inherits"},
+    {"from": "rect", "to": "shape", "role": "inherits"},
+    {"from": "shape", "to": "picture", "role": "owns", "from_end": "zero-or-many"}
+  ]
+}

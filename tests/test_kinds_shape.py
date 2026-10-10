@@ -249,7 +249,10 @@ def test_rings_of_one_is_a_single_centred_circle() -> None:
 
 def test_too_many_rings_raises_fiterror_naming_the_remedies() -> None:
     with pytest.raises(FitError) as error:
-        rings(*[f"Ring number {index} with a reasonably long label" for index in range(9)])
+        rings(
+            *[f"Ring number {index} with a reasonably long label" for index in range(6)],
+            width=240,
+        )
     assert "fewer rings" in str(error.value)
 
 

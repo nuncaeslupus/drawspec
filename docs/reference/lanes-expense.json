@@ -1,0 +1,22 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "lanes",
+  "title": "Who touches an expense claim",
+  "description": "A design document's view of an expense claim, with a system as one of the parties: four lanes, a refusal that goes back to the employee, and a claim that ends in the payroll run.",
+  "lanes": ["Employee", "Manager", "Finance", "Payroll system"],
+  "nodes": [
+    { "id": "submit", "text": "Submits receipts", "actor": "Employee", "role": "start" },
+    { "id": "approve", "text": "Approves?", "actor": "Manager", "role": "decision" },
+    { "id": "fix", "text": "Corrects the claim", "actor": "Employee" },
+    { "id": "check", "text": "Checks against policy", "actor": "Finance" },
+    { "id": "pay", "text": "Adds it to the next payslip", "actor": "Payroll system", "role": "terminal" }
+  ],
+  "edges": [
+    { "from": "submit", "to": "approve" },
+    { "from": "approve", "to": "fix", "label": "no" },
+    { "from": "fix", "to": "approve", "role": "weak" },
+    { "from": "approve", "to": "check", "label": "yes" },
+    { "from": "check", "to": "pay" }
+  ]
+}

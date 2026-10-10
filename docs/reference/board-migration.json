@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "kind": "board",
+  "title": "Docs migration — week 3",
+  "columns": [
+    {"id": "todo", "text": "To do"},
+    {"id": "writing", "text": "Writing", "limit": 3},
+    {"id": "review", "text": "In review", "limit": 2},
+    {"id": "done", "text": "Published"}
+  ],
+  "cards": [
+    {"text": "Install guide", "column": "done"},
+    {"text": "CLI reference", "column": "done"},
+    {"text": "Theming guide", "column": "review", "actor": "Ana"},
+    {"text": "Embedding in Markdown", "column": "review", "actor": "Luis"},
+    {"text": "MCP server", "column": "review", "actor": "Ana", "role": "emphasis", "note": "blocked on a decision"},
+    {"text": "Gallery page", "column": "writing", "actor": "Marta"},
+    {"text": "Troubleshooting", "column": "todo"},
+    {"text": "+ 6 more pages", "column": "todo", "role": "note"}
+  ]
+}

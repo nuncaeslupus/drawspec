@@ -18,10 +18,12 @@ width to place its first span — which is exactly what `TextBlock` carries.
 
 from __future__ import annotations
 
+import math
 from dataclasses import replace
 from typing import Final
 
 from drawspec.errors import FitError
+from drawspec.filetree import STATUSES
 from drawspec.geometry import Box, span_at
 from drawspec.scene import (
     Ellipse,
@@ -31,6 +33,7 @@ from drawspec.scene import (
     Rect,
     Scene,
     TextLine,
+    TextRun,
     TextSpan,
     moved,
 )
@@ -249,4 +252,190 @@ def captioned(scene: Scene, caption: str, theme: Theme, measurer: TextMeasurer) 
     return replace(scene, width=width, height=scene.height + band, primitives=(*drawing, *runs))
 
 
-__all__ = ["CAPTION_ROLE", "box_primitives", "captioned", "line_bounds", "outline", "text_runs"]
+#: The role a change's tag is drawn in: the pill, the one shape whose meaning is
+#: already *this is a label stuck on*. The same role `files` draws its tags in.
+STATUS_ROLE: Final = "start"
+
+#: The role a removed box's outline is drawn in — dashed, like the edge it was:
+#: the treatment for something tentative, which a box on its way out is.
+REMOVED_ROLE: Final = "weak"
+
+#: Segments per half-turn when a rounded outline is drawn as a dashed path.
+_ROUND_SEGMENTS: Final = 12
+
+
+#: The marks a change is drawn with — `files`' marks, with removal set as a
+#: true minus sign. A hyphen is the right character in a plain-text tree, where
+#: it is all ASCII has (`drawspec.filetree.STATUS_MARKS` keeps it), and the wrong
+#: one on a drawing: alone beside an edge it is a dash a quarter of an em long,
+#: and read as a stray tick in the line rather than as a mark.
+DRAWN_MARKS: Final = {"added": "+", "changed": "~", "removed": "\u2212"}
+
+
+def status_words(status: str) -> str:
+    """What a change's tag says: the mark, then the word — `+ added`."""
+    return f"{DRAWN_MARKS[status]} {status}"
+
+
+def status_size(status: str, theme: Theme, measurer: TextMeasurer) -> tuple[float, float]:
+    """How wide and tall a change's tag is drawn, at the label level.
+
+    The same proportions as a `files` tag: ten units of room across the words and
+    three over their height, where a unit is the body size over eleven.
+    """
+    unit = theme.scale["body"] / 11
+    extents = measurer.measure(status_words(status), theme.font.default, theme.scale["label"])
+    return extents.width + 10 * unit, extents.height + 3 * unit
+
+
+def status_tag(
+    status: str, centre_x: float, centre_y: float, theme: Theme, measurer: TextMeasurer
+) -> tuple[Primitive, ...]:
+    """A change's tag — `+ added` in a pill — centred on `(centre_x, centre_y)`."""
+    width, height = status_size(status, theme, measurer)
+    extents = measurer.measure(status_words(status), theme.font.default, theme.scale["label"])
+    return (
+        Rect(
+            STATUS_ROLE,
+            x=centre_x - width / 2,
+            y=centre_y - height / 2,
+            width=width,
+            height=height,
+        ),
+        # A run, not a line: the tag is furniture set in the label type, like a
+        # `files` tag or an edge's label, and never carries an author's spans.
+        TextRun(
+            STATUS_ROLE,
+            x=centre_x,
+            y=centre_y + (extents.ascent - extents.descent) / 2,
+            text=status_words(status),
+            level="label",
+            font=theme.font.default,
+            anchor="middle",
+        ),
+    )
+
+
+def status_key(
+    statuses: set[str], top: float, width: float, theme: Theme, measurer: TextMeasurer
+) -> tuple[tuple[Primitive, ...], float, float]:
+    """The tags of every status used, in a row centred across `width` from `top`.
+
+    Returns the primitives, the row's own width and its height. The tags are the
+    key: each says its mark and its word, so a bare `+` on an edge is explained
+    by the `+ added` beside it here.
+    """
+    used = [status for status in STATUSES if status in statuses]
+    if not used:
+        return (), 0.0, 0.0
+    gap = theme.box.padding.top
+    sizes = [status_size(status, theme, measurer) for status in used]
+    row = sum(size[0] for size in sizes) + gap * (len(sizes) - 1)
+    tall = max(size[1] for size in sizes)
+    x = (width - row) / 2
+    drawn: list[Primitive] = []
+    for status, (wide, _) in zip(used, sizes, strict=True):
+        drawn.extend(status_tag(status, x + wide / 2, top + tall / 2, theme, measurer))
+        x += wide + gap
+    return tuple(drawn), row, tall
+
+
+def status_box_primitives(
+    box: Box, status: str, theme: Theme, measurer: TextMeasurer
+) -> tuple[Primitive, ...]:
+    """A box whose text ends in a change's tag: its outline, its words, the tag.
+
+    The box was sized with the tag as its last line, so the tag's room is already
+    in it; this draws that last line as the pill rather than as words. A removed
+    box is outlined dashed and its words struck through — never colour alone.
+    """
+    runs = text_runs(box, theme, measurer)
+    *words, tag = runs
+    drawn: list[Primitive] = [
+        *(removed_outline(box, theme) if status == "removed" else outline(box, theme)),
+        *lead_rule(box),
+        *(replace(line, strike=status == "removed") for line in words),
+    ]
+    middle = tag.y - (box.block.ascent - box.block.descent) / 2
+    drawn.extend(status_tag(status, tag.x, middle, theme, measurer))
+    return tuple(drawn)
+
+
+def removed_outline(box: Box, theme: Theme) -> tuple[Primitive, ...]:
+    """`box`'s shape traced as one dashed path, in the role a removed box takes.
+
+    A path rather than the shape's own primitive because a dash belongs to a role
+    and the box's role is still what it was — a removed decision is still a
+    question, so it keeps its diamond and loses only its solid line.
+    """
+    shape = theme.roles[box.role].shape
+    left, top, width, height = box.x, box.y, box.width, box.height
+    right, bottom = left + width, top + height
+    if shape == "none":
+        return ()
+    if shape == "diamond":
+        middle_x, middle_y = left + width / 2, top + height / 2
+        corners = [(middle_x, top), (right, middle_y), (middle_x, bottom), (left, middle_y)]
+    elif shape == "ellipse":
+        cx, cy = left + width / 2, top + height / 2
+        corners = [
+            (
+                cx + width / 2 * math.cos(math.pi * step / _ROUND_SEGMENTS),
+                cy + height / 2 * math.sin(math.pi * step / _ROUND_SEGMENTS),
+            )
+            for step in range(2 * _ROUND_SEGMENTS)
+        ]
+    elif shape == "pill":
+        radius = height / 2
+        corners = [
+            (
+                right - radius + radius * math.cos(-math.pi / 2 + math.pi * step / _ROUND_SEGMENTS),
+                top + radius + radius * math.sin(-math.pi / 2 + math.pi * step / _ROUND_SEGMENTS),
+            )
+            for step in range(_ROUND_SEGMENTS + 1)
+        ] + [
+            (
+                left + radius + radius * math.cos(math.pi / 2 + math.pi * step / _ROUND_SEGMENTS),
+                top + radius + radius * math.sin(math.pi / 2 + math.pi * step / _ROUND_SEGMENTS),
+            )
+            for step in range(_ROUND_SEGMENTS + 1)
+        ]
+    else:
+        # The theme's corner radius, traced, so a removed box keeps the outline of
+        # the boxes beside it and differs from them only by its dash.
+        r = min(theme.box.corner_radius, width / 2, height / 2)
+        quarter = max(_ROUND_SEGMENTS // 4, 1)
+        corners = []
+        for cx, cy, start in (
+            (right - r, top + r, -math.pi / 2),
+            (right - r, bottom - r, 0.0),
+            (left + r, bottom - r, math.pi / 2),
+            (left + r, top + r, math.pi),
+        ):
+            corners.extend(
+                (
+                    cx + r * math.cos(start + math.pi / 2 * step / quarter),
+                    cy + r * math.sin(start + math.pi / 2 * step / quarter),
+                )
+                for step in range(quarter + 1)
+            )
+    return (Path(REMOVED_ROLE, points=(*corners, corners[0])),)
+
+
+__all__ = [
+    "CAPTION_ROLE",
+    "DRAWN_MARKS",
+    "REMOVED_ROLE",
+    "STATUS_ROLE",
+    "box_primitives",
+    "captioned",
+    "line_bounds",
+    "outline",
+    "removed_outline",
+    "status_box_primitives",
+    "status_key",
+    "status_size",
+    "status_tag",
+    "status_words",
+    "text_runs",
+]

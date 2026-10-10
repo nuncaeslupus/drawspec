@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "kind": "states",
+  "title": "When we stop calling the provider",
+  "caption": "Thresholds are in `breaker.toml`; the drawing names them, it does not restate them.",
+  "initial": "closed",
+  "states": [
+    {"id": "closed", "text": "Closed\ncalls go through"},
+    {"id": "open", "text": "Open\ncalls fail fast", "role": "emphasis"},
+    {"id": "half", "text": "Half-open\none trial call"}
+  ],
+  "transitions": [
+    {"from": "closed", "to": "closed", "event": "call fails", "guard": "under the threshold", "action": "count it"},
+    {"from": "closed", "to": "open", "event": "call fails", "guard": "threshold reached"},
+    {"from": "open", "to": "half", "event": "cool-down elapses"},
+    {"from": "half", "to": "closed", "event": "trial succeeds", "action": "reset the count"},
+    {"from": "half", "to": "open", "event": "trial fails"}
+  ]
+}

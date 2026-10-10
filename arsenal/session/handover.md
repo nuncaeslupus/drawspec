@@ -1,17 +1,16 @@
 # Session Handover
 
-<!-- Written at session end. A new session reading this file can resume without additional context. -->
+**Date**: 2026-10-10 · **Branch**: `ccr-6186f7c4-lrvt8d` · **PR**: [#76](https://github.com/nuncaeslupus/drawspec/pull/76) (open, CI green)
 
-**Date**: 2026-08-28 · **Branch**: `claude/github-coderabbit-limits-huuu88`
-**This session**: migrated `claude-arsenal` from the coordination-branch queue
-(v0.23.1) to the GitHub-issues task board (v2.4.23) — merged as
-[#70](https://github.com/nuncaeslupus/drawspec/pull/70) — and added a `scatter`
-kind, requested by `integral-job-search` — merged as
-[#71](https://github.com/nuncaeslupus/drawspec/pull/71), which closed #64 and
-archived its task file automatically.
-**Suite**: 1 664 passing, 1 skipped · lint + strict mypy clean
-**Tasks**: 5 live (issues #65–#69, `arsenal:task`), 39 terminal (archived in
-`arsenal/tasks/_history/`)
+## This session
+Compared drawspec with diagram-design and acted on it, without arsenal task files (owner: arsenal is unrelated tooling).
+Added: readability budget per kind, emphasis cap of 2, AGENTS.md routing guidance, `skills/drawspec/SKILL.md`, a CI gallery artifact,
+11 new kinds (states, sequence, lanes, entities, gantt, board, fishbone, venn, journey, treemap, sankey; 26 in total),
+features hub/scale/status, a flow self-loop fix, `drawspec theme from`, and a bar-chart overflow fix.
+**Owner reviews tomorrow:** `docs/review-2026-10.md` is the index (drawings, what to look at, 7 open questions).
+Waterfall and wardley were deferred until a real diagram needs them.
+
+The five laptop-only tasks below (#65 to #69) are unchanged.
 
 ---
 

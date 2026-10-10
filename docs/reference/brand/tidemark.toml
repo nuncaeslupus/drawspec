@@ -1,0 +1,79 @@
+# drawspec theme "tidemark", derived from tidemark.css by
+# `drawspec theme from`. Merged over the default theme like any other, so it holds
+# only what the brand said. Every colour reads at 3:1 on a white page and on a
+# near-black one; strokes stay currentColor wherever the brand had nothing to say,
+# so the drawing still follows its page into dark mode.
+
+version = 1
+name = "tidemark"
+
+[canvas]
+ink = "#1f2933"  # --color-text, standalone profile only
+
+[font]
+sans = ["Tidemark Sans", "DejaVu Sans", "system-ui", "sans-serif"]  # --font-sans
+mono = ["Tidemark Mono", "DejaVu Sans Mono", "monospace"]           # --font-mono
+
+[box]
+corner_radius = 6.0  # --radius-md
+line_height = 1.5    # --line-height-body
+
+[edge]
+stroke_width = 1.25  # --border-width
+
+[mark]
+colours = ["#0f7b8a", "#b49024", "#6051b9", "#6b7a86", "#6b7a86"]  # accent, secondary, tertiary, muted, muted
+
+[role.start]
+stroke_width = 1.25  # --border-width, scaled
+
+[role.step]
+stroke_width = 1.25  # --border-width, scaled
+
+[role.decision]
+stroke_width = 1.25  # --border-width, scaled
+
+[role.terminal]
+stroke = "#0f7b8a"   # --color-accent
+stroke_width = 2.08  # --border-width, scaled
+
+[role.emphasis]
+stroke = "#0f7b8a"   # --color-accent
+stroke_width = 2.08  # --border-width, scaled
+
+[role.note]
+stroke = "#6b7a86"   # --color-muted
+stroke_width = 0.83  # --border-width, scaled
+
+[role.group]
+stroke = "#6b7a86"   # --color-muted
+stroke_width = 0.83  # --border-width, scaled
+
+[edge_role.flow]
+stroke_width = 1.25  # --border-width, scaled
+
+[edge_role.link]
+stroke = "#6b7a86"   # --color-muted
+stroke_width = 0.83  # --border-width, scaled
+
+[edge_role.exchange]
+stroke_width = 1.25  # --border-width, scaled
+
+[edge_role.weak]
+stroke_width = 1.25  # --border-width, scaled
+
+[edge_role.owns]
+stroke_width = 1.25  # --border-width, scaled
+
+[edge_role.strong]
+stroke = "#0f7b8a"   # --color-accent
+stroke_width = 2.08  # --border-width, scaled
+
+[edge_role.aside]
+stroke_width = 0.83  # --border-width, scaled
+
+[edge_role.inherits]
+stroke_width = 1.25  # --border-width, scaled
+
+[edge_role.realizes]
+stroke_width = 1.25  # --border-width, scaled

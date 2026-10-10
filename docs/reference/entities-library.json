@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "kind": "entities",
+  "title": "A library lends copies, not books",
+  "description": "A conceptual model: four entities and the cardinality at each end of every relation. A book is the work; a copy is the thing on the shelf, and a loan is of one copy to one member.",
+  "caption": "A book is the work; a copy is the thing on the shelf.",
+  "entities": [
+    {"id": "member", "text": "Member", "fields": [{"text": "member number", "key": "primary"}, {"text": "name"}, {"text": "joined on"}]},
+    {"id": "book", "text": "Book", "fields": [{"text": "ISBN", "key": "primary"}, {"text": "title"}, {"text": "author"}]},
+    {"id": "copy", "text": "Copy", "fields": [{"text": "barcode", "key": "primary"}, {"text": "shelf mark"}]},
+    {"id": "loan", "text": "Loan", "role": "emphasis", "fields": [{"text": "lent on"}, {"text": "due on"}, {"text": "returned on"}]}
+  ],
+  "edges": [
+    {"from": "book", "to": "copy", "from_end": "one", "to_end": "zero-or-many", "label": "is held as"},
+    {"from": "copy", "to": "loan", "from_end": "one", "to_end": "zero-or-many", "label": "is lent in"},
+    {"from": "member", "to": "loan", "from_end": "one", "to_end": "zero-or-many", "label": "borrows"}
+  ]
+}

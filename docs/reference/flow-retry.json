@@ -1,0 +1,22 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "flow",
+  "title": "The nightly import",
+  "description": "The vendor's export is fetched, checked and loaded into staging before it replaces the live table; a timeout and a deadlock are each retried in place.",
+  "nodes": [
+    {"id": "fetch", "text": "Fetch the vendor's export", "role": "start"},
+    {"id": "check", "text": "Do the row counts match?", "role": "decision"},
+    {"id": "load", "text": "Load into staging"},
+    {"id": "page", "text": "Page the data owner", "role": "terminal"},
+    {"id": "swap", "text": "Swap staging into live", "role": "terminal"}
+  ],
+  "edges": [
+    {"from": "fetch", "to": "fetch", "label": "timed out: retry"},
+    {"from": "fetch", "to": "check"},
+    {"from": "check", "to": "load", "label": "yes"},
+    {"from": "check", "to": "page", "label": "no"},
+    {"from": "load", "to": "load", "label": "deadlock: retry"},
+    {"from": "load", "to": "swap"}
+  ]
+}

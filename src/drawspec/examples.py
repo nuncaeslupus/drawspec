@@ -43,6 +43,17 @@ PURPOSE: Final[Mapping[str, str]] = {
     "scatter": "points placed by two measured values — a quadrant with real ticks",
     "curve": "a named shape with labelled waypoints",
     "files": "a directory listing — folders and files from their paths",
+    "states": "a state machine — the conditions something is in, and the events that move it",
+    "sequence": "who says what to whom, in order — messages between participants, read down",
+    "lanes": "a flow whose actors are swimlanes — the hand-offs between parties are the point",
+    "entities": "a data model, schema or class diagram — boxes of fields, relations between them",
+    "gantt": "a plan — one row per task, each an interval on a numbered axis; no dates",
+    "board": "cards sorted into columns — a kanban board, a retrospective, a story map",
+    "fishbone": "one effect and its causes by category — a root-cause (Ishikawa) diagram",
+    "venn": "two or three overlapping sets — what each holds alone, and what they share",
+    "journey": "one person's feeling across the stages of an experience — a journey map",
+    "treemap": "the parts of one known total, each by its area — a few proportions, stated",
+    "sankey": "where a known quantity goes — bands as thick as the amounts, a few flows stated",
 }
 
 #: The smallest document of each kind that renders.
@@ -189,6 +200,107 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"path": "tests/"},
             {"path": "README.md"},
         ],
+    },
+    "states": {
+        "version": 1,
+        "kind": "states",
+        "initial": "off",
+        "states": [
+            {"id": "off", "text": "Off"},
+            {"id": "on", "text": "On"},
+        ],
+        "transitions": [
+            {"from": "off", "to": "on", "event": "switch pressed"},
+            {"from": "on", "to": "off", "event": "switch pressed"},
+        ],
+    },
+    "sequence": {
+        "version": 1,
+        "kind": "sequence",
+        "participants": [
+            {"id": "browser", "text": "Browser"},
+            {"id": "server", "text": "Server"},
+        ],
+        "messages": [
+            {"from": "browser", "to": "server", "text": "GET /"},
+            {"from": "server", "to": "browser", "text": "the page", "role": "weak"},
+        ],
+    },
+    "lanes": {
+        "version": 1,
+        "kind": "lanes",
+        "nodes": [
+            {"id": "ask", "text": "Asks for access", "actor": "Requester"},
+            {"id": "grant", "text": "Grants it", "actor": "Owner"},
+        ],
+        "edges": [{"from": "ask", "to": "grant"}],
+    },
+    "entities": {
+        "version": 1,
+        "kind": "entities",
+        "entities": [
+            {"id": "author", "text": "Author", "fields": [{"text": "name", "key": "primary"}]},
+            {"id": "book", "text": "Book", "fields": [{"text": "title"}, {"text": "year"}]},
+        ],
+        "edges": [{"from": "author", "to": "book", "from_end": "one", "to_end": "one-or-many"}],
+    },
+    "gantt": {
+        "version": 1,
+        "kind": "gantt",
+        "axis": {"label": "Week"},
+        "tasks": [
+            {"id": "build", "text": "Build it", "start": 0, "end": 3},
+            {"id": "ship", "text": "Ship it", "at": 3},
+        ],
+        "edges": [{"from": "build", "to": "ship"}],
+    },
+    "board": {
+        "version": 1,
+        "kind": "board",
+        "columns": [
+            {"id": "todo", "text": "To do"},
+            {"id": "doing", "text": "Doing", "limit": 2},
+            {"id": "done", "text": "Done"},
+        ],
+        "cards": [
+            {"text": "Write the tests", "column": "doing"},
+            {"text": "Draft the guide", "column": "todo"},
+        ],
+    },
+    "fishbone": {
+        "version": 1,
+        "kind": "fishbone",
+        "effect": {"text": "The build is slow"},
+        "categories": [
+            {"text": "Code", "causes": [{"text": "No incremental compile"}]},
+            {"text": "Machines", "causes": [{"text": "Runners share one disk"}]},
+        ],
+    },
+    "venn": {
+        "version": 1,
+        "kind": "venn",
+        "sets": [{"id": "a", "text": "Cats"}, {"id": "b", "text": "Dogs"}],
+        "regions": [{"in": ["a", "b"], "text": "Pets"}],
+    },
+    "journey": {
+        "version": 1,
+        "kind": "journey",
+        "feelings": ["unhappy", "happy"],
+        "stages": [
+            {"text": "Orders", "feeling": "happy"},
+            {"text": "Waits", "feeling": "unhappy"},
+        ],
+    },
+    "treemap": {
+        "version": 1,
+        "kind": "treemap",
+        "parts": [{"text": "Rent", "amount": 60}, {"text": "Food", "amount": 40}],
+    },
+    "sankey": {
+        "version": 1,
+        "kind": "sankey",
+        "nodes": [{"id": "pay", "text": "Pay"}, {"id": "rent", "text": "Rent"}],
+        "flows": [{"from": "pay", "to": "rent", "amount": 60}],
     },
     "scatter": {
         "version": 1,

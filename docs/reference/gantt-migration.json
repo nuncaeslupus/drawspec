@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "kind": "gantt",
+  "title": "Moving search to the new cluster",
+  "axis": {"label": "Week", "min": 0, "max": 10},
+  "tasks": [
+    {"id": "provision", "text": "Provision the cluster", "start": 0, "end": 2},
+    {"id": "mirror", "text": "Mirror writes to both", "start": 2, "end": 5},
+    {"id": "backfill", "text": "Backfill history", "start": 2, "end": 6, "role": "emphasis"},
+    {"id": "shadow", "text": "Shadow-read and compare", "start": 6, "end": 8},
+    {"id": "cutover", "text": "Cut reads over", "at": 8},
+    {"id": "retire", "text": "Retire the old cluster", "start": 8, "end": 10}
+  ],
+  "groups": [
+    {"id": "prepare", "text": "Prepare", "members": ["provision"]},
+    {"id": "move", "text": "Move", "members": ["mirror", "backfill", "shadow", "cutover"]},
+    {"id": "finish", "text": "Finish", "members": ["retire"]}
+  ],
+  "edges": [
+    {"from": "provision", "to": "mirror"},
+    {"from": "provision", "to": "backfill"},
+    {"from": "backfill", "to": "shadow"},
+    {"from": "shadow", "to": "cutover"},
+    {"from": "cutover", "to": "retire"}
+  ],
+  "marks": [{"text": "today", "at": 3}]
+}

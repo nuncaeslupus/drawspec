@@ -9,14 +9,38 @@ from __future__ import annotations
 
 from drawspec.charts import chart_scene
 from drawspec.errors import DrawspecError
+from drawspec.kinds.board import board_scene
 from drawspec.kinds.common import box_primitives, captioned, outline, text_runs
 from drawspec.kinds.cycle import cycle_scene
+from drawspec.kinds.entities import entities_scene
 from drawspec.kinds.files import files_scene
+from drawspec.kinds.fishbone import fishbone_scene
+from drawspec.kinds.gantt import gantt_scene
 from drawspec.kinds.graph import DRAWN_KINDS, graph_scene
 from drawspec.kinds.grid import grid_scene
+from drawspec.kinds.journey import journey_scene
+from drawspec.kinds.sankey import sankey_scene
+from drawspec.kinds.sequence import sequence_scene
 from drawspec.kinds.shape import shape_scene
+from drawspec.kinds.treemap import treemap_scene
+from drawspec.kinds.venn import venn_scene
 from drawspec.scene import Scene
-from drawspec.schema import CHART_KINDS, FILES_KINDS, GRID_KINDS, SHAPE_KINDS, Document
+from drawspec.schema import (
+    BOARD_KINDS,
+    CHART_KINDS,
+    ENTITIES_KINDS,
+    FILES_KINDS,
+    FISHBONE_KINDS,
+    GANTT_KINDS,
+    GRID_KINDS,
+    JOURNEY_KINDS,
+    SANKEY_KINDS,
+    SEQUENCE_KINDS,
+    SHAPE_KINDS,
+    TREEMAP_KINDS,
+    VENN_KINDS,
+    Document,
+)
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme
 
@@ -29,6 +53,15 @@ IMPLEMENTED: tuple[str, ...] = (
     *CHART_KINDS,
     *FILES_KINDS,
     *DRAWN_KINDS,
+    *SEQUENCE_KINDS,
+    *ENTITIES_KINDS,
+    *GANTT_KINDS,
+    *BOARD_KINDS,
+    *FISHBONE_KINDS,
+    *VENN_KINDS,
+    *JOURNEY_KINDS,
+    *TREEMAP_KINDS,
+    *SANKEY_KINDS,
     "cycle",
 )
 
@@ -58,6 +91,24 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return chart_scene(document, theme, measurer)
     if document.kind in FILES_KINDS:
         return files_scene(document, theme, measurer)
+    if document.kind in SEQUENCE_KINDS:
+        return sequence_scene(document, theme, measurer)
+    if document.kind in ENTITIES_KINDS:
+        return entities_scene(document, theme, measurer)
+    if document.kind in GANTT_KINDS:
+        return gantt_scene(document, theme, measurer)
+    if document.kind in BOARD_KINDS:
+        return board_scene(document, theme, measurer)
+    if document.kind in FISHBONE_KINDS:
+        return fishbone_scene(document, theme, measurer)
+    if document.kind in VENN_KINDS:
+        return venn_scene(document, theme, measurer)
+    if document.kind in JOURNEY_KINDS:
+        return journey_scene(document, theme, measurer)
+    if document.kind in TREEMAP_KINDS:
+        return treemap_scene(document, theme, measurer)
+    if document.kind in SANKEY_KINDS:
+        return sankey_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -71,13 +122,22 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
 
 __all__ = [
     "IMPLEMENTED",
+    "board_scene",
     "box_primitives",
     "captioned",
     "cycle_scene",
+    "entities_scene",
     "files_scene",
+    "fishbone_scene",
+    "gantt_scene",
     "graph_scene",
+    "journey_scene",
     "outline",
+    "sankey_scene",
     "scene_for",
+    "sequence_scene",
     "shape_scene",
     "text_runs",
+    "treemap_scene",
+    "venn_scene",
 ]

@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "kind": "journey",
+  "title": "An outpatient visit, from the patient's side",
+  "feelings": ["anxious", "impatient", "calm", "reassured"],
+  "rows": [
+    {"id": "does", "text": "Does"},
+    {"id": "touch", "text": "Who or what"},
+    {"id": "idea", "text": "Could improve"}
+  ],
+  "stages": [
+    {"text": "Referred", "feeling": "anxious", "details": [
+      {"row": "does", "text": "Hears a specialist is needed"},
+      {"row": "touch", "text": "Family doctor"}
+    ]},
+    {"text": "Booked", "feeling": "calm", "details": [
+      {"row": "does", "text": "Gets a date by text"},
+      {"row": "touch", "text": "Booking service"}
+    ]},
+    {"text": "Arrives", "feeling": "calm", "details": [
+      {"row": "does", "text": "Checks in"},
+      {"row": "touch", "text": "Kiosk"}
+    ]},
+    {"text": "Waits", "feeling": "impatient", "role": "emphasis", "details": [
+      {"row": "does", "text": "Sits for 50 minutes"},
+      {"row": "touch", "text": "Waiting room"},
+      {"row": "idea", "text": "Show the queue on a screen"}
+    ]},
+    {"text": "Consults", "feeling": "reassured", "details": [
+      {"row": "does", "text": "Talks through the results"},
+      {"row": "touch", "text": "Specialist"}
+    ]},
+    {"text": "Tests", "feeling": "impatient", "details": [
+      {"row": "does", "text": "Has a blood test"},
+      {"row": "touch", "text": "Lab nurse"},
+      {"row": "idea", "text": "Same-day slot"}
+    ]},
+    {"text": "Leaves", "feeling": "reassured", "details": [
+      {"row": "does", "text": "Gets a follow-up letter"},
+      {"row": "touch", "text": "Post"}
+    ]}
+  ]
+}

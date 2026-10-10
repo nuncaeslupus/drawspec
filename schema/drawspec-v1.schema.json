@@ -2,11 +2,11 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
   "title": "drawspec document, version 1",
-  "description": "A declarative diagram. The author describes what the diagram means; every decision that requires seeing the output — coordinates, type size, colour, arrow-head geometry, z-order — is taken by drawspec and has no field here. Referential rules (node ids are unique; an edge names nodes that exist) are beyond JSON Schema and are enforced by `drawspec validate`.",
+  "description": "A declarative diagram. The author describes what the diagram means; every decision that requires seeing the output — coordinates, type size, colour, arrow-head geometry, z-order — is taken by drawspec and has no field here. Referential rules (node ids are unique; an edge names nodes that exist) are beyond JSON Schema and are enforced by `drawspec validate`, as are the readability budget (the most entries each kind may hold) and the cap of 2 elements with the 'emphasis' role (docs/format.md).",
   "oneOf": [
     {
       "type": "object",
-      "title": "flow / tree / cycle",
+      "title": "flow / tree",
       "properties": {
         "$schema": {
           "type": "string",
@@ -19,7 +19,90 @@
           "type": "string",
           "enum": [
             "flow",
-            "tree",
+            "tree"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "nodes": {
+          "type": "array",
+          "description": "The boxes. Order is not a coordinate — the layout decides where a box goes — but it is the order siblings are drawn in: where nothing else separates two boxes of the same rank, they read in the order written here.",
+          "items": {
+            "$ref": "#/$defs/node"
+          },
+          "minItems": 1
+        },
+        "edges": {
+          "type": "array",
+          "description": "What connects to what. A `tree` takes one edge per child.",
+          "items": {
+            "$ref": "#/$defs/edge"
+          }
+        },
+        "groups": {
+          "type": "array",
+          "description": "Boxes drawn around sets of nodes, each with its own caption.",
+          "items": {
+            "$ref": "#/$defs/group"
+          }
+        },
+        "bands": {
+          "type": "array",
+          "description": "Named things that run alongside a set of boxes rather than containing them — drawn as a labelled bar beside the boxes they accompany. For the activity that goes on throughout: a source sheet with one continuous concern above its steps and another below says the steps are *surrounded* by them, and two such bands are peers. A `group` cannot say that — a box sits inside one container or none, so two groups over the same members had to be nested, which draws a hierarchy that is not there.",
+          "items": {
+            "$ref": "#/$defs/band"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "nodes"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "cycle",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
             "cycle"
           ]
         },
@@ -51,7 +134,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "nodes": {
           "type": "array",
@@ -81,6 +164,10 @@
           "items": {
             "$ref": "#/$defs/band"
           }
+        },
+        "hub": {
+          "$ref": "#/$defs/hub",
+          "description": "What the loop turns around: the system a quality cycle improves, the model a data flywheel retrains. Not a step — it is drawn in the middle of the ring, outside the check that the ring closes through every node. An edge may join it to a step only as a spoke, in the roles 'aside', 'weak', 'link': a solid arrow to the middle would read as one more step. Needs a ring of at least 3 steps."
         }
       },
       "required": [
@@ -135,7 +222,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "items": {
           "type": "array",
@@ -198,7 +285,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "items": {
           "type": "array",
@@ -272,7 +359,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "items": {
           "type": "array",
@@ -339,7 +426,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "cells": {
           "type": "array",
@@ -369,6 +456,14 @@
           "items": {
             "$ref": "#/$defs/edge"
           }
+        },
+        "scale": {
+          "type": "array",
+          "description": "Says the groups are **ordered**, and in what order: 2 to 5 group names, **weakest first** — `[\"rare\", \"sometimes\", \"often\"]`. For a heatmap, a risk matrix, a skills matrix: a grid whose cells say *how much*. The cells are then filled by tone, light to dark, from the theme's `[mark] ramp` instead of with unrelated patterns, and the key lists every step in this order (with `key` texts where given). Every cell `group` must be one of these; a cell with no `group` stays blank, for *not assessed*. Names, not numbers: the author buckets the values.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2
         },
         "key": {
           "type": "array",
@@ -430,7 +525,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "levels": {
           "type": "array",
@@ -493,7 +588,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "rings": {
           "type": "array",
@@ -556,7 +651,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "stages": {
           "type": "array",
@@ -619,7 +714,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "axes": {
           "$ref": "#/$defs/axes",
@@ -691,7 +786,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "axes": {
           "$ref": "#/$defs/axes",
@@ -759,7 +854,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "axes": {
           "$ref": "#/$defs/axes-continuous",
@@ -827,7 +922,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "spans": {
           "type": "array",
@@ -902,7 +997,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "root": {
           "type": "string",
@@ -940,6 +1035,879 @@
         "version",
         "kind",
         "entries"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "states",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "states"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "states": {
+          "type": "array",
+          "description": "The conditions the machine can be in. A newline in `text` is a lead and a detail, as everywhere: the state's name over what holds in it. Every state must be reachable from `initial`.",
+          "items": {
+            "$ref": "#/$defs/state"
+          },
+          "minItems": 1
+        },
+        "initial": {
+          "type": "string",
+          "description": "The state the machine starts in, drawn as a filled dot with an arrow to it. Required: reachability is measured from here. May name a group, which must then say its own `initial`."
+        },
+        "final": {
+          "type": "array",
+          "description": "The states the machine ends in, each drawn with an arrow to a ringed dot. A final state has no outgoing transition.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "transitions": {
+          "type": "array",
+          "description": "What moves the machine from one state to another, each labelled `event [guard] / action` from its own fields.",
+          "items": {
+            "$ref": "#/$defs/transition"
+          }
+        },
+        "groups": {
+          "type": "array",
+          "description": "Composite states: a frame around the states inside it, named at its corner. Groups may nest. A transition from a group leaves it from any state inside; one to a group enters it at the group's `initial`.",
+          "items": {
+            "$ref": "#/$defs/composite"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "states",
+        "initial"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "sequence",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "sequence"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "participants": {
+          "type": "array",
+          "description": "Who takes part, drawn left to right in the order written, each a head with a dashed lifeline under it. The order is the reading order, not a coordinate. Every participant must send or receive a message.",
+          "items": {
+            "$ref": "#/$defs/participant"
+          },
+          "minItems": 2
+        },
+        "messages": {
+          "type": "array",
+          "description": "What is said, drawn top to bottom in the order written: the order is the diagram. A call (`flow`) answered later by a `weak` reply opens an activation bar on the receiver from the call's row to the reply's; nobody writes how tall it is.",
+          "items": {
+            "$ref": "#/$defs/message"
+          },
+          "minItems": 1
+        },
+        "fragments": {
+          "type": "array",
+          "description": "Frames round a run of messages, `from` to `to`, and every participant they touch. Fragments nest or are apart; one that starts inside another and ends outside it is refused.",
+          "items": {
+            "$ref": "#/$defs/fragment"
+          }
+        },
+        "groups": {
+          "type": "array",
+          "description": "A frame round a run of neighbouring lifelines, named at its top — *inside our account*. Members must be next to each other in `participants`, and a participant is in one group or none.",
+          "items": {
+            "$ref": "#/$defs/group"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "participants",
+        "messages"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "lanes",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "lanes"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "nodes": {
+          "type": "array",
+          "description": "The steps, each in the lane its `actor` names. Ranked along the lanes as a `flow` is; within one lane, order is the order siblings are drawn in.",
+          "items": {
+            "$ref": "#/$defs/lane-node"
+          },
+          "minItems": 1
+        },
+        "edges": {
+          "type": "array",
+          "description": "What follows what, as on a `flow`. An edge between two lanes crosses the boundaries between them: that crossing is the hand-off.",
+          "items": {
+            "$ref": "#/$defs/edge"
+          }
+        },
+        "lanes": {
+          "type": "array",
+          "description": "The lanes in order — top to bottom when they run across the page, left to right when they run down it; the theme decides which. Each must be some node's `actor`, spelled exactly, and every actor must be listed. Omit it and the lanes come in the order their actors first appear in `nodes`. At most 6.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "nodes"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "entities",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "entities"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "entities": {
+          "type": "array",
+          "description": "The boxes: each a name (and a stereotype), a rule, its fields, and its operations under a second rule. Placed by their relations: general above specific when there is a hierarchy, side by side otherwise.",
+          "items": {
+            "$ref": "#/$defs/entity"
+          },
+          "minItems": 1
+        },
+        "edges": {
+          "type": "array",
+          "description": "The relations between entities, each landing on a box — or, with `from_field` / `to_field`, on one row of it — and carrying a cardinality at either end. A hierarchy may not loop.",
+          "items": {
+            "$ref": "#/$defs/relation"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "entities"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "gantt",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "gantt"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "axis": {
+          "$ref": "#/$defs/axis-gantt",
+          "description": "The one axis the plan runs along: what its numbers count, in a unit you name. There are no dates."
+        },
+        "tasks": {
+          "type": "array",
+          "description": "One row each, in the order written — that order is the reading order. `start` and `end` make a bar; `at` makes a milestone.",
+          "items": {
+            "$ref": "#/$defs/task"
+          },
+          "minItems": 1
+        },
+        "groups": {
+          "type": "array",
+          "description": "Phases, each a run of consecutive tasks, drawn as a heading row with a bracket over the phase's span. With groups, every task is in one.",
+          "items": {
+            "$ref": "#/$defs/group"
+          }
+        },
+        "edges": {
+          "type": "array",
+          "description": "Finish-to-start dependencies between tasks: drawn from the end of `from` into the start of `to`.",
+          "items": {
+            "$ref": "#/$defs/dependency"
+          }
+        },
+        "marks": {
+          "type": "array",
+          "description": "Named points in time — today, a deadline, a freeze — each a line across every row with its name above.",
+          "items": {
+            "$ref": "#/$defs/mark"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "axis",
+        "tasks"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "board",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "board"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "columns": {
+          "type": "array",
+          "description": "Left to right as written: states on a kanban board, prompts on a retrospective, the steps of a story on a story map. All one width.",
+          "items": {
+            "$ref": "#/$defs/board-column"
+          },
+          "minItems": 1
+        },
+        "rows": {
+          "type": "array",
+          "description": "Slices across every column, top to bottom — the releases of a story map. With rows, every card names one.",
+          "items": {
+            "$ref": "#/$defs/slice"
+          },
+          "minItems": 1
+        },
+        "cut": {
+          "type": "string",
+          "description": "The id of a row: a heavy rule is drawn under it — everything above ships first. Not the last row, which has nothing below it to cut from."
+        },
+        "cards": {
+          "type": "array",
+          "description": "Each in a column (and a row, with rows). Within a cell they stack in the order written, top-aligned, so a short column looks short.",
+          "items": {
+            "$ref": "#/$defs/card"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "columns",
+        "cards"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "fishbone",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "fishbone"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "effect": {
+          "$ref": "#/$defs/effect",
+          "description": "The observed problem, stated as a fact: drawn in the head box at the end of the spine, always as the diagram's emphasis."
+        },
+        "categories": {
+          "type": "array",
+          "description": "The bones, drawn alternately above and below the spine, nearest the head first: the written order is the reading order from the head outwards.",
+          "items": {
+            "$ref": "#/$defs/category"
+          },
+          "minItems": 2
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "effect",
+        "categories"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "venn",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "venn"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "sets": {
+          "type": "array",
+          "description": "Two or three sets, each a circle of one size with its name outside it. Not sizes: the circles are equal, because a Venn diagram says what overlaps, not how much.",
+          "items": {
+            "$ref": "#/$defs/venn-set"
+          },
+          "minItems": 2
+        },
+        "regions": {
+          "type": "array",
+          "description": "What each region holds, named by membership. A region not listed is drawn empty: its set's name says enough.",
+          "items": {
+            "$ref": "#/$defs/region"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "sets"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "journey",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "journey"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "feelings": {
+          "type": "array",
+          "description": "The named levels a stage's feeling may take, **worst first**: drawn as guides across the map, the worst at the bottom, each named once on the left. Names, not scores.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2
+        },
+        "rows": {
+          "type": "array",
+          "description": "The detail rows under the feeling line, top to bottom: what the person does, where, what gets in the way. Optional: without rows the map is the stages and the line.",
+          "items": {
+            "$ref": "#/$defs/journey-row"
+          },
+          "minItems": 1
+        },
+        "stages": {
+          "type": "array",
+          "description": "Left to right as written, one column each, all one width. The feeling line passes through every stage's point.",
+          "items": {
+            "$ref": "#/$defs/journey-stage"
+          },
+          "minItems": 2
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "feelings",
+        "stages"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "treemap",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "treemap"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "parts": {
+          "type": "array",
+          "description": "The parts of one total, each a rectangle whose area is in proportion to its `amount`, with its words inside it. Laid out largest first whatever the written order, which only breaks ties; `note` parts go last.",
+          "items": {
+            "$ref": "#/$defs/treemap-part"
+          },
+          "minItems": 2
+        },
+        "groups": {
+          "type": "array",
+          "description": "One level of grouping: each group is a captioned frame holding the parts that name it, filled with the theme's mark fills in the order written. Groups do not nest.",
+          "items": {
+            "$ref": "#/$defs/treemap-group"
+          },
+          "minItems": 1
+        },
+        "unit": {
+          "type": "string",
+          "description": "What the values are in — `kB`, `GB`, `hours` — written after each one."
+        },
+        "values": {
+          "type": "boolean",
+          "description": "Whether to write each part's amount under its words, and each group's total beside its name. Defaults to true."
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "parts"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "sankey",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "sankey"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "nodes": {
+          "type": "array",
+          "description": "Where the quantity starts, passes and ends. A node's column is derived from the flows — sources left, ends right — never written; the written order is where the order down each column starts.",
+          "items": {
+            "$ref": "#/$defs/sankey-node"
+          },
+          "minItems": 2
+        },
+        "flows": {
+          "type": "array",
+          "description": "How much goes from one node to another, each a band whose thickness is in proportion to its `amount`. What reaches a node in the middle must all leave it, and nothing flows back.",
+          "items": {
+            "$ref": "#/$defs/sankey-flow"
+          },
+          "minItems": 1
+        },
+        "unit": {
+          "type": "string",
+          "description": "What the amounts are in — `tickets`, `cores`, `€ million` — written after each total."
+        },
+        "values": {
+          "type": "boolean",
+          "description": "Whether to write each node's total under its name. Defaults to true."
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "nodes",
+        "flows"
       ],
       "additionalProperties": false
     }
@@ -1038,6 +2006,39 @@
       ],
       "additionalProperties": false
     },
+    "axis-gantt": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Required, and the unit's name: `Week`, `Day`, `Minutes after 02:00`."
+        },
+        "unit": {
+          "type": "string",
+          "description": "What the numbers are in, written after the label."
+        },
+        "min": {
+          "type": "number",
+          "description": "Where the plan starts. Omit to take it from the tasks."
+        },
+        "max": {
+          "type": "number",
+          "description": "Where the plan ends. Omit to take it from the tasks."
+        },
+        "categories": {
+          "type": "array",
+          "description": "Names for the periods, in order, instead of numbers — months, sprints, quarters. The first period runs from 1 to 2, the second from 2 to 3, so a task over the first three is `start` 1, `end` 4. Sets the range itself, so not with `min` or `max`.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "additionalProperties": false
+    },
     "band": {
       "type": "object",
       "properties": {
@@ -1057,6 +2058,137 @@
       "required": [
         "text",
         "members"
+      ],
+      "additionalProperties": false
+    },
+    "board-column": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the columns; what a card's `column` names."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "A work-in-progress limit. drawspec counts the column's cards (a `note` card is not work, so it is not counted) and writes `n / limit` in the heading; over the limit the heading takes `emphasis`. Never write the count yourself.",
+          "exclusiveMinimum": 0
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default) or `emphasis` (the column the board is about), drawn as the weight of the rule under the heading.",
+          "enum": [
+            "step",
+            "emphasis"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "branch": {
+      "type": "object",
+      "properties": {
+        "at": {
+          "type": "string",
+          "description": "The id of the first message of this branch. The divider is drawn above it, so it is after the fragment's first message and no later than its last."
+        },
+        "text": {
+          "type": "string",
+          "description": "This branch's condition. Written plainly; drawspec adds the brackets. Omit it for a `par` branch, which runs alongside the others and has none."
+        }
+      },
+      "required": [
+        "at"
+      ],
+      "additionalProperties": false
+    },
+    "card": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "column": {
+          "type": "string",
+          "description": "The id of the column it is in. Its kind is its column."
+        },
+        "row": {
+          "type": "string",
+          "description": "The id of the row (slice) it is in. Required when the board has `rows`, refused when it has none."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default), `emphasis` (blocked, at risk, the one that matters) or `note` (a placeholder or a summary such as `+ 6 more`, drawn lighter and not counted against a limit).",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        },
+        "actor": {
+          "type": "string",
+          "description": "Who holds it — free text, drawn as the card's lead, as in a `flow` box. A card with an actor may not put a newline in `text`."
+        },
+        "note": {
+          "type": "string",
+          "description": "A short aside hung under the card, smaller: `blocked on a decision`."
+        }
+      },
+      "required": [
+        "text",
+        "column"
+      ],
+      "additionalProperties": false
+    },
+    "category": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "causes": {
+          "type": "array",
+          "description": "What was investigated under this category, in reading order from the category's name inwards to the spine. Leaves: a cause has no causes.",
+          "items": {
+            "$ref": "#/$defs/cause"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "text",
+        "causes"
+      ],
+      "additionalProperties": false
+    },
+    "cause": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default), `emphasis` (the confirmed root cause: its bone is drawn heavy up to the spine) or `note` (investigated and ruled out, its tick drawn light and dashed).",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        }
+      },
+      "required": [
+        "text"
       ],
       "additionalProperties": false
     },
@@ -1112,6 +2244,37 @@
       ],
       "additionalProperties": false
     },
+    "composite": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique within the document, among the states and the groups."
+        },
+        "text": {
+          "type": "string",
+          "description": "The composite state's name, drawn at its frame's corner."
+        },
+        "members": {
+          "type": "array",
+          "description": "The states (or groups) inside this composite state.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "initial": {
+          "type": "string",
+          "description": "The member this composite is entered at, drawn as a dot inside the frame. Required when a transition, or the machine's own `initial`, names the group."
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "members"
+      ],
+      "additionalProperties": false
+    },
     "curve": {
       "type": "object",
       "properties": {
@@ -1146,16 +2309,61 @@
       ],
       "additionalProperties": false
     },
+    "dependency": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The id of the task that has to finish first."
+        },
+        "to": {
+          "type": "string",
+          "description": "The id of the task that waits for it, which may not start before `from` ends. Drawn from the end of one bar into the start of the other."
+        },
+        "role": {
+          "type": "string",
+          "description": "`flow` (the default), `strong` (the critical path) or `weak` (a soft dependency, dashed).",
+          "enum": [
+            "flow",
+            "strong",
+            "weak"
+          ]
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    },
+    "detail": {
+      "type": "object",
+      "properties": {
+        "row": {
+          "type": "string",
+          "description": "The id of one of the journey's `rows`, at most once per stage."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "row",
+        "text"
+      ],
+      "additionalProperties": false
+    },
     "edge": {
       "type": "object",
       "properties": {
         "from": {
           "type": "string",
-          "description": "The id of the source node — or, in a `flow` or a `tree`, of a group: an edge may name a container, for a relation that belongs to the whole of it rather than to any one box inside. It may not join a container to something already within it. A `cycle` draws no containers, so an edge in one names a node."
+          "description": "The id of the source node — or, in a `flow` or a `tree`, of a group: an edge may name a container, for a relation that belongs to the whole of it rather than to any one box inside. It may not join a container to something already within it. A `cycle` draws no containers, so an edge in one names a node — or its `hub`, as a spoke."
         },
         "to": {
           "type": "string",
-          "description": "The id of the target node — or, in a `flow` or a `tree`, of a group. The same id space as `from`."
+          "description": "The id of the target node — or, in a `flow` or a `tree`, of a group. The same id space as `from`. The same id as `from` draws a loop on the side of that box, across the reading direction, with its label outside it: two per box at most, and never on a group."
         },
         "label": {
           "type": "string",
@@ -1173,11 +2381,78 @@
             "strong",
             "aside"
           ]
+        },
+        "status": {
+          "type": "string",
+          "description": "What a proposed change does to this connection: the same marks as a node's, written before the label (`+`, `~`, `-`), with a key of the marks under the drawing. A removed edge is drawn in the `aside` treatment — dashed, no head — whatever its role. **Only a `flow`, a `tree` or `lanes`.**",
+          "enum": [
+            "added",
+            "changed",
+            "removed"
+          ]
         }
       },
       "required": [
         "from",
         "to"
+      ],
+      "additionalProperties": false
+    },
+    "effect": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "entity": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the entities."
+        },
+        "text": {
+          "type": "string",
+          "description": "The entity's name, drawn bold over its fields. One line: may carry `code` and **bold** spans — a table name is usually `code`."
+        },
+        "tag": {
+          "type": "string",
+          "description": "A short stereotype drawn over the name in guillemets — `interface` is drawn «interface». Free text, 16 characters at most."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        },
+        "fields": {
+          "type": "array",
+          "description": "What the entity holds, one row each under its name: attributes, columns. A last field of `...` stands for those not shown.",
+          "items": {
+            "$ref": "#/$defs/field"
+          }
+        },
+        "operations": {
+          "type": "array",
+          "description": "What a class can do — `area() → float` — drawn in a compartment of their own under the fields. Strings, not objects: an operation is read, never linked to.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "text"
       ],
       "additionalProperties": false
     },
@@ -1211,6 +2486,76 @@
       ],
       "additionalProperties": false
     },
+    "field": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Only needed for a relation to land on this row (`from_field`, `to_field`). Unique among the fields of the document."
+        },
+        "text": {
+          "type": "string",
+          "description": "The field's name, one line. `...` as the last field is a row standing for the fields not shown."
+        },
+        "type": {
+          "type": "string",
+          "description": "Its type — `uuid`, `float` — drawn right-aligned in the monospace face."
+        },
+        "key": {
+          "type": "string",
+          "description": "Whether it is a key, drawn as letters before the name — `PK`, `FK`, `UQ`: a word, never a colour.",
+          "enum": [
+            "primary",
+            "foreign",
+            "unique"
+          ]
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "fragment": {
+      "type": "object",
+      "properties": {
+        "operator": {
+          "type": "string",
+          "description": "What the frame says about the messages inside it, written in its tab: `loop` repeats them, `opt` may happen, `alt` is one branch of several, `par` runs its branches at once.",
+          "enum": [
+            "loop",
+            "alt",
+            "opt",
+            "par"
+          ]
+        },
+        "from": {
+          "type": "string",
+          "description": "The id of the first message inside the frame."
+        },
+        "to": {
+          "type": "string",
+          "description": "The id of the last message inside the frame — the same as `from` for a frame round one message. Not before `from`."
+        },
+        "text": {
+          "type": "string",
+          "description": "The condition, beside the tab: what the loop runs over, when the option or the first branch happens. Written plainly; drawspec adds the brackets."
+        },
+        "else": {
+          "type": "array",
+          "description": "For `alt` and `par` only: where the frame is divided, each a dashed line above a message inside it, with that branch's condition under it.",
+          "items": {
+            "$ref": "#/$defs/branch"
+          }
+        }
+      },
+      "required": [
+        "operator",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    },
     "group": {
       "type": "object",
       "properties": {
@@ -1234,6 +2579,37 @@
       "required": [
         "id",
         "members"
+      ],
+      "additionalProperties": false
+    },
+    "hub": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique within the document, and in the same id space as the nodes, so an edge may name the hub — as a spoke, never as a step of the loop."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "start",
+            "step",
+            "decision",
+            "terminal",
+            "emphasis",
+            "note",
+            "group"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "text"
       ],
       "additionalProperties": false
     },
@@ -1275,6 +2651,57 @@
       ],
       "additionalProperties": false
     },
+    "journey-row": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the rows; what a stage's `details` name in `row`."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "journey-stage": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "feeling": {
+          "type": "string",
+          "description": "One of the journey's `feelings`, by name: the level this stage's point is drawn at. A name, never a score."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default) or `emphasis` (the stage the map is about, usually the trough): its column framed, its point drawn larger and solid.",
+          "enum": [
+            "step",
+            "emphasis"
+          ]
+        },
+        "details": {
+          "type": "array",
+          "description": "What this stage holds in each detail row, a `{row, text}` per row it fills. A row it does not name is drawn as an empty cell.",
+          "items": {
+            "$ref": "#/$defs/detail"
+          }
+        }
+      },
+      "required": [
+        "text",
+        "feeling"
+      ],
+      "additionalProperties": false
+    },
     "key": {
       "type": "object",
       "properties": {
@@ -1290,6 +2717,50 @@
       "required": [
         "group",
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "lane-node": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique within the document."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "start",
+            "step",
+            "decision",
+            "terminal",
+            "emphasis",
+            "note"
+          ]
+        },
+        "actor": {
+          "type": "string",
+          "description": "Who performs this step, and so which lane it is drawn in. Required: every box in a swimlane diagram is in a lane. Drawn once, as the lane's heading, and not repeated in the box — so `text` may again use a newline for its own lead and detail. Free text, matched exactly against `lanes` when that is given."
+        },
+        "status": {
+          "type": "string",
+          "description": "What a proposed change does to this box, drawn as on a `flow`: the labelled mark inside the box, never a colour.",
+          "enum": [
+            "added",
+            "changed",
+            "removed"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "actor"
       ],
       "additionalProperties": false
     },
@@ -1320,6 +2791,63 @@
       },
       "required": [
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "mark": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "at": {
+          "type": "number",
+          "description": "Where on the axis: a line is drawn across every row there."
+        }
+      },
+      "required": [
+        "text",
+        "at"
+      ],
+      "additionalProperties": false
+    },
+    "message": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Optional, and only needed to name this message from a fragment. Unique among the messages."
+        },
+        "from": {
+          "type": "string",
+          "description": "The participant that sends it."
+        },
+        "to": {
+          "type": "string",
+          "description": "The participant that receives it. The same id as `from` is a message to itself, drawn as a hook on the right of its lifeline."
+        },
+        "text": {
+          "type": "string",
+          "description": "What is said, written above the arrow. May carry inline spans. Omit for a bare arrow."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'flow'.",
+          "enum": [
+            "flow",
+            "weak",
+            "strong"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "description": "A short aside about this message, drawn on its row in one column to the right of the last lifeline, so the notes read down as one margin."
+        }
+      },
+      "required": [
+        "from",
+        "to"
       ],
       "additionalProperties": false
     },
@@ -1358,6 +2886,42 @@
         "note": {
           "type": "string",
           "description": "A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead."
+        },
+        "status": {
+          "type": "string",
+          "description": "What a proposed change does to this box, as a diff would say it — for one drawing of the target state with the change marked on it, instead of a before and an after to compare by eye. Drawn as the labelled mark `files` uses (`+ added`, `~ changed`, `- removed`) inside the box, never as a colour; a removed box is also dashed and its text struck through. **Only a `flow` or a `tree`**: a loop that changes is a different loop. An edge touching a removed box must be `removed`, and one touching an added box must be `added`.",
+          "enum": [
+            "added",
+            "changed",
+            "removed"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "participant": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique within the document, among the participants and the groups."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
         }
       },
       "required": [
@@ -1402,6 +2966,100 @@
       ],
       "additionalProperties": false
     },
+    "region": {
+      "type": "object",
+      "properties": {
+        "in": {
+          "type": "array",
+          "description": "The ids of exactly the sets this region is in, and no others: `[\"gdpr\"]` is what only that set holds, `[\"gdpr\", \"ens\"]` what the two share. drawspec knows where that region is.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default) or `emphasis` (the region the diagram is about): its words bold and the region filled with the theme's first mark fill.",
+          "enum": [
+            "step",
+            "emphasis"
+          ]
+        }
+      },
+      "required": [
+        "in",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "relation": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The id of an entity. For `inherits` and `realizes`, the specific one — the subclass, the implementation."
+        },
+        "to": {
+          "type": "string",
+          "description": "The id of another entity — for `inherits` and `realizes` the general one, which gets the hollow triangle. Not the same as `from`."
+        },
+        "from_field": {
+          "type": "string",
+          "description": "The id of one of the `from` entity's fields: the line leaves that row, at the side facing the other entity, instead of the box. A foreign key drawn from its column."
+        },
+        "to_field": {
+          "type": "string",
+          "description": "As `from_field`, a field of the `to` entity: the line arrives at its row."
+        },
+        "from_end": {
+          "type": "string",
+          "description": "How many of the `from` entity there are per one of the other, drawn at the `from` end — crow's feet or numbers, as the theme's `[entities] notation` says. Not on `inherits` or `realizes`.",
+          "enum": [
+            "one",
+            "zero-or-one",
+            "many",
+            "zero-or-many",
+            "one-or-many"
+          ]
+        },
+        "to_end": {
+          "type": "string",
+          "description": "As `from_end`, for the `to` end: how many of it per one of the other. Not on `owns`, whose `to` end is the whole, drawn as the diamond.",
+          "enum": [
+            "one",
+            "zero-or-one",
+            "many",
+            "zero-or-many",
+            "one-or-many"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "description": "A short label placed along the line."
+        },
+        "role": {
+          "type": "string",
+          "description": "What the relation is. `link` (the default) an association; `owns` composition — `from` is a part of `to`, diamond at `to`; `weak` a dependency; `strong` the relation that matters; `inherits` and `realizes` a subclass and an implementation, hollow triangle at `to`. An end with a cardinality draws it in place of the role's head.",
+          "enum": [
+            "link",
+            "owns",
+            "weak",
+            "strong",
+            "inherits",
+            "realizes"
+          ]
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    },
     "ring": {
       "type": "object",
       "properties": {
@@ -1424,6 +3082,65 @@
         }
       },
       "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "sankey-flow": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The id of the node the amount leaves."
+        },
+        "to": {
+          "type": "string",
+          "description": "The id of the node the amount reaches."
+        },
+        "amount": {
+          "type": "number",
+          "description": "How much flows, in the sankey's `unit`: the band's thickness is in proportion. A number you already know, more than 0.",
+          "exclusiveMinimum": 0
+        },
+        "role": {
+          "type": "string",
+          "description": "`flow` (the default band) or `strong` (the path the diagram is about, drawn darker).",
+          "enum": [
+            "flow",
+            "strong"
+          ]
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "amount"
+      ],
+      "additionalProperties": false
+    },
+    "sankey-node": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the nodes; what a flow's `from` and `to` name."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default), `emphasis` (the node the diagram is about: its bar outlined heavier, its words bold) or `note` (the remainder — `Lost`, `Reserved, idle` — drawn lighter, with the bands that reach it).",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        }
+      },
+      "required": [
+        "id",
         "text"
       ],
       "additionalProperties": false
@@ -1481,6 +3198,24 @@
       ],
       "additionalProperties": false
     },
+    "slice": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the rows; what a card's `row` and the board's `cut` name."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
     "span": {
       "type": "object",
       "properties": {
@@ -1534,6 +3269,192 @@
         }
       },
       "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "state": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique within the document, among the states and the groups."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "step",
+            "emphasis",
+            "terminal"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "task": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique within the document."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "start": {
+          "type": "number",
+          "description": "Where the task starts on the axis, with `end`. A number in the axis's unit (week 3, day 12, minute 45) — data, not a coordinate. Never a date."
+        },
+        "end": {
+          "type": "number",
+          "description": "Where it ends, after `start`. With categories, 4 is where the fourth period begins."
+        },
+        "at": {
+          "type": "number",
+          "description": "Instead of `start` and `end`: makes the task a milestone, drawn as a mark at this point with no length."
+        },
+        "actor": {
+          "type": "string",
+          "description": "Who does it — free text, drawn as the row label's lead, so the names line up in a column. A task with an actor may not put a newline in `text`."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default bar), `strong` (on the critical path: drawn heavier, the word its dependencies take), `emphasis` (the task the diagram is about) or `note` (outside the plan, drawn lighter).",
+          "enum": [
+            "step",
+            "strong",
+            "emphasis",
+            "note"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "transition": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The state the machine leaves — or a group, for a transition that leaves the composite from whichever state inside it is current."
+        },
+        "to": {
+          "type": "string",
+          "description": "The state the machine enters — or a group, which is entered at its own `initial`. The same id as `from` draws a self-loop."
+        },
+        "event": {
+          "type": "string",
+          "description": "What happens that moves the machine. Omit for a completion transition, taken as soon as the state's work is done."
+        },
+        "guard": {
+          "type": "string",
+          "description": "The condition that must hold for the event to move the machine. Written plainly; drawspec adds the brackets."
+        },
+        "action": {
+          "type": "string",
+          "description": "What the machine does on the way. Written plainly; drawspec adds the slash. The label reads `event [guard] / action`, each part optional."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'flow'.",
+          "enum": [
+            "flow",
+            "strong",
+            "weak"
+          ]
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    },
+    "treemap-group": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the groups; what a part's `group` names."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "treemap-part": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "amount": {
+          "type": "number",
+          "description": "How much of the total this part is, in the treemap's `unit`: its area is in proportion. A number you already know, more than 0.",
+          "exclusiveMinimum": 0
+        },
+        "group": {
+          "type": "string",
+          "description": "The id of one of the treemap's `groups`: the part is laid out with the group's other parts inside its captioned frame. Omit it to sit beside the groups."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default), `emphasis` (the part the diagram is about — not automatically the largest: a heavier outline, its words bold) or `note` (the remainder, `Everything else`: a light dashed outline, laid out last).",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        }
+      },
+      "required": [
+        "text",
+        "amount"
+      ],
+      "additionalProperties": false
+    },
+    "venn-set": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the sets; what a region's `in` names."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default) or `emphasis` (the set the diagram is about), drawn as a heavier outline.",
+          "enum": [
+            "step",
+            "emphasis"
+          ]
+        }
+      },
+      "required": [
+        "id",
         "text"
       ],
       "additionalProperties": false

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "lanes",
+  "title": "A new hire's first week, prepared",
+  "description": "Short enough to read across the page, so the lanes run as rows. IT has two steps at once after the contract is signed, stacked in its one lane; the manager's two steps follow one another; everything meets on day one.",
+  "lanes": ["People team", "IT", "Manager"],
+  "nodes": [
+    { "id": "signed", "text": "Contract signed", "actor": "People team", "role": "start" },
+    { "id": "accounts", "text": "Creates accounts", "actor": "IT" },
+    { "id": "laptop", "text": "Ships a laptop", "actor": "IT" },
+    { "id": "buddy", "text": "Picks a buddy", "actor": "Manager" },
+    { "id": "plan", "text": "Writes the first week", "actor": "Manager" },
+    { "id": "ready", "text": "Day one", "actor": "People team", "role": "terminal" }
+  ],
+  "edges": [
+    { "from": "signed", "to": "accounts" },
+    { "from": "signed", "to": "laptop" },
+    { "from": "signed", "to": "buddy" },
+    { "from": "accounts", "to": "plan" },
+    { "from": "buddy", "to": "plan" },
+    { "from": "laptop", "to": "ready" },
+    { "from": "plan", "to": "ready" }
+  ]
+}

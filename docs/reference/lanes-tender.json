@@ -1,0 +1,25 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "lanes",
+  "title": "Open procedure, in outline",
+  "description": "Course notes on an open public tender. No `lanes` list is given, so the lanes come in the order their actors first appear: the authority that publishes, the bidders, and the committee that does most of the work in between.",
+  "caption": "Deadlines vary by contract value; see the procurement act.",
+  "nodes": [
+    { "id": "publish", "text": "Publishes the call for tenders", "actor": "Contracting authority", "role": "start" },
+    { "id": "submit", "text": "Submit sealed bids", "actor": "Bidders" },
+    { "id": "admin", "text": "Checks the administrative documents", "actor": "Contracting committee" },
+    { "id": "score", "text": "Scores the bids against the published criteria", "actor": "Contracting committee" },
+    { "id": "propose", "text": "Proposes the award", "actor": "Contracting committee" },
+    { "id": "award", "text": "Awards the contract", "actor": "Contracting authority", "role": "emphasis" },
+    { "id": "sign", "text": "Signs the contract", "actor": "Bidders", "role": "terminal" }
+  ],
+  "edges": [
+    { "from": "publish", "to": "submit" },
+    { "from": "submit", "to": "admin" },
+    { "from": "admin", "to": "score" },
+    { "from": "score", "to": "propose" },
+    { "from": "propose", "to": "award" },
+    { "from": "award", "to": "sign", "label": "the winning bidder" }
+  ]
+}

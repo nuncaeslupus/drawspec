@@ -33,13 +33,14 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, Sequence, Set
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from difflib import get_close_matches
 from pathlib import Path
 from typing import Any, Final
 
 from drawspec.errors import DocumentError
 from drawspec.filetree import ORDERS, STATUSES, Entry, problems
-from drawspec.theme import EDGE_ROLES, NODE_ROLES
+from drawspec.theme import EDGE_ROLES, NODE_ROLES, RAMP_STEPS
 
 #: The document format version this module reads.
 DOCUMENT_VERSION: Final = 1
@@ -75,6 +76,15 @@ GRAPH_KINDS: Final = ("flow", "tree", "cycle")
 #: it cannot place, which is a crash rather than a drawing.
 CONTAINER_KINDS: Final = ("flow", "tree")
 
+#: The edge roles a `cycle`'s hub may be joined by. Spokes, not steps: each of
+#: these is drawn without a solid head (`weak` is dashed), so none of them reads
+#: as one more move round the loop — which a `flow` arrow into the middle would.
+HUB_EDGE_ROLES: Final = ("aside", "weak", "link")
+
+#: The fewest steps a ring with a hub may have. Two steps and a middle is three
+#: boxes in a row, which is a `flow` and draws as one.
+HUB_MINIMUM_NODES: Final = 3
+
 GRID_KINDS: Final = ("stack", "timeline", "columns", "matrix")
 SHAPE_KINDS: Final = ("pyramid", "rings", "funnel")
 CHART_KINDS: Final = ("chart", "quadrant", "scatter", "curve")
@@ -83,6 +93,234 @@ CHART_KINDS: Final = ("chart", "quadrant", "scatter", "curve")
 #: Not a `tree` — that one is boxes and arrows for a hierarchy of ideas; this one
 #: is a listing, read top to bottom, whose structure is already written in paths.
 FILES_KINDS: Final = ("files",)
+
+#: A state machine. Drawn by the graph family's layout, but not a graph kind to
+#: the schema: its boxes are conditions something is *in*, not steps, so it has
+#: its own payload — `states`, `transitions`, an `initial` and `final` states —
+#: and its own refusals, of which reachability is the one only it can make.
+STATES_KINDS: Final = ("states",)
+
+#: The roles a state may take. `decision` is refused because a choice in a state
+#: machine is a guard on a transition, and a diamond would promise a step; `start`
+#: because the initial pseudo-state is a dot, not a box saying "start"; `note`
+#: and `group` because neither is a condition the machine can be in.
+STATE_ROLES: Final = ("step", "emphasis", "terminal")
+
+#: The roles a transition may take: the default, the happy path drawn heavier,
+#: and a rare or error path drawn dashed. `owns`, `link`, `exchange` and `aside`
+#: are not transitions — a transition has one direction and goes somewhere.
+TRANSITION_ROLES: Final = ("flow", "strong", "weak")
+
+#: Messages between participants, in order. A layout family of its own: the
+#: participants are columns in the order written, the messages rows in the order
+#: written, and nothing is ranked — the order *is* the diagram.
+SEQUENCE_KINDS: Final = ("sequence",)
+
+#: The roles a participant may take: a box, the box the diagram is about, and an
+#: outside system drawn as words with no box. `decision`, `start`, `terminal` and
+#: `group` promise a shape a lifeline's head does not have.
+PARTICIPANT_ROLES: Final = ("step", "emphasis", "note")
+
+#: The roles a message may take: a call (`flow`), a reply (`weak`, dashed with an
+#: open head, which is what UML draws for one), and the exchange that matters
+#: (`strong`). Every one has a head, because a message has a direction: `aside`,
+#: `link`, `exchange` and `owns` are refused. A signal nobody answers is a `flow`
+#: with no reply, and is drawn with no activation bar.
+MESSAGE_ROLES: Final = ("flow", "weak", "strong")
+
+#: What a fragment's frame says about the messages inside it, written in its tab.
+#: `alt` and `par` may be divided by `else`; `loop` and `opt` have one branch.
+FRAGMENT_OPERATORS: Final = ("loop", "alt", "opt", "par")
+
+#: The operators whose frame may be divided into branches.
+BRANCHING_OPERATORS: Final = ("alt", "par")
+
+#: A `flow` whose actors are drawn as swimlanes. Drawn by the graph family, and
+#: not a graph kind to the schema: every node must name its `actor`, which is
+#: its lane rather than its box's lead, and a lane is already the container — so
+#: `groups`, `bands` and `centre` are refused rather than drawn across the lanes.
+LANES_KINDS: Final = ("lanes",)
+
+#: The most lanes one drawing may have, whether listed in `lanes` or read from
+#: the actors. Lanes are expensive across the reading direction: past six the
+#: strips are too thin to hold a stack, or the drawing too wide to read across.
+LANES_MAX: Final = 6
+
+#: The roles a lane's step may take: a flow's, but not `group` — the lane is the
+#: container, and a box drawn as a frame inside it would claim to be another.
+LANE_NODE_ROLES: Final = tuple(role for role in NODE_ROLES if role != "group")
+
+#: Data models, schemas and class diagrams: named boxes holding lists, and typed
+#: relations between them. A layout family of its own — a box's rows are known
+#: before it is placed, so a relation can land on one row of it.
+ENTITIES_KINDS: Final = ("entities",)
+
+#: The roles an entity may take: the default box, the entity the diagram is
+#: about, and an outside or out-of-scope one, drawn lighter.
+ENTITY_ROLES: Final = ("step", "emphasis", "note")
+
+#: The edge roles only an `entities` diagram may name: a class diagram's "is a",
+#: drawn with a hollow triangle at the general end. Per kind, by the owner's
+#: decision — in a `flow` they would mean nothing, so they are refused there.
+HIERARCHY_ROLES: Final = ("inherits", "realizes")
+
+#: The roles a relation between entities may take. `link` (the default: an
+#: association has no direction), `owns` (composition: this is a part of that),
+#: `weak` (a dependency), `strong` (the relation that matters), and the two
+#: hierarchy roles. Aggregation is not offered — see `AGGREGATION_REFUSED`.
+ENTITY_EDGE_ROLES: Final = ("link", "owns", "weak", "strong", *HIERARCHY_ROLES)
+
+#: The edge roles every other kind with an `edges` array may name.
+GRAPH_EDGE_ROLES: Final = tuple(role for role in EDGE_ROLES if role not in HIERARCHY_ROLES)
+
+#: What a relation's end may say about how many: *how many of this end per one of
+#: the other*. The author states the cardinality; the theme's `[entities]
+#: notation` decides whether it is drawn as crow's feet or as numbers.
+CARDINALITIES: Final = ("one", "zero-or-one", "many", "zero-or-many", "one-or-many")
+
+#: What a field's key mark may say, drawn as letters before its name.
+FIELD_KEYS: Final = ("primary", "foreign", "unique")
+
+#: The longest stereotype an entity's `tag` may be: a word or two in guillemets.
+TAG_MAX: Final = 16
+
+#: The text of a field standing for the ones not shown, as in `files`.
+FIELD_PLACEHOLDERS: Final = ("...", "…")
+
+#: The words of the refusal a role that means aggregation gets.
+AGGREGATION_REFUSED: Final = (
+    "aggregation (the hollow diamond) is not offered: it is the most misread mark in a "
+    "class diagram and has no agreed meaning. Say `owns` if the part cannot outlive the "
+    "whole, `link` if it can."
+)
+
+#: Plans: one row per piece of work, each an interval on a numbered axis. A
+#: layout family of its own — rows in the order written, bars placed by value —
+#: drawing on the chart's ticks for the axis. No dates: a task starts and ends at
+#: numbers in a unit the axis names, which is the owner's decision.
+GANTT_KINDS: Final = ("gantt",)
+
+#: The roles a task may take: the default bar, a task on the critical path
+#: (`strong`, the same word its dependencies take, drawn heavier), the task the
+#: diagram is about (`emphasis`, heavier and differently filled), and an outside
+#: task drawn lighter (`note`). `strong` is not counted by the emphasis cap, for
+#: the reason the `strong` edge is not: a path is several things by nature.
+TASK_ROLES: Final = ("step", "strong", "emphasis", "note")
+
+#: The roles a dependency may take: the default, the critical path drawn heavier,
+#: and a soft or assumed dependency drawn dashed. Each has a head, because a
+#: finish-to-start dependency has a direction.
+DEPENDENCY_ROLES: Final = ("flow", "strong", "weak")
+
+#: The fields of a task that hold a position on the axis.
+TASK_VALUES: Final = ("start", "end", "at")
+
+#: Boards: cards sorted into columns, with no connectors — a kanban board, a
+#: retrospective, and (with `rows` and a `cut`) a story map. A layout family of
+#: its own: a grid of stacks, placed by counting, with nothing to route.
+BOARD_KINDS: Final = ("board",)
+
+#: The roles a card may take: the default, the one that matters (blocked, at
+#: risk), and a placeholder or summary card drawn lighter and not counted
+#: against its column's limit.
+CARD_ROLES: Final = ("step", "emphasis", "note")
+
+#: The roles a column's heading may take. A column over its `limit` takes
+#: `emphasis` whatever it was given, because drawspec counted and the author
+#: did not.
+BOARD_COLUMN_ROLES: Final = ("step", "emphasis")
+
+#: The most cards one cell of a board may stack — a column, or a column within
+#: one slice. Past it a reader counts instead of reading: write a summary card.
+BOARD_CELL_MAX: Final = 8
+
+#: Fishbone (Ishikawa) diagrams: one effect, its causes grouped by category. A
+#: fixed two-level structure — effect, categories, causes — drawn as bones
+#: slanting into a spine that ends at the effect. A layout family of its own.
+FISHBONE_KINDS: Final = ("fishbone",)
+
+#: The roles a cause may take: the default, the confirmed root cause (its bone
+#: is drawn heavy all the way to the spine), and one investigated and ruled out.
+CAUSE_ROLES: Final = ("step", "emphasis", "note")
+
+#: The most categories one fishbone may have, and causes one category may list.
+#: Past six bones the drawing stops being scannable; past five causes a bone is
+#: a list.
+FISHBONE_CATEGORY_MAX: Final = 6
+FISHBONE_CAUSE_MAX: Final = 5
+
+#: Venn diagrams: two or three overlapping sets, each region named by which sets
+#: it is in. With two or three circles every region is fixed by its membership,
+#: so nothing about the drawing needs a coordinate. A layout family of its own.
+VENN_KINDS: Final = ("venn",)
+
+#: The roles a set's circle may take: the default, and the set the diagram is
+#: about, drawn with a heavier outline.
+VENN_SET_ROLES: Final = ("step", "emphasis")
+
+#: The roles a region may take: the default, and the region the diagram is
+#: about — its words bold and the region filled with the theme's first mark fill.
+REGION_ROLES: Final = ("step", "emphasis")
+
+#: Journey maps: one person's feeling across the stages of an experience, a named
+#: level per stage, set against what they do there. The feeling is ordinal and
+#: named — there is no number to read off the line. A layout family of its own.
+JOURNEY_KINDS: Final = ("journey",)
+
+#: The roles a stage may take: the default, and the stage the map is about —
+#: usually the trough — its column framed and its point drawn larger and solid.
+JOURNEY_STAGE_ROLES: Final = ("step", "emphasis")
+
+#: The most stages, feeling levels and detail rows a journey holds. Past seven
+#: stages the columns are too narrow to read; past five levels two neighbours
+#: cannot be told apart; past four rows the map is a table with a line on it.
+JOURNEY_STAGE_MAX: Final = 7
+JOURNEY_FEELING_MAX: Final = 5
+JOURNEY_ROW_MAX: Final = 4
+
+#: Treemaps: one total split into a few parts, each drawn with an area in
+#: proportion to its value and labelled inside itself. A small set of proportions
+#: the author already knows, stated — not data to explore. A layout family of its
+#: own.
+TREEMAP_KINDS: Final = ("treemap",)
+
+#: The roles a part may take: the default; the part the diagram is about (not
+#: automatically the largest), outlined heavier with its words bold; and the
+#: remainder, a light dashed outline laid out after the others.
+TREEMAP_PART_ROLES: Final = ("step", "emphasis", "note")
+
+#: The most parts and groups a treemap holds. Past ten parts the smallest are
+#: slivers no label fits, and the drawing is a disk-usage tool's output; past four
+#: groups the frames crowd out the parts they hold.
+TREEMAP_PART_MAX: Final = 10
+TREEMAP_GROUP_MAX: Final = 4
+
+#: Sankey diagrams: where a known quantity goes — nodes in columns, joined by
+#: bands whose thickness is in proportion to the amount that flows. A small set
+#: of known flows, stated — not data to explore. A layout family of its own.
+SANKEY_KINDS: Final = ("sankey",)
+
+#: The roles a node may take: the default; the node the diagram is about, its
+#: bar outlined heavier and its words bold; and the remainder (`lost`, `idle`),
+#: drawn lighter along with the bands that reach it.
+SANKEY_NODE_ROLES: Final = ("step", "emphasis", "note")
+
+#: The roles a flow may take: the default band, and the path the diagram is
+#: about, drawn darker.
+SANKEY_FLOW_ROLES: Final = ("flow", "strong")
+
+#: The most nodes, flows and columns a sankey holds. Past fourteen nodes or four
+#: columns the bands are a tangle, not a picture of where something goes.
+SANKEY_NODE_MAX: Final = 14
+SANKEY_FLOW_MAX: Final = 24
+SANKEY_COLUMN_MAX: Final = 4
+
+#: The thickness, in units of the body size over eleven, of the fullest column's
+#: bands, and the thinnest band drawn. The scale is one factor for the whole
+#: drawing, so a flow under `SANKEY_MIN_BAND / SANKEY_BAND` of the fullest
+#: column's total is a hairline — refused while validating, not after a layout.
+SANKEY_BAND: Final = 240.0
+SANKEY_MIN_BAND: Final = 2.0
 
 #: How a `files` tree is drawn. `icons` is the file-browser look; `plain` keeps
 #: the guides and drops the pictures; `unicode` and `ascii` are the tree as text,
@@ -109,7 +347,156 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: deliberately refuses to draw) — evidence external to the corpus, not absent.
 #: `files` is the second, on the same footing: a directory listing is the figure
 #: every technical document draws by hand, and none of the others can draw it.
-KINDS: Final = GRAPH_KINDS + GRID_KINDS + SHAPE_KINDS + CHART_KINDS + FILES_KINDS
+#: `states` is the third on that footing: a state machine looked like a `flow`
+#: and claimed something else — an initial dot with no words, labelled
+#: transitions, self-loops, and a reachability rule a `flow` cannot make.
+#: `sequence` is the fourth: who says what to whom, in order — a fixed set of
+#: participants exchanging messages down the page, which a `flow` can only draw
+#: by duplicating its boxes and losing the order to the ranker. `lanes` is the
+#: fifth: not a new picture of a process but a different claim about it — that
+#: the hand-offs between parties are the point, which a lead in each box cannot
+#: show and a strip per party can. `entities` is the sixth: ER diagrams,
+#: database schemas and class diagrams are one shape — a named box with a list in
+#: it, and typed relations between boxes that may land on one row — which
+#: `tree-compartments` could only imitate with a newline per attribute. `gantt`
+#: is the seventh: a plan, one row per task, each an interval — overlap is what
+#: the reader looks for, and a `timeline`'s one axis of instants cannot show it.
+#: `board` is the eighth: cards sorted into columns with no connectors — a
+#: matrix cell is one box, and a board's cell is a list whose count matters.
+#: `fishbone` is the ninth: one effect and its causes by category — a two-level
+#: `tree` with the effect on top reads as if it owned its causes.
+#: `venn` is the tenth: two or three sets and what they share — a `matrix` can
+#: list memberships but cannot show an overlap.
+#: `journey` is the eleventh: a named feeling across stages — a `curve` would put
+#: a number on the feeling, and a `board` cannot draw the line through it.
+#: `treemap` is the twelfth: the parts of one known total by area — a `chart`'s
+#: bars compare the parts but do not show that they make one whole.
+#: `sankey` is the thirteenth: where a known quantity goes — a `flow` can say
+#: where, but not how much of it goes each way.
+KINDS: Final = (
+    GRAPH_KINDS
+    + GRID_KINDS
+    + SHAPE_KINDS
+    + CHART_KINDS
+    + FILES_KINDS
+    + STATES_KINDS
+    + SEQUENCE_KINDS
+    + LANES_KINDS
+    + ENTITIES_KINDS
+    + GANTT_KINDS
+    + BOARD_KINDS
+    + FISHBONE_KINDS
+    + VENN_KINDS
+    + JOURNEY_KINDS
+    + TREEMAP_KINDS
+    + SANKEY_KINDS
+)
+
+#: The readability budget: per kind, the most entries each counted array may
+#: hold before the document is refused as too much for one picture. This is not
+#: the fit limit — a `FitError` says the canvas is physically too small, and
+#: arrives around twenty boxes — but the earlier point at which a diagram stops
+#: being read and starts being searched.
+#:
+#: Measured, not chosen: every number sits at or above the largest document in
+#: `docs/reference/` (in brackets) with headroom, and above the largest drawing
+#: of that shape in `corpus/` — whose biggest box-and-arrow original has eleven
+#: boxes and ten connectors. `flow` is the tightest fit: `flow-edge-roles` has
+#: fourteen nodes (seven independent pairs) and `flow-mesh` twelve edges. A
+#: limit that refused a reference document would be a limit set too low, and a
+#: test renders every one of them.
+#:
+#: There is no opt-out. The top-level `width` and `height` are a budget for the
+#: canvas, and a wider canvas does not make twenty boxes easier to take in; the
+#: remedy is the one the refusal names — an overview plus detail diagrams.
+READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
+    "flow": (("nodes", 15), ("edges", 16)),  # [14 nodes, 12 edges]
+    "tree": (("nodes", 15),),  # [11]
+    "cycle": (("nodes", 8),),  # [5]
+    "stack": (("items", 8),),  # [3]
+    "timeline": (("items", 10),),  # [5]
+    "columns": (("items", 6),),  # [5]
+    "matrix": (("cells", 25),),  # [16]
+    "pyramid": (("levels", 7),),  # [4]
+    "rings": (("rings", 6),),  # [3]
+    "funnel": (("stages", 7),),  # [4]
+    "chart": (("series", 6),),  # [3]
+    "quadrant": (("positions", 12),),  # [5]
+    "scatter": (("positions", 20),),  # [9]
+    "curve": (("curves", 4),),  # [3]
+    "files": (("entries", 30),),  # [10]
+    # Set by the proposal rather than by the references: past fourteen states the
+    # back edges a machine is full of cross in the layered layout.
+    "states": (("states", 14), ("transitions", 24)),  # [6 states, 8 transitions]
+    # Set by the proposal: past eight lifelines and thirty messages a sequence
+    # diagram is a trace, not an explanation — split it into phases.
+    "sequence": (("participants", 8), ("messages", 30)),  # [5 participants, 13 messages]
+    # A flow's budget, and a cap on the strips: see `LANES_MAX`. When `lanes` is
+    # omitted the same cap is applied to the distinct actors, at the node that
+    # names the one too many.
+    "lanes": (("nodes", 15), ("edges", 16), ("lanes", LANES_MAX)),  # [7 nodes, 7 edges, 4 lanes]
+    # Set by the proposal: a schema of thirty tables is a database tool's output.
+    # A name with a slash counts inside each entry of the array before it — the
+    # rows of one box — and its refusal says to show the ones that matter.
+    "entities": (
+        ("entities", 8),
+        ("edges", 12),
+        ("entities/fields", 12),
+        ("entities/operations", 8),
+    ),  # [5 entities, 5 edges, 6 fields, 3 operations]
+    # Set by the proposal: a two-hundred-line plan is a project tool's export.
+    "gantt": (("tasks", 16), ("edges", 20), ("marks", 4)),  # [11 tasks, 9 edges, 2 marks]
+    # Set by the proposal: past six columns a card's words no longer fit its
+    # column. A name with an `@` counts the first array's entries per what the
+    # second names — here the cards that share a column and a slice.
+    "board": (
+        ("columns", 6),
+        ("rows", 4),
+        ("cards", 32),
+        ("cards@cell", BOARD_CELL_MAX),
+    ),  # [5 columns, 3 rows, 11 cards, 4 per cell]
+    # Set by the proposal: past six bones a fishbone stops being scannable, and
+    # past five causes a bone is a list. Both refusals say what to do instead.
+    "fishbone": (
+        ("categories", FISHBONE_CATEGORY_MAX),
+        ("categories/causes", FISHBONE_CAUSE_MAX),
+    ),  # [6 categories, 3 causes]
+    # Set by the proposal: no arrangement of four circles shows every region,
+    # and two or three sets have at most seven regions.
+    "venn": (("sets", 3), ("regions", 7)),  # [3 sets, 6 regions]
+    # Set by the proposal: columns narrow past seven, neighbouring levels blur
+    # past five, and past four rows the map is a table with a line on it.
+    "journey": (
+        ("stages", JOURNEY_STAGE_MAX),
+        ("feelings", JOURNEY_FEELING_MAX),
+        ("rows", JOURNEY_ROW_MAX),
+    ),  # [7 stages, 5 feelings, 3 rows]
+    # Set by the proposal: past ten parts the smallest are slivers no label fits,
+    # and one level of four groups is as much framing as the parts can carry.
+    "treemap": (
+        ("parts", TREEMAP_PART_MAX),
+        ("groups", TREEMAP_GROUP_MAX),
+    ),  # [9 parts, 3 groups]
+    # Set by the proposal: past fourteen nodes the bands are a tangle. The four
+    # columns are derived, not written, so `SANKEY_COLUMN_MAX` is checked with the
+    # flows, at the node that makes the fifth.
+    "sankey": (
+        ("nodes", SANKEY_NODE_MAX),
+        ("flows", SANKEY_FLOW_MAX),
+    ),  # [10 nodes, 9 flows]
+}
+
+
+#: The role that marks a focal element, and how many a diagram may carry. A
+#: reader's eye goes to the heaviest thing first; three heaviest things is no
+#: heaviest thing. Two, not one, because the reference documents mark a pair
+#: — the two milestones on `flow-critical-path` and `flow-accent`; no other
+#: reference or test document needed more, and the one that had three
+#: (`scatter-pareto`) emphasised a point another dominated. The `strong`
+#: edge role is not counted: it marks a *path*, which is several edges by
+#: nature and reads as one line.
+EMPHASIS_ROLE: Final = "emphasis"
+EMPHASIS_CAP: Final = 2
 
 #: Fields an author might reach for that drawspec refuses, and why. Not used for
 #: validation — `additionalProperties: false` already rejects them — but for the
@@ -139,6 +526,10 @@ REJECTED_FIELDS: Final = {
     "z": "overlap is resolved by the layout, not declared",
     "order": "overlap is resolved by the layout, not declared",
     "layer": "overlap is resolved by the layout, not declared",
+    "value": (
+        "a cell is filled by the `scale` step its `group` names, not by a number — "
+        "bucket the values and name the buckets; the number can stay in the text"
+    ),
     "viewBox": "derived from width and the content",
     "canvas": "derived from width and the content",
 }
@@ -171,6 +562,8 @@ class FieldSpec:
     min_items: int = 0
     exclusive_minimum: float | None = None
     description: str = ""
+    missing: str = ""
+    """For a required field: what to say when it is absent, if more than that it is."""
 
 
 def _text(name: str = "text", *, required: bool = True) -> FieldSpec:
@@ -218,6 +611,15 @@ _NOTE_DESCRIPTION: Final = (
 )
 
 
+#: What a lane diagram says to a node with no actor: the one thing a swimlane
+#: needs that a flow does not, and the way back to the kind that does not need it.
+LANES_ACTOR_MISSING: Final = (
+    "'actor' is required: every box in a lanes diagram is in a lane, and the actor "
+    "names it. If this step belongs to nobody, the diagram is a flow — change the kind, "
+    "and any actors become the boxes' leads."
+)
+
+
 def _role(vocabulary: tuple[str, ...], default: str) -> FieldSpec:
     return FieldSpec(
         "role",
@@ -249,6 +651,21 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         _role(NODE_ROLES, "step"),
         FieldSpec("actor", "string", description=_ACTOR_DESCRIPTION),
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
+        FieldSpec(
+            "status",
+            "string",
+            enum=STATUSES,
+            description=(
+                "What a proposed change does to this box, as a diff would say it — for "
+                "one drawing of the target state with the change marked on it, instead "
+                "of a before and an after to compare by eye. Drawn as the labelled mark "
+                "`files` uses (`+ added`, `~ changed`, `- removed`) inside the box, never "
+                "as a colour; a removed box is also dashed and its text struck through. "
+                "**Only a `flow` or a `tree`**: a loop that changes is a different loop. "
+                "An edge touching a removed box must be `removed`, and one touching an "
+                "added box must be `added`."
+            ),
+        ),
     ),
     "edge": (
         FieldSpec(
@@ -260,7 +677,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
                 "an edge may name a container, for a relation that belongs to the whole "
                 "of it rather than to any one box inside. It may not join a container to "
                 "something already within it. A `cycle` draws no containers, so an edge "
-                "in one names a node."
+                "in one names a node — or its `hub`, as a spoke."
             ),
         ),
         FieldSpec(
@@ -269,11 +686,820 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             required=True,
             description=(
                 "The id of the target node — or, in a `flow` or a `tree`, of a group. "
-                "The same id space as `from`."
+                "The same id space as `from`. The same id as `from` draws a loop on the "
+                "side of that box, across the reading direction, with its label outside "
+                "it: two per box at most, and never on a group."
             ),
         ),
         FieldSpec("label", "string", description="A short label placed along the edge."),
-        _role(EDGE_ROLES, "flow"),
+        _role(GRAPH_EDGE_ROLES, "flow"),
+        FieldSpec(
+            "status",
+            "string",
+            enum=STATUSES,
+            description=(
+                "What a proposed change does to this connection: the same marks as a "
+                "node's, written before the label (`+`, `~`, `-`), with a key of the "
+                "marks under the drawing. A removed edge is drawn in the `aside` "
+                "treatment — dashed, no head — whatever its role. **Only a `flow`, a "
+                "`tree` or `lanes`.**"
+            ),
+        ),
+    ),
+    "lane-node": (
+        FieldSpec("id", "string", required=True, description="Unique within the document."),
+        _text(),
+        _role(LANE_NODE_ROLES, "step"),
+        FieldSpec(
+            "actor",
+            "string",
+            required=True,
+            missing=LANES_ACTOR_MISSING,
+            description=(
+                "Who performs this step, and so which lane it is drawn in. Required: every "
+                "box in a swimlane diagram is in a lane. Drawn once, as the lane's heading, "
+                "and not repeated in the box — so `text` may again use a newline for its "
+                "own lead and detail. Free text, matched exactly against `lanes` when that "
+                "is given."
+            ),
+        ),
+        FieldSpec(
+            "status",
+            "string",
+            enum=STATUSES,
+            description=(
+                "What a proposed change does to this box, drawn as on a `flow`: the "
+                "labelled mark inside the box, never a colour."
+            ),
+        ),
+    ),
+    "hub": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description=(
+                "Unique within the document, and in the same id space as the nodes, so "
+                "an edge may name the hub — as a spoke, never as a step of the loop."
+            ),
+        ),
+        _text(),
+        _role(NODE_ROLES, "step"),
+    ),
+    "state": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique within the document, among the states and the groups.",
+        ),
+        _text(),
+        _role(STATE_ROLES, "step"),
+    ),
+    "transition": (
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description=(
+                "The state the machine leaves — or a group, for a transition that "
+                "leaves the composite from whichever state inside it is current."
+            ),
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description=(
+                "The state the machine enters — or a group, which is entered at its own "
+                "`initial`. The same id as `from` draws a self-loop."
+            ),
+        ),
+        FieldSpec(
+            "event",
+            "string",
+            description=(
+                "What happens that moves the machine. Omit for a completion transition, "
+                "taken as soon as the state's work is done."
+            ),
+        ),
+        FieldSpec(
+            "guard",
+            "string",
+            description=(
+                "The condition that must hold for the event to move the machine. Written "
+                "plainly; drawspec adds the brackets."
+            ),
+        ),
+        FieldSpec(
+            "action",
+            "string",
+            description=(
+                "What the machine does on the way. Written plainly; drawspec adds the "
+                "slash. The label reads `event [guard] / action`, each part optional."
+            ),
+        ),
+        _role(TRANSITION_ROLES, "flow"),
+    ),
+    "composite": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique within the document, among the states and the groups.",
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description="The composite state's name, drawn at its frame's corner.",
+        ),
+        FieldSpec(
+            "members",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=1,
+            description="The states (or groups) inside this composite state.",
+        ),
+        FieldSpec(
+            "initial",
+            "string",
+            description=(
+                "The member this composite is entered at, drawn as a dot inside the "
+                "frame. Required when a transition, or the machine's own `initial`, "
+                "names the group."
+            ),
+        ),
+    ),
+    "participant": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique within the document, among the participants and the groups.",
+        ),
+        _text(),
+        _role(PARTICIPANT_ROLES, "step"),
+    ),
+    "message": (
+        FieldSpec(
+            "id",
+            "string",
+            description=(
+                "Optional, and only needed to name this message from a fragment. Unique "
+                "among the messages."
+            ),
+        ),
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description="The participant that sends it.",
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description=(
+                "The participant that receives it. The same id as `from` is a message to "
+                "itself, drawn as a hook on the right of its lifeline."
+            ),
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description=(
+                "What is said, written above the arrow. May carry inline spans. Omit for "
+                "a bare arrow."
+            ),
+        ),
+        _role(MESSAGE_ROLES, "flow"),
+        FieldSpec(
+            "note",
+            "string",
+            description=(
+                "A short aside about this message, drawn on its row in one column to the "
+                "right of the last lifeline, so the notes read down as one margin."
+            ),
+        ),
+    ),
+    "fragment": (
+        FieldSpec(
+            "operator",
+            "string",
+            required=True,
+            enum=FRAGMENT_OPERATORS,
+            description=(
+                "What the frame says about the messages inside it, written in its tab: "
+                "`loop` repeats them, `opt` may happen, `alt` is one branch of several, "
+                "`par` runs its branches at once."
+            ),
+        ),
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description="The id of the first message inside the frame.",
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description=(
+                "The id of the last message inside the frame — the same as `from` for a "
+                "frame round one message. Not before `from`."
+            ),
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description=(
+                "The condition, beside the tab: what the loop runs over, when the "
+                "option or the first branch happens. Written plainly; drawspec adds the "
+                "brackets."
+            ),
+        ),
+        FieldSpec(
+            "else",
+            "array",
+            item_ref="branch",
+            description=(
+                "For `alt` and `par` only: where the frame is divided, each a dashed line "
+                "above a message inside it, with that branch's condition under it."
+            ),
+        ),
+    ),
+    "branch": (
+        FieldSpec(
+            "at",
+            "string",
+            required=True,
+            description=(
+                "The id of the first message of this branch. The divider is drawn above "
+                "it, so it is after the fragment's first message and no later than its "
+                "last."
+            ),
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description=(
+                "This branch's condition. Written plainly; drawspec adds the brackets. "
+                "Omit it for a `par` branch, which runs alongside the others and has none."
+            ),
+        ),
+    ),
+    "entity": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the entities.",
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description=(
+                "The entity's name, drawn bold over its fields. One line: may carry "
+                "`code` and **bold** spans — a table name is usually `code`."
+            ),
+        ),
+        FieldSpec(
+            "tag",
+            "string",
+            description=(
+                f"A short stereotype drawn over the name in guillemets — `interface` is "
+                f"drawn «interface». Free text, {TAG_MAX} characters at most."
+            ),
+        ),
+        _role(ENTITY_ROLES, "step"),
+        FieldSpec(
+            "fields",
+            "array",
+            item_ref="field",
+            description=(
+                "What the entity holds, one row each under its name: attributes, columns. "
+                "A last field of `...` stands for those not shown."
+            ),
+        ),
+        FieldSpec(
+            "operations",
+            "array",
+            item_kind="string",
+            description=(
+                "What a class can do — `area() → float` — drawn in a compartment of their "
+                "own under the fields. Strings, not objects: an operation is read, never "
+                "linked to."
+            ),
+        ),
+    ),
+    "field": (
+        FieldSpec(
+            "id",
+            "string",
+            description=(
+                "Only needed for a relation to land on this row (`from_field`, "
+                "`to_field`). Unique among the fields of the document."
+            ),
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description=(
+                "The field's name, one line. `...` as the last field is a row standing "
+                "for the fields not shown."
+            ),
+        ),
+        FieldSpec(
+            "type",
+            "string",
+            description="Its type — `uuid`, `float` — drawn right-aligned in the monospace face.",
+        ),
+        FieldSpec(
+            "key",
+            "string",
+            enum=FIELD_KEYS,
+            description=(
+                "Whether it is a key, drawn as letters before the name — `PK`, `FK`, "
+                "`UQ`: a word, never a colour."
+            ),
+        ),
+    ),
+    "relation": (
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description=(
+                "The id of an entity. For `inherits` and `realizes`, the specific one — "
+                "the subclass, the implementation."
+            ),
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description=(
+                "The id of another entity — for `inherits` and `realizes` the general one, "
+                "which gets the hollow triangle. Not the same as `from`."
+            ),
+        ),
+        FieldSpec(
+            "from_field",
+            "string",
+            description=(
+                "The id of one of the `from` entity's fields: the line leaves that row, "
+                "at the side facing the other entity, instead of the box. A foreign key "
+                "drawn from its column."
+            ),
+        ),
+        FieldSpec(
+            "to_field",
+            "string",
+            description="As `from_field`, a field of the `to` entity: the line arrives at its row.",
+        ),
+        FieldSpec(
+            "from_end",
+            "string",
+            enum=CARDINALITIES,
+            description=(
+                "How many of the `from` entity there are per one of the other, drawn at "
+                "the `from` end — crow's feet or numbers, as the theme's `[entities] "
+                "notation` says. Not on `inherits` or `realizes`."
+            ),
+        ),
+        FieldSpec(
+            "to_end",
+            "string",
+            enum=CARDINALITIES,
+            description=(
+                "As `from_end`, for the `to` end: how many of it per one of the other. Not on "
+                "`owns`, whose `to` end is the whole, drawn as the diamond."
+            ),
+        ),
+        FieldSpec("label", "string", description="A short label placed along the line."),
+        FieldSpec(
+            "role",
+            "string",
+            enum=ENTITY_EDGE_ROLES,
+            description=(
+                "What the relation is. `link` (the default) an association; `owns` "
+                "composition — `from` is a part of `to`, diamond at `to`; `weak` a "
+                "dependency; `strong` the relation that matters; `inherits` and `realizes` "
+                "a subclass and an implementation, hollow triangle at `to`. An end with a "
+                "cardinality draws it in place of the role's head."
+            ),
+        ),
+    ),
+    "task": (
+        FieldSpec("id", "string", required=True, description="Unique within the document."),
+        _text(),
+        FieldSpec(
+            "start",
+            "number",
+            description=(
+                "Where the task starts on the axis, with `end`. A number in the axis's unit "
+                "(week 3, day 12, minute 45) — data, not a coordinate. Never a date."
+            ),
+        ),
+        FieldSpec(
+            "end",
+            "number",
+            description=(
+                "Where it ends, after `start`. With categories, 4 is where the fourth "
+                "period begins."
+            ),
+        ),
+        FieldSpec(
+            "at",
+            "number",
+            description=(
+                "Instead of `start` and `end`: makes the task a milestone, drawn as a mark "
+                "at this point with no length."
+            ),
+        ),
+        FieldSpec(
+            "actor",
+            "string",
+            description=(
+                "Who does it — free text, drawn as the row label's lead, so the names line "
+                "up in a column. A task with an actor may not put a newline in `text`."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=TASK_ROLES,
+            description=(
+                "`step` (the default bar), `strong` (on the critical path: drawn heavier, the "
+                "word its dependencies take), `emphasis` (the task the diagram is about) or "
+                "`note` (outside the plan, drawn lighter)."
+            ),
+        ),
+    ),
+    "dependency": (
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description="The id of the task that has to finish first.",
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description=(
+                "The id of the task that waits for it, which may not start before `from` "
+                "ends. Drawn from the end of one bar into the start of the other."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=DEPENDENCY_ROLES,
+            description=(
+                "`flow` (the default), `strong` (the critical path) or `weak` (a soft "
+                "dependency, dashed)."
+            ),
+        ),
+    ),
+    "mark": (
+        _text(),
+        FieldSpec(
+            "at",
+            "number",
+            required=True,
+            description="Where on the axis: a line is drawn across every row there.",
+        ),
+    ),
+    "axis-gantt": (
+        FieldSpec(
+            "label",
+            "string",
+            required=True,
+            description="Required, and the unit's name: `Week`, `Day`, `Minutes after 02:00`.",
+        ),
+        FieldSpec(
+            "unit", "string", description="What the numbers are in, written after the label."
+        ),
+        FieldSpec(
+            "min",
+            "number",
+            description="Where the plan starts. Omit to take it from the tasks.",
+        ),
+        FieldSpec(
+            "max",
+            "number",
+            description="Where the plan ends. Omit to take it from the tasks.",
+        ),
+        FieldSpec(
+            "categories",
+            "array",
+            item_kind="string",
+            min_items=1,
+            description=(
+                "Names for the periods, in order, instead of numbers — months, sprints, "
+                "quarters. The first period runs from 1 to 2, the second from 2 to 3, so a "
+                "task over the first three is `start` 1, `end` 4. Sets the range itself, "
+                "so not with `min` or `max`."
+            ),
+        ),
+    ),
+    "board-column": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the columns; what a card's `column` names.",
+        ),
+        _text(),
+        FieldSpec(
+            "limit",
+            "integer",
+            exclusive_minimum=0,
+            description=(
+                "A work-in-progress limit. drawspec counts the column's cards (a `note` card "
+                "is not work, so it is not counted) and writes `n / limit` in the heading; "
+                "over the limit the heading takes `emphasis`. Never write the count yourself."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=BOARD_COLUMN_ROLES,
+            description=(
+                "`step` (the default) or `emphasis` (the column the board is about), drawn "
+                "as the weight of the rule under the heading."
+            ),
+        ),
+    ),
+    "slice": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the rows; what a card's `row` and the board's `cut` name.",
+        ),
+        _text(),
+    ),
+    "card": (
+        _text(),
+        FieldSpec(
+            "column",
+            "string",
+            required=True,
+            description="The id of the column it is in. Its kind is its column.",
+        ),
+        FieldSpec(
+            "row",
+            "string",
+            description=(
+                "The id of the row (slice) it is in. Required when the board has `rows`, "
+                "refused when it has none."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=CARD_ROLES,
+            description=(
+                "`step` (the default), `emphasis` (blocked, at risk, the one that matters) "
+                "or `note` (a placeholder or a summary such as `+ 6 more`, drawn lighter "
+                "and not counted against a limit)."
+            ),
+        ),
+        FieldSpec(
+            "actor",
+            "string",
+            description=(
+                "Who holds it — free text, drawn as the card's lead, as in a `flow` box. A "
+                "card with an actor may not put a newline in `text`."
+            ),
+        ),
+        FieldSpec(
+            "note",
+            "string",
+            description=("A short aside hung under the card, smaller: `blocked on a decision`."),
+        ),
+    ),
+    "venn-set": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the sets; what a region's `in` names.",
+        ),
+        _text(),
+        FieldSpec(
+            "role",
+            "string",
+            enum=VENN_SET_ROLES,
+            description=(
+                "`step` (the default) or `emphasis` (the set the diagram is about), drawn as "
+                "a heavier outline."
+            ),
+        ),
+    ),
+    "region": (
+        FieldSpec(
+            "in",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=1,
+            description=(
+                "The ids of exactly the sets this region is in, and no others: "
+                '`["gdpr"]` is what only that set holds, `["gdpr", "ens"]` what the two '
+                "share. drawspec knows where that region is."
+            ),
+        ),
+        _text(),
+        FieldSpec(
+            "role",
+            "string",
+            enum=REGION_ROLES,
+            description=(
+                "`step` (the default) or `emphasis` (the region the diagram is about): its "
+                "words bold and the region filled with the theme's first mark fill."
+            ),
+        ),
+    ),
+    "journey-row": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the rows; what a stage's `details` name in `row`.",
+        ),
+        _text(),
+    ),
+    "journey-stage": (
+        _text(),
+        FieldSpec(
+            "feeling",
+            "string",
+            required=True,
+            missing=(
+                "'feeling' is required: the feeling line is the reason to draw a journey, "
+                "and it passes through every stage. A stage nobody can name a feeling for "
+                "means the diagram is a `flow` or a `timeline`."
+            ),
+            description=(
+                "One of the journey's `feelings`, by name: the level this stage's point is "
+                "drawn at. A name, never a score."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=JOURNEY_STAGE_ROLES,
+            description=(
+                "`step` (the default) or `emphasis` (the stage the map is about, usually the "
+                "trough): its column framed, its point drawn larger and solid."
+            ),
+        ),
+        FieldSpec(
+            "details",
+            "array",
+            item_ref="detail",
+            description=(
+                "What this stage holds in each detail row, a `{row, text}` per row it fills. "
+                "A row it does not name is drawn as an empty cell."
+            ),
+        ),
+    ),
+    "detail": (
+        FieldSpec(
+            "row",
+            "string",
+            required=True,
+            description="The id of one of the journey's `rows`, at most once per stage.",
+        ),
+        _text(),
+    ),
+    "treemap-part": (
+        _text(),
+        FieldSpec(
+            "amount",
+            "number",
+            required=True,
+            exclusive_minimum=0,
+            description=(
+                "How much of the total this part is, in the treemap's `unit`: its area is in "
+                "proportion. A number you already know, more than 0."
+            ),
+        ),
+        FieldSpec(
+            "group",
+            "string",
+            description=(
+                "The id of one of the treemap's `groups`: the part is laid out with the "
+                "group's other parts inside its captioned frame. Omit it to sit beside the "
+                "groups."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=TREEMAP_PART_ROLES,
+            description=(
+                "`step` (the default), `emphasis` (the part the diagram is about — not "
+                "automatically the largest: a heavier outline, its words bold) or `note` (the "
+                "remainder, `Everything else`: a light dashed outline, laid out last)."
+            ),
+        ),
+    ),
+    "sankey-node": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the nodes; what a flow's `from` and `to` name.",
+        ),
+        _text(),
+        FieldSpec(
+            "role",
+            "string",
+            enum=SANKEY_NODE_ROLES,
+            description=(
+                "`step` (the default), `emphasis` (the node the diagram is about: its bar "
+                "outlined heavier, its words bold) or `note` (the remainder — `Lost`, "
+                "`Reserved, idle` — drawn lighter, with the bands that reach it)."
+            ),
+        ),
+    ),
+    "sankey-flow": (
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description="The id of the node the amount leaves.",
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description="The id of the node the amount reaches.",
+        ),
+        FieldSpec(
+            "amount",
+            "number",
+            required=True,
+            exclusive_minimum=0,
+            description=(
+                "How much flows, in the sankey's `unit`: the band's thickness is in proportion. "
+                "A number you already know, more than 0."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=SANKEY_FLOW_ROLES,
+            description=(
+                "`flow` (the default band) or `strong` (the path the diagram is about, drawn "
+                "darker)."
+            ),
+        ),
+    ),
+    "treemap-group": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the groups; what a part's `group` names.",
+        ),
+        _text(),
+    ),
+    "effect": (_text(),),
+    "category": (
+        _text(),
+        FieldSpec(
+            "causes",
+            "array",
+            required=True,
+            item_ref="cause",
+            min_items=1,
+            description=(
+                "What was investigated under this category, in reading order from the "
+                "category's name inwards to the spine. Leaves: a cause has no causes."
+            ),
+        ),
+    ),
+    "cause": (
+        _text(),
+        FieldSpec(
+            "role",
+            "string",
+            enum=CAUSE_ROLES,
+            description=(
+                "`step` (the default), `emphasis` (the confirmed root cause: its bone is "
+                "drawn heavy up to the spine) or `note` (investigated and ruled out, its "
+                "tick drawn light and dashed)."
+            ),
+        ),
     ),
     "group": (
         FieldSpec("id", "string", required=True, description="Unique within the document."),
@@ -631,7 +1857,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the fifteen diagrams this is. It selects the fields that are "
+            "Which of the twenty-six diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -665,7 +1891,15 @@ COMMON_FIELDS: Final = (
         "boolean",
         description="Makes height a constraint rather than a hint.",
     ),
-    FieldSpec("theme", "string", description="A bundled theme name or the path of a theme file."),
+    FieldSpec(
+        "theme",
+        "string",
+        description=(
+            "A bundled theme name or the path of a theme file. A relative path is read "
+            "from the document's own folder when the file is there, so a theme can sit "
+            "beside the diagrams that use it."
+        ),
+    ),
 )
 
 #: The payload fields each kind family adds. The kind selects the family, and
@@ -710,6 +1944,22 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
                 "A `group` cannot say that — a box sits inside one container or none, "
                 "so two groups over the same members had to be nested, which draws a "
                 "hierarchy that is not there."
+            ),
+        ),
+    ),
+    ("cycle",): (
+        FieldSpec(
+            "hub",
+            "object",
+            ref="hub",
+            description=(
+                "What the loop turns around: the system a quality cycle improves, the "
+                "model a data flywheel retrains. Not a step — it is drawn in the middle "
+                "of the ring, outside the check that the ring closes through every "
+                "node. An edge may join it to a step only as a spoke, in the roles "
+                f"{', '.join(repr(role) for role in HUB_EDGE_ROLES)}: a solid "
+                "arrow to the middle would read as one more step. Needs a ring of at "
+                f"least {HUB_MINIMUM_NODES} steps."
             ),
         ),
     ),
@@ -784,6 +2034,22 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
                 "grid are not always only cells: one may produce another, or come before "
                 "it. The grid places them; the relations are a separate thing, and "
                 "without them a reader sees a table where the source drew a process."
+            ),
+        ),
+        FieldSpec(
+            "scale",
+            "array",
+            item_kind="string",
+            min_items=2,
+            description=(
+                f"Says the groups are **ordered**, and in what order: 2 to {RAMP_STEPS} "
+                'group names, **weakest first** — `["rare", "sometimes", "often"]`. '
+                "For a heatmap, a risk matrix, a skills matrix: a grid whose cells say "
+                "*how much*. The cells are then filled by tone, light to dark, from the "
+                "theme's `[mark] ramp` instead of with unrelated patterns, and the key "
+                "lists every step in this order (with `key` texts where given). Every "
+                "cell `group` must be one of these; a cell with no `group` stays blank, "
+                "for *not assessed*. Names, not numbers: the author buckets the values."
             ),
         ),
         FieldSpec(
@@ -911,6 +2177,415 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    STATES_KINDS: (
+        FieldSpec(
+            "states",
+            "array",
+            required=True,
+            item_ref="state",
+            min_items=1,
+            description=(
+                "The conditions the machine can be in. A newline in `text` is a lead "
+                "and a detail, as everywhere: the state's name over what holds in it. "
+                "Every state must be reachable from `initial`."
+            ),
+        ),
+        FieldSpec(
+            "initial",
+            "string",
+            required=True,
+            description=(
+                "The state the machine starts in, drawn as a filled dot with an arrow to "
+                "it. Required: reachability is measured from here. May name a group, "
+                "which must then say its own `initial`."
+            ),
+        ),
+        FieldSpec(
+            "final",
+            "array",
+            item_kind="string",
+            description=(
+                "The states the machine ends in, each drawn with an arrow to a ringed "
+                "dot. A final state has no outgoing transition."
+            ),
+        ),
+        FieldSpec(
+            "transitions",
+            "array",
+            item_ref="transition",
+            description=(
+                "What moves the machine from one state to another, each labelled "
+                "`event [guard] / action` from its own fields."
+            ),
+        ),
+        FieldSpec(
+            "groups",
+            "array",
+            item_ref="composite",
+            description=(
+                "Composite states: a frame around the states inside it, named at its "
+                "corner. Groups may nest. A transition from a group leaves it from any "
+                "state inside; one to a group enters it at the group's `initial`."
+            ),
+        ),
+    ),
+    SEQUENCE_KINDS: (
+        FieldSpec(
+            "participants",
+            "array",
+            required=True,
+            item_ref="participant",
+            min_items=2,
+            description=(
+                "Who takes part, drawn left to right in the order written, each a head "
+                "with a dashed lifeline under it. The order is the reading order, not a "
+                "coordinate. Every participant must send or receive a message."
+            ),
+        ),
+        FieldSpec(
+            "messages",
+            "array",
+            required=True,
+            item_ref="message",
+            min_items=1,
+            description=(
+                "What is said, drawn top to bottom in the order written: the order is "
+                "the diagram. A call (`flow`) answered later by a `weak` reply opens an "
+                "activation bar on the receiver from the call's row to the reply's; "
+                "nobody writes how tall it is."
+            ),
+        ),
+        FieldSpec(
+            "fragments",
+            "array",
+            item_ref="fragment",
+            description=(
+                "Frames round a run of messages, `from` to `to`, and every participant "
+                "they touch. Fragments nest or are apart; one that starts inside "
+                "another and ends outside it is refused."
+            ),
+        ),
+        FieldSpec(
+            "groups",
+            "array",
+            item_ref="group",
+            description=(
+                "A frame round a run of neighbouring lifelines, named at its top — "
+                "*inside our account*. Members must be next to each other in "
+                "`participants`, and a participant is in one group or none."
+            ),
+        ),
+    ),
+    LANES_KINDS: (
+        FieldSpec(
+            "nodes",
+            "array",
+            required=True,
+            item_ref="lane-node",
+            min_items=1,
+            description=(
+                "The steps, each in the lane its `actor` names. Ranked along the lanes as "
+                "a `flow` is; within one lane, order is the order siblings are drawn in."
+            ),
+        ),
+        FieldSpec(
+            "edges",
+            "array",
+            item_ref="edge",
+            description=(
+                "What follows what, as on a `flow`. An edge between two lanes crosses "
+                "the boundaries between them: that crossing is the hand-off."
+            ),
+        ),
+        FieldSpec(
+            "lanes",
+            "array",
+            item_kind="string",
+            min_items=1,
+            description=(
+                "The lanes in order — top to bottom when they run across the page, left "
+                "to right when they run down it; the theme decides which. Each must be "
+                "some node's `actor`, spelled exactly, and every actor must be listed. "
+                "Omit it and the lanes come in the order their actors first appear in "
+                f"`nodes`. At most {LANES_MAX}."
+            ),
+        ),
+    ),
+    ENTITIES_KINDS: (
+        FieldSpec(
+            "entities",
+            "array",
+            required=True,
+            item_ref="entity",
+            min_items=1,
+            description=(
+                "The boxes: each a name (and a stereotype), a rule, its fields, and its "
+                "operations under a second rule. Placed by their relations: general above "
+                "specific when there is a hierarchy, side by side otherwise."
+            ),
+        ),
+        FieldSpec(
+            "edges",
+            "array",
+            item_ref="relation",
+            description=(
+                "The relations between entities, each landing on a box — or, with "
+                "`from_field` / `to_field`, on one row of it — and carrying a cardinality "
+                "at either end. A hierarchy may not loop."
+            ),
+        ),
+    ),
+    GANTT_KINDS: (
+        FieldSpec(
+            "axis",
+            "object",
+            required=True,
+            ref="axis-gantt",
+            description=(
+                "The one axis the plan runs along: what its numbers count, in a unit you "
+                "name. There are no dates."
+            ),
+        ),
+        FieldSpec(
+            "tasks",
+            "array",
+            required=True,
+            item_ref="task",
+            min_items=1,
+            description=(
+                "One row each, in the order written — that order is the reading order. "
+                "`start` and `end` make a bar; `at` makes a milestone."
+            ),
+        ),
+        FieldSpec(
+            "groups",
+            "array",
+            item_ref="group",
+            description=(
+                "Phases, each a run of consecutive tasks, drawn as a heading row with a "
+                "bracket over the phase's span. With groups, every task is in one."
+            ),
+        ),
+        FieldSpec(
+            "edges",
+            "array",
+            item_ref="dependency",
+            description=(
+                "Finish-to-start dependencies between tasks: drawn from the end of `from` "
+                "into the start of `to`."
+            ),
+        ),
+        FieldSpec(
+            "marks",
+            "array",
+            item_ref="mark",
+            description=(
+                "Named points in time — today, a deadline, a freeze — each a line across "
+                "every row with its name above."
+            ),
+        ),
+    ),
+    BOARD_KINDS: (
+        FieldSpec(
+            "columns",
+            "array",
+            required=True,
+            item_ref="board-column",
+            min_items=1,
+            description=(
+                "Left to right as written: states on a kanban board, prompts on a "
+                "retrospective, the steps of a story on a story map. All one width."
+            ),
+        ),
+        FieldSpec(
+            "rows",
+            "array",
+            item_ref="slice",
+            min_items=1,
+            description=(
+                "Slices across every column, top to bottom — the releases of a story map. "
+                "With rows, every card names one."
+            ),
+        ),
+        FieldSpec(
+            "cut",
+            "string",
+            description=(
+                "The id of a row: a heavy rule is drawn under it — everything above ships "
+                "first. Not the last row, which has nothing below it to cut from."
+            ),
+        ),
+        FieldSpec(
+            "cards",
+            "array",
+            required=True,
+            item_ref="card",
+            min_items=1,
+            description=(
+                "Each in a column (and a row, with rows). Within a cell they stack in the "
+                "order written, top-aligned, so a short column looks short."
+            ),
+        ),
+    ),
+    FISHBONE_KINDS: (
+        FieldSpec(
+            "effect",
+            "object",
+            required=True,
+            ref="effect",
+            description=(
+                "The observed problem, stated as a fact: drawn in the head box at the end of "
+                "the spine, always as the diagram's emphasis."
+            ),
+        ),
+        FieldSpec(
+            "categories",
+            "array",
+            required=True,
+            item_ref="category",
+            min_items=2,
+            description=(
+                "The bones, drawn alternately above and below the spine, nearest the head "
+                "first: the written order is the reading order from the head outwards."
+            ),
+        ),
+    ),
+    VENN_KINDS: (
+        FieldSpec(
+            "sets",
+            "array",
+            required=True,
+            item_ref="venn-set",
+            min_items=2,
+            description=(
+                "Two or three sets, each a circle of one size with its name outside it. Not "
+                "sizes: the circles are equal, because a Venn diagram says what overlaps, "
+                "not how much."
+            ),
+        ),
+        FieldSpec(
+            "regions",
+            "array",
+            item_ref="region",
+            description=(
+                "What each region holds, named by membership. A region not listed is drawn "
+                "empty: its set's name says enough."
+            ),
+        ),
+    ),
+    JOURNEY_KINDS: (
+        FieldSpec(
+            "feelings",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=2,
+            description=(
+                "The named levels a stage's feeling may take, **worst first**: drawn as "
+                "guides across the map, the worst at the bottom, each named once on the "
+                "left. Names, not scores."
+            ),
+        ),
+        FieldSpec(
+            "rows",
+            "array",
+            item_ref="journey-row",
+            min_items=1,
+            description=(
+                "The detail rows under the feeling line, top to bottom: what the person "
+                "does, where, what gets in the way. Optional: without rows the map is the "
+                "stages and the line."
+            ),
+        ),
+        FieldSpec(
+            "stages",
+            "array",
+            required=True,
+            item_ref="journey-stage",
+            min_items=2,
+            description=(
+                "Left to right as written, one column each, all one width. The feeling line "
+                "passes through every stage's point."
+            ),
+        ),
+    ),
+    TREEMAP_KINDS: (
+        FieldSpec(
+            "parts",
+            "array",
+            required=True,
+            item_ref="treemap-part",
+            min_items=2,
+            description=(
+                "The parts of one total, each a rectangle whose area is in proportion to its "
+                "`amount`, with its words inside it. Laid out largest first whatever the "
+                "written order, which only breaks ties; `note` parts go last."
+            ),
+        ),
+        FieldSpec(
+            "groups",
+            "array",
+            item_ref="treemap-group",
+            min_items=1,
+            description=(
+                "One level of grouping: each group is a captioned frame holding the parts that "
+                "name it, filled with the theme's mark fills in the order written. Groups do "
+                "not nest."
+            ),
+        ),
+        FieldSpec(
+            "unit",
+            "string",
+            description="What the values are in — `kB`, `GB`, `hours` — written after each one.",
+        ),
+        FieldSpec(
+            "values",
+            "boolean",
+            description=(
+                "Whether to write each part's amount under its words, and each group's total "
+                "beside its name. Defaults to true."
+            ),
+        ),
+    ),
+    SANKEY_KINDS: (
+        FieldSpec(
+            "nodes",
+            "array",
+            required=True,
+            item_ref="sankey-node",
+            min_items=2,
+            description=(
+                "Where the quantity starts, passes and ends. A node's column is derived from the "
+                "flows — sources left, ends right — never written; the written order is where "
+                "the order down each column starts."
+            ),
+        ),
+        FieldSpec(
+            "flows",
+            "array",
+            required=True,
+            item_ref="sankey-flow",
+            min_items=1,
+            description=(
+                "How much goes from one node to another, each a band whose thickness is in "
+                "proportion to its `amount`. What reaches a node in the middle must all leave "
+                "it, and nothing flows back."
+            ),
+        ),
+        FieldSpec(
+            "unit",
+            "string",
+            description=(
+                "What the amounts are in — `tickets`, `cores`, `€ million` — written after "
+                "each total."
+            ),
+        ),
+        FieldSpec(
+            "values",
+            "boolean",
+            description="Whether to write each node's total under its name. Defaults to true.",
+        ),
+    ),
     ("scatter",): (
         FieldSpec(
             "axes",
@@ -1004,6 +2679,13 @@ class Node:
     actor: str = ""
     """Who performs this step. Free text, and empty when nobody was named."""
 
+    status: str = ""
+    """What a proposed change does to this box: `added`, `changed`, `removed`, or empty."""
+
+    lane: str = ""
+    """The lane a `lanes` node is drawn in — its author's `actor`, which there is
+    a strip of the drawing rather than the box's lead, so `actor` stays empty."""
+
     @property
     def label(self) -> str:
         """The words this node's box is sized and drawn from.
@@ -1032,6 +2714,8 @@ class Edge:
     target: str
     label: str = ""
     role: str = "flow"
+    status: str = ""
+    """What a proposed change does to this connection, or empty."""
 
 
 @dataclass(frozen=True)
@@ -1039,6 +2723,245 @@ class Group:
     id: str
     members: tuple[str, ...]
     text: str = ""
+    initial: str = ""
+    """For a composite state: the member it is entered at, or empty."""
+
+
+@dataclass(frozen=True)
+class Message:
+    """One message of a `sequence`: who says it, to whom, and in what role."""
+
+    source: str
+    target: str
+    text: str = ""
+    role: str = "flow"
+    id: str = ""
+    note: str = ""
+
+
+@dataclass(frozen=True)
+class Branch:
+    """Where an `alt` or `par` frame is divided: above message `at`."""
+
+    at: str
+    text: str = ""
+
+
+@dataclass(frozen=True)
+class Fragment:
+    """A frame round the messages `start` to `end`, inclusive, by message id."""
+
+    operator: str
+    start: str
+    end: str
+    text: str = ""
+    branches: tuple[Branch, ...] = ()
+
+
+@dataclass(frozen=True)
+class EntityField:
+    """One row of an entity: a name, and optionally a type, a key mark and an id."""
+
+    text: str
+    type: str = ""
+    key: str = ""
+    id: str = ""
+
+    @property
+    def placeholder(self) -> bool:
+        """Whether this row stands for the fields not shown."""
+        return self.text.strip() in FIELD_PLACEHOLDERS
+
+
+@dataclass(frozen=True)
+class Entity:
+    """One box of an `entities` diagram: its name over its fields and operations."""
+
+    id: str
+    text: str
+    role: str = "step"
+    tag: str = ""
+    fields: tuple[EntityField, ...] = ()
+    operations: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Relation:
+    """One relation between two entities, with what is drawn at each end."""
+
+    source: str
+    target: str
+    label: str = ""
+    role: str = "link"
+    source_field: str = ""
+    target_field: str = ""
+    source_end: str = ""
+    target_end: str = ""
+
+
+@dataclass(frozen=True)
+class Task:
+    """One row of a `gantt`: an interval from `start` to `end`, or a milestone `at`."""
+
+    id: str
+    text: str
+    start: float = 0.0
+    end: float = 0.0
+    at: float | None = None
+    role: str = "step"
+    actor: str = ""
+
+    @property
+    def milestone(self) -> bool:
+        """Whether this task is a point rather than an interval."""
+        return self.at is not None
+
+    @property
+    def begins(self) -> float:
+        """Where it starts on the axis: `start`, or `at` for a milestone."""
+        return self.at if self.at is not None else self.start
+
+    @property
+    def finishes(self) -> float:
+        """Where it ends on the axis: `end`, or `at` for a milestone."""
+        return self.at if self.at is not None else self.end
+
+    @property
+    def label(self) -> str:
+        """The words of its row label: the actor as the lead, as in a `flow` box."""
+        return f"{self.actor}\n{self.text}" if self.actor else self.text
+
+
+@dataclass(frozen=True)
+class Mark:
+    """A named point on a `gantt`'s axis, drawn as a line across every row."""
+
+    text: str
+    at: float
+
+
+@dataclass(frozen=True)
+class BoardColumn:
+    """One column of a `board`, left to right, with an optional work-in-progress limit."""
+
+    id: str
+    text: str
+    limit: int | None = None
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class Slice:
+    """One row across every column: a `board`'s release, or a `journey`'s detail row."""
+
+    id: str
+    text: str
+
+
+@dataclass(frozen=True)
+class Card:
+    """One card of a `board`: in a column, and in a row when the board has rows."""
+
+    text: str
+    column: str
+    row: str = ""
+    role: str = "step"
+    actor: str = ""
+    note: str = ""
+
+    @property
+    def label(self) -> str:
+        """The words of the card: the actor as the lead, as in a `flow` box."""
+        return f"{self.actor}\n{self.text}" if self.actor else self.text
+
+
+@dataclass(frozen=True)
+class Cause:
+    """One cause on a `fishbone` bone: a leaf, with a role."""
+
+    text: str
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class Category:
+    """One bone of a `fishbone`: a category's name and the causes under it."""
+
+    text: str
+    causes: tuple[Cause, ...] = ()
+
+
+@dataclass(frozen=True)
+class VennSet:
+    """One set of a `venn`: a circle, its name drawn outside it."""
+
+    id: str
+    text: str
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class Region:
+    """One region of a `venn`, named by exactly the sets it is in."""
+
+    members: tuple[str, ...]
+    text: str
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class Detail:
+    """What one stage of a `journey` holds in one detail row."""
+
+    row: str
+    text: str
+
+
+@dataclass(frozen=True)
+class JourneyStage:
+    """One stage of a `journey`: a column, its feeling by name, and its details."""
+
+    text: str
+    feeling: str
+    role: str = "step"
+    details: tuple[Detail, ...] = ()
+
+
+@dataclass(frozen=True)
+class TreemapPart:
+    """One part of a `treemap`: a rectangle with an area in proportion to its amount."""
+
+    text: str
+    amount: float
+    group: str = ""
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class SankeyNode:
+    """One node of a `sankey`: a bar as tall as what passes through it."""
+
+    id: str
+    text: str
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class SankeyFlow:
+    """One flow of a `sankey`: a band from one node to another, as thick as its amount."""
+
+    source: str
+    target: str
+    amount: float
+    role: str = "flow"
+
+
+@dataclass(frozen=True)
+class TreemapGroup:
+    """One group of a `treemap`: a captioned frame around the parts that name it."""
+
+    id: str
+    text: str
 
 
 @dataclass(frozen=True)
@@ -1168,7 +3091,20 @@ class Document:
 
     theme: str = ""
     nodes: tuple[Node, ...] = ()
+    """The boxes — a `states` document's states are parsed into these too."""
+
+    initial: str = ""
+    """The state or group a `states` machine starts in."""
+
+    final: tuple[str, ...] = ()
+    """The states a `states` machine ends in."""
+
+    hub: Node | None = None
+    """What a `cycle` turns around, drawn inside its ring. Not one of `nodes`."""
+
     edges: tuple[Edge, ...] = ()
+    """The connectors — a `states` document's transitions, labelled, are parsed into these."""
+
     groups: tuple[Group, ...] = ()
     bands: tuple[Band, ...] = ()
     items: tuple[Item, ...] = ()
@@ -1178,6 +3114,9 @@ class Document:
     cells: tuple[Cell, ...] = ()
     columns: tuple[str, ...] = ()
     rows: tuple[str, ...] = ()
+    scale: tuple[str, ...] = ()
+    """A `matrix`'s ordered groups, weakest first. Empty when the groups are a set."""
+
     key: tuple[Key, ...] = ()
     spans: tuple[Span, ...] = ()
     positions: tuple[Position, ...] = ()
@@ -1194,6 +3133,69 @@ class Document:
     """How a `files` tree orders siblings — the document's `sort`."""
 
     style: str = "icons"
+    participants: tuple[Node, ...] = ()
+    """A `sequence`'s participants, left to right."""
+
+    messages: tuple[Message, ...] = ()
+    """A `sequence`'s messages, top to bottom."""
+
+    fragments: tuple[Fragment, ...] = ()
+    lanes: tuple[str, ...] = ()
+    """A `lanes` diagram's lanes in order: as listed, or as the actors first appear."""
+
+    entities: tuple[Entity, ...] = ()
+    relations: tuple[Relation, ...] = ()
+    """An `entities` diagram's edges, which carry fields and ends a graph edge has not."""
+
+    tasks: tuple[Task, ...] = ()
+    """A `gantt`'s rows, top to bottom. Its axis is the one entry of `axes`."""
+
+    marks: tuple[Mark, ...] = ()
+
+    board_columns: tuple[BoardColumn, ...] = ()
+    """A `board`'s columns, left to right. Not `columns`, which is a matrix's headings."""
+
+    slices: tuple[Slice, ...] = ()
+    """A `board`'s rows, top to bottom."""
+
+    cards: tuple[Card, ...] = ()
+    cut: str = ""
+    """The id of the slice a `board` draws its heavy rule under."""
+
+    effect: str = ""
+    """A `fishbone`'s effect: the words in the head box."""
+
+    categories: tuple[Category, ...] = ()
+    """A `fishbone`'s bones, nearest the head first."""
+
+    venn_sets: tuple[VennSet, ...] = ()
+    """A `venn`'s sets, in the order written: the circles' order is theirs."""
+
+    regions: tuple[Region, ...] = ()
+
+    feelings: tuple[str, ...] = ()
+    """A `journey`'s named levels, worst first."""
+
+    journey_rows: tuple[Slice, ...] = ()
+    """A `journey`'s detail rows, top to bottom."""
+
+    journey_stages: tuple[JourneyStage, ...] = ()
+    """A `journey`'s stages, left to right."""
+
+    treemap_parts: tuple[TreemapPart, ...] = ()
+    """A `treemap`'s parts, in the order written: the tie-breaker between equal amounts."""
+
+    treemap_groups: tuple[TreemapGroup, ...] = ()
+    """A `treemap`'s groups, in the order written: the order their fills are taken in."""
+
+    unit: str = ""
+    """What a `treemap`'s or a `sankey`'s amounts are in, written after each one."""
+
+    sankey_nodes: tuple[SankeyNode, ...] = ()
+    """A `sankey`'s nodes, in the order written: where each column's order starts."""
+
+    sankey_flows: tuple[SankeyFlow, ...] = ()
+    """A `sankey`'s flows, in the order written."""
 
     @property
     def family(self) -> str:
@@ -1204,6 +3206,17 @@ class Document:
             ("shape", SHAPE_KINDS),
             ("chart", CHART_KINDS),
             ("files", FILES_KINDS),
+            ("states", STATES_KINDS),
+            ("sequence", SEQUENCE_KINDS),
+            ("lanes", LANES_KINDS),
+            ("entities", ENTITIES_KINDS),
+            ("gantt", GANTT_KINDS),
+            ("board", BOARD_KINDS),
+            ("fishbone", FISHBONE_KINDS),
+            ("venn", VENN_KINDS),
+            ("journey", JOURNEY_KINDS),
+            ("treemap", TREEMAP_KINDS),
+            ("sankey", SANKEY_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -1339,7 +3352,10 @@ def _check_object(
         if spec.name not in mapping:
             if spec.required:
                 found.append(
-                    Violation(f"{pointer}/{_escape(spec.name)}", f"{spec.name!r} is required")
+                    Violation(
+                        f"{pointer}/{_escape(spec.name)}",
+                        spec.missing or f"{spec.name!r} is required",
+                    )
                 )
             continue
         _check_field(mapping[spec.name], spec, f"{pointer}/{_escape(spec.name)}", found)
@@ -1383,13 +3399,250 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
             )
         )
 
+    if kind in LANES_KINDS:
+        found = [_lanes_refusal(violation) for violation in found]
+    if kind in GANTT_KINDS:
+        found = [_gantt_refusal(violation, document) for violation in found]
+    if kind in BOARD_KINDS:
+        found = [_board_refusal(violation) for violation in found]
+    if kind in FISHBONE_KINDS:
+        found = [_fishbone_refusal(violation) for violation in found]
+    if kind in VENN_KINDS:
+        found = [_venn_refusal(violation) for violation in found]
+    if kind in JOURNEY_KINDS:
+        found = [_journey_refusal(violation) for violation in found]
+    if kind in TREEMAP_KINDS:
+        found = [_treemap_refusal(violation) for violation in found]
+    if kind in SANKEY_KINDS:
+        found = [_sankey_refusal(violation) for violation in found]
+    found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
+    found.extend(_readability_violations(document, kind))
+    found.extend(_emphasis_violations(document))
     return tuple(found)
+
+
+def _edge_role_refusal(violation: Violation, document: Mapping[str, Any], kind: str) -> Violation:
+    """An edge role outside the kind's vocabulary, told which kind it belongs to.
+
+    The generic refusal lists the legal roles, which says nothing to an author who
+    wrote `inherits` in a `flow`, or `aggregates` in an entity diagram, on purpose.
+    """
+    parts = violation.pointer.split("/")
+    if len(parts) != 4 or parts[1] != "edges" or parts[3] != "role":
+        return violation
+    edges = document.get("edges")
+    try:
+        role = edges[int(parts[2])]["role"]  # type: ignore[index]
+    except (TypeError, ValueError, IndexError, KeyError):
+        return violation
+    if not isinstance(role, str):
+        return violation
+    if role in HIERARCHY_ROLES and kind not in ENTITIES_KINDS:
+        legal = DEPENDENCY_ROLES if kind in GANTT_KINDS else GRAPH_EDGE_ROLES
+        return Violation(
+            violation.pointer,
+            f"{role!r} is an edge role of the `entities` kind only: it says one class is a "
+            f"kind of another, which a {kind} has no classes to mean. Here, one of "
+            f"{', '.join(legal)}.",
+        )
+    if kind in ENTITIES_KINDS and role.startswith("aggregat"):
+        return Violation(violation.pointer, f"{role!r}: {AGGREGATION_REFUSED}")
+    return violation
+
+
+#: What to do instead, for a budget whose generic advice ("split it into an
+#: overview and details") is not the remedy. Keyed by (kind, array) for a
+#: top-level budget and by (outer, inner) for a nested one.
+BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
+    ("fishbone", "categories"): (
+        "Past six bones a fishbone stops being scannable: merge the categories that overlap, "
+        "or draw the biggest category as a fishbone of its own."
+    ),
+    ("venn", "sets"): (
+        "No arrangement of four circles shows every region, so a fourth set cannot be drawn "
+        "honestly. Use a `matrix`: the sets as columns, the items as rows, a mark where an "
+        "item belongs."
+    ),
+    ("journey", "stages"): (
+        "Past seven stages the columns are too narrow to read. Split it into two journeys, "
+        "before and after a hand-off, each with its own feeling line."
+    ),
+    ("journey", "feelings"): (
+        "Past five levels two neighbours cannot be told apart on the page. Merge the levels "
+        "nobody could tell apart in a sentence either."
+    ),
+    ("journey", "rows"): (
+        "Past four rows the map is a table with a line on it. Keep the rows the line is "
+        "explained by, or split it into two journeys, before and after a hand-off."
+    ),
+    ("treemap", "parts"): (
+        "Past ten parts the smallest are slivers no label fits, and the drawing is a "
+        "disk-usage tool's output. Merge the smallest into one `note` part — `Everything "
+        "else` — and say what it holds in the caption."
+    ),
+    ("sankey", "nodes"): (
+        "Past fourteen nodes the bands are a tangle. Merge the small ends into one `note` "
+        "node, or draw one sankey per stage — the middle column's nodes become the next "
+        "one's sources."
+    ),
+    ("sankey", "flows"): (
+        "Past twenty-four flows the bands are a tangle. Merge the small flows into one named "
+        "`other` flow, or draw one sankey per stage."
+    ),
+    ("treemap", "groups"): (
+        "Past four groups the frames crowd out the parts they hold. Draw one treemap of the "
+        "groups' totals, then one per group that matters."
+    ),
+    ("categories", "causes"): (
+        "Past five causes a bone is a list: keep the ones the investigation turned on, or "
+        "make this category its own fishbone with these causes as its categories."
+    ),
+}
+
+
+def _readability_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
+    """Every counted array that holds more than its kind's readability budget.
+
+    A refusal of a document that would draw: it says the picture would not be
+    read, which is a different claim from `FitError`'s and comes before it.
+    """
+    found: list[Violation] = []
+    for name, limit in READABILITY_BUDGET.get(kind, ()):
+        if "/" in name:
+            found.extend(_nested_budget(document, name, limit))
+            continue
+        if "@" in name:
+            found.extend(_cell_budget(document, name, limit))
+            continue
+        entries = document.get(name)
+        if not isinstance(entries, list) or len(entries) <= limit:
+            continue
+        found.append(
+            Violation(
+                _pointer(name, limit),
+                f"{len(entries)} {name} is past what one {kind} can be read at — "
+                f"{limit} at most. "
+                + BUDGET_ADVICE.get(
+                    (kind, name),
+                    "Past that a reader searches the diagram instead of "
+                    "taking it in. Split it: an overview that names each part once, plus a "
+                    "detail diagram per part, each within the budget.",
+                )
+                + " The budget is not a canvas size, so a larger top-level 'width' does not "
+                "lift it.",
+            )
+        )
+    return found
+
+
+def _nested_budget(document: Mapping[str, Any], name: str, limit: int) -> list[Violation]:
+    """The budget of an array inside each entry of another — the rows of one box."""
+    outer, inner = name.split("/")
+    found: list[Violation] = []
+    for index, entry in enumerate(_listed(document, outer)):
+        rows = entry.get(inner) if isinstance(entry, dict) else None
+        if not isinstance(rows, list) or len(rows) <= limit:
+            continue
+        advice = BUDGET_ADVICE.get((outer, inner))
+        found.append(
+            Violation(
+                _pointer(outer, index, inner, limit),
+                f"{len(rows)} {inner} is past what one box can be read at — {limit} at "
+                f"most. Show the ones this diagram is about and end the list with a "
+                f"`...` field, which says there are more."
+                if advice is None
+                else f"{len(rows)} {inner} is past what one {outer[:-3]}y can be read at — "
+                f"{limit} at most. {advice}",
+            )
+        )
+    return found
+
+
+def _cell_budget(document: Mapping[str, Any], name: str, limit: int) -> list[Violation]:
+    """The budget of a board's cell: how many cards share one column and one row."""
+    outer, _ = name.split("@")
+    found: list[Violation] = []
+    counts: dict[tuple[object, object], int] = {}
+    for index, card in enumerate(_listed(document, outer)):
+        if not isinstance(card, dict):
+            continue
+        cell = (card.get("column"), card.get("row"))
+        if not all(isinstance(part, str | None) for part in cell):
+            continue
+        counts[cell] = counts.get(cell, 0) + 1
+        if counts[cell] == limit + 1:
+            found.append(
+                Violation(
+                    _pointer(outer, index),
+                    f"this is card {limit + 1} in one cell, and a board's cell can be read at "
+                    f"{limit} at most — past that a reader counts instead of reading. Keep the "
+                    f'ones that matter and end with a summary card, `{{"text": "+ 6 more", '
+                    f'"role": "note"}}`, which says there are more.',
+                )
+            )
+    return found
+
+
+def _emphasis_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Every focal element past the cap, wherever in the document it was written.
+
+    Counted across the whole document — nodes, items, positions, series, curves
+    — because the reader's eye does not care which array a heavy mark came from.
+    """
+    found: list[Violation] = []
+    focal: list[str] = []
+
+    def collect(value: object, pointer: str) -> None:
+        if isinstance(value, dict):
+            if value.get("role") == EMPHASIS_ROLE:
+                focal.append(pointer)
+            for key, child in value.items():
+                collect(child, f"{pointer}/{_escape(key)}")
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                collect(child, f"{pointer}/{index}")
+
+    collect(document, "")
+    for pointer in focal[EMPHASIS_CAP:]:
+        found.append(
+            Violation(
+                f"{pointer}/role",
+                f"{len(focal)} elements say {EMPHASIS_ROLE!r}, and a diagram may have "
+                f"{EMPHASIS_CAP}. Emphasis means *look here first*; when three things "
+                f"say it, none of them is first. Keep the one or two the diagram is "
+                f"about and give the rest their ordinary role — or, if they really are "
+                f"equal, emphasise none.",
+            )
+        )
+    return found
 
 
 def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
     """The checks JSON Schema cannot express: unique ids, and edges that land."""
     found: list[Violation] = []
+    if kind in STATES_KINDS:
+        return _states_violations(document)
+    if kind in SEQUENCE_KINDS:
+        return _sequence_violations(document)
+    if kind in ENTITIES_KINDS:
+        return _entities_violations(document)
+    if kind in GANTT_KINDS:
+        return _gantt_violations(document)
+    if kind in BOARD_KINDS:
+        return _board_violations(document)
+    if kind in FISHBONE_KINDS:
+        return []
+    if kind in VENN_KINDS:
+        return _venn_violations(document)
+    if kind in JOURNEY_KINDS:
+        return _journey_violations(document)
+    if kind in TREEMAP_KINDS:
+        return _treemap_violations(document)
+    if kind in SANKEY_KINDS:
+        return _sankey_violations(document)
+    if kind in LANES_KINDS:
+        found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
         entries = document.get("entries", ())
         # Only a well-formed list is worth reading for paths: the structural pass
@@ -1449,7 +3702,13 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                 Violation(
                     _pointer("nodes", middles[0], "centre"),
                     f"a {kind} is ranked from its root, so it has no middle to arrange "
-                    f"around. Use a flow.",
+                    f"around. Use a flow"
+                    + (
+                        " — or, for something the loop turns around rather than a step "
+                        "on it, the cycle's own 'hub'."
+                        if kind == "cycle"
+                        else "."
+                    ),
                 )
             )
     if kind == "curve":
@@ -1575,6 +3834,14 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                             f"anything can name it.",
                         )
                     )
+            if "status" in edge:
+                found.append(
+                    Violation(
+                        _pointer("edges", index, "status"),
+                        "a matrix is not a drawing of a change; 'status' marks one on a "
+                        "flow or a tree.",
+                    )
+                )
             if isinstance(edge.get("from"), str) and edge["from"] == edge.get("to"):
                 found.append(
                     Violation(
@@ -1583,6 +3850,11 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                         f"nowhere to draw that: the two ends are the same square.",
                     )
                 )
+        scale = document.get("scale")
+        steps: set[str] | None = None
+        if isinstance(scale, list) and all(isinstance(step, str) for step in scale):
+            steps = set(scale)
+            found.extend(_scale_violations(scale, cells))
         entries = document.get("key")
         if not isinstance(entries, list):
             return found
@@ -1598,7 +3870,16 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
             group = entry.get("group")
             if not isinstance(group, str):
                 continue
-            if group not in cell_groups:
+            if steps is not None and group not in steps:
+                found.append(
+                    Violation(
+                        f"/key/{index}/group",
+                        f"{group!r} is not a step of this matrix's scale, so a key line for "
+                        f"it would describe nothing in the drawing. Steps: "
+                        f"{', '.join(str(step) for step in scale or ())}.",
+                    )
+                )
+            elif steps is None and group not in cell_groups:
                 found.append(
                     Violation(
                         f"/key/{index}/group",
@@ -1630,7 +3911,7 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                     )
                 )
         return found
-    if kind not in GRAPH_KINDS:
+    if kind not in GRAPH_KINDS + LANES_KINDS:
         return found
 
     nodes = document.get("nodes")
@@ -1649,6 +3930,14 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                 Violation(_pointer("nodes", index, "id"), f"duplicate node id {identifier!r}")
             )
         seen.add(identifier)
+
+    found.extend(_status_violations(document, kind))
+
+    if kind == "cycle":
+        found.extend(_hub_violations(document, seen))
+        hub = document.get("hub")
+        if isinstance(hub, dict) and isinstance(hub.get("id"), str):
+            seen.add(hub["id"])
 
     groups = document.get("groups")
     # A member may name a node or another group: a container that contains a
@@ -1689,6 +3978,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                     )
                 )
         found.extend(_self_containment(edges, groups, endpoints))
+        if kind in CONTAINER_KINDS + LANES_KINDS:
+            found.extend(_loop_violations(edges, frozenset(containers), "edges"))
 
     if isinstance(groups, list):
         # A group id is a name a member may resolve to, and the renderer keys its
@@ -1751,6 +4042,2014 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                             f"{member!r} is not the id of any node in this document",
                         )
                     )
+    return found
+
+
+#: Why a `lanes` document may not write what a `flow` may, by the field's name.
+LANES_REFUSED: Final[Mapping[str, str]] = {
+    "groups": (
+        "a lanes diagram has no 'groups': a lane is already the container, and a frame "
+        "drawn across lanes would put a box in two containers at once. Use a flow for "
+        "frames, or name the containing party as the nodes' actor."
+    ),
+    "bands": (
+        "a lanes diagram has no 'bands': a band runs alongside its boxes, and here that "
+        "would run across the lanes. Use a flow with bands, or make the activity a lane."
+    ),
+    "centre": (
+        "a lanes diagram is ranked along its lanes, so it has no middle to arrange "
+        "around. Use a flow."
+    ),
+}
+
+
+def _lanes_refusal(violation: Violation) -> Violation:
+    """An unknown field on a `lanes` document, with why a flow's field is not here."""
+    name = violation.pointer.rsplit("/", 1)[-1]
+    if name in LANES_REFUSED and "is not a known field" in violation.message:
+        return Violation(violation.pointer, LANES_REFUSED[name])
+    return violation
+
+
+def _lanes_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """What a swimlane diagram may not be: a box in no lane, or a lane with no box.
+
+    Ids and edges are the graph checks, shared with `flow`; these are the lane's
+    own. A listed lane must hold some node and every actor must be listed, since
+    either mismatch is nearly always a spelling difference — so the closest lane
+    is named. With no list, the distinct actors are capped as the list would be.
+    """
+    found: list[Violation] = []
+    actors: list[tuple[int, str]] = []
+    for index, node in enumerate(_listed(document, "nodes")):
+        if not isinstance(node, dict) or not isinstance(node.get("actor"), str):
+            continue
+        if not node["actor"].strip():
+            found.append(Violation(_pointer("nodes", index, "actor"), LANES_ACTOR_MISSING))
+            continue
+        actors.append((index, node["actor"]))
+
+    listed = document.get("lanes")
+    if isinstance(listed, list) and all(isinstance(lane, str) for lane in listed):
+        seen: set[str] = set()
+        for index, lane in enumerate(listed):
+            if lane in seen:
+                found.append(
+                    Violation(_pointer("lanes", index), f"the lane {lane!r} is listed twice.")
+                )
+            seen.add(lane)
+        named = {actor for _, actor in actors}
+        for index, actor in actors:
+            if actor in seen:
+                continue
+            close = get_close_matches(actor, listed, n=1, cutoff=0.0)
+            found.append(
+                Violation(
+                    _pointer("nodes", index, "actor"),
+                    f"{actor!r} is not one of the lanes"
+                    + (f" — did you mean {close[0]!r}?" if close else ".")
+                    + " An actor names its lane exactly; add it to 'lanes' if it is a new one.",
+                )
+            )
+        for index, lane in enumerate(listed):
+            if lane not in named and listed.index(lane) == index:
+                found.append(
+                    Violation(
+                        _pointer("lanes", index),
+                        f"no node names {lane!r} as its actor, so its lane would be an empty "
+                        f"strip saying that party does nothing. Drop it, or give it its step.",
+                    )
+                )
+    elif listed is None:
+        distinct: dict[str, int] = {}
+        for index, actor in actors:
+            if actor not in distinct:
+                distinct[actor] = index
+                if len(distinct) == LANES_MAX + 1:
+                    found.append(
+                        Violation(
+                            _pointer("nodes", index, "actor"),
+                            f"{actor!r} would be lane {LANES_MAX + 1}, and a lanes diagram "
+                            f"can be read at {LANES_MAX} at most. Merge parties that act "
+                            f"together, or split the process at a hand-off.",
+                        )
+                    )
+    return found
+
+
+def transition_label(event: str = "", guard: str = "", action: str = "") -> str:
+    """A transition's label, `event [guard] / action`, from whichever parts were given.
+
+    Composed here rather than written by the author, so the punctuation is the
+    same on every transition and a missing part leaves no stray bracket or slash.
+    Each part is set on its own line — the event, under it the guard, under that
+    the action — because the three on one line made the widest labels in any
+    drawing, and a label too long for the gap beside its line had nowhere to go.
+    """
+    parts = [event.strip()]
+    if guard.strip():
+        parts.append(f"[{guard.strip()}]")
+    if action.strip():
+        parts.append(f"/ {action.strip()}")
+    return "\n".join(part for part in parts if part)
+
+
+def _states_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """What a state machine may not be: ids that do not land, and a wrong machine.
+
+    The structural pass has the types; this one has the meaning. Ids first —
+    every state and group named once, every reference resolving — and only when
+    those hold, the three claims about the machine itself: a final state that
+    is left, a pair of transitions that make it non-deterministic, and a state
+    nothing can reach. Each is a bug in the machine rather than in the drawing.
+    """
+    found: list[Violation] = []
+    groups_raw = _listed(document, "groups")
+    transitions = _listed(document, "transitions")
+
+    state_ids: set[str] = set()
+    for index, state in enumerate(_listed(document, "states")):
+        identifier = state.get("id") if isinstance(state, dict) else None
+        if not isinstance(identifier, str):
+            continue
+        if identifier in state_ids:
+            found.append(
+                Violation(_pointer("states", index, "id"), f"duplicate state id {identifier!r}")
+            )
+        state_ids.add(identifier)
+
+    groups: dict[str, Mapping[str, Any]] = {}
+    for index, group in enumerate(groups_raw):
+        if not isinstance(group, dict) or not isinstance(group.get("id"), str):
+            continue
+        identifier = group["id"]
+        if identifier in state_ids:
+            found.append(
+                Violation(
+                    _pointer("groups", index, "id"),
+                    f"{identifier!r} is already the id of a state; a transition naming it "
+                    f"could mean either",
+                )
+            )
+        elif identifier in groups:
+            found.append(
+                Violation(_pointer("groups", index, "id"), f"duplicate group id {identifier!r}")
+            )
+        else:
+            groups[identifier] = group
+    known = state_ids | set(groups)
+
+    parent: dict[str, str] = {}
+    for index, group in enumerate(groups_raw):
+        if not isinstance(group, dict) or not isinstance(group.get("id"), str):
+            continue
+        members = group.get("members")
+        members = members if isinstance(members, list) else []
+        for position, member in enumerate(members):
+            if not isinstance(member, str):
+                continue
+            if member not in known:
+                found.append(
+                    Violation(
+                        _pointer("groups", index, "members", position),
+                        f"{member!r} is not the id of any state or group in this document",
+                    )
+                )
+            elif member == group["id"]:
+                found.append(
+                    Violation(
+                        _pointer("groups", index, "members", position),
+                        "a group cannot contain itself",
+                    )
+                )
+            elif member in parent:
+                found.append(
+                    Violation(
+                        _pointer("groups", index, "members", position),
+                        f"{member!r} is already inside {parent[member]!r}. A state is in one "
+                        f"composite or none; nest the groups instead.",
+                    )
+                )
+            else:
+                parent[member] = group["id"]
+        entry = group.get("initial")
+        if isinstance(entry, str) and entry not in members:
+            found.append(
+                Violation(
+                    _pointer("groups", index, "initial"),
+                    f"{entry!r} is not a member of {group['id']!r}. A composite is entered "
+                    f"at one of its own states.",
+                )
+            )
+
+    def entered(identifier: str, pointer: str) -> bool:
+        """Whether naming `identifier` as a target lands on a state; reported if not."""
+        group = groups.get(identifier)
+        if group is None or isinstance(group.get("initial"), str):
+            return True
+        found.append(
+            Violation(
+                pointer,
+                f"{identifier!r} is a group with no 'initial', so entering it does not say "
+                f"which state the machine is then in. Give the group an 'initial', or point "
+                f"this at one of its states.",
+            )
+        )
+        return False
+
+    initial = document.get("initial")
+    if isinstance(initial, str):
+        if initial not in known:
+            found.append(
+                Violation(
+                    "/initial",
+                    f"{initial!r} is not the id of any state or group in this document",
+                )
+            )
+        else:
+            entered(initial, "/initial")
+
+    finals: set[str] = set()
+    for index, name in enumerate(_listed(document, "final")):
+        if not isinstance(name, str):
+            continue
+        pointer = _pointer("final", index)
+        if name in groups:
+            found.append(
+                Violation(
+                    pointer,
+                    f"{name!r} is a group. A final state is a state; to end the machine when "
+                    f"a composite completes, draw a transition from the group to a final state.",
+                )
+            )
+        elif name not in state_ids:
+            found.append(Violation(pointer, f"{name!r} is not the id of any state"))
+        elif name in finals:
+            found.append(Violation(pointer, f"{name!r} is named final twice"))
+        finals.add(name)
+
+    resolved = True
+    for index, transition in enumerate(transitions):
+        if not isinstance(transition, dict):
+            continue
+        for end in ("from", "to"):
+            target = transition.get(end)
+            if isinstance(target, str) and target not in known:
+                resolved = False
+                found.append(
+                    Violation(
+                        _pointer("transitions", index, end),
+                        f"{target!r} is not the id of any state or group in this document",
+                    )
+                )
+        source, target = transition.get("from"), transition.get("to")
+        if isinstance(target, str) and target in groups:
+            resolved = entered(target, _pointer("transitions", index, "to")) and resolved
+        if isinstance(source, str) and source in finals:
+            found.append(
+                Violation(
+                    _pointer("transitions", index, "from"),
+                    f"{source!r} is a final state, and a final state is not left: the machine "
+                    f"has ended there. Drop this transition, or take {source!r} out of 'final'.",
+                )
+            )
+    found.extend(_self_containment(transitions, groups_raw, frozenset(groups)))
+    found.extend(_loop_violations(transitions, frozenset(groups), "transitions"))
+
+    # Two ways out of one state on the same event and guard: which one is taken?
+    seen: dict[tuple[str, str, str], tuple[int, str]] = {}
+    for index, transition in enumerate(transitions):
+        if not isinstance(transition, dict):
+            continue
+        source, target = transition.get("from"), transition.get("to")
+        event, guard = transition.get("event", ""), transition.get("guard", "")
+        if not all(isinstance(value, str) for value in (source, target, event, guard)):
+            continue
+        key = (str(source), str(event).strip(), str(guard).strip())
+        if key in seen and seen[key][1] != target:
+            first = seen[key][0]
+            found.append(
+                Violation(
+                    _pointer("transitions", index, "to"),
+                    f"transitions {first} and {index} both leave {source!r} on "
+                    + (f"{event.strip()!r}" if event.strip() else "completion")
+                    + (f" when {guard.strip()!r}" if guard.strip() else "")
+                    + ", to different states, so the machine cannot say which it takes. "
+                    "Give them guards that tell them apart.",
+                )
+            )
+        seen.setdefault(key, (index, str(target)))
+
+    if found or not resolved or not isinstance(initial, str):
+        return found
+
+    # Reachability, through the composites: entering a group enters its initial,
+    # and a transition from a group leaves from every state inside it.
+    def ancestors(identifier: str) -> list[str]:
+        chain: list[str] = []
+        current = parent.get(identifier)
+        while current is not None and current not in chain:
+            chain.append(current)
+            current = parent.get(current)
+        return chain
+
+    leaving: dict[str, list[str]] = {}
+    for transition in transitions:
+        if isinstance(transition, dict):
+            leaving.setdefault(transition["from"], []).append(transition["to"])
+
+    reached: set[str] = set()
+    queue = [initial]
+    while queue:
+        current = queue.pop()
+        if current in reached:
+            continue
+        reached.add(current)
+        group = groups.get(current)
+        if group is not None:
+            queue.append(str(group["initial"]))
+            continue
+        for scope in (current, *ancestors(current)):
+            reached.add(scope)
+            queue.extend(leaving.get(scope, ()))
+
+    for index, state in enumerate(_listed(document, "states")):
+        identifier = state.get("id") if isinstance(state, dict) else None
+        if isinstance(identifier, str) and identifier not in reached:
+            found.append(
+                Violation(
+                    _pointer("states", index),
+                    f"no transition reaches {identifier!r} from the initial state, so the "
+                    f"machine can never be in it. Add the transition that leads there, or "
+                    f"delete the state.",
+                )
+            )
+    return found
+
+
+#: The most self-loops one box may carry: one on each side across the reading
+#: direction. Mirrors `drawspec.routing.MAX_LOOPS`, which the drawing obeys.
+MAX_SELF_LOOPS: Final = 2
+
+
+def _loop_violations(edges: Sequence[Any], groups: Set[str], name: str) -> list[Violation]:
+    """Self-loops drawspec has nowhere to draw: on a group, or a third on one box.
+
+    A loop leaves a box and comes back to the same side; a frame has a border
+    other edges cross on their way in, and a loop on it would read as one of
+    them. A box has two sides across the reading direction, so two loops.
+    """
+    found: list[Violation] = []
+    counted: dict[str, int] = {}
+    for index, edge in enumerate(edges):
+        if not isinstance(edge, dict):
+            continue
+        source, target = edge.get("from"), edge.get("to")
+        if not isinstance(source, str) or source != target:
+            continue
+        if source in groups:
+            found.append(
+                Violation(
+                    _pointer(name, index, "to"),
+                    f"{source!r} is a group, and a loop from a group back to itself has no box "
+                    f"to loop on. Draw it on the member it starts from.",
+                )
+            )
+            continue
+        counted[source] = counted.get(source, 0) + 1
+        if counted[source] > MAX_SELF_LOOPS:
+            found.append(
+                Violation(
+                    _pointer(name, index, "to"),
+                    f"{source!r} already loops back to itself {MAX_SELF_LOOPS} times, one on "
+                    f"each side of its box. Join these into one label, or split the state.",
+                )
+            )
+    return found
+
+
+def _sequence_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """What a sequence diagram may not be: ids that do not land, and frames that cannot draw.
+
+    Ids first — participants and groups named once, every message's ends a
+    participant, every fragment's ends a message — then the claims only this
+    kind makes: a participant nobody talks to, a group whose lifelines are not
+    neighbours, a fragment that ends before it starts or half-overlaps another,
+    and a branch divider that is not inside its own frame.
+    """
+    found: list[Violation] = []
+    participants: dict[str, int] = {}
+    for index, participant in enumerate(_listed(document, "participants")):
+        identifier = participant.get("id") if isinstance(participant, dict) else None
+        if not isinstance(identifier, str):
+            continue
+        if identifier in participants:
+            found.append(
+                Violation(
+                    _pointer("participants", index, "id"),
+                    f"duplicate participant id {identifier!r}",
+                )
+            )
+            continue
+        participants[identifier] = index
+
+    talking: set[str] = set()
+    message_ids: dict[str, int] = {}
+    for index, message in enumerate(_listed(document, "messages")):
+        if not isinstance(message, dict):
+            continue
+        for end in ("from", "to"):
+            target = message.get(end)
+            if not isinstance(target, str):
+                continue
+            if target not in participants:
+                found.append(
+                    Violation(
+                        _pointer("messages", index, end),
+                        f"{target!r} is not the id of any participant in this document",
+                    )
+                )
+            talking.add(target)
+        identifier = message.get("id")
+        if isinstance(identifier, str):
+            if identifier in message_ids:
+                found.append(
+                    Violation(
+                        _pointer("messages", index, "id"),
+                        f"duplicate message id {identifier!r}",
+                    )
+                )
+            else:
+                message_ids[identifier] = index
+
+    for identifier, index in participants.items():
+        if identifier not in talking:
+            found.append(
+                Violation(
+                    _pointer("participants", index),
+                    f"no message is sent to or from {identifier!r}, so its lifeline would be "
+                    f"a box with a line under it. It is usually a mistyped id in a message; "
+                    f"otherwise delete the participant.",
+                )
+            )
+
+    found.extend(_sequence_group_violations(document, participants))
+    found.extend(_fragment_violations(document, message_ids))
+    return found
+
+
+def _entities_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """What an entity diagram may not be: ids that do not land, and relations that cannot draw.
+
+    Entity ids once each and field ids once in the document; every relation's
+    ends an entity and every `from_field`/`to_field` a field *of that end's*
+    entity; no relation of an entity to itself; a `...` row only last, and
+    plain; no cardinality on a hierarchy relation, and no hierarchy that loops.
+    """
+    found: list[Violation] = []
+    entities: dict[str, int] = {}
+    owner: dict[str, str] = {}
+    for index, entity in enumerate(_listed(document, "entities")):
+        if not isinstance(entity, dict):
+            continue
+        identifier = entity.get("id")
+        if isinstance(identifier, str):
+            if identifier in entities:
+                found.append(
+                    Violation(
+                        _pointer("entities", index, "id"), f"duplicate entity id {identifier!r}"
+                    )
+                )
+            else:
+                entities[identifier] = index
+        tag = entity.get("tag")
+        if isinstance(tag, str) and len(tag) > TAG_MAX:
+            found.append(
+                Violation(
+                    _pointer("entities", index, "tag"),
+                    f"a tag is a stereotype — a word or two — and this one is {len(tag)} "
+                    f"characters; {TAG_MAX} at most. Put a description in the name or the "
+                    f"surrounding prose.",
+                )
+            )
+        fields = entity.get("fields")
+        rows = fields if isinstance(fields, list) else []
+        for row, field in enumerate(rows):
+            if not isinstance(field, dict):
+                continue
+            where = ("entities", index, "fields", row)
+            text = field.get("text")
+            if isinstance(text, str) and text.strip() in FIELD_PLACEHOLDERS:
+                if row != len(rows) - 1:
+                    found.append(
+                        Violation(
+                            _pointer(*where, "text"),
+                            "a `...` field stands for the fields not shown, so it comes "
+                            "last. Move it to the end of this entity's fields.",
+                        )
+                    )
+                for name in ("id", "type", "key"):
+                    if name in field:
+                        found.append(
+                            Violation(
+                                _pointer(*where, name),
+                                f"a `...` field stands for fields not shown, so it has no "
+                                f"{name} of its own. Delete it.",
+                            )
+                        )
+            if isinstance(text, str) and "\n" in text:
+                found.append(
+                    Violation(
+                        _pointer(*where, "text"),
+                        "a field is one row: write its name on one line, and its type in `type`.",
+                    )
+                )
+            field_id = field.get("id")
+            if isinstance(field_id, str) and isinstance(identifier, str):
+                if field_id in owner:
+                    found.append(
+                        Violation(_pointer(*where, "id"), f"duplicate field id {field_id!r}")
+                    )
+                else:
+                    owner[field_id] = identifier
+        text = entity.get("text")
+        if isinstance(text, str) and "\n" in text:
+            found.append(
+                Violation(
+                    _pointer("entities", index, "text"),
+                    "an entity's name is one line — what it holds goes in `fields`, and a "
+                    "stereotype in `tag`.",
+                )
+            )
+
+    hierarchy: dict[str, list[str]] = {}
+    for index, edge in enumerate(_listed(document, "edges")):
+        if not isinstance(edge, dict):
+            continue
+        ends: dict[str, str] = {}
+        for end in ("from", "to"):
+            target = edge.get(end)
+            if not isinstance(target, str):
+                continue
+            if target not in entities:
+                found.append(
+                    Violation(
+                        _pointer("edges", index, end),
+                        f"{target!r} is not the id of any entity in this document"
+                        + _closest(target, entities),
+                    )
+                )
+                continue
+            ends[end] = target
+        if ends.get("from") is not None and ends.get("from") == ends.get("to"):
+            found.append(
+                Violation(
+                    _pointer("edges", index, "to"),
+                    "a relation from an entity to itself is not drawn: name the field that "
+                    "holds the reference (`manager_id`, key `foreign`) and say what it "
+                    "points at in its text, or draw the two roles as two entities.",
+                )
+            )
+        for end in ("from", "to"):
+            named = edge.get(f"{end}_field")
+            if not isinstance(named, str) or end not in ends:
+                continue
+            if named not in owner:
+                found.append(
+                    Violation(
+                        _pointer("edges", index, f"{end}_field"),
+                        f"{named!r} is not the id of any field in this document"
+                        + _closest(named, owner),
+                    )
+                )
+            elif owner[named] != ends[end]:
+                found.append(
+                    Violation(
+                        _pointer("edges", index, f"{end}_field"),
+                        f"{named!r} is a field of {owner[named]!r}, not of {ends[end]!r}: "
+                        f"the line would leave a box from a row it does not have.",
+                    )
+                )
+        role = edge.get("role", "link")
+        if role == "owns" and "to_end" in edge:
+            found.append(
+                Violation(
+                    _pointer("edges", index, "to_end"),
+                    "the `to` end of `owns` is the whole, drawn as the diamond, and a part "
+                    "belongs to exactly one whole — there is no count to draw there. Delete "
+                    "'to_end'; say how many parts with 'from_end'.",
+                )
+            )
+        if role in HIERARCHY_ROLES:
+            for name in ("from_end", "to_end", "from_field", "to_field"):
+                if name in edge:
+                    what = "cardinality" if name.endswith("_end") else "row to land on"
+                    found.append(
+                        Violation(
+                            _pointer("edges", index, name),
+                            f"{role!r} says one class is a kind of another, which has no "
+                            f"{what}: inheritance is between whole classes, one to one. "
+                            f"Delete {name!r}.",
+                        )
+                    )
+            if "from" in ends and "to" in ends and ends["from"] != ends["to"]:
+                if _reaches(hierarchy, ends["to"], ends["from"]):
+                    found.append(
+                        Violation(
+                            _pointer("edges", index),
+                            f"this {role!r} closes a loop: {ends['to']!r} is already, "
+                            f"through others, a kind of {ends['from']!r}. A hierarchy has "
+                            f"a top; delete the relation that is the wrong way round.",
+                        )
+                    )
+                else:
+                    hierarchy.setdefault(ends["from"], []).append(ends["to"])
+    return found
+
+
+#: What a gantt says to a date: the owner's decision, and the two ways round it.
+GANTT_NO_DATES: Final = (
+    "a gantt draws no calendar, so a place on its axis is a number in a unit the axis names — "
+    'with `"axis": {"label": "Week"}`, week 3 is 3. For a plan by month or sprint, name '
+    "the periods in `axis.categories` and count them: the first runs from 1 to 2."
+)
+
+
+def _gantt_refusal(violation: Violation, document: Mapping[str, Any]) -> Violation:
+    """A structural refusal in a gantt, told what this kind means by it.
+
+    A string where a task's place belongs is almost always a date, and the generic
+    "expected number" says nothing about why one is not accepted. `progress` is
+    refused by name for the reason the proposal gives.
+    """
+    parts = violation.pointer.split("/")
+    if len(parts) == 4 and parts[1] in ("tasks", "marks"):
+        name = parts[3]
+        try:
+            value = document[parts[1]][int(parts[2])][name]
+        except (TypeError, ValueError, IndexError, KeyError):
+            value = None
+        if name in TASK_VALUES and isinstance(value, str):
+            return Violation(violation.pointer, f"{value!r} is not a number: {GANTT_NO_DATES}")
+        if parts[1] == "tasks" and name in ("progress", "complete", "percent"):
+            return Violation(
+                violation.pointer,
+                f"{name!r} is not drawn: how far a task has got is status, not plan, and it "
+                f"is out of date the day the drawing is made. Say it in the text, or draw "
+                f"what is done as tasks that have ended before a `today` mark.",
+            )
+    return violation
+
+
+def _gantt_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """What a plan may not be: tasks that are not one thing, and claims that cannot hold.
+
+    Each task is a milestone or an interval, ends after it starts, and sits on the
+    axis; ids land; a dependency's task does not start before the one it waits
+    for ends; a phase is a run of consecutive tasks, and with phases every task
+    is in one.
+    """
+    found: list[Violation] = []
+    axis = document.get("axis")
+    axis = axis if isinstance(axis, dict) else {}
+    low, high = axis.get("min"), axis.get("max")
+    low = low if _is_number(low) else None
+    high = high if _is_number(high) else None
+    categories = axis.get("categories")
+    if isinstance(categories, list) and categories:
+        for name in ("min", "max"):
+            if name in axis:
+                found.append(
+                    Violation(
+                        _pointer("axis", name),
+                        f"with categories the axis runs from 1 to {len(categories) + 1}, one "
+                        f"period each, so it takes no {name!r}. Drop it, or drop the categories "
+                        f"and number the axis.",
+                    )
+                )
+        low, high = 1, len(categories) + 1
+    elif low is not None and high is not None and high <= low:
+        found.append(
+            Violation(
+                _pointer("axis", "max"), f"the axis ends at {high}, not after its start {low}"
+            )
+        )
+        low = high = None
+
+    remedy = "add periods to the categories" if categories else "widen the axis"
+
+    def outside(value: float, pointer: str) -> None:
+        if (low is not None and value < low) or (high is not None and value > high):
+            span = f"{'…' if low is None else low} to {'…' if high is None else high}"
+            found.append(
+                Violation(
+                    pointer,
+                    f"{value} is off the axis, which runs {span}: it would be drawn off the "
+                    f"plot. Fix the value or {remedy}.",
+                )
+            )
+
+    tasks: dict[str, tuple[float, float] | None] = {}
+    order: dict[str, int] = {}
+    for index, task in enumerate(_listed(document, "tasks")):
+        if not isinstance(task, dict):
+            continue
+        identifier = task.get("id")
+        here = _pointer("tasks", index)
+        values = {name: task[name] for name in TASK_VALUES if _is_number(task.get(name))}
+        given = {name for name in TASK_VALUES if name in task}
+        span: tuple[float, float] | None = None
+        if "at" in given and given & {"start", "end"}:
+            found.append(
+                Violation(
+                    _pointer("tasks", index, "at"),
+                    "a task is a milestone (`at`) or an interval (`start` and `end`), not both. "
+                    "For a step that ends in a milestone, write the two as two tasks.",
+                )
+            )
+        elif "at" in given:
+            if "at" in values:
+                span = (values["at"], values["at"])
+        elif not given:
+            found.append(
+                Violation(
+                    here,
+                    "a task needs `start` and `end` (an interval) or `at` (a milestone); it has "
+                    "no place on the axis.",
+                )
+            )
+        elif given != {"start", "end"}:
+            missing = ({"start", "end"} - given).pop()
+            found.append(
+                Violation(
+                    _pointer("tasks", index, missing),
+                    f"{missing!r} is required with {({'start', 'end'} - {missing}).pop()!r}: "
+                    f"an interval has two ends. For a point in time, write `at` alone.",
+                )
+            )
+        elif "start" in values and "end" in values:
+            if values["end"] <= values["start"]:
+                found.append(
+                    Violation(
+                        _pointer("tasks", index, "end"),
+                        f"this task ends at {values['end']}, which is not after it starts at "
+                        f"{values['start']}. For a point in time, write `at` instead.",
+                    )
+                )
+            else:
+                span = (values["start"], values["end"])
+        for name, value in values.items():
+            outside(value, _pointer("tasks", index, name))
+        text = task.get("text")
+        if isinstance(task.get("actor"), str) and isinstance(text, str) and "\n" in text:
+            found.append(
+                Violation(
+                    _pointer("tasks", index, "text"),
+                    "a task with an actor has the actor as its label's lead, so its text may "
+                    "not start a second paragraph. Put it on one line.",
+                )
+            )
+        if not isinstance(identifier, str):
+            continue
+        if identifier in tasks:
+            found.append(
+                Violation(_pointer("tasks", index, "id"), f"duplicate task id {identifier!r}")
+            )
+            continue
+        tasks[identifier] = span
+        order[identifier] = index
+
+    for index, mark in enumerate(_listed(document, "marks")):
+        if isinstance(mark, dict) and _is_number(mark.get("at")):
+            outside(mark["at"], _pointer("marks", index, "at"))
+
+    for index, edge in enumerate(_listed(document, "edges")):
+        if not isinstance(edge, dict):
+            continue
+        ends = {name: edge.get(name) for name in ("from", "to")}
+        sound = True
+        for name, target in ends.items():
+            if isinstance(target, str) and target not in tasks:
+                found.append(
+                    Violation(
+                        _pointer("edges", index, name),
+                        f"{target!r} is not the id of any task in this document"
+                        + _closest(target, tasks),
+                    )
+                )
+                sound = False
+        source, target = ends["from"], ends["to"]
+        if not (sound and isinstance(source, str) and isinstance(target, str)):
+            continue
+        if source == target:
+            found.append(Violation(_pointer("edges", index, "to"), "a task cannot wait for itself"))
+            continue
+        before, after = tasks[source], tasks[target]
+        if before is not None and after is not None and after[0] < before[1]:
+            found.append(
+                Violation(
+                    _pointer("edges", index, "to"),
+                    f"{target!r} starts at {after[0]}, before {source!r} ends at {before[1]}, "
+                    f"and a dependency says it cannot start until then. Either the plan or "
+                    f"the dependency is wrong; only you know which.",
+                )
+            )
+
+    groups = _listed(document, "groups")
+    owner: dict[str, str] = {}
+    group_ids: set[str] = set()
+    for index, group in enumerate(groups):
+        if not isinstance(group, dict):
+            continue
+        identifier = group.get("id")
+        if isinstance(identifier, str):
+            if identifier in tasks:
+                found.append(
+                    Violation(
+                        _pointer("groups", index, "id"), f"{identifier!r} is already a task's id"
+                    )
+                )
+            elif identifier in group_ids:
+                found.append(
+                    Violation(_pointer("groups", index, "id"), f"duplicate group id {identifier!r}")
+                )
+            group_ids.add(identifier)
+        if "text" not in group:
+            found.append(
+                Violation(
+                    _pointer("groups", index, "text"),
+                    "a phase is drawn as its name over its tasks, so it needs `text`",
+                )
+            )
+        members = group.get("members")
+        if not isinstance(members, list):
+            continue
+        rows: list[int] = []
+        sound = True
+        for position, member in enumerate(members):
+            if not isinstance(member, str):
+                sound = False
+                continue
+            pointer = _pointer("groups", index, "members", position)
+            if member not in tasks:
+                found.append(Violation(pointer, f"{member!r} is not the id of any task"))
+                sound = False
+            elif member in owner:
+                found.append(
+                    Violation(
+                        pointer,
+                        f"{member!r} is already in {owner[member]!r}. A task is in one phase.",
+                    )
+                )
+                sound = False
+            else:
+                owner[member] = str(identifier)
+                rows.append(order[member])
+        if not sound or not rows:
+            continue
+        names = {row: name for name, row in order.items()}
+        between = [names[row] for row in range(min(rows), max(rows) + 1) if row not in rows]
+        if between:
+            found.append(
+                Violation(
+                    _pointer("groups", index, "members"),
+                    f"{between[0]!r} stands between members of {identifier!r} in 'tasks', so "
+                    f"the phase would take in a row that is not in it. Reorder 'tasks' so a "
+                    f"phase's tasks are next to each other.",
+                )
+            )
+    if groups:
+        for identifier, index in order.items():
+            if identifier not in owner:
+                found.append(
+                    Violation(
+                        _pointer("tasks", index),
+                        f"{identifier!r} is in no phase, and with phases its row would read as "
+                        f"part of the one above it. Put it in a group, or drop 'groups'.",
+                    )
+                )
+    return found
+
+
+#: Fields a board refuses by name, and why: what an author reaches for when the
+#: board is really something else, or when appearance is wanted per card.
+BOARD_REFUSED: Final = {
+    "edges": (
+        "a board has no connectors: its cards are sorted, not joined. If the order between "
+        "cards matters, it is a `flow` — or `lanes`, when who hands off to whom matters"
+    ),
+    "label": "a card has its `text`, and its kind is its column; a second label is a tag",
+    "tag": "appearance is the role's, and a card's kind is its column. Name it in the text",
+    "tags": "appearance is the role's, and a card's kind is its column. Name it in the text",
+    "colour": "appearance is the role's, and a card's kind is its column",
+}
+
+
+def _board_refusal(violation: Violation) -> Violation:
+    """An unknown field on a board, told why a board has no place for it."""
+    name = violation.pointer.rsplit("/", 1)[-1]
+    if name in BOARD_REFUSED and "is not a known field" in violation.message:
+        return Violation(violation.pointer, f"{name!r}: {BOARD_REFUSED[name]}.")
+    return violation
+
+
+def _board_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """What a board may not be: cards in columns or rows it does not have, half a story map.
+
+    Column and row ids are unique and land; with rows every card names one and
+    without them none does; a cut names a row that has another below it; a card
+    with an actor keeps its text on one line.
+    """
+    found: list[Violation] = []
+
+    def ids(name: str) -> dict[str, int]:
+        seen: dict[str, int] = {}
+        for index, entry in enumerate(_listed(document, name)):
+            identifier = entry.get("id") if isinstance(entry, dict) else None
+            if not isinstance(identifier, str):
+                continue
+            if identifier in seen:
+                found.append(
+                    Violation(
+                        _pointer(name, index, "id"), f"duplicate {name[:-1]} id {identifier!r}"
+                    )
+                )
+                continue
+            seen[identifier] = index
+        return seen
+
+    columns = ids("columns")
+    rows = ids("rows")
+    has_rows = isinstance(document.get("rows"), list)
+
+    cut = document.get("cut")
+    if isinstance(cut, str):
+        if not has_rows:
+            found.append(
+                Violation(
+                    "/cut",
+                    "a cut is drawn under a row, and this board has no `rows`. Add the slices "
+                    "(a first release and what follows), or drop the cut.",
+                )
+            )
+        elif cut not in rows:
+            found.append(
+                Violation("/cut", f"{cut!r} is not the id of any row" + _closest(cut, rows))
+            )
+        elif rows[cut] == len(document["rows"]) - 1:
+            found.append(
+                Violation(
+                    "/cut",
+                    f"{cut!r} is the last row, and a cut with nothing below it cuts nothing. "
+                    f"Name the row the first release ends at.",
+                )
+            )
+
+    for index, card in enumerate(_listed(document, "cards")):
+        if not isinstance(card, dict):
+            continue
+        column = card.get("column")
+        if isinstance(column, str) and column not in columns:
+            found.append(
+                Violation(
+                    _pointer("cards", index, "column"),
+                    f"{column!r} is not the id of any column" + _closest(column, columns),
+                )
+            )
+        row = card.get("row")
+        if has_rows and "row" not in card:
+            found.append(
+                Violation(
+                    _pointer("cards", index, "row"),
+                    "'row' is required: this board has rows, so every card is in one — half a "
+                    "story map is a mistake. Name the slice it ships in.",
+                )
+            )
+        elif not has_rows and "row" in card:
+            found.append(
+                Violation(
+                    _pointer("cards", index, "row"),
+                    "this board has no `rows`, so a card cannot be in one. Add the rows (a "
+                    "story map), or drop 'row' from every card (a kanban board).",
+                )
+            )
+        elif isinstance(row, str) and row not in rows:
+            found.append(
+                Violation(
+                    _pointer("cards", index, "row"),
+                    f"{row!r} is not the id of any row" + _closest(row, rows),
+                )
+            )
+        text = card.get("text")
+        if isinstance(card.get("actor"), str) and isinstance(text, str) and "\n" in text:
+            found.append(
+                Violation(
+                    _pointer("cards", index, "text"),
+                    "a card with an actor has the actor as its lead, so its text may not start "
+                    "a second paragraph. Put it on one line, or the rest in `note`.",
+                )
+            )
+    return found
+
+
+#: Why a fishbone has no place for a field an author may reach for.
+FISHBONE_REFUSED: Final = {
+    "edges": (
+        "the connections of a fishbone are its structure, so there is nothing to add. A cause "
+        "that contributes to another cause is a different diagram: a `flow`"
+    ),
+    "causes": (
+        "a cause is a leaf. A sub-cause of a cause is a second fishbone, with that cause as "
+        "its effect — draw that one beside this"
+    ),
+    "role": (
+        "the effect is the head, always drawn as the diagram's emphasis; it takes no role. "
+        "Mark the confirmed root cause with `emphasis` on that cause instead"
+    ),
+}
+
+
+def _fishbone_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a fishbone, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    unknown = "is not a known field" in violation.message
+    if unknown and name == "edges" and len(parts) == 2:
+        return Violation(violation.pointer, f"'edges': {FISHBONE_REFUSED['edges']}.")
+    if unknown and name == "causes" and len(parts) == 6:
+        return Violation(violation.pointer, f"'causes': {FISHBONE_REFUSED['causes']}.")
+    if unknown and name == "role" and parts[1:2] == ["effect"]:
+        return Violation(violation.pointer, f"'role': {FISHBONE_REFUSED['role']}.")
+    if "needs at least" in violation.message:
+        if parts[1:] == ["categories"]:
+            return Violation(
+                violation.pointer,
+                "a fishbone needs at least 2 categories: one category is a list of causes. "
+                "Write it as a list, or name the second category the causes fall under.",
+            )
+        if len(parts) == 4 and name == "causes":
+            return Violation(
+                violation.pointer,
+                "a category with no causes is a heading with no investigation under it. If "
+                'nothing was found, say so: `{"text": "nothing found", "role": "note"}`.',
+            )
+    if len(parts) == 6 and name == "role" and "is not one of" in violation.message:
+        return Violation(
+            violation.pointer,
+            violation.message.split(".")[0]
+            + ". A cause is a tick on a bone, with no shape to mean `decision` or "
+            "`terminal`: `step`, `emphasis` for the confirmed root cause, `note` for one "
+            "ruled out.",
+        )
+    return violation
+
+
+#: Why a venn has no place for a field an author may reach for.
+VENN_REFUSED: Final = {
+    "edges": "a Venn diagram has nothing to connect: what relates the sets is their overlap",
+    "subset_of": (
+        "a set wholly inside another is scopes nested inside scopes, which is `rings`; a "
+        "Venn diagram draws sets that overlap"
+    ),
+    "size": (
+        "the circles are equal on purpose: a Venn diagram says what overlaps, not how much. "
+        "A number belongs in the text, or in a `chart`"
+    ),
+    "value": (
+        "the circles are equal on purpose: a Venn diagram says what overlaps, not how much. "
+        "A number belongs in the text, or in a `chart`"
+    ),
+}
+
+
+def _venn_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a venn, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    if name in VENN_REFUSED and "is not a known field" in violation.message:
+        return Violation(violation.pointer, f"{name!r}: {VENN_REFUSED[name]}.")
+    if parts[1:] == ["sets"] and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a Venn diagram needs 2 or 3 sets: one set overlaps nothing. Say what it holds in "
+            "a sentence, or as a list.",
+        )
+    return violation
+
+
+def _venn_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Set ids that are unique, and regions whose memberships land and differ."""
+    found: list[Violation] = []
+    sets: dict[str, int] = {}
+    for index, entry in enumerate(_listed(document, "sets")):
+        identifier = entry.get("id") if isinstance(entry, dict) else None
+        if not isinstance(identifier, str):
+            continue
+        if identifier in sets:
+            found.append(
+                Violation(_pointer("sets", index, "id"), f"duplicate set id {identifier!r}")
+            )
+            continue
+        sets[identifier] = index
+    seen: dict[frozenset[str], int] = {}
+    for index, region in enumerate(_listed(document, "regions")):
+        members = region.get("in") if isinstance(region, dict) else None
+        if not isinstance(members, list) or not all(isinstance(m, str) for m in members):
+            continue
+        named: set[str] = set()
+        landed = True
+        for position, member in enumerate(members):
+            if member not in sets:
+                landed = False
+                found.append(
+                    Violation(
+                        _pointer("regions", index, "in", position),
+                        f"{member!r} is not the id of any set" + _closest(member, sets),
+                    )
+                )
+            elif member in named:
+                landed = False
+                found.append(
+                    Violation(
+                        _pointer("regions", index, "in", position),
+                        f"{member!r} is named twice: `in` lists each set the region is in once.",
+                    )
+                )
+            named.add(member)
+        if not landed or not named:
+            continue
+        key = frozenset(named)
+        if key in seen:
+            found.append(
+                Violation(
+                    _pointer("regions", index, "in"),
+                    f"region {seen[key]} is already the region in exactly these sets. A region "
+                    f"is drawn once: put both texts in one.",
+                )
+            )
+            continue
+        seen[key] = index
+    return found
+
+
+#: Why a journey has no place for a field an author may reach for.
+JOURNEY_REFUSED: Final = {
+    "edges": (
+        "a journey's stages are already in order, left to right, and the feeling line joins "
+        "them; an arrow between two stages adds nothing. Branching steps are a `flow`"
+    ),
+    "personas": (
+        "a journey map is one person's: two feeling lines cross and erase each other. Draw "
+        "one journey per person, with the same stages"
+    ),
+    "score": (
+        "a feeling is a name, not a score — a numeric axis invites reading 3.4 off a sketch. "
+        "Name the levels in `feelings`, worst first, and give each stage one by name"
+    ),
+    "value": (
+        "a feeling is a name, not a score — a numeric axis invites reading 3.4 off a sketch. "
+        "Name the levels in `feelings`, worst first, and give each stage one by name"
+    ),
+}
+
+
+def _journey_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a journey, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    if name in JOURNEY_REFUSED and "is not a known field" in violation.message:
+        return Violation(violation.pointer, f"{name!r}: {JOURNEY_REFUSED[name]}.")
+    numeric = violation.message in ("expected string, got int", "expected string, got float")
+    if numeric and (name == "feeling" or parts[1:2] == ["feelings"]):
+        return Violation(violation.pointer, f"a number: {JOURNEY_REFUSED['score']}.")
+    if parts[1:] == ["feelings"] and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a journey needs at least 2 feelings: with one level the line is flat and says "
+            "nothing. Name the levels the person moves between, worst first.",
+        )
+    if parts[1:] == ["stages"] and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a journey needs at least 2 stages: a feeling at one stage is a sentence, not a line.",
+        )
+    return violation
+
+
+def _journey_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Feelings and row ids that are unique, and stages whose names land."""
+    found: list[Violation] = []
+    feelings: dict[str, int] = {}
+    for index, feeling in enumerate(_listed(document, "feelings")):
+        if not isinstance(feeling, str):
+            continue
+        if feeling in feelings:
+            found.append(
+                Violation(
+                    _pointer("feelings", index),
+                    f"{feeling!r} is already level {feelings[feeling]}: each level is named once.",
+                )
+            )
+            continue
+        feelings[feeling] = index
+    rows: dict[str, int] = {}
+    for index, entry in enumerate(_listed(document, "rows")):
+        identifier = entry.get("id") if isinstance(entry, dict) else None
+        if not isinstance(identifier, str):
+            continue
+        if identifier in rows:
+            found.append(
+                Violation(_pointer("rows", index, "id"), f"duplicate row id {identifier!r}")
+            )
+            continue
+        rows[identifier] = index
+    has_rows = isinstance(document.get("rows"), list)
+    for index, stage in enumerate(_listed(document, "stages")):
+        if not isinstance(stage, dict):
+            continue
+        feeling = stage.get("feeling")
+        if isinstance(feeling, str) and feelings and feeling not in feelings:
+            found.append(
+                Violation(
+                    _pointer("stages", index, "feeling"),
+                    f"{feeling!r} is not one of the feelings, {', '.join(feelings)}"
+                    + (_closest(feeling, feelings) or ". Name one of them, or add it there."),
+                )
+            )
+        named: set[str] = set()
+        details = stage.get("details")
+        for position, detail in enumerate(details if isinstance(details, list) else []):
+            row = detail.get("row") if isinstance(detail, dict) else None
+            if not isinstance(row, str):
+                continue
+            where = _pointer("stages", index, "details", position, "row")
+            if not has_rows:
+                found.append(
+                    Violation(
+                        where,
+                        "this journey has no `rows`, so a detail has no row to go in. Declare "
+                        "the rows (what the person does, where, what gets in the way), or drop "
+                        "'details'.",
+                    )
+                )
+            elif row not in rows:
+                found.append(
+                    Violation(where, f"{row!r} is not the id of any row" + _closest(row, rows))
+                )
+            elif row in named:
+                found.append(
+                    Violation(
+                        where,
+                        f"{row!r} is named twice in this stage: a stage has one cell per row. "
+                        f"Put both in one text.",
+                    )
+                )
+            named.add(row)
+    return found
+
+
+#: Why a treemap has no place for a field an author may reach for.
+TREEMAP_REFUSED: Final = {
+    "edges": (
+        "a treemap's parts are related by being one whole; there is nothing to connect. "
+        "Where a quantity goes from one place to another is a `flow`"
+    ),
+    "percent": (
+        "drawspec takes each part's share from its `amount` and the total, so the areas "
+        "cannot disagree with the numbers. Write the amount"
+    ),
+    "share": (
+        "drawspec takes each part's share from its `amount` and the total, so the areas "
+        "cannot disagree with the numbers. Write the amount"
+    ),
+    "children": (
+        "a treemap has one level of grouping: a part names its group in `group`, and a "
+        "group holds parts, not groups. Past one level it is a disk-usage tool's output"
+    ),
+    "parts": (
+        "a group does not list its parts: each part names its group in `group`. Groups do not nest"
+    ),
+    "groups": (
+        "a treemap has one level of grouping, so a group holds parts, never groups. Draw a "
+        "treemap per group instead"
+    ),
+    "group": (
+        "a treemap has one level of grouping, so a group holds parts, never groups. Draw a "
+        "treemap per group instead"
+    ),
+}
+
+
+def _treemap_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a treemap, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    in_group = parts[1:2] == ["groups"] and len(parts) == 4
+    if name == "value" and parts[1:2] == ["parts"] and len(parts) == 4:
+        return Violation(
+            violation.pointer,
+            "'value': a treemap part's number is its `amount` — how much of the total it is, "
+            "in the treemap's `unit`.",
+        )
+    if "is not a known field" in violation.message and name in TREEMAP_REFUSED:
+        if name in ("parts", "groups", "group") and not in_group:
+            return violation
+        return Violation(violation.pointer, f"{name!r}: {TREEMAP_REFUSED[name]}.")
+    if name == "amount" and parts[1:2] == ["parts"] and "greater than" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a part's amount is its area, so it must be more than 0. A part of nothing is not "
+            "drawn: leave it out, or say so in the caption.",
+        )
+    if parts[1:] == ["parts"] and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a treemap needs at least 2 parts: one part of a total is the total. Say it in a "
+            "sentence.",
+        )
+    return violation
+
+
+def _treemap_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Group ids that are unique, parts whose groups land, and no empty group."""
+    found: list[Violation] = []
+    groups: dict[str, int] = {}
+    for index, entry in enumerate(_listed(document, "groups")):
+        identifier = entry.get("id") if isinstance(entry, dict) else None
+        if not isinstance(identifier, str):
+            continue
+        if identifier in groups:
+            found.append(
+                Violation(_pointer("groups", index, "id"), f"duplicate group id {identifier!r}")
+            )
+            continue
+        groups[identifier] = index
+    named: set[str] = set()
+    for index, part in enumerate(_listed(document, "parts")):
+        group = part.get("group") if isinstance(part, dict) else None
+        if not isinstance(group, str):
+            continue
+        if group not in groups:
+            found.append(
+                Violation(
+                    _pointer("parts", index, "group"),
+                    f"{group!r} is not the id of any group"
+                    + (_closest(group, groups) if groups else ": this treemap has no `groups`."),
+                )
+            )
+            continue
+        named.add(group)
+    for identifier, index in groups.items():
+        if identifier not in named:
+            found.append(
+                Violation(
+                    _pointer("groups", index),
+                    f"no part names the group {identifier!r}, so it would be an empty frame. "
+                    f'Give it parts with `"group": "{identifier}"`, or drop it.',
+                )
+            )
+    return found
+
+
+#: Why a sankey has no place for a field an author may reach for.
+SANKEY_REFUSED: Final = {
+    "edges": ("a sankey's connections are its `flows`, each with the `amount` that goes along it"),
+    "column": (
+        "a node's column is derived from the flows — sources on the left, ends on the right, "
+        "each node one column past the longest way in. Write the flows"
+    ),
+    "rank": (
+        "a node's column is derived from the flows — sources on the left, ends on the right, "
+        "each node one column past the longest way in. Write the flows"
+    ),
+    "percent": (
+        "drawspec draws each band from its `amount`, so the thicknesses cannot disagree with "
+        "the numbers. Write the amount"
+    ),
+    "share": (
+        "drawspec draws each band from its `amount`, so the thicknesses cannot disagree with "
+        "the numbers. Write the amount"
+    ),
+    "label": (
+        "a band carries no words: what goes where is read from the nodes' totals, written "
+        "beside each bar. Name the destination as a node instead"
+    ),
+}
+
+
+def _sankey_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a sankey, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    if name == "value" and parts[1:2] == ["flows"] and len(parts) == 4:
+        return Violation(
+            violation.pointer,
+            "'value': a flow's number is its `amount` — how much goes from one node to the "
+            "other, in the sankey's `unit`.",
+        )
+    if "is not a known field" in violation.message and name in SANKEY_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {SANKEY_REFUSED[name]}.")
+    if name == "amount" and parts[1:2] == ["flows"] and "greater than" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a flow's amount is its band's thickness, so it must be more than 0. A flow of "
+            "nothing is not drawn: leave it out.",
+        )
+    if parts[1:] == ["nodes"] and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a sankey needs at least 2 nodes: an amount goes from one to another.",
+        )
+    return violation
+
+
+def sankey_columns(ids: Sequence[str], flows: Sequence[tuple[str, str]]) -> dict[str, int]:
+    """Each node's column: one past the longest way in, every end in the last column.
+
+    `flows` must join known ids and close no loop. A node no flow touches is in the
+    first column. Ends — nodes with nothing leaving — are moved to the last column,
+    so every arrival lines up on the right edge, the way the quantity is read.
+    """
+    incoming: dict[str, list[str]] = {identifier: [] for identifier in ids}
+    leaving: set[str] = set()
+    for source, target in flows:
+        incoming[target].append(source)
+        leaving.add(source)
+    column: dict[str, int] = {}
+
+    def depth(identifier: str) -> int:
+        if identifier not in column:
+            column[identifier] = 0
+            column[identifier] = max(
+                (depth(source) + 1 for source in incoming[identifier]), default=0
+            )
+        return column[identifier]
+
+    for identifier in ids:
+        depth(identifier)
+    last = max(column.values(), default=0)
+    for identifier in ids:
+        if identifier not in leaving and incoming[identifier]:
+            column[identifier] = last
+    return column
+
+
+def sankey_amount(value: float, unit: str) -> str:
+    """An amount as written: no trailing zeros, the unit after a space (`%` after none)."""
+    text = f"{value:.10g}"
+    if not unit:
+        return text
+    return f"{text}{unit}" if unit == "%" else f"{text} {unit}"
+
+
+def _sankey_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Ids that land, no loop, every middle node balanced, four columns, no hairline.
+
+    Each is a fact about the numbers and the joins alone, so each is refused here,
+    at its pointer, before any layout runs: an imbalance, a loop or a band too thin
+    to see is never a question a smaller type size could answer.
+    """
+    found: list[Violation] = []
+    written = document.get("unit")
+    unit = written if isinstance(written, str) else ""
+    nodes: dict[str, int] = {}
+    for index, entry in enumerate(_listed(document, "nodes")):
+        identifier = entry.get("id") if isinstance(entry, dict) else None
+        if not isinstance(identifier, str):
+            continue
+        if identifier in nodes:
+            found.append(
+                Violation(_pointer("nodes", index, "id"), f"duplicate node id {identifier!r}")
+            )
+            continue
+        nodes[identifier] = index
+
+    # The flows that land, in written order: (index, from, to, amount).
+    flows: list[tuple[int, str, str, float]] = []
+    pairs: dict[tuple[str, str], int] = {}
+    balance: list[tuple[str, str, float]] = []
+    reaches: dict[str, set[str]] = {identifier: {identifier} for identifier in nodes}
+    for index, entry in enumerate(_listed(document, "flows")):
+        if not isinstance(entry, dict):
+            continue
+        ends = []
+        for side in ("from", "to"):
+            name = entry.get(side)
+            if not isinstance(name, str):
+                continue
+            if name not in nodes:
+                found.append(
+                    Violation(
+                        _pointer("flows", index, side),
+                        f"{name!r} is not the id of any node" + _closest(name, nodes),
+                    )
+                )
+                continue
+            ends.append(name)
+        if len(ends) != 2:
+            continue
+        source, target = ends
+        if source == target:
+            found.append(
+                Violation(
+                    _pointer("flows", index, "to"),
+                    f"a flow from {source!r} to itself: an amount that stays where it is does "
+                    "not flow. Leave it out.",
+                )
+            )
+            continue
+        amount = entry.get("amount")
+        number = float(amount) if isinstance(amount, int | float) else 0.0
+        balance.append((source, target, max(number, 0.0)))
+        if (source, target) in pairs:
+            found.append(
+                Violation(
+                    _pointer("flows", index),
+                    f"a second flow from {source!r} to {target!r} (the first is "
+                    f"/flows/{pairs[(source, target)]}): add the amounts into one flow.",
+                )
+            )
+            continue
+        if target in reaches[source]:
+            found.append(
+                Violation(
+                    _pointer("flows", index),
+                    f"the flow from {source!r} to {target!r} closes a loop — {target!r} already "
+                    "leads back to it. A quantity does not flow backwards in a sankey: leave "
+                    "this flow out, or draw the loop as a `cycle` or a `flow`.",
+                )
+            )
+            continue
+        pairs[(source, target)] = index
+        # Everything that reached `source` now reaches `target` and what it leads to.
+        downstream = {name for name, before in reaches.items() if target in before}
+        for name in downstream:
+            reaches[name] |= reaches[source]
+        flows.append((index, source, target, max(number, 0.0)))
+
+    touched = {name for _, source, target, _ in flows for name in (source, target)}
+    for identifier, index in nodes.items():
+        if identifier not in touched and not any(
+            isinstance(entry, dict) and identifier in (entry.get("from"), entry.get("to"))
+            for entry in _listed(document, "flows")
+        ):
+            found.append(
+                Violation(
+                    _pointer("nodes", index),
+                    f"no flow reaches or leaves {identifier!r}, so it would be a bar of "
+                    "nothing. Give it a flow, or leave it out.",
+                )
+            )
+
+    into: dict[str, float] = dict.fromkeys(nodes, 0.0)
+    out: dict[str, float] = dict.fromkeys(nodes, 0.0)
+    for source, target, amount in balance:
+        out[source] += amount
+        into[target] += amount
+    for identifier, index in nodes.items():
+        arrived, left = into[identifier], out[identifier]
+        if not (arrived and left) or abs(arrived - left) <= 1e-9 * max(arrived, left):
+            continue
+        more, verb = ("takes in", "sends on") if arrived > left else ("sends on", "takes in")
+        difference = abs(arrived - left)
+        found.append(
+            Violation(
+                _pointer("nodes", index),
+                f"{identifier!r} {more} {sankey_amount(max(arrived, left), unit)} and {verb} "
+                f"{sankey_amount(min(arrived, left), unit)}: the drawing would have to invent "
+                f"where the difference of {sankey_amount(difference, unit)} "
+                f"{'went' if arrived > left else 'came from'}. Add a flow of "
+                f"{sankey_amount(difference, unit)} "
+                f"{'to' if arrived > left else 'from'} a named node — `Lost`, `Idle`, a `note` "
+                "— or correct the amounts.",
+            )
+        )
+
+    columns = sankey_columns(list(nodes), [(source, target) for _, source, target, _ in flows])
+    for identifier, index in nodes.items():
+        if columns.get(identifier, 0) >= SANKEY_COLUMN_MAX:
+            found.append(
+                Violation(
+                    _pointer("nodes", index),
+                    f"{identifier!r} is {columns[identifier] + 1} steps from where the quantity "
+                    f"starts, and a sankey can be read at {SANKEY_COLUMN_MAX} columns at most. "
+                    "Draw one sankey per stage — the last column of one is the first of the "
+                    "next — or merge the steps between.",
+                )
+            )
+            break
+
+    # The fullest column's total sets the scale: every node is as tall as what
+    # passes through it, and a flow that skips a column passes through it too.
+    totals: dict[int, float] = {}
+    for identifier in nodes:
+        column = columns.get(identifier, 0)
+        totals[column] = totals.get(column, 0.0) + max(into[identifier], out[identifier])
+    for _, source, target, amount in flows:
+        for column in range(columns[source] + 1, columns[target]):
+            totals[column] = totals.get(column, 0.0) + amount
+    fullest = max(totals.values(), default=0.0)
+    least = fullest * SANKEY_MIN_BAND / SANKEY_BAND
+    ratio = round(SANKEY_BAND / SANKEY_MIN_BAND)
+    for index, source, target, amount in flows:
+        if 0 < amount < least:
+            found.append(
+                Violation(
+                    _pointer("flows", index, "amount"),
+                    f"the flow from {source!r} to {target!r} is {sankey_amount(amount, unit)} of "
+                    f"the {sankey_amount(fullest, unit)} in the fullest column — under 1/{ratio} "
+                    "of it, a band too thin to see. Merge the small flows into one flow to a "
+                    "named `note` node (`Other`), and say what it holds in the caption.",
+                )
+            )
+    return found
+
+
+def _is_number(value: object) -> bool:
+    return isinstance(value, int | float) and not isinstance(value, bool)
+
+
+def _reaches(graph: Mapping[str, Sequence[str]], start: str, goal: str) -> bool:
+    """Whether `goal` is reachable from `start` along `graph`'s edges."""
+    seen: set[str] = set()
+    stack = [start]
+    while stack:
+        here = stack.pop()
+        if here == goal:
+            return True
+        if here in seen:
+            continue
+        seen.add(here)
+        stack.extend(graph.get(here, ()))
+    return False
+
+
+def _closest(name: str, known: Mapping[str, Any]) -> str:
+    """`; did you mean 'x'?` when one known id is close to `name`, else nothing."""
+    close = get_close_matches(name, list(known), n=1)
+    return f"; did you mean {close[0]!r}?" if close else ""
+
+
+def _sequence_group_violations(
+    document: Mapping[str, Any], participants: Mapping[str, int]
+) -> list[Violation]:
+    """Groups over lifelines: known members, one group each, and neighbours."""
+    found: list[Violation] = []
+    names = {index: identifier for identifier, index in participants.items()}
+    owner: dict[str, str] = {}
+    group_ids: set[str] = set()
+    for index, group in enumerate(_listed(document, "groups")):
+        if not isinstance(group, dict):
+            continue
+        identifier = group.get("id")
+        if isinstance(identifier, str):
+            if identifier in participants:
+                found.append(
+                    Violation(
+                        _pointer("groups", index, "id"),
+                        f"{identifier!r} is already the id of a participant",
+                    )
+                )
+            elif identifier in group_ids:
+                found.append(
+                    Violation(_pointer("groups", index, "id"), f"duplicate group id {identifier!r}")
+                )
+            group_ids.add(identifier)
+        members = group.get("members")
+        if not isinstance(members, list):
+            continue
+        positions: list[int] = []
+        sound = True
+        for position, member in enumerate(members):
+            if not isinstance(member, str):
+                sound = False
+                continue
+            pointer = _pointer("groups", index, "members", position)
+            if member not in participants:
+                found.append(Violation(pointer, f"{member!r} is not the id of any participant"))
+                sound = False
+            elif member in owner:
+                found.append(
+                    Violation(
+                        pointer,
+                        f"{member!r} is already in {owner[member]!r}. A lifeline is in one "
+                        f"group or none.",
+                    )
+                )
+                sound = False
+            else:
+                owner[member] = str(identifier)
+                positions.append(participants[member])
+        if not sound or not positions:
+            continue
+        inside = set(positions)
+        between = [
+            names[spot] for spot in range(min(positions), max(positions) + 1) if spot not in inside
+        ]
+        if between:
+            found.append(
+                Violation(
+                    _pointer("groups", index, "members"),
+                    f"{between[0]!r} stands between members of {identifier!r} in "
+                    f"'participants', so the group's frame would enclose a lifeline that is "
+                    f"not in it. Reorder 'participants' so the members are next to each other.",
+                )
+            )
+    return found
+
+
+def _fragment_violations(
+    document: Mapping[str, Any], message_ids: Mapping[str, int]
+) -> list[Violation]:
+    """Fragments: ends that are messages, in order, nested or apart, and branches inside."""
+    found: list[Violation] = []
+    spans: list[tuple[int, int, int]] = []
+    fragments = _listed(document, "fragments")
+    for index, fragment in enumerate(fragments):
+        if not isinstance(fragment, dict):
+            continue
+        ends: dict[str, int] = {}
+        for end in ("from", "to"):
+            target = fragment.get(end)
+            if not isinstance(target, str):
+                continue
+            if target not in message_ids:
+                found.append(
+                    Violation(
+                        _pointer("fragments", index, end),
+                        f"{target!r} is not the id of any message. A fragment names its first "
+                        f"and last message by their 'id'.",
+                    )
+                )
+            else:
+                ends[end] = message_ids[target]
+        if len(ends) < 2:
+            continue
+        start, finish = ends["from"], ends["to"]
+        if finish < start:
+            found.append(
+                Violation(
+                    _pointer("fragments", index, "to"),
+                    f"{fragment['to']!r} comes before {fragment['from']!r}, so the frame would "
+                    f"end before it starts. Swap them.",
+                )
+            )
+            continue
+        spans.append((index, start, finish))
+
+    for position, (index, start, finish) in enumerate(spans):
+        for other, first, last in spans[:position]:
+            if first < start <= last < finish or start < first <= finish < last:
+                found.append(
+                    Violation(
+                        _pointer("fragments", index),
+                        f"this fragment starts inside fragment {other} and ends outside it "
+                        f"(or the other way round), and no frame drawing of that does not "
+                        f"cross. Fragments nest or are apart: end one inside the other, or "
+                        f"after it.",
+                    )
+                )
+
+    span_of = {index: (start, finish) for index, start, finish in spans}
+    for index, fragment in enumerate(fragments):
+        if not isinstance(fragment, dict) or "else" not in fragment:
+            continue
+        branches = fragment.get("else")
+        if not isinstance(branches, list):
+            continue
+        operator = fragment.get("operator")
+        if operator not in BRANCHING_OPERATORS:
+            found.append(
+                Violation(
+                    _pointer("fragments", index, "else"),
+                    f"a {operator!r} fragment has one branch, so it has nothing to divide. "
+                    f"Only {' and '.join(repr(name) for name in BRANCHING_OPERATORS)} take "
+                    f"'else'.",
+                )
+            )
+            continue
+        if index not in span_of:
+            continue
+        start, finish = span_of[index]
+        previous = start
+        for position, branch in enumerate(branches):
+            at = branch.get("at") if isinstance(branch, dict) else None
+            if not isinstance(at, str):
+                continue
+            pointer = _pointer("fragments", index, "else", position, "at")
+            if at not in message_ids:
+                found.append(Violation(pointer, f"{at!r} is not the id of any message"))
+                continue
+            row = message_ids[at]
+            if not start < row <= finish:
+                found.append(
+                    Violation(
+                        pointer,
+                        f"{at!r} is not after the fragment's first message and within it, so "
+                        f"the divider above it would be "
+                        + ("at the frame's top" if row == start else "outside the frame")
+                        + ". A branch starts at a later message inside the fragment.",
+                    )
+                )
+                continue
+            if row <= previous and position:
+                found.append(
+                    Violation(
+                        pointer,
+                        f"{at!r} does not come after the previous divider. List the "
+                        f"branches in the order their messages are.",
+                    )
+                )
+                continue
+            previous = row
+            for other, (first, last) in span_of.items():
+                inner = other != index and start <= first and last <= finish
+                if inner and (first, last) != (start, finish) and first < row <= last:
+                    found.append(
+                        Violation(
+                            pointer,
+                            f"{at!r} is inside fragment {other}, which is nested in this one, "
+                            f"so the divider would cut through that frame. Divide at its "
+                            f"first message, or at one outside it.",
+                        )
+                    )
+                    break
+    return found
+
+
+def _listed(document: Mapping[str, Any], name: str) -> list[Any]:
+    value = document.get(name)
+    return value if isinstance(value, list) else []
+
+
+def _status_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
+    """Where a change's marks contradict each other, or are on a kind with no change.
+
+    Marks on a drawing of a change make claims about the state after it, so two
+    of them can disagree: an edge that stays, drawn to a box that goes, would
+    outlive what it connects; an edge that was always there cannot reach a box
+    that is new. Each is refused at the edge's `status`, where the fix is.
+    """
+    nodes = document.get("nodes")
+    edges = document.get("edges")
+    found: list[Violation] = []
+    if kind == "cycle":
+        for name, entries in (("nodes", nodes), ("edges", edges)):
+            for index, entry in enumerate(entries if isinstance(entries, list) else ()):
+                if isinstance(entry, dict) and "status" in entry:
+                    found.append(
+                        Violation(
+                            _pointer(name, index, "status"),
+                            "a cycle that changes is a different cycle, and a ring with a "
+                            "step marked removed is still drawn as a ring through it. Draw "
+                            "the loop before and the loop after as two cycles.",
+                        )
+                    )
+        return found
+    status_of = {
+        node["id"]: node.get("status", "")
+        for node in (nodes if isinstance(nodes, list) else ())
+        if isinstance(node, dict) and isinstance(node.get("id"), str)
+    }
+    for index, edge in enumerate(edges if isinstance(edges, list) else ()):
+        if not isinstance(edge, dict):
+            continue
+        ends = {
+            end: status_of.get(edge.get(end), "")
+            for end in ("from", "to")
+            if isinstance(edge.get(end), str)
+        }
+        marked = edge.get("status", "")
+        gone = [edge[end] for end, status in ends.items() if status == "removed"]
+        new = [edge[end] for end, status in ends.items() if status == "added"]
+        pointer = _pointer("edges", index, "status")
+        if gone and new:
+            found.append(
+                Violation(
+                    pointer,
+                    f"this edge joins {new[0]!r}, which the change adds, to {gone[0]!r}, "
+                    f"which it removes. The two never exist at the same time, so nothing "
+                    f"can connect them.",
+                )
+            )
+        elif gone and marked != "removed":
+            found.append(
+                Violation(
+                    pointer,
+                    f"{gone[0]!r} is removed by this change, so an edge to it cannot "
+                    f"outlive it: mark this edge 'removed' too.",
+                )
+            )
+        elif new and marked != "added":
+            found.append(
+                Violation(
+                    pointer,
+                    f"{new[0]!r} is added by this change, so an edge to it is new as well: "
+                    f"mark this edge 'added'.",
+                )
+            )
+    return found
+
+
+def _scale_violations(scale: Sequence[str], cells: Sequence[Any]) -> list[Violation]:
+    """What an ordered fill may not be: too long, repeated, or missing a cell's group.
+
+    A `scale` turns a matrix's groups from a set into an order, so every filled
+    cell has to be *on* it — a cell in a group the scale does not name would take
+    a fill that means nothing on a drawing whose fills are amounts.
+    """
+    found: list[Violation] = []
+    if len(scale) > RAMP_STEPS:
+        found.append(
+            Violation(
+                _pointer("scale", RAMP_STEPS),
+                f"a scale of {len(scale)} steps is past what tone can carry — {RAMP_STEPS} "
+                f"at most. Beyond that, neighbouring steps are one grey in print and the "
+                f"order stops being visible. Merge buckets until there are {RAMP_STEPS} "
+                f"or fewer.",
+            )
+        )
+    seen: set[str] = set()
+    for index, step in enumerate(scale):
+        if not step.strip():
+            found.append(Violation(_pointer("scale", index), "a scale step needs a name"))
+        elif step in seen:
+            found.append(
+                Violation(
+                    _pointer("scale", index),
+                    f"{step!r} is already a step of this scale. An order names each step once.",
+                )
+            )
+        seen.add(step)
+    for index, cell in enumerate(cells):
+        if not isinstance(cell, dict):
+            continue
+        group = cell.get("group")
+        if isinstance(group, str) and group and group not in seen:
+            found.append(
+                Violation(
+                    _pointer("cells", index, "group"),
+                    f"{group!r} is not a step of this matrix's scale ({', '.join(scale)}). "
+                    f"When the groups are an order every filled cell is on it; leave "
+                    f"'group' out for a cell that was not assessed.",
+                )
+            )
+    return found
+
+
+def _hub_violations(document: Mapping[str, Any], nodes: Set[str]) -> list[Violation]:
+    """What a `cycle`'s hub may not be: a step, a duplicate, or a middle of too little.
+
+    The hub shares the node id space so an edge can name it, and that is the one
+    thing it shares: an edge to it is a spoke, so only a role drawn without a
+    solid head may make one. A `flow` arrow from the last step into the middle
+    reads as the loop ending there, which is the opposite of what a hub says.
+    """
+    hub = document.get("hub")
+    if not isinstance(hub, dict) or not isinstance(hub.get("id"), str):
+        return []
+    found: list[Violation] = []
+    identifier = hub["id"]
+    if identifier in nodes:
+        found.append(
+            Violation(
+                "/hub/id",
+                f"{identifier!r} is already the id of a node. The hub is not a step on the "
+                f"ring, so it needs an id of its own.",
+            )
+        )
+    steps = document.get("nodes")
+    if isinstance(steps, list) and len(steps) < HUB_MINIMUM_NODES:
+        found.append(
+            Violation(
+                "/hub",
+                f"a hub needs a ring of at least {HUB_MINIMUM_NODES} steps around it, and "
+                f"this one has {len(steps)}. Two steps and a middle is three boxes in a "
+                f"row: draw it as a flow.",
+            )
+        )
+    for index, edge in enumerate(document.get("edges", ()) or ()):
+        if not isinstance(edge, dict) or identifier not in (edge.get("from"), edge.get("to")):
+            continue
+        if edge.get("from") == edge.get("to"):
+            found.append(
+                Violation(
+                    _pointer("edges", index, "to"),
+                    "the hub is joined to itself, and there is nowhere to draw that: a "
+                    "spoke runs between the middle and a step.",
+                )
+            )
+            continue
+        role = edge.get("role", "flow")
+        if isinstance(role, str) and role not in HUB_EDGE_ROLES:
+            found.append(
+                Violation(
+                    _pointer("edges", index, "role"),
+                    f"an edge to the hub is a spoke, and {role!r} draws a solid arrow, "
+                    f"which reads as one more step of the loop. Give it one of "
+                    f"{', '.join(HUB_EDGE_ROLES)}.",
+                )
+            )
     return found
 
 
@@ -1832,6 +6131,28 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         raise DocumentError(_describe(violations), violations)
 
     kind = str(document["kind"])
+    if kind in STATES_KINDS:
+        return _states_document(document)
+    if kind in SEQUENCE_KINDS:
+        return _sequence_document(document)
+    if kind in LANES_KINDS:
+        return _lanes_document(document)
+    if kind in ENTITIES_KINDS:
+        return _entities_document(document)
+    if kind in GANTT_KINDS:
+        return _gantt_document(document)
+    if kind in BOARD_KINDS:
+        return _board_document(document)
+    if kind in FISHBONE_KINDS:
+        return _fishbone_document(document)
+    if kind in VENN_KINDS:
+        return _venn_document(document)
+    if kind in JOURNEY_KINDS:
+        return _journey_document(document)
+    if kind in TREEMAP_KINDS:
+        return _treemap_document(document)
+    if kind in SANKEY_KINDS:
+        return _sankey_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -1852,15 +6173,18 @@ def parse_document(document: Mapping[str, Any]) -> Document:
                 centre=bool(entry.get("centre", False)),
                 note=entry.get("note", ""),
                 actor=entry.get("actor", ""),
+                status=entry.get("status", ""),
             )
             for entry in document.get("nodes", ())
         ),
+        hub=_hub(document.get("hub")),
         edges=tuple(
             Edge(
                 source=entry["from"],
                 target=entry["to"],
                 label=entry.get("label", ""),
                 role=entry.get("role", "flow"),
+                status=entry.get("status", ""),
             )
             for entry in document.get("edges", ())
         ),
@@ -1891,6 +6215,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         ),
         columns=tuple(document.get("columns", ())),
         rows=tuple(document.get("rows", ())),
+        scale=tuple(document.get("scale", ())),
         key=tuple(
             Key(group=entry["group"], text=entry["text"]) for entry in document.get("key", ())
         ),
@@ -1939,6 +6264,415 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         order=str(document.get("sort", "given")),
         style=str(document.get("style", "icons")),
     )
+
+
+def _lanes_document(document: Mapping[str, Any]) -> Document:
+    """A swimlane diagram as the graph family reads it: a flow whose actors are lanes.
+
+    The actor is moved to `Node.lane`, so the box is sized from its own text and
+    the actor is drawn once, as its lane's heading, rather than in every box.
+    """
+    nodes = tuple(
+        Node(
+            id=entry["id"],
+            text=entry["text"],
+            role=entry.get("role", "step"),
+            status=entry.get("status", ""),
+            lane=entry["actor"],
+        )
+        for entry in document["nodes"]
+    )
+    return Document(
+        kind=str(document["kind"]),
+        version=DOCUMENT_VERSION,
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        nodes=nodes,
+        edges=tuple(
+            Edge(
+                source=entry["from"],
+                target=entry["to"],
+                label=entry.get("label", ""),
+                role=entry.get("role", "flow"),
+                status=entry.get("status", ""),
+            )
+            for entry in document.get("edges", ())
+        ),
+        lanes=lane_order(document),
+    )
+
+
+def lane_order(document: Mapping[str, Any]) -> tuple[str, ...]:
+    """The lanes of a `lanes` document, in order: as listed, or as first named."""
+    listed = document.get("lanes")
+    if isinstance(listed, list):
+        return tuple(str(lane) for lane in listed)
+    order: dict[str, None] = {}
+    for node in _listed(document, "nodes"):
+        if isinstance(node, dict) and isinstance(node.get("actor"), str):
+            order.setdefault(node["actor"], None)
+    return tuple(order)
+
+
+def _states_document(document: Mapping[str, Any]) -> Document:
+    """A state machine as the graph family reads it: states as nodes, transitions as edges.
+
+    The transition's three parts are composed into the edge's label here, once,
+    so the renderer never learns that a state machine has events.
+    """
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        nodes=tuple(
+            Node(id=entry["id"], text=entry["text"], role=entry.get("role", "step"))
+            for entry in document["states"]
+        ),
+        initial=str(document["initial"]),
+        final=tuple(document.get("final", ())),
+        edges=tuple(
+            Edge(
+                source=entry["from"],
+                target=entry["to"],
+                label=transition_label(
+                    entry.get("event", ""), entry.get("guard", ""), entry.get("action", "")
+                ),
+                role=entry.get("role", "flow"),
+            )
+            for entry in document.get("transitions", ())
+        ),
+        groups=tuple(
+            Group(
+                id=entry["id"],
+                members=tuple(entry["members"]),
+                text=entry["text"],
+                initial=entry.get("initial", ""),
+            )
+            for entry in document.get("groups", ())
+        ),
+    )
+
+
+def _sequence_document(document: Mapping[str, Any]) -> Document:
+    """A sequence diagram: participants as nodes, and its own messages and fragments."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        participants=tuple(
+            Node(id=entry["id"], text=entry["text"], role=entry.get("role", "step"))
+            for entry in document["participants"]
+        ),
+        messages=tuple(
+            Message(
+                source=entry["from"],
+                target=entry["to"],
+                text=entry.get("text", ""),
+                role=entry.get("role", "flow"),
+                id=entry.get("id", ""),
+                note=entry.get("note", ""),
+            )
+            for entry in document["messages"]
+        ),
+        fragments=tuple(
+            Fragment(
+                operator=entry["operator"],
+                start=entry["from"],
+                end=entry["to"],
+                text=entry.get("text", ""),
+                branches=tuple(
+                    Branch(at=branch["at"], text=branch.get("text", ""))
+                    for branch in entry.get("else", ())
+                ),
+            )
+            for entry in document.get("fragments", ())
+        ),
+        groups=tuple(
+            Group(id=entry["id"], members=tuple(entry["members"]), text=entry.get("text", ""))
+            for entry in document.get("groups", ())
+        ),
+    )
+
+
+def _entities_document(document: Mapping[str, Any]) -> Document:
+    """An entity diagram: its boxes with their rows, and relations with their ends."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        entities=tuple(
+            Entity(
+                id=entry["id"],
+                text=entry["text"],
+                role=entry.get("role", "step"),
+                tag=entry.get("tag", ""),
+                fields=tuple(
+                    EntityField(
+                        text=field["text"],
+                        type=field.get("type", ""),
+                        key=field.get("key", ""),
+                        id=field.get("id", ""),
+                    )
+                    for field in entry.get("fields", ())
+                ),
+                operations=tuple(entry.get("operations", ())),
+            )
+            for entry in document["entities"]
+        ),
+        relations=tuple(
+            Relation(
+                source=entry["from"],
+                target=entry["to"],
+                label=entry.get("label", ""),
+                role=entry.get("role", "link"),
+                source_field=entry.get("from_field", ""),
+                target_field=entry.get("to_field", ""),
+                source_end=entry.get("from_end", ""),
+                target_end=entry.get("to_end", ""),
+            )
+            for entry in document.get("edges", ())
+        ),
+    )
+
+
+def _gantt_document(document: Mapping[str, Any]) -> Document:
+    """A plan: its axis, its tasks in order, phases, dependencies and marks."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        axes=(_axis(document["axis"]),),
+        tasks=tuple(
+            Task(
+                id=entry["id"],
+                text=entry["text"],
+                start=float(entry.get("start", 0.0)),
+                end=float(entry.get("end", 0.0)),
+                at=_optional_number(entry.get("at")),
+                role=entry.get("role", "step"),
+                actor=entry.get("actor", ""),
+            )
+            for entry in document["tasks"]
+        ),
+        groups=tuple(
+            Group(id=entry["id"], members=tuple(entry["members"]), text=entry.get("text", ""))
+            for entry in document.get("groups", ())
+        ),
+        edges=tuple(
+            Edge(source=entry["from"], target=entry["to"], role=entry.get("role", "flow"))
+            for entry in document.get("edges", ())
+        ),
+        marks=tuple(
+            Mark(text=entry["text"], at=float(entry["at"])) for entry in document.get("marks", ())
+        ),
+    )
+
+
+def _board_document(document: Mapping[str, Any]) -> Document:
+    """A board: its columns, its rows if any, its cut, and its cards in order."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        board_columns=tuple(
+            BoardColumn(
+                id=entry["id"],
+                text=entry["text"],
+                limit=entry.get("limit"),
+                role=entry.get("role", "step"),
+            )
+            for entry in document["columns"]
+        ),
+        slices=tuple(
+            Slice(id=entry["id"], text=entry["text"]) for entry in document.get("rows", ())
+        ),
+        cut=str(document.get("cut", "")),
+        cards=tuple(
+            Card(
+                text=entry["text"],
+                column=entry["column"],
+                row=entry.get("row", ""),
+                role=entry.get("role", "step"),
+                actor=entry.get("actor", ""),
+                note=entry.get("note", ""),
+            )
+            for entry in document["cards"]
+        ),
+    )
+
+
+def _fishbone_document(document: Mapping[str, Any]) -> Document:
+    """A fishbone: its effect and its categories, each with its causes, in order."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        effect=str(document["effect"]["text"]),
+        categories=tuple(
+            Category(
+                text=entry["text"],
+                causes=tuple(
+                    Cause(text=cause["text"], role=cause.get("role", "step"))
+                    for cause in entry["causes"]
+                ),
+            )
+            for entry in document["categories"]
+        ),
+    )
+
+
+def _venn_document(document: Mapping[str, Any]) -> Document:
+    """A venn: its sets in order, and its regions by membership."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        venn_sets=tuple(
+            VennSet(id=entry["id"], text=entry["text"], role=entry.get("role", "step"))
+            for entry in document["sets"]
+        ),
+        regions=tuple(
+            Region(
+                members=tuple(entry["in"]),
+                text=entry["text"],
+                role=entry.get("role", "step"),
+            )
+            for entry in document.get("regions", ())
+        ),
+    )
+
+
+def _journey_document(document: Mapping[str, Any]) -> Document:
+    """A journey: its feelings worst first, its rows, and its stages in order."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        feelings=tuple(document["feelings"]),
+        journey_rows=tuple(
+            Slice(id=entry["id"], text=entry["text"]) for entry in document.get("rows", ())
+        ),
+        journey_stages=tuple(
+            JourneyStage(
+                text=entry["text"],
+                feeling=entry["feeling"],
+                role=entry.get("role", "step"),
+                details=tuple(
+                    Detail(row=detail["row"], text=detail["text"])
+                    for detail in entry.get("details", ())
+                ),
+            )
+            for entry in document["stages"]
+        ),
+    )
+
+
+def _treemap_document(document: Mapping[str, Any]) -> Document:
+    """A treemap: its parts and groups in the order written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        values=bool(document.get("values", True)),
+        theme=str(document.get("theme", "")),
+        unit=str(document.get("unit", "")),
+        treemap_parts=tuple(
+            TreemapPart(
+                text=entry["text"],
+                amount=float(entry["amount"]),
+                group=entry.get("group", ""),
+                role=entry.get("role", "step"),
+            )
+            for entry in document["parts"]
+        ),
+        treemap_groups=tuple(
+            TreemapGroup(id=entry["id"], text=entry["text"]) for entry in document.get("groups", ())
+        ),
+    )
+
+
+def _sankey_document(document: Mapping[str, Any]) -> Document:
+    """A sankey: its nodes and flows in the order written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        values=bool(document.get("values", True)),
+        theme=str(document.get("theme", "")),
+        unit=str(document.get("unit", "")),
+        sankey_nodes=tuple(
+            SankeyNode(id=entry["id"], text=entry["text"], role=entry.get("role", "step"))
+            for entry in document["nodes"]
+        ),
+        sankey_flows=tuple(
+            SankeyFlow(
+                source=entry["from"],
+                target=entry["to"],
+                amount=float(entry["amount"]),
+                role=entry.get("role", "flow"),
+            )
+            for entry in document["flows"]
+        ),
+    )
+
+
+def _hub(entry: Mapping[str, Any] | None) -> Node | None:
+    if entry is None:
+        return None
+    return Node(id=entry["id"], text=entry["text"], role=entry.get("role", "step"))
 
 
 def _entries(entries: Sequence[Mapping[str, Any]]) -> tuple[Entry, ...]:
@@ -2004,7 +6738,23 @@ def load_document(path: str | Path) -> Document:
         parsed = json.loads(text)
     except json.JSONDecodeError as error:
         raise DocumentError(f"document is not valid JSON: {location} ({error})", ()) from None
-    return parse_document(parsed)
+    document = parse_document(parsed)
+    return replace(document, theme=_beside(document.theme, location))
+
+
+def _beside(theme: str, location: Path) -> str:
+    """A relative theme path, read from the document's folder when the file is there.
+
+    A theme beside its diagrams is the natural layout — a derived brand theme
+    next to the documents that use it — and a path that only worked from one
+    working directory is a document that renders in one build and not another.
+    A bundled name, an absolute path, or a file that is not beside the document
+    is left as written, so nothing that resolved before resolves differently.
+    """
+    if not theme or not theme.endswith(".toml") or Path(theme).is_absolute():
+        return theme
+    beside = location.parent / theme
+    return str(beside) if beside.is_file() else theme
 
 
 # ---------------------------------------------------------------------------
@@ -2094,7 +6844,9 @@ def build_schema() -> dict[str, Any]:
             "decision that requires seeing the output — coordinates, type size, colour, "
             "arrow-head geometry, z-order — is taken by drawspec and has no field here. "
             "Referential rules (node ids are unique; an edge names nodes that exist) are "
-            "beyond JSON Schema and are enforced by `drawspec validate`."
+            "beyond JSON Schema and are enforced by `drawspec validate`, as are the "
+            "readability budget (the most entries each kind may hold) and the cap of "
+            f"{EMPHASIS_CAP} elements with the 'emphasis' role (docs/format.md)."
         ),
         "oneOf": variants,
         "$defs": {name: _object_schema(specs) for name, specs in sorted(OBJECTS.items())},
@@ -2143,38 +6895,97 @@ if __name__ == "__main__":
 
 __all__ = [
     "AXIS_ORDER",
+    "BOARD_CELL_MAX",
+    "BOARD_KINDS",
+    "CARDINALITIES",
+    "CAUSE_ROLES",
     "CHART_KINDS",
     "COMMON_FIELDS",
     "CONTAINER_KINDS",
     "DOCUMENT_VERSION",
+    "ENTITIES_KINDS",
+    "ENTITY_EDGE_ROLES",
+    "ENTITY_ROLES",
+    "FIELD_KEYS",
+    "FISHBONE_CATEGORY_MAX",
+    "FISHBONE_CAUSE_MAX",
+    "FISHBONE_KINDS",
+    "FRAGMENT_OPERATORS",
+    "GRAPH_EDGE_ROLES",
     "GRAPH_KINDS",
     "GRID_KINDS",
+    "HIERARCHY_ROLES",
+    "HUB_EDGE_ROLES",
+    "HUB_MINIMUM_NODES",
+    "JOURNEY_KINDS",
+    "JOURNEY_STAGE_ROLES",
     "KINDS",
+    "LANES_KINDS",
+    "LANES_MAX",
+    "MESSAGE_ROLES",
     "OBJECTS",
+    "PARTICIPANT_ROLES",
+    "REGION_ROLES",
     "REJECTED_FIELDS",
+    "SANKEY_BAND",
+    "SANKEY_FLOW_ROLES",
+    "SANKEY_KINDS",
+    "SANKEY_MIN_BAND",
+    "SANKEY_NODE_ROLES",
     "SCHEMA_FILENAME",
     "SCHEMA_ID",
+    "SEQUENCE_KINDS",
     "SHAPE_KINDS",
+    "STATES_KINDS",
+    "STATE_ROLES",
+    "TRANSITION_ROLES",
+    "TREEMAP_KINDS",
+    "TREEMAP_PART_ROLES",
+    "VENN_KINDS",
+    "VENN_SET_ROLES",
     "Axis",
     "Band",
+    "BoardColumn",
+    "Branch",
+    "Card",
+    "Category",
+    "Cause",
     "Cell",
     "Curve",
+    "Detail",
     "Document",
     "Edge",
+    "Entity",
+    "EntityField",
     "FieldSpec",
+    "Fragment",
     "Group",
     "Item",
+    "JourneyStage",
+    "Message",
     "Node",
     "Position",
+    "Region",
+    "Relation",
+    "SankeyFlow",
+    "SankeyNode",
     "Series",
+    "Slice",
+    "TreemapGroup",
+    "TreemapPart",
+    "VennSet",
     "Violation",
     "Waypoint",
     "build_schema",
     "fields_for",
+    "lane_order",
     "load_document",
     "parse_document",
     "payload_for",
     "published_schema_path",
+    "sankey_amount",
+    "sankey_columns",
     "schema_json",
+    "transition_label",
     "validate_document",
 ]

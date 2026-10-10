@@ -3,16 +3,41 @@
 Declarative diagram spec → clean, themeable SVG. Writable by an LLM with no
 coordinates to get wrong.
 
-> **Status: it draws.** All fifteen kinds render — `flow`, `tree`, `cycle`,
+> **Status: it draws.** All twenty-six kinds render — `flow`, `tree`, `cycle`,
 > `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`,
-> `chart`, `quadrant`, `scatter`, `curve` and `files` — and each of the eleven
-> failure families below has a test asserting it cannot be expressed. The vocabulary
-> opened from nine to thirteen on evidence: see `docs/kinds-wanted.md`, which
+> `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`,
+> `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap` and `sankey` — and each of
+> the eleven failure families below has a test asserting it cannot be expressed.
+> The vocabulary opened from nine to thirteen on evidence: see `docs/kinds-wanted.md`, which
 > sorts all 89 hand-drawn originals by the kind that would have to draw them.
 > `scatter` is the fourteenth, added on a different kind of evidence: a real
 > consumer's need for two continuous, ticked axes, which `quadrant` refuses.
 > `files` is the fifteenth: a directory listing drawn from its paths, as
-> pictures or as the `tree`-style text a code block wants.
+> pictures or as the `tree`-style text a code block wants. `states` is the
+> sixteenth: a state machine, with its initial and final dots, labelled
+> transitions, self-loops, and a refusal for any state nothing reaches.
+> `sequence` is the seventeenth: messages between participants, in order,
+> with activation bars inferred from each call and its reply. `lanes` is the
+> eighteenth: a `flow` document whose actors are drawn as swimlanes, so every
+> hand-off between parties is an arrow crossing a lane. `entities` is the
+> nineteenth: ER models, database schemas and class diagrams as one kind — boxes
+> of fields, relations that can land on one row, crow's feet or multiplicities at
+> the ends, and inheritance with a hollow triangle. `gantt` is the twentieth: a
+> plan, one row per task, with phases, milestones, finish-to-start dependencies
+> and marks such as *today* — on a numbered axis in a unit you name, never dates.
+> `board` is the twenty-first: cards sorted into columns — a kanban board with
+> work-in-progress limits drawspec counts, a retrospective, or a story map whose
+> releases are slices across the columns with a heavy cut under the first.
+> `fishbone` is the twenty-second: one effect and the causes investigated,
+> grouped by category on bones slanting into a spine — the root cause drawn heavy.
+> `venn` is the twenty-third: two or three equal circles, each region's words
+> named by the sets it is in and placed inside it — no coordinates, no sizes.
+> `journey` is the twenty-fourth: one person's feeling, a named level per stage,
+> drawn as a line through every stage over what they do there — no scores.
+> `treemap` is the twenty-fifth: the parts of one known total, each a rectangle
+> by its area with its label inside it — a few proportions stated, not explored.
+> `sankey` is the twenty-sixth: where a known quantity goes, each flow a band as
+> thick as its amount, columns derived from the flows — a few flows stated, not explored.
 
 ## The problem
 
@@ -87,7 +112,7 @@ every diagram in your project changes with it.
 
 ### A timeline
 
-The fifteen kinds are the part people do not expect, so here is one that is not
+The twenty-six kinds are the part people do not expect, so here is one that is not
 a box-and-arrow diagram at all:
 
 ```json
@@ -152,6 +177,7 @@ pip install git+https://github.com/nuncaeslupus/drawspec   # not on PyPI yet
 drawspec render diagram.json -o diagram.svg   # or to stdout
 drawspec validate diagram.json                # every violation, by JSON pointer
 drawspec theme check default                  # including the greyscale invariant
+drawspec theme from site.css -o house.toml    # a theme from your brand's CSS or design tokens
 drawspec schema --out drawspec-v1.schema.json # for editor completion
 ```
 
@@ -191,16 +217,20 @@ for several jobs it might look like it does.
 * **It is not a Graphviz replacement.** Graphviz is a graph-layout engine with
   decades of work behind its layered and force-directed placement, and it will
   lay out a hundred-node graph that drawspec refuses. drawspec's layout exists
-  to serve fifteen named diagram shapes at the sizes a document reads at; past
-  roughly twenty boxes it will tell you it cannot fit rather than produce
-  something dense and unreadable, which is deliberate but is not what a graph
-  tool does.
+  to serve twenty-six named diagram shapes at the sizes a document reads at; past
+  each kind's readability budget (fifteen boxes on a `flow`) it will tell you to
+  split the diagram into an overview and details rather than produce something
+  dense and unreadable, which is deliberate but is not what a graph tool does.
 * **It is not charting software.** `chart` has lines, bars, areas, stacks,
   point labels and a legend. It has no statistics, no interactivity, no dates,
   no log scales, no error bars, and no second axis. If you are exploring data,
   use a plotting library; if you are *stating* a small number you already know,
   this draws it in the same ink and at the same type size as every other
-  diagram on the page, which a plotting library will not.
+  diagram on the page, which a plotting library will not. `treemap` and `sankey`
+  are held to the same line: ten parts and one level of groups at most, every part
+  labelled inside itself; fourteen nodes in four columns, every flow balanced and
+  thick enough to see — a few proportions and flows you already know, not a
+  disk-usage explorer or a flow analyser.
 * **It is not a drawing program.** A document has no coordinates in it, on
   purpose — see *The approach* above. Anything whose whole point is where things are
   (a floor plan, a map, a picture of two overlapping Wi-Fi cells) has no
@@ -231,9 +261,9 @@ has.
 
 ### If you are an agent, or pointing one here
 
-[**`AGENTS.md`**](AGENTS.md) is the whole format on one page — the rule, the
-fifteen kinds, the roles, worked examples, and what each refusal is telling you
-to do. It is written to be read in a single pass rather than navigated, which is
+[**`AGENTS.md`**](AGENTS.md) is the whole format on one page — whether to draw
+at all, which kind fits what the reader must understand, the readability budget,
+the roles, worked examples, and what each refusal is telling you to do. It is written to be read in a single pass rather than navigated, which is
 what the guide and the references are for. [`llms.txt`](llms.txt) is the index
 that points at it.
 
@@ -242,6 +272,10 @@ And if your client speaks **MCP**, `pip install 'drawspec[mcp]'` gives you
 `{"pointer": "/edges/0/to", "message": …}` in the model's own loop instead of as
 prose on stderr it has to read. Same checks, same messages, no shell. See
 [the guide](docs/guide.md#using-it-from-an-agent-the-mcp-server).
+
+For agents that load [Agent Skills](https://agentskills.io), copy
+[`skills/drawspec/`](skills/drawspec/SKILL.md) into your skills directory: a
+short pointer that installs drawspec, reads `AGENTS.md`, and validates before rendering.
 
 It cannot drift either: a test asserts that every kind in the vocabulary is named
 in it, that every role the theme declares appears, and that **every example in it
@@ -264,6 +298,7 @@ Everything you would look in, and the two directories you can ignore.
 | `docs/brief.md` | The originating brief: the problem, the measured failure taxonomy, the acceptance tests. `theme-requirements.md`, `kinds-wanted.md` and the `plan-round-*.md` files sit beside it — the evidence each round was decided on |
 | `schema/` | The published JSON Schema, versioned and addressable. Copied into the wheel from here, so there is only ever one of it |
 | `corpus/` | 87 anonymized LLM-written diagrams and their measurements, as evidence |
+| `skills/` | An Agent Skill that points an agent at drawspec — install, read `AGENTS.md`, validate, render. A test holds every command it names to the CLI |
 | `tests/` | The suite. `test_acceptance.py` and `test_failure_families.py` are the two that encode the promises rather than the mechanics |
 | `tools/` | Development scripts, not shipped: the docs generator, the gallery builder, and the two checkers — `collisions.py` (is the word readable) and `clipping.py` (is the word on the page) |
 | `status/` | The origin documents: the specification this was built from, and its plan. Kept because `docs/brief.md` is the summary and this is the source, and because the session protocol reads `status/plan.md` |

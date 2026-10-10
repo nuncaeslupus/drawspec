@@ -47,7 +47,21 @@ NODE_ROLES: Final = ("start", "step", "decision", "terminal", "emphasis", "note"
 #: is a pairing the other six could not make. `link` has no head but is solid,
 #: and `weak` is dashed but carries one, so an author annotating a diagram with a
 #: soft undirected association had to misstate one or the other.
-EDGE_ROLES: Final = ("flow", "link", "exchange", "weak", "owns", "strong", "aside")
+#:
+#: `inherits` and `realizes` are the theme's too — it draws every role — but a
+#: document may name them only in an `entities` diagram: which roles a kind
+#: accepts is the schema's decision, per kind (`schema.GRAPH_EDGE_ROLES`).
+EDGE_ROLES: Final = (
+    "flow",
+    "link",
+    "exchange",
+    "weak",
+    "owns",
+    "strong",
+    "aside",
+    "inherits",
+    "realizes",
+)
 
 #: Shapes a node role may take.
 NODE_SHAPES: Final = ("rect", "pill", "diamond", "ellipse", "none")
@@ -57,7 +71,9 @@ FILL_PATTERNS: Final = ("none", "solid", "hatch", "dots", "cross", "grid")
 
 #: End treatments an edge role may take. Closed, and it lives in the theme, so a
 #: document stays readable when the theme changes.
-EDGE_HEADS: Final = ("arrow", "open", "diamond", "circle", "bar", "none")
+#: `triangle` is hollow: the shaft stops at its base, so it reads as an outline
+#: and not as a filled arrow head — the mark a class diagram draws for "is a".
+EDGE_HEADS: Final = ("arrow", "open", "diamond", "circle", "bar", "triangle", "none")
 
 #: The four type levels. One size per level, and no element names its own.
 TYPE_LEVELS: Final = ("title", "heading", "body", "label")
@@ -70,6 +86,23 @@ COLOUR_KEYWORDS: Final = ("currentColor", "none")
 
 #: Minimum relative-luminance difference for two colours to survive greyscale.
 LUMINANCE_DELTA: Final = 0.25
+
+#: How many steps `[mark] ramp` must hold: one per step of the longest `scale` a
+#: `matrix` may declare, so every document draws under every theme.
+RAMP_STEPS: Final = 5
+
+#: The least two neighbouring ramp steps may differ by, in ink coverage — which
+#: is greyscale lightness, since a step is the page's ink laid down at that
+#: strength. Below it, two buckets side by side read as one tone. The first step
+#: is held to it as well, measured from the blank of an unfilled cell.
+RAMP_CONTRAST: Final = 0.08
+
+#: The heaviest a ramp step may be. Text sits on these cells, in the same ink as
+#: the tone, so the heavier the step the less the label stands out — on both
+#: pages. On white, half the ink still leaves a black label over 5:1; on a dark
+#: page the ink is light and a heavier step is a *lighter* cell, and past 0.4 a
+#: light label on it drops under 4.5:1 against `#121212`.
+RAMP_CEILING: Final = 0.4
 
 _THEMES_DIR: Final = Path(__file__).resolve().parent / "themes"
 
@@ -707,6 +740,26 @@ class MarkStyle:
     """How much of a category's band is left empty around its bars, as a
     fraction. Zero draws bars that touch, which reads as one wide bar."""
 
+    ramp: tuple[float, ...] = (0.08, 0.16, 0.24, 0.32, 0.4)
+    """The tones an ordered `scale` is filled with, lightest first: how much of
+    the page's ink each step lays down, from 0 (blank) to 1.
+
+    An order, where `fills` is a set. Patterns cannot carry one — dots, hatch
+    and a grid are three different things, not three amounts of one thing — so
+    a heatmap's buckets are told apart the way a printed one is, by how dark they
+    are. That is lightness, the channel greyscale keeps, and the loader holds it
+    to that: at least five steps, each darker than the last by at least 0.08
+    (the first measured from a blank cell, which stays "not assessed"), none
+    darker than 0.5 so the cell's text stays readable. A shorter `scale` takes
+    steps spread across the whole ramp, so two buckets are its two ends.
+    """
+
+    def tone_for(self, index: int, count: int) -> float:
+        """The tone for step `index` of a `count`-step scale, spread across the ramp."""
+        if count <= 1:
+            return self.ramp[-1]
+        return self.ramp[round(index * (len(self.ramp) - 1) / (count - 1))]
+
     def fill_for(self, index: int) -> str:
         """The fill for the `index`-th filled mark, cycling if there are more."""
         return self.fills[index % len(self.fills)]
@@ -719,7 +772,7 @@ class MarkStyle:
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> MarkStyle:
-        _reject_unknown(mapping, ("fills", "colours", "gap"), "[mark]")
+        _reject_unknown(mapping, ("fills", "colours", "gap", "ramp"), "[mark]")
         defaults = cls()
         fills = mapping.get("fills", list(defaults.fills))
         if not isinstance(fills, list) or not fills:
@@ -755,7 +808,44 @@ class MarkStyle:
         gap = _number(mapping.get("gap", defaults.gap), "[mark] gap", positive=False)
         if not 0.0 <= gap < 1.0:
             raise ThemeError(f"[mark] gap: expected a fraction below 1, got {gap!r}")
-        return cls(fills=tuple(fills), colours=painted, gap=gap)
+        return cls(
+            fills=tuple(fills),
+            colours=painted,
+            gap=gap,
+            ramp=_ramp(mapping.get("ramp", list(defaults.ramp))),
+        )
+
+
+def _ramp(value: object) -> tuple[float, ...]:
+    """`[mark] ramp`, held to the one property it exists for: an order you can see.
+
+    Checked here, at load, like the greyscale role pairing — a ramp whose two
+    neighbours are the same grey is a heatmap whose buckets merge, and nobody
+    finds out until a reader cannot tell *sometimes* from *often*.
+    """
+    if not isinstance(value, list) or len(value) < RAMP_STEPS:
+        raise ThemeError(
+            f"[mark] ramp: expected an array of at least {RAMP_STEPS} tones, one per step "
+            f"of the longest scale a matrix may declare; got {value!r}"
+        )
+    tones = tuple(_number(entry, "[mark] ramp") for entry in value)
+    previous = 0.0
+    for index, tone in enumerate(tones):
+        if tone - previous < RAMP_CONTRAST - 1e-9:
+            after = "a blank cell" if index == 0 else f"step {index - 1} ({previous:g})"
+            raise ThemeError(
+                f"[mark] ramp: step {index} ({tone:g}) is not at least {RAMP_CONTRAST:g} "
+                f"darker than {after}. Neighbouring steps that close are one grey in "
+                f"print, so two buckets of the scale would read as one."
+            )
+        previous = tone
+    if tones[-1] > RAMP_CEILING:
+        raise ThemeError(
+            f"[mark] ramp: {tones[-1]:g} is darker than {RAMP_CEILING:g}. A cell's text "
+            f"is drawn on its tone, and past that a label on the heaviest step stops "
+            f"being easy to read."
+        )
+    return tones
 
 
 @dataclass(frozen=True)
@@ -859,6 +949,279 @@ class FunnelStyle:
                 FUNNEL_DIRECTIONS,
                 "[funnel] direction",
             )
+        )
+
+
+@dataclass(frozen=True)
+class StatesStyle:
+    """How a state machine's pseudo-states are drawn. Appearance, so it lives here.
+
+    The author says which state the machine starts in and which it ends in; the
+    filled dot and the ringed dot that say so are marks with no words, and how big
+    they are is a question about the drawing. No field on the document reaches
+    either.
+    """
+
+    dot: float = 10.0
+    """The diameter of the initial pseudo-state's filled dot, and of the dot
+    inside a final pseudo-state's ring."""
+
+    ring: float = 3.0
+    """The daylight between a final pseudo-state's dot and the ring around it."""
+
+    @property
+    def final(self) -> float:
+        """The diameter of a final pseudo-state, ring included."""
+        return self.dot + self.ring * 2
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> StatesStyle:
+        _reject_unknown(mapping, ("dot", "ring"), "[states]")
+        defaults = cls()
+        return cls(
+            dot=_number(mapping.get("dot", defaults.dot), "[states] dot"),
+            ring=_number(mapping.get("ring", defaults.ring), "[states] ring"),
+        )
+
+
+@dataclass(frozen=True)
+class SequenceStyle:
+    """How a sequence diagram's lifelines and activation bars are drawn.
+
+    The author writes who talks to whom and in what order; the bar that shows a
+    participant is busy is inferred from a call and its reply, and how wide it is
+    — like which line a lifeline is drawn in — is a question about the drawing.
+    """
+
+    activation: float = 10.0
+    """The width of an activation bar. A nested bar is set half this to the right."""
+
+    lifeline: str = "aside"
+    """The edge role a lifeline is drawn in, with no head: dashed and light by
+    default, so the messages across it are what the eye follows."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> SequenceStyle:
+        _reject_unknown(mapping, ("activation", "lifeline"), "[sequence]")
+        defaults = cls()
+        return cls(
+            activation=_number(
+                mapping.get("activation", defaults.activation), "[sequence] activation"
+            ),
+            lifeline=_choice(
+                mapping.get("lifeline", defaults.lifeline), EDGE_ROLES, "[sequence] lifeline"
+            ),
+        )
+
+
+#: How an `entities` relation's cardinality is drawn at its ends: crow's-foot
+#: marks, or UML's numbers (`1`, `0..1`, `*`, `0..*`, `1..*`).
+ENTITIES_NOTATIONS: Final = ("crowsfoot", "numeric")
+
+
+@dataclass(frozen=True)
+class EntitiesStyle:
+    """How an entity diagram says *how many* at each end of a relation.
+
+    The author states the cardinality — `one`, `zero-or-many` — and the theme the
+    notation, so the same document draws for a database chapter in crow's feet
+    and for a UML chapter in numbers.
+    """
+
+    notation: str = "crowsfoot"
+    """`crowsfoot` (marks across the line's end) or `numeric` (text beside it)."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> EntitiesStyle:
+        _reject_unknown(mapping, ("notation",), "[entities]")
+        defaults = cls()
+        return cls(
+            notation=_choice(
+                mapping.get("notation", defaults.notation),
+                ENTITIES_NOTATIONS,
+                "[entities] notation",
+            ),
+        )
+
+
+#: How a `gantt` milestone is drawn: a diamond, as most plans draw one, or a dot.
+GANTT_MILESTONES: Final = ("diamond", "circle")
+
+
+@dataclass(frozen=True)
+class GanttStyle:
+    """How a plan draws the two marks that are not bars.
+
+    The author says a task is a milestone and that a deadline falls at week 6;
+    whether the milestone is a diamond or a dot, and which line the deadline is
+    drawn in, are house style.
+    """
+
+    milestone: str = "diamond"
+    """`diamond` or `circle`: the mark a task with `at` is drawn as, filled."""
+
+    marks: str = "weak"
+    """The edge role a mark's line across the rows is drawn in, with no head."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> GanttStyle:
+        _reject_unknown(mapping, ("milestone", "marks"), "[gantt]")
+        defaults = cls()
+        return cls(
+            milestone=_choice(
+                mapping.get("milestone", defaults.milestone), GANTT_MILESTONES, "[gantt] milestone"
+            ),
+            marks=_choice(mapping.get("marks", defaults.marks), EDGE_ROLES, "[gantt] marks"),
+        )
+
+
+@dataclass(frozen=True)
+class BoardStyle:
+    """How a board draws the two lines that are not card borders.
+
+    The author says the board has slices and that the first release ends at one
+    of them; which line runs between two slices and how heavy the cut is are
+    house style.
+    """
+
+    separator: str = "weak"
+    """The edge role the line between two rows (slices) is drawn in, with no head."""
+
+    cut: str = "strong"
+    """The edge role the cut under a row is drawn in, with no head: the board's one heavy line."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> BoardStyle:
+        _reject_unknown(mapping, ("separator", "cut"), "[board]")
+        defaults = cls()
+        return cls(
+            separator=_choice(
+                mapping.get("separator", defaults.separator), EDGE_ROLES, "[board] separator"
+            ),
+            cut=_choice(mapping.get("cut", defaults.cut), EDGE_ROLES, "[board] cut"),
+        )
+
+
+#: The narrowest and widest slant a fishbone's bones may take, in degrees from
+#: the spine. Below thirty a bone lies almost along the spine and its causes
+#: crowd it; ninety is a comb of upright bones.
+FISHBONE_SLANT_RANGE: Final = (30.0, 90.0)
+
+
+@dataclass(frozen=True)
+class FishboneStyle:
+    """How a fishbone draws its spine, its bones and the ticks its causes sit on.
+
+    The author says which causes fall under which category; the angle the bones
+    meet the spine at, and the weight of each line, are house style.
+    """
+
+    slant: float = 60.0
+    """The angle, in degrees from the spine, each bone meets it at: 30 to 90. A
+    fishbone's bones slant by convention — the one place drawspec draws a
+    diagonal on purpose, because the slant *is* the shape. `90` draws a comb of
+    upright bones for a theme that keeps right angles throughout."""
+
+    spine: str = "strong"
+    """The edge role the spine is drawn in, with no head: from the far end of the
+    last bone into the effect's box."""
+
+    bone: str = "flow"
+    """The edge role a category's bone is drawn in, with no head. The bone of a
+    confirmed root cause (`emphasis`) is drawn in the spine's role from that cause
+    to the spine, so the path from cause to effect is one weight."""
+
+    cause: str = "link"
+    """The edge role the tick a cause's words sit on is drawn in, with no head. A
+    ruled-out cause (`note`) is drawn in `aside` instead: light and dashed."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> FishboneStyle:
+        _reject_unknown(mapping, ("slant", "spine", "bone", "cause"), "[fishbone]")
+        defaults = cls()
+        slant = _number(mapping.get("slant", defaults.slant), "[fishbone] slant")
+        low, high = FISHBONE_SLANT_RANGE
+        if not low <= slant <= high:
+            raise ThemeError(
+                f"[fishbone] slant: {slant:g} is outside {low:g} to {high:g} degrees — below "
+                f"{low:g} a bone lies along the spine, and past {high:g} it leans away from "
+                f"the head"
+            )
+        return cls(
+            slant=slant,
+            spine=_choice(mapping.get("spine", defaults.spine), EDGE_ROLES, "[fishbone] spine"),
+            bone=_choice(mapping.get("bone", defaults.bone), EDGE_ROLES, "[fishbone] bone"),
+            cause=_choice(mapping.get("cause", defaults.cause), EDGE_ROLES, "[fishbone] cause"),
+        )
+
+
+@dataclass(frozen=True)
+class JourneyStyle:
+    """How a journey draws the lines that are not words: the feeling line and its rules.
+
+    The author names each stage's feeling; the weight of the line through them,
+    of the guides each level is named on, and of the rules between detail rows
+    are house style.
+    """
+
+    line: str = "strong"
+    """The edge role the feeling line is drawn in, with no head: the one heavy line,
+    through every stage's point."""
+
+    guide: str = "aside"
+    """The edge role each feeling level's guide is drawn in, across every stage: light,
+    so the line and not the grid is what is read."""
+
+    separator: str = "link"
+    """The edge role the rule above each detail row is drawn in, across the whole map."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> JourneyStyle:
+        _reject_unknown(mapping, ("line", "guide", "separator"), "[journey]")
+        defaults = cls()
+        return cls(
+            line=_choice(mapping.get("line", defaults.line), EDGE_ROLES, "[journey] line"),
+            guide=_choice(mapping.get("guide", defaults.guide), EDGE_ROLES, "[journey] guide"),
+            separator=_choice(
+                mapping.get("separator", defaults.separator), EDGE_ROLES, "[journey] separator"
+            ),
+        )
+
+
+#: Which way a `lanes` diagram's lanes run: across the page, stacked top to
+#: bottom (`rows`), or down it, side by side (`columns`). `auto` tries rows and
+#: takes columns when rows do not fit the width.
+LANES_ORIENTATIONS: Final = ("rows", "columns", "auto")
+
+
+@dataclass(frozen=True)
+class LanesStyle:
+    """How a swimlane diagram lays its lanes out and divides them.
+
+    The author says whose each step is; whether the parties' strips run across
+    the page or down it is a question about the drawing, answered here like
+    direction everywhere else — never by the document.
+    """
+
+    orientation: str = "auto"
+    """`rows`, `columns`, or `auto`: rows when they fit the width, else columns."""
+
+    separator: str = "link"
+    """The edge role the line between two lanes is drawn in, with no head."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> LanesStyle:
+        _reject_unknown(mapping, ("orientation", "separator"), "[lanes]")
+        defaults = cls()
+        return cls(
+            orientation=_choice(
+                mapping.get("orientation", defaults.orientation),
+                LANES_ORIENTATIONS,
+                "[lanes] orientation",
+            ),
+            separator=_choice(
+                mapping.get("separator", defaults.separator), EDGE_ROLES, "[lanes] separator"
+            ),
         )
 
 
@@ -1067,6 +1430,14 @@ _TOP_LEVEL_KEYS: Final = (
     "cycle",
     "funnel",
     "files",
+    "states",
+    "sequence",
+    "lanes",
+    "entities",
+    "gantt",
+    "board",
+    "fishbone",
+    "journey",
     "role",
     "edge_role",
 )
@@ -1089,6 +1460,14 @@ class Theme:
     cycle: CycleStyle = CycleStyle()
     funnel: FunnelStyle = FunnelStyle()
     files: FilesStyle = FilesStyle()
+    states: StatesStyle = StatesStyle()
+    sequence: SequenceStyle = SequenceStyle()
+    lanes: LanesStyle = LanesStyle()
+    entities: EntitiesStyle = EntitiesStyle()
+    gantt: GanttStyle = GanttStyle()
+    board: BoardStyle = BoardStyle()
+    fishbone: FishboneStyle = FishboneStyle()
+    journey: JourneyStyle = JourneyStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
 
@@ -1139,6 +1518,14 @@ class Theme:
             cycle=CycleStyle.from_mapping(_section(mapping, "cycle")),
             funnel=FunnelStyle.from_mapping(_section(mapping, "funnel")),
             files=FilesStyle.from_mapping(_section(mapping, "files")),
+            states=StatesStyle.from_mapping(_section(mapping, "states")),
+            sequence=SequenceStyle.from_mapping(_section(mapping, "sequence")),
+            lanes=LanesStyle.from_mapping(_section(mapping, "lanes")),
+            entities=EntitiesStyle.from_mapping(_section(mapping, "entities")),
+            gantt=GanttStyle.from_mapping(_section(mapping, "gantt")),
+            board=BoardStyle.from_mapping(_section(mapping, "board")),
+            fishbone=FishboneStyle.from_mapping(_section(mapping, "fishbone")),
+            journey=JourneyStyle.from_mapping(_section(mapping, "journey")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
         )
@@ -1386,6 +1773,9 @@ __all__ = [
     "LUMINANCE_DELTA",
     "NODE_ROLES",
     "NODE_SHAPES",
+    "RAMP_CEILING",
+    "RAMP_CONTRAST",
+    "RAMP_STEPS",
     "THEME_VERSION",
     "TYPE_LEVELS",
     "WIDTH_MODES",

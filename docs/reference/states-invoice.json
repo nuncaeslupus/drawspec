@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "kind": "states",
+  "title": "What can happen to an invoice",
+  "initial": "draft",
+  "final": ["paid", "void", "written_off"],
+  "states": [
+    {"id": "draft", "text": "Draft"},
+    {"id": "awaiting", "text": "Awaiting payment"},
+    {"id": "overdue", "text": "Overdue"},
+    {"id": "paid", "text": "Paid"},
+    {"id": "void", "text": "Void"},
+    {"id": "written_off", "text": "Written off", "role": "emphasis"}
+  ],
+  "groups": [
+    {"id": "issued", "text": "Issued", "members": ["awaiting", "overdue"]}
+  ],
+  "transitions": [
+    {"from": "draft", "to": "awaiting", "event": "sent to the customer"},
+    {"from": "draft", "to": "void", "event": "cancelled"},
+    {"from": "awaiting", "to": "overdue", "event": "due date passes"},
+    {"from": "overdue", "to": "overdue", "event": "every 7 days", "action": "send a reminder"},
+    {"from": "issued", "to": "paid", "event": "payment matched"},
+    {"from": "overdue", "to": "written_off", "event": "90 days overdue", "guard": "finance approves"}
+  ]
+}

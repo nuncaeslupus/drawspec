@@ -13,7 +13,7 @@
     { "text": "Fix the flaky test", "across": 1, "up": 3 },
     { "text": "Tune the CI cache", "across": 2, "up": 4 },
     { "text": "Add dark mode", "across": 3, "up": 2 },
-    { "text": "Add SSO", "across": 4, "up": 6, "role": "emphasis" },
+    { "text": "Add SSO", "across": 4, "up": 6 },
     { "text": "Redesign onboarding", "across": 5, "up": 5 },
     { "text": "Rewrite the importer", "across": 7, "up": 6 },
     { "text": "Migrate the database", "across": 8, "up": 4 },

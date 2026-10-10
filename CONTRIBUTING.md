@@ -50,6 +50,11 @@ four rendering defects were found by looking at that page and by no gate.
 
 If your change alters the drawings, commit the regenerated gallery with it.
 
+On a pull request, CI's `gallery` job renders the gallery from the branch's code
+and uploads it as a workflow artifact named `gallery-pr-<number>` (kept 14
+days). A reviewer can download it from the run's summary page and open the SVGs
+of the kinds a change touched without checking the branch out.
+
 ## Two checkers worth running on anything that touches layout
 
 ```bash

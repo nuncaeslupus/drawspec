@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "kind": "journey",
+  "title": "The first week, as the new starter lives it",
+  "feelings": ["lost", "neutral", "welcome"],
+  "rows": [
+    {"id": "does", "text": "Does"},
+    {"id": "needs", "text": "Needs"}
+  ],
+  "stages": [
+    {"text": "Day 1", "feeling": "welcome", "details": [
+      {"row": "does", "text": "Meets the team"},
+      {"row": "needs", "text": "A buddy to ask"}
+    ]},
+    {"text": "Day 2", "feeling": "lost", "role": "emphasis", "details": [
+      {"row": "does", "text": "Waits for accounts"},
+      {"row": "needs", "text": "Access on day one"}
+    ]},
+    {"text": "Days 3–4", "feeling": "neutral", "details": [
+      {"row": "does", "text": "Reads the handbook"},
+      {"row": "needs", "text": "A first small task"}
+    ]},
+    {"text": "Day 5", "feeling": "welcome", "details": [
+      {"row": "does", "text": "Ships a first change"},
+      {"row": "needs", "text": "Feedback on it"}
+    ]}
+  ]
+}

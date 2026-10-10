@@ -1,0 +1,26 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "tree",
+  "title": "The platform group after the reorganisation",
+  "description": "An organisation chart of the proposed platform group, with the change marked on the one chart rather than drawn as a before and an after. Build infrastructure is folded into a new developer-experience team, and site reliability takes over on-call tooling.",
+  "nodes": [
+    {"id": "head", "text": "Head of platform"},
+    {"id": "sre", "text": "Site reliability", "status": "changed"},
+    {"id": "build", "text": "Build infrastructure", "status": "removed"},
+    {"id": "devex", "text": "Developer experience", "status": "added"},
+    {"id": "data", "text": "Data platform"},
+    {"id": "oncall", "text": "On-call tooling", "status": "added"},
+    {"id": "ci", "text": "CI runners"},
+    {"id": "warehouse", "text": "Warehouse"}
+  ],
+  "edges": [
+    {"from": "head", "to": "sre"},
+    {"from": "head", "to": "build", "status": "removed"},
+    {"from": "head", "to": "devex", "status": "added"},
+    {"from": "head", "to": "data"},
+    {"from": "sre", "to": "oncall", "status": "added"},
+    {"from": "devex", "to": "ci", "status": "added"},
+    {"from": "data", "to": "warehouse"}
+  ]
+}

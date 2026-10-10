@@ -26,7 +26,9 @@ from drawspec.errors import DocumentError
 from drawspec.schema import (
     CONTAINER_KINDS,
     DOCUMENT_VERSION,
+    GRAPH_EDGE_ROLES,
     GRAPH_KINDS,
+    HIERARCHY_ROLES,
     KINDS,
     OBJECTS,
     REJECTED_FIELDS,
@@ -40,7 +42,7 @@ from drawspec.schema import (
     schema_json,
     validate_document,
 )
-from drawspec.theme import EDGE_ROLES, NODE_ROLES
+from drawspec.theme import NODE_ROLES
 
 
 def flow_document(**overrides: Any) -> dict[str, Any]:
@@ -339,7 +341,7 @@ def test_document_with_edge_role_outside_vocabulary_raises_documenterror() -> No
     with pytest.raises(DocumentError) as error:
         parse_document(document)
     assert "dependsOn" in str(error.value)
-    assert all(role in str(error.value) for role in EDGE_ROLES)
+    assert all(role in str(error.value) for role in GRAPH_EDGE_ROLES)
 
 
 @pytest.mark.parametrize("role", NODE_ROLES)
@@ -349,11 +351,23 @@ def test_every_node_role_in_the_vocabulary_is_accepted(role: str) -> None:
     assert parse_document(document).nodes[0].role == role
 
 
-@pytest.mark.parametrize("role", EDGE_ROLES)
+@pytest.mark.parametrize("role", GRAPH_EDGE_ROLES)
 def test_every_edge_role_in_the_vocabulary_is_accepted(role: str) -> None:
     document = flow_document()
     document["edges"][0]["role"] = role
     assert parse_document(document).edges[0].role == role
+
+
+@pytest.mark.parametrize("role", HIERARCHY_ROLES)
+def test_a_hierarchy_role_is_refused_outside_entities_by_name(role: str) -> None:
+    """Edge roles are per kind: `inherits` means nothing in a flow, and says so."""
+    document = flow_document()
+    document["edges"][0]["role"] = role
+    with pytest.raises(DocumentError) as error:
+        parse_document(document)
+    (violation,) = error.value.violations
+    assert violation.pointer == "/edges/0/role"
+    assert "`entities` kind only" in violation.message
 
 
 # --------------------------------------------------------------------------

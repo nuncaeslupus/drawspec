@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "kind": "states",
+  "title": "What a tide station can be doing",
+  "description": "A state machine in a theme derived from a brand. The brand's accent marks the state that needs a person; the group frame and its dashes take the brand's muted grey, which they could lose in print and still be a group.",
+  "theme": "docs/reference/brand/tidemark.toml",
+  "initial": "reporting",
+  "states": [
+    { "id": "reporting", "text": "Reporting\nevery six minutes" },
+    { "id": "gap", "text": "Gap\nno reading for an hour" },
+    { "id": "drift", "text": "Drifting\nout of step with its neighbours" },
+    { "id": "visit", "text": "Awaiting a visit\na technician is booked", "role": "emphasis" },
+    { "id": "retired", "text": "Retired" }
+  ],
+  "final": ["retired"],
+  "groups": [
+    { "id": "suspect", "text": "Readings held back", "members": ["gap", "drift"] }
+  ],
+  "transitions": [
+    { "from": "reporting", "to": "gap", "event": "a reading is missed" },
+    { "from": "reporting", "to": "drift", "event": "check fails", "guard": "10 cm off" },
+    { "from": "suspect", "to": "visit", "event": "24 hours suspect" },
+    { "from": "visit", "to": "reporting", "event": "sensor replaced", "action": "recalibrate" },
+    { "from": "visit", "to": "retired", "event": "site lost" }
+  ]
+}
