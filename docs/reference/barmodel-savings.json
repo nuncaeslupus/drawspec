@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "kind": "barmodel",
+  "title": "Three friends saved £84 between them",
+  "description": "A multi-step comparison: Ana saved £12 more than Ben, and Cal saved twice what Ben saved; the total over all three bars is £84.",
+  "bars": [
+    {"id": "ana", "text": "Ana", "parts": [{"id": "ana-ben", "amount": 18, "text": "?"}, {"id": "extra", "amount": 12, "text": "£12"}]},
+    {"id": "ben", "text": "Ben", "parts": [{"amount": 18, "text": "?"}]},
+    {"id": "cal", "text": "Cal", "parts": [{"amount": 18, "text": "?"}, {"amount": 18, "text": "?"}]}
+  ],
+  "braces": [
+    {"over": ["ana", "ben", "cal"], "amount": 84, "text": "£84"},
+    {"over": ["extra"], "text": "£12 more than Ben"}
+  ]
+}

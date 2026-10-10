@@ -32,6 +32,7 @@ documents the gap rather than pretending to cover it.
 from __future__ import annotations
 
 import json
+import math
 from collections.abc import Mapping, Sequence, Set
 from dataclasses import dataclass, replace
 from difflib import get_close_matches
@@ -338,6 +339,23 @@ NUMBERLINE_ROLES: Final = ("step", "emphasis", "note")
 NUMBERLINE_POINT_MAX: Final = 15
 NUMBERLINE_RANGE_MAX: Final = 4
 
+#: Bar models (tape diagrams): a word problem drawn as bars split into parts,
+#: every length in proportion, with braces saying what a stretch adds up to. A
+#: layout family of its own — rectangles in a row, placed by arithmetic.
+BARMODEL_KINDS: Final = ("barmodel",)
+
+#: The roles a part may take: the default; the part the problem asks about, bold
+#: and filled; and a part that is not there — a difference — drawn dashed.
+BARMODEL_PART_ROLES: Final = ("step", "emphasis", "note")
+
+#: The most bars, parts per bar, unit boxes per bar and braces a bar model holds.
+#: The corpus (B1 to B4) draws one to three bars of two to eight parts; past twelve
+#: unit boxes a reader counts instead of seeing a ratio.
+BARMODEL_BAR_MAX: Final = 3
+BARMODEL_PART_MAX: Final = 8
+BARMODEL_UNIT_MAX: Final = 12
+BARMODEL_BRACE_MAX: Final = 6
+
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
 #: into each other at the canvas width.
 NUMBERLINE_TICK_MAX: Final = 30
@@ -396,6 +414,8 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: `numberline` is the fourteenth: values and ranges on one scale, each end open
 #: or closed — a `timeline` places by number too, but reads as *when*, and its
 #: spans cannot say whether an end belongs to the range.
+#: `barmodel` is the fifteenth: a word problem as bars of parts in one scale,
+#: braced — a `chart`'s bars stand on an axis, and a `treemap` is unaligned.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -414,6 +434,7 @@ KINDS: Final = (
     + TREEMAP_KINDS
     + SANKEY_KINDS
     + NUMBERLINE_KINDS
+    + BARMODEL_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -514,6 +535,13 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
         ("points", NUMBERLINE_POINT_MAX),
         ("ranges", NUMBERLINE_RANGE_MAX),
     ),  # [15 points, 3 ranges]
+    # Set by the corpus: one to three bars of two to eight parts. Units per bar are
+    # checked with the parts, at the part that makes the thirteenth box.
+    "barmodel": (
+        ("bars", BARMODEL_BAR_MAX),
+        ("bars/parts", BARMODEL_PART_MAX),
+        ("braces", BARMODEL_BRACE_MAX),
+    ),  # [3 bars, 2 parts, 2 braces]
 }
 
 
@@ -1608,6 +1636,91 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "barmodel-bar": (
+        FieldSpec(
+            "id",
+            "string",
+            description=(
+                "What a brace's `over` names, for a brace over the whole bar. Unique among "
+                "the bars and the parts."
+            ),
+        ),
+        _text(required=False),
+        FieldSpec(
+            "parts",
+            "array",
+            required=True,
+            item_ref="barmodel-part",
+            min_items=1,
+            description=(
+                "The bar's parts, left to right, each as long as its `value` or its `units` "
+                "say — in one scale for every bar."
+            ),
+        ),
+    ),
+    "barmodel-part": (
+        FieldSpec(
+            "id",
+            "string",
+            description="What a brace's `over` names. Unique among the bars and the parts.",
+        ),
+        FieldSpec(
+            "amount",
+            "number",
+            exclusive_minimum=0,
+            description=(
+                "How much the part is, more than 0: its length is in proportion, and its "
+                "words default to the number. Give it even for the unknown — the `?` is "
+                "its `text`."
+            ),
+        ),
+        FieldSpec(
+            "units",
+            "integer",
+            exclusive_minimum=0,
+            description=(
+                "How many equal boxes the part is, each one unit long: groups to multiply, "
+                "the shares of a ratio, the fifths of a fraction. Not with `amount`, and not "
+                "in a document whose parts have amounts."
+            ),
+        ),
+        _text(required=False),
+        FieldSpec(
+            "role",
+            "string",
+            enum=BARMODEL_PART_ROLES,
+            description=(
+                "`step` (the default), `emphasis` (the part the problem asks about: bold "
+                "words, filled) or `note` (a part that is not there — the difference a "
+                "shorter bar lacks: dashed)."
+            ),
+        ),
+    ),
+    "barmodel-brace": (
+        FieldSpec(
+            "over",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=1,
+            description=(
+                "What the brace spans: the ids of side-by-side parts of one bar, drawn over "
+                "it (under it, for the last of several bars), or of whole bars — one bar "
+                "the same way, several consecutive bars with an upright brace at their right."
+            ),
+        ),
+        FieldSpec(
+            "amount",
+            "number",
+            exclusive_minimum=0,
+            description=(
+                "What the stretch adds up to. Checked: the parts' amounts must sum to it, "
+                "and with units every brace must make one unit worth the same. Written "
+                "unless `text` is given."
+            ),
+        ),
+        _text(required=False),
+    ),
     "treemap-group": (
         FieldSpec(
             "id",
@@ -2001,7 +2114,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the twenty-seven diagrams this is. It selects the fields that are "
+            "Which of the twenty-eight diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -2761,6 +2874,28 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    BARMODEL_KINDS: (
+        FieldSpec(
+            "bars",
+            "array",
+            required=True,
+            item_ref="barmodel-bar",
+            min_items=1,
+            description=(
+                "One to three bars, top to bottom, all starting at one left edge, every "
+                "length in one scale: the longest bar fills the width."
+            ),
+        ),
+        FieldSpec(
+            "braces",
+            "array",
+            item_ref="barmodel-brace",
+            description=(
+                "What a stretch adds up to — the whole, a difference, a total over two bars "
+                "— each a brace with its amount or its `?`."
+            ),
+        ),
+    ),
     ("scatter",): (
         FieldSpec(
             "axes",
@@ -3170,6 +3305,35 @@ class NumberRange:
 
 
 @dataclass(frozen=True)
+class ModelPart:
+    """One part of a bar model's bar: a stretch as long as its amount, or equal units."""
+
+    amount: float | None = None
+    units: int | None = None
+    text: str = ""
+    id: str = ""
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class ModelBar:
+    """One bar of a `barmodel`: its parts left to right, and its name."""
+
+    parts: tuple[ModelPart, ...]
+    text: str = ""
+    id: str = ""
+
+
+@dataclass(frozen=True)
+class ModelBrace:
+    """One brace of a `barmodel`, over side-by-side parts or consecutive bars."""
+
+    over: tuple[str, ...]
+    amount: float | None = None
+    text: str = ""
+
+
+@dataclass(frozen=True)
 class TreemapGroup:
     """One group of a `treemap`: a captioned frame around the parts that name it."""
 
@@ -3419,6 +3583,12 @@ class Document:
     number_ranges: tuple[NumberRange, ...] = ()
     """A `numberline`'s ranges, top track first."""
 
+    model_bars: tuple[ModelBar, ...] = ()
+    """A `barmodel`'s bars, top to bottom."""
+
+    model_braces: tuple[ModelBrace, ...] = ()
+    """A `barmodel`'s braces, in the order written."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -3440,6 +3610,7 @@ class Document:
             ("treemap", TREEMAP_KINDS),
             ("sankey", SANKEY_KINDS),
             ("numberline", NUMBERLINE_KINDS),
+            ("barmodel", BARMODEL_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -3640,6 +3811,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_sankey_refusal(violation) for violation in found]
     if kind in NUMBERLINE_KINDS:
         found = [_numberline_refusal(violation, document) for violation in found]
+    if kind in BARMODEL_KINDS:
+        found = [_barmodel_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -3683,6 +3856,14 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
     ("fishbone", "categories"): (
         "Past six bones a fishbone stops being scannable: merge the categories that overlap, "
         "or draw the biggest category as a fishbone of its own."
+    ),
+    ("barmodel", "bars"): (
+        "Past three bars a bar model is a table of quantities. Draw the step the problem "
+        "turns on, or one model per step of a multi-step problem."
+    ),
+    ("bars", "parts"): (
+        "Past eight parts the boxes are too thin to write in: merge the parts the question "
+        "does not ask about into one, or draw the bar in `units`."
     ),
     ("venn", "sets"): (
         "No arrangement of four circles shows every region, so a fourth set cannot be drawn "
@@ -3777,11 +3958,16 @@ def _nested_budget(document: Mapping[str, Any], name: str, limit: int) -> list[V
                 f"most. Show the ones this diagram is about and end the list with a "
                 f"`...` field, which says there are more."
                 if advice is None
-                else f"{len(rows)} {inner} is past what one {outer[:-3]}y can be read at — "
+                else f"{len(rows)} {inner} is past what one {_singular(outer)} can be read at — "
                 f"{limit} at most. {advice}",
             )
         )
     return found
+
+
+def _singular(name: str) -> str:
+    """`categories` → `category`, `bars` → `bar`: one entry of a counted array."""
+    return name[:-3] + "y" if name.endswith("ies") else name[:-1]
 
 
 def _cell_budget(document: Mapping[str, Any], name: str, limit: int) -> list[Violation]:
@@ -3868,6 +4054,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _sankey_violations(document)
     if kind in NUMBERLINE_KINDS:
         return _numberline_violations(document)
+    if kind in BARMODEL_KINDS:
+        return _barmodel_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -6066,6 +6254,244 @@ def _numberline_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a bar model has no place for a field an author may reach for.
+BARMODEL_REFUSED: Final = {
+    "edges": "a bar model joins nothing: what relates two bars is their lengths, side by side",
+    "axes": (
+        "a bar model has no axis: the numbers are written in the parts. Values compared "
+        "against an axis are a `chart`"
+    ),
+    "series": (
+        "a bar model has no data series: the numbers are written in the parts. Values "
+        "compared against an axis are a `chart`"
+    ),
+    "total": (
+        "a total is a brace over the bar: "
+        '`{"over": ["the bar\'s id"], "amount": 60}`, checked against its parts'
+    ),
+    "unknown": 'an unknown part still has a size: give its `amount` or `units`, and `text: "?"`',
+    "value": "a part's or a brace's size is its `amount`",
+}
+
+
+def _barmodel_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a bar model, told what this kind means by it."""
+    name = violation.pointer.split("/")[-1]
+    unknown = "is not" in violation.message and "field" in violation.message
+    if name in BARMODEL_REFUSED and unknown:
+        return Violation(violation.pointer, f"{name!r}: {BARMODEL_REFUSED[name]}.")
+    return violation
+
+
+def _barmodel_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Parts with one size each, in one kind of size, and braces whose sums hold.
+
+    Every part is an `amount` or `units`, never both or neither, and a document is
+    all amounts or all units. Ids are unique across bars and parts. A brace spans
+    side-by-side parts of one bar or consecutive whole bars, and its `amount` is
+    checked: the sum of the parts it spans, or — with units — the same worth per
+    unit as every other brace with an amount.
+    """
+    found: list[Violation] = []
+    ids: dict[str, tuple[str, int, int]] = {}
+    mode = ""
+    mode_at = ""
+    count = 0
+    bars = _listed(document, "bars")
+    for index, bar in enumerate(bars):
+        if not isinstance(bar, dict):
+            continue
+        identifier = bar.get("id")
+        if isinstance(identifier, str):
+            if identifier in ids:
+                found.append(
+                    Violation(_pointer("bars", index, "id"), f"duplicate id {identifier!r}")
+                )
+            else:
+                ids[identifier] = ("bar", index, -1)
+        boxes = 0
+        for position, part in enumerate(_listed(bar, "parts")):
+            if not isinstance(part, dict):
+                continue
+            count += 1
+            here = _pointer("bars", index, "parts", position)
+            name = part.get("id")
+            if isinstance(name, str):
+                if name in ids:
+                    found.append(Violation(f"{here}/id", f"duplicate id {name!r}"))
+                else:
+                    ids[name] = ("part", index, position)
+            sizes = [field for field in ("amount", "units") if field in part]
+            if not sizes:
+                found.append(
+                    Violation(
+                        here,
+                        "a part needs a size, or its length would be a guess: an `amount` (its "
+                        "length in proportion) or `units` (that many equal boxes). An unknown "
+                        'part still has one — write its `amount` and `"text": "?"`.',
+                    )
+                )
+                continue
+            if len(sizes) == 2:
+                found.append(
+                    Violation(
+                        f"{here}/units",
+                        "a part is an `amount` or a number of `units`, not both. Drop one.",
+                    )
+                )
+                continue
+            size = sizes[0]
+            if not mode:
+                mode, mode_at = size, f"{here}/{size}"
+            elif size != mode:
+                found.append(
+                    Violation(
+                        f"{here}/{size}",
+                        f"this document's parts are sized by {mode!r} (from {mode_at}), and a "
+                        f"unit has no length against a number. Size every part one way: give "
+                        f"the units an amount each, or draw every part in units.",
+                    )
+                )
+            units = part.get("units")
+            if size == "units" and isinstance(units, int) and not isinstance(units, bool):
+                boxes += units
+                if boxes > BARMODEL_UNIT_MAX and boxes - units <= BARMODEL_UNIT_MAX:
+                    found.append(
+                        Violation(
+                            f"{here}/units",
+                            f"this bar is {boxes} unit boxes, and past {BARMODEL_UNIT_MAX} a "
+                            f"reader counts boxes instead of seeing the ratio. Simplify the "
+                            f"ratio, or let one box stand for more.",
+                        )
+                    )
+    if bars and count == 1:
+        found.append(
+            Violation(
+                _pointer("bars", 0, "parts"),
+                "one part in one bar compares nothing: a bar model needs a second part, or a "
+                "second bar. One number is a sentence.",
+            )
+        )
+
+    def size_of(bar: int, position: int) -> float:
+        part = _listed(bars[bar], "parts")[position]
+        value: Any = part.get(mode) if isinstance(part, dict) else None
+        return float(value) if _is_number(value) else math.nan
+
+    worth: tuple[float, int] | None = None
+    for index, brace in enumerate(_listed(document, "braces")):
+        if not isinstance(brace, dict):
+            continue
+        if "amount" not in brace and "text" not in brace:
+            found.append(
+                Violation(
+                    _pointer("braces", index),
+                    "a brace says what the stretch adds up to: give it an `amount` (checked), "
+                    'or `"text": "?"` for the unknown.',
+                )
+            )
+        over = brace.get("over")
+        if not isinstance(over, list) or not all(isinstance(item, str) for item in over):
+            continue
+        resolved: list[tuple[str, int, int]] = []
+        for position, item in enumerate(over):
+            if item not in ids:
+                found.append(
+                    Violation(
+                        _pointer("braces", index, "over", position),
+                        f"{item!r} is not the id of any bar or part" + _closest(item, ids),
+                    )
+                )
+            elif ids[item] in resolved:
+                found.append(
+                    Violation(
+                        _pointer("braces", index, "over", position),
+                        f"{item!r} is named twice: a brace spans each thing once.",
+                    )
+                )
+            else:
+                resolved.append(ids[item])
+        if len(resolved) != len(over):
+            continue
+        kinds = {kind for kind, _, _ in resolved}
+        spanned: list[tuple[int, int]] = []
+        if kinds == {"part"}:
+            rows = {bar for _, bar, _ in resolved}
+            columns = sorted(position for _, _, position in resolved)
+            if len(rows) > 1:
+                found.append(
+                    Violation(
+                        _pointer("braces", index, "over"),
+                        "these parts are in different bars, and a brace spans one stretch of "
+                        "one bar. For a total over bars, name the bars.",
+                    )
+                )
+                continue
+            if columns != list(range(columns[0], columns[0] + len(columns))):
+                found.append(
+                    Violation(
+                        _pointer("braces", index, "over"),
+                        "these parts are not side by side, and a brace spans one stretch. Name "
+                        "the parts between them too, or use two braces.",
+                    )
+                )
+                continue
+            (row,) = rows
+            spanned = [(row, column) for column in columns]
+        elif kinds == {"bar"}:
+            rows_list = sorted(bar for _, bar, _ in resolved)
+            if rows_list != list(range(rows_list[0], rows_list[0] + len(rows_list))):
+                found.append(
+                    Violation(
+                        _pointer("braces", index, "over"),
+                        "these bars are not next to each other, and an upright brace spans "
+                        "consecutive bars. Reorder the bars, or use two braces.",
+                    )
+                )
+                continue
+            spanned = [
+                (row, column)
+                for row in rows_list
+                for column in range(len(_listed(bars[row], "parts")))
+            ]
+        else:
+            found.append(
+                Violation(
+                    _pointer("braces", index, "over"),
+                    "a brace spans parts of one bar or whole bars, not both. Name the bar "
+                    "for the whole of it.",
+                )
+            )
+            continue
+        value: Any = brace.get("amount")
+        if not _is_number(value) or not mode:
+            continue
+        total = sum(size_of(row, column) for row, column in spanned)
+        if math.isnan(total):
+            continue
+        if mode == "amount":
+            if not math.isclose(total, value, rel_tol=1e-9, abs_tol=1e-9):
+                found.append(
+                    Violation(
+                        _pointer("braces", index, "amount"),
+                        f"the parts this brace spans add up to {total:g}, not {value:g}. The "
+                        f"model would teach the wrong sum: fix a part's amount, or the brace's.",
+                    )
+                )
+        elif worth is None:
+            worth = (value / total, index)
+        elif not math.isclose(value / total, worth[0], rel_tol=1e-9):
+            found.append(
+                Violation(
+                    _pointer("braces", index, "amount"),
+                    f"this brace makes one unit worth {value / total:g}, and brace {worth[1]} "
+                    f"makes it {worth[0]:g}. Every unit in a bar model is the same size: fix "
+                    f"one of the two.",
+                )
+            )
+    return found
+
+
 def _is_number(value: object) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool)
 
@@ -6556,6 +6982,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _sankey_document(document)
     if kind in NUMBERLINE_KINDS:
         return _numberline_document(document)
+    if kind in BARMODEL_KINDS:
+        return _barmodel_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -7115,6 +7543,45 @@ def _numberline_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _barmodel_document(document: Mapping[str, Any]) -> Document:
+    """A bar model: its bars top to bottom, each with its parts, and its braces."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        model_bars=tuple(
+            ModelBar(
+                parts=tuple(
+                    ModelPart(
+                        amount=_optional_number(part.get("amount")),
+                        units=part.get("units"),
+                        text=part.get("text", ""),
+                        id=part.get("id", ""),
+                        role=part.get("role", "step"),
+                    )
+                    for part in bar["parts"]
+                ),
+                text=bar.get("text", ""),
+                id=bar.get("id", ""),
+            )
+            for bar in document["bars"]
+        ),
+        model_braces=tuple(
+            ModelBrace(
+                over=tuple(brace["over"]),
+                amount=_optional_number(brace.get("amount")),
+                text=brace.get("text", ""),
+            )
+            for brace in document.get("braces", ())
+        ),
+    )
+
+
 def _hub(entry: Mapping[str, Any] | None) -> Node | None:
     if entry is None:
         return None
@@ -7341,6 +7808,12 @@ if __name__ == "__main__":
 
 __all__ = [
     "AXIS_ORDER",
+    "BARMODEL_BAR_MAX",
+    "BARMODEL_BRACE_MAX",
+    "BARMODEL_KINDS",
+    "BARMODEL_PART_MAX",
+    "BARMODEL_PART_ROLES",
+    "BARMODEL_UNIT_MAX",
     "BOARD_CELL_MAX",
     "BOARD_KINDS",
     "CARDINALITIES",
@@ -7414,6 +7887,9 @@ __all__ = [
     "Item",
     "JourneyStage",
     "Message",
+    "ModelBar",
+    "ModelBrace",
+    "ModelPart",
     "Node",
     "NumberAxis",
     "NumberPoint",

@@ -51,6 +51,7 @@ the real originals each is checked against; a built one says so in its row.
 | 19 | [`flow-loops.md`](flow-loops.md) | `flow` + `polarity`, `delay`, `loops`: causal loop diagrams, R/B derived from the signs | S | `venn`'s depth sampling for the loop marker |
 | 20 | [`argument.md`](argument.md) | `argument`: a claim, reasons and objections by stance, with co-premises under one bracket | M | `tree` layout; a hatch pattern for `against` |
 | 21 | [`pedigree.md`](pedigree.md) | `pedigree`: people, couples and children by generation, standard symbols, derived numbering | L | the layered engine's crossing reduction, with couples as units |
+| 22 | [`barmodel.md`](barmodel.md) | `barmodel`: a word problem as bars of parts in proportion, braced (the tape diagram) — **built** | S | round-2 corpus (B1–B4); owner decision: in |
 
 ## Deferred, not proposed
 
@@ -79,7 +80,7 @@ self-loop geometry that `flow` then either adopts or refuses.
   the gallery and looked at; `make docs` and `make schema` regenerated; a row in
   `AGENTS.md`'s kind table (a test enforces it); every refusal in the proposal as a test
   with its JSON pointer; `collisions.py` and `clipping.py` clean on the references.
-* **The README's count** (now "twenty-seven kinds") and the `kind` enum description change with
+* **The README's count** (now "twenty-eight kinds") and the `kind` enum description change with
   every new kind.
 
 ## Decisions for the owner

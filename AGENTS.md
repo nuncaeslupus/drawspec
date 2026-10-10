@@ -81,6 +81,7 @@ Pick by what the reader must **understand**, not by what it looks like.
 | The parts of one known total by area — what dominates, and by how much | `treemap` | 2–10 `parts`, each an `amount` (+ `unit`, one level of `groups`); every label inside its cell, or merge the smallest into one `note` part |
 | Where a known quantity goes, and how much each way: a budget, tickets by outcome | `sankey` | `nodes` (columns derived, ≤ 4) + `flows` (`from`, `to`, `amount`; `strong`); a middle node's in = out, no loops, a `note` node for the remainder |
 | Values and ranges on one scale, each end in or out: an inequality, the pH scale, a spectrum | `numberline` | `axis` (`min`, `max`, `step`; or two named `ends`, no numbers) + `points` (`at`, `open`) and/or ≤ 4 `ranges` (`from`/`to`, `from_open`/`to_open`; a missing end runs on as an arrow) |
+| A word problem as quantities: a whole and its parts, two amounts compared, a ratio or a fraction (bar model, tape diagram) | `barmodel` | 1–3 `bars` of `parts`, each an `amount` (length in proportion) or `units` (equal boxes), `"text": "?"` for the unknown (+ `braces` `over` part or bar ids, their `amount` checked) |
 
 `flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may
 branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring
@@ -184,9 +185,8 @@ A refusal is information, not an obstacle. Three kinds, and each tells you what 
 - **`DocumentError`** — a field is wrong or an id does not resolve. The message carries a JSON pointer (`/edges/2/to`). Fix that path.
   All violations are reported at once, so read them all before editing. A budget refusal (`… is past what one flow can be read at`)
   means split, not trim; an emphasis refusal means give all but one or two their ordinary role.
-- **`FitError`** — the diagram does not fit its width in either direction. Shorten
-  the longest label, split the diagram, or raise the top-level `width`. Do **not**
-  try to shrink a gap; you cannot, and that is deliberate.
+- **`FitError`** — the diagram does not fit its width in either direction. Shorten the longest label, split the diagram,
+  or raise the top-level `width`. Do **not** try to shrink a gap; you cannot, and that is deliberate.
 - **A refused field** — you wrote a coordinate or a style. Delete it; express the
   intent with `kind` or `role` instead.
 

@@ -12,6 +12,24 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`barmodel`, the twenty-eighth kind** — the bar model, or tape diagram, of
+  primary maths: a word problem drawn as up to three `bars` of parts, before the
+  sum is written. Every length is in proportion, in one scale for every bar on one
+  left edge: a part is an `amount` (more than 0) or `units` (that many equal boxes),
+  and the unknown keeps its size with `"text": "?"`. `braces` over side-by-side
+  parts or a whole bar go above it (under it for the last of several bars), stacked
+  outwards when they would touch; over several consecutive bars they stand upright
+  at the right. A brace's `amount` is checked — the sum of the parts it spans, or one
+  unit's worth agreed by every brace. Part roles `step`, `emphasis` (filled, bold:
+  the part asked about) and `note` (dashed: the difference a shorter bar lacks).
+  Refused at their pointers: a part with no size or two, amounts and units mixed, a
+  brace sum or unit worth that does not hold, a brace over parts of two bars, parts
+  not side by side, bars not consecutive, or a bar and a part together, a brace with
+  nothing to say, unknown ids (naming the closest), duplicate ids, a single part,
+  `total` (naming a brace), `value` (naming `amount`), `edges`, `axes`, `series` (naming `chart`). Budget: 3
+  bars, 8 parts a bar, 12 unit boxes a bar, 6 braces. A new proposal,
+  `docs/proposals/barmodel.md`, records the design and where it was built
+  differently.
 - **`numberline`, the twenty-seventh kind** — values and ranges on one scale:
   an inequality and its solution set, interval notation, the pH scale, a tense
   relative to *now*, options on a spectrum. The `axis` runs from `min` to `max`

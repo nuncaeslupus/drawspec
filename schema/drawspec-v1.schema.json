@@ -1983,6 +1983,76 @@
         "axis"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "barmodel",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "barmodel"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "bars": {
+          "type": "array",
+          "description": "One to three bars, top to bottom, all starting at one left edge, every length in one scale: the longest bar fills the width.",
+          "items": {
+            "$ref": "#/$defs/barmodel-bar"
+          },
+          "minItems": 1
+        },
+        "braces": {
+          "type": "array",
+          "description": "What a stretch adds up to — the whole, a difference, a total over two bars — each a brace with its amount or its `?`.",
+          "items": {
+            "$ref": "#/$defs/barmodel-brace"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "bars"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -2171,6 +2241,90 @@
         "text",
         "members"
       ],
+      "additionalProperties": false
+    },
+    "barmodel-bar": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "What a brace's `over` names, for a brace over the whole bar. Unique among the bars and the parts."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "parts": {
+          "type": "array",
+          "description": "The bar's parts, left to right, each as long as its `value` or its `units` say — in one scale for every bar.",
+          "items": {
+            "$ref": "#/$defs/barmodel-part"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "parts"
+      ],
+      "additionalProperties": false
+    },
+    "barmodel-brace": {
+      "type": "object",
+      "properties": {
+        "over": {
+          "type": "array",
+          "description": "What the brace spans: the ids of side-by-side parts of one bar, drawn over it (under it, for the last of several bars), or of whole bars — one bar the same way, several consecutive bars with an upright brace at their right.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "amount": {
+          "type": "number",
+          "description": "What the stretch adds up to. Checked: the parts' amounts must sum to it, and with units every brace must make one unit worth the same. Written unless `text` is given.",
+          "exclusiveMinimum": 0
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "over"
+      ],
+      "additionalProperties": false
+    },
+    "barmodel-part": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "What a brace's `over` names. Unique among the bars and the parts."
+        },
+        "amount": {
+          "type": "number",
+          "description": "How much the part is, more than 0: its length is in proportion, and its words default to the number. Give it even for the unknown — the `?` is its `text`.",
+          "exclusiveMinimum": 0
+        },
+        "units": {
+          "type": "integer",
+          "description": "How many equal boxes the part is, each one unit long: groups to multiply, the shares of a ratio, the fifths of a fraction. Not with `amount`, and not in a document whose parts have amounts.",
+          "exclusiveMinimum": 0
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default), `emphasis` (the part the problem asks about: bold words, filled) or `note` (a part that is not there — the difference a shorter bar lacks: dashed).",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        }
+      },
       "additionalProperties": false
     },
     "board-column": {

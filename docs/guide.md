@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Twenty-seven exist, and they fall into sixteen families:
+fields are legal. Twenty-eight exist, and they fall into seventeen families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -165,6 +165,7 @@ fields are legal. Twenty-seven exist, and they fall into sixteen families:
 | Experience | `journey` | How one person feels, stage by stage: a named feeling per stage as a line, over what they do there. |
 | Share | `treemap` | The parts of one known total: each a rectangle by its area, labelled inside itself. |
 | Quantity | `sankey` | Where a known quantity goes: nodes in derived columns, joined by bands as thick as their amounts. |
+| Word problem | `barmodel` | Quantities in a word problem: bars of parts in proportion, braced — a part and a whole, a comparison, a ratio (the bar model, or tape diagram). |
 | Scale | `numberline` | Where values sit on one scale: points and ranges, each end in or out — an inequality, the pH scale, a spectrum. |
 
 One worked document per kind lives in [`reference/`](reference), and `make
@@ -1462,6 +1463,65 @@ are a `FitError`. See
 [`reference/numberline-ph.json`](reference/numberline-ph.json),
 [`reference/numberline-tense.json`](reference/numberline-tense.json) and
 [`reference/numberline-spectrum.json`](reference/numberline-spectrum.json).
+
+## A bar model
+
+"12 of the 30 children walk; how many come by bus?" is a word problem, and the
+bar model — the *tape diagram* of US curricula, the Singapore bar model of primary
+teaching — is how it is drawn before the sum is written: a bar for the quantity,
+split into parts, a brace for what a stretch adds up to, a `?` for what is asked.
+That is `barmodel`:
+
+```json
+{
+  "version": 1,
+  "kind": "barmodel",
+  "title": "How many children come by bus?",
+  "bars": [
+    {"id": "class", "parts": [
+      {"amount": 12, "text": "walk: 12"},
+      {"amount": 18, "text": "bus: ?", "role": "emphasis"}
+    ]}
+  ],
+  "braces": [{"over": ["class"], "amount": 30, "text": "30 children"}]
+}
+```
+
+The one rule the drawing keeps is the one teachers insist on: **lengths are in
+proportion**. Up to three `bars` run top to bottom from one left edge, each named
+by its `text` in a column at the left, and one scale serves them all — the longest
+bar fills the width — so a comparison is read by length. Each bar has up to eight
+`parts`, left to right, and every part has a size: an `amount` (more than 0, its
+length in proportion, written in it unless its `text` says otherwise) or `units`
+(that many equal boxes, its `text` in each — groups to multiply, the shares of a
+ratio, the fifths of a fraction; at most twelve boxes a bar). A document is all
+amounts or all units. **The unknown still has a size**: write its `amount` and
+`"text": "?"`, so the bar is drawn to the answer and the reader sees the question.
+Roles: `emphasis` (the part asked about: filled, bold) and `note` (a part that is
+not there — the stretch a shorter bar lacks in a comparison: dashed).
+
+`braces` say what a stretch adds up to. `over` names ids: side-by-side parts of one
+bar, or a whole bar — braced above it, or under it for the last of several bars, so
+a comparison's two bars are braced on their outer sides — or several consecutive
+bars, braced upright at their right (a ratio's total). Braces on one side that would
+touch stack outwards, the narrowest nearest the bar. A brace's `amount` is
+**checked**: the parts it spans must add up to it, and with units every brace with an
+amount must make one unit worth the same. Its `text`, if given, is what is written —
+`"30 children"`, `"?"`.
+
+Refused, each at its pointer: a part with no size, or both; amounts and units in one
+document; a brace amount that is not the sum of what it spans, or a second brace that
+makes a unit worth a different amount; a brace over parts of two bars, parts not side
+by side, bars not consecutive, or a bar and a part together; a brace with neither
+`amount` nor `text`; an unknown id (naming the closest); duplicate ids; a document of
+one part; `total` on a bar (it is a brace); `value` (it is `amount`); `edges`, `axes`, `series` (a bar model has
+no axis — that is a `chart`). Budget: 3 bars, 8 parts a bar, 6 braces. A part too
+narrow for its words at the scale the longest bar sets is a `FitError` naming it. See
+[`reference/barmodel-bus.json`](reference/barmodel-bus.json),
+[`reference/barmodel-pages.json`](reference/barmodel-pages.json),
+[`reference/barmodel-ratio.json`](reference/barmodel-ratio.json),
+[`reference/barmodel-fraction.json`](reference/barmodel-fraction.json) and
+[`reference/barmodel-savings.json`](reference/barmodel-savings.json).
 
 ## Asking for a wide drawing instead of a tall one
 

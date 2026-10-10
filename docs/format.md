@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-27 kinds. The machine-readable form of this page is the published
+28 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline` | **yes** | Which of the twenty-seven diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel` | **yes** | Which of the twenty-eight diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -230,6 +230,13 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `points` | array of [numberline-point](#numberline-point-object) | no | Values marked on the axis, each a dot with its words above it — or below the numbers, with a leader, when the words above would touch. |
 | `ranges` | array of [numberline-range](#numberline-range-object) | no | Stretches of the scale, each a line in its own track above the axis, in the order written — the last nearest the axis. Each end is closed, open, or missing: a range with no `to` runs on past `max`. |
 
+### `barmodel`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `bars` | array of [barmodel-bar](#barmodel-bar-object), at least 1 | **yes** | One to three bars, top to bottom, all starting at one left edge, every length in one scale: the longest bar fills the width. |
+| `braces` | array of [barmodel-brace](#barmodel-brace-object) | no | What a stretch adds up to — the whole, a difference, a total over two bars — each a brace with its amount or its `?`. |
+
 ### `scatter`
 
 | Field | Type | Required | What it is |
@@ -289,6 +296,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `treemap` | 10 `parts`, 4 `groups` |
 | `sankey` | 14 `nodes`, 24 `flows` |
 | `numberline` | 15 `points`, 4 `ranges` |
+| `barmodel` | 3 `bars`, 8 `parts` per bar, 6 `braces` |
 
 ## Emphasis
 
@@ -600,6 +608,32 @@ name, so a misspelt key is an error at the point it was written.
 | `to_open` | boolean | no | Whether `to` is excluded — `x < 4` rather than `x ≤ 4`. Defaults to false. |
 | `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default, a heavy line), `emphasis` (the range the line is about — the solution set: a heavier bar, its words bold) or `note` (context: dashed). |
+
+### `barmodel-bar` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | no | What a brace's `over` names, for a brace over the whole bar. Unique among the bars and the parts. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `parts` | array of [barmodel-part](#barmodel-part-object), at least 1 | **yes** | The bar's parts, left to right, each as long as its `value` or its `units` say — in one scale for every bar. |
+
+### `barmodel-part` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | no | What a brace's `over` names. Unique among the bars and the parts. |
+| `amount` | number, greater than 0 | no | How much the part is, more than 0: its length is in proportion, and its words default to the number. Give it even for the unknown — the `?` is its `text`. |
+| `units` | integer, greater than 0 | no | How many equal boxes the part is, each one unit long: groups to multiply, the shares of a ratio, the fifths of a fraction. Not with `amount`, and not in a document whose parts have amounts. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the part the problem asks about: bold words, filled) or `note` (a part that is not there — the difference a shorter bar lacks: dashed). |
+
+### `barmodel-brace` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `over` | array of string, at least 1 | **yes** | What the brace spans: the ids of side-by-side parts of one bar, drawn over it (under it, for the last of several bars), or of whole bars — one bar the same way, several consecutive bars with an upright brace at their right. |
+| `amount` | number, greater than 0 | no | What the stretch adds up to. Checked: the parts' amounts must sum to it, and with units every brace must make one unit worth the same. Written unless `text` is given. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 
 ### `treemap-group` object
 

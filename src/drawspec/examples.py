@@ -55,6 +55,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "treemap": "the parts of one known total, each by its area — a few proportions, stated",
     "sankey": "where a known quantity goes — bands as thick as the amounts, a few flows stated",
     "numberline": "values and ranges on one scale, each end in or out — an inequality, a spectrum",
+    "barmodel": "a word problem as bars of parts in proportion, braced — the tape diagram",
 }
 
 #: The smallest document of each kind that renders.
@@ -308,6 +309,11 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "kind": "numberline",
         "axis": {"min": -5, "max": 5},
         "ranges": [{"from": -2, "to": 3, "to_open": True, "text": "\N{MINUS SIGN}2 ≤ x < 3"}],
+    },
+    "barmodel": {
+        "version": 1,
+        "kind": "barmodel",
+        "bars": [{"parts": [{"amount": 12}, {"amount": 18, "text": "?"}]}],
     },
     "scatter": {
         "version": 1,

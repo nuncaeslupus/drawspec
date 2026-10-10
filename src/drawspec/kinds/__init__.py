@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from drawspec.charts import chart_scene
 from drawspec.errors import DrawspecError
+from drawspec.kinds.barmodel import barmodel_scene
 from drawspec.kinds.board import board_scene
 from drawspec.kinds.common import box_primitives, captioned, outline, text_runs
 from drawspec.kinds.cycle import cycle_scene
@@ -27,6 +28,7 @@ from drawspec.kinds.treemap import treemap_scene
 from drawspec.kinds.venn import venn_scene
 from drawspec.scene import Scene
 from drawspec.schema import (
+    BARMODEL_KINDS,
     BOARD_KINDS,
     CHART_KINDS,
     ENTITIES_KINDS,
@@ -65,6 +67,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *TREEMAP_KINDS,
     *SANKEY_KINDS,
     *NUMBERLINE_KINDS,
+    *BARMODEL_KINDS,
     "cycle",
 )
 
@@ -114,6 +117,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return sankey_scene(document, theme, measurer)
     if document.kind in NUMBERLINE_KINDS:
         return numberline_scene(document, theme, measurer)
+    if document.kind in BARMODEL_KINDS:
+        return barmodel_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -127,6 +132,7 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
 
 __all__ = [
     "IMPLEMENTED",
+    "barmodel_scene",
     "board_scene",
     "box_primitives",
     "captioned",

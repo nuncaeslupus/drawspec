@@ -7,10 +7,10 @@
 Declarative diagram spec → clean, themeable SVG. Writable by an LLM with no
 coordinates to get wrong.
 
-> **Status: it draws.** All twenty-seven kinds render — `flow`, `tree`, `cycle`,
+> **Status: it draws.** All twenty-eight kinds render — `flow`, `tree`, `cycle`,
 > `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`,
 > `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`,
-> `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey` and `numberline` — and each of
+> `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline` and `barmodel` — and each of
 > the eleven failure families below has a test asserting it cannot be expressed.
 > The vocabulary opened from nine to thirteen on evidence: see `docs/kinds-wanted.md`, which
 > sorts all 89 hand-drawn originals by the kind that would have to draw them.
@@ -44,6 +44,8 @@ coordinates to get wrong.
 > thick as its amount, columns derived from the flows — a few flows stated, not explored.
 > `numberline` is the twenty-seventh: values and ranges on one scale, each end of a
 > range in or out of it — an inequality, the pH scale, a spectrum; not *when*, which is `timeline`.
+> `barmodel` is the twenty-eighth: a word problem as bars of parts in proportion,
+> braced with their checked totals — the bar model, or tape diagram, of primary maths.
 
 ## The problem
 
@@ -121,7 +123,7 @@ every diagram in your project changes with it.
 
 ### A timeline
 
-The twenty-seven kinds are the part people do not expect, so here is one that is not
+The twenty-eight kinds are the part people do not expect, so here is one that is not
 a box-and-arrow diagram at all:
 
 ```json
@@ -228,7 +230,7 @@ for several jobs it might look like it does.
 * **It is not a Graphviz replacement.** Graphviz is a graph-layout engine with
   decades of work behind its layered and force-directed placement, and it will
   lay out a hundred-node graph that drawspec refuses. drawspec's layout exists
-  to serve twenty-seven named diagram shapes at the sizes a document reads at; past
+  to serve twenty-eight named diagram shapes at the sizes a document reads at; past
   each kind's readability budget (fifteen boxes on a `flow`) it will tell you to
   split the diagram into an overview and details rather than produce something
   dense and unreadable, which is deliberate but is not what a graph tool does.
