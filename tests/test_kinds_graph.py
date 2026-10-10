@@ -542,3 +542,102 @@ def test_an_arrow_into_a_drum_lands_on_its_lid_not_on_its_box() -> None:
     lid = drawing.boxes["store"]
     _, y = into_store.points[-1]
     assert lid.y - 1e-6 <= y <= lid.y + 6.0 + 1e-6
+
+
+# --------------------------------------------------------------------------
+# Node classes: `class` on a node, `classes` at the top, a key under the drawing
+# --------------------------------------------------------------------------
+
+
+def _classed(kind: str = "flow", **extra: object) -> dict[str, object]:
+    nodes: list[dict[str, object]] = [
+        {"id": "a", "text": "Ours", "class": "ours"},
+        {"id": "b", "text": "Theirs", "class": "theirs"},
+        {"id": "c", "text": "Unclassed"},
+    ]
+    if kind == "lanes":
+        for node in nodes:
+            node["actor"] = "Clerk"
+    document: dict[str, object] = {
+        "version": 1,
+        "kind": kind,
+        "nodes": nodes,
+        "edges": [{"from": "a", "to": "b"}, {"from": "a", "to": "c"}],
+        "classes": [{"id": "theirs", "text": "Run by others"}, {"id": "ours", "text": "Ours"}],
+    }
+    document.update(extra)
+    return document
+
+
+def _refusal(document: dict[str, object]) -> str:
+    with pytest.raises(DocumentError) as caught:
+        render(document, theme=THEME)
+    return str(caught.value)
+
+
+@pytest.mark.parametrize("kind", ["flow", "tree", "lanes"])
+def test_classed_nodes_are_filled_in_declaration_order_with_a_key(kind: str) -> None:
+    scene = scene_for(parse_document(_classed(kind)), THEME, MEASURER)
+    rects = {
+        (p.fill, p.fill_colour, p.fill_opacity) for p in scene.primitives if isinstance(p, Rect)
+    }
+    assert ("solid", "currentColor", THEME.classes.tone) in rects  # theirs: first declared
+    assert ("dots", "", 1.0) in rects  # ours: second
+    assert ("", "", 1.0) in rects  # unclassed
+    names = {p.text for p in scene.primitives if isinstance(p, TextRun)}
+    assert {"Run by others", "Ours"} <= names
+
+
+def test_the_key_sits_under_the_drawing() -> None:
+    scene = scene_for(parse_document(_classed()), THEME, MEASURER)
+    key = next(p for p in scene.primitives if isinstance(p, TextRun) and p.text == "Run by others")
+    boxes = [p for p in scene.primitives if isinstance(p, Rect)]
+    assert key.y > max(box.y + box.height for box in boxes)
+
+
+@pytest.mark.parametrize(
+    ("change", "pointer", "words"),
+    [
+        (lambda d: d["nodes"][2].update({"class": "mine"}), "/nodes/2/class", "not one of"),
+        (lambda d: d["nodes"][0].update({"class": "their"}), "/nodes/0/class", "did you mean"),
+        (lambda d: d["nodes"][1].pop("class"), "/classes/0", "no node is in"),
+        (lambda d: d["nodes"][0].update({"role": "note"}), "/nodes/0/class", "note"),
+        (lambda d: d["nodes"][0].update({"status": "added"}), "/nodes/0/class", "status"),
+        (
+            lambda d: d["classes"].append({"id": "ours", "text": "Again"}),
+            "/classes/2/id",
+            "duplicate",
+        ),
+    ],
+)
+def test_a_class_problem_is_refused_at_its_pointer(change, pointer: str, words: str) -> None:  # type: ignore[no-untyped-def]
+    document = json.loads(json.dumps(_classed()))
+    change(document)
+    message = _refusal(document)
+    assert pointer in message and words in message
+
+
+def test_more_than_four_classes_are_refused_by_the_budget() -> None:
+    document = _classed()
+    nodes = [{"id": f"n{i}", "text": f"Box {i}", "class": f"k{i}"} for i in range(5)]
+    document.update(
+        nodes=nodes,
+        edges=[],
+        classes=[{"id": f"k{i}", "text": f"Class {i}"} for i in range(5)],
+    )
+    assert "/classes" in _refusal(document)
+
+
+def test_one_class_alone_is_refused_by_the_schema() -> None:
+    document = _classed()
+    document["classes"] = [{"id": "ours", "text": "Ours"}]
+    document["nodes"][1].pop("class")  # type: ignore[index]
+    assert "/classes" in _refusal(document)
+
+
+def test_a_cycle_takes_no_classes() -> None:
+    document = json.loads(json.dumps(raw("cycle-review")))
+    document["nodes"][0]["class"] = "x"
+    document["classes"] = [{"id": "x", "text": "X"}, {"id": "y", "text": "Y"}]
+    message = _refusal(document)
+    assert "/classes" in message and "/nodes/0/class" in message

@@ -73,6 +73,14 @@
             "$ref": "#/$defs/group"
           }
         },
+        "classes": {
+          "type": "array",
+          "description": "The classes the boxes are sorted into, each `{id, text}`: 2 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
+          "items": {
+            "$ref": "#/$defs/class"
+          },
+          "minItems": 2
+        },
         "bands": {
           "type": "array",
           "description": "Named things that run alongside a set of boxes rather than containing them — drawn as a labelled bar beside the boxes they accompany. For the activity that goes on throughout: a source sheet with one continuous concern above its steps and another below says the steps are *surrounded* by them, and two such bands are peers. A `group` cannot say that — a box sits inside one container or none, so two groups over the same members had to be nested, which draws a hierarchy that is not there.",
@@ -164,6 +172,14 @@
             "$ref": "#/$defs/group"
           }
         },
+        "classes": {
+          "type": "array",
+          "description": "The classes the boxes are sorted into, each `{id, text}`: 2 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
+          "items": {
+            "$ref": "#/$defs/class"
+          },
+          "minItems": 2
+        },
         "bands": {
           "type": "array",
           "description": "Named things that run alongside a set of boxes rather than containing them — drawn as a labelled bar beside the boxes they accompany. For the activity that goes on throughout: a source sheet with one continuous concern above its steps and another below says the steps are *surrounded* by them, and two such bands are peers. A `group` cannot say that — a box sits inside one container or none, so two groups over the same members had to be nested, which draws a hierarchy that is not there.",
@@ -247,6 +263,14 @@
           "items": {
             "$ref": "#/$defs/group"
           }
+        },
+        "classes": {
+          "type": "array",
+          "description": "The classes the boxes are sorted into, each `{id, text}`: 2 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
+          "items": {
+            "$ref": "#/$defs/class"
+          },
+          "minItems": 2
         },
         "bands": {
           "type": "array",
@@ -1393,6 +1417,14 @@
           "description": "The stages the process passes through, in the order it runs — named in a band along the lanes' edge and divided by faint lines across every lane (a cross-functional flowchart's phases). Each phase lists its steps, and with `phases` given every step is in exactly one. A phase's steps are drawn after every step of the phases before it, so the phases never interleave. 2 to 6.",
           "items": {
             "$ref": "#/$defs/phase"
+          },
+          "minItems": 2
+        },
+        "classes": {
+          "type": "array",
+          "description": "The classes the boxes are sorted into, each `{id, text}`: 2 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
+          "items": {
+            "$ref": "#/$defs/class"
           },
           "minItems": 2
         }
@@ -3289,6 +3321,24 @@
       ],
       "additionalProperties": false
     },
+    "class": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "What a node's `class` names. Unique among the classes."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
     "clock-face": {
       "type": "object",
       "properties": {
@@ -3976,6 +4026,10 @@
             "changed",
             "removed"
           ]
+        },
+        "class": {
+          "type": "string",
+          "description": "Which of the document's `classes` this box belongs to — an author-chosen grouping such as *external system* or *owned by the payments team*, drawn as that class's faint fill and named in a key under the drawing. Must be the `id` of a declared class. Not on a `note` or a `group`, and not with `status` (both would mark the box). **Only a `flow`, a `tree` or `lanes`.**"
         }
       },
       "required": [
@@ -4239,6 +4293,10 @@
         "note": {
           "type": "string",
           "description": "A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead."
+        },
+        "class": {
+          "type": "string",
+          "description": "Which of the document's `classes` this box belongs to — an author-chosen grouping such as *external system* or *owned by the payments team*, drawn as that class's faint fill and named in a key under the drawing. Must be the `id` of a declared class. Not on a `note` or a `group`, and not with `status` (both would mark the box). **Only a `flow`, a `tree` or `lanes`.**"
         },
         "status": {
           "type": "string",

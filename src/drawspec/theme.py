@@ -1799,6 +1799,64 @@ class LevelsStyle:
         return cls(shade=shade)
 
 
+#: How many fills `[classes] fills` must hold: one per class a document may declare
+#: (`schema.CLASSES_MAX`, kept equal by a test rather than an import).
+CLASS_FILLS: Final = 4
+
+
+@dataclass(frozen=True)
+class ClassesStyle:
+    """How a `flow`, `tree` or `lanes` drawing's node classes are told apart.
+
+    A class takes the entry at its own position in `fills`, in the order the
+    document declares its classes, and the key under the drawing shows the same
+    fill beside the class's name. `solid` is a grey wash — the page's ink at
+    `tone` — and every other entry is one of the faint patterns a chart's marks
+    use, drawn in the ink: never a colour, so greyscale and dark mode keep it.
+    """
+
+    fills: tuple[str, ...] = ("solid", "dots", "hatch", "grid")
+    """The fill each class takes, in declaration order; distinct, none `none`."""
+
+    tone: float = 0.14
+    """How much of the ink a `solid` class's wash lays down: light enough that
+    its text reads on a white page and on a dark one."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> ClassesStyle:
+        _reject_unknown(mapping, ("fills", "tone"), "[classes]")
+        defaults = cls()
+        fills = mapping.get("fills", list(defaults.fills))
+        allowed = tuple(pattern for pattern in FILL_PATTERNS if pattern != "none")
+        if not isinstance(fills, list) or len(fills) < CLASS_FILLS:
+            raise ThemeError(
+                f"[classes] fills: expected an array of at least {CLASS_FILLS} fills, one "
+                f"per class a document may declare, got {fills!r}"
+            )
+        for entry in fills:
+            if entry not in allowed:
+                raise ThemeError(f"[classes] fills: {entry!r} is not one of {', '.join(allowed)}")
+        if len(set(fills)) != len(fills):
+            raise ThemeError(
+                "[classes] fills: the entries must be distinct — two classes sharing a fill "
+                "cannot be told apart."
+            )
+        tone = _number(mapping.get("tone", defaults.tone), "[classes] tone")
+        if not 0.0 < tone <= RAMP_CEILING:
+            raise ThemeError(
+                f"[classes] tone: expected a fraction above 0 and at most {RAMP_CEILING:g}, "
+                f"so text on the wash stays readable; got {tone!r}"
+            )
+        return cls(fills=tuple(fills), tone=tone)
+
+    def fill_for(self, index: int) -> tuple[str, str, float]:
+        """The `index`-th class's fill pattern, its ink and how much of it shows."""
+        fill = self.fills[index]
+        if fill == "solid":
+            return fill, "currentColor", self.tone
+        return fill, "", 1.0
+
+
 #: What a `files` page says about its file's type.
 FILES_TYPES: Final = ("labels", "pictures", "none")
 
@@ -2003,6 +2061,7 @@ _TOP_LEVEL_KEYS: Final = (
     "title",
     "frames",
     "levels",
+    "classes",
     "cycle",
     "funnel",
     "files",
@@ -2048,6 +2107,7 @@ class Theme:
     lanes: LanesStyle = LanesStyle()
     frames: FramesStyle = FramesStyle()
     levels: LevelsStyle = LevelsStyle()
+    classes: ClassesStyle = ClassesStyle()
     entities: EntitiesStyle = EntitiesStyle()
     gantt: GanttStyle = GanttStyle()
     board: BoardStyle = BoardStyle()
@@ -2115,6 +2175,7 @@ class Theme:
             lanes=LanesStyle.from_mapping(_section(mapping, "lanes")),
             frames=FramesStyle.from_mapping(_section(mapping, "frames")),
             levels=LevelsStyle.from_mapping(_section(mapping, "levels")),
+            classes=ClassesStyle.from_mapping(_section(mapping, "classes")),
             entities=EntitiesStyle.from_mapping(_section(mapping, "entities")),
             gantt=GanttStyle.from_mapping(_section(mapping, "gantt")),
             board=BoardStyle.from_mapping(_section(mapping, "board")),

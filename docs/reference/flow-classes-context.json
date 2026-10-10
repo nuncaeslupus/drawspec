@@ -1,0 +1,86 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "flow",
+  "title": "The library's lending system in context",
+  "description": "A system context diagram in the C4 style: the lending system in the middle, the people who use it, and the systems run by other organisations greyed and named in the key.",
+  "nodes": [
+    {
+      "id": "member",
+      "text": "Library member\nborrows and reserves books"
+    },
+    {
+      "id": "staff",
+      "text": "Branch staff\nissue, return and fine"
+    },
+    {
+      "id": "lending",
+      "text": "Lending system\nloans, reservations, fines",
+      "role": "emphasis",
+      "class": "ours",
+      "centre": true
+    },
+    {
+      "id": "catalogue",
+      "text": "Catalogue\nwhat the library holds",
+      "class": "ours"
+    },
+    {
+      "id": "identity",
+      "text": "Council sign-in\nresidents' accounts",
+      "class": "external"
+    },
+    {
+      "id": "payments",
+      "text": "Card payments\npays fines online",
+      "class": "external"
+    },
+    {
+      "id": "mail",
+      "text": "Email service\nsends due-date reminders",
+      "class": "external"
+    }
+  ],
+  "edges": [
+    {
+      "from": "member",
+      "to": "lending",
+      "label": "reserves, renews"
+    },
+    {
+      "from": "staff",
+      "to": "lending",
+      "label": "issues, returns"
+    },
+    {
+      "from": "lending",
+      "to": "catalogue",
+      "label": "looks up"
+    },
+    {
+      "from": "lending",
+      "to": "identity",
+      "label": "sign-in"
+    },
+    {
+      "from": "lending",
+      "to": "payments",
+      "label": "fines"
+    },
+    {
+      "from": "lending",
+      "to": "mail",
+      "label": "reminders"
+    }
+  ],
+  "classes": [
+    {
+      "id": "external",
+      "text": "Run by another organisation"
+    },
+    {
+      "id": "ours",
+      "text": "Built and run by the library"
+    }
+  ]
+}

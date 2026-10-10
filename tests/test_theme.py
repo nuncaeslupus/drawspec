@@ -760,3 +760,27 @@ def test_no_graded_level_is_darker_than_the_ramp_ceiling_text_is_checked_on() ->
     mark = load_theme().mark
     for count in range(1, 12):
         assert max(mark.level_tone(index, count) for index in range(count)) <= mark.ramp[-1]
+
+
+def test_class_fills_match_the_class_cap_and_start_with_a_grey_wash() -> None:
+    from drawspec.schema import CLASSES_MAX
+    from drawspec.theme import CLASS_FILLS
+
+    theme = load_theme()
+    assert CLASS_FILLS == CLASSES_MAX == len(theme.classes.fills)
+    assert theme.classes.fill_for(0) == ("solid", "currentColor", theme.classes.tone)
+    assert theme.classes.tone <= theme.mark.ramp[-1]
+
+
+@pytest.mark.parametrize(
+    "section",
+    [
+        '[classes]\nfills = ["solid", "dots", "hatch"]',
+        '[classes]\nfills = ["solid", "dots", "dots", "grid"]',
+        '[classes]\nfills = ["none", "dots", "hatch", "grid"]',
+        "[classes]\ntone = 0.6",
+    ],
+)
+def test_a_bad_class_fill_sequence_is_refused(tmp_path: Path, section: str) -> None:
+    with pytest.raises(ThemeError, match=r"\[classes\]"):
+        load_theme(write_theme(tmp_path, MINIMAL + section + "\n"))

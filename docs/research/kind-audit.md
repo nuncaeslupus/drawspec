@@ -272,3 +272,15 @@ it so every band shows exactly its tone; funnel stages are regions behind the on
 outline. A `note` level, and a level whose role the theme already fills, stay unfilled.
 `[frames] tone` and `[lanes] stripe` now also accept `false`; the guide has one table
 saying how to turn each of the three off.
+
+**Rank 5, node classes** — built as proposed (owner: field name `class`). Top-level
+`classes`, each `{id, text}` like a group, 2–4 of them (the cap in the readability
+budget), on `flow`, `tree` and `lanes`; a `cycle` refuses them. Not `[mark] fills`
+but a sequence of their own, `[classes] fills` (`solid`, `dots`, `hatch`, `grid`),
+so the first class is a **grey wash** (`[classes] tone`, 0.14 of the ink) — the C4
+convention of greying external systems is then simply "declare it first" — and the
+rest faint patterns. The key is drawn under the drawing as matrix `key` is, centred,
+laid out across the canvas so a narrow drawing keeps it on one row. Refused: an
+undeclared class (closest named), an unused class, a duplicate id, a class on a `note`
+(no outline) or a `group`, and a class beside `status` on one box. Emphasis needs no
+rule: it is the outline and the bold, a class is the fill, and both read together.

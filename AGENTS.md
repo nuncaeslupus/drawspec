@@ -157,9 +157,8 @@ A chart — no colour is named; series are told apart by fill pattern too, so th
 
 ## Containers
 
-`groups` draws a frame around nodes — *these are inside this*. `bands` draws a
-labelled bar alongside them — *this runs alongside these*. A box belongs to one
-group or none, and to any number of bands.
+`groups` draws a frame around nodes — *these are inside this*; `bands` a labelled bar alongside them — *this runs alongside these*. A box is in one group or none, and any number of bands.
+`classes` (2–4 `{id, text}`, named by a node's `class`; `flow`/`tree`/`lanes`) fills boxes *of one kind* wherever they sit — external systems, one team's services — with a key; never on a `note`/`group` or beside `status`.
 
 An edge may name a **group** as well as a node, for a relation belonging to the
 whole container rather than one box in it. It may not join a container to

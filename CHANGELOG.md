@@ -12,6 +12,16 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **Node classes with a key**, on `flow`, `tree` and `lanes`: a node's `class` names
+  one of 2–4 top-level `classes` (`{id, text}`); each class is drawn as the next fill
+  of the theme's new `[classes] fills` sequence (a grey wash at `[classes] tone`, then
+  dots, hatch, grid — ink only), and a key under the drawing names each. Refused at
+  their pointers: an undeclared class (closest named), an unused class, more than 4
+  (budget), a duplicate id, a class on a `note` or `group`, a class with `status` on
+  the same box, and classes on a `cycle`. See `reference/flow-classes-context.json`
+  (a C4-style context, external systems greyed), `flow-classes-teams.json`,
+  `tree-classes-board.json` and `lanes-classes-claim.json`.
+
 - **Graded levels**, theme only: a `pyramid`'s levels, a `funnel`'s stages, `rings`
   and a `stack`'s layers are filled from `[mark] ramp`, lightest first in the order
   written, one ramp step per level (spread across the ramp past five). The page's ink

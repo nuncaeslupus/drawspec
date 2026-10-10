@@ -160,6 +160,15 @@ Whether the levels of a `pyramid`, `funnel`, `rings` and `stack` are graded.
 |---|---|---|
 | `shade` | `true` | Whether levels are graded from the ramp; `false` draws outlines only. |
 
+### `[classes]`
+
+How a `flow`, `tree` or `lanes` drawing's node classes are told apart.
+
+| Key | Default | What it is |
+|---|---|---|
+| `fills` | `["solid", "dots", "hatch", "grid"]` | The fill each class takes, in declaration order; distinct, none `none`. |
+| `tone` | `0.14` | How much of the ink a `solid` class's wash lays down: light enough that its text reads on a white page and on a dark one. |
+
 ### `[cycle]`
 
 How a `cycle`'s connectors are drawn. Appearance, so it lives here.

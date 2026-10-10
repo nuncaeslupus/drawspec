@@ -161,6 +161,15 @@ LANES_MAX: Final = 6
 #: container, and a box drawn as a frame inside it would claim to be another.
 LANE_NODE_ROLES: Final = tuple(role for role in NODE_ROLES if role != "group")
 
+#: The most node classes one `flow`, `tree` or `lanes` drawing may declare. Each
+#: class is a faint fill a reader matches against a key under the drawing; past
+#: four the fills stop being told apart at a glance, and the key is a table.
+CLASSES_MAX: Final = 4
+
+#: The roles a classed node may not take: a `note` has no outline to fill (it is
+#: "not the content"), and a `group` is a container, not a box of a class.
+UNCLASSED_ROLES: Final = ("note", "group")
+
 #: The most phases one swimlane diagram names across its lanes: past six the
 #: header band is a table of contents, and the cells too narrow for their names.
 LANES_PHASES_MAX: Final = 6
@@ -687,8 +696,14 @@ KINDS: Final = (
 #: remedy is the one the refusal names — an overview plus detail diagrams.
 READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # Loops set by the proposal and the corpus: teaching diagrams name two or three.
-    "flow": (("nodes", 15), ("edges", 16), ("loops", LOOP_MAX)),  # [14 nodes, 12 edges, 3 loops]
-    "tree": (("nodes", 15),),  # [11]
+    # `classes` is the owner's cap (kind audit rank 5): see `CLASSES_MAX`.
+    "flow": (
+        ("nodes", 15),
+        ("edges", 16),
+        ("loops", LOOP_MAX),
+        ("classes", CLASSES_MAX),
+    ),  # [14 nodes, 12 edges, 3 loops, 3 classes]
+    "tree": (("nodes", 15), ("classes", CLASSES_MAX)),  # [11 nodes, 3 classes]
     "cycle": (("nodes", 8),),  # [5]
     "stack": (("items", 8),),  # [3]
     "timeline": (("items", 10),),  # [5]
@@ -717,7 +732,8 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
         ("edges", 16),
         ("lanes", LANES_MAX),
         ("phases", LANES_PHASES_MAX),
-    ),  # [7 nodes, 7 edges, 4 lanes, 3 phases]
+        ("classes", CLASSES_MAX),
+    ),  # [7 nodes, 7 edges, 4 lanes, 3 phases, 2 classes]
     # Set by the proposal: a schema of thirty tables is a database tool's output.
     # A name with a slash counts inside each entry of the array before it — the
     # rows of one box — and its refusal says to show the ones that matter.
@@ -972,6 +988,17 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         FieldSpec("actor", "string", description=_ACTOR_DESCRIPTION),
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
         FieldSpec(
+            "class",
+            "string",
+            description=(
+                "Which of the document's `classes` this box belongs to — an author-chosen "
+                "grouping such as *external system* or *owned by the payments team*, drawn "
+                "as that class's faint fill and named in a key under the drawing. Must be "
+                "the `id` of a declared class. Not on a `note` or a `group`, and not with "
+                "`status` (both would mark the box). **Only a `flow`, a `tree` or `lanes`.**"
+            ),
+        ),
+        FieldSpec(
             "status",
             "string",
             enum=STATUSES,
@@ -1092,6 +1119,17 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             description=(
                 "What a proposed change does to this box, drawn as on a `flow`: the "
                 "labelled mark inside the box, never a colour."
+            ),
+        ),
+        FieldSpec(
+            "class",
+            "string",
+            description=(
+                "Which of the document's `classes` this box belongs to — an author-chosen "
+                "grouping such as *external system* or *owned by the payments team*, drawn "
+                "as that class's faint fill and named in a key under the drawing. Must be "
+                "the `id` of a declared class. Not on a `note` or a `group`, and not with "
+                "`status` (both would mark the box). **Only a `flow`, a `tree` or `lanes`.**"
             ),
         ),
     ),
@@ -2568,6 +2606,15 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "class": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="What a node's `class` names. Unique among the classes.",
+        ),
+        _text(required=True),
+    ),
     "phase": (
         _text(required=True),
         FieldSpec(
@@ -3041,6 +3088,20 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             description="Boxes drawn around sets of nodes, each with its own caption.",
         ),
         FieldSpec(
+            "classes",
+            "array",
+            item_ref="class",
+            min_items=2,
+            description=(
+                "The classes the boxes are sorted into, each `{id, text}`: 2 to "
+                f"{CLASSES_MAX}, every one used by some node. Each is drawn as a faint fill "
+                "from the theme's fixed sequence (`[classes] fills`: a grey wash, then "
+                "patterns), in the order declared, and the key under the drawing names "
+                "each by its `text`. For a grouping the reader must see across the whole "
+                "drawing — external systems greyed in a C4 context, steps by owning team."
+            ),
+        ),
+        FieldSpec(
             "bands",
             "array",
             item_ref="band",
@@ -3469,6 +3530,20 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
                 "with `phases` given every step is in exactly one. A phase's steps are "
                 "drawn after every step of the phases before it, so the phases never "
                 f"interleave. 2 to {LANES_PHASES_MAX}."
+            ),
+        ),
+        FieldSpec(
+            "classes",
+            "array",
+            item_ref="class",
+            min_items=2,
+            description=(
+                "The classes the boxes are sorted into, each `{id, text}`: 2 to "
+                f"{CLASSES_MAX}, every one used by some node. Each is drawn as a faint fill "
+                "from the theme's fixed sequence (`[classes] fills`: a grey wash, then "
+                "patterns), in the order declared, and the key under the drawing names "
+                "each by its `text`. For a grouping the reader must see across the whole "
+                "drawing — external systems greyed in a C4 context, steps by owning team."
             ),
         ),
     ),
@@ -4084,6 +4159,10 @@ class Node:
     status: str = ""
     """What a proposed change does to this box: `added`, `changed`, `removed`, or empty."""
 
+    klass: str = ""
+    """The `id` of the class this box belongs to (the document's `class` field;
+    `class` is a Python keyword), or empty."""
+
     lane: str = ""
     """The lane a `lanes` node is drawn in — its author's `actor`, which there is
     a strip of the drawing rather than the box's lead, so `actor` stays empty."""
@@ -4584,6 +4663,14 @@ class Band:
 
 
 @dataclass(frozen=True)
+class NodeClass:
+    """One of a `flow`, `tree` or `lanes` drawing's classes: a fill and a key entry."""
+
+    id: str
+    text: str
+
+
+@dataclass(frozen=True)
 class Phase:
     """A named run of a `lanes` diagram's steps, across every lane.
 
@@ -4770,6 +4857,9 @@ class Document:
 
     phases: tuple[Phase, ...] = ()
     """A `lanes` diagram's phases, in the order the process runs."""
+
+    classes: tuple[NodeClass, ...] = ()
+    """A `flow`, `tree` or `lanes` drawing's node classes, in the order declared."""
 
     entities: tuple[Entity, ...] = ()
     relations: tuple[Relation, ...] = ()
@@ -5169,10 +5259,19 @@ def _edge_role_refusal(violation: Violation, document: Mapping[str, Any], kind: 
     return violation
 
 
+_CLASSES_ADVICE: Final = (
+    f"Past {CLASSES_MAX} classes the fills stop being told apart and the key is a table. "
+    "Merge the classes a reader need not tell apart, or draw one diagram per class that "
+    "matters."
+)
+
 #: What to do instead, for a budget whose generic advice ("split it into an
 #: overview and details") is not the remedy. Keyed by (kind, array) for a
 #: top-level budget and by (outer, inner) for a nested one.
 BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
+    ("flow", "classes"): _CLASSES_ADVICE,
+    ("tree", "classes"): _CLASSES_ADVICE,
+    ("lanes", "classes"): _CLASSES_ADVICE,
     ("lanes", "phases"): (
         f"Past {LANES_PHASES_MAX} phases the header band is a table of contents. Merge "
         "neighbouring phases, or split the process at a phase boundary into two diagrams."
@@ -5778,6 +5877,7 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         seen.add(identifier)
 
     found.extend(_status_violations(document, kind))
+    found.extend(_class_violations(document, kind))
     found.extend(_causal_violations(document, kind, seen))
 
     if kind == "cycle":
@@ -9853,6 +9953,106 @@ def _shaped_in_cycle(nodes: Any) -> list[Violation]:
     ]
 
 
+def _class_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
+    """Node classes: declared, each used, unique, and never on a box they cannot mark.
+
+    A class is a fill a reader matches against the key, so a class nobody uses
+    is a key entry pointing at nothing, and a `class` with no declaration has no
+    name to show in the key. A `note` has no outline to fill and a `group` is a
+    container; a box with a `status` is already marked, and two marks on one box
+    say neither clearly. A `cycle` is a ring of peers: it takes no classes.
+    """
+    nodes = _listed(document, "nodes")
+    classes = document.get("classes")
+    found: list[Violation] = []
+    if kind == "cycle":
+        if "classes" in document:
+            found.append(
+                Violation(
+                    "/classes",
+                    "a cycle is a ring of steps that each lead to the next, so it has no "
+                    "classes to sort them into. Draw the process as a `flow` to class its "
+                    "boxes.",
+                )
+            )
+        found.extend(
+            Violation(
+                _pointer("nodes", index, "class"),
+                "a cycle takes no node classes: draw the process as a `flow` to class its boxes.",
+            )
+            for index, node in enumerate(nodes)
+            if isinstance(node, dict) and "class" in node
+        )
+        return found
+    declared: list[str] = []
+    for index, entry in enumerate(classes if isinstance(classes, list) else ()):
+        if not isinstance(entry, dict) or not isinstance(entry.get("id"), str):
+            continue
+        if entry["id"] in declared:
+            found.append(
+                Violation(
+                    _pointer("classes", index, "id"),
+                    f"duplicate class id {entry['id']!r}: each class is one fill and one "
+                    f"line of the key.",
+                )
+            )
+        declared.append(entry["id"])
+    used: set[str] = set()
+    for index, node in enumerate(nodes):
+        if not isinstance(node, dict) or not isinstance(node.get("class"), str):
+            continue
+        name = node["class"]
+        pointer = _pointer("nodes", index, "class")
+        if name not in declared:
+            close = get_close_matches(name, declared, n=1)
+            found.append(
+                Violation(
+                    pointer,
+                    f"{name!r} is not one of the document's classes"
+                    + (
+                        f" — did you mean {close[0]!r}?"
+                        if close
+                        else ": declare it in the top-level 'classes' as {id, text}, "
+                        "so the key can name it."
+                    ),
+                )
+            )
+            continue
+        used.add(name)
+        role = node.get("role", "step")
+        if role in UNCLASSED_ROLES:
+            found.append(
+                Violation(
+                    pointer,
+                    f"a {role!r} box takes no class: "
+                    + (
+                        "a note has no outline to fill, and is not the content."
+                        if role == "note"
+                        else "a group is a container, not a box of a class."
+                    ),
+                )
+            )
+        if node.get("status"):
+            found.append(
+                Violation(
+                    pointer,
+                    "a box with a 'status' is already marked by the change; a class's fill "
+                    "on it as well says neither clearly. Drop one: a drawing of a change "
+                    "is about the change.",
+                )
+            )
+    for index, name in enumerate(declared):
+        if name not in used:
+            found.append(
+                Violation(
+                    _pointer("classes", index),
+                    f"no node is in the class {name!r}: a key entry that matches nothing in "
+                    f"the drawing. Give it to the boxes it names, or remove it.",
+                )
+            )
+    return found
+
+
 def _status_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
     """Where a change's marks contradict each other, or are on a kind with no change.
 
@@ -10165,9 +10365,11 @@ def parse_document(document: Mapping[str, Any]) -> Document:
                 note=entry.get("note", ""),
                 actor=entry.get("actor", ""),
                 status=entry.get("status", ""),
+                klass=entry.get("class", ""),
             )
             for entry in document.get("nodes", ())
         ),
+        classes=_classes(document),
         hub=_hub(document.get("hub")),
         edges=tuple(
             Edge(
@@ -10269,6 +10471,12 @@ def parse_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _classes(document: Mapping[str, Any]) -> tuple[NodeClass, ...]:
+    return tuple(
+        NodeClass(id=entry["id"], text=entry["text"]) for entry in document.get("classes", ())
+    )
+
+
 def _lanes_document(document: Mapping[str, Any]) -> Document:
     """A swimlane diagram as the graph family reads it: a flow whose actors are lanes.
 
@@ -10281,6 +10489,7 @@ def _lanes_document(document: Mapping[str, Any]) -> Document:
             text=entry["text"],
             role=entry.get("role", "step"),
             status=entry.get("status", ""),
+            klass=entry.get("class", ""),
             lane=entry["actor"],
         )
         for entry in document["nodes"]
@@ -10311,6 +10520,7 @@ def _lanes_document(document: Mapping[str, Any]) -> Document:
             Phase(text=entry["text"], members=tuple(entry["members"]))
             for entry in document.get("phases", ())
         ),
+        classes=_classes(document),
     )
 
 
@@ -11226,6 +11436,7 @@ __all__ = [
     "CARDINALITIES",
     "CAUSE_ROLES",
     "CHART_KINDS",
+    "CLASSES_MAX",
     "CLOCK_KINDS",
     "CLOCK_MAX",
     "CLOCK_NUMERALS",
@@ -11357,6 +11568,7 @@ __all__ = [
     "ModelBrace",
     "ModelPart",
     "Node",
+    "NodeClass",
     "NumberAxis",
     "NumberPoint",
     "NumberRange",

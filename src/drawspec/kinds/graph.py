@@ -39,6 +39,7 @@ from drawspec.geometry import Box, normalise, size_box
 from drawspec.kinds.common import (
     DRAWN_MARKS,
     box_primitives,
+    painted,
     status_box_primitives,
     status_key,
     status_size,
@@ -59,6 +60,7 @@ from drawspec.kinds.containers import (
 )
 from drawspec.kinds.lanes import Swimlanes, lanes_arrangement, lanes_primitives
 from drawspec.layout import Layout, Placement, Spacing
+from drawspec.legend import SWATCH_ROLE, Entry, height_of, primitives_for, width_of
 from drawspec.routing import (
     LOOP_SIDES,
     Connector,
@@ -250,12 +252,19 @@ def graph_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     for route in drawing.routes:
         primitives.extend(edge_primitives(route, theme))
     status = {node.id: node.status for node in document.nodes}
+    fills = class_fills(document, theme)
     for identifier in sorted(drawing.boxes):
         box = drawing.boxes[identifier]
         if identifier in drawing.markers:
             primitives.extend(marker_primitives(box, drawing.markers[identifier], theme))
         elif status.get(identifier):
             primitives.extend(status_box_primitives(box, status[identifier], theme, measurer))
+        elif identifier in fills:
+            # A class is a fill on the box's own outline: its inner lines and its
+            # words are drawn as they always are, over it.
+            primitives.extend(
+                painted(part, *fills[identifier]) for part in box_primitives(box, theme, measurer)
+            )
         else:
             primitives.extend(box_primitives(box, theme, measurer))
     for label in drawing.labels:
@@ -293,6 +302,24 @@ def graph_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
         primitives.extend(key)
         height = top + tall
 
+    # The key of the classes: every class's fill beside its name, in the order
+    # declared, under the drawing (and under a change's key), as a matrix's is.
+    if document.classes:
+        # Laid out across the canvas rather than the drawing, so a narrow drawing
+        # keeps its key on one row: a key wider than the drawing widens it, and
+        # the drawing moves to stay centred over the key.
+        legend = class_key(document, theme)
+        canvas = document.width if document.width else theme.canvas.width
+        across = max(width, canvas, 0.0)
+        row = width_of(legend, theme, measurer, across)
+        if row > width:
+            shift = (row - width) / 2
+            primitives = [moved(primitive, shift, 0.0) for primitive in primitives]
+            width = row
+        left = (width - row) / 2
+        primitives.extend(primitives_for(legend, theme, measurer, left, height, width))
+        height += height_of(legend, theme, measurer, width)
+
     return Scene(
         width=width,
         height=height,
@@ -300,6 +327,24 @@ def graph_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
         title=document.title,
         description=document.description,
         metadata=(("direction", drawing.layout.direction),),
+    )
+
+
+def class_fills(document: Document, theme: Theme) -> dict[str, tuple[str, str, float]]:
+    """Each classed node's fill, ink and opacity, from its class's place in `classes`."""
+    order = {entry.id: index for index, entry in enumerate(document.classes)}
+    return {
+        node.id: theme.classes.fill_for(order[node.klass])
+        for node in document.nodes
+        if node.klass in order
+    }
+
+
+def class_key(document: Document, theme: Theme) -> tuple[Entry, ...]:
+    """The key of a drawing's classes: one swatch and name per class, as declared."""
+    return tuple(
+        Entry(entry.text, SWATCH_ROLE, *theme.classes.fill_for(index))
+        for index, entry in enumerate(document.classes)
     )
 
 

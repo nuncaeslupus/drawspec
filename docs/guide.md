@@ -738,6 +738,49 @@ darker, for `[frames] levels` levels (3); deeper frames are outlined only. A the
 that wants outlines only sets `[frames] tone = 0` (or `false`); see
 [the greys the default theme adds](#the-greys-the-default-theme-adds-and-how-to-turn-each-off).
 
+## Classes: boxes of a kind, with a key
+
+A group says *these are inside this*; a **class** says *these are of one kind*,
+wherever they sit. On a `flow`, a `tree` or `lanes`, declare 2 to 4 `classes`,
+each `{id, text}`, and give a node `class` naming one:
+
+```json
+{
+  "version": 1,
+  "kind": "flow",
+  "nodes": [
+    {"id": "lending", "text": "Lending system", "class": "ours"},
+    {"id": "payments", "text": "Card payments", "class": "external"}
+  ],
+  "edges": [{"from": "lending", "to": "payments", "label": "fines"}],
+  "classes": [
+    {"id": "external", "text": "Run by another organisation"},
+    {"id": "ours", "text": "Built and run by the library"}
+  ]
+}
+```
+
+Each class takes the next fill of the theme's fixed sequence, in the order
+declared — `[classes] fills`: a grey wash first (the ink at `[classes] tone`),
+then dots, hatch and a grid, all faint and all ink, so greyscale and dark mode
+keep them — and the key under the drawing shows each fill beside the class's
+`text`. Declare first the class the reader should notice least: in a C4-style
+context diagram that is the external systems, greyed by convention. A node with
+no `class` stays plain, so a class is for the boxes that stand apart, not a
+label every box must carry.
+
+Use a class for a grouping the reader must see across the whole drawing — who
+runs a system, which team owns a service, which steps are automated — and a
+`group` when the members belong *together* in one place. Refused, each at its
+pointer: a `class` no class declares (naming the closest), a class no node uses
+(a key entry pointing at nothing), more than 4 classes, a duplicate id, a class on
+a `note` (no outline to fill) or a `group`, a class together with `status` on one
+box (both mark it; a drawing of a change is about the change), and classes on a
+`cycle`. See [`reference/flow-classes-context.json`](reference/flow-classes-context.json),
+[`reference/flow-classes-teams.json`](reference/flow-classes-teams.json),
+[`reference/tree-classes-board.json`](reference/tree-classes-board.json) and
+[`reference/lanes-classes-claim.json`](reference/lanes-classes-claim.json).
+
 ## Drawing a change
 
 A design document proposing a change usually wants to say *what is new, what

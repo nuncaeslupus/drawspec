@@ -139,6 +139,13 @@ levels = 3
 # opacity, as a frame's wash is; false for outlines only.
 shade = true
 
+[classes]
+# A flow's, tree's or swimlane's node classes, in the order the document declares
+# them: the first a grey wash (the ink at `tone`), the rest faint patterns in the
+# ink. The key under the drawing shows each beside its name.
+fills = ["solid", "dots", "hatch", "grid"]
+tone = 0.14
+
 [states]
 # A state machine's pseudo-states: the filled dot it starts from, and the ringed
 # dot each final state leads to. Marks with no words, so sized here: the dot

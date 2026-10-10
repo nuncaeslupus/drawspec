@@ -83,9 +83,22 @@ def toned[P: Primitive](primitive: P, tone: float) -> P:
     The ink at part opacity rather than a colour, so a graded level follows the
     page into dark mode and prints as a grey.
     """
-    if not tone or not isinstance(primitive, Rect | Polygon | Ellipse):
+    if not tone:
         return primitive
-    return replace(primitive, fill="solid", fill_colour="currentColor", fill_opacity=tone)
+    return painted(primitive, "solid", "currentColor", tone)
+
+
+def painted[P: Primitive](primitive: P, fill: str, colour: str, opacity: float = 1.0) -> P:
+    """`primitive` filled with a theme fill, when it is a closed figure.
+
+    Lines and text pass through untouched, so a box's whole primitive run can
+    be handed over: its outline is filled, its inner lines and words are not.
+    """
+    if not isinstance(primitive, Rect | Polygon | Ellipse) or (
+        isinstance(primitive, Polygon) and primitive.region
+    ):
+        return primitive
+    return replace(primitive, fill=fill, fill_colour=colour, fill_opacity=opacity)
 
 
 def lead_rule(box: Box) -> tuple[Primitive, ...]:
@@ -550,6 +563,7 @@ __all__ = [
     "level_tones",
     "line_bounds",
     "outline",
+    "painted",
     "removed_outline",
     "status_box_primitives",
     "status_key",
