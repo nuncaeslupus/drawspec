@@ -471,7 +471,11 @@ def compose() -> str:
             text(mark_x - 14, y + 2.3, name, 6.5, SOFT, role="mono", anchor="end", spacing=0.5)
         )
     parts.append(text(mark_x - 4, mark_y, "drawspec", mark_size, INK, weight="bold", spacing=-3))
-    parts.append(text(mark_x, mark_y + 50, "Diagrams from meaning, written by humans or LLM agents.", 21, SOFT))
+    parts.append(
+        text(
+            mark_x, mark_y + 50, "Diagrams from meaning, written by humans or LLM agents.", 21, SOFT
+        )
+    )
 
     # The JSON on the left, and the drawing it makes in front of the plates.
     lines = snippet_lines(SPEC)

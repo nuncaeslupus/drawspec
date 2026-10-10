@@ -23,6 +23,11 @@ on:
 permissions:
   contents: read
 
+# Two merges in quick succession must not both decide to tag and publish.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   tag:
     name: Decide what, if anything, is released
@@ -53,15 +58,21 @@ jobs:
             echo "$tag already exists; nothing to release"
             exit 0
           fi
-          if ! grep -qF "## [$version]" CHANGELOG.md; then
-            echo "CHANGELOG.md has no heading for $version; nothing to release"
+          if ! grep -qE "^## \[${version//./\\.}\] — [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md; then
+            echo "CHANGELOG.md has no dated heading for $version; nothing to release"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$tag" -m "$tag"
-          git push origin "$tag"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if git push origin "$tag"; then
+            echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          elif git ls-remote --exit-code --refs origin "refs/tags/$tag" >/dev/null; then
+            echo "$tag was created by another run; nothing to release"
+          else
+            echo "failed to push $tag" >&2
+            exit 1
+          fi
 
   check:
     name: The suite, before anything is published

@@ -84,8 +84,10 @@ while being partly drawn off the canvas.
 
 ## Releasing
 
-`.github/workflows/release.yml` does the work; a tag is the only input. Pushing
-`v0.1.0` runs the suite, builds, checks, publishes 0.1.0 to PyPI and cuts a
+`.github/workflows/release.yml` does the work, and a release is a `vX.Y.Z` tag.
+The tag is made either by the workflow itself, when a merge to `main` brings a
+dated `## [X.Y.Z] — YYYY-MM-DD` heading for the package version, or by hand.
+Either way it runs the suite, builds, checks, publishes to PyPI and cuts a
 GitHub release. A `workflow_dispatch` run does everything except the upload, so
 the path can be exercised without cutting a tag.
 

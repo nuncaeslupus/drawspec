@@ -36,7 +36,7 @@ gallery:  ## render every reference document to docs/gallery and open the page
 	uv run python tools/gallery.py
 
 hero:  ## redraw the README banner, docs/hero.svg and docs/hero.png
-	uv run python tools/hero.py
+	uv run --extra png python tools/hero.py
 
 compare:  ## render the corpus redraws beside their originals
 	uv run python tools/compare.py
