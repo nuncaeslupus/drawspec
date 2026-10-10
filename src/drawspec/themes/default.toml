@@ -348,6 +348,17 @@ fill_pattern = "none"
 dash = "none"
 stroke_width = 1.5
 
+# A person — a user, a customer, a member of staff, as against a system — is a
+# body with rounded shoulders under a round head, the C4 person shape; the name
+# is written in the body, under the head.
+[role.person]
+shape = "person"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "none"
+stroke_width = 1.5
+
 # An aside is set beside the argument, not boxed off from it: a note is words on
 # the page, and the box drawspec used to draw round them was a border with
 # nothing on the other side of it. A grouping that *does* want a line round it is

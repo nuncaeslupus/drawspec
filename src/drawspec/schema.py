@@ -72,9 +72,10 @@ GRAPH_KINDS: Final = ("flow", "tree", "cycle")
 
 #: The node roles that draw a flowchart symbol — a parallelogram for data in or
 #: out, a doubled-sided box for a process defined elsewhere, a drum for where data
-#: rests. Named only where a box is a step of a process: a `flow`, a `tree` and a
-#: `lanes` node. Every other kind's roles are fixed by what it draws.
-SHAPED_ROLES: Final = ("io", "subroutine", "store")
+#: rests — and the C4 `person`, a human as against a system. Named only where a box
+#: is a step of a process: a `flow`, a `tree` and a `lanes` node. Every other kind's
+#: roles are fixed by what it draws.
+SHAPED_ROLES: Final = ("io", "subroutine", "store", "person")
 
 #: The node roles everywhere else a kind takes the general vocabulary.
 PLAIN_NODE_ROLES: Final = tuple(role for role in NODE_ROLES if role not in SHAPED_ROLES)
@@ -9944,7 +9945,13 @@ def _shaped_in_cycle(nodes: Any) -> list[Violation]:
     return [
         Violation(
             _pointer("nodes", index, "role"),
-            f"{node['role']!r} draws a flowchart symbol, and a cycle is a ring of steps "
+            (
+                "'person' draws a person, and a cycle is a ring of steps that each lead to "
+                "the next, not the people taking them. Name who does a step with `actor`, "
+                "or draw the people and the system as a `flow`."
+            )
+            if node["role"] == "person"
+            else f"{node['role']!r} draws a flowchart symbol, and a cycle is a ring of steps "
             f"that each lead to the next: there is no input, store or sub-process on it. "
             f"Draw the process as a `flow` if those matter.",
         )

@@ -4011,7 +4011,8 @@
             "note",
             "io",
             "subroutine",
-            "store"
+            "store",
+            "person"
           ]
         },
         "actor": {
@@ -4283,7 +4284,8 @@
             "group",
             "io",
             "subroutine",
-            "store"
+            "store",
+            "person"
           ]
         },
         "actor": {

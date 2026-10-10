@@ -42,8 +42,9 @@ THEME_VERSION: Final = 1
 #: from — see specification §5.1.
 #: `io`, `subroutine` and `store` are the flowchart symbols that carry meaning
 #: across standards (ISO 5807, DFDs, Mermaid): data in or out, a process defined
-#: elsewhere, and where data rests. The theme draws every role, but a document may
-#: name those three only where a box is a step of a process (`schema.SHAPED_ROLES`).
+#: elsewhere, and where data rests; `person` is C4's and the use-case actor's: a
+#: human, as against a system. The theme draws every role, but a document may name
+#: those four only where a box is a step of a process (`schema.SHAPED_ROLES`).
 NODE_ROLES: Final = (
     "start",
     "step",
@@ -55,6 +56,7 @@ NODE_ROLES: Final = (
     "io",
     "subroutine",
     "store",
+    "person",
 )
 
 #: Semantic edge roles. `link` is how "merely associated" is said, and `aside`
@@ -80,7 +82,8 @@ EDGE_ROLES: Final = (
 
 #: Shapes a node role may take.
 #: `parallelogram` slants its sides, `subroutine` is a box with doubled vertical
-#: sides, and `cylinder` is a drum with an elliptical lid.
+#: sides, `cylinder` is a drum with an elliptical lid, and `person` is a body with
+#: rounded shoulders under a round head (the C4 person).
 NODE_SHAPES: Final = (
     "rect",
     "pill",
@@ -89,6 +92,7 @@ NODE_SHAPES: Final = (
     "parallelogram",
     "subroutine",
     "cylinder",
+    "person",
     "none",
 )
 

@@ -348,8 +348,8 @@ How a RAG report draws a rating: a word, a shape and, optionally, a colour.
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The
-vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group`, `io`, `subroutine`, `store`. `shape` is one of
-`rect`, `pill`, `diamond`, `ellipse`, `parallelogram`, `subroutine`, `cylinder`, `none` and `fill_pattern` one of `none`, `solid`, `hatch`, `dots`, `cross`, `grid`.
+vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group`, `io`, `subroutine`, `store`, `person`. `shape` is one of
+`rect`, `pill`, `diamond`, `ellipse`, `parallelogram`, `subroutine`, `cylinder`, `person`, `none` and `fill_pattern` one of `none`, `solid`, `hatch`, `dots`, `cross`, `grid`.
 
 | Role | `shape` | `stroke` | `fill` | `fill_pattern` | `dash` | `stroke_width` |
 |---|---|---|---|---|---|---|
@@ -363,6 +363,7 @@ vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note
 | `io` | `"parallelogram"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
 | `subroutine` | `"subroutine"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
 | `store` | `"cylinder"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
+| `person` | `"person"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
 
 ## `[edge_role.*]` — the edge roles
 

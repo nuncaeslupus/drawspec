@@ -81,6 +81,18 @@ SUBROUTINE_INSET: Final = 6.0
 #: is, so a wider drum keeps its text clear of the lid's front rim.
 CYLINDER_CAP: Final = 6.0
 
+#: The radius of a `person`'s head: a circle centred over the body, overlapping
+#: its top so head and shoulders are one outline. A length, as the slant and the
+#: cap are, so a body grown to match its peers keeps its head the same size.
+PERSON_HEAD: Final = 16.0
+
+#: How far down a `person`'s body starts: the head's radius and most of its lower
+#: half above the shoulders. Everything above this line is head, not text room.
+PERSON_TOP: Final = PERSON_HEAD * 1.75
+
+#: The radius of a `person`'s two shoulders, the body's rounded top corners.
+PERSON_SHOULDER: Final = 22.0
+
 
 # ---------------------------------------------------------------------------
 # Shapes whose usable span is narrower than their bounding box
@@ -146,16 +158,23 @@ def usable_span(
         # The lid's front rim comes down to two caps' depth; the base curves up by
         # one at the sides. See `usable_shift` for where the span sits.
         return width, max(height - 3 * CYLINDER_CAP, 0.0)
+    if shape == "person":
+        # The text is in the body, under the head; the padding keeps it clear of
+        # the rounded shoulders, which reach in less than it at its first line.
+        return width, max(height - PERSON_TOP, 0.0)
     raise KeyError(f"unknown shape {shape!r}")
 
 
 def usable_shift(shape: str) -> float:
     """How far below the box's middle the middle of its usable span sits.
 
-    Zero for every shape but the `cylinder`, whose lid takes more of the top than
+    Zero for every shape but two. The `cylinder`'s lid takes more of the top than
     its base takes of the bottom: the span runs from under the lid's front rim
-    (two caps down) to where the base starts curving (one cap up).
+    (two caps down) to where the base starts curving (one cap up). A `person`'s
+    head takes the top `PERSON_TOP` and nothing of the bottom.
     """
+    if shape == "person":
+        return PERSON_TOP / 2
     return CYLINDER_CAP / 2 if shape == "cylinder" else 0.0
 
 
@@ -197,6 +216,13 @@ def span_at(shape: str, width: float, height: float, depth: float) -> float:
         return width if 0.0 <= depth <= height else 0.0
     if shape == "cylinder":
         return width if 0.0 <= depth <= height else 0.0
+    if shape == "person":
+        if depth < 0.0 or depth > height:
+            return 0.0
+        if depth < PERSON_TOP:
+            # Above the shoulders only the head is there.
+            return min(2 * sqrt(max(PERSON_HEAD**2 - (depth - PERSON_HEAD) ** 2, 0.0)), width)
+        return width
     raise KeyError(f"unknown shape {shape!r}")
 
 
@@ -222,6 +248,8 @@ def outer_size(
         return width + 2 * SUBROUTINE_INSET, height
     if shape == "cylinder":
         return width, height + 3 * CYLINDER_CAP
+    if shape == "person":
+        return width, height + PERSON_TOP
     if shape == "pill":
         # The inverse of `usable_span`'s pill case, solved for the bounding width.
         # The caps cost their own diameter less how far the text reaches into them.
@@ -697,6 +725,9 @@ __all__ = [
     "CYLINDER_CAP",
     "FIT_STEP",
     "PARALLELOGRAM_SLANT",
+    "PERSON_HEAD",
+    "PERSON_SHOULDER",
+    "PERSON_TOP",
     "SUBROUTINE_INSET",
     "Box",
     "Fitted",

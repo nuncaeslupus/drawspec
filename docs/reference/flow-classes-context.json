@@ -3,26 +3,22 @@
   "version": 1,
   "kind": "flow",
   "title": "The library's lending system in context",
-  "description": "A system context diagram in the C4 style: the lending system in the middle, the people who use it, and the systems run by other organisations greyed and named in the key.",
+  "description": "A system context diagram in the C4 style: the lending system in the middle, the people who use it drawn as people, and the systems run by other organisations greyed and named in the key.",
   "nodes": [
     {
       "id": "member",
-      "text": "Library member\nborrows and reserves books"
+      "text": "Library member\nborrows and reserves books",
+      "role": "person"
     },
     {
       "id": "staff",
-      "text": "Branch staff\nissue, return and fine"
+      "text": "Branch staff\nissue, return and fine",
+      "role": "person"
     },
     {
       "id": "lending",
-      "text": "Lending system\nloans, reservations, fines",
+      "text": "Lending system\nloans, reservations, fines, the catalogue",
       "role": "emphasis",
-      "class": "ours",
-      "centre": true
-    },
-    {
-      "id": "catalogue",
-      "text": "Catalogue\nwhat the library holds",
       "class": "ours"
     },
     {
@@ -45,17 +41,12 @@
     {
       "from": "member",
       "to": "lending",
-      "label": "reserves, renews"
+      "label": "reserves"
     },
     {
       "from": "staff",
       "to": "lending",
-      "label": "issues, returns"
-    },
-    {
-      "from": "lending",
-      "to": "catalogue",
-      "label": "looks up"
+      "label": "issues"
     },
     {
       "from": "lending",

@@ -218,7 +218,7 @@ written down. Here it is.
 
 **A role says what a box is; the theme decides what that looks like.** So the
 question to ask is never "should this be a diamond" — it is "is this a
-question?". These are the ten, and the shape each one currently gets from the
+question?". These are the eleven, and the shape each one currently gets from the
 bundled theme:
 
 | Role | Use it for | Drawn as |
@@ -233,10 +233,18 @@ bundled theme:
 | `io` | Data coming in or going out: a file read, a form filled in, a report sent | a parallelogram |
 | `subroutine` | A process defined elsewhere — a routine with its own chart, a job run by name | a box with doubled sides |
 | `store` | Where data rests: a database, a queue, a file kept | a drum (cylinder) |
+| `person` | A human — a user, a customer, a member of staff — as against a system: C4's person, a use case's actor | a body with rounded shoulders under a round head, the name in the body |
 
-The last three are the flowchart symbols (ISO 5807, a data-flow diagram's store)
-and are named only on a `flow`, `tree` or `lanes` node; every other kind's boxes
-have a fixed vocabulary of their own, and a `cycle` refuses them. Reach for one
+`io`, `subroutine` and `store` are the flowchart symbols (ISO 5807, a data-flow
+diagram's store) and `person` is the C4 person; all four are named only on a
+`flow`, `tree` or `lanes` node — every other kind's boxes have a fixed vocabulary
+of their own, and a `cycle` refuses them. A person's head sits above its body and
+an arrow from above lands on the head, so leave room for it rather than for a
+taller box: the words go in the body. `person` says *a human is here*; who
+performs a step is still `actor` (see
+[`reference/flow-person-helpdesk.json`](reference/flow-person-helpdesk.json),
+[`reference/tree-person-escalation.json`](reference/tree-person-escalation.json)
+and the C4-style [`reference/flow-classes-context.json`](reference/flow-classes-context.json)). Reach for one
 only when the distinction is the point — a chart whose every box is `io` has
 said nothing.
 

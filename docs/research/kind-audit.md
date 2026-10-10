@@ -284,3 +284,13 @@ laid out across the canvas so a narrow drawing keeps it on one row. Refused: an
 undeclared class (closest named), an unused class, a duplicate id, a class on a `note`
 (no outline) or a `group`, and a class beside `status` on one box. Emphasis needs no
 rule: it is the outline and the bold, a class is the fill, and both read together.
+
+**`person` role** (owner question 2: a fourth shape role) — built on `flow`, `tree` and
+`lanes` nodes, refused by `cycle` with a pointer to `actor`. Of the two shapes offered,
+the **C4 rounded person box with a head** fits labels best: a stick figure has no room
+for a name and would put it under the figure, outside the box arrows land on. The head
+(radius 16) is centred over the body and overlaps its top, so head and shoulders
+(radius 22) are **one outline**, filled and stroked once — a class's fill covers both.
+Lengths, not ratios, as for the flowchart symbols, so a body grown to match its peers
+keeps its head. The text is in the body; arrows land on the head from above, on the
+shoulders beside it, and on the body or the head from the side.

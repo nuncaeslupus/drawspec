@@ -641,3 +641,66 @@ def test_a_cycle_takes_no_classes() -> None:
     document["classes"] = [{"id": "x", "text": "X"}, {"id": "y", "text": "Y"}]
     message = _refusal(document)
     assert "/classes" in message and "/nodes/0/class" in message
+
+
+# --------------------------------------------------------------------------
+# The `person` role: a body with rounded shoulders under a round head
+# --------------------------------------------------------------------------
+
+
+def _people(kind: str = "flow") -> dict[str, object]:
+    nodes: list[dict[str, object]] = [
+        {"id": "user", "text": "A customer", "role": "person"},
+        {"id": "app", "text": "The shop"},
+        {"id": "clerk", "text": "A clerk", "role": "person"},
+    ]
+    if kind == "lanes":
+        for node in nodes:
+            node["actor"] = "Shop"
+    edges = [{"from": "user", "to": "app"}, {"from": "app", "to": "clerk"}]
+    return {"version": 1, "kind": kind, "nodes": nodes, "edges": edges}
+
+
+@pytest.mark.parametrize("kind", ["flow", "tree", "lanes"])
+def test_a_person_is_accepted_where_a_box_is_a_step(kind: str) -> None:
+    assert render(_people(kind), theme=THEME).startswith("<svg")
+
+
+def test_a_cycle_refuses_a_person_and_says_to_use_actor() -> None:
+    document = json.loads(json.dumps(raw("cycle-review")))
+    document["nodes"][0]["role"] = "person"
+    message = _refusal(document)
+    assert "/nodes/0/role" in message and "actor" in message
+
+
+def test_a_person_is_one_outline_with_its_head_above_the_body() -> None:
+    drawing = graph_drawing(parse_document(_people()), STRICT, MEASURER)
+    scene = graph_scene(parse_document(_people()), STRICT, MEASURER)
+    outlines = [p for p in scene.primitives if isinstance(p, Polygon) and p.role == "person"]
+    assert len(outlines) == 2
+    box = drawing.boxes["clerk"]
+    outline = min(outlines, key=lambda p: abs(min(y for _, y in p.points) - box.y))
+    assert min(y for _, y in outline.points) == pytest.approx(box.y, abs=1e-6)
+
+
+def test_an_arrow_into_a_person_from_above_lands_on_the_head() -> None:
+    from drawspec.geometry import PERSON_HEAD
+
+    drawing = graph_drawing(parse_document(_people()), STRICT, MEASURER)
+    into = next(route for route in drawing.routes if route.target == "clerk")
+    box = drawing.boxes["clerk"]
+    x, y = into.points[-1]
+    centre = box.x + box.width / 2
+    assert abs(x - centre) <= PERSON_HEAD + 1e-6
+    head = box.y + PERSON_HEAD - (PERSON_HEAD**2 - (x - centre) ** 2) ** 0.5
+    assert y == pytest.approx(head, abs=0.01)
+
+
+def test_a_classed_person_fills_its_whole_outline() -> None:
+    document = _people()
+    document["nodes"][0]["class"] = "a"  # type: ignore[index]
+    document["nodes"][2]["class"] = "b"  # type: ignore[index]
+    document["classes"] = [{"id": "a", "text": "A"}, {"id": "b", "text": "B"}]
+    scene = scene_for(parse_document(document), THEME, MEASURER)
+    filled = [p.fill for p in scene.primitives if isinstance(p, Polygon) and p.role == "person"]
+    assert sorted(filled) == ["dots", "solid"]

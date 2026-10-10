@@ -171,7 +171,16 @@ def test_box_moved_to_translates_everything_together() -> None:
 # --------------------------------------------------------------------------
 
 
-ALL_SHAPES = ["rect", "pill", "diamond", "ellipse", "parallelogram", "subroutine", "cylinder"]
+ALL_SHAPES = [
+    "rect",
+    "pill",
+    "diamond",
+    "ellipse",
+    "parallelogram",
+    "subroutine",
+    "cylinder",
+    "person",
+]
 
 
 @pytest.mark.parametrize("shape", ALL_SHAPES)
@@ -583,3 +592,16 @@ def test_fit_does_not_swallow_an_error_that_is_not_a_fit_failure() -> None:
 def test_fit_a_theme_that_cannot_grow_does_not_try_to() -> None:
     """`scale_max = 1.0` means shrink to fit, never grow."""
     assert max(candidate_factors(THEME)) == pytest.approx(1.0)
+
+
+def test_a_person_keeps_its_text_in_the_body_under_the_head() -> None:
+    from drawspec.geometry import PERSON_SHOULDER, PERSON_TOP
+
+    for text in ("Customer", "Library member\nborrows and reserves books"):
+        box = size_box(text, theme=THEME, measurer=MEASURER, role="person", max_width=180.0)
+        left, top, right, _ = box.content_bounds()
+        assert top >= box.y + PERSON_TOP + THEME.box.padding.top - 1e-6
+        # The first line clears the rounded shoulders at its own height.
+        rise = max(box.y + PERSON_TOP + PERSON_SHOULDER - top, 0.0)
+        inset = PERSON_SHOULDER - (PERSON_SHOULDER**2 - rise**2) ** 0.5
+        assert left >= box.x + inset - 1e-6 and right <= box.x + box.width - inset + 1e-6

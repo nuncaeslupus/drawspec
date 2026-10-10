@@ -12,6 +12,14 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`person` node role**, on `flow`, `tree` and `lanes` nodes: the C4 person, a body
+  with rounded shoulders under a round head, drawn as one outline (new theme shape
+  `person`), the name written in the body. Arrows land on the visible outline: on the
+  head from above, on the shoulders beside it, on the body or head from the side. A
+  `cycle` refuses it (use `actor`). See `reference/flow-person-helpdesk.json`,
+  `tree-person-escalation.json` and `flow-classes-context.json`; `flow-node-roles`
+  draws all eleven roles.
+
 - **Node classes with a key**, on `flow`, `tree` and `lanes`: a node's `class` names
   one of 2–4 top-level `classes` (`{id, text}`); each class is drawn as the next fill
   of the theme's new `[classes] fills` sequence (a grey wash at `[classes] tone`, then

@@ -25,7 +25,16 @@ from typing import Final
 
 from drawspec.errors import FitError
 from drawspec.filetree import STATUSES
-from drawspec.geometry import CYLINDER_CAP, PARALLELOGRAM_SLANT, SUBROUTINE_INSET, Box, span_at
+from drawspec.geometry import (
+    CYLINDER_CAP,
+    PARALLELOGRAM_SLANT,
+    PERSON_HEAD,
+    PERSON_SHOULDER,
+    PERSON_TOP,
+    SUBROUTINE_INSET,
+    Box,
+    span_at,
+)
 from drawspec.scene import (
     Ellipse,
     Path,
@@ -147,6 +156,8 @@ def outline(box: Box, theme: Theme) -> tuple[Primitive, ...]:
         return (Polygon(box.role, points=_parallelogram(box)),)
     if shape == "cylinder":
         return _cylinder(box)
+    if shape == "person":
+        return (Polygon(box.role, points=tuple(person_silhouette(box, theme.box.corner_radius))),)
     if shape == "ellipse":
         return (
             Ellipse(
@@ -215,6 +226,34 @@ def _cylinder_silhouette(box: Box) -> list[tuple[float, float]]:
     return [
         *_arc(cx, top, half, cap, math.pi, 2 * math.pi),
         *_arc(cx, bottom, half, cap, 0.0, math.pi),
+    ]
+
+
+def person_silhouette(box: Box, corner: float) -> list[tuple[float, float]]:
+    """A `person`'s one outline, clockwise: shoulders, sides, base, then the head.
+
+    The head is a circle centred over the body and overlapping its top, so the
+    outline runs along the shoulders to where they meet the circle and over the
+    top of the head between — one figure, filled and stroked once, with no line
+    of the body crossing the head.
+    """
+    left, right = box.x, box.x + box.width
+    bottom = box.y + box.height
+    shoulders = box.y + PERSON_TOP
+    centre_x, centre_y = box.x + box.width / 2, box.y + PERSON_HEAD
+    shoulder = min(PERSON_SHOULDER, box.width / 2, (bottom - shoulders) / 2)
+    base = min(corner, shoulder)
+    neck = math.sqrt(max(PERSON_HEAD**2 - (shoulders - centre_y) ** 2, 0.0))
+    meets = math.atan2(shoulders - centre_y, neck)
+    half = math.pi / 2
+    return [
+        (centre_x + neck, shoulders),
+        *_arc(right - shoulder, shoulders + shoulder, shoulder, shoulder, -half, 0.0),
+        *_arc(right - base, bottom - base, base, base, 0.0, half),
+        *_arc(left + base, bottom - base, base, base, half, math.pi),
+        *_arc(left + shoulder, shoulders + shoulder, shoulder, shoulder, math.pi, 3 * half),
+        (centre_x - neck, shoulders),
+        *_arc(centre_x, centre_y, PERSON_HEAD, PERSON_HEAD, math.pi - meets, 2 * math.pi + meets),
     ]
 
 
@@ -496,6 +535,8 @@ def removed_outline(box: Box, theme: Theme) -> tuple[Primitive, ...]:
         corners = [(middle_x, top), (right, middle_y), (middle_x, bottom), (left, middle_y)]
     elif shape == "parallelogram":
         corners = list(_parallelogram(box))
+    elif shape == "person":
+        corners = person_silhouette(box, theme.box.corner_radius)
     elif shape == "cylinder":
         corners = _cylinder_silhouette(box)
         cap = min(CYLINDER_CAP, height / 4)
@@ -564,6 +605,7 @@ __all__ = [
     "line_bounds",
     "outline",
     "painted",
+    "person_silhouette",
     "removed_outline",
     "status_box_primitives",
     "status_key",

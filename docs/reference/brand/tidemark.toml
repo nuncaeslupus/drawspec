@@ -58,6 +58,9 @@ stroke_width = 1.25  # --border-width, scaled
 [role.store]
 stroke_width = 1.25  # --border-width, scaled
 
+[role.person]
+stroke_width = 1.25  # --border-width, scaled
+
 [edge_role.flow]
 stroke_width = 1.25  # --border-width, scaled
 
