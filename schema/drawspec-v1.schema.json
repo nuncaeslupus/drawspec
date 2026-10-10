@@ -6,7 +6,7 @@
   "oneOf": [
     {
       "type": "object",
-      "title": "flow / tree",
+      "title": "flow",
       "properties": {
         "$schema": {
           "type": "string",
@@ -18,7 +18,97 @@
         "kind": {
           "type": "string",
           "enum": [
-            "flow",
+            "flow"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "nodes": {
+          "type": "array",
+          "description": "The boxes. Order is not a coordinate — the layout decides where a box goes — but it is the order siblings are drawn in: where nothing else separates two boxes of the same rank, they read in the order written here.",
+          "items": {
+            "$ref": "#/$defs/node"
+          },
+          "minItems": 1
+        },
+        "edges": {
+          "type": "array",
+          "description": "What connects to what. A `tree` takes one edge per child.",
+          "items": {
+            "$ref": "#/$defs/edge"
+          }
+        },
+        "groups": {
+          "type": "array",
+          "description": "Boxes drawn around sets of nodes, each with its own caption.",
+          "items": {
+            "$ref": "#/$defs/group"
+          }
+        },
+        "bands": {
+          "type": "array",
+          "description": "Named things that run alongside a set of boxes rather than containing them — drawn as a labelled bar beside the boxes they accompany. For the activity that goes on throughout: a source sheet with one continuous concern above its steps and another below says the steps are *surrounded* by them, and two such bands are peers. A `group` cannot say that — a box sits inside one container or none, so two groups over the same members had to be nested, which draws a hierarchy that is not there.",
+          "items": {
+            "$ref": "#/$defs/band"
+          }
+        },
+        "loops": {
+          "type": "array",
+          "description": "The feedback loops of a causal loop diagram, each named and marked R (reinforcing) or B (balancing) inside the loop it closes — the type derived from the signs, never chosen. Needs `polarity` on the edges.",
+          "items": {
+            "$ref": "#/$defs/loop"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "nodes"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "tree",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
             "tree"
           ]
         },
@@ -1651,7 +1741,7 @@
         },
         "sets": {
           "type": "array",
-          "description": "Two or three sets, each a circle of one size with its name outside it. Not sizes: the circles are equal, because a Venn diagram says what overlaps, not how much.",
+          "description": "Two to four sets, each a circle of one size with its name outside it — four are four equal ellipses, so all fifteen regions exist. Not sizes: the shapes are equal, because a Venn diagram says what overlaps, not how much.",
           "items": {
             "$ref": "#/$defs/venn-set"
           },
@@ -1910,9 +2000,476 @@
         "flows"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "numberline",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "numberline"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "axis": {
+          "$ref": "#/$defs/axis-numberline",
+          "description": "The one scale, drawn across the canvas with an arrowhead at each end: numbered ticks, or two named `ends`."
+        },
+        "points": {
+          "type": "array",
+          "description": "Values marked on the axis, each a dot with its words above it — or below the numbers, with a leader, when the words above would touch.",
+          "items": {
+            "$ref": "#/$defs/numberline-point"
+          }
+        },
+        "ranges": {
+          "type": "array",
+          "description": "Stretches of the scale, each a line in its own track above the axis, in the order written — the last nearest the axis. Each end is closed, open, or missing: a range with no `to` runs on past `max`.",
+          "items": {
+            "$ref": "#/$defs/numberline-range"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "axis"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "barmodel",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "barmodel"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "bars": {
+          "type": "array",
+          "description": "One to three bars, top to bottom, all starting at one left edge, every length in one scale: the longest bar fills the width.",
+          "items": {
+            "$ref": "#/$defs/barmodel-bar"
+          },
+          "minItems": 1
+        },
+        "braces": {
+          "type": "array",
+          "description": "What a stretch adds up to — the whole, a difference, a total over two bars — each a brace with its amount or its `?`.",
+          "items": {
+            "$ref": "#/$defs/barmodel-brace"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "bars"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "waterfall",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "waterfall"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "axis": {
+          "$ref": "#/$defs/waterfall-axis",
+          "description": "The vertical axis: its `label`, what the numbers are and their unit."
+        },
+        "bars": {
+          "type": "array",
+          "description": "The bars, left to right: a `total` first, signed `amount` steps, any subtotals (a `total` mid-way, checked against the running sum), and a `total` last.",
+          "items": {
+            "$ref": "#/$defs/waterfall-bar"
+          },
+          "minItems": 3
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "axis",
+        "bars"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "pie",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "pie"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "parts": {
+          "type": "array",
+          "description": "The parts of one total, 2 to 8, clockwise from twelve o'clock in the order written (a `note` part last), each labelled with its `text` and amount — inside its sector, or beside it on a leader line.",
+          "items": {
+            "$ref": "#/$defs/pie-part"
+          },
+          "minItems": 2
+        },
+        "unit": {
+          "type": "string",
+          "description": "What the amounts are in — `pupils`, `£m`, `%` — written after each one. With `%` the amounts must add up to 100, within one point of rounding."
+        },
+        "values": {
+          "type": "boolean",
+          "description": "`false` leaves the amounts out and writes the names alone."
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "parts"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "mindmap",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "mindmap"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "centre": {
+          "type": "string",
+          "description": "The topic: the one strongly boxed element, in the middle of the map. Every main branch is a peer round it."
+        },
+        "branches": {
+          "type": "array",
+          "description": "The main branches, 2 to 8, placed clockwise from the top right in the order written and split between the two sides so they balance: the first is always on the right. Nested, up to three levels, 30 branches in all; the nesting is the structure, so there are no edges.",
+          "items": {
+            "$ref": "#/$defs/mindmap-branch"
+          },
+          "minItems": 2
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "centre",
+        "branches"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "argument",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "argument"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "claim": {
+          "type": "string",
+          "description": "The contention, drawn at the top in the heavy outline. Points name it as `\"on\": \"claim\"`. A qualifier (*probably*, *in most cases*) is a word in it."
+        },
+        "points": {
+          "type": "array",
+          "description": "Every reason, objection, rebuttal and piece of evidence, each `on` the box it bears on, `for` or `against` it. Drawn as a tree down from the claim, siblings in the order written; at most 15, and 4 deep.",
+          "items": {
+            "$ref": "#/$defs/argument-point"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "claim",
+        "points"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
+    "argument-point": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique within the document, and not `claim`: what `on` and `with` name."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "on": {
+          "type": "string",
+          "description": "The box this point bears on: `claim`, or another point's id. The points hang below it, in the order written."
+        },
+        "stance": {
+          "type": "string",
+          "description": "`for` (a reason, drawn plain, tagged *because*) or `against` (an objection, hatched, tagged *but*) the box it is `on`. A rebuttal is an `against` on an `against`.",
+          "enum": [
+            "for",
+            "against"
+          ]
+        },
+        "with": {
+          "type": "array",
+          "description": "Co-premises: the ids of points with the same `on` and `stance` that support it only together. Written once, on any member; the group is every point joined this way, at most 4, drawn side by side under one bracket with one connector.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default), `emphasis` (the decisive point: heavy outline and connector, bold words) or `note` (evidence or a source rather than a reason: the note type, unboxed, on a dashed connector).",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "on",
+        "stance"
+      ],
+      "additionalProperties": false
+    },
     "axes": {
       "type": "object",
       "properties": {
@@ -2039,6 +2596,45 @@
       ],
       "additionalProperties": false
     },
+    "axis-numberline": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "number",
+          "description": "Where the scale starts, at the left arrowhead's side."
+        },
+        "max": {
+          "type": "number",
+          "description": "Where the scale ends: more than `min`."
+        },
+        "step": {
+          "type": "number",
+          "description": "The distance between two ticks, each labelled with its number. Omit it for a step a reader can count in, chosen from the range.",
+          "exclusiveMinimum": 0
+        },
+        "label": {
+          "type": "string",
+          "description": "What the numbers measure, centred under them: `pH`, `Temperature`."
+        },
+        "unit": {
+          "type": "string",
+          "description": "What the numbers are in, written after the label: `°C`, `cm`."
+        },
+        "ends": {
+          "type": "array",
+          "description": "Two words for the low and the high end — `past` and `future`, `fully remote` and `fully on site` — written under the arrowheads, for a scale that is named rather than measured. No numbers are drawn: only the order and the gaps count, so not with `step` or `unit`.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2
+        }
+      },
+      "required": [
+        "min",
+        "max"
+      ],
+      "additionalProperties": false
+    },
     "band": {
       "type": "object",
       "properties": {
@@ -2059,6 +2655,90 @@
         "text",
         "members"
       ],
+      "additionalProperties": false
+    },
+    "barmodel-bar": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "What a brace's `over` names, for a brace over the whole bar. Unique among the bars and the parts."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "parts": {
+          "type": "array",
+          "description": "The bar's parts, left to right, each as long as its `value` or its `units` say — in one scale for every bar.",
+          "items": {
+            "$ref": "#/$defs/barmodel-part"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "parts"
+      ],
+      "additionalProperties": false
+    },
+    "barmodel-brace": {
+      "type": "object",
+      "properties": {
+        "over": {
+          "type": "array",
+          "description": "What the brace spans: the ids of side-by-side parts of one bar, drawn over it (under it, for the last of several bars), or of whole bars — one bar the same way, several consecutive bars with an upright brace at their right.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "amount": {
+          "type": "number",
+          "description": "What the stretch adds up to. Checked: the parts' amounts must sum to it, and with units every brace must make one unit worth the same. Written unless `text` is given.",
+          "exclusiveMinimum": 0
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "over"
+      ],
+      "additionalProperties": false
+    },
+    "barmodel-part": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "What a brace's `over` names. Unique among the bars and the parts."
+        },
+        "amount": {
+          "type": "number",
+          "description": "How much the part is, more than 0: its length is in proportion, and its words default to the number. Give it even for the unknown — the `?` is its `text`.",
+          "exclusiveMinimum": 0
+        },
+        "units": {
+          "type": "integer",
+          "description": "How many equal boxes the part is, each one unit long: groups to multiply, the shares of a ratio, the fifths of a fraction. Not with `amount`, and not in a document whose parts have amounts.",
+          "exclusiveMinimum": 0
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default), `emphasis` (the part the problem asks about: bold words, filled) or `note` (a part that is not there — the difference a shorter bar lacks: dashed).",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        }
+      },
       "additionalProperties": false
     },
     "board-column": {
@@ -2390,6 +3070,18 @@
             "changed",
             "removed"
           ]
+        },
+        "polarity": {
+          "type": "string",
+          "description": "A causal link's sign: more of the source means more (`+`) or less (`-`) of the target, written as the edge's label (`s`/`o` under a theme that says so). Every `flow` or `strong` edge of the document has one, or none does. **Only a `flow`.**",
+          "enum": [
+            "+",
+            "-"
+          ]
+        },
+        "delay": {
+          "type": "boolean",
+          "description": "The effect takes time: drawn as the double stroke across the shaft. Needs `polarity`. **Only a `flow`.**"
         }
       },
       "required": [
@@ -2794,6 +3486,36 @@
       ],
       "additionalProperties": false
     },
+    "loop": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "nodes": {
+          "type": "array",
+          "description": "The loop's variables in the order it runs: each joined to the next, and the last back to the first, by a signed edge in that direction.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2
+        },
+        "type": {
+          "type": "string",
+          "description": "Optional, and checked: an even number of `-` links is `reinforcing`, an odd number `balancing`. Drawn as R or B, numbered in the order written.",
+          "enum": [
+            "reinforcing",
+            "balancing"
+          ]
+        }
+      },
+      "required": [
+        "text",
+        "nodes"
+      ],
+      "additionalProperties": false
+    },
     "mark": {
       "type": "object",
       "properties": {
@@ -2851,6 +3573,36 @@
       ],
       "additionalProperties": false
     },
+    "mindmap-branch": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default), `emphasis` (the branch the map is about: bold, its line heavy all the way from the centre; at most two) or `note` (context, not content: faint, and so is everything under it).",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        },
+        "branches": {
+          "type": "array",
+          "description": "The branches off this one, drawn top to bottom in the order written. At most three levels below the centre: a branch, a twig, a leaf.",
+          "items": {
+            "$ref": "#/$defs/mindmap-branch"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
     "node": {
       "type": "object",
       "properties": {
@@ -2903,6 +3655,71 @@
       ],
       "additionalProperties": false
     },
+    "numberline-point": {
+      "type": "object",
+      "properties": {
+        "at": {
+          "type": "number",
+          "description": "Where the dot sits on the axis: a number between `min` and `max`."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "open": {
+          "type": "boolean",
+          "description": "Whether the dot is hollow: the value itself is excluded — `x ≠ 3`, a hole. Defaults to false, a filled dot."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default), `emphasis` (the point the line is about: a larger dot, its words bold) or `note` (context: a smaller dot).",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        }
+      },
+      "required": [
+        "at"
+      ],
+      "additionalProperties": false
+    },
+    "numberline-range": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "number",
+          "description": "Where the range starts. Omit it for a range that runs on below `min`, drawn as an arrow off the left end."
+        },
+        "to": {
+          "type": "number",
+          "description": "Where the range ends: more than `from`. Omit it for a range that runs on above `max`, drawn as an arrow off the right end."
+        },
+        "from_open": {
+          "type": "boolean",
+          "description": "Whether `from` is excluded — `x > 1` rather than `x ≥ 1`. Defaults to false. The theme's `[numberline] ends` draws it as a hollow dot or a parenthesis."
+        },
+        "to_open": {
+          "type": "boolean",
+          "description": "Whether `to` is excluded — `x < 4` rather than `x ≤ 4`. Defaults to false."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default, a heavy line), `emphasis` (the range the line is about — the solution set: a heavier bar, its words bold) or `note` (context: dashed).",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "participant": {
       "type": "object",
       "properties": {
@@ -2927,6 +3744,34 @@
       "required": [
         "id",
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "pie-part": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "amount": {
+          "type": "number",
+          "description": "How much of the total this part is, more than 0, in the pie's `unit`: a count, a sum, or with `unit: \"%\"` a percentage. Its angle is its share of the sum of the amounts, computed — never written.",
+          "exclusiveMinimum": 0
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default), `emphasis` (the part the chart is about: a heavier outline, its words bold) or `note` (the remainder, `Everything else`: unfilled and dashed, drawn last). At most one `note`.",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        }
+      },
+      "required": [
+        "text",
+        "amount"
       ],
       "additionalProperties": false
     },
@@ -3455,6 +4300,48 @@
       },
       "required": [
         "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "waterfall-axis": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "What the numbers are, with their unit — `Borrowing, £ billion`. Set beside the vertical axis; required, as on every chart."
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    "waterfall-bar": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "total": {
+          "type": "number",
+          "description": "A total: the bar stands on zero and runs to it. The first bar is one and so is the last; one in between is a subtotal. Every total after the first is checked: it must be the running sum. Not with `amount`."
+        },
+        "amount": {
+          "type": "number",
+          "description": "A signed step, not 0: the bar floats from the running sum to the running sum plus this, and is written `+6.1` or `−9.4`. Not with `total`."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default) or `emphasis` (the bar the chart is about: a heavier outline, its number bold).",
+          "enum": [
+            "step",
+            "emphasis"
+          ]
+        }
+      },
+      "required": [
         "text"
       ],
       "additionalProperties": false

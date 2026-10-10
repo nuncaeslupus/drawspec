@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "kind": "mindmap",
+  "title": "Essay plan: are school uniforms worth keeping?",
+  "description": "An essay plan as a mind map: the question in the middle, the sections clockwise from the top right in the order they will be written.",
+  "caption": "Sections run clockwise from the top right in the order they will be written.",
+  "centre": "Are school uniforms worth keeping?",
+  "branches": [
+    {
+      "text": "1. Introduction",
+      "branches": [{"text": "Define 'uniform'"}, {"text": "State the position", "role": "emphasis"}]
+    },
+    {
+      "text": "2. Cost",
+      "branches": [{"text": "Cheaper than a fashion wardrobe"}, {"text": "Branded items are expensive"}]
+    },
+    {
+      "text": "3. Belonging",
+      "branches": [{"text": "Shared identity"}, {"text": "Hides income differences"}]
+    },
+    {
+      "text": "4. Expression",
+      "branches": [{"text": "Limits personal style"}, {"text": "Rules on hair and jewellery go further"}]
+    },
+    {
+      "text": "5. Conclusion",
+      "branches": [
+        {"text": "Weigh cost against belonging"},
+        {"text": "Recommend a simple, unbranded uniform"}
+      ]
+    },
+    {
+      "text": "Sources",
+      "role": "note",
+      "branches": [{"text": "School survey, 2025"}, {"text": "Interview with a head teacher"}]
+    }
+  ]
+}

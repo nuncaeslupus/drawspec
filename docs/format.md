@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-26 kinds. The machine-readable form of this page is the published
+32 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey` | **yes** | Which of the twenty-six diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument` | **yes** | Which of the thirty-two diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -51,6 +51,12 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `edges` | array of [edge](#edge-object) | no | What connects to what. A `tree` takes one edge per child. |
 | `groups` | array of [group](#group-object) | no | Boxes drawn around sets of nodes, each with its own caption. |
 | `bands` | array of [band](#band-object) | no | Named things that run alongside a set of boxes rather than containing them — drawn as a labelled bar beside the boxes they accompany. For the activity that goes on throughout: a source sheet with one continuous concern above its steps and another below says the steps are *surrounded* by them, and two such bands are peers. A `group` cannot say that — a box sits inside one container or none, so two groups over the same members had to be nested, which draws a hierarchy that is not there. |
+
+### `flow`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `loops` | array of [loop](#loop-object) | no | The feedback loops of a causal loop diagram, each named and marked R (reinforcing) or B (balancing) inside the loop it closes — the type derived from the signs, never chosen. Needs `polarity` on the edges. |
 
 ### `cycle`
 
@@ -193,7 +199,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `sets` | array of [venn-set](#venn-set-object), at least 2 | **yes** | Two or three sets, each a circle of one size with its name outside it. Not sizes: the circles are equal, because a Venn diagram says what overlaps, not how much. |
+| `sets` | array of [venn-set](#venn-set-object), at least 2 | **yes** | Two to four sets, each a circle of one size with its name outside it — four are four equal ellipses, so all fifteen regions exist. Not sizes: the shapes are equal, because a Venn diagram says what overlaps, not how much. |
 | `regions` | array of [region](#region-object) | no | What each region holds, named by membership. A region not listed is drawn empty: its set's name says enough. |
 
 ### `journey`
@@ -221,6 +227,50 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `flows` | array of [sankey-flow](#sankey-flow-object), at least 1 | **yes** | How much goes from one node to another, each a band whose thickness is in proportion to its `amount`. What reaches a node in the middle must all leave it, and nothing flows back. |
 | `unit` | string | no | What the amounts are in — `tickets`, `cores`, `€ million` — written after each total. |
 | `values` | boolean | no | Whether to write each node's total under its name. Defaults to true. |
+
+### `numberline`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `axis` | [axis-numberline object](#axis-numberline-object) | **yes** | The one scale, drawn across the canvas with an arrowhead at each end: numbered ticks, or two named `ends`. |
+| `points` | array of [numberline-point](#numberline-point-object) | no | Values marked on the axis, each a dot with its words above it — or below the numbers, with a leader, when the words above would touch. |
+| `ranges` | array of [numberline-range](#numberline-range-object) | no | Stretches of the scale, each a line in its own track above the axis, in the order written — the last nearest the axis. Each end is closed, open, or missing: a range with no `to` runs on past `max`. |
+
+### `barmodel`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `bars` | array of [barmodel-bar](#barmodel-bar-object), at least 1 | **yes** | One to three bars, top to bottom, all starting at one left edge, every length in one scale: the longest bar fills the width. |
+| `braces` | array of [barmodel-brace](#barmodel-brace-object) | no | What a stretch adds up to — the whole, a difference, a total over two bars — each a brace with its amount or its `?`. |
+
+### `waterfall`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `axis` | [waterfall-axis object](#waterfall-axis-object) | **yes** | The vertical axis: its `label`, what the numbers are and their unit. |
+| `bars` | array of [waterfall-bar](#waterfall-bar-object), at least 3 | **yes** | The bars, left to right: a `total` first, signed `amount` steps, any subtotals (a `total` mid-way, checked against the running sum), and a `total` last. |
+
+### `argument`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `claim` | string | **yes** | The contention, drawn at the top in the heavy outline. Points name it as `"on": "claim"`. A qualifier (*probably*, *in most cases*) is a word in it. |
+| `points` | array of [argument-point](#argument-point-object), at least 1 | **yes** | Every reason, objection, rebuttal and piece of evidence, each `on` the box it bears on, `for` or `against` it. Drawn as a tree down from the claim, siblings in the order written; at most 15, and 4 deep. |
+
+### `mindmap`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `centre` | string | **yes** | The topic: the one strongly boxed element, in the middle of the map. Every main branch is a peer round it. |
+| `branches` | array of [mindmap-branch](#mindmap-branch-object), at least 2 | **yes** | The main branches, 2 to 8, placed clockwise from the top right in the order written and split between the two sides so they balance: the first is always on the right. Nested, up to three levels, 30 branches in all; the nesting is the structure, so there are no edges. |
+
+### `pie`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `parts` | array of [pie-part](#pie-part-object), at least 2 | **yes** | The parts of one total, 2 to 8, clockwise from twelve o'clock in the order written (a `note` part last), each labelled with its `text` and amount — inside its sector, or beside it on a leader line. |
+| `unit` | string | no | What the amounts are in — `pupils`, `£m`, `%` — written after each one. With `%` the amounts must add up to 100, within one point of rounding. |
+| `values` | boolean | no | `false` leaves the amounts out and writes the names alone. |
 
 ### `scatter`
 
@@ -254,7 +304,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 
 | Kind | At most |
 |---|---|
-| `flow` | 15 `nodes`, 16 `edges` |
+| `flow` | 15 `nodes`, 16 `edges`, 6 `loops` |
 | `tree` | 15 `nodes` |
 | `cycle` | 8 `nodes` |
 | `stack` | 8 `items` |
@@ -276,10 +326,16 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `gantt` | 16 `tasks`, 20 `edges`, 4 `marks` |
 | `board` | 6 `columns`, 4 `rows`, 32 `cards`, 8 `cards` per cell |
 | `fishbone` | 6 `categories`, 5 `causes` per category |
-| `venn` | 3 `sets`, 7 `regions` |
+| `venn` | 4 `sets`, 15 `regions` |
 | `journey` | 7 `stages`, 5 `feelings`, 4 `rows` |
 | `treemap` | 10 `parts`, 4 `groups` |
 | `sankey` | 14 `nodes`, 24 `flows` |
+| `numberline` | 15 `points`, 4 `ranges` |
+| `barmodel` | 3 `bars`, 8 `parts` per bar, 6 `braces` |
+| `waterfall` | 12 `bars` |
+| `pie` | 8 `parts` |
+| `mindmap` | 8 `branches`, 30 `branches` in all, at every level |
+| `argument` | 15 `points` |
 
 ## Emphasis
 
@@ -316,6 +372,16 @@ name, so a misspelt key is an error at the point it was written.
 | `label` | string | no | A short label placed along the edge. |
 | `role` | string — one of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
 | `status` | string — one of `added`, `changed`, `removed` | no | What a proposed change does to this connection: the same marks as a node's, written before the label (`+`, `~`, `-`), with a key of the marks under the drawing. A removed edge is drawn in the `aside` treatment — dashed, no head — whatever its role. **Only a `flow`, a `tree` or `lanes`.** |
+| `polarity` | string — one of `+`, `-` | no | A causal link's sign: more of the source means more (`+`) or less (`-`) of the target, written as the edge's label (`s`/`o` under a theme that says so). Every `flow` or `strong` edge of the document has one, or none does. **Only a `flow`.** |
+| `delay` | boolean | no | The effect takes time: drawn as the double stroke across the shaft. Needs `polarity`. **Only a `flow`.** |
+
+### `loop` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `nodes` | array of string, at least 2 | **yes** | The loop's variables in the order it runs: each joined to the next, and the last back to the first, by a signed edge in that direction. |
+| `type` | string — one of `reinforcing`, `balancing` | no | Optional, and checked: an even number of `-` links is `reinforcing`, an odd number `balancing`. Drawn as R or B, numbered in the order written. |
 
 ### `lane-node` object
 
@@ -560,6 +626,105 @@ name, so a misspelt key is an error at the point it was written.
 | `to` | string | **yes** | The id of the node the amount reaches. |
 | `amount` | number, greater than 0 | **yes** | How much flows, in the sankey's `unit`: the band's thickness is in proportion. A number you already know, more than 0. |
 | `role` | string — one of `flow`, `strong` | no | `flow` (the default band) or `strong` (the path the diagram is about, drawn darker). |
+
+### `axis-numberline` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `min` | number | **yes** | Where the scale starts, at the left arrowhead's side. |
+| `max` | number | **yes** | Where the scale ends: more than `min`. |
+| `step` | number, greater than 0 | no | The distance between two ticks, each labelled with its number. Omit it for a step a reader can count in, chosen from the range. |
+| `label` | string | no | What the numbers measure, centred under them: `pH`, `Temperature`. |
+| `unit` | string | no | What the numbers are in, written after the label: `°C`, `cm`. |
+| `ends` | array of string, at least 2 | no | Two words for the low and the high end — `past` and `future`, `fully remote` and `fully on site` — written under the arrowheads, for a scale that is named rather than measured. No numbers are drawn: only the order and the gaps count, so not with `step` or `unit`. |
+
+### `numberline-point` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `at` | number | **yes** | Where the dot sits on the axis: a number between `min` and `max`. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `open` | boolean | no | Whether the dot is hollow: the value itself is excluded — `x ≠ 3`, a hole. Defaults to false, a filled dot. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the point the line is about: a larger dot, its words bold) or `note` (context: a smaller dot). |
+
+### `numberline-range` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | number | no | Where the range starts. Omit it for a range that runs on below `min`, drawn as an arrow off the left end. |
+| `to` | number | no | Where the range ends: more than `from`. Omit it for a range that runs on above `max`, drawn as an arrow off the right end. |
+| `from_open` | boolean | no | Whether `from` is excluded — `x > 1` rather than `x ≥ 1`. Defaults to false. The theme's `[numberline] ends` draws it as a hollow dot or a parenthesis. |
+| `to_open` | boolean | no | Whether `to` is excluded — `x < 4` rather than `x ≤ 4`. Defaults to false. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default, a heavy line), `emphasis` (the range the line is about — the solution set: a heavier bar, its words bold) or `note` (context: dashed). |
+
+### `barmodel-bar` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | no | What a brace's `over` names, for a brace over the whole bar. Unique among the bars and the parts. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `parts` | array of [barmodel-part](#barmodel-part-object), at least 1 | **yes** | The bar's parts, left to right, each as long as its `value` or its `units` say — in one scale for every bar. |
+
+### `barmodel-part` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | no | What a brace's `over` names. Unique among the bars and the parts. |
+| `amount` | number, greater than 0 | no | How much the part is, more than 0: its length is in proportion, and its words default to the number. Give it even for the unknown — the `?` is its `text`. |
+| `units` | integer, greater than 0 | no | How many equal boxes the part is, each one unit long: groups to multiply, the shares of a ratio, the fifths of a fraction. Not with `amount`, and not in a document whose parts have amounts. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the part the problem asks about: bold words, filled) or `note` (a part that is not there — the difference a shorter bar lacks: dashed). |
+
+### `barmodel-brace` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `over` | array of string, at least 1 | **yes** | What the brace spans: the ids of side-by-side parts of one bar, drawn over it (under it, for the last of several bars), or of whole bars — one bar the same way, several consecutive bars with an upright brace at their right. |
+| `amount` | number, greater than 0 | no | What the stretch adds up to. Checked: the parts' amounts must sum to it, and with units every brace must make one unit worth the same. Written unless `text` is given. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `waterfall-axis` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `label` | string | **yes** | What the numbers are, with their unit — `Borrowing, £ billion`. Set beside the vertical axis; required, as on every chart. |
+
+### `waterfall-bar` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `total` | number | no | A total: the bar stands on zero and runs to it. The first bar is one and so is the last; one in between is a subtotal. Every total after the first is checked: it must be the running sum. Not with `amount`. |
+| `amount` | number | no | A signed step, not 0: the bar floats from the running sum to the running sum plus this, and is written `+6.1` or `−9.4`. Not with `total`. |
+| `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis` (the bar the chart is about: a heavier outline, its number bold). |
+
+### `pie-part` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `amount` | number, greater than 0 | **yes** | How much of the total this part is, more than 0, in the pie's `unit`: a count, a sum, or with `unit: "%"` a percentage. Its angle is its share of the sum of the amounts, computed — never written. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the part the chart is about: a heavier outline, its words bold) or `note` (the remainder, `Everything else`: unfilled and dashed, drawn last). At most one `note`. |
+
+### `argument-point` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique within the document, and not `claim`: what `on` and `with` name. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `on` | string | **yes** | The box this point bears on: `claim`, or another point's id. The points hang below it, in the order written. |
+| `stance` | string — one of `for`, `against` | **yes** | `for` (a reason, drawn plain, tagged *because*) or `against` (an objection, hatched, tagged *but*) the box it is `on`. A rebuttal is an `against` on an `against`. |
+| `with` | array of string, at least 1 | no | Co-premises: the ids of points with the same `on` and `stance` that support it only together. Written once, on any member; the group is every point joined this way, at most 4, drawn side by side under one bracket with one connector. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the decisive point: heavy outline and connector, bold words) or `note` (evidence or a source rather than a reason: the note type, unboxed, on a dashed connector). |
+
+### `mindmap-branch` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the branch the map is about: bold, its line heavy all the way from the centre; at most two) or `note` (context, not content: faint, and so is everything under it). |
+| `branches` | array of [mindmap-branch](#mindmap-branch-object), at least 1 | no | The branches off this one, drawn top to bottom in the order written. At most three levels below the centre: a branch, a twig, a leaf. |
 
 ### `treemap-group` object
 

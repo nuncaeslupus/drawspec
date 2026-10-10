@@ -12,6 +12,122 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`argument`, the thirty-second kind** — an argument map: a `claim` at the top and
+  up to 15 `points`, each `on` the box it bears on, `for` or `against` it (a rebuttal
+  is an `against` on an `against`; no third stance), down to four levels. Stance is
+  drawn twice, so greyscale holds: a tag in each box's top margin (`because`/`but`)
+  and a hatch on every `against` box. Co-premises (`with`, written on any member) sit
+  side by side under one bracket with one connector, so the arrows into a box count
+  its separate reasons; connectors arrive square from below, each on its own port,
+  crossing on their own lanes. `emphasis` is the decisive point; `note` is evidence,
+  unboxed on a dashed connector. A new theme section, `[argument] for_tag`,
+  `against_tag`, `against_fill`. Refused at their pointers: unknown or circular `on`,
+  a missing or third stance, mismatched or unknown `with`, a group past 4, an
+  objection `on` a co-premise group (with how to write it: state the linking premise
+  and object to that), `edges`, duplicate or reserved ids, a fifth level, empty
+  words. `docs/proposals/argument.md` records the design.
+- **`mindmap`, the thirty-first kind** — one topic in the middle and its branches
+  round it as peers, where a `tree` would rank them from a root. `centre` and 2 to 8
+  `branches`, nested up to three levels (30 in all); the nesting is the structure, so
+  there are no edges. Main branches go clockwise from the top right in the order
+  written, split between the sides so they balance (the first always on the right);
+  each side is a horizontal tidy tree, siblings top to bottom in the order written, the
+  main branches bulging out round the centre where there is room. Main branches are
+  boxed lightly, twigs and leaves sit on their line; lines are smooth tapered curves.
+  `emphasis` draws the line heavy all the way from the centre; `note` is faint, with
+  everything under it. When it is too wide, only the branch reaching furthest out
+  wraps narrower. A new theme section, `[mindmap] boxes` and `taper`. Refused at their
+  pointers: fewer than 2 or more than 8 main branches, more than 30 in all (a new
+  budget form, counted at every level), a fourth level, `edges`, `links`, `id` (a
+  concept map, which is a `flow`), `side`, empty words. `docs/proposals/mindmap.md`
+  records the design.
+- **Causal loop diagrams on `flow`** — `polarity` (`+`/`-`) on every causal edge,
+  written as its label and so placed clear of everything; `delay: true`, the double
+  stroke across the shaft; and named `loops`, each its variables in order. A loop's
+  type is derived from the signs (an even number of `-` links reinforces) and drawn
+  as `R1`, `B1`, … in a ring whose arrow turns the way the loop runs, placed inside
+  the loop; a stated `type` the signs contradict is refused with the count. The
+  gap between ranks grows to hold the markers; `groups` work with `loops`. A new
+  theme section, `[flow] polarity = "+-" | "so"`. Refused at their pointers:
+  half-signed diagrams, a sign on a `link`/`aside`/`weak` edge, a delay without a
+  sign, loops without signs, a loop not joined in order (naming the missing edge),
+  a node twice, the same loop twice, these fields on any other kind. Budget: 6
+  loops. `docs/proposals/flow-loops.md` records the design.
+- **`venn` draws four sets** — as four equal ellipses, so all fifteen regions exist
+  (four circles cannot draw the two diagonal pairs). A region's words are placed
+  as for circles, exactly inside their region; set names go outside, the middle
+  two above their tips, the outer two under their outer lobes. With four sets a
+  region's text is at most 12 characters: a count, or a word or two. A fifth set is
+  refused, suggesting a `matrix`. Budget: 4 sets, 15 regions.
+  `docs/proposals/venn4.md` records the design.
+- **`pie`, the thirtieth kind** — the shares of one known total as sectors of a
+  circle, let in with limits like `treemap`: a few known proportions stated, not
+  data to explore. 2 to 8 `parts`, each a `text` and an `amount`; shares are
+  computed from the amounts (never written), and with `unit: "%"` the amounts must
+  add up to 100 within one point of rounding. Clockwise from twelve in the order
+  written, one `note` part (`Everything else`, unfilled and dashed) last. Every
+  sector labelled with its name and amount, inside it when it fits, else beside the
+  circle on a leader that clears the circle; fills only keep touching sectors apart.
+  A new theme section, `[pie] shape = "pie" | "donut"`: the donut is house style.
+  Refused at their pointers: more than 8 parts, a part under 2%, percentages off
+  100, a second `note`, one part, `value`, `percent`, `share`, `angle`, `total`,
+  `groups` (naming `treemap`), `series`, `axes` (naming `chart`), `donut`, `hole`
+  (naming the theme), `edges`. Budget: 8 parts. `docs/proposals/pie.md` records the
+  design.
+- **`waterfall`, the twenty-ninth kind** — the bridge chart of a budget paper: how
+  one total became another, step by step. Its 3 to 12 `bars` are each a `total`
+  (standing on zero: the first, the last, and any subtotal between) or a signed
+  `amount` floating on the running sum; every total after the first is checked
+  against the running sum and refused with the difference. Numbers are written on
+  every bar, the steps signed with a true minus; dashed connectors follow the
+  running sum; totals, rises and falls take the first three mark fills. Bridges
+  below zero hang from the zero line, and ones crossing it are drawn across it.
+  `axis.label` is required. Refused at their pointers: a first or last bar that is
+  not a total (the last naming the sum to write), a total off the running sum, a
+  total straight after a total, a bar with both sizes or neither, a step of 0,
+  `value`, `subtotal`, `start`, `end`, `unit`, `series`, `axes` (naming `chart`),
+  `edges`. Budget: 12 bars. Built as its own kind rather than a `chart` mark, lifting
+  the deferral in `docs/proposals/README.md`; `docs/proposals/waterfall.md` records why.
+- **`barmodel`, the twenty-eighth kind** — the bar model, or tape diagram, of
+  primary maths: a word problem drawn as up to three `bars` of parts, before the
+  sum is written. Every length is in proportion, in one scale for every bar on one
+  left edge: a part is an `amount` (more than 0) or `units` (that many equal boxes),
+  and the unknown keeps its size with `"text": "?"`. `braces` over side-by-side
+  parts or a whole bar go above it (under it for the last of several bars), stacked
+  outwards when they would touch; over several consecutive bars they stand upright
+  at the right. A brace's `amount` is checked — the sum of the parts it spans, or one
+  unit's worth agreed by every brace. Part roles `step`, `emphasis` (filled, bold:
+  the part asked about) and `note` (dashed: the difference a shorter bar lacks).
+  Refused at their pointers: a part with no size or two, amounts and units mixed, a
+  brace sum or unit worth that does not hold, a brace over parts of two bars, parts
+  not side by side, bars not consecutive, or a bar and a part together, a brace with
+  nothing to say, unknown ids (naming the closest), duplicate ids, a single part,
+  `total` (naming a brace), `value` (naming `amount`), `edges`, `axes`, `series` (naming `chart`). Budget: 3
+  bars, 8 parts a bar, 12 unit boxes a bar, 6 braces. A new proposal,
+  `docs/proposals/barmodel.md`, records the design and where it was built
+  differently.
+- **`numberline`, the twenty-seventh kind** — values and ranges on one scale:
+  an inequality and its solution set, interval notation, the pH scale, a tense
+  relative to *now*, options on a spectrum. The `axis` runs from `min` to `max`
+  with an arrowhead at each end, ticked every `step` (or a step chosen from the
+  range) with its numbers under the ticks and negative numbers in a true minus
+  sign; `ends` names the two ends instead, for a scale with no numbers. `points`
+  are dots on the line, hollow when `open`; their words go directly above, then
+  directly under the numbers, then in rows further out with a thin leader, a slot
+  taken only if the words touch no other words and the leader crosses none.
+  `ranges` stack in tracks above the line in the order written, the last nearest
+  it; `from_open`/`to_open` exclude an end, and a missing end runs on as an arrow.
+  Roles `step`, `emphasis` (a thicker bar or a larger dot, bold words) and `note`
+  (a dashed range, a smaller dot). New theme section `[numberline]`: `ends =
+  "dots"` (filled in, hollow out) or `"brackets"` (`[` in, `(` out, the US and
+  college convention) — house style, so one course theme switches every drawing.
+  Refused at their pointers: a value off the scale, a range with no end, `to` not
+  after `from`, an open end that is not there, two points at one value, `ends`
+  with `step` or `unit`, more than 30 ticks, a string where a number belongs
+  (naming `timeline`), `value` (naming `at`), `edges`, `series`, `axes` (naming
+  `scatter`). Budget: 15 points (the pH scale with a substance at every whole
+  value), 4 ranges. The guide and `AGENTS.md` say when to use it rather than
+  `timeline`.
 - **A drafting sheet for any diagram, and the bundled `blueprint` theme.** New
   `[canvas]` keys — `ground`, `pattern = "grid"`, `border = "zoned"`,
   `title_block`, `rule` and `accent` — draw a ground, a fine grid, a double

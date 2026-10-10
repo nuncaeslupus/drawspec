@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "kind": "mindmap",
+  "title": "Photosynthesis",
+  "description": "Revision notes on photosynthesis: what it needs, what it makes, where it happens and what limits it.",
+  "centre": "Photosynthesis",
+  "branches": [
+    {
+      "text": "Needs",
+      "branches": [
+        {"text": "Light"},
+        {"text": "Water"},
+        {"text": "Carbon dioxide"},
+        {"text": "Chlorophyll"}
+      ]
+    },
+    {
+      "text": "Makes",
+      "branches": [
+        {
+          "text": "Glucose",
+          "branches": [{"text": "Used in respiration"}, {"text": "Stored as starch"}]
+        },
+        {"text": "Oxygen", "branches": [{"text": "Out through stomata"}]}
+      ]
+    },
+    {
+      "text": "Where",
+      "branches": [
+        {"text": "Chloroplasts"},
+        {"text": "Mostly in leaves", "branches": [{"text": "Palisade layer"}]}
+      ]
+    },
+    {
+      "text": "Limiting factors",
+      "role": "emphasis",
+      "branches": [
+        {"text": "Light intensity"},
+        {"text": "CO₂ concentration"},
+        {"text": "Temperature", "branches": [{"text": "Enzymes denature past ~45 °C"}]}
+      ]
+    },
+    {"text": "See also", "role": "note", "branches": [{"text": "Respiration notes"}]}
+  ]
+}

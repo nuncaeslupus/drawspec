@@ -1,0 +1,14 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "pie",
+  "title": "Where 28 pupils voted to go on the summer trip",
+  "description": "A pie of nice fractions for reading by eye: half the class chose the museum, a quarter the zoo and a quarter the beach.",
+  "caption": "Half chose the museum; a quarter each chose the zoo and the beach.",
+  "unit": "votes",
+  "parts": [
+    {"text": "Science museum", "amount": 14, "role": "emphasis"},
+    {"text": "Zoo", "amount": 7},
+    {"text": "Beach", "amount": 7}
+  ]
+}

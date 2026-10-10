@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from drawspec.charts import chart_scene
 from drawspec.errors import DrawspecError
+from drawspec.kinds.argument import argument_scene
+from drawspec.kinds.barmodel import barmodel_scene
 from drawspec.kinds.board import board_scene
 from drawspec.kinds.common import box_primitives, captioned, outline, text_runs
 from drawspec.kinds.cycle import cycle_scene
@@ -19,13 +21,19 @@ from drawspec.kinds.gantt import gantt_scene
 from drawspec.kinds.graph import DRAWN_KINDS, graph_scene
 from drawspec.kinds.grid import grid_scene
 from drawspec.kinds.journey import journey_scene
+from drawspec.kinds.mindmap import mindmap_scene
+from drawspec.kinds.numberline import numberline_scene
+from drawspec.kinds.pie import pie_scene
 from drawspec.kinds.sankey import sankey_scene
 from drawspec.kinds.sequence import sequence_scene
 from drawspec.kinds.shape import shape_scene
 from drawspec.kinds.treemap import treemap_scene
 from drawspec.kinds.venn import venn_scene
+from drawspec.kinds.waterfall import waterfall_scene
 from drawspec.scene import Scene
 from drawspec.schema import (
+    ARGUMENT_KINDS,
+    BARMODEL_KINDS,
     BOARD_KINDS,
     CHART_KINDS,
     ENTITIES_KINDS,
@@ -34,11 +42,15 @@ from drawspec.schema import (
     GANTT_KINDS,
     GRID_KINDS,
     JOURNEY_KINDS,
+    MINDMAP_KINDS,
+    NUMBERLINE_KINDS,
+    PIE_KINDS,
     SANKEY_KINDS,
     SEQUENCE_KINDS,
     SHAPE_KINDS,
     TREEMAP_KINDS,
     VENN_KINDS,
+    WATERFALL_KINDS,
     Document,
 )
 from drawspec.text.measure import TextMeasurer
@@ -62,6 +74,12 @@ IMPLEMENTED: tuple[str, ...] = (
     *JOURNEY_KINDS,
     *TREEMAP_KINDS,
     *SANKEY_KINDS,
+    *NUMBERLINE_KINDS,
+    *BARMODEL_KINDS,
+    *WATERFALL_KINDS,
+    *PIE_KINDS,
+    *MINDMAP_KINDS,
+    *ARGUMENT_KINDS,
     "cycle",
 )
 
@@ -109,6 +127,18 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return treemap_scene(document, theme, measurer)
     if document.kind in SANKEY_KINDS:
         return sankey_scene(document, theme, measurer)
+    if document.kind in NUMBERLINE_KINDS:
+        return numberline_scene(document, theme, measurer)
+    if document.kind in BARMODEL_KINDS:
+        return barmodel_scene(document, theme, measurer)
+    if document.kind in PIE_KINDS:
+        return pie_scene(document, theme, measurer)
+    if document.kind in WATERFALL_KINDS:
+        return waterfall_scene(document, theme, measurer)
+    if document.kind in MINDMAP_KINDS:
+        return mindmap_scene(document, theme, measurer)
+    if document.kind in ARGUMENT_KINDS:
+        return argument_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -122,6 +152,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
 
 __all__ = [
     "IMPLEMENTED",
+    "argument_scene",
+    "barmodel_scene",
     "board_scene",
     "box_primitives",
     "captioned",
@@ -132,7 +164,10 @@ __all__ = [
     "gantt_scene",
     "graph_scene",
     "journey_scene",
+    "mindmap_scene",
+    "numberline_scene",
     "outline",
+    "pie_scene",
     "sankey_scene",
     "scene_for",
     "sequence_scene",
@@ -140,4 +175,5 @@ __all__ = [
     "text_runs",
     "treemap_scene",
     "venn_scene",
+    "waterfall_scene",
 ]

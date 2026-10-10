@@ -1,6 +1,6 @@
 # Proposal: `argument`: a claim, the reasons for it, and the objections
 
-Status: **proposed, not built**. It comes from `docs/research/kinds-survey.md` (rank 4).
+Status: **built** (see *As built* at the end). It comes from `docs/research/kinds-survey.md` (rank 4).
 Size **M**: a `tree` layout with two stances drawn apart, and co-premises joined under
 one bracket.
 
@@ -146,3 +146,50 @@ parent). Stance is not a role. It is drawn on two channels so that greyscale hol
 Should `stance` also accept `rebuttal`, as a reader-facing synonym for `against` on an
 `against`? Proposed no. The tags already say *but*, *because* and *but* down the chain,
 which reads correctly without a third word.
+
+## As built
+
+Checked against the round-2 corpus (A1–A5): every source draws this tree — contention
+on top, `for` and `against` down to depth 3, about a dozen boxes — so the 15-point,
+depth-4 budget holds, and A3's exercises make co-premises the usual case. The open
+question is answered **no**: `rebuttal` and `objection` are refused as stances, with
+the reason. What changed or was decided:
+
+* **Inference objections are refused, with the way to say them.** A5's objection
+  attacks the step from a co-premise group to its box, not one premise. Letting `on`
+  name a group (`on: "offer+accept"`, or an id on the group) was weighed and declined:
+  it would give `on` a second kind of target, and its connector would land on a
+  bracket — a line — where it reads as one more co-premise rather than an objection.
+  A5 itself recommends the alternative: make the unstated premise that links the
+  group explicit, and object to that. So `on` as a list, or as ids joined by `+`, `&`
+  or `,`, is refused at its pointer with exactly that advice;
+  `argument-homework` shows it done.
+* **Evidence is `note`** (A1's *basis* boxes): words without a box, still tagged by
+  stance, on a dashed `weak` connector, so it reads as support of a different kind.
+* **The tag is in the box's top margin, at its left**, in the label type, measured as
+  part of the box; an unboxed `note`'s tag lines up with its words instead. The words
+  are theme keys `[argument] for_tag` and `against_tag` (named so because `for` is a
+  keyword the theme reference cannot list), and two equal tags are refused: the tag
+  is one of the two channels.
+* **The fill is `[argument] against_fill`** (`hatch` by default; `dots`, `cross` or
+  `grid`), not the first of `[mark] fills`: that sequence is a chart's, and its first
+  entry is `dots`. `solid` and `none` are refused — one hides the words, the other
+  drops a channel.
+* **The claim is a pill in the `terminal` role** (the heavy outline), its words bold at
+  the body size: every kind sets the text in its shapes at one size.
+* **Connectors.** Each arrives square on the bottom of the box it bears on, at its own
+  port, with the arrow head there; a port sits wherever the box's bottom and the
+  point's top (or bracket) overlap, so most connectors are one straight line. One
+  that must move across does it on a lane of its own between the rows, the outermost
+  highest, so none cross. `emphasis` draws it in `strong`.
+* **The bracket** spans the whole group, its ends turned down onto the outer corners,
+  with one stem from its middle; the group is placed where its first member is
+  written. With `with` read as links, a group is everything joined, so a point cannot
+  be in two groups and that refusal is not needed; a group of five is refused at the
+  last member's `with`.
+* **Also refused:** a duplicate id, `claim` as an id, `on` naming the point itself,
+  empty words. A row too wide at every wrapping is a `FitError` naming the row.
+
+References: `argument-contract` (use case 1, co-premises and a rebuttal),
+`argument-congestion` (use case 2, with evidence), `argument-readmissions` (use case
+3), `argument-homework` (a hidden premise stated and objected to, A5).

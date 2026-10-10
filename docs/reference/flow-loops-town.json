@@ -1,0 +1,30 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "flow",
+  "title": "Driving, walking and the street",
+  "description": "One subsystem of a town's travel map for a public-health workshop, its variables grouped by the part of the system they belong to.",
+  "nodes": [
+    {"id": "cars", "text": "Car trips"},
+    {"id": "traffic", "text": "Traffic on residential streets"},
+    {"id": "safe", "text": "How safe walking feels"},
+    {"id": "walk", "text": "Trips on foot"},
+    {"id": "roads", "text": "Road capacity built"}
+  ],
+  "groups": [
+    {"id": "travel", "text": "Travel choices", "members": ["cars", "walk"]},
+    {"id": "street", "text": "The street", "members": ["traffic", "safe", "roads"]}
+  ],
+  "edges": [
+    {"from": "cars", "to": "traffic", "polarity": "+"},
+    {"from": "traffic", "to": "safe", "polarity": "-"},
+    {"from": "safe", "to": "walk", "polarity": "+"},
+    {"from": "walk", "to": "cars", "polarity": "-"},
+    {"from": "traffic", "to": "roads", "polarity": "+", "delay": true},
+    {"from": "roads", "to": "cars", "polarity": "+"}
+  ],
+  "loops": [
+    {"text": "Streets for cars", "nodes": ["cars", "traffic", "safe", "walk"]},
+    {"text": "Induced demand", "nodes": ["cars", "traffic", "roads"]}
+  ]
+}

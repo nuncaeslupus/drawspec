@@ -1,0 +1,10 @@
+# A course theme for algebra notes written to the US and college convention:
+# a range's ends are drawn as "[" (included) and "(" (excluded) rather than as
+# filled and hollow dots. Merged over the default theme like any other, so it
+# holds only that one decision.
+
+version = 1
+name = "algebra-us"
+
+[numberline]
+ends = "brackets"

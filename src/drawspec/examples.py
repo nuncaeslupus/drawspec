@@ -50,10 +50,16 @@ PURPOSE: Final[Mapping[str, str]] = {
     "gantt": "a plan — one row per task, each an interval on a numbered axis; no dates",
     "board": "cards sorted into columns — a kanban board, a retrospective, a story map",
     "fishbone": "one effect and its causes by category — a root-cause (Ishikawa) diagram",
-    "venn": "two or three overlapping sets — what each holds alone, and what they share",
+    "venn": "two to four overlapping sets — what each holds alone, and what they share",
     "journey": "one person's feeling across the stages of an experience — a journey map",
     "treemap": "the parts of one known total, each by its area — a few proportions, stated",
     "sankey": "where a known quantity goes — bands as thick as the amounts, a few flows stated",
+    "numberline": "values and ranges on one scale, each end in or out — an inequality, a spectrum",
+    "barmodel": "a word problem as bars of parts in proportion, braced — the tape diagram",
+    "pie": "the shares of one known total as labelled sectors — a few proportions, stated",
+    "waterfall": "from one total to another, step by step, subtotals checked — the bridge chart",
+    "mindmap": "a topic in the middle, its branches as peers round it — revision notes, a plan",
+    "argument": "a claim, the reasons for it and the objections, by stance — an argument map",
 }
 
 #: The smallest document of each kind that renders.
@@ -301,6 +307,52 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "kind": "sankey",
         "nodes": [{"id": "pay", "text": "Pay"}, {"id": "rent", "text": "Rent"}],
         "flows": [{"from": "pay", "to": "rent", "amount": 60}],
+    },
+    "numberline": {
+        "version": 1,
+        "kind": "numberline",
+        "axis": {"min": -5, "max": 5},
+        "ranges": [{"from": -2, "to": 3, "to_open": True, "text": "\N{MINUS SIGN}2 ≤ x < 3"}],
+    },
+    "barmodel": {
+        "version": 1,
+        "kind": "barmodel",
+        "bars": [{"parts": [{"amount": 12}, {"amount": 18, "text": "?"}]}],
+    },
+    "pie": {
+        "version": 1,
+        "kind": "pie",
+        "unit": "pupils",
+        "parts": [{"text": "Walk", "amount": 12}, {"text": "Bus", "amount": 18}],
+    },
+    "waterfall": {
+        "version": 1,
+        "kind": "waterfall",
+        "axis": {"label": "Cash, £"},
+        "bars": [
+            {"text": "Opening", "total": 120},
+            {"text": "Sales", "amount": 45},
+            {"text": "Rent", "amount": -60},
+            {"text": "Closing", "total": 105},
+        ],
+    },
+    "mindmap": {
+        "version": 1,
+        "kind": "mindmap",
+        "centre": "The move",
+        "branches": [
+            {"text": "Before", "branches": [{"text": "Book the van"}]},
+            {"text": "After", "branches": [{"text": "Unpack the kitchen"}]},
+        ],
+    },
+    "argument": {
+        "version": 1,
+        "kind": "argument",
+        "claim": "Cycle to work",
+        "points": [
+            {"id": "fit", "on": "claim", "stance": "for", "text": "It keeps me fit"},
+            {"id": "rain", "on": "claim", "stance": "against", "text": "It often rains"},
+        ],
     },
     "scatter": {
         "version": 1,

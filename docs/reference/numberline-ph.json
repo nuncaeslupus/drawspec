@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "kind": "numberline",
+  "title": "The pH scale, with an everyday substance at each value",
+  "description": "pH from 0 to 14: acidic below 7, basic above it, pure water neutral at 7, and fifteen everyday substances placed at their approximate values.",
+  "axis": {"min": 0, "max": 14, "step": 1, "label": "pH"},
+  "ranges": [
+    {"from": 0, "to": 7, "to_open": true, "text": "acidic"},
+    {"from": 7, "to": 14, "from_open": true, "text": "basic"}
+  ],
+  "points": [
+    {"at": 0, "text": "Battery acid"},
+    {"at": 1, "text": "Stomach acid"},
+    {"at": 2, "text": "Lemon juice"},
+    {"at": 3, "text": "Vinegar"},
+    {"at": 4, "text": "Tomato juice"},
+    {"at": 5, "text": "Black coffee"},
+    {"at": 6, "text": "Milk"},
+    {"at": 7, "text": "Pure water", "role": "emphasis"},
+    {"at": 8, "text": "Sea water"},
+    {"at": 9, "text": "Baking soda"},
+    {"at": 10, "text": "Antacid"},
+    {"at": 11, "text": "Ammonia"},
+    {"at": 12, "text": "Soapy water"},
+    {"at": 13, "text": "Bleach"},
+    {"at": 14, "text": "Drain cleaner"}
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "kind": "mindmap",
+  "title": "Team offsite: ideas so far",
+  "description": "A brainstorm from a planning meeting: eight themes for the team offsite, each with the ideas raised under it.",
+  "centre": "Team offsite",
+  "branches": [
+    {"text": "Where", "branches": [{"text": "Coastal town"}, {"text": "City venue"}]},
+    {
+      "text": "When",
+      "branches": [{"text": "After the release"}, {"text": "Avoid school holidays"}]
+    },
+    {
+      "text": "Agenda",
+      "role": "emphasis",
+      "branches": [{"text": "Roadmap review"}, {"text": "Retrospective"}, {"text": "Hack day"}]
+    },
+    {"text": "Travel", "branches": [{"text": "Train, not flights"}, {"text": "Shared taxis"}]},
+    {"text": "Budget", "branches": [{"text": "Ask finance in May"}]},
+    {"text": "Food", "branches": [{"text": "Dietary needs form"}, {"text": "One team dinner"}]},
+    {
+      "text": "Remote staff",
+      "branches": [{"text": "Hybrid sessions"}, {"text": "Cover their travel"}]
+    },
+    {"text": "Parked", "role": "note", "branches": [{"text": "Overnight stay"}]}
+  ]
+}

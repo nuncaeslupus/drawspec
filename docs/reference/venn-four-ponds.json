@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "kind": "venn",
+  "title": "Bird species recorded at four ponds",
+  "sets": [
+    {
+      "id": "a",
+      "text": "Mill pond"
+    },
+    {
+      "id": "b",
+      "text": "Church pond"
+    },
+    {
+      "id": "c",
+      "text": "Quarry lake"
+    },
+    {
+      "id": "d",
+      "text": "Marsh pool"
+    }
+  ],
+  "regions": [
+    {
+      "in": [
+        "a"
+      ],
+      "text": "12"
+    },
+    {
+      "in": [
+        "b"
+      ],
+      "text": "7"
+    },
+    {
+      "in": [
+        "c"
+      ],
+      "text": "9"
+    },
+    {
+      "in": [
+        "d"
+      ],
+      "text": "15"
+    },
+    {
+      "in": [
+        "a",
+        "b"
+      ],
+      "text": "4"
+    },
+    {
+      "in": [
+        "a",
+        "c"
+      ],
+      "text": "3"
+    },
+    {
+      "in": [
+        "a",
+        "d"
+      ],
+      "text": "2"
+    },
+    {
+      "in": [
+        "b",
+        "c"
+      ],
+      "text": "5"
+    },
+    {
+      "in": [
+        "b",
+        "d"
+      ],
+      "text": "1"
+    },
+    {
+      "in": [
+        "c",
+        "d"
+      ],
+      "text": "6"
+    },
+    {
+      "in": [
+        "a",
+        "b",
+        "c"
+      ],
+      "text": "3"
+    },
+    {
+      "in": [
+        "a",
+        "b",
+        "d"
+      ],
+      "text": "2"
+    },
+    {
+      "in": [
+        "a",
+        "c",
+        "d"
+      ],
+      "text": "1"
+    },
+    {
+      "in": [
+        "b",
+        "c",
+        "d"
+      ],
+      "text": "4"
+    },
+    {
+      "in": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "text": "**21**",
+      "role": "emphasis"
+    }
+  ],
+  "caption": "Species seen at each combination of ponds over one spring survey; 21 were seen at all four."
+}

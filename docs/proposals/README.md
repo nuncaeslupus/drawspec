@@ -40,26 +40,31 @@ regeneration, `AGENTS.md` row, and tests.
 [`../research/kinds-survey.md`](../research/kinds-survey.md) surveyed fields outside
 software: education, business, operations, product, law and policy, health, research
 papers and personal planning. Most of what it found is already covered. These five are
-the gaps it ranked highest, ordered by value first and then by smallest size. None is
-built. Each still needs the two real originals the rule below asks for, and the owner
-questions at the end of the survey.
+the gaps it ranked highest, ordered by value first and then by smallest size. The
+round-2 corpus ([`../research/corpus-round2.md`](../research/corpus-round2.md)) holds
+the real originals each is checked against; a built one says so in its row.
 
 | # | Proposal | What | Size | Depends on |
 |---:|---|---|:-:|---|
-| 17 | [`numberline.md`](numberline.md) | `numberline`: values and ranges on one scale, with open and closed ends (inequalities, tenses, spectra) | S | `timeline`'s axis; owner decision: kind or `timeline` field |
-| 18 | [`mindmap.md`](mindmap.md) | `mindmap`: a centre topic radiating into nested branches, balanced on two sides | M | `tree`'s tidy placement; owner decision on budget |
-| 19 | [`flow-loops.md`](flow-loops.md) | `flow` + `polarity`, `delay`, `loops`: causal loop diagrams, R/B derived from the signs | S | `venn`'s depth sampling for the loop marker |
-| 20 | [`argument.md`](argument.md) | `argument`: a claim, reasons and objections by stance, with co-premises under one bracket | M | `tree` layout; a hatch pattern for `against` |
+| 17 | [`numberline.md`](numberline.md) | `numberline`: values and ranges on one scale, with open and closed ends (inequalities, tenses, spectra) — **built** | S | `timeline`'s axis; owner decision: kind or `timeline` field (decided: its own kind) |
+| 18 | [`mindmap.md`](mindmap.md) | `mindmap`: a centre topic radiating into nested branches, balanced on two sides — **built** | M | `tree`'s tidy placement; owner decision on budget (decided: 8 branches, 30 in all, depth 3) |
+| 19 | [`flow-loops.md`](flow-loops.md) | `flow` + `polarity`, `delay`, `loops`: causal loop diagrams, R/B derived from the signs — **built** | S | `venn`'s depth sampling for the loop marker |
+| 20 | [`argument.md`](argument.md) | `argument`: a claim, reasons and objections by stance, with co-premises under one bracket — **built** | M | `tree` layout; a hatch pattern for `against` |
 | 21 | [`pedigree.md`](pedigree.md) | `pedigree`: people, couples and children by generation, standard symbols, derived numbering | L | the layered engine's crossing reduction, with couples as units |
+| 22 | [`barmodel.md`](barmodel.md) | `barmodel`: a word problem as bars of parts in proportion, braced (the tape diagram) — **built** | S | round-2 corpus (B1–B4); owner decision: in |
+| 23 | [`waterfall.md`](waterfall.md) | `waterfall`: from one total to another, step by step, subtotals checked (the bridge chart) — **built** | S | round-2 corpus (W1–W4) lifted the deferral; owner decision: in; its own kind, not a `chart` mark |
+| 24 | [`pie.md`](pie.md) | `pie`: the shares of one known total as labelled sectors, donut as a theme variant — **built** | S | round-2 corpus (P1–P4); owner decision: in, with limits |
+| 25 | [`venn4.md`](venn4.md) | `venn` with four sets, as four ellipses so all fifteen regions exist — **built** | S | round-2 corpus (V1–V4); owner decision: in, as ellipses |
 
 ## Deferred, not proposed
 
-The survey's two remaining *feature* verdicts are left unbuilt on purpose, each until a
-real original asks for it (the *find the originals* rule below), not for size:
+The survey's one remaining *feature* verdict is left unbuilt on purpose, until a real
+original asks for it (the *find the originals* rule below), not for size. Waterfall was
+deferred here too until the round-2 corpus found four originals (W1–W4); it is now
+built, as [`waterfall.md`](waterfall.md).
 
 | Type | Would be | Why deferred |
 |---|---|---|
-| waterfall | `chart` + a `bridge` mark (bars floating on a running total) | Charting-adjacent: a running total is arithmetic drawspec would do for the reader, against *not charting software*. Small to build, but none of the 89 originals in `docs/kinds-wanted.md` is one. |
 | wardley | `scatter`/`quadrant` + edges between positions | One niche strategy artefact; it needs routed edges on a numeric plane, which no chart kind has. Not small, and no original yet. |
 
 Also declined in the survey and not revisited: fan-in badges on `flow` (a count the
@@ -79,7 +84,7 @@ self-loop geometry that `flow` then either adopts or refuses.
   the gallery and looked at; `make docs` and `make schema` regenerated; a row in
   `AGENTS.md`'s kind table (a test enforces it); every refusal in the proposal as a test
   with its JSON pointer; `collisions.py` and `clipping.py` clean on the references.
-* **The README's count** (now "twenty-six kinds") and the `kind` enum description change with
+* **The README's count** (now "thirty kinds") and the `kind` enum description change with
   every new kind.
 
 ## Decisions for the owner

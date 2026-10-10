@@ -32,6 +32,8 @@ documents the gap rather than pretending to cover it.
 from __future__ import annotations
 
 import json
+import math
+import re
 from collections.abc import Mapping, Sequence, Set
 from dataclasses import dataclass, replace
 from difflib import get_close_matches
@@ -249,10 +251,34 @@ CAUSE_ROLES: Final = ("step", "emphasis", "note")
 FISHBONE_CATEGORY_MAX: Final = 6
 FISHBONE_CAUSE_MAX: Final = 5
 
-#: Venn diagrams: two or three overlapping sets, each region named by which sets
-#: it is in. With two or three circles every region is fixed by its membership,
-#: so nothing about the drawing needs a coordinate. A layout family of its own.
+#: Venn diagrams: two to four overlapping sets, each region named by which sets
+#: it is in. With two or three circles, or four ellipses, every region is fixed
+#: by its membership, so nothing about the drawing needs a coordinate. A layout
+#: family of its own.
 VENN_KINDS: Final = ("venn",)
+
+#: A causal link's sign: more of the source means more (`+`) or less (`-`) of the
+#: target. Only on a `flow`.
+POLARITIES: Final = ("+", "-")
+
+#: The edge roles a sign may go on: a link that says *this drives that*. `link`,
+#: `aside` and `weak` have no causal direction, and the others mean other things.
+POLARITY_EDGE_ROLES: Final = ("flow", "strong")
+
+#: What a loop's type may be written as; it is checked against the signs.
+LOOP_TYPES: Final = ("reinforcing", "balancing")
+
+#: The most loops one causal loop diagram names (its readability budget).
+LOOP_MAX: Final = 6
+
+#: The most sets a `venn` draws: four, as four ellipses — the only arrangement in
+#: common use that shows every one of the fifteen regions.
+VENN_SET_MAX: Final = 4
+
+#: With four sets the smallest regions are small: a region's words are a count or
+#: a word or two, at most this many characters (the corpus's research figures put
+#: a number in each region; the ikigai figure a single word).
+VENN_FOUR_TEXT_MAX: Final = 12
 
 #: The roles a set's circle may take: the default, and the set the diagram is
 #: about, drawn with a heavier outline.
@@ -322,6 +348,114 @@ SANKEY_COLUMN_MAX: Final = 4
 SANKEY_BAND: Final = 240.0
 SANKEY_MIN_BAND: Final = 2.0
 
+#: Number lines: values and ranges on one scale — an inequality, a spectrum, the
+#: pH scale, a tense relative to *now*. One axis, numbers the author already
+#: knows, and nothing placed by hand. A layout family of its own.
+NUMBERLINE_KINDS: Final = ("numberline",)
+
+#: The roles a point or a range may take: the default; the one the drawing is
+#: about, drawn heavier with its words bold; and a context mark, drawn lighter.
+NUMBERLINE_ROLES: Final = ("step", "emphasis", "note")
+
+#: The most points and ranges a number line holds. Points: the pH scale with a
+#: substance at every whole value is fifteen, the largest real figure found
+#: (`docs/research/corpus-round2.md`, N4 and N5). Ranges: no figure stacks more than
+#: two; past four tracks the drawing is a table of intervals.
+NUMBERLINE_POINT_MAX: Final = 15
+NUMBERLINE_RANGE_MAX: Final = 4
+
+#: Bar models (tape diagrams): a word problem drawn as bars split into parts,
+#: every length in proportion, with braces saying what a stretch adds up to. A
+#: layout family of its own — rectangles in a row, placed by arithmetic.
+BARMODEL_KINDS: Final = ("barmodel",)
+
+#: The roles a part may take: the default; the part the problem asks about, bold
+#: and filled; and a part that is not there — a difference — drawn dashed.
+BARMODEL_PART_ROLES: Final = ("step", "emphasis", "note")
+
+#: The most bars, parts per bar, unit boxes per bar and braces a bar model holds.
+#: The corpus (B1 to B4) draws one to three bars of two to eight parts; past twelve
+#: unit boxes a reader counts instead of seeing a ratio.
+BARMODEL_BAR_MAX: Final = 3
+BARMODEL_PART_MAX: Final = 8
+BARMODEL_UNIT_MAX: Final = 12
+BARMODEL_BRACE_MAX: Final = 6
+
+#: Waterfalls (bridge charts): from one total to another, step by step — every
+#: step a bar floating on the running sum, subtotals checked against it. A
+#: layout family of its own, sharing the chart kind's ticks.
+WATERFALL_KINDS: Final = ("waterfall",)
+
+#: The roles a bar may take: the default, and the step the chart is about.
+WATERFALL_ROLES: Final = ("step", "emphasis")
+
+#: The most bars a waterfall holds. The corpus (W1 to W4) draws five to ten; past
+#: twelve the names under the bars are too narrow to read at the canvas width.
+WATERFALL_BAR_MAX: Final = 12
+
+#: Pie charts: the shares of one known total as sectors of a circle, every
+#: sector labelled. A few proportions stated, as on a treemap — not data to
+#: explore. A layout family of its own.
+PIE_KINDS: Final = ("pie",)
+
+#: The roles a part may take: the default; the part the chart is about, outlined
+#: heavier with its words bold; and the remainder, unfilled and dashed, drawn last.
+PIE_ROLES: Final = ("step", "emphasis", "note")
+
+#: The most parts a pie holds. The corpus's school pies have three to six, its
+#: budget pies eight to fifteen; past eight the smallest are slivers no one
+#: compares, so the rest go into one `note` part.
+PIE_PART_MAX: Final = 8
+
+#: The smallest share of the total a part may be. Under it a sector is a sliver
+#: whose angle cannot be read.
+PIE_SHARE_MIN: Final = 0.02
+
+#: How far percentages may add up to from 100 and still be read as rounding.
+PIE_PERCENT_TOLERANCE: Final = 1.0
+
+#: Mind maps: one topic in the middle, its branches radiating to both sides,
+#: nested up to three levels. The structure is the nesting, so there are no
+#: edges. A layout family of its own.
+MINDMAP_KINDS: Final = ("mindmap",)
+
+#: The roles a branch may take: the default; the branch the map is about (bold,
+#: its line heavy all the way from the centre); and context, not content (faint,
+#: and so is everything under it).
+MINDMAP_ROLES: Final = ("step", "emphasis", "note")
+
+#: The most main branches round the centre, branches in all, and levels below
+#: the centre. Owner-approved from the corpus (M1-M5): study-skills maps have a
+#: handful of main branches and never more than three levels (branch, twig,
+#: node); real maps run to 20-40 entries, and a mind map's leaves are phrases on
+#: a line, not boxes, so thirty fit where a `tree` stops at fifteen.
+MINDMAP_BRANCH_MAX: Final = 8
+MINDMAP_NODE_MAX: Final = 30
+MINDMAP_DEPTH_MAX: Final = 3
+
+#: Argument maps: one claim at the top, the points for and against it below, and
+#: the points for and against those. A layout family of its own.
+ARGUMENT_KINDS: Final = ("argument",)
+
+#: Which way a point bears on the box it is `on`. A rebuttal is an `against` on an
+#: `against`: its name follows from the depth, so there is no third stance.
+ARGUMENT_STANCES: Final = ("for", "against")
+
+#: The roles a point may take: the default; the decisive point; and evidence or a
+#: source rather than a reason (the corpus's "basis" boxes).
+ARGUMENT_ROLES: Final = ("step", "emphasis", "note")
+
+#: The most points, the deepest chain below the claim, and the most co-premises
+#: in one group. The corpus (A1-A5) draws about a dozen boxes, three deep; past
+#: fifteen and four levels the map is split, one map per contested reason.
+ARGUMENT_POINT_MAX: Final = 15
+ARGUMENT_DEPTH_MAX: Final = 4
+ARGUMENT_GROUP_MAX: Final = 4
+
+#: The most ticks a step may cut the axis into. Past thirty the numbers crowd
+#: into each other at the canvas width.
+NUMBERLINE_TICK_MAX: Final = 30
+
 #: How a `files` tree is drawn. `icons` is the file-browser look; `plain` keeps
 #: the guides and drops the pictures; `unicode` and `ascii` are the tree as text,
 #: set in the monospace face, the way `tree` prints it.
@@ -373,6 +507,19 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: bars compare the parts but do not show that they make one whole.
 #: `sankey` is the thirteenth: where a known quantity goes — a `flow` can say
 #: where, but not how much of it goes each way.
+#: `numberline` is the fourteenth: values and ranges on one scale, each end open
+#: or closed — a `timeline` places by number too, but reads as *when*, and its
+#: spans cannot say whether an end belongs to the range.
+#: `barmodel` is the fifteenth: a word problem as bars of parts in one scale,
+#: braced — a `chart`'s bars stand on an axis, and a `treemap` is unaligned.
+#: `waterfall` is the sixteenth: from one total to another, step by step — a
+#: `chart`'s bars stand on the baseline, and nothing in it checks a total.
+#: `pie` is the seventeenth: the shares of one known total as sectors — a
+#: `treemap` says the same by area, unfamiliar to the readers a pie is taught to.
+#: `mindmap` is the eighteenth: a topic in the middle and its branches as peers
+#: round it — a `tree` is ranked from a root at one edge, which says *first*.
+#: `argument` is the nineteenth: a claim and the points for and against it — a
+#: `tree` cannot say which way a box bears, or that two reasons count only together.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -390,6 +537,12 @@ KINDS: Final = (
     + JOURNEY_KINDS
     + TREEMAP_KINDS
     + SANKEY_KINDS
+    + NUMBERLINE_KINDS
+    + BARMODEL_KINDS
+    + WATERFALL_KINDS
+    + PIE_KINDS
+    + MINDMAP_KINDS
+    + ARGUMENT_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -410,7 +563,8 @@ KINDS: Final = (
 #: canvas, and a wider canvas does not make twenty boxes easier to take in; the
 #: remedy is the one the refusal names — an overview plus detail diagrams.
 READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
-    "flow": (("nodes", 15), ("edges", 16)),  # [14 nodes, 12 edges]
+    # Loops set by the proposal and the corpus: teaching diagrams name two or three.
+    "flow": (("nodes", 15), ("edges", 16), ("loops", LOOP_MAX)),  # [14 nodes, 12 edges, 3 loops]
     "tree": (("nodes", 15),),  # [11]
     "cycle": (("nodes", 8),),  # [5]
     "stack": (("items", 8),),  # [3]
@@ -461,9 +615,9 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
         ("categories", FISHBONE_CATEGORY_MAX),
         ("categories/causes", FISHBONE_CAUSE_MAX),
     ),  # [6 categories, 3 causes]
-    # Set by the proposal: no arrangement of four circles shows every region,
-    # and two or three sets have at most seven regions.
-    "venn": (("sets", 3), ("regions", 7)),  # [3 sets, 6 regions]
+    # Set by the corpus: research figures draw four sets as four ellipses, every
+    # one of the fifteen regions there; past four no drawing shows every region.
+    "venn": (("sets", VENN_SET_MAX), ("regions", 15)),  # [4 sets, 15 regions]
     # Set by the proposal: columns narrow past seven, neighbouring levels blur
     # past five, and past four rows the map is a table with a line on it.
     "journey": (
@@ -484,6 +638,33 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
         ("nodes", SANKEY_NODE_MAX),
         ("flows", SANKEY_FLOW_MAX),
     ),  # [10 nodes, 9 flows]
+    # Set by the corpus: the pH scale is fifteen points, and no real figure stacks
+    # more than two ranges.
+    "numberline": (
+        ("points", NUMBERLINE_POINT_MAX),
+        ("ranges", NUMBERLINE_RANGE_MAX),
+    ),  # [15 points, 3 ranges]
+    # Set by the corpus: one to three bars of two to eight parts. Units per bar are
+    # checked with the parts, at the part that makes the thirteenth box.
+    "barmodel": (
+        ("bars", BARMODEL_BAR_MAX),
+        ("bars/parts", BARMODEL_PART_MAX),
+        ("braces", BARMODEL_BRACE_MAX),
+    ),  # [3 bars, 2 parts, 2 braces]
+    # Set by the corpus: five to ten bars, start and end totals included.
+    "waterfall": (("bars", WATERFALL_BAR_MAX),),  # [9]
+    # Set by the corpus: school pies have three to six sectors, budget pies more,
+    # the rest merged into one `note` part.
+    "pie": (("parts", PIE_PART_MAX),),  # [8]
+    # Owner-approved from the corpus: a handful of main branches, never more than
+    # three levels. A name ending `*` counts its array at every depth together.
+    "mindmap": (
+        ("branches", MINDMAP_BRANCH_MAX),
+        ("branches*", MINDMAP_NODE_MAX),
+    ),  # [6 main branches, 25 in all]
+    # Set by the corpus: argument maps in study guides hold about a dozen boxes.
+    # The depth (4) and a co-premise group's size (4) are checked with the points.
+    "argument": (("points", ARGUMENT_POINT_MAX),),  # [7]
 }
 
 
@@ -703,6 +884,48 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
                 "marks under the drawing. A removed edge is drawn in the `aside` "
                 "treatment — dashed, no head — whatever its role. **Only a `flow`, a "
                 "`tree` or `lanes`.**"
+            ),
+        ),
+        FieldSpec(
+            "polarity",
+            "string",
+            enum=POLARITIES,
+            description=(
+                "A causal link's sign: more of the source means more (`+`) or less (`-`) of "
+                "the target, written as the edge's label (`s`/`o` under a theme that says "
+                "so). Every `flow` or `strong` edge of the document has one, or none does. "
+                "**Only a `flow`.**"
+            ),
+        ),
+        FieldSpec(
+            "delay",
+            "boolean",
+            description=(
+                "The effect takes time: drawn as the double stroke across the shaft. Needs "
+                "`polarity`. **Only a `flow`.**"
+            ),
+        ),
+    ),
+    "loop": (
+        _text(required=True),
+        FieldSpec(
+            "nodes",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=2,
+            description=(
+                "The loop's variables in the order it runs: each joined to the next, and "
+                "the last back to the first, by a signed edge in that direction."
+            ),
+        ),
+        FieldSpec(
+            "type",
+            "string",
+            enum=LOOP_TYPES,
+            description=(
+                "Optional, and checked: an even number of `-` links is `reinforcing`, an "
+                "odd number `balancing`. Drawn as R or B, numbered in the order written."
             ),
         ),
     ),
@@ -1464,6 +1687,347 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "axis-numberline": (
+        FieldSpec(
+            "min",
+            "number",
+            required=True,
+            description="Where the scale starts, at the left arrowhead's side.",
+        ),
+        FieldSpec(
+            "max",
+            "number",
+            required=True,
+            description="Where the scale ends: more than `min`.",
+        ),
+        FieldSpec(
+            "step",
+            "number",
+            exclusive_minimum=0,
+            description=(
+                "The distance between two ticks, each labelled with its number. Omit it for a "
+                "step a reader can count in, chosen from the range."
+            ),
+        ),
+        FieldSpec(
+            "label",
+            "string",
+            description="What the numbers measure, centred under them: `pH`, `Temperature`.",
+        ),
+        FieldSpec(
+            "unit",
+            "string",
+            description="What the numbers are in, written after the label: `°C`, `cm`.",
+        ),
+        FieldSpec(
+            "ends",
+            "array",
+            item_kind="string",
+            min_items=2,
+            description=(
+                "Two words for the low and the high end — `past` and `future`, `fully remote` "
+                "and `fully on site` — written under the arrowheads, for a scale that is named "
+                "rather than measured. No numbers are drawn: only the order and the gaps "
+                "count, so not with `step` or `unit`."
+            ),
+        ),
+    ),
+    "numberline-point": (
+        FieldSpec(
+            "at",
+            "number",
+            required=True,
+            description="Where the dot sits on the axis: a number between `min` and `max`.",
+        ),
+        _text(required=False),
+        FieldSpec(
+            "open",
+            "boolean",
+            description=(
+                "Whether the dot is hollow: the value itself is excluded — `x ≠ 3`, a hole. "
+                "Defaults to false, a filled dot."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=NUMBERLINE_ROLES,
+            description=(
+                "`step` (the default), `emphasis` (the point the line is about: a larger dot, "
+                "its words bold) or `note` (context: a smaller dot)."
+            ),
+        ),
+    ),
+    "numberline-range": (
+        FieldSpec(
+            "from",
+            "number",
+            description=(
+                "Where the range starts. Omit it for a range that runs on below `min`, drawn as "
+                "an arrow off the left end."
+            ),
+        ),
+        FieldSpec(
+            "to",
+            "number",
+            description=(
+                "Where the range ends: more than `from`. Omit it for a range that runs on "
+                "above `max`, drawn as an arrow off the right end."
+            ),
+        ),
+        FieldSpec(
+            "from_open",
+            "boolean",
+            description=(
+                "Whether `from` is excluded — `x > 1` rather than `x ≥ 1`. Defaults to false. "
+                "The theme's `[numberline] ends` draws it as a hollow dot or a parenthesis."
+            ),
+        ),
+        FieldSpec(
+            "to_open",
+            "boolean",
+            description=(
+                "Whether `to` is excluded — `x < 4` rather than `x ≤ 4`. Defaults to false."
+            ),
+        ),
+        _text(required=False),
+        FieldSpec(
+            "role",
+            "string",
+            enum=NUMBERLINE_ROLES,
+            description=(
+                "`step` (the default, a heavy line), `emphasis` (the range the line is about — "
+                "the solution set: a heavier bar, its words bold) or `note` (context: dashed)."
+            ),
+        ),
+    ),
+    "barmodel-bar": (
+        FieldSpec(
+            "id",
+            "string",
+            description=(
+                "What a brace's `over` names, for a brace over the whole bar. Unique among "
+                "the bars and the parts."
+            ),
+        ),
+        _text(required=False),
+        FieldSpec(
+            "parts",
+            "array",
+            required=True,
+            item_ref="barmodel-part",
+            min_items=1,
+            description=(
+                "The bar's parts, left to right, each as long as its `value` or its `units` "
+                "say — in one scale for every bar."
+            ),
+        ),
+    ),
+    "barmodel-part": (
+        FieldSpec(
+            "id",
+            "string",
+            description="What a brace's `over` names. Unique among the bars and the parts.",
+        ),
+        FieldSpec(
+            "amount",
+            "number",
+            exclusive_minimum=0,
+            description=(
+                "How much the part is, more than 0: its length is in proportion, and its "
+                "words default to the number. Give it even for the unknown — the `?` is "
+                "its `text`."
+            ),
+        ),
+        FieldSpec(
+            "units",
+            "integer",
+            exclusive_minimum=0,
+            description=(
+                "How many equal boxes the part is, each one unit long: groups to multiply, "
+                "the shares of a ratio, the fifths of a fraction. Not with `amount`, and not "
+                "in a document whose parts have amounts."
+            ),
+        ),
+        _text(required=False),
+        FieldSpec(
+            "role",
+            "string",
+            enum=BARMODEL_PART_ROLES,
+            description=(
+                "`step` (the default), `emphasis` (the part the problem asks about: bold "
+                "words, filled) or `note` (a part that is not there — the difference a "
+                "shorter bar lacks: dashed)."
+            ),
+        ),
+    ),
+    "barmodel-brace": (
+        FieldSpec(
+            "over",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=1,
+            description=(
+                "What the brace spans: the ids of side-by-side parts of one bar, drawn over "
+                "it (under it, for the last of several bars), or of whole bars — one bar "
+                "the same way, several consecutive bars with an upright brace at their right."
+            ),
+        ),
+        FieldSpec(
+            "amount",
+            "number",
+            exclusive_minimum=0,
+            description=(
+                "What the stretch adds up to. Checked: the parts' amounts must sum to it, "
+                "and with units every brace must make one unit worth the same. Written "
+                "unless `text` is given."
+            ),
+        ),
+        _text(required=False),
+    ),
+    "waterfall-axis": (
+        FieldSpec(
+            "label",
+            "string",
+            required=True,
+            description=(
+                "What the numbers are, with their unit — `Borrowing, £ billion`. Set beside "
+                "the vertical axis; required, as on every chart."
+            ),
+        ),
+    ),
+    "waterfall-bar": (
+        _text(),
+        FieldSpec(
+            "total",
+            "number",
+            description=(
+                "A total: the bar stands on zero and runs to it. The first bar is one and so "
+                "is the last; one in between is a subtotal. Every total after the first is "
+                "checked: it must be the running sum. Not with `amount`."
+            ),
+        ),
+        FieldSpec(
+            "amount",
+            "number",
+            description=(
+                "A signed step, not 0: the bar floats from the running sum to the running "
+                "sum plus this, and is written `+6.1` or `\N{MINUS SIGN}9.4`. Not with `total`."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=WATERFALL_ROLES,
+            description=(
+                "`step` (the default) or `emphasis` (the bar the chart is about: a heavier "
+                "outline, its number bold)."
+            ),
+        ),
+    ),
+    "pie-part": (
+        _text(),
+        FieldSpec(
+            "amount",
+            "number",
+            required=True,
+            exclusive_minimum=0,
+            description=(
+                "How much of the total this part is, more than 0, in the pie's `unit`: a "
+                'count, a sum, or with `unit: "%"` a percentage. Its angle is its share of '
+                "the sum of the amounts, computed — never written."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=PIE_ROLES,
+            description=(
+                "`step` (the default), `emphasis` (the part the chart is about: a heavier "
+                "outline, its words bold) or `note` (the remainder, `Everything else`: "
+                "unfilled and dashed, drawn last). At most one `note`."
+            ),
+        ),
+    ),
+    "argument-point": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique within the document, and not `claim`: what `on` and `with` name.",
+        ),
+        _text(),
+        FieldSpec(
+            "on",
+            "string",
+            required=True,
+            description=(
+                "The box this point bears on: `claim`, or another point's id. The points "
+                "hang below it, in the order written."
+            ),
+        ),
+        FieldSpec(
+            "stance",
+            "string",
+            required=True,
+            enum=ARGUMENT_STANCES,
+            missing=(
+                "'stance' is required: a point is `for` or `against` the box it is `on`. A "
+                "remark that is neither is not part of the argument; put it in the `caption`."
+            ),
+            description=(
+                "`for` (a reason, drawn plain, tagged *because*) or `against` (an objection, "
+                "hatched, tagged *but*) the box it is `on`. A rebuttal is an `against` on an "
+                "`against`."
+            ),
+        ),
+        FieldSpec(
+            "with",
+            "array",
+            item_kind="string",
+            min_items=1,
+            description=(
+                "Co-premises: the ids of points with the same `on` and `stance` that support "
+                "it only together. Written once, on any member; the group is every point "
+                "joined this way, at most 4, drawn side by side under one bracket with one "
+                "connector."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=ARGUMENT_ROLES,
+            description=(
+                "`step` (the default), `emphasis` (the decisive point: heavy outline and "
+                "connector, bold words) or `note` (evidence or a source rather than a reason: "
+                "the note type, unboxed, on a dashed connector)."
+            ),
+        ),
+    ),
+    "mindmap-branch": (
+        _text(),
+        FieldSpec(
+            "role",
+            "string",
+            enum=MINDMAP_ROLES,
+            description=(
+                "`step` (the default), `emphasis` (the branch the map is about: bold, its "
+                "line heavy all the way from the centre; at most two) or `note` (context, "
+                "not content: faint, and so is everything under it)."
+            ),
+        ),
+        FieldSpec(
+            "branches",
+            "array",
+            item_ref="mindmap-branch",
+            min_items=1,
+            description=(
+                "The branches off this one, drawn top to bottom in the order written. At "
+                "most three levels below the centre: a branch, a twig, a leaf."
+            ),
+        ),
+    ),
     "treemap-group": (
         FieldSpec(
             "id",
@@ -1857,7 +2421,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the twenty-six diagrams this is. It selects the fields that are "
+            "Which of the thirty-two diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -1944,6 +2508,18 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
                 "A `group` cannot say that — a box sits inside one container or none, "
                 "so two groups over the same members had to be nested, which draws a "
                 "hierarchy that is not there."
+            ),
+        ),
+    ),
+    ("flow",): (
+        FieldSpec(
+            "loops",
+            "array",
+            item_ref="loop",
+            description=(
+                "The feedback loops of a causal loop diagram, each named and marked R "
+                "(reinforcing) or B (balancing) inside the loop it closes — the type "
+                "derived from the signs, never chosen. Needs `polarity` on the edges."
             ),
         ),
     ),
@@ -2458,9 +3034,9 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             item_ref="venn-set",
             min_items=2,
             description=(
-                "Two or three sets, each a circle of one size with its name outside it. Not "
-                "sizes: the circles are equal, because a Venn diagram says what overlaps, "
-                "not how much."
+                "Two to four sets, each a circle of one size with its name outside it — four "
+                "are four equal ellipses, so all fifteen regions exist. Not sizes: the "
+                "shapes are equal, because a Venn diagram says what overlaps, not how much."
             ),
         ),
         FieldSpec(
@@ -2584,6 +3160,154 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             "values",
             "boolean",
             description="Whether to write each node's total under its name. Defaults to true.",
+        ),
+    ),
+    NUMBERLINE_KINDS: (
+        FieldSpec(
+            "axis",
+            "object",
+            required=True,
+            ref="axis-numberline",
+            description=(
+                "The one scale, drawn across the canvas with an arrowhead at each end: "
+                "numbered ticks, or two named `ends`."
+            ),
+        ),
+        FieldSpec(
+            "points",
+            "array",
+            item_ref="numberline-point",
+            description=(
+                "Values marked on the axis, each a dot with its words above it — or below the "
+                "numbers, with a leader, when the words above would touch."
+            ),
+        ),
+        FieldSpec(
+            "ranges",
+            "array",
+            item_ref="numberline-range",
+            description=(
+                "Stretches of the scale, each a line in its own track above the axis, in the "
+                "order written — the last nearest the axis. Each end is closed, open, or "
+                "missing: a range with no `to` runs on past `max`."
+            ),
+        ),
+    ),
+    BARMODEL_KINDS: (
+        FieldSpec(
+            "bars",
+            "array",
+            required=True,
+            item_ref="barmodel-bar",
+            min_items=1,
+            description=(
+                "One to three bars, top to bottom, all starting at one left edge, every "
+                "length in one scale: the longest bar fills the width."
+            ),
+        ),
+        FieldSpec(
+            "braces",
+            "array",
+            item_ref="barmodel-brace",
+            description=(
+                "What a stretch adds up to — the whole, a difference, a total over two bars "
+                "— each a brace with its amount or its `?`."
+            ),
+        ),
+    ),
+    WATERFALL_KINDS: (
+        FieldSpec(
+            "axis",
+            "object",
+            required=True,
+            ref="waterfall-axis",
+            description="The vertical axis: its `label`, what the numbers are and their unit.",
+        ),
+        FieldSpec(
+            "bars",
+            "array",
+            required=True,
+            item_ref="waterfall-bar",
+            min_items=3,
+            description=(
+                "The bars, left to right: a `total` first, signed `amount` steps, any "
+                "subtotals (a `total` mid-way, checked against the running sum), and a "
+                "`total` last."
+            ),
+        ),
+    ),
+    ARGUMENT_KINDS: (
+        FieldSpec(
+            "claim",
+            "string",
+            required=True,
+            description=(
+                "The contention, drawn at the top in the heavy outline. Points name it as "
+                '`"on": "claim"`. A qualifier (*probably*, *in most cases*) is a word in it.'
+            ),
+        ),
+        FieldSpec(
+            "points",
+            "array",
+            required=True,
+            item_ref="argument-point",
+            min_items=1,
+            description=(
+                "Every reason, objection, rebuttal and piece of evidence, each `on` the box "
+                "it bears on, `for` or `against` it. Drawn as a tree down from the claim, "
+                "siblings in the order written; at most 15, and 4 deep."
+            ),
+        ),
+    ),
+    MINDMAP_KINDS: (
+        FieldSpec(
+            "centre",
+            "string",
+            required=True,
+            description=(
+                "The topic: the one strongly boxed element, in the middle of the map. "
+                "Every main branch is a peer round it."
+            ),
+        ),
+        FieldSpec(
+            "branches",
+            "array",
+            required=True,
+            item_ref="mindmap-branch",
+            min_items=2,
+            description=(
+                "The main branches, 2 to 8, placed clockwise from the top right in the order "
+                "written and split between the two sides so they balance: the first is "
+                "always on the right. Nested, up to three levels, 30 branches in all; the "
+                "nesting is the structure, so there are no edges."
+            ),
+        ),
+    ),
+    PIE_KINDS: (
+        FieldSpec(
+            "parts",
+            "array",
+            required=True,
+            item_ref="pie-part",
+            min_items=2,
+            description=(
+                "The parts of one total, 2 to 8, clockwise from twelve o'clock in the order "
+                "written (a `note` part last), each labelled with its `text` and amount — "
+                "inside its sector, or beside it on a leader line."
+            ),
+        ),
+        FieldSpec(
+            "unit",
+            "string",
+            description=(
+                "What the amounts are in — `pupils`, `£m`, `%` — written after each one. "
+                "With `%` the amounts must add up to 100, within one point of rounding."
+            ),
+        ),
+        FieldSpec(
+            "values",
+            "boolean",
+            description="`false` leaves the amounts out and writes the names alone.",
         ),
     ),
     ("scatter",): (
@@ -2716,6 +3440,19 @@ class Edge:
     role: str = "flow"
     status: str = ""
     """What a proposed change does to this connection, or empty."""
+    polarity: str = ""
+    """A causal link's sign, `+` or `-`, or empty: only on a `flow`."""
+    delay: bool = False
+    """Whether the link's effect takes time: only on a `flow`."""
+
+
+@dataclass(frozen=True)
+class CausalLoop:
+    """One named feedback loop of a causal loop diagram: its variables, in order."""
+
+    text: str
+    nodes: tuple[str, ...]
+    type: str = ""
 
 
 @dataclass(frozen=True)
@@ -2957,6 +3694,115 @@ class SankeyFlow:
 
 
 @dataclass(frozen=True)
+class NumberAxis:
+    """A `numberline`'s scale: from `minimum` to `maximum`, numbered or named at its ends."""
+
+    minimum: float
+    maximum: float
+    step: float | None = None
+    label: str = ""
+    unit: str = ""
+    ends: tuple[str, ...] = ()
+    """The low and the high end's words, for a named scale. Empty for a numbered one."""
+
+
+@dataclass(frozen=True)
+class NumberPoint:
+    """One point of a `numberline`: a dot on the axis, filled or hollow."""
+
+    at: float
+    text: str = ""
+    open: bool = False
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class NumberRange:
+    """One range of a `numberline`: a stretch of the scale in its own track.
+
+    A missing end (`None`) is unbounded: the range runs on past the axis.
+    """
+
+    start: float | None = None
+    end: float | None = None
+    start_open: bool = False
+    end_open: bool = False
+    text: str = ""
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class ModelPart:
+    """One part of a bar model's bar: a stretch as long as its amount, or equal units."""
+
+    amount: float | None = None
+    units: int | None = None
+    text: str = ""
+    id: str = ""
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class ModelBar:
+    """One bar of a `barmodel`: its parts left to right, and its name."""
+
+    parts: tuple[ModelPart, ...]
+    text: str = ""
+    id: str = ""
+
+
+@dataclass(frozen=True)
+class ModelBrace:
+    """One brace of a `barmodel`, over side-by-side parts or consecutive bars."""
+
+    over: tuple[str, ...]
+    amount: float | None = None
+    text: str = ""
+
+
+@dataclass(frozen=True)
+class WaterfallBar:
+    """One bar of a `waterfall`: a total standing on zero, or a signed step."""
+
+    text: str
+    total: float | None = None
+    amount: float | None = None
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class ArgumentPoint:
+    """One point of an `argument`: a box bearing for or against another."""
+
+    id: str
+    text: str
+    on: str
+    stance: str
+    with_: tuple[str, ...] = ()
+    """Its co-premises as written on it; the group is every point joined this way."""
+
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class MindmapBranch:
+    """One branch of a `mindmap`, with the branches off it, in the order written."""
+
+    text: str
+    role: str = "step"
+    branches: tuple[MindmapBranch, ...] = ()
+
+
+@dataclass(frozen=True)
+class PiePart:
+    """One part of a `pie`: a sector whose angle is its share of the total."""
+
+    text: str
+    amount: float
+    role: str = "step"
+
+
+@dataclass(frozen=True)
 class TreemapGroup:
     """One group of a `treemap`: a captioned frame around the parts that name it."""
 
@@ -3107,6 +3953,8 @@ class Document:
 
     groups: tuple[Group, ...] = ()
     bands: tuple[Band, ...] = ()
+    loops: tuple[CausalLoop, ...] = ()
+    """A causal loop diagram's named loops, in the order written."""
     items: tuple[Item, ...] = ()
     levels: tuple[Item, ...] = ()
     rings: tuple[Item, ...] = ()
@@ -3197,6 +4045,42 @@ class Document:
     sankey_flows: tuple[SankeyFlow, ...] = ()
     """A `sankey`'s flows, in the order written."""
 
+    number_axis: NumberAxis | None = None
+    """A `numberline`'s scale."""
+
+    number_points: tuple[NumberPoint, ...] = ()
+    """A `numberline`'s points, in the order written."""
+
+    number_ranges: tuple[NumberRange, ...] = ()
+    """A `numberline`'s ranges, top track first."""
+
+    model_bars: tuple[ModelBar, ...] = ()
+    """A `barmodel`'s bars, top to bottom."""
+
+    model_braces: tuple[ModelBrace, ...] = ()
+    """A `barmodel`'s braces, in the order written."""
+
+    waterfall_bars: tuple[WaterfallBar, ...] = ()
+    """A `waterfall`'s bars, left to right."""
+
+    waterfall_label: str = ""
+    """A `waterfall`'s axis label: what the numbers are, and their unit."""
+
+    pie_parts: tuple[PiePart, ...] = ()
+    """A `pie`'s parts, in the order written: clockwise from twelve o'clock."""
+
+    centre: str = ""
+    """A `mindmap`'s topic, drawn in the middle."""
+
+    branches: tuple[MindmapBranch, ...] = ()
+    """A `mindmap`'s main branches, in the order written: clockwise from the top right."""
+
+    claim: str = ""
+    """An `argument`'s contention, drawn at the top."""
+
+    points: tuple[ArgumentPoint, ...] = ()
+    """An `argument`'s points, in the order written."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -3217,6 +4101,12 @@ class Document:
             ("journey", JOURNEY_KINDS),
             ("treemap", TREEMAP_KINDS),
             ("sankey", SANKEY_KINDS),
+            ("numberline", NUMBERLINE_KINDS),
+            ("barmodel", BARMODEL_KINDS),
+            ("waterfall", WATERFALL_KINDS),
+            ("pie", PIE_KINDS),
+            ("mindmap", MINDMAP_KINDS),
+            ("argument", ARGUMENT_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -3415,6 +4305,18 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_treemap_refusal(violation) for violation in found]
     if kind in SANKEY_KINDS:
         found = [_sankey_refusal(violation) for violation in found]
+    if kind in NUMBERLINE_KINDS:
+        found = [_numberline_refusal(violation, document) for violation in found]
+    if kind in BARMODEL_KINDS:
+        found = [_barmodel_refusal(violation) for violation in found]
+    if kind in WATERFALL_KINDS:
+        found = [_waterfall_refusal(violation) for violation in found]
+    if kind in PIE_KINDS:
+        found = [_pie_refusal(violation) for violation in found]
+    if kind in MINDMAP_KINDS:
+        found = [_mindmap_refusal(violation) for violation in found]
+    if kind in ARGUMENT_KINDS:
+        found = [_argument_refusal(violation, document) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -3459,8 +4361,42 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
         "Past six bones a fishbone stops being scannable: merge the categories that overlap, "
         "or draw the biggest category as a fishbone of its own."
     ),
+    ("barmodel", "bars"): (
+        "Past three bars a bar model is a table of quantities. Draw the step the problem "
+        "turns on, or one model per step of a multi-step problem."
+    ),
+    ("argument", "points"): (
+        "Past fifteen points an argument map is searched, not read. Split it: an overview "
+        "with the claim and the top-level reasons and objections, and a map per contested "
+        "reason, with that reason as its claim."
+    ),
+    ("mindmap", "branches"): (
+        "Past eight main branches they stop reading as peers round one centre. Group the "
+        "ones that belong together under a new main branch, or split the topic into two maps."
+    ),
+    ("mindmap", "branches*"): (
+        "Split it: an overview map naming the main branches, and a map per main branch "
+        "carrying its detail, with that branch as its centre."
+    ),
+    ("pie", "parts"): (
+        "Past eight sectors the smallest are slivers no one compares: keep the largest seven "
+        'and merge the rest into one `"role": "note"` part — `Everything else` — or draw a '
+        "bar `chart`."
+    ),
+    ("waterfall", "bars"): (
+        "Past twelve bars the names under them are too narrow to read. Split the bridge at "
+        "a subtotal into two waterfalls, or merge the smallest steps into one `Other` step."
+    ),
+    ("bars", "parts"): (
+        "Past eight parts the boxes are too thin to write in: merge the parts the question "
+        "does not ask about into one, or draw the bar in `units`."
+    ),
+    ("flow", "loops"): (
+        "Past six loops the markers crowd the map and none reads as a story. Split it: one "
+        "diagram per subsystem, as research maps do, each naming its own loops."
+    ),
     ("venn", "sets"): (
-        "No arrangement of four circles shows every region, so a fourth set cannot be drawn "
+        "No drawing of five sets shows every region legibly, so a fifth set cannot be drawn "
         "honestly. Use a `matrix`: the sets as columns, the items as rows, a mark where an "
         "item belongs."
     ),
@@ -3515,6 +4451,9 @@ def _readability_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         if "@" in name:
             found.extend(_cell_budget(document, name, limit))
             continue
+        if name.endswith("*"):
+            found.extend(_deep_budget(document, kind, name[:-1], limit))
+            continue
         entries = document.get(name)
         if not isinstance(entries, list) or len(entries) <= limit:
             continue
@@ -3552,11 +4491,46 @@ def _nested_budget(document: Mapping[str, Any], name: str, limit: int) -> list[V
                 f"most. Show the ones this diagram is about and end the list with a "
                 f"`...` field, which says there are more."
                 if advice is None
-                else f"{len(rows)} {inner} is past what one {outer[:-3]}y can be read at — "
+                else f"{len(rows)} {inner} is past what one {_singular(outer)} can be read at — "
                 f"{limit} at most. {advice}",
             )
         )
     return found
+
+
+def _deep_budget(document: Mapping[str, Any], kind: str, name: str, limit: int) -> list[Violation]:
+    """The budget of an array counted at every depth together: a mind map's branches.
+
+    Counted in reading order, depth first, so the pointer lands on the entry that
+    made one too many, wherever it is nested.
+    """
+    seen: list[str] = []
+
+    def walk(entries: object, pointer: str) -> None:
+        if not isinstance(entries, list):
+            return
+        for index, entry in enumerate(entries):
+            seen.append(f"{pointer}/{index}")
+            if isinstance(entry, dict):
+                walk(entry.get(name), f"{pointer}/{index}/{name}")
+
+    walk(document.get(name), f"/{name}")
+    if len(seen) <= limit:
+        return []
+    return [
+        Violation(
+            seen[limit],
+            f"{len(seen)} {name} in all is past what one {kind} can be read at — {limit} at "
+            f"most, counted at every level. "
+            + BUDGET_ADVICE.get((kind, f"{name}*"), "Split it into an overview and details.")
+            + " The budget is not a canvas size, so a larger top-level 'width' does not lift it.",
+        )
+    ]
+
+
+def _singular(name: str) -> str:
+    """`categories` → `category`, `bars` → `bar`: one entry of a counted array."""
+    return name[:-3] + "y" if name.endswith("ies") else name[:-1]
 
 
 def _cell_budget(document: Mapping[str, Any], name: str, limit: int) -> list[Violation]:
@@ -3641,6 +4615,18 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _treemap_violations(document)
     if kind in SANKEY_KINDS:
         return _sankey_violations(document)
+    if kind in NUMBERLINE_KINDS:
+        return _numberline_violations(document)
+    if kind in BARMODEL_KINDS:
+        return _barmodel_violations(document)
+    if kind in WATERFALL_KINDS:
+        return _waterfall_violations(document)
+    if kind in PIE_KINDS:
+        return _pie_violations(document)
+    if kind in MINDMAP_KINDS:
+        return _mindmap_violations(document)
+    if kind in ARGUMENT_KINDS:
+        return _argument_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -3842,6 +4828,15 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                         "flow or a tree.",
                     )
                 )
+            for name in ("polarity", "delay"):
+                if name in edge:
+                    found.append(
+                        Violation(
+                            _pointer("edges", index, name),
+                            f"{name!r} marks a causal link, and a causal loop diagram is a "
+                            f"`flow`: draw it as one.",
+                        )
+                    )
             if isinstance(edge.get("from"), str) and edge["from"] == edge.get("to"):
                 found.append(
                     Violation(
@@ -3932,6 +4927,7 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         seen.add(identifier)
 
     found.extend(_status_violations(document, kind))
+    found.extend(_causal_violations(document, kind, seen))
 
     if kind == "cycle":
         found.extend(_hub_violations(document, seen))
@@ -5131,7 +6127,7 @@ def _venn_refusal(violation: Violation) -> Violation:
     if parts[1:] == ["sets"] and "needs at least" in violation.message:
         return Violation(
             violation.pointer,
-            "a Venn diagram needs 2 or 3 sets: one set overlaps nothing. Say what it holds in "
+            "a Venn diagram needs 2 to 4 sets: one set overlaps nothing. Say what it holds in "
             "a sentence, or as a list.",
         )
     return violation
@@ -5189,6 +6185,22 @@ def _venn_violations(document: Mapping[str, Any]) -> list[Violation]:
             )
             continue
         seen[key] = index
+    if len(sets) == VENN_SET_MAX:
+        for index, region in enumerate(_listed(document, "regions")):
+            text = region.get("text") if isinstance(region, dict) else None
+            if not isinstance(text, str):
+                continue
+            shown = text.replace("**", "").replace("`", "").replace("\n", " ")
+            if len(shown) > VENN_FOUR_TEXT_MAX:
+                found.append(
+                    Violation(
+                        _pointer("regions", index, "text"),
+                        f"{len(shown)} characters is more than a region of four sets holds — "
+                        f"{VENN_FOUR_TEXT_MAX} at most. With four sets the smallest regions "
+                        f"are small: write a count or a word or two, and say the rest in the "
+                        f"caption.",
+                    )
+                )
     return found
 
 
@@ -5665,6 +6677,976 @@ def _sankey_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a numberline has no place for a field an author may reach for.
+NUMBERLINE_REFUSED: Final = {
+    "edges": (
+        "a number line joins nothing: what relates two values is where they sit on the one scale"
+    ),
+    "series": (
+        "a number line has one scale and no data series. Two values per item is a `scatter`; "
+        "a number that changes over something is a `chart`"
+    ),
+    "axes": "a number line has one scale, `axis`. Two values per item is a `scatter`",
+    "value": "a point's place on the scale is `at`",
+    "id": "nothing names a point or a range, so it takes no id",
+    "date": (
+        "a number line places numbers. For events in time, use a `timeline`; for a plan, a "
+        "`gantt` with its axis in a unit you name"
+    ),
+}
+
+#: What a numberline says to a string where a number belongs.
+NUMBERLINE_NUMBERS: Final = (
+    "a number line places numbers on its scale. A date or a named time is a `timeline`; "
+    "a named scale with no numbers takes `axis.ends` and still places by number between "
+    "`min` and `max`."
+)
+
+
+def _numberline_refusal(violation: Violation, document: Mapping[str, Any]) -> Violation:
+    """A structural refusal in a numberline, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    unknown = "is not" in violation.message and "field" in violation.message
+    if name in NUMBERLINE_REFUSED and unknown:
+        return Violation(violation.pointer, f"{name!r}: {NUMBERLINE_REFUSED[name]}.")
+    if name in ("at", "from", "to", "min", "max", "step"):
+        value: object = document
+        for part in parts[1:]:
+            try:
+                value = value[int(part) if isinstance(value, list) else part]  # type: ignore[index]
+            except (TypeError, ValueError, IndexError, KeyError):
+                return violation
+        if isinstance(value, str):
+            return Violation(violation.pointer, f"{value!r} is not a number: {NUMBERLINE_NUMBERS}")
+    return violation
+
+
+def _numberline_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """A scale that runs one way, and points and ranges that sit on it.
+
+    Every value is inside `[min, max]` — an arrow is how a range says it goes on
+    — a range has at least one end and ends after it starts, an open end is an
+    end that exists, two points are not one dot, and a named scale carries no
+    numbers.
+    """
+    found: list[Violation] = []
+    axis = document.get("axis")
+    axis = axis if isinstance(axis, dict) else {}
+    low: float | None = axis.get("min") if _is_number(axis.get("min")) else None
+    high: float | None = axis.get("max") if _is_number(axis.get("max")) else None
+    if low is not None and high is not None and high <= low:
+        found.append(
+            Violation(
+                _pointer("axis", "max"),
+                f"the scale ends at {high}, not after its start {low}: `max` is the right-hand "
+                f"end, and more than `min`.",
+            )
+        )
+        low = high = None
+    ends = axis.get("ends")
+    if isinstance(ends, list):
+        if len(ends) > 2:
+            found.append(
+                Violation(
+                    _pointer("axis", "ends"),
+                    f"{len(ends)} ends: a scale has two, the low end's words then the high end's.",
+                )
+            )
+        for name in ("step", "unit"):
+            if name in axis:
+                found.append(
+                    Violation(
+                        _pointer("axis", name),
+                        f"a scale named by its `ends` draws no numbers, so it takes no "
+                        f"{name!r}. Drop it, or drop the ends and number the scale.",
+                    )
+                )
+    step: Any = axis.get("step")
+    if low is not None and high is not None and _is_number(step) and step > 0:
+        count = (high - low) / step
+        if count > NUMBERLINE_TICK_MAX:
+            found.append(
+                Violation(
+                    _pointer("axis", "step"),
+                    f"a step of {step} cuts {low} to {high} into {count:.0f} ticks, and the "
+                    f"numbers crowd past {NUMBERLINE_TICK_MAX}. Take a larger step, or a "
+                    f"narrower scale.",
+                )
+            )
+
+    def outside(value: Any, pointer: str) -> None:
+        if not _is_number(value) or low is None or high is None:
+            return
+        if value < low or value > high:
+            found.append(
+                Violation(
+                    pointer,
+                    f"{value} is off the scale, which runs {low} to {high}. Widen the axis — "
+                    f"or, for a range that goes on, leave this end out and it is drawn as an "
+                    f"arrow.",
+                )
+            )
+
+    points = _listed(document, "points")
+    ranges = _listed(document, "ranges")
+    if not points and not ranges:
+        found.append(
+            Violation(
+                "/points",
+                "a number line needs something on it: at least one of `points` and `ranges`. "
+                "A bare scale says nothing a sentence would not.",
+            )
+        )
+    seen: dict[float, int] = {}
+    for index, point in enumerate(points):
+        if not isinstance(point, dict):
+            continue
+        at: Any = point.get("at")
+        outside(at, _pointer("points", index, "at"))
+        if _is_number(at):
+            if at in seen:
+                found.append(
+                    Violation(
+                        _pointer("points", index, "at"),
+                        f"point {seen[at]} is already at {at}, and two dots at one value are "
+                        f"one dot. Put both texts in one point.",
+                    )
+                )
+            else:
+                seen[at] = index
+    for index, entry in enumerate(ranges):
+        if not isinstance(entry, dict):
+            continue
+        start: Any = entry.get("from")
+        end: Any = entry.get("to")
+        if "from" not in entry and "to" not in entry:
+            found.append(
+                Violation(
+                    _pointer("ranges", index),
+                    "a range with neither `from` nor `to` is the whole line. Say that in the "
+                    "title, or give the range an end.",
+                )
+            )
+        for name, bound in (("from_open", "from"), ("to_open", "to")):
+            if name in entry and bound not in entry:
+                found.append(
+                    Violation(
+                        _pointer("ranges", index, name),
+                        f"this range has no {bound!r}, so it runs on past the axis: an end that "
+                        f"is not there cannot be open. Drop {name!r}, or give the range its "
+                        f"{bound!r}.",
+                    )
+                )
+        outside(start, _pointer("ranges", index, "from"))
+        outside(end, _pointer("ranges", index, "to"))
+        if _is_number(start) and _is_number(end) and end <= start:
+            found.append(
+                Violation(
+                    _pointer("ranges", index, "to"),
+                    f"the range ends at {end}, not after its start {start}. For a single value, "
+                    f"use a point.",
+                )
+            )
+    return found
+
+
+#: Why a bar model has no place for a field an author may reach for.
+BARMODEL_REFUSED: Final = {
+    "edges": "a bar model joins nothing: what relates two bars is their lengths, side by side",
+    "axes": (
+        "a bar model has no axis: the numbers are written in the parts. Values compared "
+        "against an axis are a `chart`"
+    ),
+    "series": (
+        "a bar model has no data series: the numbers are written in the parts. Values "
+        "compared against an axis are a `chart`"
+    ),
+    "total": (
+        "a total is a brace over the bar: "
+        '`{"over": ["the bar\'s id"], "amount": 60}`, checked against its parts'
+    ),
+    "unknown": 'an unknown part still has a size: give its `amount` or `units`, and `text: "?"`',
+    "value": "a part's or a brace's size is its `amount`",
+}
+
+
+def _barmodel_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a bar model, told what this kind means by it."""
+    name = violation.pointer.split("/")[-1]
+    unknown = "is not" in violation.message and "field" in violation.message
+    if name in BARMODEL_REFUSED and unknown:
+        return Violation(violation.pointer, f"{name!r}: {BARMODEL_REFUSED[name]}.")
+    return violation
+
+
+def _barmodel_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Parts with one size each, in one kind of size, and braces whose sums hold.
+
+    Every part is an `amount` or `units`, never both or neither, and a document is
+    all amounts or all units. Ids are unique across bars and parts. A brace spans
+    side-by-side parts of one bar or consecutive whole bars, and its `amount` is
+    checked: the sum of the parts it spans, or — with units — the same worth per
+    unit as every other brace with an amount.
+    """
+    found: list[Violation] = []
+    ids: dict[str, tuple[str, int, int]] = {}
+    mode = ""
+    mode_at = ""
+    count = 0
+    bars = _listed(document, "bars")
+    for index, bar in enumerate(bars):
+        if not isinstance(bar, dict):
+            continue
+        identifier = bar.get("id")
+        if isinstance(identifier, str):
+            if identifier in ids:
+                found.append(
+                    Violation(_pointer("bars", index, "id"), f"duplicate id {identifier!r}")
+                )
+            else:
+                ids[identifier] = ("bar", index, -1)
+        boxes = 0
+        for position, part in enumerate(_listed(bar, "parts")):
+            if not isinstance(part, dict):
+                continue
+            count += 1
+            here = _pointer("bars", index, "parts", position)
+            name = part.get("id")
+            if isinstance(name, str):
+                if name in ids:
+                    found.append(Violation(f"{here}/id", f"duplicate id {name!r}"))
+                else:
+                    ids[name] = ("part", index, position)
+            sizes = [field for field in ("amount", "units") if field in part]
+            if not sizes:
+                found.append(
+                    Violation(
+                        here,
+                        "a part needs a size, or its length would be a guess: an `amount` (its "
+                        "length in proportion) or `units` (that many equal boxes). An unknown "
+                        'part still has one — write its `amount` and `"text": "?"`.',
+                    )
+                )
+                continue
+            if len(sizes) == 2:
+                found.append(
+                    Violation(
+                        f"{here}/units",
+                        "a part is an `amount` or a number of `units`, not both. Drop one.",
+                    )
+                )
+                continue
+            size = sizes[0]
+            if not mode:
+                mode, mode_at = size, f"{here}/{size}"
+            elif size != mode:
+                found.append(
+                    Violation(
+                        f"{here}/{size}",
+                        f"this document's parts are sized by {mode!r} (from {mode_at}), and a "
+                        f"unit has no length against a number. Size every part one way: give "
+                        f"the units an amount each, or draw every part in units.",
+                    )
+                )
+            units = part.get("units")
+            if size == "units" and isinstance(units, int) and not isinstance(units, bool):
+                boxes += units
+                if boxes > BARMODEL_UNIT_MAX and boxes - units <= BARMODEL_UNIT_MAX:
+                    found.append(
+                        Violation(
+                            f"{here}/units",
+                            f"this bar is {boxes} unit boxes, and past {BARMODEL_UNIT_MAX} a "
+                            f"reader counts boxes instead of seeing the ratio. Simplify the "
+                            f"ratio, or let one box stand for more.",
+                        )
+                    )
+    if bars and count == 1:
+        found.append(
+            Violation(
+                _pointer("bars", 0, "parts"),
+                "one part in one bar compares nothing: a bar model needs a second part, or a "
+                "second bar. One number is a sentence.",
+            )
+        )
+
+    def size_of(bar: int, position: int) -> float:
+        part = _listed(bars[bar], "parts")[position]
+        value: Any = part.get(mode) if isinstance(part, dict) else None
+        return float(value) if _is_number(value) else math.nan
+
+    worth: tuple[float, int] | None = None
+    for index, brace in enumerate(_listed(document, "braces")):
+        if not isinstance(brace, dict):
+            continue
+        if "amount" not in brace and "text" not in brace:
+            found.append(
+                Violation(
+                    _pointer("braces", index),
+                    "a brace says what the stretch adds up to: give it an `amount` (checked), "
+                    'or `"text": "?"` for the unknown.',
+                )
+            )
+        over = brace.get("over")
+        if not isinstance(over, list) or not all(isinstance(item, str) for item in over):
+            continue
+        resolved: list[tuple[str, int, int]] = []
+        for position, item in enumerate(over):
+            if item not in ids:
+                found.append(
+                    Violation(
+                        _pointer("braces", index, "over", position),
+                        f"{item!r} is not the id of any bar or part" + _closest(item, ids),
+                    )
+                )
+            elif ids[item] in resolved:
+                found.append(
+                    Violation(
+                        _pointer("braces", index, "over", position),
+                        f"{item!r} is named twice: a brace spans each thing once.",
+                    )
+                )
+            else:
+                resolved.append(ids[item])
+        if len(resolved) != len(over):
+            continue
+        kinds = {kind for kind, _, _ in resolved}
+        spanned: list[tuple[int, int]] = []
+        if kinds == {"part"}:
+            rows = {bar for _, bar, _ in resolved}
+            columns = sorted(position for _, _, position in resolved)
+            if len(rows) > 1:
+                found.append(
+                    Violation(
+                        _pointer("braces", index, "over"),
+                        "these parts are in different bars, and a brace spans one stretch of "
+                        "one bar. For a total over bars, name the bars.",
+                    )
+                )
+                continue
+            if columns != list(range(columns[0], columns[0] + len(columns))):
+                found.append(
+                    Violation(
+                        _pointer("braces", index, "over"),
+                        "these parts are not side by side, and a brace spans one stretch. Name "
+                        "the parts between them too, or use two braces.",
+                    )
+                )
+                continue
+            (row,) = rows
+            spanned = [(row, column) for column in columns]
+        elif kinds == {"bar"}:
+            rows_list = sorted(bar for _, bar, _ in resolved)
+            if rows_list != list(range(rows_list[0], rows_list[0] + len(rows_list))):
+                found.append(
+                    Violation(
+                        _pointer("braces", index, "over"),
+                        "these bars are not next to each other, and an upright brace spans "
+                        "consecutive bars. Reorder the bars, or use two braces.",
+                    )
+                )
+                continue
+            spanned = [
+                (row, column)
+                for row in rows_list
+                for column in range(len(_listed(bars[row], "parts")))
+            ]
+        else:
+            found.append(
+                Violation(
+                    _pointer("braces", index, "over"),
+                    "a brace spans parts of one bar or whole bars, not both. Name the bar "
+                    "for the whole of it.",
+                )
+            )
+            continue
+        value: Any = brace.get("amount")
+        if not _is_number(value) or not mode:
+            continue
+        total = sum(size_of(row, column) for row, column in spanned)
+        if math.isnan(total):
+            continue
+        if mode == "amount":
+            if not math.isclose(total, value, rel_tol=1e-9, abs_tol=1e-9):
+                found.append(
+                    Violation(
+                        _pointer("braces", index, "amount"),
+                        f"the parts this brace spans add up to {total:g}, not {value:g}. The "
+                        f"model would teach the wrong sum: fix a part's amount, or the brace's.",
+                    )
+                )
+        elif worth is None:
+            worth = (value / total, index)
+        elif not math.isclose(value / total, worth[0], rel_tol=1e-9):
+            found.append(
+                Violation(
+                    _pointer("braces", index, "amount"),
+                    f"this brace makes one unit worth {value / total:g}, and brace {worth[1]} "
+                    f"makes it {worth[0]:g}. Every unit in a bar model is the same size: fix "
+                    f"one of the two.",
+                )
+            )
+    return found
+
+
+#: Why a waterfall has no place for a field an author may reach for.
+WATERFALL_REFUSED: Final = {
+    "edges": "a waterfall's connectors join each bar to the next for you, at the running sum",
+    "series": (
+        "a waterfall is one sequence of bars, totals and steps. Several series against an "
+        "axis are a `chart`"
+    ),
+    "axes": (
+        "a waterfall has one numeric axis, `axis`, and its bars in order across. Values "
+        "against two axes are a `chart`"
+    ),
+    "value": "a step's size is its signed `amount`, and a total's is its `total`",
+    "subtotal": "a subtotal is a `total` between the first bar and the last, checked",
+    "start": "the start is the first bar, a `total`",
+    "end": "the end is the last bar, a `total`, checked against the steps",
+    "unit": "the unit goes in the axis label: `Borrowing, £ billion`",
+}
+
+
+def _waterfall_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a waterfall, told what this kind means by it."""
+    name = violation.pointer.split("/")[-1]
+    unknown = "is not" in violation.message and "field" in violation.message
+    if name in WATERFALL_REFUSED and unknown:
+        return Violation(violation.pointer, f"{name!r}: {WATERFALL_REFUSED[name]}.")
+    return violation
+
+
+def _waterfall_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Bars that are each a total or a step, and totals that are the running sum.
+
+    The first and the last bar are totals; a total straight after a total says
+    nothing; a step of 0 is not drawn. Every total after the first is checked
+    against the sum of the bars before it, and refused with the difference.
+    """
+    found: list[Violation] = []
+    bars = [bar for bar in _listed(document, "bars") if isinstance(bar, dict)]
+    if len(bars) != len(_listed(document, "bars")):
+        return found
+    running: float | None = None
+    previous = ""
+    scale = max(
+        (
+            abs(float(bar[field]))
+            for bar in bars
+            for field in ("total", "amount")
+            if _is_number(bar.get(field))
+        ),
+        default=1.0,
+    )
+    tolerance = max(scale, 1.0) * 1e-9
+    for index, bar in enumerate(bars):
+        here = _pointer("bars", index)
+        sizes = [field for field in ("total", "amount") if field in bar]
+        if not sizes:
+            found.append(
+                Violation(
+                    here,
+                    "a bar is a `total` (it stands on zero) or a signed `amount` (a step "
+                    "from the running sum). Give it one.",
+                )
+            )
+            running, previous = None, ""
+            continue
+        if len(sizes) == 2:
+            found.append(
+                Violation(
+                    f"{here}/amount",
+                    "a bar is a `total` or an `amount`, not both. A subtotal is a `total` "
+                    "on a bar of its own.",
+                )
+            )
+            running, previous = None, ""
+            continue
+        size = sizes[0]
+        number = bar[size]
+        if not _is_number(number):
+            running, previous = None, ""
+            continue
+        if size == "amount":
+            if index == 0:
+                found.append(
+                    Violation(
+                        f"{here}/amount",
+                        "a waterfall starts from a total the reader knows: make the first "
+                        'bar `{"text": …, "total": …}`, and the steps follow it.',
+                    )
+                )
+            if number == 0:
+                found.append(
+                    Violation(
+                        f"{here}/amount",
+                        "a step of 0 moves nothing and has no bar to draw. Leave it out, or "
+                        "say it in the caption.",
+                    )
+                )
+            if running is not None:
+                running += float(number)
+            previous = "amount"
+            continue
+        if index and previous == "total":
+            found.append(
+                Violation(
+                    f"{here}/total",
+                    "a total straight after a total repeats it: a subtotal comes after the "
+                    "steps it adds up. Drop one of the two.",
+                )
+            )
+        elif running is not None and abs(running - float(number)) > tolerance:
+            difference = float(number) - running
+            found.append(
+                Violation(
+                    f"{here}/total",
+                    f"the bars before this total add up to {_figure(running)}, and it says "
+                    f"{_figure(float(number))} — {_figure(abs(difference))} "
+                    f"{'more' if difference > 0 else 'less'}. A total in a waterfall is the "
+                    f"running sum, or the chart shows a step that is not there: fix a step or "
+                    f"the total.",
+                )
+            )
+            previous = "total"
+            continue
+        running = float(number)
+        previous = "total"
+    if bars and previous == "amount" and running is not None:
+        found.append(
+            Violation(
+                _pointer("bars", len(bars) - 1),
+                f"a waterfall ends at a total, and the steps reach {_figure(running)}. Add a "
+                f'last bar: `{{"text": …, "total": {_figure(running)}}}`.',
+            )
+        )
+    elif bars and previous == "amount":
+        found.append(
+            Violation(
+                _pointer("bars", len(bars) - 1),
+                "a waterfall ends at a total: add a last bar with a `total`.",
+            )
+        )
+    return found
+
+
+#: Why a pie has no place for a field an author may reach for.
+PIE_REFUSED: Final = {
+    "edges": "a pie's parts are related by being one whole; there is nothing to connect",
+    "series": "a pie is one total split into parts. Values against an axis are a `chart`",
+    "axes": "a pie has no axes. Values against an axis are a `chart`",
+    "value": "a part's size is its `amount`",
+    "percent": (
+        "drawspec takes each share from the `amount`s and their sum, so the angles cannot "
+        'disagree with the numbers. Write the amount; for percentages, set `"unit": "%"`'
+    ),
+    "share": (
+        "drawspec takes each share from the `amount`s and their sum, so the angles cannot "
+        'disagree with the numbers. Write the amount; for percentages, set `"unit": "%"`'
+    ),
+    "angle": "a sector's angle is its share of the total, computed from its `amount`",
+    "total": (
+        "a pie's total is the sum of its amounts, so it cannot disagree with them. Say it "
+        "in the title if the reader needs it"
+    ),
+    "groups": "a pie has one level of parts. Parts in groups are a `treemap`",
+    "group": "a pie has one level of parts. Parts in groups are a `treemap`",
+    "donut": 'a ring instead of a disc is house style: a theme\'s `[pie] shape = "donut"`',
+    "hole": 'a ring instead of a disc is house style: a theme\'s `[pie] shape = "donut"`',
+}
+
+
+def _pie_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a pie, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    unknown = "is not" in violation.message and "field" in violation.message
+    if name in PIE_REFUSED and unknown:
+        return Violation(violation.pointer, f"{name!r}: {PIE_REFUSED[name]}.")
+    if parts[1:] == ["parts"] and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a pie needs at least 2 parts: one part of a total is the total. Say it in a sentence.",
+        )
+    if name == "amount" and parts[1:2] == ["parts"] and "greater than" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a part's amount is its angle, so it must be more than 0. A part of nothing is "
+            "not drawn: leave it out.",
+        )
+    return violation
+
+
+def _pie_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """One remainder at most, no sliver, and percentages that add up to 100."""
+    found: list[Violation] = []
+    parts = [part for part in _listed(document, "parts") if isinstance(part, dict)]
+    notes = [
+        index
+        for index, part in enumerate(_listed(document, "parts"))
+        if isinstance(part, dict) and part.get("role") == "note"
+    ]
+    for index in notes[1:]:
+        found.append(
+            Violation(
+                _pointer("parts", index, "role"),
+                f"part {notes[0]} is already the remainder: a pie has one `note` part, "
+                f"`Everything else`. Merge the two.",
+            )
+        )
+    amounts = [float(part["amount"]) for part in parts if _is_number(part.get("amount"))]
+    if not amounts or len(amounts) != len(parts) or min(amounts) <= 0:
+        return found
+    total = float(sum(amounts))
+    for index, amount in enumerate(amounts):
+        if amount / total < PIE_SHARE_MIN:
+            found.append(
+                Violation(
+                    _pointer("parts", index, "amount"),
+                    f"this part is {100 * amount / total:.1f}% of the total, a sliver whose "
+                    f"angle cannot be read — under {100 * PIE_SHARE_MIN:g}%. Merge it into one "
+                    f'`"role": "note"` part with the others too small to see.',
+                )
+            )
+    if document.get("unit") == "%" and abs(total - 100) > PIE_PERCENT_TOLERANCE:
+        found.append(
+            Violation(
+                "/parts",
+                f"these percentages add up to {_figure(total)}, not 100 — "
+                f"{_figure(abs(total - 100))} {'over' if total > 100 else 'short'}, more "
+                f"than rounding. A pie of percentages is the whole: fix a part, or add the "
+                f"missing share as a `note` part.",
+            )
+        )
+    return found
+
+
+#: Why an argument map has no place for a field an author may reach for.
+ARGUMENT_REFUSED: Final = {
+    "edges": (
+        "an argument map's structure is each point's `on`: the box it bears on. A point "
+        "that bears on two boxes is two points"
+    ),
+    "nodes": "an argument map's boxes are its `claim` and its `points`",
+    "parent": "the box a point bears on is its `on`",
+    "children": "a point names the box it bears on with `on`; the points under a box follow",
+    "side": "where a point goes is drawspec's: it hangs under the box it is `on`, in order",
+}
+
+#: What a third stance would be, and why there is none.
+_STANCE_ADVICE: Final = (
+    "A rebuttal or an objection is an `against` on the point it answers; its name follows "
+    "from the depth, and the tags already read *because*, *but*, *but* down the chain"
+)
+
+
+def _inference_objection(names: Sequence[str]) -> str:
+    joined = " and ".join(f"{name!r}" for name in names)
+    return (
+        f"`on` names one box. An objection to how {joined} together support their box — an "
+        f"inference objection — is an objection to the premise that links them, which the "
+        f"argument leaves unstated. Write that premise as a point `with` them, and put the "
+        f"objection `on` it."
+    )
+
+
+def _argument_refusal(violation: Violation, document: Mapping[str, Any]) -> Violation:
+    """A structural refusal in an argument map, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    unknown = "is not a known field" in violation.message or (
+        "is not" in violation.message and "field" in violation.message
+    )
+    if unknown and name in ARGUMENT_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {ARGUMENT_REFUSED[name]}.")
+    if name == "stance" and "is not one of" in violation.message:
+        return Violation(
+            violation.pointer,
+            violation.message.split(".")[0] + f". {_STANCE_ADVICE}.",
+        )
+    if name == "on" and "expected" in violation.message and len(parts) == 4:
+        points = document.get("points")
+        entry = points[int(parts[2])] if isinstance(points, list) else None
+        names = entry.get("on") if isinstance(entry, dict) else None
+        if isinstance(names, list) and all(isinstance(each, str) for each in names):
+            return Violation(violation.pointer, _inference_objection(names))
+    if name == "role" and "is not one of" in violation.message:
+        return Violation(
+            violation.pointer,
+            violation.message.split(".")[0]
+            + ". Stance is not a role: `step`, `emphasis` for the decisive point, `note` for "
+            "evidence or a source.",
+        )
+    if parts[1:] == ["points"] and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "an argument map needs at least one point: a claim alone is a sentence.",
+        )
+    return violation
+
+
+def _argument_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Ids that resolve, a tree under the claim, co-premises that match, and depth."""
+    found: list[Violation] = []
+    claim = document.get("claim")
+    if isinstance(claim, str) and not claim.strip():
+        found.append(Violation("/claim", "the claim is the contention: it needs words."))
+    entries = [
+        (index, entry)
+        for index, entry in enumerate(_listed(document, "points"))
+        if isinstance(entry, dict)
+    ]
+    ids: dict[str, int] = {}
+    for index, entry in entries:
+        name = entry.get("id")
+        text = entry.get("text")
+        if isinstance(text, str) and not text.strip():
+            found.append(Violation(_pointer("points", index, "text"), "a point needs words."))
+        if not isinstance(name, str):
+            continue
+        if name == "claim":
+            found.append(
+                Violation(
+                    _pointer("points", index, "id"),
+                    "'claim' names the contention, so no point may take it as its id.",
+                )
+            )
+        elif name in ids:
+            found.append(
+                Violation(
+                    _pointer("points", index, "id"),
+                    f"{name!r} is already the id of point {ids[name]}: ids are unique.",
+                )
+            )
+        else:
+            ids[name] = index
+    by_id = {name: dict(entries)[index] for name, index in ids.items()}
+
+    parent: dict[str, str] = {}
+    for index, entry in entries:
+        target = entry.get("on")
+        name = entry.get("id")
+        if not isinstance(target, str) or not isinstance(name, str):
+            continue
+        where = _pointer("points", index, "on")
+        if target == "claim" or target in ids:
+            if target == name and name != "claim":
+                found.append(Violation(where, "a point cannot bear on itself."))
+            elif ids.get(name) == index:
+                parent[name] = target
+            continue
+        pieces = [piece.strip() for piece in re.split(r"[+&,]", target)]
+        if len(pieces) > 1 and all(piece in ids for piece in pieces):
+            found.append(Violation(where, _inference_objection(pieces)))
+        else:
+            found.append(
+                Violation(
+                    where,
+                    f"{target!r} is not `claim` or the id of a point. Known ids: "
+                    f"{', '.join(sorted(ids)) or 'none'}.",
+                )
+            )
+
+    # A tree: every chain of `on` ends at the claim, at most four deep.
+    depth: dict[str, int] = {}
+    for name in parent:
+        chain: list[str] = []
+        current = name
+        while current != "claim" and current in parent and current not in chain:
+            chain.append(current)
+            current = parent[current]
+        if current != "claim":
+            if current in chain:
+                index = ids[name]
+                found.append(
+                    Violation(
+                        _pointer("points", index, "on"),
+                        f"this `on` goes round in a circle ({' -> '.join([*chain, current])}): "
+                        f"an argument is a tree under the claim.",
+                    )
+                )
+            continue
+        depth[name] = len(chain)
+    for name, levels in depth.items():
+        if levels > ARGUMENT_DEPTH_MAX:
+            found.append(
+                Violation(
+                    _pointer("points", ids[name], "on"),
+                    f"this point is {levels} levels below the claim, past what one argument "
+                    f"map can be read at — {ARGUMENT_DEPTH_MAX} at most. Draw the point it "
+                    f"answers as the claim of a map of its own.",
+                )
+            )
+
+    # Co-premises: same box, same stance, a group of at most four.
+    links: dict[str, set[str]] = {name: set() for name in ids}
+    for index, entry in entries:
+        name = entry.get("id")
+        others = entry.get("with")
+        if not isinstance(name, str) or ids.get(name) != index or not isinstance(others, list):
+            continue
+        for position, other in enumerate(others):
+            where = _pointer("points", index, "with", position)
+            if not isinstance(other, str):
+                continue
+            if other == name:
+                found.append(Violation(where, "a point is not its own co-premise."))
+                continue
+            if other not in by_id:
+                found.append(
+                    Violation(where, f"{other!r} is not the id of a point; `with` names points.")
+                )
+                continue
+            mate = by_id[other]
+            if mate.get("on") != entry.get("on"):
+                found.append(
+                    Violation(
+                        where,
+                        f"{other!r} is `on` {mate.get('on')!r} and this point is `on` "
+                        f"{entry.get('on')!r}: co-premises support the same box.",
+                    )
+                )
+                continue
+            if mate.get("stance") != entry.get("stance"):
+                found.append(
+                    Violation(
+                        where,
+                        f"{other!r} is {mate.get('stance')!r} and this point is "
+                        f"{entry.get('stance')!r}: co-premises bear the same way.",
+                    )
+                )
+                continue
+            links[name].add(other)
+            links[other].add(name)
+    seen: set[str] = set()
+    for name in ids:
+        if name in seen or not links[name]:
+            continue
+        group: list[str] = []
+        stack = [name]
+        while stack:
+            current = stack.pop()
+            if current in seen:
+                continue
+            seen.add(current)
+            group.append(current)
+            stack.extend(links[current])
+        if len(group) > ARGUMENT_GROUP_MAX:
+            last = max(group, key=lambda member: ids[member])
+            found.append(
+                Violation(
+                    _pointer("points", ids[last], "with"),
+                    f"{len(group)} co-premises in one group, and a group can be read at "
+                    f"{ARGUMENT_GROUP_MAX} at most. Premises that many usually hide a "
+                    f"sub-argument: make some of them a point of their own, with its "
+                    f"own reasons under it.",
+                )
+            )
+    return found
+
+
+#: Why a mind map has no place for a field an author may reach for.
+MINDMAP_REFUSED: Final = {
+    "edges": (
+        "a mind map is nested: a branch belongs to the one it is written in, so there is "
+        "nothing to connect. Links across branches, each named by a phrase, are a concept "
+        "map: draw that as a `flow` with labelled edges"
+    ),
+    "links": (
+        "a mind map is nested, so a line between two branches would make it a concept map. "
+        "Draw that as a `flow` with labelled edges"
+    ),
+    "id": (
+        "nothing refers to a branch: its place is where it is written. A link from one "
+        "branch to another is a concept map, which is a `flow` with labelled edges"
+    ),
+    "side": (
+        "the layout splits the main branches between the two sides so they balance; a side "
+        "chosen by the author is a coordinate. Order them, and drawspec places them "
+        "clockwise from the top right"
+    ),
+    "nodes": "a mind map's entries are its `branches`, nested under the `centre`",
+}
+
+
+def _mindmap_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a mind map, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    unknown = "is not a known field" in violation.message or (
+        "is not" in violation.message and "field" in violation.message
+    )
+    if unknown and name in MINDMAP_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {MINDMAP_REFUSED[name]}.")
+    if parts[1:] == ["branches"] and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a mind map needs at least 2 main branches round its centre: one branch is a "
+            "hierarchy from a root, which is a `tree`.",
+        )
+    if name == "branches" and len(parts) > 2 and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "an empty 'branches' list draws nothing: leave the field out of a branch that "
+            "ends here.",
+        )
+    if name == "role" and "is not one of" in violation.message:
+        return Violation(
+            violation.pointer,
+            violation.message.split(".")[0]
+            + ". A branch is words on a line, with no shape to mean `decision` or "
+            "`terminal`: `step`, `emphasis` for the branch the map is about, `note` for "
+            "context.",
+        )
+    return violation
+
+
+def _mindmap_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """No empty words, and no fourth level below the centre."""
+    found: list[Violation] = []
+    centre = document.get("centre")
+    if isinstance(centre, str) and not centre.strip():
+        found.append(Violation("/centre", "the centre is the topic: it needs words."))
+
+    def walk(entries: object, pointer: str, depth: int) -> None:
+        if not isinstance(entries, list):
+            return
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                continue
+            here = f"{pointer}/{index}"
+            text = entry.get("text")
+            if isinstance(text, str) and not text.strip():
+                found.append(
+                    Violation(
+                        f"{here}/text", "a branch needs words: an empty one draws a bare line."
+                    )
+                )
+            children = entry.get("branches")
+            if depth == MINDMAP_DEPTH_MAX and isinstance(children, list):
+                found.append(
+                    Violation(
+                        f"{here}/branches",
+                        f"a fourth level below the centre is past what one mind map can be "
+                        f"read at — {MINDMAP_DEPTH_MAX} levels at most: a branch, a twig, a "
+                        f"leaf. Make this branch the centre of a map of its own, or fold the "
+                        f"detail into this leaf's words.",
+                    )
+                )
+                continue
+            walk(children, f"{here}/branches", depth + 1)
+
+    walk(document.get("branches"), "/branches", 1)
+    return found
+
+
+def _figure(value: float) -> str:
+    """A number as an author wrote it: no float noise, no trailing zeros."""
+    text = f"{round(value, 9):.9f}".rstrip("0").rstrip(".")
+    return "0" if text in ("-0", "") else text
+
+
 def _is_number(value: object) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool)
 
@@ -5880,6 +7862,141 @@ def _fragment_violations(
 def _listed(document: Mapping[str, Any], name: str) -> list[Any]:
     value = document.get(name)
     return value if isinstance(value, list) else []
+
+
+def _causal_violations(document: Mapping[str, Any], kind: str, nodes: set[str]) -> list[Violation]:
+    """A causal loop diagram's signs, delays and loops: whole, causal and checked.
+
+    Signs go on every causal edge or none — a half-signed diagram is ambiguous —
+    and only on a `flow`. A loop runs along signed edges in the order written,
+    and a type the author states is checked against the signs: an even number of
+    negative links reinforces, an odd number balances.
+    """
+    found: list[Violation] = []
+    edges = [edge for edge in _listed(document, "edges") if isinstance(edge, dict)]
+    if kind != "flow":
+        for index, edge in enumerate(_listed(document, "edges")):
+            for name in ("polarity", "delay"):
+                if isinstance(edge, dict) and name in edge:
+                    found.append(
+                        Violation(
+                            _pointer("edges", index, name),
+                            f"{name!r} marks a causal link, and a causal loop diagram is a "
+                            f"`flow`: draw it as one.",
+                        )
+                    )
+        return found
+    signed = any("polarity" in edge for edge in edges)
+    for index, edge in enumerate(_listed(document, "edges")):
+        if not isinstance(edge, dict):
+            continue
+        role = edge.get("role", "flow")
+        if "polarity" in edge and role not in POLARITY_EDGE_ROLES:
+            found.append(
+                Violation(
+                    _pointer("edges", index, "polarity"),
+                    f"a {role!r} edge has no causal direction, so it has no sign. Make it a "
+                    f"'flow' edge, or drop the sign.",
+                )
+            )
+        elif signed and "polarity" not in edge and role in POLARITY_EDGE_ROLES:
+            found.append(
+                Violation(
+                    _pointer("edges", index),
+                    "this link has no 'polarity' and others do: a half-signed causal diagram "
+                    "is ambiguous. Give every causal link its sign, '+' or '-'.",
+                )
+            )
+        if edge.get("delay") and "polarity" not in edge:
+            found.append(
+                Violation(
+                    _pointer("edges", index, "delay"),
+                    "a delay belongs to a causal link: give this edge its 'polarity' too.",
+                )
+            )
+    loops = _listed(document, "loops")
+    if loops and not signed:
+        found.append(
+            Violation(
+                "/loops",
+                "a loop's type is counted from its links' signs, and no edge has a "
+                "'polarity'. Give every causal link its sign, '+' or '-'.",
+            )
+        )
+        return found
+    polarity: dict[tuple[str, str], str] = {}
+    for edge in edges:
+        if isinstance(edge.get("from"), str) and isinstance(edge.get("to"), str):
+            polarity.setdefault((edge["from"], edge["to"]), edge.get("polarity", ""))
+    rings: dict[tuple[str, ...], int] = {}
+    for index, loop in enumerate(loops):
+        members = loop.get("nodes") if isinstance(loop, dict) else None
+        if not isinstance(members, list) or not all(isinstance(m, str) for m in members):
+            continue
+        whole = True
+        for position, member in enumerate(members):
+            if member not in nodes:
+                whole = False
+                found.append(
+                    Violation(
+                        _pointer("loops", index, "nodes", position),
+                        f"{member!r} is not the id of any node"
+                        + _closest(member, dict.fromkeys(nodes)),
+                    )
+                )
+            elif member in members[:position]:
+                whole = False
+                found.append(
+                    Violation(
+                        _pointer("loops", index, "nodes", position),
+                        f"{member!r} is named twice: a loop passes each variable once. Two "
+                        f"loops through one variable are two loops.",
+                    )
+                )
+        if not whole or len(members) < 2:
+            continue
+        for position, member in enumerate(members):
+            following = members[(position + 1) % len(members)]
+            if (member, following) not in polarity:
+                whole = False
+                found.append(
+                    Violation(
+                        _pointer("loops", index, "nodes", position),
+                        f"no edge runs {member} \u2192 {following}: a loop's nodes are its "
+                        f"variables in the order it runs, each joined to the next and the "
+                        f"last back to the first.",
+                    )
+                )
+        if not whole:
+            continue
+        start = members.index(min(members))
+        key = tuple(members[start:] + members[:start])
+        if key in rings:
+            found.append(
+                Violation(
+                    _pointer("loops", index, "nodes"),
+                    f"loop {rings[key]} is already this loop: the same variables in the same "
+                    f"order. Name it once.",
+                )
+            )
+            continue
+        rings[key] = index
+        minus = sum(
+            polarity[(member, members[(position + 1) % len(members)])] == "-"
+            for position, member in enumerate(members)
+        )
+        derived = "balancing" if minus % 2 else "reinforcing"
+        stated = loop.get("type")
+        if isinstance(stated, str) and stated in LOOP_TYPES and stated != derived:
+            found.append(
+                Violation(
+                    _pointer("loops", index, "type"),
+                    f"this loop has {minus} negative link{'s' if minus != 1 else ''}, so it is "
+                    f"{derived}: an even number of '-' links reinforces, an odd number "
+                    f"balances. Check the signs, or the type.",
+                )
+            )
+    return found
 
 
 def _status_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
@@ -6153,6 +8270,18 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _treemap_document(document)
     if kind in SANKEY_KINDS:
         return _sankey_document(document)
+    if kind in NUMBERLINE_KINDS:
+        return _numberline_document(document)
+    if kind in BARMODEL_KINDS:
+        return _barmodel_document(document)
+    if kind in WATERFALL_KINDS:
+        return _waterfall_document(document)
+    if kind in PIE_KINDS:
+        return _pie_document(document)
+    if kind in MINDMAP_KINDS:
+        return _mindmap_document(document)
+    if kind in ARGUMENT_KINDS:
+        return _argument_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -6185,8 +8314,18 @@ def parse_document(document: Mapping[str, Any]) -> Document:
                 label=entry.get("label", ""),
                 role=entry.get("role", "flow"),
                 status=entry.get("status", ""),
+                polarity=entry.get("polarity", ""),
+                delay=bool(entry.get("delay", False)),
             )
             for entry in document.get("edges", ())
+        ),
+        loops=tuple(
+            CausalLoop(
+                text=entry["text"],
+                nodes=tuple(entry["nodes"]),
+                type=entry.get("type", ""),
+            )
+            for entry in document.get("loops", ())
         ),
         groups=tuple(
             Group(id=entry["id"], members=tuple(entry["members"]), text=entry.get("text", ""))
@@ -6669,6 +8808,186 @@ def _sankey_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _numberline_document(document: Mapping[str, Any]) -> Document:
+    """A number line: its scale, its points and its ranges in the order written."""
+    axis = document["axis"]
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        number_axis=NumberAxis(
+            minimum=float(axis["min"]),
+            maximum=float(axis["max"]),
+            step=_optional_number(axis.get("step")),
+            label=str(axis.get("label", "")),
+            unit=str(axis.get("unit", "")),
+            ends=tuple(axis.get("ends", ())),
+        ),
+        number_points=tuple(
+            NumberPoint(
+                at=float(entry["at"]),
+                text=entry.get("text", ""),
+                open=bool(entry.get("open", False)),
+                role=entry.get("role", "step"),
+            )
+            for entry in document.get("points", ())
+        ),
+        number_ranges=tuple(
+            NumberRange(
+                start=_optional_number(entry.get("from")),
+                end=_optional_number(entry.get("to")),
+                start_open=bool(entry.get("from_open", False)),
+                end_open=bool(entry.get("to_open", False)),
+                text=entry.get("text", ""),
+                role=entry.get("role", "step"),
+            )
+            for entry in document.get("ranges", ())
+        ),
+    )
+
+
+def _barmodel_document(document: Mapping[str, Any]) -> Document:
+    """A bar model: its bars top to bottom, each with its parts, and its braces."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        model_bars=tuple(
+            ModelBar(
+                parts=tuple(
+                    ModelPart(
+                        amount=_optional_number(part.get("amount")),
+                        units=part.get("units"),
+                        text=part.get("text", ""),
+                        id=part.get("id", ""),
+                        role=part.get("role", "step"),
+                    )
+                    for part in bar["parts"]
+                ),
+                text=bar.get("text", ""),
+                id=bar.get("id", ""),
+            )
+            for bar in document["bars"]
+        ),
+        model_braces=tuple(
+            ModelBrace(
+                over=tuple(brace["over"]),
+                amount=_optional_number(brace.get("amount")),
+                text=brace.get("text", ""),
+            )
+            for brace in document.get("braces", ())
+        ),
+    )
+
+
+def _waterfall_document(document: Mapping[str, Any]) -> Document:
+    """A waterfall: its axis label and its bars, left to right."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        waterfall_label=str(document["axis"]["label"]),
+        waterfall_bars=tuple(
+            WaterfallBar(
+                text=bar["text"],
+                total=_optional_number(bar.get("total")),
+                amount=_optional_number(bar.get("amount")),
+                role=bar.get("role", "step"),
+            )
+            for bar in document["bars"]
+        ),
+    )
+
+
+def _argument_document(document: Mapping[str, Any]) -> Document:
+    """An argument map: its claim and its points, in the order written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        claim=str(document["claim"]),
+        points=tuple(
+            ArgumentPoint(
+                id=str(point["id"]),
+                text=str(point["text"]),
+                on=str(point["on"]),
+                stance=str(point["stance"]),
+                with_=tuple(str(other) for other in point.get("with", ())),
+                role=str(point.get("role", "step")),
+            )
+            for point in document["points"]
+        ),
+    )
+
+
+def _mindmap_branch(entry: Mapping[str, Any]) -> MindmapBranch:
+    return MindmapBranch(
+        text=str(entry["text"]),
+        role=str(entry.get("role", "step")),
+        branches=tuple(_mindmap_branch(child) for child in entry.get("branches", ())),
+    )
+
+
+def _mindmap_document(document: Mapping[str, Any]) -> Document:
+    """A mind map: its centre and its nested branches, in the order written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        centre=str(document["centre"]),
+        branches=tuple(_mindmap_branch(entry) for entry in document["branches"]),
+    )
+
+
+def _pie_document(document: Mapping[str, Any]) -> Document:
+    """A pie: its parts in the order written, and the unit they are in."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        values=bool(document.get("values", True)),
+        theme=str(document.get("theme", "")),
+        unit=str(document.get("unit", "")),
+        pie_parts=tuple(
+            PiePart(
+                text=part["text"],
+                amount=float(part["amount"]),
+                role=part.get("role", "step"),
+            )
+            for part in document["parts"]
+        ),
+    )
+
+
 def _hub(entry: Mapping[str, Any] | None) -> Node | None:
     if entry is None:
         return None
@@ -6894,7 +9213,19 @@ if __name__ == "__main__":
 
 
 __all__ = [
+    "ARGUMENT_DEPTH_MAX",
+    "ARGUMENT_GROUP_MAX",
+    "ARGUMENT_KINDS",
+    "ARGUMENT_POINT_MAX",
+    "ARGUMENT_ROLES",
+    "ARGUMENT_STANCES",
     "AXIS_ORDER",
+    "BARMODEL_BAR_MAX",
+    "BARMODEL_BRACE_MAX",
+    "BARMODEL_KINDS",
+    "BARMODEL_PART_MAX",
+    "BARMODEL_PART_ROLES",
+    "BARMODEL_UNIT_MAX",
     "BOARD_CELL_MAX",
     "BOARD_KINDS",
     "CARDINALITIES",
@@ -6922,9 +9253,28 @@ __all__ = [
     "KINDS",
     "LANES_KINDS",
     "LANES_MAX",
+    "LOOP_MAX",
+    "LOOP_TYPES",
     "MESSAGE_ROLES",
+    "MINDMAP_BRANCH_MAX",
+    "MINDMAP_DEPTH_MAX",
+    "MINDMAP_KINDS",
+    "MINDMAP_NODE_MAX",
+    "MINDMAP_ROLES",
+    "NUMBERLINE_KINDS",
+    "NUMBERLINE_POINT_MAX",
+    "NUMBERLINE_RANGE_MAX",
+    "NUMBERLINE_ROLES",
+    "NUMBERLINE_TICK_MAX",
     "OBJECTS",
     "PARTICIPANT_ROLES",
+    "PIE_KINDS",
+    "PIE_PART_MAX",
+    "PIE_PERCENT_TOLERANCE",
+    "PIE_ROLES",
+    "PIE_SHARE_MIN",
+    "POLARITIES",
+    "POLARITY_EDGE_ROLES",
     "REGION_ROLES",
     "REJECTED_FIELDS",
     "SANKEY_BAND",
@@ -6941,14 +9291,21 @@ __all__ = [
     "TRANSITION_ROLES",
     "TREEMAP_KINDS",
     "TREEMAP_PART_ROLES",
+    "VENN_FOUR_TEXT_MAX",
     "VENN_KINDS",
+    "VENN_SET_MAX",
     "VENN_SET_ROLES",
+    "WATERFALL_BAR_MAX",
+    "WATERFALL_KINDS",
+    "WATERFALL_ROLES",
+    "ArgumentPoint",
     "Axis",
     "Band",
     "BoardColumn",
     "Branch",
     "Card",
     "Category",
+    "CausalLoop",
     "Cause",
     "Cell",
     "Curve",
@@ -6963,7 +9320,15 @@ __all__ = [
     "Item",
     "JourneyStage",
     "Message",
+    "MindmapBranch",
+    "ModelBar",
+    "ModelBrace",
+    "ModelPart",
     "Node",
+    "NumberAxis",
+    "NumberPoint",
+    "NumberRange",
+    "PiePart",
     "Position",
     "Region",
     "Relation",
@@ -6975,6 +9340,7 @@ __all__ = [
     "TreemapPart",
     "VennSet",
     "Violation",
+    "WaterfallBar",
     "Waypoint",
     "build_schema",
     "fields_for",

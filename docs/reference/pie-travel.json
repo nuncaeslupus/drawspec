@@ -1,0 +1,14 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "pie",
+  "title": "How the 30 pupils in 6B travel to school",
+  "description": "A class survey drawn as a pie from its frequency table: 12 walk, 8 come by car, 6 by bus and 4 by bike.",
+  "unit": "pupils",
+  "parts": [
+    {"text": "Walk", "amount": 12},
+    {"text": "Car", "amount": 8},
+    {"text": "Bus", "amount": 6},
+    {"text": "Bike", "amount": 4}
+  ]
+}

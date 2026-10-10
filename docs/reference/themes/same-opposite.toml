@@ -1,0 +1,8 @@
+# A course theme that writes causal signs as s (same) and o (opposite) instead
+# of + and −. Merged over the default theme; the documents do not change.
+
+version = 1
+name = "same-opposite"
+
+[flow]
+polarity = "so"

@@ -146,11 +146,11 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Twenty-six exist, and they fall into fifteen families:
+fields are legal. Thirty-two exist, and they fall into twenty-one families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
-| Graph | `flow`, `tree`, `cycle`, `lanes` | Things connected to other things: a process, a hierarchy, a loop that comes round again, a process drawn in one strip per party. |
+| Graph | `flow`, `tree`, `cycle`, `lanes` | Things connected to other things: a process, a hierarchy, a loop that comes round again, a process drawn in one strip per party, a causal loop diagram. |
 | Grid | `stack`, `timeline`, `columns`, `matrix` | Things in an arrangement: layers, events in order, side-by-side comparison, rows against columns. |
 | Shape | `pyramid`, `rings`, `funnel` | Things in a proportion: levels narrowing to an apex, scopes nested inside scopes, stages narrowing to an outcome. |
 | Plot | `chart`, `quadrant`, `scatter`, `curve` | Things with numbers: series against axes, items placed in a plane, points by two measured values, a named shape with labelled waypoints. |
@@ -161,10 +161,16 @@ fields are legal. Twenty-six exist, and they fall into fifteen families:
 | Plan | `gantt` | Things that take time: one row per task, each an interval, with phases, milestones and what waits on what. |
 | Board | `board` | Things sorted, not joined: cards in columns — a kanban board, a retrospective, a story map sliced into releases. |
 | Cause | `fishbone` | Things that led to one effect: causes by category on bones slanting into a spine — a root-cause (Ishikawa) diagram. |
-| Overlap | `venn` | Things that share: two or three sets as equal circles, each region named by the sets it is in. |
+| Overlap | `venn` | Things that share: two or three sets as equal circles (four as equal ellipses), each region named by the sets it is in. |
 | Experience | `journey` | How one person feels, stage by stage: a named feeling per stage as a line, over what they do there. |
 | Share | `treemap` | The parts of one known total: each a rectangle by its area, labelled inside itself. |
+| Portion | `pie` | The shares of one known total, a few of them: sectors of a circle, each labelled with its name and amount (a donut by a theme). |
 | Quantity | `sankey` | Where a known quantity goes: nodes in derived columns, joined by bands as thick as their amounts. |
+| Word problem | `barmodel` | Quantities in a word problem: bars of parts in proportion, braced — a part and a whole, a comparison, a ratio (the bar model, or tape diagram). |
+| Bridge | `waterfall` | How one total became another: a start total, signed steps floating on the running sum, checked subtotals, an end total — the bridge chart. |
+| Scale | `numberline` | Where values sit on one scale: points and ranges, each end in or out — an inequality, the pH scale, a spectrum. |
+| Topic | `mindmap` | Things round one topic, as peers: a centre and its branches nested three levels deep, on both sides — revision notes, a brainstorm, a plan (a mind map). |
+| Reasoning | `argument` | Things said for and against a claim: reasons, objections, rebuttals and evidence by stance, co-premises under one bracket (an argument map). |
 
 One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see
@@ -788,6 +794,66 @@ chord would cross the middle is refused rather than drawn through the hub. See
 [`reference/cycle-hub-quality.json`](reference/cycle-hub-quality.json) and
 [`reference/cycle-hub-flywheel.json`](reference/cycle-hub-flywheel.json).
 
+## A causal loop diagram
+
+How a system feeds itself is a causal loop diagram: a few variables, arrows saying
+*more of this means more (`+`) or less (`-`) of that*, and the feedback loops those
+arrows close, each named and marked **R** (reinforcing) or **B** (balancing). It is
+a `flow` with a sign on every arrow:
+
+```json
+{
+  "version": 1,
+  "kind": "flow",
+  "title": "Waiting lists",
+  "nodes": [
+    {"id": "wait", "text": "Time on the waiting list"},
+    {"id": "acute", "text": "Emergency admissions"},
+    {"id": "beds", "text": "Beds free for planned surgery"},
+    {"id": "private", "text": "Patients who go private"}
+  ],
+  "edges": [
+    {"from": "wait", "to": "acute", "polarity": "+", "delay": true},
+    {"from": "acute", "to": "beds", "polarity": "-"},
+    {"from": "beds", "to": "wait", "polarity": "-"},
+    {"from": "wait", "to": "private", "polarity": "+"},
+    {"from": "private", "to": "wait", "polarity": "-"}
+  ],
+  "loops": [
+    {"text": "Deterioration", "nodes": ["wait", "acute", "beds"]},
+    {"text": "Exit to private care", "nodes": ["wait", "private"]}
+  ]
+}
+```
+
+`polarity` is written as the edge's label (before any `label` of its own), so it is
+placed like one, clear of every line and box; a theme's `[flow] polarity = "so"`
+writes `s` and `o` instead of `+` and `−`. `delay: true` draws the double stroke
+across the shaft. Each loop lists its variables in the order it runs, each joined to
+the next — and the last to the first — by a signed edge. **Its type is derived, not
+chosen**: an even number of `-` links reinforces, an odd number balances. The marker
+says `R1`, `B1`, … numbered in the order written, with an arrow turning the way the
+loop runs on the page, inside the loop (in no other loop's figure when there is
+room), its name beside or under it; the gap between ranks is made taller to hold it.
+`type` is optional and checked.
+
+Research maps are an order of magnitude bigger than teaching diagrams and group
+their variables into subsystems: `groups` work with `loops`, but draw one subsystem
+per diagram — the budget is 15 nodes and 6 loops.
+
+Refused, each at its pointer: a sign on some causal edges but not all (a
+half-signed diagram is ambiguous); a sign on a `link`, `aside` or `weak` edge (no
+causal direction); `delay` without a sign; `loops` with no signs; a loop whose nodes
+are not joined in that order (naming the missing `a → b`), that names a node twice,
+or has fewer than 2; the same loop twice; a `type` the signs contradict (naming the
+count); `polarity`, `delay` or `loops` on any other kind. A marker with no room
+inside its loop or beside its first link is a `FitError` naming the loop. See
+[`reference/flow-loops-waiting.json`](reference/flow-loops-waiting.json),
+[`reference/flow-loops-predators.json`](reference/flow-loops-predators.json),
+[`reference/flow-loops-adoption.json`](reference/flow-loops-adoption.json) (signs
+as `s`/`o`) and [`reference/flow-loops-town.json`](reference/flow-loops-town.json)
+(with groups).
+
 ## A state machine
 
 A `flow`'s boxes are things done, once each; a state machine's are conditions
@@ -1186,7 +1252,7 @@ width works, `FitError` names the longest cause. See
 
 ## A Venn diagram
 
-"What do these share" is a Venn diagram, and with two or three sets it needs no
+"What do these share" is a Venn diagram, and with two to four sets it needs no
 coordinates at all: every region is fixed by **which sets it is in**. That is
 `venn`:
 
@@ -1216,8 +1282,38 @@ above the top one and below the other two of three. Roles: a set's `emphasis`
 draws a heavier outline; a region's `emphasis` sets its words bold and fills the
 region with the theme's first mark fill, along its exact outline.
 
-Refused, each at its pointer: one set, or four or more (no arrangement of four
-circles shows every region — use a `matrix`, sets as columns and items as rows);
+**Four sets** are four equal ellipses, not circles: four circles cannot draw the
+two diagonal pairs, and four ellipses show all fifteen regions. The middle two
+cross as an X with their names above; the outer two lie lower, their names under
+their outer lobes. The smallest regions are small, so with four sets a region's
+text is a count or a word or two — at most 12 characters, markup aside — the
+research figure with a number in every region, or the ikigai figure with only the
+pairs and the centre named and the rest left empty:
+
+```json
+{
+  "version": 1,
+  "kind": "venn",
+  "title": "Ikigai: where four questions meet",
+  "sets": [
+    {"id": "love", "text": "What you love"},
+    {"id": "good", "text": "What you are good at"},
+    {"id": "need", "text": "What the world needs"},
+    {"id": "paid", "text": "What you can be paid for"}
+  ],
+  "regions": [
+    {"in": ["love", "good"], "text": "Passion"},
+    {"in": ["love", "need"], "text": "Mission"},
+    {"in": ["need", "paid"], "text": "Vocation"},
+    {"in": ["good", "paid"], "text": "Profession"},
+    {"in": ["love", "good", "need", "paid"], "text": "Ikigai", "role": "emphasis"}
+  ]
+}
+```
+
+Refused, each at its pointer: one set, or five or more (no drawing of five sets
+shows every region legibly — use a `matrix`, sets as columns and items as rows);
+region text past 12 characters with four sets;
 an `in` naming an unknown set, empty, or naming a set twice; the same membership
 twice; `subset_of` (a set inside another is `rings`); `size` or `value` (the
 circles are equal on purpose: a Venn diagram says what overlaps, not how much);
@@ -1225,8 +1321,11 @@ circles are equal on purpose: a Venn diagram says what overlaps, not how much);
 a `FitError` naming the region. See
 [`reference/venn-frameworks.json`](reference/venn-frameworks.json),
 [`reference/venn-data-roles.json`](reference/venn-data-roles.json),
-[`reference/venn-parity.json`](reference/venn-parity.json) and
-[`reference/venn-telemetry.json`](reference/venn-telemetry.json).
+[`reference/venn-parity.json`](reference/venn-parity.json),
+[`reference/venn-telemetry.json`](reference/venn-telemetry.json), and for four sets
+[`reference/venn-four-ikigai.json`](reference/venn-four-ikigai.json),
+[`reference/venn-four-ponds.json`](reference/venn-four-ponds.json) and
+[`reference/venn-four-launch.json`](reference/venn-four-launch.json).
 
 ## A journey map
 
@@ -1390,6 +1489,377 @@ room at every width tried is a `FitError` naming the node. See
 [`reference/sankey-tickets.json`](reference/sankey-tickets.json),
 [`reference/sankey-cores.json`](reference/sankey-cores.json) and
 [`reference/sankey-energy.json`](reference/sankey-energy.json).
+
+## A number line
+
+"Which values of x satisfy both" is a question about one scale — where each end
+of a range is, whether the end belongs to it, and which way it runs on — and a
+number line says it in the form every maths textbook uses. That is `numberline`:
+
+```json
+{
+  "version": 1,
+  "kind": "numberline",
+  "title": "Where x > −1 and x ≤ 4 both hold",
+  "axis": {"min": -4, "max": 7, "step": 1},
+  "ranges": [
+    {"from": -1, "from_open": true, "text": "x > −1"},
+    {"to": 4, "text": "x ≤ 4"},
+    {"from": -1, "to": 4, "from_open": true, "text": "both: −1 < x ≤ 4", "role": "emphasis"}
+  ]
+}
+```
+
+**`numberline` or `timeline`?** A `timeline` is events in order — *when* things
+happened — each a box with its date under the line, and `at` only spaces them out.
+A number line is *where values sit* on a measured or named scale, and what it can
+say that a timeline cannot is whether a range's end is in it (`x ≤ 4`) or out of it
+(`x < 4`), and that a range runs on for ever. Inequalities, interval notation, the
+pH scale, a temperature band, positions on a policy spectrum, a tense relative to
+*now* in a language class: a number line. A project's history, a release
+schedule, a sequence of events: a timeline (or a `gantt`, for work that overlaps).
+
+The `axis` runs from `min` to `max` (numbers, `min` < `max`) across the canvas with
+an arrowhead at each end, ticked every `step` with the numbers under the ticks; with
+no `step`, one a reader can count in is chosen. `label` and `unit` are written under
+the numbers. For a scale that is named rather than measured, give `ends` — the low
+and the high end's words, written under the arrowheads — and no numbers are drawn;
+points and ranges are still placed by number between `min` and `max`, so only the
+order and the gaps count.
+
+`points` are dots on the line: filled, or hollow with `"open": true` (the value
+itself is excluded — a hole). Their words go directly above the dot when they fit,
+otherwise directly under the numbers, then in rows further out joined to the dot by
+a thin leader — so fifteen substances on the pH scale settle into alternating rows,
+as the textbook draws them. `ranges` are stacked in tracks above the line in the
+order written, the last nearest it — write the answer last. Each is a heavy line
+with its words centred over it. `from_open` / `to_open` exclude an end; an end left
+out runs on past the axis, drawn as an arrow. Roles for both: `emphasis` (the
+solution set, the point that matters: a thicker bar or a larger dot, bold words) and
+`note` (context: a dashed range, a smaller dot).
+
+How an excluded end looks is house style, not content: the theme's
+`[numberline] ends` draws `"dots"` (filled in, hollow out — the default, and the
+school convention in most of the world) or `"brackets"` (`[` in, `(` out, as US and
+college algebra texts do). Set it once in a course's theme; the documents do not
+change. A single point is a dot either way.
+
+Refused, each at its pointer: a value outside `min`–`max` (widen the axis, or leave
+the end out so it is drawn as an arrow); a range with neither `from` nor `to` (the
+whole line — say it in the title); `to` not after `from` (a single value is a
+point); `from_open` without `from`, `to_open` without `to`; two points at one value;
+`ends` with `step` or `unit`, or more than two ends; a step that makes more than 30
+ticks; a string where a number belongs (a date is a `timeline`); `value` (it is
+`at`), `edges`, `series`, `axes` (two values per item is a `scatter`). Budget: 15
+points, 4 ranges. Tick numbers that touch, two dots too close to tell apart, or a
+point's words with no row within five of the line that keeps clear of the others
+are a `FitError`. See
+[`reference/numberline-inequality.json`](reference/numberline-inequality.json),
+[`reference/numberline-interval-us.json`](reference/numberline-interval-us.json)
+(drawn with brackets by a course theme),
+[`reference/numberline-ph.json`](reference/numberline-ph.json),
+[`reference/numberline-tense.json`](reference/numberline-tense.json) and
+[`reference/numberline-spectrum.json`](reference/numberline-spectrum.json).
+
+## A bar model
+
+"12 of the 30 children walk; how many come by bus?" is a word problem, and the
+bar model — the *tape diagram* of US curricula, the Singapore bar model of primary
+teaching — is how it is drawn before the sum is written: a bar for the quantity,
+split into parts, a brace for what a stretch adds up to, a `?` for what is asked.
+That is `barmodel`:
+
+```json
+{
+  "version": 1,
+  "kind": "barmodel",
+  "title": "How many children come by bus?",
+  "bars": [
+    {"id": "class", "parts": [
+      {"amount": 12, "text": "walk: 12"},
+      {"amount": 18, "text": "bus: ?", "role": "emphasis"}
+    ]}
+  ],
+  "braces": [{"over": ["class"], "amount": 30, "text": "30 children"}]
+}
+```
+
+The one rule the drawing keeps is the one teachers insist on: **lengths are in
+proportion**. Up to three `bars` run top to bottom from one left edge, each named
+by its `text` in a column at the left, and one scale serves them all — the longest
+bar fills the width — so a comparison is read by length. Each bar has up to eight
+`parts`, left to right, and every part has a size: an `amount` (more than 0, its
+length in proportion, written in it unless its `text` says otherwise) or `units`
+(that many equal boxes, its `text` in each — groups to multiply, the shares of a
+ratio, the fifths of a fraction; at most twelve boxes a bar). A document is all
+amounts or all units. **The unknown still has a size**: write its `amount` and
+`"text": "?"`, so the bar is drawn to the answer and the reader sees the question.
+Roles: `emphasis` (the part asked about: filled, bold) and `note` (a part that is
+not there — the stretch a shorter bar lacks in a comparison: dashed).
+
+`braces` say what a stretch adds up to. `over` names ids: side-by-side parts of one
+bar, or a whole bar — braced above it, or under it for the last of several bars, so
+a comparison's two bars are braced on their outer sides — or several consecutive
+bars, braced upright at their right (a ratio's total). Braces on one side that would
+touch stack outwards, the narrowest nearest the bar. A brace's `amount` is
+**checked**: the parts it spans must add up to it, and with units every brace with an
+amount must make one unit worth the same. Its `text`, if given, is what is written —
+`"30 children"`, `"?"`.
+
+Refused, each at its pointer: a part with no size, or both; amounts and units in one
+document; a brace amount that is not the sum of what it spans, or a second brace that
+makes a unit worth a different amount; a brace over parts of two bars, parts not side
+by side, bars not consecutive, or a bar and a part together; a brace with neither
+`amount` nor `text`; an unknown id (naming the closest); duplicate ids; a document of
+one part; `total` on a bar (it is a brace); `value` (it is `amount`); `edges`, `axes`, `series` (a bar model has
+no axis — that is a `chart`). Budget: 3 bars, 8 parts a bar, 6 braces. A part too
+narrow for its words at the scale the longest bar sets is a `FitError` naming it. See
+[`reference/barmodel-bus.json`](reference/barmodel-bus.json),
+[`reference/barmodel-pages.json`](reference/barmodel-pages.json),
+[`reference/barmodel-ratio.json`](reference/barmodel-ratio.json),
+[`reference/barmodel-fraction.json`](reference/barmodel-fraction.json) and
+[`reference/barmodel-savings.json`](reference/barmodel-savings.json).
+
+## A waterfall
+
+A budget paper explains how one number became another — last year's deficit to this
+year's plan, a forecast to an outturn — as a **waterfall**, or bridge chart: a total,
+the steps that moved it, and the total it arrived at. That is `waterfall`:
+
+```json
+{
+  "version": 1,
+  "kind": "waterfall",
+  "title": "How the council's budget gap closed",
+  "axis": {"label": "Budget gap, £ million"},
+  "bars": [
+    {"text": "Autumn forecast", "total": 18.4},
+    {"text": "Council tax rise", "amount": -4.2},
+    {"text": "Grant settlement", "amount": -6.5},
+    {"text": "Social care demand", "amount": 5.1},
+    {"text": "Savings programme", "amount": -7.6, "role": "emphasis"},
+    {"text": "Remaining gap", "total": 5.2}
+  ]
+}
+```
+
+Each of the 3 to 12 `bars`, left to right, is one of two things. A **`total`** stands
+on zero and runs to its value: the first bar is one, the last is one, and one in
+between is a **subtotal**. An **`amount`** is a signed step (not 0) that floats from
+the running sum to the running sum plus it. **Every total after the first is
+checked**: it must be the running sum, and one that is not is refused with the sum
+and the difference — the chart would otherwise show a step that is not there. The
+end total is written, not derived: you state the number the reader is told, and
+drawspec says whether the steps get there.
+
+Every bar's number is written beyond its far end — above a rise or a positive total,
+under a fall or a negative one — the steps signed (`+5.1`, `−7.6`, with a true minus),
+all with as many decimals as the most precise figure. Thin dashed connectors join each
+bar to the next at the running sum. Totals, rises and falls take the theme's first
+three mark fills, so they are told apart in greyscale too. A bridge entirely below
+zero (a deficit getting smaller) hangs from the zero line; one that crosses zero is
+drawn across it. `axis.label` is required: what the numbers are, with their unit.
+`role: "emphasis"` marks the step the chart is about (a heavier outline, a bold
+number).
+
+Refused, each at its pointer: a first bar that is not a `total`; a last bar that is
+not one (the refusal says what the steps add up to); a total that is not the running
+sum; a total straight after a total; a bar with both `total` and `amount`, or
+neither; an `amount` of 0; `value` (it is `amount` or `total`), `subtotal`, `start`,
+`end` (each is a `total`), `unit` (it goes in the axis label), `series`, `axes` (a
+`chart`), `edges`. Budget: 12 bars — split a longer bridge at a subtotal. A name with
+a word wider than its bar's band, or a number wider than the band, is a `FitError`. See
+[`reference/waterfall-budget-gap.json`](reference/waterfall-budget-gap.json),
+[`reference/waterfall-deficit.json`](reference/waterfall-deficit.json) (every bar below
+zero, two subtotals),
+[`reference/waterfall-cash.json`](reference/waterfall-cash.json) and
+[`reference/waterfall-result.json`](reference/waterfall-result.json) (crossing zero).
+
+## A pie
+
+The pie chart is what a class draws from a tally and what a budget-day leaflet prints:
+one total, split into a few shares, each sector labelled. That is `pie`:
+
+```json
+{
+  "version": 1,
+  "kind": "pie",
+  "title": "How the 30 pupils in 6B travel to school",
+  "unit": "pupils",
+  "parts": [
+    {"text": "Walk", "amount": 12},
+    {"text": "Car", "amount": 8},
+    {"text": "Bus", "amount": 6},
+    {"text": "Bike", "amount": 4}
+  ]
+}
+```
+
+**Use it for a few known proportions, not to explore data.** It reads well when one or
+two parts dominate or a share is a nice fraction (½, ¼); for parts of similar size, for
+comparing two totals, or for more than eight parts, a bar `chart` or a `treemap` says
+it better. The limits say so: 2 to 8 `parts`, none under 2% of the total.
+
+Each part is a `text` and an `amount` more than 0, as it is in the source — a count
+from a tally, a sum of money. **Shares are computed, never written**: each angle is the
+part's share of the sum of the amounts, so the drawing cannot disagree with the
+numbers, and `percent`, `share`, `angle` and `total` are refused. Percentages are the
+one case that can disagree — they claim a total of 100 — so with `"unit": "%"` the
+amounts must add up to 100 within one point of rounding. `unit` is written after each
+amount (`12 pupils`, `27%`); `"values": false` writes the names alone.
+
+Sectors run clockwise from twelve o'clock in the order written. Past eight parts, keep
+the largest and merge the rest into one `"role": "note"` part — `Everything else` —
+drawn last, unfilled and dashed; there is at most one. `emphasis` marks the part the
+chart is about (a heavier outline, bold words).
+
+A sector is identified by its **label**, never by its fill: each carries its name and
+amount, inside it when they fit, otherwise beside the circle on a leader from the
+middle of its arc, the outside labels kept in angle order on their side and never
+touching. Fills are the theme's mark patterns in turn, only so that touching sectors
+differ — there is no legend to match them against, so a reader in greyscale loses
+nothing.
+
+**A donut is house style**, not content: a theme with `[pie] shape = "donut"` draws
+every pie in a report as a ring, with every label outside. The documents do not change.
+
+Refused, each at its pointer: more than 8 parts (with the advice above); a part under
+2% (merge it into the `note` part); percentages more than one point off 100; a second
+`note` part; one part; `value` (it is `amount`), `percent`, `share`, `angle`, `total`;
+`groups` (a `treemap`); `series`, `axes` (a `chart`); `donut`, `hole` (the theme);
+`edges`. Labels beside the circle that leave it too small to read are a `FitError`.
+See [`reference/pie-travel.json`](reference/pie-travel.json),
+[`reference/pie-trip.json`](reference/pie-trip.json) (nice fractions),
+[`reference/pie-spending.json`](reference/pie-spending.json) (percentages, with a
+remainder) and [`reference/pie-team-week.json`](reference/pie-team-week.json) (a donut,
+by [`reference/themes/donut.toml`](reference/themes/donut.toml)).
+
+## A mind map
+
+Revision notes, a brainstorm, the plan for a move: one topic in the middle and what
+belongs to it radiating out, every main branch a peer. A `tree` holds the same
+hierarchy but ranks it from a root at one edge, which says *this comes first*; a mind
+map says none does. That is `mindmap`:
+
+```json
+{
+  "version": 1,
+  "kind": "mindmap",
+  "title": "Moving in March",
+  "centre": "The move",
+  "branches": [
+    {"text": "Before", "branches": [{"text": "Give notice"}, {"text": "Book the van"}]},
+    {"text": "Paperwork", "branches": [{"text": "Change of address"}, {"text": "Council tax"}]},
+    {"text": "The day", "role": "emphasis", "branches": [{"text": "Meter readings"}]},
+    {"text": "After", "branches": [{"text": "Unpack the kitchen first"}]}
+  ]
+}
+```
+
+`centre` is the topic, drawn as the one strongly boxed element. `branches` are the main
+branches, 2 to 8, each a `text` and optionally its own `branches`: nested, at most three
+levels below the centre (a branch, a twig, a leaf) and 30 in all. **The nesting is the
+structure**, so there are no edges to write and none to get wrong.
+
+**Placement is drawspec's.** The main branches go clockwise from the top right in the
+order written — down the right side, then up the left — and the split between the two
+sides is the one that balances them best, the first branch always on the right. Under a
+branch, its own branches read top to bottom in the order written, on both sides. So an
+**ordered plan** — an essay's introduction, sections and conclusion — is written in that
+order, and a numbered lead (`1. Introduction`) says the order aloud. `side` is refused:
+which side a branch goes is a coordinate.
+
+Main branches are boxed lightly, in bold. A twig or a leaf sits on its line, which runs on
+under its words, the mind-map convention; a theme's `[mindmap] boxes = true` boxes them
+instead. Lines are smooth and thin from the centre outwards, by the theme's `[mindmap]
+taper`. Colour per branch, which the study guides recommend, is a theme's matter; nothing
+in the drawing depends on it.
+
+Roles: `step` (the default); `emphasis` — the branch the map is about, bold, its line and
+every line back to the centre drawn heavy; `note` — context, not content (sources, ideas
+parked), faint words on a dashed line, and so is everything under it.
+
+**A cross-link is a different diagram.** Arrows between ideas on different branches, each
+labelled with how they relate, make a *concept map*: draw that as a `flow` with labelled
+edges. `edges`, `links` and an `id` on a branch are refused with that suggestion.
+
+Refused, each at its pointer: fewer than 2 or more than 8 main branches; more than 30 in
+all (the 31st is named; split into an overview map and a map per branch); a fourth level;
+an empty `branches` list or empty words; `edges`, `links`, `id`, `side`; a branch role
+with a shape (`decision`, `terminal`). When the words do not fit the width, the twigs and
+leaves of the branch reaching furthest out wrap narrower first; when no width works,
+`FitError` names the longest. See
+[`reference/mindmap-photosynthesis.json`](reference/mindmap-photosynthesis.json) (revision
+notes, three levels), [`reference/mindmap-essay-plan.json`](reference/mindmap-essay-plan.json)
+(an ordered plan), [`reference/mindmap-moving-house.json`](reference/mindmap-moving-house.json)
+and [`reference/mindmap-offsite.json`](reference/mindmap-offsite.json) (eight branches).
+
+## An argument map
+
+Law and critical-thinking courses, debating clubs and policy units draw the same
+figure: one contention at the top, the reasons for it beneath, the objections to those
+reasons, and the replies to the objections. A `tree` holds the hierarchy but cannot say
+the two things that make it an argument — which way each box bears, and that two
+reasons count only together. That is `argument`:
+
+```json
+{
+  "version": 1,
+  "kind": "argument",
+  "title": "Did the email of 3 May form a contract?",
+  "claim": "A binding contract was formed on 3 May",
+  "points": [
+    {"id": "offer", "on": "claim", "stance": "for", "text": "The quote was an offer"},
+    {"id": "accept", "on": "claim", "stance": "for", "with": ["offer"], "text": "The buyer's email accepted it"},
+    {"id": "price", "on": "claim", "stance": "for", "text": "Price was agreed: consideration given"},
+    {"id": "counter", "on": "accept", "stance": "against", "text": "It asked for a later date: a counter-offer"},
+    {"id": "enquiry", "on": "counter", "stance": "against", "role": "emphasis", "text": "It only asked whether the date could move"}
+  ]
+}
+```
+
+`claim` is the contention, drawn at the top in the heavy outline; a qualifier
+(*probably*) is a word in it. Each point names the box it bears on with `on` —
+`"claim"` or another point's `id` — and its `stance`: `for` or `against` that box.
+There is no third stance: a **rebuttal is an `against` on an `against`**, and a
+warrant or its backing (Toulmin's slots) is a `for` on the point it supports. Points
+hang below the box they bear on, siblings in the order written, down to four levels.
+
+**Stance is drawn twice**, so a greyscale print still says it: a tag in each box's
+top margin, `because` or `but` (read aloud, a chain goes *claim, because …, but …,
+but …*), and an `against` box filled with a faint hatch. A theme's `[argument]`
+section changes the words and the pattern.
+
+**Co-premises** are points that support only together — an offer *and* its
+acceptance. Write `with` on any member, naming the others (same `on`, same `stance`;
+at most four in a group); they are drawn side by side under one bracket, with one
+connector to the box they support. Every separate reason has its own connector, so
+the arrows into a box count its independent reasons.
+
+**An objection to how co-premises combine** — the *inference objection* — attacks the
+step from the group to its box, not any one premise. `on` names one box, so it is
+refused with what to write instead, which is what argument-mapping guides advise:
+state the premise that links them (*homework is only worth setting for what it
+adds*) as a point `with` them, and put the objection `on` that point.
+[`reference/argument-homework.json`](reference/argument-homework.json) does exactly
+this.
+
+Roles: `step`; `emphasis` — the decisive point, heavy outline and connector, bold;
+`note` — **evidence or a source**, not a reason (a study guide's *basis* box): words
+without a box, on a dashed connector, still tagged by stance.
+
+Refused, each at its pointer: an `on` that names no point, or names itself, or goes
+round in a circle; a missing `stance` (a remark that is neither belongs in the
+`caption`); `rebuttal` or `objection` as a stance; `with` naming an unknown point, or
+one with a different `on` or `stance`; a group of five; `on` naming a co-premise group
+(a list, or `a+b`); `edges`; a duplicate id, or `claim` as an id; a fifth level;
+empty words; a role with a shape. Budget: 15 points. When the tree is too wide, the
+points wrap narrower; when no width works, `FitError` names the widest row — split the
+map, an overview with the top-level reasons and objections and a map per contested
+reason. See [`reference/argument-contract.json`](reference/argument-contract.json),
+[`reference/argument-congestion.json`](reference/argument-congestion.json) (with
+evidence), [`reference/argument-readmissions.json`](reference/argument-readmissions.json)
+and [`reference/argument-homework.json`](reference/argument-homework.json).
 
 ## Asking for a wide drawing instead of a tall one
 

@@ -151,3 +151,6 @@ and a caption. Where it departs from the text above:
   `edges`. Region roles are `step` and `emphasis`; set roles the same. The counts
   live in the readability budget — 3 sets (refused at the fourth with the `matrix`
   suggestion) and 7 regions.
+* **Four sets, later.** The refusal of a fourth set held for circles, but the round-2
+  corpus showed four ellipses draw every region. [`venn4.md`](venn4.md) lifts it: four
+  sets are four equal ellipses, and a fifth is refused.

@@ -184,6 +184,40 @@ line = "strong"
 guide = "aside"
 separator = "link"
 
+[numberline]
+# Whether a range's end belongs to it is drawn as a filled (in) or hollow (out)
+# dot, the school convention in most of the world; "brackets" draws "[" and "(",
+# as most US and college algebra texts do. A point is a dot either way.
+ends = "dots"
+
+[flow]
+# How a causal link's sign is written: "+-" (a plus and a true minus) or "so"
+# (s for same, o for opposite, as some systems-thinking courses write it). The
+# document says which links are negative either way.
+polarity = "+-"
+
+[pie]
+# A pie is a disc, its labels inside a sector when they fit; "donut" draws a ring
+# with a hole of about half the radius and every label outside on a leader. House
+# style, set once for a report: the shares are the same either way.
+shape = "pie"
+
+[mindmap]
+# A twig or a leaf sits on a line, its branch line running on under its words,
+# the mind-map convention; true boxes them like the main branches. Lines thin
+# from the centre outwards: the width each level's line leaves its parent at,
+# narrowing to the next level's where it arrives.
+boxes = false
+taper = [6.0, 3.0, 1.5]
+
+[argument]
+# How an argument map shows which way a point bears, twice so greyscale holds: a
+# tag in the box's top margin, read aloud down a chain (claim, because, but, but),
+# and a faint fill on an objection's box; a reason's box is plain.
+for_tag = "because"
+against_tag = "but"
+against_fill = "hatch"
+
 # ---------------------------------------------------------------------------
 # Node roles. Shape and line treatment per semantic role. The author names the
 # role; every appearance decision below is taken here, once, for all diagrams.

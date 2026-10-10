@@ -246,6 +246,49 @@ How a journey draws the lines that are not words: the feeling line and its rules
 | `guide` | `"aside"` | The edge role each feeling level's guide is drawn in, across every stage: light, so the line and not the grid is what is read. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
 | `separator` | `"link"` | The edge role the rule above each detail row is drawn in, across the whole map. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
 
+### `[numberline]`
+
+How a number line marks whether a range's end belongs to it.
+
+| Key | Default | What it is |
+|---|---|---|
+| `ends` | `"dots"` | `dots` (filled closed, hollow open) or `brackets` (`[` closed, `(` open). A point is a dot either way. One of `dots`, `brackets`. |
+
+### `[flow]`
+
+How a causal loop diagram's signs are written.
+
+| Key | Default | What it is |
+|---|---|---|
+| `polarity` | `"+-"` | `+-` (a plus and a true minus) or `so` (`s` for same, `o` for opposite). One of `+-`, `so`. |
+
+### `[pie]`
+
+Whether a pie is a disc or a ring.
+
+| Key | Default | What it is |
+|---|---|---|
+| `shape` | `"pie"` | `pie` (a disc, labels inside a sector when they fit) or `donut` (a ring with a hole of about half the radius, every label outside on a leader). One of `pie`, `donut`. |
+
+### `[mindmap]`
+
+How a mind map draws its branches: their lines, and whether words are boxed.
+
+| Key | Default | What it is |
+|---|---|---|
+| `boxes` | `false` | `false` sets a twig or a leaf on a line, the mind-map convention, its branch line running on under its words; `true` boxes them like the main branches. |
+| `taper` | `[6.0, 3.0, 1.5]` | How thick a branch's line is where it leaves its parent, one width per level below the centre, none thicker than the one before. Each line narrows to the next level's width where it arrives (the last to two thirds of itself), so a map thins from its centre outwards. An `emphasis` branch's line, and every line between it and the centre, is drawn half as thick again. |
+
+### `[argument]`
+
+How an argument map says which way a point bears: its tag and its fill.
+
+| Key | Default | What it is |
+|---|---|---|
+| `for_tag` | `"because"` | The tag over a `for` point, in its top margin at the left: the word a reader says before it when reading the map aloud. |
+| `against_tag` | `"but"` | The tag over an `against` point: an objection, and a rebuttal of one. |
+| `against_fill` | `"hatch"` | The pattern an `against` box is filled with; a `for` box is plain. The patterns are drawn faint, so the words over them stay readable. One of `hatch`, `dots`, `cross`, `grid`. |
+
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The

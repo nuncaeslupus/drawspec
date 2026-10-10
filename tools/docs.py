@@ -56,6 +56,7 @@ from drawspec.schema import (
     FieldSpec,
 )
 from drawspec.theme import (
+    ARGUMENT_FILLS,
     CYCLE_CONNECTORS,
     EDGE_HEADS,
     EDGE_ROLES,
@@ -63,16 +64,20 @@ from drawspec.theme import (
     FILES_ALIGNS,
     FILES_TYPES,
     FILL_PATTERNS,
+    FLOW_POLARITIES,
     FONT_ROLES,
     FUNNEL_DIRECTIONS,
     GANTT_MILESTONES,
     LANES_ORIENTATIONS,
     NODE_SHAPES,
+    NUMBERLINE_ENDS,
+    PIE_SHAPES,
     SHEET_BORDERS,
     SHEET_PATTERNS,
     THEME_VERSION,
     TYPE_LEVELS,
     WIDTH_MODES,
+    ArgumentStyle,
     BoardStyle,
     BoxStyle,
     Canvas,
@@ -82,13 +87,17 @@ from drawspec.theme import (
     FilesStyle,
     FishboneStyle,
     FitBand,
+    FlowStyle,
     FontStacks,
     FunnelStyle,
     GanttStyle,
     JourneyStyle,
     LanesStyle,
     MarkStyle,
+    MindmapStyle,
+    NumberlineStyle,
     Padding,
+    PieStyle,
     SequenceStyle,
     StatesStyle,
     TitleStyle,
@@ -121,6 +130,8 @@ def _budgeted(name: str, limit: int) -> str:
     if "@" in name:
         outer, per = name.split("@")
         return f"{limit} `{outer}` per {per}"
+    if name.endswith("*"):
+        return f"{limit} `{name[:-1]}` in all, at every level"
     if "/" not in name:
         return f"{limit} `{name}`"
     outer, inner = name.split("/")
@@ -527,6 +538,11 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "board": BoardStyle,
     "fishbone": FishboneStyle,
     "journey": JourneyStyle,
+    "numberline": NumberlineStyle,
+    "flow": FlowStyle,
+    "pie": PieStyle,
+    "mindmap": MindmapStyle,
+    "argument": ArgumentStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are
@@ -557,6 +573,10 @@ THEME_VOCABULARIES: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("journey", "line"): EDGE_ROLES,
     ("journey", "guide"): EDGE_ROLES,
     ("journey", "separator"): EDGE_ROLES,
+    ("numberline", "ends"): NUMBERLINE_ENDS,
+    ("flow", "polarity"): FLOW_POLARITIES,
+    ("pie", "shape"): PIE_SHAPES,
+    ("argument", "against_fill"): ARGUMENT_FILLS,
 }
 
 

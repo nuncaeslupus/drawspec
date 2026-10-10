@@ -1,0 +1,9 @@
+# A report theme that draws every pie as a ring rather than a disc. Merged over the
+# default theme like any other, so it holds only that one decision: the documents
+# do not change.
+
+version = 1
+name = "donut"
+
+[pie]
+shape = "donut"

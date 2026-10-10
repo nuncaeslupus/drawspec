@@ -28,7 +28,7 @@ from __future__ import annotations
 import tomllib
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
-from itertools import combinations
+from itertools import combinations, pairwise
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Final
@@ -1300,6 +1300,184 @@ class JourneyStyle:
         )
 
 
+#: How a `numberline` marks a range's end: a filled or hollow dot, as school
+#: texts in the UK and elsewhere draw it, or a bracket or parenthesis, as most US
+#: and college texts do. The same fact — the end is in, or it is out — so it is
+#: house style, not content.
+NUMBERLINE_ENDS: Final = ("dots", "brackets")
+
+
+@dataclass(frozen=True)
+class NumberlineStyle:
+    """How a number line marks whether a range's end belongs to it.
+
+    The author says an end is open or closed; whether that is drawn as a hollow
+    and a filled dot or as `(` and `[` is the convention of the course the drawing
+    is for, set once for every number line in it.
+    """
+
+    ends: str = "dots"
+    """`dots` (filled closed, hollow open) or `brackets` (`[` closed, `(` open). A
+    point is a dot either way."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> NumberlineStyle:
+        _reject_unknown(mapping, ("ends",), "[numberline]")
+        defaults = cls()
+        return cls(
+            ends=_choice(mapping.get("ends", defaults.ends), NUMBERLINE_ENDS, "[numberline] ends"),
+        )
+
+
+#: How a causal link's sign is written: `+` and a true minus, or `s` (same) and `o`
+#: (opposite), as some systems-thinking courses teach it.
+FLOW_POLARITIES: Final = ("+-", "so")
+
+#: The glyph each polarity is written as, by `[flow] polarity`.
+POLARITY_GLYPHS: Final = {"+-": {"+": "+", "-": "\u2212"}, "so": {"+": "s", "-": "o"}}
+
+
+@dataclass(frozen=True)
+class FlowStyle:
+    """How a causal loop diagram's signs are written.
+
+    The author says whether a link is positive or negative; whether that reads
+    `+` and a minus, or `s` and `o`, is house style, set once for a course's diagrams.
+    """
+
+    polarity: str = "+-"
+    """`+-` (a plus and a true minus) or `so` (`s` for same, `o` for opposite)."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> FlowStyle:
+        _reject_unknown(mapping, ("polarity",), "[flow]")
+        defaults = cls()
+        return cls(
+            polarity=_choice(
+                mapping.get("polarity", defaults.polarity), FLOW_POLARITIES, "[flow] polarity"
+            )
+        )
+
+
+#: How a `pie` is drawn: a full disc, or a ring with a hole in the middle.
+PIE_SHAPES: Final = ("pie", "donut")
+
+
+@dataclass(frozen=True)
+class PieStyle:
+    """Whether a pie is a disc or a ring.
+
+    The author says what the shares are; a ring instead of a disc is house style —
+    the round-2 corpus found donuts only in template galleries — so it is set once
+    for every pie in a report, never per document.
+    """
+
+    shape: str = "pie"
+    """`pie` (a disc, labels inside a sector when they fit) or `donut` (a ring with
+    a hole of about half the radius, every label outside on a leader)."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> PieStyle:
+        _reject_unknown(mapping, ("shape",), "[pie]")
+        defaults = cls()
+        return cls(shape=_choice(mapping.get("shape", defaults.shape), PIE_SHAPES, "[pie] shape"))
+
+
+#: How many levels below its centre a mind map's line weights are given for.
+MINDMAP_LEVELS: Final = 3
+
+
+@dataclass(frozen=True)
+class MindmapStyle:
+    """How a mind map draws its branches: their lines, and whether words are boxed.
+
+    The author says what branches off what; the thickness of each line and whether
+    a leaf sits on a line or in a box are house style.
+    """
+
+    boxes: bool = False
+    """`false` sets a twig or a leaf on a line, the mind-map convention, its branch
+    line running on under its words; `true` boxes them like the main branches."""
+
+    taper: tuple[float, ...] = (6.0, 3.0, 1.5)
+    """How thick a branch's line is where it leaves its parent, one width per level
+    below the centre, none thicker than the one before. Each line narrows to the
+    next level's width where it arrives (the last to two thirds of itself), so a
+    map thins from its centre outwards. An `emphasis` branch's line, and every
+    line between it and the centre, is drawn half as thick again."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> MindmapStyle:
+        _reject_unknown(mapping, ("boxes", "taper"), "[mindmap]")
+        defaults = cls()
+        boxes = mapping.get("boxes", defaults.boxes)
+        if not isinstance(boxes, bool):
+            raise ThemeError(f"[mindmap] boxes: expected true or false, got {boxes!r}")
+        raw = mapping.get("taper", list(defaults.taper))
+        if not isinstance(raw, list) or len(raw) != MINDMAP_LEVELS:
+            raise ThemeError(
+                f"[mindmap] taper: expected {MINDMAP_LEVELS} widths, one per level below the "
+                f"centre, got {raw!r}"
+            )
+        taper = tuple(_number(value, "[mindmap] taper") for value in raw)
+        if any(later > earlier for earlier, later in pairwise(taper)):
+            raise ThemeError(
+                f"[mindmap] taper: {list(taper)!r} thickens outwards; a map thins from its "
+                f"centre, so no width may be more than the one before it"
+            )
+        return cls(boxes=boxes, taper=taper)
+
+
+#: The fills an `against` box may take: a pattern faint enough to read words over.
+ARGUMENT_FILLS: Final = ("hatch", "dots", "cross", "grid")
+
+
+@dataclass(frozen=True)
+class ArgumentStyle:
+    """How an argument map says which way a point bears: its tag and its fill.
+
+    The author says `for` or `against`; the words a reader reads it aloud by, and
+    the pattern an objection is filled with, are house style. Stance is drawn on
+    both channels, so a map printed in greyscale still says it twice.
+    """
+
+    for_tag: str = "because"
+    """The tag over a `for` point, in its top margin at the left: the word a reader
+    says before it when reading the map aloud."""
+
+    against_tag: str = "but"
+    """The tag over an `against` point: an objection, and a rebuttal of one."""
+
+    against_fill: str = "hatch"
+    """The pattern an `against` box is filled with; a `for` box is plain. The
+    patterns are drawn faint, so the words over them stay readable."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> ArgumentStyle:
+        _reject_unknown(mapping, ("for_tag", "against_tag", "against_fill"), "[argument]")
+        defaults = cls()
+        tags = {}
+        for key in ("for_tag", "against_tag"):
+            value = mapping.get(key, getattr(defaults, key))
+            if not isinstance(value, str) or not value.strip() or "\n" in value:
+                raise ThemeError(f"[argument] {key}: expected a word or two, got {value!r}")
+            tags[key] = value
+        if tags["for_tag"] == tags["against_tag"]:
+            raise ThemeError(
+                f"[argument] for_tag and against_tag are both {tags['for_tag']!r}: the tag is "
+                f"one of the two things that tell a reason from an objection"
+            )
+        return cls(
+            for_tag=tags["for_tag"],
+            against_tag=tags["against_tag"],
+            against_fill=_choice(
+                mapping.get("against_fill", defaults.against_fill),
+                ARGUMENT_FILLS,
+                "[argument] against_fill",
+            ),
+        )
+
+
 #: Which way a `lanes` diagram's lanes run: across the page, stacked top to
 #: bottom (`rows`), or down it, side by side (`columns`). `auto` tries rows and
 #: takes columns when rows do not fit the width.
@@ -1550,6 +1728,11 @@ _TOP_LEVEL_KEYS: Final = (
     "board",
     "fishbone",
     "journey",
+    "numberline",
+    "pie",
+    "flow",
+    "mindmap",
+    "argument",
     "role",
     "edge_role",
 )
@@ -1580,6 +1763,11 @@ class Theme:
     board: BoardStyle = BoardStyle()
     fishbone: FishboneStyle = FishboneStyle()
     journey: JourneyStyle = JourneyStyle()
+    numberline: NumberlineStyle = NumberlineStyle()
+    pie: PieStyle = PieStyle()
+    mindmap: MindmapStyle = MindmapStyle()
+    argument: ArgumentStyle = ArgumentStyle()
+    flow: FlowStyle = FlowStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
 
@@ -1638,6 +1826,11 @@ class Theme:
             board=BoardStyle.from_mapping(_section(mapping, "board")),
             fishbone=FishboneStyle.from_mapping(_section(mapping, "fishbone")),
             journey=JourneyStyle.from_mapping(_section(mapping, "journey")),
+            numberline=NumberlineStyle.from_mapping(_section(mapping, "numberline")),
+            pie=PieStyle.from_mapping(_section(mapping, "pie")),
+            mindmap=MindmapStyle.from_mapping(_section(mapping, "mindmap")),
+            argument=ArgumentStyle.from_mapping(_section(mapping, "argument")),
+            flow=FlowStyle.from_mapping(_section(mapping, "flow")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
         )

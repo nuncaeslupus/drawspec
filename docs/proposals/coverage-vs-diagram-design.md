@@ -1,8 +1,9 @@
 # Coverage: drawspec against diagram-design's 44 types
 
 Status: **survey** — the input to the proposals beside this page, not a decision. Every
-proposed feature and kind is now built; waterfall and wardley are deferred (see
-[`README.md`](README.md#deferred-not-proposed)).
+proposed feature and kind is now built; wardley is deferred (see
+[`README.md`](README.md#deferred-not-proposed)), and waterfall, deferred here, was
+built once originals were found ([`waterfall.md`](waterfall.md)).
 
 diagram-design is a prompt pack: 44 reference files, each telling a
 model how to hand-write the SVG for one diagram type, with pixel budgets and a verifier

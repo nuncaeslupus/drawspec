@@ -42,8 +42,7 @@ completion.
 
 ## Should this be a diagram at all?
 
-Draw only what a picture says better than prose. Unrelated things are a bullet list; things with attributes are a table; one shape or one step is a sentence.
-If a reader learns no more from the picture than the paragraph, write the paragraph.
+Draw only what a picture says better than prose. Unrelated things are a bullet list; things with attributes are a table; one shape or one step is a sentence. If a reader learns no more from the picture than the paragraph, write the paragraph.
 
 ## Choosing a kind
 
@@ -51,7 +50,7 @@ Pick by what the reader must **understand**, not by what it looks like.
 
 | The reader must understand… | Kind | Payload |
 |---|---|---|
-| How work moves, branches, merges or loops back | `flow` | `nodes` + `edges` |
+| How work moves, branches, merges or loops back; or a causal loop diagram | `flow` | `nodes` + `edges` (causal: `polarity` `+`/`-` on every edge, `delay`, named `loops`, R/B derived from the signs) |
 | A hierarchy: what belongs to or reports to what | `tree` | `nodes` + `edges` |
 | What a proposed change adds, changes or removes — one drawing, not before + after | `flow` or `tree` + `status` | `added`/`changed`/`removed` on nodes and edges; an edge touching a removed node is `removed`, one touching an added node `added` |
 | A loop that returns to where it started | `cycle` | `nodes` + `edges` closing the ring (+ `hub`: what it turns around, joined only by `aside`/`weak`/`link` spokes) |
@@ -76,17 +75,21 @@ Pick by what the reader must **understand**, not by what it looks like.
 | What runs when in a plan, one row per task: overlap, phases, what waits on what | `gantt` | `axis` (numbers in a named unit, or `categories`; no dates) + `tasks` (`start`/`end`, or `at` for a milestone; `strong` on the critical path) (+ `groups` of consecutive tasks, `edges` finish-to-start, `marks`) |
 | Work sorted into columns, not joined: a kanban board, a retrospective, a story map | `board` | `columns` (a `limit` is counted for you) + `cards`, stacked in the order written (+ `rows` as slices, `cut` under the first release); no `edges` |
 | One observed problem and the causes investigated, by category: a root-cause review | `fishbone` | `effect` + 2–6 `categories`, each with 1–5 `causes` (leaves: no third level; `emphasis` = confirmed root cause, `note` = ruled out); no `edges` |
-| What two or three sets share, and what each holds alone | `venn` | `sets` (2 or 3, equal circles; no sizes) + `regions`, each named by `in`: exactly the set ids it is in; a region not listed is empty |
+| What two to four sets share, and what each holds alone | `venn` | `sets` (2 or 3 equal circles; 4 equal ellipses, region text ≤ 12 characters; no sizes) + `regions`, each named by `in`: exactly the set ids it is in; a region not listed is empty |
 | One person's feeling, stage by stage, against what they do: a user or citizen journey | `journey` | `feelings` (named levels, worst first; no scores) + 2–7 `stages`, each with a `feeling` (+ `rows`, filled by each stage's `details`: `{row, text}`); one person, no `edges` |
 | The parts of one known total by area — what dominates, and by how much | `treemap` | 2–10 `parts`, each an `amount` (+ `unit`, one level of `groups`); every label inside its cell, or merge the smallest into one `note` part |
 | Where a known quantity goes, and how much each way: a budget, tickets by outcome | `sankey` | `nodes` (columns derived, ≤ 4) + `flows` (`from`, `to`, `amount`; `strong`); a middle node's in = out, no loops, a `note` node for the remainder |
+| Values and ranges on one scale, each end in or out: an inequality, the pH scale, a spectrum | `numberline` | `axis` (`min`, `max`, `step`; or two named `ends`, no numbers) + `points` (`at`, `open`) and/or ≤ 4 `ranges` (`from`/`to`, `from_open`/`to_open`; a missing end runs on as an arrow) |
+| A word problem as quantities: a whole and its parts, two amounts compared, a ratio or a fraction (bar model, tape diagram) | `barmodel` | 1–3 `bars` of `parts`, each an `amount` (length in proportion) or `units` (equal boxes), `"text": "?"` for the unknown (+ `braces` `over` part or bar ids, their `amount` checked) |
+| The shares of one known total, a few of them, each labelled: a class survey, where the budget goes (a pie; a donut is the theme's `[pie] shape`) | `pie` | 2–8 `parts`, each `text` + `amount` (shares computed; `unit: "%"` must make 100 ± 1), clockwise from twelve; merge the rest into one `note` part, `Everything else` |
+| A topic and its subtopics, with no order between them: revision notes, a brainstorm, a plan (a mind map) | `mindmap` | `centre` + 2–8 `branches`, each `text` (+ `branches`, nested ≤ 3 levels, ≤ 30 in all), clockwise from the top right, sides balanced for you; no `edges`, no `side` |
+| A claim, the reasons for it and the objections to them: a case, a policy option, a paper's conclusion (an argument map) | `argument` | `claim` + ≤ 15 `points`, each `id`, `text`, `on` (`claim` or a point), `stance` `for`/`against` (a rebuttal is an `against` on an `against`), `with` for co-premises; `note` = evidence |
+| How one total became another, step by step: a budget gap, a deficit, a forecast to an outturn (bridge chart) | `waterfall` | `axis` (`label`, with the unit) + 3–12 `bars` left to right: each a `total` (stands on zero; first, last, and subtotals checked against the running sum) or a signed `amount` |
 
-`flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may
-branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring
-through **every** node, and is refused if it does not. `flow` vs `states`: a
-box something *is in*, re-entered, labelled by events, is a state. `flow` vs
-`sequence`: the same few participants talking in turn, in order, is a sequence.
-`flow` vs `lanes`: same document; when *who hands off to whom* matters, say `lanes`.
+`flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring through **every** node, and is refused if it does not.
+`flow` vs `states`: a box something *is in*, re-entered, labelled by events, is a state. `flow` vs `sequence`: the same few participants talking in turn, in order, is a sequence. `flow` vs `lanes`: same document; when *who hands off to whom* matters, say `lanes`.
+`tree` vs `mindmap`: a tree ranks from a root (*this first*); a mind map's main branches are peers round a centre. Links across branches make a concept map: a `flow`. `tree` vs `argument`: when each box is *for* or *against* the one above, it is an argument.
+`timeline` vs `numberline`: *when* things happened, in order, is a timeline; where values sit on one measured or named scale, and whether a range's ends are in it, is a number line.
 
 **Keep it readable.** Each kind has a budget ([`docs/format.md`](docs/format.md#the-readability-budget);
 a `flow`: 15 nodes, 16 edges). Past it a document is refused even though it
@@ -103,8 +106,7 @@ name either.
 **Edges** — `flow` (default), `link`, `exchange`, `weak`, `owns`, `strong`,
 `aside`; `inherits` and `realizes` (hollow triangle) in `entities` only.
 
-Use `decision` for a question with branching answers, `note` for an aside that is
-not a step, `link` for a connection with no direction.
+Use `decision` for a question with branching answers, `note` for an aside that is not a step, `link` for a connection with no direction.
 
 **Who performs a step is not a role.** Use `actor` — free text on a node,
 orthogonal to `role`, drawn as the box's lead so the names line up in a column:
@@ -179,14 +181,11 @@ something already inside it.
 
 A refusal is information, not an obstacle. Three kinds, and each tells you what to do:
 
-- **`DocumentError`** — a field is wrong or an id does not resolve. The message
-  carries a JSON pointer (`/edges/2/to`). Fix that path. All violations are
-  reported at once, so read them all before editing. A budget refusal
-  (`… is past what one flow can be read at`) means split, not trim; an emphasis
-  refusal means give all but one or two their ordinary role.
-- **`FitError`** — the diagram does not fit its width in either direction. Shorten
-  the longest label, split the diagram, or raise the top-level `width`. Do **not**
-  try to shrink a gap; you cannot, and that is deliberate.
+- **`DocumentError`** — a field is wrong or an id does not resolve. The message carries a JSON pointer (`/edges/2/to`). Fix that path.
+  All violations are reported at once, so read them all before editing. A budget refusal (`… is past what one flow can be read at`)
+  means split, not trim; an emphasis refusal means give all but one or two their ordinary role.
+- **`FitError`** — the diagram does not fit its width in either direction. Shorten the longest label, split the diagram,
+  or raise the top-level `width`. Do **not** try to shrink a gap; you cannot, and that is deliberate.
 - **A refused field** — you wrote a coordinate or a style. Delete it; express the
   intent with `kind` or `role` instead.
 
@@ -196,5 +195,5 @@ Always run `drawspec validate` before calling a document done; it prints every p
 
 - Do not emit SVG yourself. The whole point is that you do not place anything.
 - Do not add fields hoping they are ignored — unknown fields are errors.
-- Do not use `chart`, `treemap` or `sankey` for exploring data. No statistics, dates, log scales or second axis. They state a few numbers you already know.
+- Do not use `chart`, `treemap`, `sankey`, `pie` or `waterfall` for exploring data. No statistics, dates, log scales or second axis. They state a few numbers you already know.
 - Do not use drawspec for anything whose point is *where things are* — a floor plan, a map. There is no declarative description of those.

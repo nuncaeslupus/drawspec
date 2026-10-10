@@ -1,6 +1,6 @@
 # Proposal: `numberline`: values and ranges on one scale
 
-Status: **proposed, not built**. It comes from `docs/research/kinds-survey.md` (rank 1).
+Status: **built** (see *As built* at the end). It comes from `docs/research/kinds-survey.md` (rank 1).
 Size **S**: one axis, which `timeline` and `chart` already draw, plus marks and bars in
 tracks above it.
 
@@ -151,3 +151,49 @@ dot. They are not a theme choice.
 * `ends` suppresses tick numbers, and `ends` with `step` is refused.
 * `collisions.py` and `clipping.py` are clean on the references, including the
   spectrum case with labels staggered above and below.
+
+## As built
+
+Built as its own kind, by the owner's decision (not a `timeline` field), with the
+round-2 corpus ([`../research/corpus-round2.md`](../research/corpus-round2.md),
+N1–N5) as the evidence. What changed from the design above, and why:
+
+* **Open and closed ends are a theme key after all**: `[numberline] ends = "dots" |
+  "brackets"`. The proposal said the dot is "not a theme choice"; the corpus found
+  that US and college texts (N1, N2) draw `[` and `(` where UK and most school texts
+  (N3) draw filled and hollow dots. The fact is the same — the end is in, or it is
+  out — so it stays `from_open`/`to_open` in the document, and the mark is house
+  style, set once in a course's theme like `[gantt] milestone`. A document field
+  would have made two documents of one statement, and let one page mix both
+  conventions. A point is a dot either way: both conventions draw a single value as
+  one. `docs/reference/themes/algebra-us.toml` is the one-line course theme, used by
+  `numberline-interval-us`.
+* **Budget: 15 points, not 12.** The pH scale with a substance at every whole value
+  (N4, N5) is fifteen points; at twelve the commonest real figure would be refused.
+  Ranges stay at 4 (no figure stacks more than two). A step that makes more than 30
+  ticks is refused too, before the numbers crowd.
+* **Point labels** take the nearest free slot, alternating: directly above the dot,
+  directly under the numbers, then further rows on either side with a thin leader
+  back to the dot. A slot is taken only if its words touch no other words or numbers
+  and its leader crosses none — so the pH scale alternates above and below, as N4
+  draws it, with no overlap. The proposal's "two labels that cannot be placed" is a
+  `FitError` only when no slot within five rows is free.
+* **Ranges are heavy lines, not filled bars**, with the end marks on them: that is
+  what every source draws. `emphasis` is a thicker solid bar (weight, so it survives
+  greyscale), `note` a dashed line. Tracks run in the order written from the top, so
+  the last range — usually the answer — sits next to the axis. Each range's words are
+  centred over its visible stretch, not left-aligned inside a bar.
+* **`unit` goes with `label`** under the numbers (`pH`, `Temperature (°C)`), as on
+  `gantt`, rather than after the last tick number — one place for a caption.
+* **No `id`** on points or ranges: nothing in the kind refers to one, so it is
+  refused by name rather than accepted and ignored.
+* **A hollow point breaks the axis line**, so it reads as a hole rather than a ring
+  threaded on the line; ticks under it are dropped. Negative tick numbers are set
+  with a true minus sign.
+* **Two points at one value** are refused at the second's `at`, and two dots too close
+  to tell apart at the canvas width are a `FitError` naming both.
+
+References: `numberline-inequality` (use case 2), `numberline-interval-us` (brackets,
+unbounded both ways, an open point), `numberline-ph` (fifteen points, two ranges
+sharing an excluded end), `numberline-tense` (use case 3), `numberline-spectrum`
+(use case 4, with a `note` range).
