@@ -53,6 +53,7 @@ ROOT: Final = Path(__file__).resolve().parent.parent
 REFERENCE: Final = ROOT / "docs" / "reference"
 OUT_SVG: Final = ROOT / "docs" / "hero.svg"
 OUT_PNG: Final = ROOT / "docs" / "hero.png"
+LOGO: Final = ROOT / "docs" / "logo.svg"
 
 #: The GitHub social-preview size, which the README shows scaled to its column.
 WIDTH: Final = 1280
@@ -71,6 +72,10 @@ ACCENT: Final = "#ffb547"
 INSET: Final = 18
 ZONES_ACROSS: Final = 8
 ZONES_DOWN: Final = 4
+
+#: The approved logo's drawing, without its `<svg>` wrapper, nested into the sheet.
+_LOGO_SVG: Final = LOGO.read_text(encoding="utf-8").strip()
+LOGO_INNER: Final = _LOGO_SVG[_LOGO_SVG.index(">") + 1 : _LOGO_SVG.rindex("</svg>")]
 
 FAMILIES: Final = {"sans": "dshero-sans", "mono": "dshero-mono", "serif": "dshero-serif"}
 
@@ -418,27 +423,44 @@ def compose() -> str:
     parts.append(border())
 
     # The wordmark, with a dimension line over it that measures nothing.
-    mark_x, mark_y, mark_size = 70, 196, 118
+    # One rule in every hero: the logo tile is 0.95 x the wordmark's font size, centred on
+    # its capital band (baseline to cap height), with a quarter-em gap before it.
+    guide_x, mark_y, mark_size = 70, 196, 100
+    tile, tile_gap = round(0.95 * mark_size), round(0.25 * mark_size)
+    mark_x = guide_x + tile + tile_gap
     mark_w = METRICS.width("drawspec", mark_size, "sans", "bold") + 7 * -3
     parts.append(dimension(mark_x, mark_x + mark_w, 88, "x = ?   y = ?"))
     # Construction lines: the wordmark's baseline, x-height and ascender, run on.
     for name, height in (("ASC", 0.76), ("X-HT", 0.547), ("BASE", 0.0)):
         y = mark_y - height * mark_size
         parts.append(
-            f'<path d="M {mark_x - 10} {y:.1f} H {mark_x + mark_w + 24}" stroke="{GRID}" '
+            f'<path d="M {guide_x - 10} {y:.1f} H {mark_x + mark_w + 24}" stroke="{GRID}" '
             'stroke-width="0.7" stroke-opacity="0.32" stroke-dasharray="3 3"/>'
         )
         parts.append(
-            text(mark_x - 14, y + 2.3, name, 6.5, SOFT, role="mono", anchor="end", spacing=0.5)
+            text(guide_x - 14, y + 2.3, name, 6.5, SOFT, role="mono", anchor="end", spacing=0.5)
         )
+    # The logo, centred on the wordmark's capital band.
+    band_mid = mark_y - 0.727 * mark_size / 2
+    tile_y = band_mid - tile / 2
+    parts.append(
+        f'<svg x="{guide_x}" y="{tile_y:.1f}" width="{tile}" height="{tile}" '
+        f'viewBox="0 0 64 64">{LOGO_INNER}</svg>'
+        f'<rect x="{guide_x}" y="{tile_y:.1f}" width="{tile}" height="{tile}" '
+        f'rx="{tile * 14 / 64:.2f}" fill="none" stroke="{INK}" stroke-opacity="0.45"/>'
+    )
     parts.append(text(mark_x - 4, mark_y, "drawspec", mark_size, INK, weight="bold", spacing=-3))
     parts.append(
         text(
-            mark_x, mark_y + 50, "Diagrams from meaning, written by humans or LLM agents.", 21, SOFT
+            guide_x,
+            mark_y + 50,
+            "Diagrams from meaning, written by humans or LLM agents.",
+            21,
+            SOFT,
         )
     )
 
-    parts.append(kinds_line(mark_x, mark_y + 76, 12.5))
+    parts.append(kinds_line(guide_x, mark_y + 76, 12.5))
 
     # The JSON on the left, and the drawing it makes in front of the plates.
     lines = snippet_lines(SPEC)
