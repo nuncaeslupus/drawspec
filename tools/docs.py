@@ -92,6 +92,7 @@ from drawspec.theme import (
     JourneyStyle,
     LanesStyle,
     MarkStyle,
+    MindmapStyle,
     NumberlineStyle,
     Padding,
     PieStyle,
@@ -127,6 +128,8 @@ def _budgeted(name: str, limit: int) -> str:
     if "@" in name:
         outer, per = name.split("@")
         return f"{limit} `{outer}` per {per}"
+    if name.endswith("*"):
+        return f"{limit} `{name[:-1]}` in all, at every level"
     if "/" not in name:
         return f"{limit} `{name}`"
     outer, inner = name.split("/")
@@ -536,6 +539,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "numberline": NumberlineStyle,
     "flow": FlowStyle,
     "pie": PieStyle,
+    "mindmap": MindmapStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are

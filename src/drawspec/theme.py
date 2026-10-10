@@ -28,7 +28,7 @@ from __future__ import annotations
 import tomllib
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
-from itertools import combinations
+from itertools import combinations, pairwise
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Final
@@ -1383,6 +1383,51 @@ class PieStyle:
         return cls(shape=_choice(mapping.get("shape", defaults.shape), PIE_SHAPES, "[pie] shape"))
 
 
+#: How many levels below its centre a mind map's line weights are given for.
+MINDMAP_LEVELS: Final = 3
+
+
+@dataclass(frozen=True)
+class MindmapStyle:
+    """How a mind map draws its branches: their lines, and whether words are boxed.
+
+    The author says what branches off what; the thickness of each line and whether
+    a leaf sits on a line or in a box are house style.
+    """
+
+    boxes: bool = False
+    """`false` sets a twig or a leaf on a line, the mind-map convention, its branch
+    line running on under its words; `true` boxes them like the main branches."""
+
+    taper: tuple[float, ...] = (6.0, 3.0, 1.5)
+    """How thick a branch's line is where it leaves its parent, one width per level
+    below the centre, none thicker than the one before. Each line narrows to the
+    next level's width where it arrives (the last to two thirds of itself), so a
+    map thins from its centre outwards. An `emphasis` branch's line, and every
+    line between it and the centre, is drawn half as thick again."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> MindmapStyle:
+        _reject_unknown(mapping, ("boxes", "taper"), "[mindmap]")
+        defaults = cls()
+        boxes = mapping.get("boxes", defaults.boxes)
+        if not isinstance(boxes, bool):
+            raise ThemeError(f"[mindmap] boxes: expected true or false, got {boxes!r}")
+        raw = mapping.get("taper", list(defaults.taper))
+        if not isinstance(raw, list) or len(raw) != MINDMAP_LEVELS:
+            raise ThemeError(
+                f"[mindmap] taper: expected {MINDMAP_LEVELS} widths, one per level below the "
+                f"centre, got {raw!r}"
+            )
+        taper = tuple(_number(value, "[mindmap] taper") for value in raw)
+        if any(later > earlier for earlier, later in pairwise(taper)):
+            raise ThemeError(
+                f"[mindmap] taper: {list(taper)!r} thickens outwards; a map thins from its "
+                f"centre, so no width may be more than the one before it"
+            )
+        return cls(boxes=boxes, taper=taper)
+
+
 #: Which way a `lanes` diagram's lanes run: across the page, stacked top to
 #: bottom (`rows`), or down it, side by side (`columns`). `auto` tries rows and
 #: takes columns when rows do not fit the width.
@@ -1636,6 +1681,7 @@ _TOP_LEVEL_KEYS: Final = (
     "numberline",
     "pie",
     "flow",
+    "mindmap",
     "role",
     "edge_role",
 )
@@ -1668,6 +1714,7 @@ class Theme:
     journey: JourneyStyle = JourneyStyle()
     numberline: NumberlineStyle = NumberlineStyle()
     pie: PieStyle = PieStyle()
+    mindmap: MindmapStyle = MindmapStyle()
     flow: FlowStyle = FlowStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
@@ -1729,6 +1776,7 @@ class Theme:
             journey=JourneyStyle.from_mapping(_section(mapping, "journey")),
             numberline=NumberlineStyle.from_mapping(_section(mapping, "numberline")),
             pie=PieStyle.from_mapping(_section(mapping, "pie")),
+            mindmap=MindmapStyle.from_mapping(_section(mapping, "mindmap")),
             flow=FlowStyle.from_mapping(_section(mapping, "flow")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),

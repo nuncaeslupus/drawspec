@@ -270,6 +270,15 @@ Whether a pie is a disc or a ring.
 |---|---|---|
 | `shape` | `"pie"` | `pie` (a disc, labels inside a sector when they fit) or `donut` (a ring with a hole of about half the radius, every label outside on a leader). One of `pie`, `donut`. |
 
+### `[mindmap]`
+
+How a mind map draws its branches: their lines, and whether words are boxed.
+
+| Key | Default | What it is |
+|---|---|---|
+| `boxes` | `false` | `false` sets a twig or a leaf on a line, the mind-map convention, its branch line running on under its words; `true` boxes them like the main branches. |
+| `taper` | `[6.0, 3.0, 1.5]` | How thick a branch's line is where it leaves its parent, one width per level below the centre, none thicker than the one before. Each line narrows to the next level's width where it arrives (the last to two thirds of itself), so a map thins from its centre outwards. An `emphasis` branch's line, and every line between it and the centre, is drawn half as thick again. |
+
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The

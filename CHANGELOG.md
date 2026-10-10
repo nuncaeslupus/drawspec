@@ -12,6 +12,21 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`mindmap`, the thirty-first kind** — one topic in the middle and its branches
+  round it as peers, where a `tree` would rank them from a root. `centre` and 2 to 8
+  `branches`, nested up to three levels (30 in all); the nesting is the structure, so
+  there are no edges. Main branches go clockwise from the top right in the order
+  written, split between the sides so they balance (the first always on the right);
+  each side is a horizontal tidy tree, siblings top to bottom in the order written, the
+  main branches bulging out round the centre where there is room. Main branches are
+  boxed lightly, twigs and leaves sit on their line; lines are smooth tapered curves.
+  `emphasis` draws the line heavy all the way from the centre; `note` is faint, with
+  everything under it. When it is too wide, only the branch reaching furthest out
+  wraps narrower. A new theme section, `[mindmap] boxes` and `taper`. Refused at their
+  pointers: fewer than 2 or more than 8 main branches, more than 30 in all (a new
+  budget form, counted at every level), a fourth level, `edges`, `links`, `id` (a
+  concept map, which is a `flow`), `side`, empty words. `docs/proposals/mindmap.md`
+  records the design.
 - **Causal loop diagrams on `flow`** — `polarity` (`+`/`-`) on every causal edge,
   written as its label and so placed clear of everything; `delay: true`, the double
   stroke across the shaft; and named `loops`, each its variables in order. A loop's

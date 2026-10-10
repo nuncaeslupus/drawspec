@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Thirty exist, and they fall into nineteen families:
+fields are legal. Thirty-one exist, and they fall into twenty families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -169,6 +169,7 @@ fields are legal. Thirty exist, and they fall into nineteen families:
 | Word problem | `barmodel` | Quantities in a word problem: bars of parts in proportion, braced — a part and a whole, a comparison, a ratio (the bar model, or tape diagram). |
 | Bridge | `waterfall` | How one total became another: a start total, signed steps floating on the running sum, checked subtotals, an end total — the bridge chart. |
 | Scale | `numberline` | Where values sit on one scale: points and ranges, each end in or out — an inequality, the pH scale, a spectrum. |
+| Topic | `mindmap` | Things round one topic, as peers: a centre and its branches nested three levels deep, on both sides — revision notes, a brainstorm, a plan (a mind map). |
 
 One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see
@@ -1731,6 +1732,66 @@ See [`reference/pie-travel.json`](reference/pie-travel.json),
 [`reference/pie-spending.json`](reference/pie-spending.json) (percentages, with a
 remainder) and [`reference/pie-team-week.json`](reference/pie-team-week.json) (a donut,
 by [`reference/themes/donut.toml`](reference/themes/donut.toml)).
+
+## A mind map
+
+Revision notes, a brainstorm, the plan for a move: one topic in the middle and what
+belongs to it radiating out, every main branch a peer. A `tree` holds the same
+hierarchy but ranks it from a root at one edge, which says *this comes first*; a mind
+map says none does. That is `mindmap`:
+
+```json
+{
+  "version": 1,
+  "kind": "mindmap",
+  "title": "Moving in March",
+  "centre": "The move",
+  "branches": [
+    {"text": "Before", "branches": [{"text": "Give notice"}, {"text": "Book the van"}]},
+    {"text": "Paperwork", "branches": [{"text": "Change of address"}, {"text": "Council tax"}]},
+    {"text": "The day", "role": "emphasis", "branches": [{"text": "Meter readings"}]},
+    {"text": "After", "branches": [{"text": "Unpack the kitchen first"}]}
+  ]
+}
+```
+
+`centre` is the topic, drawn as the one strongly boxed element. `branches` are the main
+branches, 2 to 8, each a `text` and optionally its own `branches`: nested, at most three
+levels below the centre (a branch, a twig, a leaf) and 30 in all. **The nesting is the
+structure**, so there are no edges to write and none to get wrong.
+
+**Placement is drawspec's.** The main branches go clockwise from the top right in the
+order written — down the right side, then up the left — and the split between the two
+sides is the one that balances them best, the first branch always on the right. Under a
+branch, its own branches read top to bottom in the order written, on both sides. So an
+**ordered plan** — an essay's introduction, sections and conclusion — is written in that
+order, and a numbered lead (`1. Introduction`) says the order aloud. `side` is refused:
+which side a branch goes is a coordinate.
+
+Main branches are boxed lightly, in bold. A twig or a leaf sits on its line, which runs on
+under its words, the mind-map convention; a theme's `[mindmap] boxes = true` boxes them
+instead. Lines are smooth and thin from the centre outwards, by the theme's `[mindmap]
+taper`. Colour per branch, which the study guides recommend, is a theme's matter; nothing
+in the drawing depends on it.
+
+Roles: `step` (the default); `emphasis` — the branch the map is about, bold, its line and
+every line back to the centre drawn heavy; `note` — context, not content (sources, ideas
+parked), faint words on a dashed line, and so is everything under it.
+
+**A cross-link is a different diagram.** Arrows between ideas on different branches, each
+labelled with how they relate, make a *concept map*: draw that as a `flow` with labelled
+edges. `edges`, `links` and an `id` on a branch are refused with that suggestion.
+
+Refused, each at its pointer: fewer than 2 or more than 8 main branches; more than 30 in
+all (the 31st is named; split into an overview map and a map per branch); a fourth level;
+an empty `branches` list or empty words; `edges`, `links`, `id`, `side`; a branch role
+with a shape (`decision`, `terminal`). When the words do not fit the width, the twigs and
+leaves of the branch reaching furthest out wrap narrower first; when no width works,
+`FitError` names the longest. See
+[`reference/mindmap-photosynthesis.json`](reference/mindmap-photosynthesis.json) (revision
+notes, three levels), [`reference/mindmap-essay-plan.json`](reference/mindmap-essay-plan.json)
+(an ordered plan), [`reference/mindmap-moving-house.json`](reference/mindmap-moving-house.json)
+and [`reference/mindmap-offsite.json`](reference/mindmap-offsite.json) (eight branches).
 
 ## Asking for a wide drawing instead of a tall one
 

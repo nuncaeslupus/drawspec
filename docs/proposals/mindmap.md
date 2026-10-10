@@ -1,6 +1,6 @@
 # Proposal: `mindmap`: one topic radiating into branches
 
-Status: **proposed, not built**. It comes from `docs/research/kinds-survey.md` (rank 2).
+Status: **built** (see *As built* at the end). It comes from `docs/research/kinds-survey.md` (rank 2).
 Size **M**: two tidy trees, one on each side of a centre. The tidy-tree placement
 exists in `tree`. What is new is the split into two sides and the unboxed leaves.
 
@@ -136,3 +136,50 @@ branch the map is about) and `note` (faint: context, not content). At most two
   suggestion.
 * The `AGENTS.md` row ("A topic and its subtopics, with no order between them"), and
   the README count of kinds updated.
+
+## As built
+
+Checked against the round-2 corpus (M1–M5): study-skills maps have a handful of main
+branches and never more than three levels, so the owner-approved budget — **8 main
+branches, 30 in all, depth 3** — holds every one; M2's arrows and M5's linked concepts
+stay a concept map, refused with the suggestion to draw a `flow`. What changed:
+
+* **No `id` on a branch.** Nothing refers to one: a branch's place is where it is
+  written. An `id`, like `edges` or `links`, is refused as the start of a cross-link,
+  naming the concept map and `flow`.
+* **The split balances drawn heights first, then leaf counts.** Two branches with the
+  same leaves can differ by a wrapped line or a box, and height is what the eye
+  compares. The proposal's bound still holds for every reference (a test checks it).
+  A tie goes to the right side holding more.
+* **Radial, within what is left.** Each side is a horizontal tidy tree, centred on the
+  centre's middle, and the main branches bulge out round the centre — those nearest its
+  middle furthest out — but only by the width the canvas has to spare: the bulge never
+  makes a word wrap. A main line leaves the centre's rounded end along its normal,
+  aimed at its branch, so the lines fan out instead of leaving one point.
+* **Wrapping is per branch.** When the map is too wide, only the main branch reaching
+  furthest out on the wider side has its twigs and leaves wrapped narrower, so a short
+  branch elsewhere keeps its one line. The tightest layout is tried first, and a word
+  wider than its branch can be is a `FitError` naming the branch.
+* **The centre is a pill in the `terminal` role** (the heavy outline), its words bold
+  at the body size (every kind sets the text in its shapes at one size), kept at least
+  as wide as it is tall. Main branches are `step` boxes
+  (`emphasis` for the emphasised one) with bold words; twigs at the body size and leaves
+  at the label size, so type thins outwards like the lines.
+* **Lines are tapered ribbons** filled in the `flow` edge role, by `[mindmap] taper` —
+  three widths, one per level, none thicker than the one before; each line narrows to
+  the next level's width where it arrives, and that is the width of the line a twig's
+  words sit on, so a branch line runs on under its words without a seam. `emphasis`
+  draws the lines from the centre to the branch half as thick again (fishbone's rule).
+* **`note` is inherited.** A note branch, and everything under it, is faint words on a
+  dashed `aside` line; a note main branch is not boxed.
+* **The 30-branch budget is a new budget form**, `branches*`: an array counted at every
+  depth together, its refusal at the 31st branch in reading order. A fourth level is
+  refused at its `branches`, and an empty `branches` list (it draws nothing) is refused.
+* **Not built: colour per branch.** The corpus finds it recommended everywhere, and it
+  is theme work, not a field; drawspec never makes colour carry meaning, and the map
+  reads the same without it. A per-branch palette cycle can be added to `[mindmap]`
+  later without touching a document.
+
+References: `mindmap-photosynthesis` (use case 1, three levels), `mindmap-essay-plan`
+(an ordered plan, M3: numbered leads and the order written), `mindmap-moving-house`
+(use case 3, with a `note` twig), `mindmap-offsite` (eight main branches).

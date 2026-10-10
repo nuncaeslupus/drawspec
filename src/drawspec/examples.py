@@ -58,6 +58,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "barmodel": "a word problem as bars of parts in proportion, braced — the tape diagram",
     "pie": "the shares of one known total as labelled sectors — a few proportions, stated",
     "waterfall": "from one total to another, step by step, subtotals checked — the bridge chart",
+    "mindmap": "a topic in the middle, its branches as peers round it — revision notes, a plan",
 }
 
 #: The smallest document of each kind that renders.
@@ -332,6 +333,15 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"text": "Sales", "amount": 45},
             {"text": "Rent", "amount": -60},
             {"text": "Closing", "total": 105},
+        ],
+    },
+    "mindmap": {
+        "version": 1,
+        "kind": "mindmap",
+        "centre": "The move",
+        "branches": [
+            {"text": "Before", "branches": [{"text": "Book the van"}]},
+            {"text": "After", "branches": [{"text": "Unpack the kitchen"}]},
         ],
     },
     "scatter": {

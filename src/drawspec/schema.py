@@ -413,6 +413,25 @@ PIE_SHARE_MIN: Final = 0.02
 #: How far percentages may add up to from 100 and still be read as rounding.
 PIE_PERCENT_TOLERANCE: Final = 1.0
 
+#: Mind maps: one topic in the middle, its branches radiating to both sides,
+#: nested up to three levels. The structure is the nesting, so there are no
+#: edges. A layout family of its own.
+MINDMAP_KINDS: Final = ("mindmap",)
+
+#: The roles a branch may take: the default; the branch the map is about (bold,
+#: its line heavy all the way from the centre); and context, not content (faint,
+#: and so is everything under it).
+MINDMAP_ROLES: Final = ("step", "emphasis", "note")
+
+#: The most main branches round the centre, branches in all, and levels below
+#: the centre. Owner-approved from the corpus (M1-M5): study-skills maps have a
+#: handful of main branches and never more than three levels (branch, twig,
+#: node); real maps run to 20-40 entries, and a mind map's leaves are phrases on
+#: a line, not boxes, so thirty fit where a `tree` stops at fifteen.
+MINDMAP_BRANCH_MAX: Final = 8
+MINDMAP_NODE_MAX: Final = 30
+MINDMAP_DEPTH_MAX: Final = 3
+
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
 #: into each other at the canvas width.
 NUMBERLINE_TICK_MAX: Final = 30
@@ -477,6 +496,8 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: `chart`'s bars stand on the baseline, and nothing in it checks a total.
 #: `pie` is the seventeenth: the shares of one known total as sectors — a
 #: `treemap` says the same by area, unfamiliar to the readers a pie is taught to.
+#: `mindmap` is the eighteenth: a topic in the middle and its branches as peers
+#: round it — a `tree` is ranked from a root at one edge, which says *first*.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -498,6 +519,7 @@ KINDS: Final = (
     + BARMODEL_KINDS
     + WATERFALL_KINDS
     + PIE_KINDS
+    + MINDMAP_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -611,6 +633,12 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # Set by the corpus: school pies have three to six sectors, budget pies more,
     # the rest merged into one `note` part.
     "pie": (("parts", PIE_PART_MAX),),  # [8]
+    # Owner-approved from the corpus: a handful of main branches, never more than
+    # three levels. A name ending `*` counts its array at every depth together.
+    "mindmap": (
+        ("branches", MINDMAP_BRANCH_MAX),
+        ("branches*", MINDMAP_NODE_MAX),
+    ),  # [6 main branches, 25 in all]
 }
 
 
@@ -1896,6 +1924,29 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "mindmap-branch": (
+        _text(),
+        FieldSpec(
+            "role",
+            "string",
+            enum=MINDMAP_ROLES,
+            description=(
+                "`step` (the default), `emphasis` (the branch the map is about: bold, its "
+                "line heavy all the way from the centre; at most two) or `note` (context, "
+                "not content: faint, and so is everything under it)."
+            ),
+        ),
+        FieldSpec(
+            "branches",
+            "array",
+            item_ref="mindmap-branch",
+            min_items=1,
+            description=(
+                "The branches off this one, drawn top to bottom in the order written. At "
+                "most three levels below the centre: a branch, a twig, a leaf."
+            ),
+        ),
+    ),
     "treemap-group": (
         FieldSpec(
             "id",
@@ -2289,7 +2340,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the thirty diagrams this is. It selects the fields that are "
+            "Which of the thirty-one diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -3104,6 +3155,30 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    MINDMAP_KINDS: (
+        FieldSpec(
+            "centre",
+            "string",
+            required=True,
+            description=(
+                "The topic: the one strongly boxed element, in the middle of the map. "
+                "Every main branch is a peer round it."
+            ),
+        ),
+        FieldSpec(
+            "branches",
+            "array",
+            required=True,
+            item_ref="mindmap-branch",
+            min_items=2,
+            description=(
+                "The main branches, 2 to 8, placed clockwise from the top right in the order "
+                "written and split between the two sides so they balance: the first is "
+                "always on the right. Nested, up to three levels, 30 branches in all; the "
+                "nesting is the structure, so there are no edges."
+            ),
+        ),
+    ),
     PIE_KINDS: (
         FieldSpec(
             "parts",
@@ -3592,6 +3667,15 @@ class WaterfallBar:
 
 
 @dataclass(frozen=True)
+class MindmapBranch:
+    """One branch of a `mindmap`, with the branches off it, in the order written."""
+
+    text: str
+    role: str = "step"
+    branches: tuple[MindmapBranch, ...] = ()
+
+
+@dataclass(frozen=True)
 class PiePart:
     """One part of a `pie`: a sector whose angle is its share of the total."""
 
@@ -3867,6 +3951,12 @@ class Document:
     pie_parts: tuple[PiePart, ...] = ()
     """A `pie`'s parts, in the order written: clockwise from twelve o'clock."""
 
+    centre: str = ""
+    """A `mindmap`'s topic, drawn in the middle."""
+
+    branches: tuple[MindmapBranch, ...] = ()
+    """A `mindmap`'s main branches, in the order written: clockwise from the top right."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -3891,6 +3981,7 @@ class Document:
             ("barmodel", BARMODEL_KINDS),
             ("waterfall", WATERFALL_KINDS),
             ("pie", PIE_KINDS),
+            ("mindmap", MINDMAP_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -4097,6 +4188,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_waterfall_refusal(violation) for violation in found]
     if kind in PIE_KINDS:
         found = [_pie_refusal(violation) for violation in found]
+    if kind in MINDMAP_KINDS:
+        found = [_mindmap_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -4144,6 +4237,14 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
     ("barmodel", "bars"): (
         "Past three bars a bar model is a table of quantities. Draw the step the problem "
         "turns on, or one model per step of a multi-step problem."
+    ),
+    ("mindmap", "branches"): (
+        "Past eight main branches they stop reading as peers round one centre. Group the "
+        "ones that belong together under a new main branch, or split the topic into two maps."
+    ),
+    ("mindmap", "branches*"): (
+        "Split it: an overview map naming the main branches, and a map per main branch "
+        "carrying its detail, with that branch as its centre."
     ),
     ("pie", "parts"): (
         "Past eight sectors the smallest are slivers no one compares: keep the largest seven "
@@ -4218,6 +4319,9 @@ def _readability_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         if "@" in name:
             found.extend(_cell_budget(document, name, limit))
             continue
+        if name.endswith("*"):
+            found.extend(_deep_budget(document, kind, name[:-1], limit))
+            continue
         entries = document.get(name)
         if not isinstance(entries, list) or len(entries) <= limit:
             continue
@@ -4260,6 +4364,36 @@ def _nested_budget(document: Mapping[str, Any], name: str, limit: int) -> list[V
             )
         )
     return found
+
+
+def _deep_budget(document: Mapping[str, Any], kind: str, name: str, limit: int) -> list[Violation]:
+    """The budget of an array counted at every depth together: a mind map's branches.
+
+    Counted in reading order, depth first, so the pointer lands on the entry that
+    made one too many, wherever it is nested.
+    """
+    seen: list[str] = []
+
+    def walk(entries: object, pointer: str) -> None:
+        if not isinstance(entries, list):
+            return
+        for index, entry in enumerate(entries):
+            seen.append(f"{pointer}/{index}")
+            if isinstance(entry, dict):
+                walk(entry.get(name), f"{pointer}/{index}/{name}")
+
+    walk(document.get(name), f"/{name}")
+    if len(seen) <= limit:
+        return []
+    return [
+        Violation(
+            seen[limit],
+            f"{len(seen)} {name} in all is past what one {kind} can be read at — {limit} at "
+            f"most, counted at every level. "
+            + BUDGET_ADVICE.get((kind, f"{name}*"), "Split it into an overview and details.")
+            + " The budget is not a canvas size, so a larger top-level 'width' does not lift it.",
+        )
+    ]
 
 
 def _singular(name: str) -> str:
@@ -4357,6 +4491,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _waterfall_violations(document)
     if kind in PIE_KINDS:
         return _pie_violations(document)
+    if kind in MINDMAP_KINDS:
+        return _mindmap_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -7052,6 +7188,101 @@ def _pie_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a mind map has no place for a field an author may reach for.
+MINDMAP_REFUSED: Final = {
+    "edges": (
+        "a mind map is nested: a branch belongs to the one it is written in, so there is "
+        "nothing to connect. Links across branches, each named by a phrase, are a concept "
+        "map: draw that as a `flow` with labelled edges"
+    ),
+    "links": (
+        "a mind map is nested, so a line between two branches would make it a concept map. "
+        "Draw that as a `flow` with labelled edges"
+    ),
+    "id": (
+        "nothing refers to a branch: its place is where it is written. A link from one "
+        "branch to another is a concept map, which is a `flow` with labelled edges"
+    ),
+    "side": (
+        "the layout splits the main branches between the two sides so they balance; a side "
+        "chosen by the author is a coordinate. Order them, and drawspec places them "
+        "clockwise from the top right"
+    ),
+    "nodes": "a mind map's entries are its `branches`, nested under the `centre`",
+}
+
+
+def _mindmap_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a mind map, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    unknown = "is not a known field" in violation.message or (
+        "is not" in violation.message and "field" in violation.message
+    )
+    if unknown and name in MINDMAP_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {MINDMAP_REFUSED[name]}.")
+    if parts[1:] == ["branches"] and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a mind map needs at least 2 main branches round its centre: one branch is a "
+            "hierarchy from a root, which is a `tree`.",
+        )
+    if name == "branches" and len(parts) > 2 and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "an empty 'branches' list draws nothing: leave the field out of a branch that "
+            "ends here.",
+        )
+    if name == "role" and "is not one of" in violation.message:
+        return Violation(
+            violation.pointer,
+            violation.message.split(".")[0]
+            + ". A branch is words on a line, with no shape to mean `decision` or "
+            "`terminal`: `step`, `emphasis` for the branch the map is about, `note` for "
+            "context.",
+        )
+    return violation
+
+
+def _mindmap_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """No empty words, and no fourth level below the centre."""
+    found: list[Violation] = []
+    centre = document.get("centre")
+    if isinstance(centre, str) and not centre.strip():
+        found.append(Violation("/centre", "the centre is the topic: it needs words."))
+
+    def walk(entries: object, pointer: str, depth: int) -> None:
+        if not isinstance(entries, list):
+            return
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                continue
+            here = f"{pointer}/{index}"
+            text = entry.get("text")
+            if isinstance(text, str) and not text.strip():
+                found.append(
+                    Violation(
+                        f"{here}/text", "a branch needs words: an empty one draws a bare line."
+                    )
+                )
+            children = entry.get("branches")
+            if depth == MINDMAP_DEPTH_MAX and isinstance(children, list):
+                found.append(
+                    Violation(
+                        f"{here}/branches",
+                        f"a fourth level below the centre is past what one mind map can be "
+                        f"read at — {MINDMAP_DEPTH_MAX} levels at most: a branch, a twig, a "
+                        f"leaf. Make this branch the centre of a map of its own, or fold the "
+                        f"detail into this leaf's words.",
+                    )
+                )
+                continue
+            walk(children, f"{here}/branches", depth + 1)
+
+    walk(document.get("branches"), "/branches", 1)
+    return found
+
+
 def _figure(value: float) -> str:
     """A number as an author wrote it: no float noise, no trailing zeros."""
     text = f"{round(value, 9):.9f}".rstrip("0").rstrip(".")
@@ -7689,6 +7920,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _waterfall_document(document)
     if kind in PIE_KINDS:
         return _pie_document(document)
+    if kind in MINDMAP_KINDS:
+        return _mindmap_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -8321,6 +8554,30 @@ def _waterfall_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _mindmap_branch(entry: Mapping[str, Any]) -> MindmapBranch:
+    return MindmapBranch(
+        text=str(entry["text"]),
+        role=str(entry.get("role", "step")),
+        branches=tuple(_mindmap_branch(child) for child in entry.get("branches", ())),
+    )
+
+
+def _mindmap_document(document: Mapping[str, Any]) -> Document:
+    """A mind map: its centre and its nested branches, in the order written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        centre=str(document["centre"]),
+        branches=tuple(_mindmap_branch(entry) for entry in document["branches"]),
+    )
+
+
 def _pie_document(document: Mapping[str, Any]) -> Document:
     """A pie: its parts in the order written, and the unit they are in."""
     return Document(
@@ -8607,6 +8864,11 @@ __all__ = [
     "LOOP_MAX",
     "LOOP_TYPES",
     "MESSAGE_ROLES",
+    "MINDMAP_BRANCH_MAX",
+    "MINDMAP_DEPTH_MAX",
+    "MINDMAP_KINDS",
+    "MINDMAP_NODE_MAX",
+    "MINDMAP_ROLES",
     "NUMBERLINE_KINDS",
     "NUMBERLINE_POINT_MAX",
     "NUMBERLINE_RANGE_MAX",
@@ -8665,6 +8927,7 @@ __all__ = [
     "Item",
     "JourneyStage",
     "Message",
+    "MindmapBranch",
     "ModelBar",
     "ModelBrace",
     "ModelPart",

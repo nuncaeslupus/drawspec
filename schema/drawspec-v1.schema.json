@@ -2282,6 +2282,74 @@
         "parts"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "mindmap",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "mindmap"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "centre": {
+          "type": "string",
+          "description": "The topic: the one strongly boxed element, in the middle of the map. Every main branch is a peer round it."
+        },
+        "branches": {
+          "type": "array",
+          "description": "The main branches, 2 to 8, placed clockwise from the top right in the order written and split between the two sides so they balance: the first is always on the right. Nested, up to three levels, 30 branches in all; the nesting is the structure, so there are no edges.",
+          "items": {
+            "$ref": "#/$defs/mindmap-branch"
+          },
+          "minItems": 2
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "centre",
+        "branches"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -3385,6 +3453,36 @@
       "required": [
         "from",
         "to"
+      ],
+      "additionalProperties": false
+    },
+    "mindmap-branch": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default), `emphasis` (the branch the map is about: bold, its line heavy all the way from the centre; at most two) or `note` (context, not content: faint, and so is everything under it).",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        },
+        "branches": {
+          "type": "array",
+          "description": "The branches off this one, drawn top to bottom in the order written. At most three levels below the centre: a branch, a twig, a leaf.",
+          "items": {
+            "$ref": "#/$defs/mindmap-branch"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "text"
       ],
       "additionalProperties": false
     },
