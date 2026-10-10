@@ -1550,6 +1550,8 @@ def test_horizontal_bar_numbers_are_written_past_each_bar() -> None:
         ({"data": [[8.4, 4]]}, "/series/0/data/0/1"),
         ({"data": [[8.4, 1.5]]}, "/series/0/data/0/1"),
         ({"data": [[-2, 1]]}, "/series/0/data/0/0"),
+        ({"data": [[8.4, float("inf")]]}, "/series/0/data/0/1"),
+        ({"data": [[8.4, float("nan")]]}, "/series/0/data/0/1"),
     ],
 )
 def test_horizontal_bars_refuse_what_they_cannot_draw(

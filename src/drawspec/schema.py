@@ -5961,7 +5961,9 @@ def _chart_violations(document: Mapping[str, Any]) -> list[Violation]:
             if not isinstance(pair, list) or len(pair) != 2:
                 continue
             amount, position = pair
-            if _is_number(position) and (position != int(position) or not 1 <= position <= count):
+            if _is_number(position) and (
+                not 1 <= position <= count or not float(position).is_integer()
+            ):
                 found.append(
                     Violation(
                         _pointer("series", index, "data", point, 1),

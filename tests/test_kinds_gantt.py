@@ -531,6 +531,18 @@ def test_done_zero_draws_no_band_and_a_hundred_fills_the_bar() -> None:
     assert max(x for x, _ in band.points) == pytest.approx(right)
 
 
+def test_done_is_said_in_the_description_after_the_authors_own() -> None:
+    """The band is only drawn, so the accessible description says each share,
+    `done: 0` included, after whatever the author wrote."""
+    document = plan()
+    document["description"] = "The spring release."
+    document["tasks"][0]["done"] = 0
+    document["tasks"][1]["done"] = 60
+    description = drawn(document).scene.description
+    assert description.startswith("The spring release. Progress: ")
+    assert "0% done" in description and "60% done" in description
+
+
 @pytest.mark.parametrize(("index", "value"), [(0, 120), (0, -5), (3, 50)])
 def test_done_out_of_range_or_on_a_milestone_is_refused(index: int, value: float) -> None:
     document = plan()
