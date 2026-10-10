@@ -45,6 +45,7 @@ from drawspec.brand import derive_theme
 from drawspec.emit import PROFILES
 from drawspec.errors import DocumentError, DrawspecError, ThemeError
 from drawspec.examples import EXAMPLES, PURPOSE
+from drawspec.export import BACKGROUNDS, DEFAULT_SCALE, MAX_SCALE, render_png
 from drawspec.render import render_document, render_text
 from drawspec.schema import KINDS, Document, load_document, parse_document, schema_json
 from drawspec.theme import load_theme
@@ -55,6 +56,10 @@ from drawspec.theme import load_theme
 STDIN: Final = "-"
 
 #: What the shell gets back. Named, because these are the contract.
+#: What `render --format` accepts, and the extension each is inferred from.
+FORMATS: Final = ("svg", "png", "text")
+EXTENSIONS: Final = {".svg": "svg", ".png": "png", ".txt": "text"}
+
 OK: Final = 0
 REFUSED: Final = 1
 USAGE: Final = 2
@@ -71,8 +76,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     render = commands.add_parser(
         "render",
-        help="render a document to SVG",
-        description="Read a document, draw it, and write the SVG to stdout or to a file.",
+        help="render a document to SVG or PNG",
+        description=(
+            "Read a document, draw it, and write the SVG to stdout or to a file. "
+            "With --format png, or an -o ending in .png, write a PNG instead "
+            "(needs pip install 'drawspec[png]')."
+        ),
     )
     render.add_argument("document", help="the document to render")
     render.add_argument("-o", "--out", help="write here instead of stdout")
@@ -84,9 +93,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     render.add_argument(
         "--format",
-        choices=("svg", "text"),
-        default="svg",
-        help="svg, or text for a `files` tree as plain text, for a code block",
+        choices=FORMATS,
+        help=(
+            "what to write: svg; png, a raster image of the standalone drawing; or text, a "
+            "`files` tree as plain text for a code block. Default: from the -o extension, "
+            "else svg"
+        ),
+    )
+    render.add_argument(
+        "--scale",
+        type=_scale,
+        help=f"for png: pixels per SVG unit, at most {MAX_SCALE:g} (default {DEFAULT_SCALE:g})",
+    )
+    render.add_argument(
+        "--background",
+        choices=BACKGROUNDS,
+        help="for png: theme ink on white, light ink on near-black, or no page (default light)",
     )
 
     validate = commands.add_parser(
@@ -207,30 +229,87 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _render(arguments: argparse.Namespace) -> int:
-    """Document in, SVG out, with the overrides applied before anything is drawn.
+    """Document in, SVG (or PNG, or text) out, with the overrides applied first.
 
     The overrides are applied to the *document*, not to the finished drawing:
     width is an input to wrapping, sizing and the direction choice, so overriding
     it after the fact would scale a picture that had already decided it fitted.
+
+    The format is the flag when given, and otherwise the `-o` extension, so
+    `-o diagram.png` does what it says. A flag that contradicts the extension is
+    a usage error rather than a file whose name lies about its contents.
     """
+    output_format = _output_format(arguments)
+    if output_format is None:
+        return USAGE
+    if output_format != "png" and (arguments.scale is not None or arguments.background):
+        print("drawspec: --scale and --background apply to --format png only", file=sys.stderr)
+        return USAGE
+    if output_format == "png" and not arguments.out and sys.stdout.isatty():
+        print(
+            "drawspec: a PNG is binary and stdout is a terminal; pass -o file.png "
+            "or redirect the output",
+            file=sys.stderr,
+        )
+        return USAGE
+
     try:
         document = _read(arguments.document)
         if arguments.width is not None:
             document = replace(document, width=arguments.width)
         if arguments.height is not None:
             document = replace(document, height=arguments.height)
-        if arguments.format == "text":
+        if output_format == "png":
+            image = render_png(
+                document,
+                arguments.theme,
+                scale=DEFAULT_SCALE if arguments.scale is None else arguments.scale,
+                background=arguments.background or "light",
+            )
+        elif output_format == "text":
             svg = render_text(document).rstrip("\n")
         else:
             svg = render_document(document, arguments.theme, arguments.profile)
     except DrawspecError as error:
         return _refuse(error)
 
+    if output_format == "png":
+        if arguments.out:
+            Path(arguments.out).write_bytes(image)
+        else:
+            sys.stdout.buffer.write(image)
+            sys.stdout.flush()
+        return OK
     if arguments.out:
         Path(arguments.out).write_text(svg, encoding="utf-8")
     else:
         print(svg)
     return OK
+
+
+def _output_format(arguments: argparse.Namespace) -> str | None:
+    """The format `render` writes, or None after reporting a contradiction."""
+    inferred = EXTENSIONS.get(Path(arguments.out).suffix.lower()) if arguments.out else None
+    chosen: str | None = arguments.format
+    if chosen and inferred and chosen != inferred:
+        print(
+            f"drawspec: --format {chosen} contradicts -o {arguments.out}; "
+            f"name the file .{'txt' if chosen == 'text' else chosen} or drop --format",
+            file=sys.stderr,
+        )
+        return None
+    return chosen or inferred or "svg"
+
+
+def _scale(value: str) -> float:
+    """`--scale`, refused by argparse when it is not a usable factor."""
+    try:
+        scale = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"not a number: {value!r}") from None
+    if not 0 < scale <= MAX_SCALE:
+        raise argparse.ArgumentTypeError(f"must be above 0 and at most {MAX_SCALE:g}")
+    return scale
 
 
 def _validate(arguments: argparse.Namespace) -> int:

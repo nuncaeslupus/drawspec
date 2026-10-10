@@ -71,7 +71,10 @@ result is not in the format at all:
 Output is SVG that can be pasted inline into a Markdown document: colour
 inherited from the surrounding page, no global `<style>`, no ids that collide
 when two diagrams share a page, and no information carried by colour alone —
-so it survives dark mode and greyscale printing.
+so it survives dark mode and greyscale printing. For anywhere an SVG cannot go —
+a chat, a slide, an attachment — the same drawing comes out as a PNG on a light,
+dark or transparent background (`pip install 'drawspec[png]'`, one self-contained
+wheel; no PDF, no JPEG).
 
 ## What it looks like
 
@@ -175,6 +178,7 @@ JSON pointer of the place they were written. A document may size the whole canva
 pip install git+https://github.com/nuncaeslupus/drawspec   # not on PyPI yet
 
 drawspec render diagram.json -o diagram.svg   # or to stdout
+drawspec render diagram.json -o diagram.png   # needs drawspec[png]; --background dark, --scale 3
 drawspec validate diagram.json                # every violation, by JSON pointer
 drawspec theme check default                  # including the greyscale invariant
 drawspec theme from site.css -o house.toml    # a theme from your brand's CSS or design tokens

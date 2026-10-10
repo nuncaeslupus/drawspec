@@ -5,7 +5,7 @@ every coordinate. This file is meant to be read whole; it is the short version o
 [`docs/format.md`](docs/format.md) and [`docs/guide.md`](docs/guide.md).
 
 ```bash
-drawspec render diagram.json -o diagram.svg   # or to stdout
+drawspec render diagram.json -o diagram.svg   # or stdout; -o diagram.png needs drawspec[png]
 drawspec validate diagram.json                # every violation, with a JSON pointer
 drawspec schema --out schema.json             # the full JSON Schema
 drawspec theme from site.css -o house.toml    # a theme from a brand's CSS or design tokens

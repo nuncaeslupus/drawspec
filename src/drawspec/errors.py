@@ -66,6 +66,15 @@ class FitError(DrawspecError):
     """
 
 
+class ExportError(DrawspecError):
+    """An image export could not be made.
+
+    Today that means one thing: the renderer behind `drawspec[png]` is not
+    installed. The message carries the install line, because the person who
+    sees it asked for a PNG and has no reason to know it is an extra.
+    """
+
+
 class FontSubstitutionWarning(UserWarning):
     """A named font could not be resolved and a substitute was measured instead.
 

@@ -19,6 +19,7 @@ stays green for a checkout that did not ask for it.
 
 from __future__ import annotations
 
+import base64
 import json
 import re
 import subprocess
@@ -190,6 +191,23 @@ def test_render_returns_svg_for_the_document_it_was_given(client: Client) -> Non
     assert svg.startswith("<svg")
     assert "A step" in svg
     assert "Another" in svg
+
+
+def test_render_returns_a_png_image_block_when_asked(client: Client) -> None:
+    """`format: png` arrives as an MCP image block, base64 PNG, not as text."""
+    pytest.importorskip("resvg_py", reason="PNG export is an optional extra: drawspec[png]")
+    result = client.tool("render", document=GOOD, format="png", background="dark")
+    assert not result.get("isError"), result
+    block = result["content"][0]
+    assert block["type"] == "image"
+    assert block["mimeType"] == "image/png"
+    assert base64.b64decode(block["data"]).startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_an_out_of_range_scale_is_a_refusal_not_a_crash(client: Client) -> None:
+    result = client.tool("render", document=GOOD, format="png", scale=100)
+    assert result["isError"] is True, result
+    assert "scale" in _body(result)["message"]
 
 
 def test_render_refuses_the_same_documents_validate_refuses(client: Client) -> None:

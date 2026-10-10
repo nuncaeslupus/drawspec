@@ -41,6 +41,15 @@ jobs:
       - name: Test
         run: uv run pytest -q
 
+      # PNG export is an optional extra, and everything above ran with it
+      # installed. Drop it and re-run the tests that touch it, so a checkout
+      # without `drawspec[png]` is proven to skip them cleanly and to refuse a
+      # PNG with the install line, rather than to fail on an import.
+      - name: Test without the png extra
+        run: |
+          uv sync --extra dev --extra mcp --python ${{ matrix.python-version }}
+          uv run --no-sync pytest -q tests/test_export.py tests/test_cli.py tests/test_mcp.py
+
   # Visual proof for review: the gallery rendered from this pull request's code,
   # uploaded as an artifact, so a reviewer can open the SVGs of the kinds a
   # change touched without checking the branch out. One Python, no matrix — the
