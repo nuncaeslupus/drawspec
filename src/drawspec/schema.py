@@ -93,6 +93,23 @@ CHART_KINDS: Final = ("chart", "quadrant", "scatter", "curve")
 #: is a listing, read top to bottom, whose structure is already written in paths.
 FILES_KINDS: Final = ("files",)
 
+#: A state machine. Drawn by the graph family's layout, but not a graph kind to
+#: the schema: its boxes are conditions something is *in*, not steps, so it has
+#: its own payload — `states`, `transitions`, an `initial` and `final` states —
+#: and its own refusals, of which reachability is the one only it can make.
+STATES_KINDS: Final = ("states",)
+
+#: The roles a state may take. `decision` is refused because a choice in a state
+#: machine is a guard on a transition, and a diamond would promise a step; `start`
+#: because the initial pseudo-state is a dot, not a box saying "start"; `note`
+#: and `group` because neither is a condition the machine can be in.
+STATE_ROLES: Final = ("step", "emphasis", "terminal")
+
+#: The roles a transition may take: the default, the happy path drawn heavier,
+#: and a rare or error path drawn dashed. `owns`, `link`, `exchange` and `aside`
+#: are not transitions — a transition has one direction and goes somewhere.
+TRANSITION_ROLES: Final = ("flow", "strong", "weak")
+
 #: How a `files` tree is drawn. `icons` is the file-browser look; `plain` keeps
 #: the guides and drops the pictures; `unicode` and `ascii` are the tree as text,
 #: set in the monospace face, the way `tree` prints it.
@@ -118,7 +135,10 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: deliberately refuses to draw) — evidence external to the corpus, not absent.
 #: `files` is the second, on the same footing: a directory listing is the figure
 #: every technical document draws by hand, and none of the others can draw it.
-KINDS: Final = GRAPH_KINDS + GRID_KINDS + SHAPE_KINDS + CHART_KINDS + FILES_KINDS
+#: `states` is the third on that footing: a state machine looked like a `flow`
+#: and claimed something else — an initial dot with no words, labelled
+#: transitions, self-loops, and a reachability rule a `flow` cannot make.
+KINDS: Final = GRAPH_KINDS + GRID_KINDS + SHAPE_KINDS + CHART_KINDS + FILES_KINDS + STATES_KINDS
 
 #: The readability budget: per kind, the most entries each counted array may
 #: hold before the document is refused as too much for one picture. This is not
@@ -153,6 +173,9 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     "scatter": (("positions", 20),),  # [9]
     "curve": (("curves", 4),),  # [3]
     "files": (("entries", 30),),  # [10]
+    # Set by the proposal rather than by the references: past fourteen states the
+    # back edges a machine is full of cross in the layered layout.
+    "states": (("states", 14), ("transitions", 24)),  # [6 states, 8 transitions]
 }
 
 
@@ -374,6 +397,92 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         ),
         _text(),
         _role(NODE_ROLES, "step"),
+    ),
+    "state": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique within the document, among the states and the groups.",
+        ),
+        _text(),
+        _role(STATE_ROLES, "step"),
+    ),
+    "transition": (
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description=(
+                "The state the machine leaves — or a group, for a transition that "
+                "leaves the composite from whichever state inside it is current."
+            ),
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description=(
+                "The state the machine enters — or a group, which is entered at its own "
+                "`initial`. The same id as `from` draws a self-loop."
+            ),
+        ),
+        FieldSpec(
+            "event",
+            "string",
+            description=(
+                "What happens that moves the machine. Omit for a completion transition, "
+                "taken as soon as the state's work is done."
+            ),
+        ),
+        FieldSpec(
+            "guard",
+            "string",
+            description=(
+                "The condition that must hold for the event to move the machine. Written "
+                "plainly; drawspec adds the brackets."
+            ),
+        ),
+        FieldSpec(
+            "action",
+            "string",
+            description=(
+                "What the machine does on the way. Written plainly; drawspec adds the "
+                "slash. The label reads `event [guard] / action`, each part optional."
+            ),
+        ),
+        _role(TRANSITION_ROLES, "flow"),
+    ),
+    "composite": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique within the document, among the states and the groups.",
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description="The composite state's name, drawn at its frame's corner.",
+        ),
+        FieldSpec(
+            "members",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=1,
+            description="The states (or groups) inside this composite state.",
+        ),
+        FieldSpec(
+            "initial",
+            "string",
+            description=(
+                "The member this composite is entered at, drawn as a dot inside the "
+                "frame. Required when a transition, or the machine's own `initial`, "
+                "names the group."
+            ),
+        ),
     ),
     "group": (
         FieldSpec("id", "string", required=True, description="Unique within the document."),
@@ -731,7 +840,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the fifteen diagrams this is. It selects the fields that are "
+            "Which of the sixteen diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -1043,6 +1152,58 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    STATES_KINDS: (
+        FieldSpec(
+            "states",
+            "array",
+            required=True,
+            item_ref="state",
+            min_items=1,
+            description=(
+                "The conditions the machine can be in. A newline in `text` is a lead "
+                "and a detail, as everywhere: the state's name over what holds in it. "
+                "Every state must be reachable from `initial`."
+            ),
+        ),
+        FieldSpec(
+            "initial",
+            "string",
+            required=True,
+            description=(
+                "The state the machine starts in, drawn as a filled dot with an arrow to "
+                "it. Required: reachability is measured from here. May name a group, "
+                "which must then say its own `initial`."
+            ),
+        ),
+        FieldSpec(
+            "final",
+            "array",
+            item_kind="string",
+            description=(
+                "The states the machine ends in, each drawn with an arrow to a ringed "
+                "dot. A final state has no outgoing transition."
+            ),
+        ),
+        FieldSpec(
+            "transitions",
+            "array",
+            item_ref="transition",
+            description=(
+                "What moves the machine from one state to another, each labelled "
+                "`event [guard] / action` from its own fields."
+            ),
+        ),
+        FieldSpec(
+            "groups",
+            "array",
+            item_ref="composite",
+            description=(
+                "Composite states: a frame around the states inside it, named at its "
+                "corner. Groups may nest. A transition from a group leaves it from any "
+                "state inside; one to a group enters it at the group's `initial`."
+            ),
+        ),
+    ),
     ("scatter",): (
         FieldSpec(
             "axes",
@@ -1176,6 +1337,8 @@ class Group:
     id: str
     members: tuple[str, ...]
     text: str = ""
+    initial: str = ""
+    """For a composite state: the member it is entered at, or empty."""
 
 
 @dataclass(frozen=True)
@@ -1305,10 +1468,20 @@ class Document:
 
     theme: str = ""
     nodes: tuple[Node, ...] = ()
+    """The boxes — a `states` document's states are parsed into these too."""
+
+    initial: str = ""
+    """The state or group a `states` machine starts in."""
+
+    final: tuple[str, ...] = ()
+    """The states a `states` machine ends in."""
+
     hub: Node | None = None
     """What a `cycle` turns around, drawn inside its ring. Not one of `nodes`."""
 
     edges: tuple[Edge, ...] = ()
+    """The connectors — a `states` document's transitions, labelled, are parsed into these."""
+
     groups: tuple[Group, ...] = ()
     bands: tuple[Band, ...] = ()
     items: tuple[Item, ...] = ()
@@ -1347,6 +1520,7 @@ class Document:
             ("shape", SHAPE_KINDS),
             ("chart", CHART_KINDS),
             ("files", FILES_KINDS),
+            ("states", STATES_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -1593,6 +1767,8 @@ def _emphasis_violations(document: Mapping[str, Any]) -> list[Violation]:
 def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
     """The checks JSON Schema cannot express: unique ids, and edges that land."""
     found: list[Violation] = []
+    if kind in STATES_KINDS:
+        return _states_violations(document)
     if kind in FILES_KINDS:
         entries = document.get("entries", ())
         # Only a well-formed list is worth reading for paths: the structural pass
@@ -1993,6 +2169,302 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
     return found
 
 
+def transition_label(event: str = "", guard: str = "", action: str = "") -> str:
+    """A transition's label, `event [guard] / action`, from whichever parts were given.
+
+    Composed here rather than written by the author, so the punctuation is the
+    same on every transition and a missing part leaves no stray bracket or slash.
+    Each part is set on its own line — the event, under it the guard, under that
+    the action — because the three on one line made the widest labels in any
+    drawing, and a label too long for the gap beside its line had nowhere to go.
+    """
+    parts = [event.strip()]
+    if guard.strip():
+        parts.append(f"[{guard.strip()}]")
+    if action.strip():
+        parts.append(f"/ {action.strip()}")
+    return "\n".join(part for part in parts if part)
+
+
+def _states_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """What a state machine may not be: ids that do not land, and a wrong machine.
+
+    The structural pass has the types; this one has the meaning. Ids first —
+    every state and group named once, every reference resolving — and only when
+    those hold, the three claims about the machine itself: a final state that
+    is left, a pair of transitions that make it non-deterministic, and a state
+    nothing can reach. Each is a bug in the machine rather than in the drawing.
+    """
+    found: list[Violation] = []
+    groups_raw = _listed(document, "groups")
+    transitions = _listed(document, "transitions")
+
+    state_ids: set[str] = set()
+    for index, state in enumerate(_listed(document, "states")):
+        identifier = state.get("id") if isinstance(state, dict) else None
+        if not isinstance(identifier, str):
+            continue
+        if identifier in state_ids:
+            found.append(
+                Violation(_pointer("states", index, "id"), f"duplicate state id {identifier!r}")
+            )
+        state_ids.add(identifier)
+
+    groups: dict[str, Mapping[str, Any]] = {}
+    for index, group in enumerate(groups_raw):
+        if not isinstance(group, dict) or not isinstance(group.get("id"), str):
+            continue
+        identifier = group["id"]
+        if identifier in state_ids:
+            found.append(
+                Violation(
+                    _pointer("groups", index, "id"),
+                    f"{identifier!r} is already the id of a state; a transition naming it "
+                    f"could mean either",
+                )
+            )
+        elif identifier in groups:
+            found.append(
+                Violation(_pointer("groups", index, "id"), f"duplicate group id {identifier!r}")
+            )
+        else:
+            groups[identifier] = group
+    known = state_ids | set(groups)
+
+    parent: dict[str, str] = {}
+    for index, group in enumerate(groups_raw):
+        if not isinstance(group, dict) or not isinstance(group.get("id"), str):
+            continue
+        members = group.get("members")
+        members = members if isinstance(members, list) else []
+        for position, member in enumerate(members):
+            if not isinstance(member, str):
+                continue
+            if member not in known:
+                found.append(
+                    Violation(
+                        _pointer("groups", index, "members", position),
+                        f"{member!r} is not the id of any state or group in this document",
+                    )
+                )
+            elif member == group["id"]:
+                found.append(
+                    Violation(
+                        _pointer("groups", index, "members", position),
+                        "a group cannot contain itself",
+                    )
+                )
+            elif member in parent:
+                found.append(
+                    Violation(
+                        _pointer("groups", index, "members", position),
+                        f"{member!r} is already inside {parent[member]!r}. A state is in one "
+                        f"composite or none; nest the groups instead.",
+                    )
+                )
+            else:
+                parent[member] = group["id"]
+        entry = group.get("initial")
+        if isinstance(entry, str) and entry not in members:
+            found.append(
+                Violation(
+                    _pointer("groups", index, "initial"),
+                    f"{entry!r} is not a member of {group['id']!r}. A composite is entered "
+                    f"at one of its own states.",
+                )
+            )
+
+    def entered(identifier: str, pointer: str) -> bool:
+        """Whether naming `identifier` as a target lands on a state; reported if not."""
+        group = groups.get(identifier)
+        if group is None or isinstance(group.get("initial"), str):
+            return True
+        found.append(
+            Violation(
+                pointer,
+                f"{identifier!r} is a group with no 'initial', so entering it does not say "
+                f"which state the machine is then in. Give the group an 'initial', or point "
+                f"this at one of its states.",
+            )
+        )
+        return False
+
+    initial = document.get("initial")
+    if isinstance(initial, str):
+        if initial not in known:
+            found.append(
+                Violation(
+                    "/initial",
+                    f"{initial!r} is not the id of any state or group in this document",
+                )
+            )
+        else:
+            entered(initial, "/initial")
+
+    finals: set[str] = set()
+    for index, name in enumerate(_listed(document, "final")):
+        if not isinstance(name, str):
+            continue
+        pointer = _pointer("final", index)
+        if name in groups:
+            found.append(
+                Violation(
+                    pointer,
+                    f"{name!r} is a group. A final state is a state; to end the machine when "
+                    f"a composite completes, draw a transition from the group to a final state.",
+                )
+            )
+        elif name not in state_ids:
+            found.append(Violation(pointer, f"{name!r} is not the id of any state"))
+        elif name in finals:
+            found.append(Violation(pointer, f"{name!r} is named final twice"))
+        finals.add(name)
+
+    resolved = True
+    for index, transition in enumerate(transitions):
+        if not isinstance(transition, dict):
+            continue
+        for end in ("from", "to"):
+            target = transition.get(end)
+            if isinstance(target, str) and target not in known:
+                resolved = False
+                found.append(
+                    Violation(
+                        _pointer("transitions", index, end),
+                        f"{target!r} is not the id of any state or group in this document",
+                    )
+                )
+        source, target = transition.get("from"), transition.get("to")
+        if isinstance(target, str) and target in groups:
+            resolved = entered(target, _pointer("transitions", index, "to")) and resolved
+        if isinstance(source, str) and source in finals:
+            found.append(
+                Violation(
+                    _pointer("transitions", index, "from"),
+                    f"{source!r} is a final state, and a final state is not left: the machine "
+                    f"has ended there. Drop this transition, or take {source!r} out of 'final'.",
+                )
+            )
+    found.extend(_self_containment(transitions, groups_raw, frozenset(groups)))
+    found.extend(_loop_violations(transitions, frozenset(groups), "transitions"))
+
+    # Two ways out of one state on the same event and guard: which one is taken?
+    seen: dict[tuple[str, str, str], tuple[int, str]] = {}
+    for index, transition in enumerate(transitions):
+        if not isinstance(transition, dict):
+            continue
+        source, target = transition.get("from"), transition.get("to")
+        event, guard = transition.get("event", ""), transition.get("guard", "")
+        if not all(isinstance(value, str) for value in (source, target, event, guard)):
+            continue
+        key = (str(source), str(event).strip(), str(guard).strip())
+        if key in seen and seen[key][1] != target:
+            first = seen[key][0]
+            found.append(
+                Violation(
+                    _pointer("transitions", index, "to"),
+                    f"transitions {first} and {index} both leave {source!r} on "
+                    + (f"{event.strip()!r}" if event.strip() else "completion")
+                    + (f" when {guard.strip()!r}" if guard.strip() else "")
+                    + ", to different states, so the machine cannot say which it takes. "
+                    "Give them guards that tell them apart.",
+                )
+            )
+        seen.setdefault(key, (index, str(target)))
+
+    if found or not resolved or not isinstance(initial, str):
+        return found
+
+    # Reachability, through the composites: entering a group enters its initial,
+    # and a transition from a group leaves from every state inside it.
+    def ancestors(identifier: str) -> list[str]:
+        chain: list[str] = []
+        current = parent.get(identifier)
+        while current is not None and current not in chain:
+            chain.append(current)
+            current = parent.get(current)
+        return chain
+
+    leaving: dict[str, list[str]] = {}
+    for transition in transitions:
+        if isinstance(transition, dict):
+            leaving.setdefault(transition["from"], []).append(transition["to"])
+
+    reached: set[str] = set()
+    queue = [initial]
+    while queue:
+        current = queue.pop()
+        if current in reached:
+            continue
+        reached.add(current)
+        group = groups.get(current)
+        if group is not None:
+            queue.append(str(group["initial"]))
+            continue
+        for scope in (current, *ancestors(current)):
+            reached.add(scope)
+            queue.extend(leaving.get(scope, ()))
+
+    for index, state in enumerate(_listed(document, "states")):
+        identifier = state.get("id") if isinstance(state, dict) else None
+        if isinstance(identifier, str) and identifier not in reached:
+            found.append(
+                Violation(
+                    _pointer("states", index),
+                    f"no transition reaches {identifier!r} from the initial state, so the "
+                    f"machine can never be in it. Add the transition that leads there, or "
+                    f"delete the state.",
+                )
+            )
+    return found
+
+
+#: The most self-loops one box may carry: one on each side across the reading
+#: direction. Mirrors `drawspec.routing.MAX_LOOPS`, which the drawing obeys.
+MAX_SELF_LOOPS: Final = 2
+
+
+def _loop_violations(edges: Sequence[Any], groups: Set[str], name: str) -> list[Violation]:
+    """Self-loops drawspec has nowhere to draw: on a group, or a third on one box.
+
+    A loop leaves a box and comes back to the same side; a frame has a border
+    other edges cross on their way in, and a loop on it would read as one of
+    them. A box has two sides across the reading direction, so two loops.
+    """
+    found: list[Violation] = []
+    counted: dict[str, int] = {}
+    for index, edge in enumerate(edges):
+        if not isinstance(edge, dict):
+            continue
+        source, target = edge.get("from"), edge.get("to")
+        if not isinstance(source, str) or source != target:
+            continue
+        if source in groups:
+            found.append(
+                Violation(
+                    _pointer(name, index, "to"),
+                    f"{source!r} is a group, and a loop from a group back to itself has no box "
+                    f"to loop on. Draw it on the member it starts from.",
+                )
+            )
+            continue
+        counted[source] = counted.get(source, 0) + 1
+        if counted[source] > MAX_SELF_LOOPS:
+            found.append(
+                Violation(
+                    _pointer(name, index, "to"),
+                    f"{source!r} already loops back to itself {MAX_SELF_LOOPS} times, one on "
+                    f"each side of its box. Join these into one label, or split the state.",
+                )
+            )
+    return found
+
+
+def _listed(document: Mapping[str, Any], name: str) -> list[Any]:
+    value = document.get(name)
+    return value if isinstance(value, list) else []
+
+
 def _status_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
     """Where a change's marks contradict each other, or are on a kind with no change.
 
@@ -2242,6 +2714,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         raise DocumentError(_describe(violations), violations)
 
     kind = str(document["kind"])
+    if kind in STATES_KINDS:
+        return _states_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -2352,6 +2826,50 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         entries=_entries(document.get("entries", ())),
         order=str(document.get("sort", "given")),
         style=str(document.get("style", "icons")),
+    )
+
+
+def _states_document(document: Mapping[str, Any]) -> Document:
+    """A state machine as the graph family reads it: states as nodes, transitions as edges.
+
+    The transition's three parts are composed into the edge's label here, once,
+    so the renderer never learns that a state machine has events.
+    """
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        nodes=tuple(
+            Node(id=entry["id"], text=entry["text"], role=entry.get("role", "step"))
+            for entry in document["states"]
+        ),
+        initial=str(document["initial"]),
+        final=tuple(document.get("final", ())),
+        edges=tuple(
+            Edge(
+                source=entry["from"],
+                target=entry["to"],
+                label=transition_label(
+                    entry.get("event", ""), entry.get("guard", ""), entry.get("action", "")
+                ),
+                role=entry.get("role", "flow"),
+            )
+            for entry in document.get("transitions", ())
+        ),
+        groups=tuple(
+            Group(
+                id=entry["id"],
+                members=tuple(entry["members"]),
+                text=entry["text"],
+                initial=entry.get("initial", ""),
+            )
+            for entry in document.get("groups", ())
+        ),
     )
 
 
@@ -2579,6 +3097,9 @@ __all__ = [
     "SCHEMA_FILENAME",
     "SCHEMA_ID",
     "SHAPE_KINDS",
+    "STATES_KINDS",
+    "STATE_ROLES",
+    "TRANSITION_ROLES",
     "Axis",
     "Band",
     "Cell",
@@ -2600,5 +3121,6 @@ __all__ = [
     "payload_for",
     "published_schema_path",
     "schema_json",
+    "transition_label",
     "validate_document",
 ]

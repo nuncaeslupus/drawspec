@@ -148,7 +148,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Fifteen exist, and they fall into five families:
+fields are legal. Sixteen exist, and they fall into six families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -157,6 +157,7 @@ fields are legal. Fifteen exist, and they fall into five families:
 | Shape | `pyramid`, `rings`, `funnel` | Things in a proportion: levels narrowing to an apex, scopes nested inside scopes, stages narrowing to an outcome. |
 | Plot | `chart`, `quadrant`, `scatter`, `curve` | Things with numbers: series against axes, items placed in a plane, points by two measured values, a named shape with labelled waypoints. |
 | Listing | `files` | Things in folders: a directory tree from its paths, drawn with pictures or as `tree`-style text (`drawspec render --format text`). |
+| Machine | `states` | Things that change state: the conditions something can be in, and the events that move it between them. |
 
 One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see
@@ -635,6 +636,57 @@ least three steps around it (two and a middle is a `flow`), and a shortcut whose
 chord would cross the middle is refused rather than drawn through the hub. See
 [`reference/cycle-hub-quality.json`](reference/cycle-hub-quality.json) and
 [`reference/cycle-hub-flywheel.json`](reference/cycle-hub-flywheel.json).
+
+## A state machine
+
+A `flow`'s boxes are things done, once each; a state machine's are conditions
+something *is in*, revisited, with every arrow labelled by what moves it. Say
+that with `states`:
+
+```json
+{
+  "version": 1,
+  "kind": "states",
+  "initial": "closed",
+  "states": [
+    {"id": "closed", "text": "Closed\ncalls go through"},
+    {"id": "open", "text": "Open\ncalls fail fast"},
+    {"id": "half", "text": "Half-open\none trial call"}
+  ],
+  "transitions": [
+    {"from": "closed", "to": "closed", "event": "call fails", "guard": "under the threshold", "action": "count it"},
+    {"from": "closed", "to": "open", "event": "call fails", "guard": "threshold reached"},
+    {"from": "open", "to": "half", "event": "cool-down elapses"},
+    {"from": "half", "to": "closed", "event": "trial succeeds"},
+    {"from": "half", "to": "open", "event": "trial fails"}
+  ]
+}
+```
+
+`initial` is drawn as a filled dot with an arrow to that state; each state in
+`final` gets an arrow to a ringed dot (the theme's `[states]` sizes both). A
+transition's label is composed from `event`, `guard` and `action` — one under
+the other, the guard in brackets and the action after a slash — so write the
+words and not the punctuation. A transition from a state to itself is a loop on
+the side of its box, across the reading direction, with its label outside it;
+a state may have two. Roles: `step`, `emphasis` or `terminal` on a state;
+`flow`, `strong` (the happy path) or `weak` (a rare or error path) on a
+transition.
+
+`groups` are composite states, and may nest. A transition **from** a group
+leaves it from whichever state inside is current; one **to** a group enters it at
+the group's own `initial`, which is drawn as a dot inside the frame — and is
+required when anything enters the group.
+
+Refused, each at its pointer: a state no transition reaches from `initial` (a
+bug in the machine — add the transition or delete the state); a `final` state
+with an outgoing transition; `final` naming a group; two transitions leaving one
+state on the same event and guard for different states (give them guards); a
+loop on a group, or a third loop on one state. A machine with parallel regions
+is two machines: draw two. See
+[`reference/states-breaker.json`](reference/states-breaker.json),
+[`reference/states-invoice.json`](reference/states-invoice.json) and
+[`reference/states-ticket.json`](reference/states-ticket.json).
 
 ## Asking for a wide drawing instead of a tall one
 

@@ -43,6 +43,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "scatter": "points placed by two measured values — a quadrant with real ticks",
     "curve": "a named shape with labelled waypoints",
     "files": "a directory listing — folders and files from their paths",
+    "states": "a state machine — the conditions something is in, and the events that move it",
 }
 
 #: The smallest document of each kind that renders.
@@ -188,6 +189,19 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"path": "src/..."},
             {"path": "tests/"},
             {"path": "README.md"},
+        ],
+    },
+    "states": {
+        "version": 1,
+        "kind": "states",
+        "initial": "off",
+        "states": [
+            {"id": "off", "text": "Off"},
+            {"id": "on", "text": "On"},
+        ],
+        "transitions": [
+            {"from": "off", "to": "on", "event": "switch pressed"},
+            {"from": "on", "to": "off", "event": "switch pressed"},
         ],
     },
     "scatter": {

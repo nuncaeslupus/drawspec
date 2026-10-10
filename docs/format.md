@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-15 kinds. The machine-readable form of this page is the published
+16 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files` | **yes** | Which of the fifteen diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states` | **yes** | Which of the sixteen diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -129,6 +129,16 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `sort` | string — one of `given`, `name`, `folders-first` | no | How siblings are ordered: `given` (the default) keeps the order written, `name` sorts naturally (`file2` before `file10`), `folders-first` sorts by name with folders above files. A `...` row stays last. |
 | `style` | string — one of `icons`, `plain`, `unicode`, `ascii` | no | `icons` (the default) draws folder and file pictures; `plain` draws the names and guides only; `unicode` and `ascii` draw the tree as monospace text, with box-drawing or plain ASCII branches. |
 
+### `states`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `states` | array of [state](#state-object), at least 1 | **yes** | The conditions the machine can be in. A newline in `text` is a lead and a detail, as everywhere: the state's name over what holds in it. Every state must be reachable from `initial`. |
+| `initial` | string | **yes** | The state the machine starts in, drawn as a filled dot with an arrow to it. Required: reachability is measured from here. May name a group, which must then say its own `initial`. |
+| `final` | array of string | no | The states the machine ends in, each drawn with an arrow to a ringed dot. A final state has no outgoing transition. |
+| `transitions` | array of [transition](#transition-object) | no | What moves the machine from one state to another, each labelled `event [guard] / action` from its own fields. |
+| `groups` | array of [composite](#composite-object) | no | Composite states: a frame around the states inside it, named at its corner. Groups may nest. A transition from a group leaves it from any state inside; one to a group enters it at the group's `initial`. |
+
 ### `scatter`
 
 | Field | Type | Required | What it is |
@@ -176,6 +186,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `scatter` | 20 `positions` |
 | `curve` | 4 `curves` |
 | `files` | 30 `entries` |
+| `states` | 14 `states`, 24 `transitions` |
 
 ## Emphasis
 
@@ -220,6 +231,34 @@ name, so a misspelt key is an error at the point it was written.
 | `id` | string | **yes** | Unique within the document, and in the same id space as the nodes, so an edge may name the hub — as a spoke, never as a step of the loop. |
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+
+### `state` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique within the document, among the states and the groups. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis`, `terminal` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+
+### `transition` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | string | **yes** | The state the machine leaves — or a group, for a transition that leaves the composite from whichever state inside it is current. |
+| `to` | string | **yes** | The state the machine enters — or a group, which is entered at its own `initial`. The same id as `from` draws a self-loop. |
+| `event` | string | no | What happens that moves the machine. Omit for a completion transition, taken as soon as the state's work is done. |
+| `guard` | string | no | The condition that must hold for the event to move the machine. Written plainly; drawspec adds the brackets. |
+| `action` | string | no | What the machine does on the way. Written plainly; drawspec adds the slash. The label reads `event [guard] / action`, each part optional. |
+| `role` | string — one of `flow`, `strong`, `weak` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
+
+### `composite` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique within the document, among the states and the groups. |
+| `text` | string | **yes** | The composite state's name, drawn at its frame's corner. |
+| `members` | array of string, at least 1 | **yes** | The states (or groups) inside this composite state. |
+| `initial` | string | no | The member this composite is entered at, drawn as a dot inside the frame. Required when a transition, or the machine's own `initial`, names the group. |
 
 ### `group` object
 

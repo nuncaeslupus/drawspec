@@ -40,7 +40,7 @@ from __future__ import annotations
 import heapq
 import math
 from bisect import bisect_left, bisect_right
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence, Set
 from dataclasses import dataclass, field, replace
 from itertools import pairwise
 from typing import Final
@@ -287,11 +287,20 @@ class Label:
     height: float
     ascent: float
     font: str = "sans"
+    advance: float = 0.0
+    """Baseline to baseline, for a label of more than one line; see `lines`."""
 
     @property
     def box(self) -> tuple[float, float, float, float]:
         """Left, top, right, bottom."""
         return self.left, self.top, self.left + self.width, self.top + self.height
+
+    @property
+    def lines(self) -> tuple[str, ...]:
+        """The label's lines. One, unless its text carries a newline — which only a
+        composed label does: a state machine's transition sets its event, guard
+        and action one under another."""
+        return tuple(self.text.split("\n"))
 
     @property
     def baseline(self) -> float:
@@ -650,6 +659,9 @@ def route_edges(
         if connector.source != connector.target
     }
     fractions = _assign_ports(connectors, boxes, sides)
+    fractions = _clear_frame_ports(
+        connectors, boxes, sides, fractions, {box.id for box in anchors}, channel * 2
+    )
     reaches = _shared_reaches(connectors, boxes, sides, fractions, obstacles, lanes, theme)
     approaches: dict[int, tuple[_Approach, _Approach]] = {}
     for index, side_pair in sides.items():
@@ -834,6 +846,104 @@ def _assign_ports(
     return assigned
 
 
+def _clear_frame_ports(
+    connectors: Sequence[Connector],
+    boxes: Mapping[str, Obstacle],
+    sides: Mapping[int, tuple[str, str]],
+    fractions: Mapping[int, tuple[float, float]],
+    frames: Set[str],
+    spacing: float,
+) -> dict[int, tuple[float, float]]:
+    """Frame ends moved off the line a box inside the frame already leaves on.
+
+    A group's contents are centred in its frame, so an edge leaving the middle
+    of the frame's bottom and an edge leaving the middle of the bottom box inside
+    it were on one vertical line: the member's edge crossed the frame's border
+    exactly where the frame's own edge began, the two shared a trunk, and an
+    edge from the whole composite read as one more edge from that one box. Both
+    runs carry an endpoint, so lane separation cannot move either; the frame's
+    end is the one free to move, and it moves to the nearest place along its side
+    at least a lane clear of every such line.
+    """
+    adjusted = dict(fractions)
+    if not frames:
+        return adjusted
+    # Each box end: its box, its side, where along that side, and the box at
+    # the other end — a line only shares the frame's border if it leaves the
+    # frame, so a member's edge to another member does not count.
+    taken: list[tuple[str, str, float, str]] = []
+    for index, (source_side, target_side) in sides.items():
+        connector = connectors[index]
+        for end, (node, side) in enumerate(
+            ((connector.source, source_side), (connector.target, target_side))
+        ):
+            if node in frames:
+                continue
+            point = _port(boxes[node], side, fractions[index][end])
+            along = 0 if side in ("top", "bottom") else 1
+            other = connector.target if end == 0 else connector.source
+            taken.append((node, side, point[along], other))
+    for index, (source_side, target_side) in sides.items():
+        connector = connectors[index]
+        ends = list(adjusted[index])
+        for end, (node, side) in enumerate(
+            ((connector.source, source_side), (connector.target, target_side))
+        ):
+            if node not in frames:
+                continue
+            frame = boxes[node]
+            along = 0 if side in ("top", "bottom") else 1
+            low = frame.x if along == 0 else frame.y
+            length = frame.width if along == 0 else frame.height
+            if length <= 0:
+                continue
+            lines = [
+                line
+                for member, member_side, line, beyond in taken
+                if member_side == side
+                and _inside(boxes[member], frame)
+                and not _inside(boxes[beyond], frame)
+            ]
+            if not lines:
+                continue
+            # Towards the other end first, so the moved edge turns away from the
+            # member's line rather than across it.
+            other = connector.target if end == 0 else connector.source
+            toward = 1.0 if boxes[other].centre[along] >= low + length * ends[end] else -1.0
+            for step in range(int(length / spacing) + 1):
+                offers = (
+                    (ends[end],)
+                    if not step
+                    else (
+                        ends[end] + toward * step * spacing / length,
+                        ends[end] - toward * step * spacing / length,
+                    )
+                )
+                clear = [
+                    offer
+                    for offer in offers
+                    if 0.1 <= offer <= 0.9
+                    and all(
+                        abs(low + length * offer - line) >= spacing - _TOLERANCE for line in lines
+                    )
+                ]
+                if clear:
+                    ends[end] = clear[0]
+                    break
+        adjusted[index] = (ends[0], ends[1])
+    return adjusted
+
+
+def _inside(box: Obstacle, frame: Obstacle) -> bool:
+    """Whether `box` lies within `frame`'s rectangle."""
+    return (
+        box.x >= frame.x - _TOLERANCE
+        and box.right <= frame.right + _TOLERANCE
+        and box.y >= frame.y - _TOLERANCE
+        and box.bottom <= frame.bottom + _TOLERANCE
+    )
+
+
 def _stub_end(port: tuple[float, float], side: str, stub: float) -> tuple[float, float]:
     """`stub` units straight out from the border, so the route leaves squarely."""
     step_x, step_y = OUTWARD[side]
@@ -1007,6 +1117,12 @@ def _reach(
     step = step_x or step_y
     ahead = [(value - origin) * step for value in axis if (value - origin) * step > _TOLERANCE]
     room = _clearance(port, side, obstacles) / 2
+    if not ahead and math.isinf(room):
+        # Out past every lane with nothing in front: the far side of a group's
+        # frame, whose border is outside every box the lanes were drawn from.
+        # The stub used to run to infinity there and no route could be found;
+        # one lane's width out is where the lane outside a box would have been.
+        return max(theme.edge.lane_spacing, head_room(theme))
     return min(max(min(ahead, default=room), min(head_room(theme), room)), room)
 
 
@@ -1820,8 +1936,232 @@ def _self_loop(
 
 
 # ---------------------------------------------------------------------------
+# Self-loops
+# ---------------------------------------------------------------------------
+
+#: The sides a self-loop takes, in preference order, by the layout's direction:
+#: **across** the reading direction, never along it. The top and bottom of a box
+#: in a downward drawing are where its own incoming and outgoing edges arrive, and
+#: a loop drawn there — which is what `flow` used to do — re-entered the box
+#: across its own incoming arrow, so the two heads met in one place and the loop
+#: read as a branch of the edge above it. A box with two loops uses both sides.
+LOOP_SIDES: Final[Mapping[str, tuple[str, str]]] = {
+    "down": ("right", "left"),
+    "right": ("bottom", "top"),
+}
+
+#: The most self-loops one box may carry: one on each side `LOOP_SIDES` names.
+MAX_LOOPS: Final = 2
+
+
+def loop_reach(theme: Theme) -> float:
+    """How far out from its box a self-loop runs.
+
+    Half the minimum rank gap, so the loop is the size of an ordinary arrow's
+    shaft and head — a loop someone can see rather than a nick in the outline —
+    and never less than two heads, so its returning leg carries its own head with
+    line behind it.
+    """
+    return max(minimum_rank_gap(theme) / 2, theme.edge.head_length * 2)
+
+
+def _loop_span(box: Obstacle, side: str, theme: Theme) -> tuple[float, float]:
+    """Where along `side` the loop leaves and returns, as fractions of that side.
+
+    Half the side, centred — and no wider than a square loop, so a wide box's
+    loop on its bottom is still a loop and not a second, shallower box under it.
+    """
+    length = box.width if side in ("top", "bottom") else box.height
+    span = min(length / 2, loop_reach(theme) * 2)
+    half = span / 2 / length if length else 0.25
+    return 0.5 - half, 0.5 + half
+
+
+def loop_route(box: Obstacle, side: str, connector: Connector, theme: Theme) -> Route:
+    """A self-loop on one side of `box`: out, along, and back in on the **same** side.
+
+    Leaving and returning on one side is what keeps the loop off every other
+    edge's ends — the sides along the reading direction belong to those — and
+    what makes it read as *this state again* rather than as a route somewhere
+    else. Drawn clockwise on every side, so two loops on one box turn the same
+    way. Rectangular like every other route; the head is on the returning leg,
+    pointing back into the box.
+    """
+    low, high = _loop_span(box, side, theme)
+    # Clockwise: down the right side, along the bottom to the left, up the left
+    # side, along the top to the right.
+    out, back = {"right": (low, high), "bottom": (high, low), "left": (high, low)}.get(
+        side, (low, high)
+    )
+    reach = loop_reach(theme)
+    start, end = _anchor(box, side, out), _anchor(box, side, back)
+    if side in ("left", "right"):
+        far = _round(box.right + reach if side == "right" else box.x - reach)
+        points = (start, (far, start[1]), (far, end[1]), end)
+    else:
+        far = _round(box.bottom + reach if side == "bottom" else box.y - reach)
+        points = (start, (start[0], far), (end[0], far), end)
+    return Route(connector.source, connector.target, connector.role, points, connector.label)
+
+
+@dataclass(frozen=True)
+class Loop:
+    """A self-loop, placed: its route, its label, and everything it draws on."""
+
+    side: str
+    route: Route
+    label: Label | None
+
+    @property
+    def zone(self) -> tuple[float, float, float, float]:
+        """Left, top, right, bottom of the loop's line and its label together."""
+        xs = [x for x, _ in self.route.points]
+        ys = [y for _, y in self.route.points]
+        if self.label is not None:
+            left, top, right, bottom = self.label.box
+            xs += [left, right]
+            ys += [top, bottom]
+        return min(xs), min(ys), max(xs), max(ys)
+
+
+def loop_label_size(text: str, theme: Theme, measurer: TextMeasurer) -> tuple[float, float]:
+    """The width and height a loop's label takes, or nothing for an unlabelled loop."""
+    if not text:
+        return 0.0, 0.0
+    width, height, _, _ = label_extents(text, theme, measurer)
+    return width, height
+
+
+def loop_margin(side: str, label: tuple[float, float], theme: Theme) -> float:
+    """How far past its box's `side` a loop and its label reach.
+
+    The amount the layout must keep clear beside a box with a loop on that side,
+    so that the loop is part of the box's reserved extent and a neighbour can
+    never be placed on top of it.
+    """
+    width, height = label
+    gap = LABEL_GAP + theme.edge.stroke_width / 2
+    beyond = (width if side in ("left", "right") else height) if width else 0.0
+    return loop_reach(theme) + (gap + beyond if width else theme.edge.stroke_width)
+
+
+def place_loop(
+    box: Obstacle, side: str, connector: Connector, theme: Theme, measurer: TextMeasurer
+) -> Loop:
+    """A self-loop and its label, the label **outside** the loop beside its far leg.
+
+    Not left to `place_labels`: a loop's label has one right place — beyond the
+    leg furthest from the box, where it can belong to nothing else — and the
+    room for it was reserved in the layout, so there is nothing to search for.
+    Inside the loop it would be between the line and the box it loops on.
+    """
+    route = loop_route(box, side, connector, theme)
+    if not connector.label:
+        return Loop(side, route, None)
+    width, height, ascent, advance = label_extents(connector.label, theme, measurer)
+    gap = LABEL_GAP + theme.edge.stroke_width / 2
+    (x1, y1), (x2, y2) = route.points[1], route.points[2]
+    middle_x, middle_y = (x1 + x2) / 2, (y1 + y2) / 2
+    if side == "right":
+        left, top = x1 + gap, middle_y - height / 2
+    elif side == "left":
+        left, top = x1 - gap - width, middle_y - height / 2
+    elif side == "bottom":
+        left, top = middle_x - width / 2, y1 + gap
+    else:
+        left, top = middle_x - width / 2, y1 - gap - height
+    label = Label(
+        text=connector.label,
+        role=connector.role,
+        left=left,
+        top=top,
+        width=width,
+        height=height,
+        ascent=ascent,
+        font=theme.font.default,
+        advance=advance,
+    )
+    return Loop(side, route, label)
+
+
+def loop_sides(
+    box: Obstacle,
+    count: int,
+    claimed: Set[str],
+    direction: str,
+) -> tuple[str, ...]:
+    """Which sides `count` loops on `box` take, given the sides other edges use.
+
+    Across the reading direction always, and a side no other edge of this box
+    ends on before one that some edge does: a return edge in a downward drawing
+    goes round the outside on the right or the left (see `_around`), and a loop
+    on that same side would sit on its ends.
+    """
+    del box  # the choice is the box's neighbourhood's, not its size's
+    preferred = LOOP_SIDES.get(direction, LOOP_SIDES["down"])
+    ordered = sorted(preferred, key=lambda side: side in claimed)
+    return tuple(ordered[:count])
+
+
+def goes_round(connector: Connector, boxes: Mapping[str, Obstacle], direction: str) -> bool:
+    """Whether the router takes this connector round the outside: a return edge.
+
+    The router's own analytic answer (see `_around`): both ends on one side.
+    """
+    source, target = boxes[connector.source], boxes[connector.target]
+    first, second = _candidate_sides(source, target, direction)
+    return first == second
+
+
+def claimed_sides(
+    identifier: str,
+    connectors: Sequence[Connector],
+    boxes: Mapping[str, Obstacle],
+    direction: str,
+) -> frozenset[str]:
+    """The sides of `identifier` the router will end other connectors on.
+
+    Asked of `_candidate_sides`, the same analytic rule the router uses, so the
+    answer is the router's own rather than a guess at it.
+    """
+    sides: set[str] = set()
+    for connector in connectors:
+        if connector.source == connector.target:
+            continue
+        if identifier not in (connector.source, connector.target):
+            continue
+        if connector.source not in boxes or connector.target not in boxes:
+            continue
+        pair = _candidate_sides(boxes[connector.source], boxes[connector.target], direction)
+        if connector.source == identifier:
+            sides.add(pair[0])
+        if connector.target == identifier:
+            sides.add(pair[1])
+    return frozenset(sides)
+
+
+# ---------------------------------------------------------------------------
 # Labels
 # ---------------------------------------------------------------------------
+
+
+def label_extents(
+    text: str, theme: Theme, measurer: TextMeasurer
+) -> tuple[float, float, float, float]:
+    """A label's width, height, first ascent and line advance, one line per newline.
+
+    Each line is a measured line of the label type, stacked at that line's own
+    height, so a one-line label measures exactly as it always has.
+    """
+    lines = text.split("\n")
+    extents = [measurer.measure(line, theme.font.default, theme.scale["label"]) for line in lines]
+    advance = extents[0].height
+    return (
+        max(extent.width for extent in extents),
+        advance * len(lines),
+        extents[0].ascent,
+        advance,
+    )
 
 
 def place_labels(
@@ -1848,7 +2188,6 @@ def place_labels(
             arrangement is what needs to change — a shorter label or more room —
             and the message says so.
     """
-    size = theme.scale["label"]
     font = theme.font.default
     placed: list[Label] = []
     paths = tuple(segment for route in routes for segment in route.segments)
@@ -1857,9 +2196,9 @@ def place_labels(
     for route in routes:
         if not route.label:
             continue
-        extents = measurer.measure(route.label, font, size)
-        for left, top in _label_candidates(route, extents.width, extents.height, theme):
-            candidate = (left, top, left + extents.width, top + extents.height)
+        width, height, ascent, advance = label_extents(route.label, theme, measurer)
+        for left, top in _label_candidates(route, width, height, theme):
+            candidate = (left, top, left + width, top + height)
             # Tested with air around it, kept without. Text that merely fails to
             # overlap a line still reads as touching it, and the offsets the
             # placer works through are meaningless if the first position that
@@ -1878,10 +2217,11 @@ def place_labels(
                         role=route.role,
                         left=left,
                         top=top,
-                        width=extents.width,
-                        height=extents.height,
-                        ascent=extents.ascent,
+                        width=width,
+                        height=height,
+                        ascent=ascent,
                         font=font,
+                        advance=advance,
                     )
                 )
                 break
@@ -2057,15 +2397,16 @@ def label_primitives(label: Label) -> tuple[Primitive, ...]:
     position, and two opinions is how a label ends up half a word from where it
     was measured to be.
     """
-    return (
+    return tuple(
         TextRun(
             label.role,
             x=label.left,
-            y=label.baseline,
-            text=label.text,
+            y=label.baseline + index * label.advance,
+            text=line,
             level="label",
             font=label.font,
-        ),
+        )
+        for index, line in enumerate(label.lines)
     )
 
 
@@ -2135,6 +2476,8 @@ __all__ = [
     "LABEL_GAP",
     "LABEL_OFFSETS",
     "LABEL_POSITIONS",
+    "LOOP_SIDES",
+    "MAX_LOOPS",
     "OUTWARD",
     "PORT_SPREAD",
     "SEPARATION_PASSES",
@@ -2142,13 +2485,23 @@ __all__ = [
     "TURN_COST",
     "Connector",
     "Label",
+    "Loop",
     "Obstacle",
     "Route",
+    "claimed_sides",
     "edge_primitives",
+    "goes_round",
     "head_room",
+    "label_extents",
     "label_primitives",
+    "loop_label_size",
+    "loop_margin",
+    "loop_reach",
+    "loop_route",
+    "loop_sides",
     "minimum_rank_gap",
     "place_labels",
+    "place_loop",
     "route_edges",
     "separate_lanes",
     "shaft_length",

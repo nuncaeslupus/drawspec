@@ -159,6 +159,15 @@ How a `files` tree draws its pictures. Appearance, so it lives here.
 | `align` | `"left"` | Where a tree sits on the canvas: `left`, as a listing reads, or `centre`, like every other kind. One of `left`, `centre`. |
 | `colours` | `{}` | Fill colour by extension (`pdf`), by type family (`code`, `data`, `text`, `image`, `archive`), or `folder`. An extension wins over its family. Anything not named is drawn in the page's ink. |
 
+### `[states]`
+
+How a state machine's pseudo-states are drawn. Appearance, so it lives here.
+
+| Key | Default | What it is |
+|---|---|---|
+| `dot` | `10.0` | The diameter of the initial pseudo-state's filled dot, and of the dot inside a final pseudo-state's ring. |
+| `ring` | `3.0` | The daylight between a final pseudo-state's dot and the ring around it. |
+
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The

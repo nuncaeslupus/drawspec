@@ -79,6 +79,14 @@ class Ellipse(Primitive):
     cy: float = 0.0
     rx: float = 0.0
     ry: float = 0.0
+    fill: str = field(default="", repr=False)
+    """As `Rect.fill`: a fill the geometry chose, or empty for the role's. A state
+    machine's initial dot is the one ellipse that asks — `solid` — because a dot
+    is a filled mark, not an outline. Kept out of the repr the id digest reads,
+    so no drawing made before it existed changed its ids."""
+
+    fill_colour: str = field(default="", repr=False)
+    """As `Rect.fill_colour`: the colour that fill is drawn in."""
 
 
 @dataclass(frozen=True)

@@ -75,10 +75,12 @@ Pick by what the reader must **understand**, not by what it looks like.
 | Where items fall by two measured values | `scatter` | `axes` + `positions` |
 | The shape of a change: a hype cycle, a burndown | `curve` | `axes` + `curves` |
 | What is in a directory | `files` | `entries` (+ `root`, `sort`, `style`) |
+| The conditions something is in, and the events that move it | `states` | `states` + `initial` + `transitions` (`event`/`guard`/`action`; + `final`, `groups`); every state reachable |
 
 `flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may
 branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring
-through **every** node, and is refused if it does not.
+through **every** node, and is refused if it does not. `flow` vs `states`: a
+box something *is in*, re-entered, labelled by events, is a state.
 
 **Keep it readable.** Each kind has a budget ([`docs/format.md`](docs/format.md#the-readability-budget);
 a `flow`: 15 nodes, 16 edges). Past it a document is refused even though it

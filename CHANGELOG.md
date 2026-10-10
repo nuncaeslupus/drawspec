@@ -12,6 +12,25 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`states`, the sixteenth kind** — a state machine: `states`, a required
+  `initial`, optional `final`, and `transitions` whose label drawspec composes
+  from `event`, `guard` and `action` (one part per line: `event`, `[guard]`,
+  `/ action`). The initial state is drawn as a filled dot with an arrow to it,
+  each final state with an arrow to a ringed dot (sized by the theme's new
+  `[states]` section). `groups` are composite states and may nest; a transition
+  from a group leaves it from any state inside, one to a group enters it at the
+  group's own `initial`, drawn as a dot inside the frame. A transition from a
+  state to itself is a **self-loop** on the side of its box across the reading
+  direction (two at most, one per side), its label outside it, and its room
+  reserved in the layout. Refused at their pointers: a state not reachable from
+  `initial` (through groups), a final state with an outgoing transition, `final`
+  naming a group, two transitions from one state on the same event and guard to
+  different states, entering a group that has no `initial`, a loop on a group or
+  a third on one state; state roles are `step`/`emphasis`/`terminal` and
+  transition roles `flow`/`strong`/`weak`. Budget: 14 states, 24 transitions.
+  References: `states-process`, `states-breaker`, `states-invoice`,
+  `states-ticket`.
+
 - **`status` on `flow` and `tree`** nodes and edges — `added`, `changed`,
   `removed`, the `files` vocabulary — so a proposed change is one drawing of the
   target state rather than a before and an after. A marked box carries a
@@ -61,6 +80,13 @@ against it would stop working. Everything below is about the *package*.
 - **Gallery renders on every pull request.** CI's `gallery` job renders
   `docs/reference/` with the branch's code and uploads the SVGs as the
   `gallery-pr-<number>` workflow artifact, so reviewers can see the drawings.
+
+### Fixed
+
+- An edge from a group's frame no longer starts on the line an edge from a box
+  inside it leaves by, which drew the two as one edge from that box; and an
+  edge arriving at the far side of a frame, out past every box, is routed
+  instead of refused with "no orthogonal route".
 
 ### Changed
 

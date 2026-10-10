@@ -1037,6 +1037,95 @@
         "entries"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "states",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "states"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "states": {
+          "type": "array",
+          "description": "The conditions the machine can be in. A newline in `text` is a lead and a detail, as everywhere: the state's name over what holds in it. Every state must be reachable from `initial`.",
+          "items": {
+            "$ref": "#/$defs/state"
+          },
+          "minItems": 1
+        },
+        "initial": {
+          "type": "string",
+          "description": "The state the machine starts in, drawn as a filled dot with an arrow to it. Required: reachability is measured from here. May name a group, which must then say its own `initial`."
+        },
+        "final": {
+          "type": "array",
+          "description": "The states the machine ends in, each drawn with an arrow to a ringed dot. A final state has no outgoing transition.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "transitions": {
+          "type": "array",
+          "description": "What moves the machine from one state to another, each labelled `event [guard] / action` from its own fields.",
+          "items": {
+            "$ref": "#/$defs/transition"
+          }
+        },
+        "groups": {
+          "type": "array",
+          "description": "Composite states: a frame around the states inside it, named at its corner. Groups may nest. A transition from a group leaves it from any state inside; one to a group enters it at the group's `initial`.",
+          "items": {
+            "$ref": "#/$defs/composite"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "states",
+        "initial"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -1204,6 +1293,37 @@
         "text",
         "column",
         "row"
+      ],
+      "additionalProperties": false
+    },
+    "composite": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique within the document, among the states and the groups."
+        },
+        "text": {
+          "type": "string",
+          "description": "The composite state's name, drawn at its frame's corner."
+        },
+        "members": {
+          "type": "array",
+          "description": "The states (or groups) inside this composite state.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "initial": {
+          "type": "string",
+          "description": "The member this composite is entered at, drawn as a dot inside the frame. Required when a transition, or the machine's own `initial`, names the group."
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "members"
       ],
       "additionalProperties": false
     },
@@ -1679,6 +1799,72 @@
       },
       "required": [
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "state": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique within the document, among the states and the groups."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "step",
+            "emphasis",
+            "terminal"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "transition": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The state the machine leaves — or a group, for a transition that leaves the composite from whichever state inside it is current."
+        },
+        "to": {
+          "type": "string",
+          "description": "The state the machine enters — or a group, which is entered at its own `initial`. The same id as `from` draws a self-loop."
+        },
+        "event": {
+          "type": "string",
+          "description": "What happens that moves the machine. Omit for a completion transition, taken as soon as the state's work is done."
+        },
+        "guard": {
+          "type": "string",
+          "description": "The condition that must hold for the event to move the machine. Written plainly; drawspec adds the brackets."
+        },
+        "action": {
+          "type": "string",
+          "description": "What the machine does on the way. Written plainly; drawspec adds the slash. The label reads `event [guard] / action`, each part optional."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'flow'.",
+          "enum": [
+            "flow",
+            "strong",
+            "weak"
+          ]
+        }
+      },
+      "required": [
+        "from",
+        "to"
       ],
       "additionalProperties": false
     },

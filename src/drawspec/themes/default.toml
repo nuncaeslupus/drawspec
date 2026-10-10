@@ -122,6 +122,13 @@ gap = 0.3
 # a blank cell), none past 0.5 so a cell's text stays readable on it.
 ramp = [0.08, 0.18, 0.28, 0.38, 0.48]
 
+[states]
+# A state machine's pseudo-states: the filled dot it starts from, and the ringed
+# dot each final state leads to. Marks with no words, so sized here: the dot
+# about the cap height of the body type, the ring a stroke's width clear of it.
+dot = 10.0
+ring = 3.0
+
 # ---------------------------------------------------------------------------
 # Node roles. Shape and line treatment per semantic role. The author names the
 # role; every appearance decision below is taken here, once, for all diagrams.

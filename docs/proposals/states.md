@@ -1,6 +1,7 @@
 # Proposal: `states` — a finite state machine
 
-Status: **proposed**. Size **M** (reuses the graph layout; adds pseudo-states, self-loops
+Status: **implemented** — see *As built* at the end for where it departs from this text.
+Size **M** (reuses the graph layout; adds pseudo-states, self-loops
 and structured transition labels).
 
 ## Why not `flow`
@@ -170,3 +171,66 @@ layout-in-layout) unchanged. Additions:
   slashes when one is missing.
 * Separately, in `flow`: decide the self-loop question (refuse, or route it with this
   geometry) and test whichever is chosen.
+
+## As built
+
+Implemented as proposed, with these changes:
+
+* **One part per line.** A transition's label is composed as `event`, then
+  `[guard]`, then `/ action`, each on its own line, not as one line. Rendered,
+  the one-line form made the widest labels in any drawing (`call fails [under
+  the threshold] / count it`), and a label wider than the gap beside its line had
+  nowhere to go and was refused. The guard is not set in a different type level:
+  the brackets already set it apart, and a fifth type size breaks the theme's
+  four. Edge labels learned to carry several lines for this; only a composed
+  label has a newline in it.
+* **Fewer state fields and roles.** A state is `{id, text, role?}` — no `note`,
+  which every other kind but `timeline` accepts and does not draw, and a new
+  kind need not repeat that. State roles are `step`, `emphasis` and `terminal`:
+  `note` and `group` are refused with `decision` and `start` (the initial dot
+  replaces a "start" box), because none of them is a condition the machine is in,
+  and a `note` would be refused as unreachable anyway.
+* **Composite states are their own object**, `composite` (`id`, `text`,
+  `members`, `initial?`), so `initial` is legal on a `states` group and not on a
+  `flow` one. Its `text` is required: a composite with no name is a frame, not a
+  state. Its `initial` is **drawn**, as a dot inside the frame with an arrow to
+  that member, and is required whenever anything enters the group — the
+  machine's `initial` or any transition — since entering it otherwise names no
+  state. It must be a member of the group.
+* **Theme keys.** `[states] dot` (the filled dot's diameter, and the dot inside
+  a final ring) and `[states] ring` (the gap to the ring). No `[states] shape`:
+  a state is the default box, whose corners the theme already rounds.
+* **Self-loops.** At most two per state — one on each side across the reading
+  direction — and none on a group (a frame has no box to loop on); both refused
+  at the transition's `to`. The room is reserved on **both** sides of the box, so
+  it stays centred in its column and its neighbours' edges still meet it square;
+  the loop then takes the side no other edge of that box ends on (a return edge
+  in a downward drawing goes round the right or the left). A box whose level
+  reads across gets its loops below and above, and the layout is re-run if a
+  level came out in the direction nobody reserved for.
+* **Layout.** The gap between ranks is widened by two label lines, since every
+  transition is labelled. Each pseudo-state is then pulled in to the plain rank
+  gap from its state where that spot is empty, so a dot's arrow — which carries no
+  label — is not a whole labelled rank long.
+* **Routing order.** Forward transitions are routed first and their labels
+  placed; return edges are then routed around those labels as well as the boxes.
+  Routed together, the returns took the lanes beside the boxes and left the
+  forward labels no room. `flow` is unchanged.
+* **Two router fixes found here**, neither moving any existing drawing: an edge
+  from a group's frame no longer starts on the line an edge from a member leaves
+  by (the invoice's `issued → paid` and `overdue → written_off` drew as one
+  trunk), and an edge arriving at the far side of a frame, out past every box,
+  is routed (a return into a composite from below was refused with "no
+  orthogonal route", in `flow` too).
+* **Opposite-direction pairs** needed no code: the forward one leaves the bottom
+  and the return goes round the side, so they are never on one line.
+* **References.** The three use cases plus `states-ticket` (a composite with an
+  `initial`, a return into it, `strong`/`weak` transitions, two transitions
+  between one pair). In `states-process`, *Exited* is declared before *Blocked*:
+  declared the other way, *Blocked* sits left of the spine and its return to
+  *Ready* goes round the right, crossing *Running*'s two outgoing edges. Order
+  is still the author's; a return from the left of the spine is the router's
+  weak spot.
+* **`flow` self-loops** adopt this geometry, in a separate change: a loop on the
+  side of its box across the reading direction, never through its own incoming
+  edge (`flow-retry`).

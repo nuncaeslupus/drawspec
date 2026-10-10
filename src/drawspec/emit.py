@@ -157,6 +157,8 @@ def namespace_for(scene: Scene, theme: Theme, profile: str) -> str:
         digest.update(repr(primitive).encode())
         if getattr(primitive, "strike", False):
             digest.update(b"|strike")
+        if isinstance(primitive, Ellipse) and primitive.fill:
+            digest.update(f"|{primitive.fill}|{primitive.fill_colour}".encode())
     digest.update(f"{theme.name}|{profile}".encode())
     return f"ds{digest.hexdigest()}"
 

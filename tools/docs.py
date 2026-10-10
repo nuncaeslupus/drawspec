@@ -77,6 +77,7 @@ from drawspec.theme import (
     FunnelStyle,
     MarkStyle,
     Padding,
+    StatesStyle,
     TitleStyle,
     TypeScale,
     load_theme,
@@ -493,6 +494,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "cycle": CycleStyle,
     "funnel": FunnelStyle,
     "files": FilesStyle,
+    "states": StatesStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are

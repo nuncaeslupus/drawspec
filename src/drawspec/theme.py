@@ -933,6 +933,38 @@ class FunnelStyle:
         )
 
 
+@dataclass(frozen=True)
+class StatesStyle:
+    """How a state machine's pseudo-states are drawn. Appearance, so it lives here.
+
+    The author says which state the machine starts in and which it ends in; the
+    filled dot and the ringed dot that say so are marks with no words, and how big
+    they are is a question about the drawing. No field on the document reaches
+    either.
+    """
+
+    dot: float = 10.0
+    """The diameter of the initial pseudo-state's filled dot, and of the dot
+    inside a final pseudo-state's ring."""
+
+    ring: float = 3.0
+    """The daylight between a final pseudo-state's dot and the ring around it."""
+
+    @property
+    def final(self) -> float:
+        """The diameter of a final pseudo-state, ring included."""
+        return self.dot + self.ring * 2
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> StatesStyle:
+        _reject_unknown(mapping, ("dot", "ring"), "[states]")
+        defaults = cls()
+        return cls(
+            dot=_number(mapping.get("dot", defaults.dot), "[states] dot"),
+            ring=_number(mapping.get("ring", defaults.ring), "[states] ring"),
+        )
+
+
 #: What a `files` page says about its file's type.
 FILES_TYPES: Final = ("labels", "pictures", "none")
 
@@ -1138,6 +1170,7 @@ _TOP_LEVEL_KEYS: Final = (
     "cycle",
     "funnel",
     "files",
+    "states",
     "role",
     "edge_role",
 )
@@ -1160,6 +1193,7 @@ class Theme:
     cycle: CycleStyle = CycleStyle()
     funnel: FunnelStyle = FunnelStyle()
     files: FilesStyle = FilesStyle()
+    states: StatesStyle = StatesStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
 
@@ -1210,6 +1244,7 @@ class Theme:
             cycle=CycleStyle.from_mapping(_section(mapping, "cycle")),
             funnel=FunnelStyle.from_mapping(_section(mapping, "funnel")),
             files=FilesStyle.from_mapping(_section(mapping, "files")),
+            states=StatesStyle.from_mapping(_section(mapping, "states")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
         )
