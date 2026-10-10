@@ -59,7 +59,7 @@ Pick by what the reader must **understand**, not by what it looks like.
 |---|---|---|
 | How work moves, branches, merges or loops back | `flow` | `nodes` + `edges` |
 | A hierarchy: what belongs to or reports to what | `tree` | `nodes` + `edges` |
-| A loop that returns to where it started | `cycle` | `nodes` + `edges` closing the ring |
+| A loop that returns to where it started | `cycle` | `nodes` + `edges` closing the ring (+ `hub`: what it turns around, joined only by `aside`/`weak`/`link` spokes) |
 | Layers, each resting on the one below | `stack` | `items` |
 | What happened when | `timeline` | `items` (+ `spans`) |
 | How a few options differ, side by side | `columns` | `items` |

@@ -1,6 +1,7 @@
 # Proposal: `cycle` + `hub` — what the loop keeps coming back to
 
-Status: **proposed**. Size **S** (one field; the ring is unchanged; one box in its middle).
+Status: **implemented** — see *As built* at the end for where it departs from this text.
+Size **S** (one field; the ring is unchanged; one box in its middle).
 
 ## Why
 
@@ -119,3 +120,32 @@ they are short because they go to the nearest side.
 * Spoke edges do not cross ring arcs or other boxes (`collisions.py`).
 * The ring check ignores hub edges; a ring broken elsewhere is still refused.
 * Refusals above; the `centre` message mentions `hub`.
+
+## As built
+
+Implemented as proposed, with these changes:
+
+* **The hub's own object.** `hub` is a `hub` object (`id`, `text`, `role`) rather
+  than a `node`: a node carries `centre`, `actor` and `note`, none of which means
+  anything in the middle of a ring, and `additionalProperties: false` now says so
+  in an editor instead of at render time.
+* **One more refusal: a shortcut through the hub.** A `cycle` already draws a
+  non-ring edge as a straight chord. With a hub in the middle, a chord between
+  two opposite steps would run straight through it and read as passing *through*
+  the thing the loop turns around. It is refused, naming both steps and the hub,
+  with the remedy (join nearer steps, or make it two spokes).
+* **Spoke labels stand beside the line.** A chord's label has always been offset
+  from the line by an ascent, which is enough for a slanting chord near the ring
+  and not for a spoke running straight down the page: the line went through the
+  middle of the word. A spoke's label is offset by the daylight measured to its
+  nearest corner, and the ring grows until each labelled spoke is long enough to
+  hold its label between the two boxes. Shortcut labels are unchanged, so no
+  existing drawing moved.
+* **How the ring grows.** One unit at a time from the radius the steps alone
+  need, until the hub sits inside the arcs (clear of the wheel theme's broad
+  bands too) and apart from every step by the gap peers keep — more for a step
+  joined by a spoke, which needs a visible shaft. Past the canvas width the
+  usual `FitError` is raised, and it names the hub.
+* **The ring-check message** counts only edges between steps and says the
+  spokes were set aside, so an author who closed the loop through the hub is
+  told what happened.

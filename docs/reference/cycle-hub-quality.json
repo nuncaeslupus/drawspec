@@ -1,0 +1,20 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "cycle",
+  "title": "Plan, do, check, act",
+  "description": "The improvement cycle of a quality standard: four steps that come round again, turning around the management system they improve. The system is not a fifth step, so it sits in the middle rather than on the ring.",
+  "hub": {"id": "qms", "text": "The quality\nmanagement system", "role": "emphasis"},
+  "nodes": [
+    {"id": "plan", "text": "Plan: set objectives and targets"},
+    {"id": "do", "text": "Do: run the processes as planned"},
+    {"id": "check", "text": "Check: measure against the targets"},
+    {"id": "act", "text": "Act: correct and standardise"}
+  ],
+  "edges": [
+    {"from": "plan", "to": "do"},
+    {"from": "do", "to": "check"},
+    {"from": "check", "to": "act"},
+    {"from": "act", "to": "plan"}
+  ]
+}

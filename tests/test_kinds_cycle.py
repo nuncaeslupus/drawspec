@@ -13,6 +13,7 @@ rather than hoped for from a layout engine:
 
 from __future__ import annotations
 
+import json
 import math
 from itertools import pairwise
 
@@ -23,7 +24,7 @@ from drawspec.emit import check_embedding_safety
 from drawspec.errors import DrawspecError, FitError, ThemeError
 from drawspec.kinds.cycle import MINIMUM_NODES, START_ANGLE, cycle_scene
 from drawspec.scene import Path, Polygon, Rect, Scene, TextLine, TextRun, extents
-from drawspec.schema import parse_document
+from drawspec.schema import parse_document, validate_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
 
@@ -516,3 +517,203 @@ def test_the_ring_is_found_whichever_order_the_edges_are_written_in() -> None:
     built = cycle_scene(parse_document(shuffled), THEME, MEASURER)
     arcs = [item for item in built.primitives if isinstance(item, Path) and len(item.points) > 2]
     assert len(arcs) == 4
+
+
+# --------------------------------------------------------------------------
+# hub — what the loop turns around, drawn in its middle
+# --------------------------------------------------------------------------
+
+PDCA: dict[str, object] = {
+    "version": 1,
+    "kind": "cycle",
+    "title": "Plan, do, check, act",
+    "hub": {"id": "qms", "text": "The quality management system", "role": "emphasis"},
+    "nodes": [
+        {"id": "plan", "text": "Plan"},
+        {"id": "do", "text": "Do"},
+        {"id": "check", "text": "Check"},
+        {"id": "act", "text": "Act"},
+    ],
+    "edges": [
+        {"from": "plan", "to": "do"},
+        {"from": "do", "to": "check"},
+        {"from": "check", "to": "act"},
+        {"from": "act", "to": "plan"},
+    ],
+}
+
+
+RING: list[dict[str, str]] = PDCA["edges"]  # type: ignore[assignment]
+
+
+def chords(built: Scene) -> list[Path]:
+    return [item for item in built.primitives if isinstance(item, Path) and len(item.points) == 2]
+
+
+def with_hub(**changes: object) -> dict[str, object]:
+    document = json.loads(json.dumps(PDCA))
+    document.update(changes)
+    return document  # type: ignore[no-any-return]
+
+
+def violations(document: dict[str, object]) -> dict[str, str]:
+    return {violation.pointer: violation.message for violation in validate_document(document)}
+
+
+def test_the_hub_is_centred_on_the_ring() -> None:
+    """The middle of a loop is the ring's own centre, not the canvas's."""
+    built = cycle_scene(parse_document(PDCA), THEME, MEASURER)
+    hub = boxes(built)[-1]
+    centre = centre_of(built)
+    assert math.isclose(hub.x + hub.width / 2, centre[0], abs_tol=1e-6)
+    assert math.isclose(hub.y + hub.height / 2, centre[1], abs_tol=1e-6)
+
+
+def test_the_hub_sits_inside_the_ring_and_clear_of_every_step() -> None:
+    """Inside the arcs, and apart from each step by at least the gap peers keep."""
+    built = cycle_scene(parse_document(PDCA), THEME, MEASURER)
+    *steps, hub = boxes(built)
+    centre = centre_of(built)
+    radius = float(dict(built.metadata)["radius"])
+    corner = math.hypot(hub.width / 2, hub.height / 2)
+    assert corner < radius - THEME.edge.clearance
+    for step in steps:
+        gap_x = max(step.x - (hub.x + hub.width), hub.x - (step.x + step.width), 0.0)
+        gap_y = max(step.y - (hub.y + hub.height), hub.y - (step.y + step.height), 0.0)
+        assert math.hypot(gap_x, gap_y) >= THEME.box.padding.horizontal - 1e-6
+    assert math.dist(centre, (hub.x + hub.width / 2, hub.y + hub.height / 2)) < 1e-6
+
+
+def test_a_long_hub_grows_the_ring_rather_than_overlapping_it() -> None:
+    """Four one-word steps make a small ring; a sentence in the middle needs a bigger one."""
+    bare = with_hub()
+    del bare["hub"]
+    small = float(dict(cycle_scene(parse_document(bare), THEME, MEASURER).metadata)["radius"])
+    big = float(dict(cycle_scene(parse_document(PDCA), THEME, MEASURER).metadata)["radius"])
+    assert big > small
+
+
+def test_a_hub_too_big_for_the_canvas_is_a_fiterror_that_names_the_hub() -> None:
+    document = with_hub(width=260)
+    with pytest.raises(FitError, match="hub"):
+        cycle_scene(parse_document(document), THEME, MEASURER)
+
+
+def test_spokes_are_left_out_of_the_ring_check() -> None:
+    """Two spokes beside four ring edges: the ring is still the four steps."""
+    document = with_hub(
+        edges=[
+            *RING,
+            {"from": "check", "to": "qms", "role": "weak", "label": "measured"},
+            {"from": "qms", "to": "plan", "role": "aside"},
+        ]
+    )
+    built = cycle_scene(parse_document(document), THEME, MEASURER)
+    curved = [item for item in built.primitives if isinstance(item, Path) and len(item.points) > 2]
+    straight = chords(built)
+    assert len(curved) == 4
+    assert len(straight) == 2
+
+
+def test_a_spoke_runs_from_the_hub_border_to_the_step_border() -> None:
+    document = with_hub(edges=[*RING, {"from": "qms", "to": "plan", "role": "link"}])
+    built = cycle_scene(parse_document(document), THEME, MEASURER)
+    (spoke,) = chords(built)
+    plan, *_, hub = boxes(built)
+    start, end = spoke.points
+    assert math.isclose(start[1], hub.y, abs_tol=1e-6)
+    assert math.isclose(end[1], plan.y + plan.height, abs_tol=1e-6)
+
+
+def test_a_spoke_label_stands_beside_its_line_not_on_it() -> None:
+    """A spoke running straight down the page used to take its label centred on
+    the line, so the line went through the middle of the word."""
+    document = with_hub(
+        edges=[*RING, {"from": "qms", "to": "plan", "role": "link", "label": "audits"}]
+    )
+    built = cycle_scene(parse_document(document), THEME, MEASURER)
+    (spoke,) = chords(built)
+    (label,) = [item for item in built.primitives if isinstance(item, TextRun)]
+    width = MEASURER.measure("audits", THEME.font.default, THEME.scale["label"]).width
+    line_x = spoke.points[0][0]
+    assert label.x - width / 2 > line_x or label.x + width / 2 < line_x
+
+
+def test_the_ring_must_still_close_without_the_spokes() -> None:
+    """A spoke cannot stand in for a missing step of the loop."""
+    document = with_hub(
+        edges=[
+            {"from": "plan", "to": "do"},
+            {"from": "do", "to": "check"},
+            {"from": "check", "to": "act"},
+            {"from": "act", "to": "qms", "role": "aside"},
+            {"from": "qms", "to": "plan", "role": "aside"},
+        ]
+    )
+    with pytest.raises(DrawspecError, match="spokes aside"):
+        cycle_scene(parse_document(document), THEME, MEASURER)
+
+
+def test_a_shortcut_through_the_hub_is_refused() -> None:
+    """A chord between opposite steps crosses the middle, where the hub is."""
+    document = with_hub(edges=[*RING, {"from": "check", "to": "plan", "role": "weak"}])
+    with pytest.raises(DrawspecError, match="through its hub"):
+        cycle_scene(parse_document(document), THEME, MEASURER)
+
+
+@pytest.mark.parametrize("role", ["flow", "strong", "exchange", "owns"])
+def test_a_spoke_in_a_solid_arrow_role_is_refused_at_its_role(role: str) -> None:
+    document = with_hub(edges=[*RING, {"from": "act", "to": "qms", "role": role}])
+    found = violations(document)
+    assert "/edges/4/role" in found
+    assert "spoke" in found["/edges/4/role"]
+
+
+def test_a_spoke_with_no_role_is_a_flow_and_is_refused() -> None:
+    document = with_hub(edges=[*RING, {"from": "act", "to": "qms"}])
+    assert "/edges/4/role" in violations(document)
+
+
+@pytest.mark.parametrize("role", ["aside", "weak", "link"])
+def test_a_spoke_in_a_quiet_role_is_accepted(role: str) -> None:
+    document = with_hub(edges=[*RING, {"from": "act", "to": "qms", "role": role}])
+    assert violations(document) == {}
+
+
+def test_a_hub_round_two_steps_is_refused_at_the_hub() -> None:
+    document = with_hub(
+        nodes=[{"id": "a", "text": "A"}, {"id": "b", "text": "B"}],
+        edges=[{"from": "a", "to": "b"}, {"from": "b", "to": "a"}],
+    )
+    found = violations(document)
+    assert "/hub" in found
+    assert "flow" in found["/hub"]
+
+
+def test_a_hub_sharing_a_node_id_is_refused() -> None:
+    document = with_hub(hub={"id": "plan", "text": "The plan"})
+    assert "/hub/id" in violations(document)
+
+
+def test_the_hub_joined_to_itself_is_refused() -> None:
+    document = with_hub(edges=[*RING, {"from": "qms", "to": "qms", "role": "aside"}])
+    assert "/edges/4/to" in violations(document)
+
+
+def test_a_hub_is_a_cycle_field_only() -> None:
+    document = with_hub(kind="flow")
+    assert "/hub" in violations(document)
+
+
+def test_centre_on_a_cycle_points_at_the_hub() -> None:
+    document = with_hub()
+    del document["hub"]
+    document["nodes"][0]["centre"] = True  # type: ignore[index]
+    assert "'hub'" in violations(document)["/nodes/0/centre"]
+
+
+def test_an_emphasised_hub_counts_towards_the_emphasis_cap() -> None:
+    document = with_hub()
+    document["nodes"][0]["role"] = "emphasis"  # type: ignore[index]
+    document["nodes"][1]["role"] = "emphasis"  # type: ignore[index]
+    assert any(pointer.endswith("/role") for pointer in violations(document))

@@ -75,6 +75,15 @@ GRAPH_KINDS: Final = ("flow", "tree", "cycle")
 #: it cannot place, which is a crash rather than a drawing.
 CONTAINER_KINDS: Final = ("flow", "tree")
 
+#: The edge roles a `cycle`'s hub may be joined by. Spokes, not steps: each of
+#: these is drawn without a solid head (`weak` is dashed), so none of them reads
+#: as one more move round the loop — which a `flow` arrow into the middle would.
+HUB_EDGE_ROLES: Final = ("aside", "weak", "link")
+
+#: The fewest steps a ring with a hub may have. Two steps and a middle is three
+#: boxes in a row, which is a `flow` and draws as one.
+HUB_MINIMUM_NODES: Final = 3
+
 GRID_KINDS: Final = ("stack", "timeline", "columns", "matrix")
 SHAPE_KINDS: Final = ("pyramid", "rings", "funnel")
 CHART_KINDS: Final = ("chart", "quadrant", "scatter", "curve")
@@ -307,7 +316,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
                 "an edge may name a container, for a relation that belongs to the whole "
                 "of it rather than to any one box inside. It may not join a container to "
                 "something already within it. A `cycle` draws no containers, so an edge "
-                "in one names a node."
+                "in one names a node — or its `hub`, as a spoke."
             ),
         ),
         FieldSpec(
@@ -321,6 +330,19 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         ),
         FieldSpec("label", "string", description="A short label placed along the edge."),
         _role(EDGE_ROLES, "flow"),
+    ),
+    "hub": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description=(
+                "Unique within the document, and in the same id space as the nodes, so "
+                "an edge may name the hub — as a spoke, never as a step of the loop."
+            ),
+        ),
+        _text(),
+        _role(NODE_ROLES, "step"),
     ),
     "group": (
         FieldSpec("id", "string", required=True, description="Unique within the document."),
@@ -757,6 +779,22 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
                 "A `group` cannot say that — a box sits inside one container or none, "
                 "so two groups over the same members had to be nested, which draws a "
                 "hierarchy that is not there."
+            ),
+        ),
+    ),
+    ("cycle",): (
+        FieldSpec(
+            "hub",
+            "object",
+            ref="hub",
+            description=(
+                "What the loop turns around: the system a quality cycle improves, the "
+                "model a data flywheel retrains. Not a step — it is drawn in the middle "
+                "of the ring, outside the check that the ring closes through every "
+                "node. An edge may join it to a step only as a spoke, in the roles "
+                f"{', '.join(repr(role) for role in HUB_EDGE_ROLES)}: a solid "
+                "arrow to the middle would read as one more step. Needs a ring of at "
+                f"least {HUB_MINIMUM_NODES} steps."
             ),
         ),
     ),
@@ -1215,6 +1253,9 @@ class Document:
 
     theme: str = ""
     nodes: tuple[Node, ...] = ()
+    hub: Node | None = None
+    """What a `cycle` turns around, drawn inside its ring. Not one of `nodes`."""
+
     edges: tuple[Edge, ...] = ()
     groups: tuple[Group, ...] = ()
     bands: tuple[Band, ...] = ()
@@ -1556,7 +1597,13 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                 Violation(
                     _pointer("nodes", middles[0], "centre"),
                     f"a {kind} is ranked from its root, so it has no middle to arrange "
-                    f"around. Use a flow.",
+                    f"around. Use a flow"
+                    + (
+                        " — or, for something the loop turns around rather than a step "
+                        "on it, the cycle's own 'hub'."
+                        if kind == "cycle"
+                        else "."
+                    ),
                 )
             )
     if kind == "curve":
@@ -1757,6 +1804,12 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
             )
         seen.add(identifier)
 
+    if kind == "cycle":
+        found.extend(_hub_violations(document, seen))
+        hub = document.get("hub")
+        if isinstance(hub, dict) and isinstance(hub.get("id"), str):
+            seen.add(hub["id"])
+
     groups = document.get("groups")
     # A member may name a node or another group: a container that contains a
     # container is how the corpus draws three frames deep, and refusing it
@@ -1861,6 +1914,62 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
     return found
 
 
+def _hub_violations(document: Mapping[str, Any], nodes: Set[str]) -> list[Violation]:
+    """What a `cycle`'s hub may not be: a step, a duplicate, or a middle of too little.
+
+    The hub shares the node id space so an edge can name it, and that is the one
+    thing it shares: an edge to it is a spoke, so only a role drawn without a
+    solid head may make one. A `flow` arrow from the last step into the middle
+    reads as the loop ending there, which is the opposite of what a hub says.
+    """
+    hub = document.get("hub")
+    if not isinstance(hub, dict) or not isinstance(hub.get("id"), str):
+        return []
+    found: list[Violation] = []
+    identifier = hub["id"]
+    if identifier in nodes:
+        found.append(
+            Violation(
+                "/hub/id",
+                f"{identifier!r} is already the id of a node. The hub is not a step on the "
+                f"ring, so it needs an id of its own.",
+            )
+        )
+    steps = document.get("nodes")
+    if isinstance(steps, list) and len(steps) < HUB_MINIMUM_NODES:
+        found.append(
+            Violation(
+                "/hub",
+                f"a hub needs a ring of at least {HUB_MINIMUM_NODES} steps around it, and "
+                f"this one has {len(steps)}. Two steps and a middle is three boxes in a "
+                f"row: draw it as a flow.",
+            )
+        )
+    for index, edge in enumerate(document.get("edges", ()) or ()):
+        if not isinstance(edge, dict) or identifier not in (edge.get("from"), edge.get("to")):
+            continue
+        if edge.get("from") == edge.get("to"):
+            found.append(
+                Violation(
+                    _pointer("edges", index, "to"),
+                    "the hub is joined to itself, and there is nowhere to draw that: a "
+                    "spoke runs between the middle and a step.",
+                )
+            )
+            continue
+        role = edge.get("role", "flow")
+        if isinstance(role, str) and role not in HUB_EDGE_ROLES:
+            found.append(
+                Violation(
+                    _pointer("edges", index, "role"),
+                    f"an edge to the hub is a spoke, and {role!r} draws a solid arrow, "
+                    f"which reads as one more step of the loop. Give it one of "
+                    f"{', '.join(HUB_EDGE_ROLES)}.",
+                )
+            )
+    return found
+
+
 def _self_containment(edges: Sequence[Any], groups: Any, containers: Set[str]) -> list[Violation]:
     """Edges between a container and something already inside it.
 
@@ -1962,6 +2071,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
             )
             for entry in document.get("nodes", ())
         ),
+        hub=_hub(document.get("hub")),
         edges=tuple(
             Edge(
                 source=entry["from"],
@@ -2046,6 +2156,12 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         order=str(document.get("sort", "given")),
         style=str(document.get("style", "icons")),
     )
+
+
+def _hub(entry: Mapping[str, Any] | None) -> Node | None:
+    if entry is None:
+        return None
+    return Node(id=entry["id"], text=entry["text"], role=entry.get("role", "step"))
 
 
 def _entries(entries: Sequence[Mapping[str, Any]]) -> tuple[Entry, ...]:
@@ -2258,6 +2374,8 @@ __all__ = [
     "DOCUMENT_VERSION",
     "GRAPH_KINDS",
     "GRID_KINDS",
+    "HUB_EDGE_ROLES",
+    "HUB_MINIMUM_NODES",
     "KINDS",
     "OBJECTS",
     "REJECTED_FIELDS",

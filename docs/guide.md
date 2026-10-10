@@ -524,6 +524,44 @@ band has not got — so a long name beside a short bar comes back as two or thre
 lines rather than one long one. A single word longer than the bar is refused, and
 the message names the band rather than the diagram.
 
+## A loop with something in its middle
+
+Many loops turn around something that is not a step: a quality cycle around the
+management system it improves, a data flywheel around the log it learns from. Put
+that on the ring and it becomes a fifth step; give a node `centre` and a `cycle`
+refuses it, because a ring has no node in the middle. Say it with `hub`:
+
+```json
+{
+  "version": 1,
+  "kind": "cycle",
+  "hub": {"id": "log", "text": "Interaction log"},
+  "nodes": [
+    {"id": "rank", "text": "Rank the items"},
+    {"id": "show", "text": "Show them"},
+    {"id": "click", "text": "User clicks or skips"},
+    {"id": "train", "text": "Retrain nightly"}
+  ],
+  "edges": [
+    {"from": "rank", "to": "show"},
+    {"from": "show", "to": "click"},
+    {"from": "click", "to": "train"},
+    {"from": "train", "to": "rank"},
+    {"from": "click", "to": "log", "role": "weak", "label": "written"}
+  ]
+}
+```
+
+The hub is drawn centred inside the ring, and the ring grows to make room for it.
+It is not a node: the check that the edges close one loop through every step
+ignores it. An edge may name it, but only as a **spoke**, in `aside`, `weak` or
+`link` — a solid arrow into the middle would read as one more step, so `flow`,
+`strong`, `exchange` and `owns` are refused at the edge's `role`. A hub needs at
+least three steps around it (two and a middle is a `flow`), and a shortcut whose
+chord would cross the middle is refused rather than drawn through the hub. See
+[`reference/cycle-hub-quality.json`](reference/cycle-hub-quality.json) and
+[`reference/cycle-hub-flywheel.json`](reference/cycle-hub-flywheel.json).
+
 ## Asking for a wide drawing instead of a tall one
 
 Reading direction is part of what a diagram says, and some processes read across

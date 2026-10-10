@@ -18,7 +18,7 @@ regeneration, `AGENTS.md` row, and tests.
 
 | # | Proposal | What | Size | Depends on |
 |---:|---|---|:-:|---|
-| 1 | [`cycle-hub.md`](cycle-hub.md) | `cycle` + `hub`: the thing a loop turns around | S | — |
+| 1 | [`cycle-hub.md`](cycle-hub.md) | `cycle` + `hub`: the thing a loop turns around — **built** | S | — |
 | 2 | [`matrix-scale.md`](matrix-scale.md) | `matrix` + ordered `scale`: heatmaps, risk and skills matrices | S | theme `[mark] ramp` + a `theme check` rule |
 | 3 | [`flow-status.md`](flow-status.md) | `flow`/`tree` + `status`: a change marked on one diagram | S | `files`' status marks (exist) |
 | 4 | [`states.md`](states.md) | `states`: state machines, with initial/final pseudo-states and self-loops | M | graph layout + containers (exist); self-loop geometry (new; also fixes `flow`'s) |

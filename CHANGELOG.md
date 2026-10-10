@@ -12,6 +12,14 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`hub` on `cycle`** — what the loop turns around (the management system a
+  quality cycle improves, the log a flywheel learns from), drawn centred inside
+  the ring, which grows to make room. It is not a step: the ring check ignores
+  it, and an edge may join it only as a spoke in `aside`, `weak` or `link`
+  (refused at the edge's `role` otherwise). A hub needs three steps around it, a
+  shortcut whose chord would cross it is refused, and `centre` on a cycle node
+  now points at `hub`. Spoke labels stand beside their line. References:
+  `cycle-hub-quality`, `cycle-hub-flywheel`, `cycle-hub-oncall`.
 - **A readability budget per kind.** A document holding more than its kind can
   be read at — 15 nodes and 16 edges on a `flow`, 15 on a `tree`, 8 on a
   `cycle`, 6 `columns`, 25 `matrix` cells, and so on — is refused by

@@ -52,6 +52,12 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `groups` | array of [group](#group-object) | no | Boxes drawn around sets of nodes, each with its own caption. |
 | `bands` | array of [band](#band-object) | no | Named things that run alongside a set of boxes rather than containing them — drawn as a labelled bar beside the boxes they accompany. For the activity that goes on throughout: a source sheet with one continuous concern above its steps and another below says the steps are *surrounded* by them, and two such bands are peers. A `group` cannot say that — a box sits inside one container or none, so two groups over the same members had to be nested, which draws a hierarchy that is not there. |
 
+### `cycle`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `hub` | [hub object](#hub-object) | no | What the loop turns around: the system a quality cycle improves, the model a data flywheel retrains. Not a step — it is drawn in the middle of the ring, outside the check that the ring closes through every node. An edge may join it to a step only as a spoke, in the roles 'aside', 'weak', 'link': a solid arrow to the middle would read as one more step. Needs a ring of at least 3 steps. |
+
 ### `stack`, `timeline`, `columns`
 
 | Field | Type | Required | What it is |
@@ -199,10 +205,18 @@ name, so a misspelt key is an error at the point it was written.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `from` | string | **yes** | The id of the source node — or, in a `flow` or a `tree`, of a group: an edge may name a container, for a relation that belongs to the whole of it rather than to any one box inside. It may not join a container to something already within it. A `cycle` draws no containers, so an edge in one names a node. |
+| `from` | string | **yes** | The id of the source node — or, in a `flow` or a `tree`, of a group: an edge may name a container, for a relation that belongs to the whole of it rather than to any one box inside. It may not join a container to something already within it. A `cycle` draws no containers, so an edge in one names a node — or its `hub`, as a spoke. |
 | `to` | string | **yes** | The id of the target node — or, in a `flow` or a `tree`, of a group. The same id space as `from`. |
 | `label` | string | no | A short label placed along the edge. |
 | `role` | string — one of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
+
+### `hub` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique within the document, and in the same id space as the nodes, so an edge may name the hub — as a spoke, never as a step of the loop. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 
 ### `group` object
 

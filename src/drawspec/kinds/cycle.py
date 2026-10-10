@@ -32,7 +32,7 @@ from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
 from drawspec.kinds.common import box_primitives
 from drawspec.scene import Path, Polygon, Primitive, Scene, TextRun, extents, moved
-from drawspec.schema import Document
+from drawspec.schema import Document, Node
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme
 
@@ -92,7 +92,12 @@ def cycle_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     order = _ring_order(document)
     width = document.width if document.width else theme.canvas.width
     boxes = _boxes(document, theme, measurer, width)
-    radius, extent = _radius(boxes, theme, width)
+    radius = _radius(boxes, theme)
+    hub = _hub_box(document.hub, theme, measurer, width)
+    spokes = _spokes(document)
+    if hub is not None:
+        radius = _around_hub(radius, order, boxes, hub, spokes, theme, measurer, width)
+    extent = _extent(radius, boxes, width, hub)
 
     # Across, the ring sits in the middle of the canvas every diagram shares.
     # Down, it sits under the top margin: a ring is wider than it is tall as soon
@@ -107,6 +112,10 @@ def cycle_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
         )
         for index, node_id in enumerate(order)
     }
+    if hub is not None and document.hub is not None:
+        placed[document.hub.id] = hub.moved_to(
+            centre[0] - hub.width / 2, centre[1] - hub.height / 2
+        )
 
     primitives: list[Primitive] = []
     # Arcs first, so a node box is drawn over the line that reaches it rather
@@ -130,9 +139,18 @@ def cycle_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     # Shortcuts before the boxes for the same reason the arcs are: a step is
     # drawn over the line that reaches it.
     for source, target, role, label in _shortcuts(document, order):
+        if hub is not None and document.hub is not None:
+            _clear_of_hub(source, target, placed, document.hub, theme)
         primitives.extend(_shortcut(placed[source], placed[target], role, label, theme, measurer))
+    # Spokes: the same straight run a shortcut is, between the middle and a step.
+    for source, target, role, label in spokes:
+        primitives.extend(
+            _shortcut(placed[source], placed[target], role, label, theme, measurer, spoke=True)
+        )
     for node_id in order:
         primitives.extend(box_primitives(placed[node_id], theme, measurer))
+    if hub is not None and document.hub is not None:
+        primitives.extend(box_primitives(placed[document.hub.id], theme, measurer))
 
     # Framed against the ink rather than against the steps: with five steps the
     # lowest point of the drawing is the bottom of the arc *between* the two
@@ -192,13 +210,16 @@ def _ring_order(document: Document) -> tuple[str, ...]:
         DrawspecError: no closed loop through every node exists.
     """
     identifiers = [node.id for node in document.nodes]
-    if len(document.edges) < len(identifiers):
+    known = set(identifiers)
+    # A spoke to the hub is not a way round, so it does not count towards one.
+    ring_edges = [edge for edge in document.edges if edge.source in known and edge.target in known]
+    if len(ring_edges) < len(identifiers):
         raise DrawspecError(
             f"a cycle of {len(identifiers)} nodes needs {len(identifiers)} edges to "
-            f"close the loop; this one has {len(document.edges)}."
+            f"close the loop; this one has {len(ring_edges)}"
+            + (" between its steps, the hub's spokes aside." if document.hub else ".")
         )
 
-    known = set(identifiers)
     following: dict[str, list[str]] = {identifier: [] for identifier in identifiers}
     for edge in document.edges:
         if edge.source in known and edge.target in known:
@@ -239,10 +260,23 @@ def _shortcuts(document: Document, order: tuple[str, ...]) -> tuple[tuple[str, s
     than along it.
     """
     ring = {(node, order[(index + 1) % len(order)]) for index, node in enumerate(order)}
+    hub = document.hub.id if document.hub else None
     return tuple(
         (edge.source, edge.target, edge.role, edge.label)
         for edge in document.edges
-        if (edge.source, edge.target) not in ring
+        if (edge.source, edge.target) not in ring and hub not in (edge.source, edge.target)
+    )
+
+
+def _spokes(document: Document) -> tuple[tuple[str, str, str, str], ...]:
+    """Every edge joining the hub to a step, as `(source, target, role, label)`."""
+    if document.hub is None:
+        return ()
+    hub = document.hub.id
+    return tuple(
+        (edge.source, edge.target, edge.role, edge.label)
+        for edge in document.edges
+        if hub in (edge.source, edge.target)
     )
 
 
@@ -260,6 +294,8 @@ def _shortcut(
     label: str,
     theme: Theme,
     measurer: TextMeasurer,
+    *,
+    spoke: bool = False,
 ) -> tuple[Primitive, ...]:
     """One edge across the ring: a straight run between two steps' outlines.
 
@@ -309,13 +345,26 @@ def _shortcut(
     if label:
         size = theme.scale["label"]
         extents_of = measurer.measure(label, theme.font.default, size)
-        away = theme.edge.clearance + extents_of.ascent
         middle = ((start[0] + finish[0]) / 2, (start[1] + finish[1]) / 2)
+        normal = (-towards[1], towards[0])
+        if spoke:
+            # Beside the line by the daylight every label keeps, measured to the
+            # label's nearest corner rather than its baseline: a spoke running down
+            # the page would otherwise pass through the words centred on it.
+            half = abs(normal[0]) * extents_of.width / 2 + abs(normal[1]) * extents_of.height / 2
+            away = theme.edge.clearance + half
+            drop = (extents_of.ascent - extents_of.descent) / 2
+        else:
+            # A shortcut's chord lies close along the ring, and a label pushed out
+            # that far would land on the arc beside it: its baseline sits off the
+            # line by the daylight plus an ascent, inside the ring.
+            away = theme.edge.clearance + extents_of.ascent
+            drop = 0.0
         primitives.append(
             TextRun(
                 role,
-                x=middle[0] - towards[1] * away,
-                y=middle[1] + towards[0] * away,
+                x=middle[0] + normal[0] * away,
+                y=middle[1] + normal[1] * away + drop,
                 text=label,
                 level="label",
                 font=theme.font.default,
@@ -368,8 +417,8 @@ def _boxes(
     return dict(zip((node.id for node in document.nodes), normalise(sized), strict=True))
 
 
-def _radius(boxes: dict[str, Box], theme: Theme, width: float) -> tuple[float, float]:
-    """The ring radius, and the square extent the whole figure occupies.
+def _radius(boxes: dict[str, Box], theme: Theme) -> float:
+    """The ring radius its steps alone demand.
 
     Two constraints, and the radius is the larger of what each demands. The ring
     has to be big enough that adjacent boxes do not touch — that is what the
@@ -389,17 +438,157 @@ def _radius(boxes: dict[str, Box], theme: Theme, width: float) -> tuple[float, f
     shaft = theme.edge.min_shaft_length + theme.edge.head_length + diagonal
     from_shaft = shaft * count / (2 * math.pi)
 
-    radius = max(from_spacing, from_shaft)
-    extent = 2 * radius + max(box.width, box.height)
+    return max(from_spacing, from_shaft)
 
+
+def _extent(radius: float, boxes: dict[str, Box], width: float, hub: Box | None) -> float:
+    """The square extent the whole figure occupies, which is the canvas width.
+
+    Raises:
+        FitError: the ring is wider than the canvas.
+    """
+    box = next(iter(boxes.values()))
+    extent = 2 * radius + max(box.width, box.height)
     if extent > width:
+        grown = (
+            " It grew to make room for the hub in its middle, so a shorter hub label helps too."
+            if hub is not None
+            else ""
+        )
         raise FitError(
-            f"a cycle of {count} steps needs {extent:.0f} to draw at this type size, and "
-            f"the canvas is {width:.0f}. The ring is sized by its longest label, so: "
-            f"shorten the labels, use fewer steps, or give the diagram more width. "
+            f"a cycle of {len(boxes)} steps needs {extent:.0f} to draw at this type size, "
+            f"and the canvas is {width:.0f}. The ring is sized by its longest label, so: "
+            f"shorten the labels, use fewer steps, or give the diagram more width.{grown} "
             f"drawspec will not overlap the steps to make them fit."
         )
-    return radius, width
+    return width
+
+
+#: How far the ring grows per try while making room for a hub. One unit is
+#: below anything a reader can see, and a fixed step keeps the answer — and the
+#: bytes — the same on every run.
+HUB_GROWTH: Final = 1.0
+
+
+def _hub_box(hub: Node | None, theme: Theme, measurer: TextMeasurer, width: float) -> Box | None:
+    """The hub sized to its own text, with the allowance a step gets."""
+    if hub is None:
+        return None
+    return size_box(
+        hub.text,
+        theme=theme,
+        measurer=measurer,
+        role=hub.role,
+        level="body",
+        max_width=width * NODE_WIDTH_SHARE,
+        widen=NODE_WIDEN,
+    )
+
+
+def _around_hub(
+    radius: float,
+    order: tuple[str, ...],
+    boxes: dict[str, Box],
+    hub: Box,
+    spokes: tuple[tuple[str, str, str, str], ...],
+    theme: Theme,
+    measurer: TextMeasurer,
+    width: float,
+) -> float:
+    """The smallest radius, from `radius` up, at which the hub sits clear inside the ring.
+
+    Two things have to hold, and the ring grows until both do. The hub must stay
+    inside the ring's arcs, with the daylight any route keeps from a box it
+    passes; and it must stand clear of every step by the gap peers keep — or, for
+    a step a spoke joins, by enough for that spoke to show a shaft and to carry
+    its label beside it rather than over either end.
+
+    A ring that would need to grow past the canvas stops here; `_extent` then
+    refuses it with the remedies.
+    """
+    count = len(order)
+    inner = theme.edge.clearance + (
+        theme.cycle.width / 2 * HEAD_FLARE
+        if theme.cycle.connector == "band"
+        else theme.edge.head_length / 2
+    )
+    corner = math.hypot(hub.width / 2, hub.height / 2)
+    reach = {node: theme.box.padding.horizontal for node in order}
+    for index, node in enumerate(order):
+        angle = _angle(index, count)
+        towards = (abs(math.cos(angle)), abs(math.sin(angle)))
+        for source, target, role, label in spokes:
+            if node not in (source, target):
+                continue
+            need = theme.edge.min_shaft_length + (
+                theme.edge.head_length if theme.edge_roles[role].has_head else 0.0
+            )
+            if label:
+                size = measurer.measure(label, theme.font.default, theme.scale["label"])
+                along = towards[0] * size.width / 2 + towards[1] * size.height / 2
+                need = max(need, 2 * along + 2 * theme.edge.clearance)
+            reach[node] = max(reach[node], need + theme.edge.clearance)
+
+    def fits(at: float) -> bool:
+        if corner > at - inner:
+            return False
+        for index, node in enumerate(order):
+            angle = _angle(index, count)
+            box = boxes[node]
+            gap_x = abs(at * math.cos(angle)) - (box.width + hub.width) / 2
+            gap_y = abs(at * math.sin(angle)) - (box.height + hub.height) / 2
+            if math.hypot(max(gap_x, 0.0), max(gap_y, 0.0)) < reach[node]:
+                return False
+        return True
+
+    while not fits(radius) and radius < width:
+        radius += HUB_GROWTH
+    return radius
+
+
+def _clear_of_hub(
+    source: str, target: str, placed: dict[str, Box], hub: Node, theme: Theme
+) -> None:
+    """Refuse a shortcut whose chord would run through the hub.
+
+    A shortcut is drawn straight across the ring, and the hub is in the middle of
+    it: a chord between two steps on opposite sides goes through the very thing
+    the loop turns around, and drawn anyway it would read as passing *through*
+    it. There is no detour that does not invent a route the author never wrote.
+
+    Raises:
+        DrawspecError: the chord crosses the hub's box.
+    """
+    box = placed[hub.id]
+    start, finish = _centre(placed[source]), _centre(placed[target])
+    margin = theme.edge.clearance
+    left, right = box.x - margin, box.x + box.width + margin
+    top, bottom = box.y - margin, box.y + box.height + margin
+    # Liang-Barsky: clip the segment against the inflated box.
+    low, high = 0.0, 1.0
+    dx, dy = finish[0] - start[0], finish[1] - start[1]
+    for p, q in (
+        (-dx, start[0] - left),
+        (dx, right - start[0]),
+        (-dy, start[1] - top),
+        (dy, bottom - start[1]),
+    ):
+        if p == 0:
+            if q < 0:
+                return
+            continue
+        t = q / p
+        if p < 0:
+            low = max(low, t)
+        else:
+            high = min(high, t)
+        if low > high:
+            return
+    raise DrawspecError(
+        f"the shortcut from {source!r} to {target!r} would cross the ring through its "
+        f"hub, {hub.id!r}, and read as passing through it. Join steps nearer each other "
+        f"round the ring, or route the relation through the hub as two spokes."
+    )
 
 
 def _arc(
