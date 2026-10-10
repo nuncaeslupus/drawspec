@@ -1,5 +1,9 @@
 # drawspec
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/hero.png" width="100%" alt="drawspec: a blueprint sheet with the wordmark, a JSON flow spec and the flow chart drawspec renders from it, over faint plates of a sankey, sequence, venn, state machine and journey drawn by drawspec">
+</p>
+
 Declarative diagram spec → clean, themeable SVG. Writable by an LLM with no
 coordinates to get wrong.
 

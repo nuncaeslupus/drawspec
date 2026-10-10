@@ -84,8 +84,10 @@ while being partly drawn off the canvas.
 
 ## Releasing
 
-`.github/workflows/release.yml` does the work; a tag is the only input. Pushing
-`v0.1.0` runs the suite, builds, checks, publishes 0.1.0 to PyPI and cuts a
+`.github/workflows/release.yml` does the work, and a release is a `vX.Y.Z` tag.
+The tag is made either by the workflow itself, when a merge to `main` brings a
+dated `## [X.Y.Z] — YYYY-MM-DD` heading for the package version, or by hand.
+Either way it runs the suite, builds, checks, publishes to PyPI and cuts a
 GitHub release. A `workflow_dispatch` run does everything except the upload, so
 the path can be exercised without cutting a tag.
 
@@ -115,11 +117,16 @@ registered yet):
    [0.1.0]: https://github.com/nuncaeslupus/drawspec/releases/tag/v0.1.0
    ```
    Restore the brackets on the headings so the references resolve.
-3. Merge that, then tag the merge commit and push:
+3. Merge that. The release workflow runs on every push to `main`: when the
+   package version has a `## [x.y.z]` heading in `CHANGELOG.md` and no `vx.y.z`
+   tag exists yet, it creates the tag on the merge commit and publishes it. An
+   ordinary merge (no new dated heading) releases nothing. Pushing the tag by
+   hand still works too:
    ```bash
    git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
    ```
-4. Watch the run. If `check` fails, no upload happened — fix and re-tag.
+4. Watch the run. If `check` fails, the tag exists but no upload happened —
+   fix, delete the tag, and merge again (or re-push the tag).
 
 Every action in that workflow is pinned to a commit SHA rather than a tag,
 with the tag in a trailing comment. A tag moves; this workflow holds

@@ -2,7 +2,7 @@ ARSENAL_REPO    ?= https://github.com/nuncaeslupus/claude-arsenal.git
 ARSENAL_REF     ?= v0.23.1
 ARSENAL_PLUGINS ?= all
 
-.PHONY: help sync build lint format test schema docs gallery compare clean update-skills
+.PHONY: help sync build lint format test schema docs gallery hero compare clean update-skills
 
 help:  ## list targets
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -34,6 +34,9 @@ docs:  ## regenerate the format, CLI and theme references from the code
 
 gallery:  ## render every reference document to docs/gallery and open the page
 	uv run python tools/gallery.py
+
+hero:  ## redraw the README banner, docs/hero.svg and docs/hero.png
+	uv run --extra png python tools/hero.py
 
 compare:  ## render the corpus redraws beside their originals
 	uv run python tools/compare.py
