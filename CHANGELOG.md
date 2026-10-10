@@ -337,6 +337,13 @@ against it would stop working. Everything below is about the *package*.
 
 ### Fixed
 
+- **A `link` (any role the theme routes `direct`) whose centre-to-centre line
+  grazed a neighbouring box** fell back to an orthogonal bracket, so
+  `flow-mesh` drew ten of its twelve links as chords and two as right angles.
+  Before falling back, the router now tries straight lines between the two
+  boxes' facing sides, nearest the middle first, under the same clearance
+  check; only an edge with no clear straight line is routed. Reference:
+  `flow-mesh`, the only drawing that changes.
 - **A `chart` of bars with no horizontal `min`/`max`** drew the first and last
   bar half outside the axes, because the range stopped exactly at the first and
   last x (1 … N for `categories`). An unpinned side now gets half a bar band of

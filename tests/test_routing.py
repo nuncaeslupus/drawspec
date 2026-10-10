@@ -13,6 +13,7 @@ crossing and length from the points alone.
 from __future__ import annotations
 
 import math
+import re
 from itertools import combinations, pairwise
 
 import pytest
@@ -760,3 +761,49 @@ def test_a_connector_naming_nothing_at_all_still_goes_nowhere() -> None:
     with pytest.raises(LayoutError) as error:
         route_edges((Connector("a", "absent"),), COLUMN, THEME, anchors=(frame,))
     assert "goes nowhere" in str(error.value)
+
+
+def test_a_link_whose_centre_line_grazes_a_neighbour_is_still_one_straight_line() -> None:
+    """A `direct` role keeps its chord when only the centre-to-centre line fails.
+
+    Four boxes over three across a narrow rank gap, as `flow-mesh` lays them
+    out: the centre line from the first top box to the last bottom one passes
+    within the clearance of the second top box. It used to fall back to an
+    orthogonal bracket, so a mesh of diagonals carried two right angles; a line
+    between the two facing sides clears every neighbour and is drawn instead.
+    """
+    tops = [
+        Obstacle(f"t{i}", x=165.5 + 89.25 * i, y=12.0, width=65.25, height=36.85) for i in range(4)
+    ]
+    bottoms = [
+        Obstacle(f"b{i}", x=210.1 + 89.25 * i, y=96.85, width=65.25, height=36.85) for i in range(3)
+    ]
+    boxes = (*tops, *bottoms)
+    connectors = tuple(
+        Connector(top.id, bottom.id, role="link") for top in tops for bottom in bottoms
+    )
+    built = route_edges(connectors, boxes, THEME, direction="down")
+    by_id = {box.id: box for box in boxes}
+    for route in built:
+        assert len(route.points) == 2, f"{route.source}->{route.target} is not one segment"
+        (x0, y0), (x1, y1) = route.points
+        assert abs(x1 - x0) > 1 and abs(y1 - y0) > 1, "a chord here is diagonal"
+        assert y0 == pytest.approx(by_id[route.source].bottom)
+        assert y1 == pytest.approx(by_id[route.target].y)
+        for box in boxes:
+            if box.id not in (route.source, route.target):
+                assert not box.grown(THEME.edge.clearance).crosses(*route.points)
+
+
+def test_the_mesh_reference_draws_every_link_as_a_diagonal() -> None:
+    """`flow-mesh` exists to show `link` drawn as chords: all twelve, not ten."""
+    from drawspec.render import render_file
+
+    svg = render_file(REFERENCE_DIR / "flow-mesh.json")
+    paths = re.findall(r'<path d="([^"]*)"', svg)
+    assert len(paths) == 12
+    for d in paths:
+        match = re.fullmatch(r"M (\S+) (\S+) L (\S+) (\S+)", d)
+        assert match, f"not one straight segment: {d}"
+        x0, y0, x1, y1 = map(float, match.groups())
+        assert abs(x1 - x0) > 1 and abs(y1 - y0) > 1, f"not diagonal: {d}"

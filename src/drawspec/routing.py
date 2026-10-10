@@ -735,6 +735,17 @@ def route_edges(
             if _chord_is_drawable(chord, obstacles, theme):
                 routes.append(chord)
                 continue
+            # The centre line is only the first straight line worth trying. Two
+            # boxes far apart across a narrow rank gap have a centre line that
+            # grazes their neighbours, while a line between the facing sides,
+            # off-centre towards each other, clears them with room to spare.
+            # Routing that edge orthogonally drew a mesh of chords with two
+            # right-angled brackets in it, which reads as two different
+            # relations.
+            offset = _offset_chord(chord, boxes, obstacles, theme)
+            if offset is not None:
+                routes.append(offset)
+                continue
             # A chord that would cross a box it has nothing to do with, or that
             # is too short to carry its own head, is not drawn straight: the
             # route falls back to the orthogonal search, which knows how to go
@@ -870,6 +881,86 @@ def _chord_is_drawable(route: Route, obstacles: Sequence[Obstacle], theme: Theme
     except LayoutError:
         return False
     return shaft_length(route, theme) >= theme.edge.min_shaft_length - _TOLERANCE
+
+
+#: Where along a facing side an off-centre chord may land, tried nearest the
+#: middle first. Never closer to a corner than a routed port gets
+#: (`PORT_SPREAD`), so a chord does not land on a rounded corner.
+_CHORD_FRACTIONS: Final = (0.5, 0.35, 0.65, 0.2, 0.8)
+
+
+def _offset_chord(
+    chord: Route, boxes: Mapping[str, Obstacle], obstacles: Sequence[Obstacle], theme: Theme
+) -> Route | None:
+    """A straight line between the two boxes' facing sides that can be drawn.
+
+    Tried when the centre-to-centre chord cannot be: each end slides along the
+    side that faces the other box, and the first pair, by how far the two ends
+    moved from the middle, that `_chord_is_drawable` accepts is kept. `None`
+    when the boxes face each other on no side, or no pair clears.
+    """
+    source, target = boxes[chord.source], boxes[chord.target]
+    if target.y >= source.bottom - _TOLERANCE:
+        sides = ("bottom", "top")
+    elif source.y >= target.bottom - _TOLERANCE:
+        sides = ("top", "bottom")
+    elif target.x >= source.right - _TOLERANCE:
+        sides = ("right", "left")
+    elif source.x >= target.right - _TOLERANCE:
+        sides = ("left", "right")
+    else:
+        return None
+    # The run across the gap must itself be long enough for a shaft and a
+    # head. A long slant through a gap narrower than that would pass the
+    # shaft check while its head lay almost flat against the box it enters.
+    gap = {
+        "bottom": target.y - source.bottom,
+        "top": source.y - target.bottom,
+        "right": target.x - source.right,
+        "left": source.x - target.right,
+    }[sides[0]]
+    if gap < theme.edge.min_shaft_length + theme.edge.head_length - _TOLERANCE:
+        return None
+    pairs = sorted(
+        ((first, second) for first in _CHORD_FRACTIONS for second in _CHORD_FRACTIONS),
+        key=lambda pair: (abs(pair[0] - 0.5) + abs(pair[1] - 0.5), pair),
+    )
+    for first, second in pairs:
+        start = _on_side(source, sides[0], first)
+        end = _on_side(target, sides[1], second)
+        if _reenters(source, start, end) or _reenters(target, end, start):
+            continue
+        candidate = Route(
+            source=chord.source,
+            target=chord.target,
+            role=chord.role,
+            points=(start, end),
+            label=chord.label,
+        )
+        if _chord_is_drawable(candidate, obstacles, theme):
+            return candidate
+    return None
+
+
+def _on_side(box: Obstacle, side: str, fraction: float) -> tuple[float, float]:
+    """The point of `box`'s outline at `fraction` along `side`, for any shape."""
+    if side in ("top", "bottom"):
+        x = box.x + box.width * fraction
+        edge = box.y if side == "top" else box.bottom
+        return _leaving(box, (x, box.centre[1]), (x, edge))
+    y = box.y + box.height * fraction
+    edge = box.x if side == "left" else box.right
+    return _leaving(box, (box.centre[0], y), (edge, y))
+
+
+def _reenters(box: Obstacle, start: tuple[float, float], end: tuple[float, float]) -> bool:
+    """Whether a line leaving `box`'s outline at `start` heads back into it."""
+    length = math.hypot(end[0] - start[0], end[1] - start[1])
+    if length <= 0:
+        return True
+    step = min(1.0, length / 2) / length
+    probe = (start[0] + (end[0] - start[0]) * step, start[1] + (end[1] - start[1]) * step)
+    return box.overlaps((probe[0], probe[1], probe[0], probe[1]))
 
 
 def _chord(source: Obstacle, target: Obstacle) -> tuple[tuple[float, float], ...]:
