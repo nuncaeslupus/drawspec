@@ -35,6 +35,23 @@ regeneration, `AGENTS.md` row, and tests.
 | 15 | [`theme-from.md`](theme-from.md) | `drawspec theme from`: a theme derived from a brand's CSS or design tokens — **built** | S | — |
 | 16 | [`exports.md`](exports.md) | PNG export next to SVG, behind the `drawspec[png]` extra — **built** | S | — |
 
+## Proposed from the 2026-10 survey: not yet built
+
+[`../research/kinds-survey.md`](../research/kinds-survey.md) surveyed fields outside
+software: education, business, operations, product, law and policy, health, research
+papers and personal planning. Most of what it found is already covered. These five are
+the gaps it ranked highest, ordered by value first and then by smallest size. None is
+built. Each still needs the two real originals the rule below asks for, and the owner
+questions at the end of the survey.
+
+| # | Proposal | What | Size | Depends on |
+|---:|---|---|:-:|---|
+| 17 | [`numberline.md`](numberline.md) | `numberline`: values and ranges on one scale, with open and closed ends (inequalities, tenses, spectra) | S | `timeline`'s axis; owner decision: kind or `timeline` field |
+| 18 | [`mindmap.md`](mindmap.md) | `mindmap`: a centre topic radiating into nested branches, balanced on two sides | M | `tree`'s tidy placement; owner decision on budget |
+| 19 | [`flow-loops.md`](flow-loops.md) | `flow` + `polarity`, `delay`, `loops`: causal loop diagrams, R/B derived from the signs | S | `venn`'s depth sampling for the loop marker |
+| 20 | [`argument.md`](argument.md) | `argument`: a claim, reasons and objections by stance, with co-premises under one bracket | M | `tree` layout; a hatch pattern for `against` |
+| 21 | [`pedigree.md`](pedigree.md) | `pedigree`: people, couples and children by generation, standard symbols, derived numbering | L | the layered engine's crossing reduction, with couples as units |
+
 ## Deferred, not proposed
 
 The survey's two remaining *feature* verdicts are left unbuilt on purpose, each until a
