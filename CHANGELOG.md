@@ -253,7 +253,8 @@ against it would stop working. Everything below is about the *package*.
   and more than five steps are refused at their pointers, and a cell `value`
   is refused with the advice to bucket and name. The theme loader refuses a
   ramp of fewer than five steps, neighbours closer than 0.08, or a step darker
-  than 0.5. References: `matrix-scale-risk`, `matrix-scale-ci`,
+  than 0.4 (past that a cell's label drops under 4.5:1 on a dark page, where
+  the heaviest step is the lightest cell). References: `matrix-scale-risk`, `matrix-scale-ci`,
   `matrix-scale-skills`.
 - **`hub` on `cycle`** — what the loop turns around (the management system a
   quality cycle improves, the log a flywheel learns from), drawn centred inside

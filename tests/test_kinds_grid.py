@@ -1053,7 +1053,7 @@ def test_the_key_uses_key_texts_where_given() -> None:
 
 def test_a_scale_renders_to_safe_svg() -> None:
     svg = render(risk())
-    assert 'fill-opacity="0.48"' in svg
+    assert 'fill-opacity="0.4"' in svg
     assert check_embedding_safety(svg, THEME) == ()
 
 

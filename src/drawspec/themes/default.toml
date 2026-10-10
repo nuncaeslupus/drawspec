@@ -119,8 +119,9 @@ gap = 0.3
 # dots and hatch are two things, not two amounts — so a heatmap reads by
 # darkness, the channel greyscale keeps. The loader holds it to that: five steps
 # or more, each at least 0.08 darker than the one before (the first measured from
-# a blank cell), none past 0.5 so a cell's text stays readable on it.
-ramp = [0.08, 0.18, 0.28, 0.38, 0.48]
+# a blank cell), none past 0.4 so a cell's text stays readable on it on a white
+# page and on a dark one.
+ramp = [0.08, 0.16, 0.24, 0.32, 0.4]
 
 [states]
 # A state machine's pseudo-states: the filled dot it starts from, and the ringed

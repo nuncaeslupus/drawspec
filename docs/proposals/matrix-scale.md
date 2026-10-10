@@ -144,15 +144,17 @@ Implemented as proposed, with these changes:
   differ "by pattern density as well as by tone". Rendered, the existing patterns
   could not carry an order: dots, hatch and a grid are three *things*, not three
   *amounts*, and at cell size the eye does not rank them. So `[mark] ramp` is a
-  list of ink strengths, lightest first (`[0.08, 0.18, 0.28, 0.38, 0.48]` by
+  list of ink strengths, lightest first (`[0.08, 0.16, 0.24, 0.32, 0.4]` by
   default): each step is the page's own ink laid down at that strength, which is
   greyscale lightness by construction — the channel a printed heatmap is read
   in — and follows `currentColor` into dark mode like everything else.
 * **The theme check is on that lightness.** At load, a ramp needs at least five
   steps (one per step of the longest scale), each at least 0.08 darker than the
   last — the first measured from a blank cell, so the lightest bucket never
-  reads as *not assessed* — and none darker than 0.5, so a label on the
-  heaviest cell keeps better than 5:1 contrast.
+  reads as *not assessed* — and none darker than 0.4, so a label on the
+  heaviest cell keeps 4.5:1 on a dark page too. (First built at 0.5 / 0.48;
+  checked in a browser on `#121212`, the heaviest cell's light label was 3.4:1,
+  because in dark mode the heaviest tone is the lightest cell.)
 * **Steps are spread, not taken by index.** A three-step scale takes the ramp's
   first, middle and last tones rather than its first three, so the ends of any
   scale are the ends of the ramp and a two-step scale is light against dark.

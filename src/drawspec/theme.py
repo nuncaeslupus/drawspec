@@ -97,9 +97,12 @@ RAMP_STEPS: Final = 5
 #: is held to it as well, measured from the blank of an unfilled cell.
 RAMP_CONTRAST: Final = 0.08
 
-#: The heaviest a ramp step may be. Text sits on these cells, and past half the
-#: ink a black label on its own heaviest bucket drops under a 5:1 contrast.
-RAMP_CEILING: Final = 0.5
+#: The heaviest a ramp step may be. Text sits on these cells, in the same ink as
+#: the tone, so the heavier the step the less the label stands out — on both
+#: pages. On white, half the ink still leaves a black label over 5:1; on a dark
+#: page the ink is light and a heavier step is a *lighter* cell, and past 0.4 a
+#: light label on it drops under 4.5:1 against `#121212`.
+RAMP_CEILING: Final = 0.4
 
 _THEMES_DIR: Final = Path(__file__).resolve().parent / "themes"
 
@@ -737,7 +740,7 @@ class MarkStyle:
     """How much of a category's band is left empty around its bars, as a
     fraction. Zero draws bars that touch, which reads as one wide bar."""
 
-    ramp: tuple[float, ...] = (0.08, 0.18, 0.28, 0.38, 0.48)
+    ramp: tuple[float, ...] = (0.08, 0.16, 0.24, 0.32, 0.4)
     """The tones an ordered `scale` is filled with, lightest first: how much of
     the page's ink each step lays down, from 0 (blank) to 1.
 

@@ -15,6 +15,7 @@ from typing import Any
 
 import pytest
 
+from drawspec.brand import TEXT_CONTRAST, contrast
 from drawspec.emit import emit
 from drawspec.errors import ThemeError
 from drawspec.scene import Polygon, Scene
@@ -663,7 +664,7 @@ def test_a_ramp_whose_first_step_is_almost_blank_is_refused() -> None:
 
 
 def test_a_ramp_too_dark_for_its_text_is_refused() -> None:
-    with pytest.raises(ThemeError, match=r"darker than 0\.5"):
+    with pytest.raises(ThemeError, match=r"darker than 0\.4"):
         MarkStyle.from_mapping({"ramp": [0.2, 0.35, 0.5, 0.65, 0.8]})
 
 
@@ -689,3 +690,19 @@ def test_a_short_scale_takes_steps_spread_across_the_whole_ramp(
     assert tuple(style.tone_for(index, count) for index in range(count)) == tuple(
         style.ramp[index] for index in expected
     )
+
+
+@pytest.mark.parametrize(("ink", "page"), [("#1a1a1a", "#ffffff"), ("#e6e6e6", "#121212")])
+def test_text_on_the_heaviest_ramp_step_reads_on_both_pages(ink: str, page: str) -> None:
+    """A heatmap cell's tone is the page's ink, and so is its label.
+
+    On a dark page the ink is light, so the heaviest step is the lightest cell
+    and its light label the faintest; at the old 0.48 ceiling that was 3.4:1.
+    """
+    tone = load_theme().mark.ramp[-1]
+    ink_rgb = [int(ink[i : i + 2], 16) for i in (1, 3, 5)]
+    page_rgb = [int(page[i : i + 2], 16) for i in (1, 3, 5)]
+    cell = "#" + "".join(
+        f"{round(tone * a + (1 - tone) * b):02x}" for a, b in zip(ink_rgb, page_rgb, strict=True)
+    )
+    assert contrast(ink, cell) >= TEXT_CONTRAST
