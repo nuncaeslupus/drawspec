@@ -148,7 +148,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Sixteen exist, and they fall into six families:
+fields are legal. Seventeen exist, and they fall into seven families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -158,6 +158,7 @@ fields are legal. Sixteen exist, and they fall into six families:
 | Plot | `chart`, `quadrant`, `scatter`, `curve` | Things with numbers: series against axes, items placed in a plane, points by two measured values, a named shape with labelled waypoints. |
 | Listing | `files` | Things in folders: a directory tree from its paths, drawn with pictures or as `tree`-style text (`drawspec render --format text`). |
 | Machine | `states` | Things that change state: the conditions something can be in, and the events that move it between them. |
+| Exchange | `sequence` | Things said in order: messages between a fixed set of participants, read down the page. |
 
 One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see
@@ -694,6 +695,66 @@ is two machines: draw two. See
 [`reference/states-breaker.json`](reference/states-breaker.json),
 [`reference/states-invoice.json`](reference/states-invoice.json) and
 [`reference/states-ticket.json`](reference/states-ticket.json).
+
+## A sequence diagram
+
+When the same few participants talk to each other several times and the order
+is the point — a protocol, a request through three services, a runbook's
+hand-offs — draw a `sequence`. Participants are columns in the order written,
+messages are rows in the order written, and nothing else is placed:
+
+```json
+{
+  "version": 1,
+  "kind": "sequence",
+  "participants": [
+    {"id": "client", "text": "Client"},
+    {"id": "service", "text": "Order service", "role": "emphasis"},
+    {"id": "db", "text": "Database"}
+  ],
+  "messages": [
+    {"id": "ask", "from": "client", "to": "service", "text": "get order 42"},
+    {"id": "read", "from": "service", "to": "db", "text": "read the row"},
+    {"id": "row", "from": "db", "to": "service", "text": "the row", "role": "weak"},
+    {"from": "service", "to": "client", "text": "the order", "role": "weak", "note": "cached for a minute"}
+  ],
+  "fragments": [
+    {"operator": "opt", "from": "read", "to": "row", "text": "not in the cache"}
+  ]
+}
+```
+
+A message's `role` says what it is: `flow` (the default) is a call, `weak` a
+reply — dashed with an open head — and `strong` the exchange that matters. A call
+answered later by a `weak` reply from the participant it called gives that
+participant an **activation bar** from the call's row to the reply's, nested when
+calls nest; you never write one. A call nobody answers has no bar, which is how
+an asynchronous message is drawn. A message `from` and `to` the same participant
+is a hook on the right of its lifeline, and a `note` is set on its message's row
+in one column right of the last lifeline.
+
+`fragments` frame a run of messages, by the ids of the first and last: `loop`,
+`opt`, `alt` or `par`, written in the frame's tab, with `text` as the condition
+beside it. An `alt` or `par` may be divided by `else` — `[{"at": "<id>", "text":
+…}]`, a dashed line above that message. If a reply inside one branch of an `alt`
+answers a call made before the frame, the bar runs on to the last answer in the
+frame. `groups` frame a run of neighbouring lifelines, named at the top.
+Participant roles are `step`, `emphasis`, or `note` for an outside system drawn
+as words with no box; the theme's `[sequence]` sets the bar's width and the role
+a lifeline is drawn in.
+
+Refused, each at its pointer: a message naming an unknown participant; a
+participant no message names; a fragment that ends before it starts, or that
+starts inside another and ends outside it; `else` on a `loop` or `opt`, or a
+divider outside its frame, at its top, or inside a nested frame; a group whose
+members are not neighbours in `participants` (the message names the one in the
+way), or a participant in two groups; any role with no single direction
+(`aside`, `link`, `exchange`, `owns`). Budget: 8 participants, 30 messages —
+past that it is a trace; split it into phases. See
+[`reference/sequence-dns.json`](reference/sequence-dns.json),
+[`reference/sequence-upload.json`](reference/sequence-upload.json),
+[`reference/sequence-drain.json`](reference/sequence-drain.json) and
+[`reference/sequence-checkout.json`](reference/sequence-checkout.json).
 
 ## Asking for a wide drawing instead of a tall one
 

@@ -168,6 +168,15 @@ How a state machine's pseudo-states are drawn. Appearance, so it lives here.
 | `dot` | `10.0` | The diameter of the initial pseudo-state's filled dot, and of the dot inside a final pseudo-state's ring. |
 | `ring` | `3.0` | The daylight between a final pseudo-state's dot and the ring around it. |
 
+### `[sequence]`
+
+How a sequence diagram's lifelines and activation bars are drawn.
+
+| Key | Default | What it is |
+|---|---|---|
+| `activation` | `10.0` | The width of an activation bar. A nested bar is set half this to the right. |
+| `lifeline` | `"aside"` | The edge role a lifeline is drawn in, with no head: dashed and light by default, so the messages across it are what the eye follows. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`. |
+
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The

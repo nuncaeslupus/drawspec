@@ -965,6 +965,36 @@ class StatesStyle:
         )
 
 
+@dataclass(frozen=True)
+class SequenceStyle:
+    """How a sequence diagram's lifelines and activation bars are drawn.
+
+    The author writes who talks to whom and in what order; the bar that shows a
+    participant is busy is inferred from a call and its reply, and how wide it is
+    — like which line a lifeline is drawn in — is a question about the drawing.
+    """
+
+    activation: float = 10.0
+    """The width of an activation bar. A nested bar is set half this to the right."""
+
+    lifeline: str = "aside"
+    """The edge role a lifeline is drawn in, with no head: dashed and light by
+    default, so the messages across it are what the eye follows."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> SequenceStyle:
+        _reject_unknown(mapping, ("activation", "lifeline"), "[sequence]")
+        defaults = cls()
+        return cls(
+            activation=_number(
+                mapping.get("activation", defaults.activation), "[sequence] activation"
+            ),
+            lifeline=_choice(
+                mapping.get("lifeline", defaults.lifeline), EDGE_ROLES, "[sequence] lifeline"
+            ),
+        )
+
+
 #: What a `files` page says about its file's type.
 FILES_TYPES: Final = ("labels", "pictures", "none")
 
@@ -1171,6 +1201,7 @@ _TOP_LEVEL_KEYS: Final = (
     "funnel",
     "files",
     "states",
+    "sequence",
     "role",
     "edge_role",
 )
@@ -1194,6 +1225,7 @@ class Theme:
     funnel: FunnelStyle = FunnelStyle()
     files: FilesStyle = FilesStyle()
     states: StatesStyle = StatesStyle()
+    sequence: SequenceStyle = SequenceStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
 
@@ -1245,6 +1277,7 @@ class Theme:
             funnel=FunnelStyle.from_mapping(_section(mapping, "funnel")),
             files=FilesStyle.from_mapping(_section(mapping, "files")),
             states=StatesStyle.from_mapping(_section(mapping, "states")),
+            sequence=SequenceStyle.from_mapping(_section(mapping, "sequence")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
         )

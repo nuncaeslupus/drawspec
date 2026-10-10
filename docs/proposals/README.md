@@ -22,7 +22,7 @@ regeneration, `AGENTS.md` row, and tests.
 | 2 | [`matrix-scale.md`](matrix-scale.md) | `matrix` + ordered `scale`: heatmaps, risk and skills matrices — **built** | S | theme `[mark] ramp` + a `theme check` rule |
 | 3 | [`flow-status.md`](flow-status.md) | `flow`/`tree` + `status`: a change marked on one diagram — **built** | S | `files`' status marks (exist) |
 | 4 | [`states.md`](states.md) | `states`: state machines, with initial/final pseudo-states and self-loops — **built** | M | graph layout + containers (exist); self-loop geometry (new; also fixes `flow`'s) |
-| 5 | [`sequence.md`](sequence.md) | `sequence`: messages between participants, in order | L | none — a new layout family; reuses the group object and the edge roles |
+| 5 | [`sequence.md`](sequence.md) | `sequence`: messages between participants, in order — **built** | L | none — a new layout family; reuses the group object and the edge roles |
 | 6 | [`lanes.md`](lanes.md) | `lanes`: a `flow` with `actor` drawn as swimlanes | M | layered ranker gains a fixed cross-axis partition |
 | 7 | [`entities.md`](entities.md) | `entities`: ER, database schema and class diagrams in one kind | L | new edge roles `inherits`/`realizes`; crow's-foot end treatments; row-anchored routing |
 | 8 | [`gantt.md`](gantt.md) | `gantt`: tasks as intervals, phases, milestones, dependencies | M | chart axis machinery (exists) |

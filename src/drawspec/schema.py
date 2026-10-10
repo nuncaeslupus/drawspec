@@ -110,6 +110,30 @@ STATE_ROLES: Final = ("step", "emphasis", "terminal")
 #: are not transitions — a transition has one direction and goes somewhere.
 TRANSITION_ROLES: Final = ("flow", "strong", "weak")
 
+#: Messages between participants, in order. A layout family of its own: the
+#: participants are columns in the order written, the messages rows in the order
+#: written, and nothing is ranked — the order *is* the diagram.
+SEQUENCE_KINDS: Final = ("sequence",)
+
+#: The roles a participant may take: a box, the box the diagram is about, and an
+#: outside system drawn as words with no box. `decision`, `start`, `terminal` and
+#: `group` promise a shape a lifeline's head does not have.
+PARTICIPANT_ROLES: Final = ("step", "emphasis", "note")
+
+#: The roles a message may take: a call (`flow`), a reply (`weak`, dashed with an
+#: open head, which is what UML draws for one), and the exchange that matters
+#: (`strong`). Every one has a head, because a message has a direction: `aside`,
+#: `link`, `exchange` and `owns` are refused. A signal nobody answers is a `flow`
+#: with no reply, and is drawn with no activation bar.
+MESSAGE_ROLES: Final = ("flow", "weak", "strong")
+
+#: What a fragment's frame says about the messages inside it, written in its tab.
+#: `alt` and `par` may be divided by `else`; `loop` and `opt` have one branch.
+FRAGMENT_OPERATORS: Final = ("loop", "alt", "opt", "par")
+
+#: The operators whose frame may be divided into branches.
+BRANCHING_OPERATORS: Final = ("alt", "par")
+
 #: How a `files` tree is drawn. `icons` is the file-browser look; `plain` keeps
 #: the guides and drops the pictures; `unicode` and `ascii` are the tree as text,
 #: set in the monospace face, the way `tree` prints it.
@@ -138,7 +162,18 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: `states` is the third on that footing: a state machine looked like a `flow`
 #: and claimed something else — an initial dot with no words, labelled
 #: transitions, self-loops, and a reachability rule a `flow` cannot make.
-KINDS: Final = GRAPH_KINDS + GRID_KINDS + SHAPE_KINDS + CHART_KINDS + FILES_KINDS + STATES_KINDS
+#: `sequence` is the fourth: who says what to whom, in order — a fixed set of
+#: participants exchanging messages down the page, which a `flow` can only draw
+#: by duplicating its boxes and losing the order to the ranker.
+KINDS: Final = (
+    GRAPH_KINDS
+    + GRID_KINDS
+    + SHAPE_KINDS
+    + CHART_KINDS
+    + FILES_KINDS
+    + STATES_KINDS
+    + SEQUENCE_KINDS
+)
 
 #: The readability budget: per kind, the most entries each counted array may
 #: hold before the document is refused as too much for one picture. This is not
@@ -176,6 +211,9 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # Set by the proposal rather than by the references: past fourteen states the
     # back edges a machine is full of cross in the layered layout.
     "states": (("states", 14), ("transitions", 24)),  # [6 states, 8 transitions]
+    # Set by the proposal: past eight lifelines and thirty messages a sequence
+    # diagram is a trace, not an explanation — split it into phases.
+    "sequence": (("participants", 8), ("messages", 30)),  # [5 participants, 13 messages]
 }
 
 
@@ -483,6 +521,124 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
                 "The member this composite is entered at, drawn as a dot inside the "
                 "frame. Required when a transition, or the machine's own `initial`, "
                 "names the group."
+            ),
+        ),
+    ),
+    "participant": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique within the document, among the participants and the groups.",
+        ),
+        _text(),
+        _role(PARTICIPANT_ROLES, "step"),
+    ),
+    "message": (
+        FieldSpec(
+            "id",
+            "string",
+            description=(
+                "Optional, and only needed to name this message from a fragment. Unique "
+                "among the messages."
+            ),
+        ),
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description="The participant that sends it.",
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description=(
+                "The participant that receives it. The same id as `from` is a message to "
+                "itself, drawn as a hook on the right of its lifeline."
+            ),
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description=(
+                "What is said, written above the arrow. May carry inline spans. Omit for "
+                "a bare arrow."
+            ),
+        ),
+        _role(MESSAGE_ROLES, "flow"),
+        FieldSpec(
+            "note",
+            "string",
+            description=(
+                "A short aside about this message, drawn on its row in one column to the "
+                "right of the last lifeline, so the notes read down as one margin."
+            ),
+        ),
+    ),
+    "fragment": (
+        FieldSpec(
+            "operator",
+            "string",
+            required=True,
+            enum=FRAGMENT_OPERATORS,
+            description=(
+                "What the frame says about the messages inside it, written in its tab: "
+                "`loop` repeats them, `opt` may happen, `alt` is one branch of several, "
+                "`par` runs its branches at once."
+            ),
+        ),
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description="The id of the first message inside the frame.",
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description=(
+                "The id of the last message inside the frame — the same as `from` for a "
+                "frame round one message. Not before `from`."
+            ),
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description=(
+                "The condition, beside the tab: what the loop runs over, when the "
+                "option or the first branch happens. Written plainly; drawspec adds the "
+                "brackets."
+            ),
+        ),
+        FieldSpec(
+            "else",
+            "array",
+            item_ref="branch",
+            description=(
+                "For `alt` and `par` only: where the frame is divided, each a dashed line "
+                "above a message inside it, with that branch's condition under it."
+            ),
+        ),
+    ),
+    "branch": (
+        FieldSpec(
+            "at",
+            "string",
+            required=True,
+            description=(
+                "The id of the first message of this branch. The divider is drawn above "
+                "it, so it is after the fragment's first message and no later than its "
+                "last."
+            ),
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description=(
+                "This branch's condition. Written plainly; drawspec adds the brackets. "
+                "Omit it for a `par` branch, which runs alongside the others and has none."
             ),
         ),
     ),
@@ -842,7 +998,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the sixteen diagrams this is. It selects the fields that are "
+            "Which of the seventeen diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -1206,6 +1362,53 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    SEQUENCE_KINDS: (
+        FieldSpec(
+            "participants",
+            "array",
+            required=True,
+            item_ref="participant",
+            min_items=2,
+            description=(
+                "Who takes part, drawn left to right in the order written, each a head "
+                "with a dashed lifeline under it. The order is the reading order, not a "
+                "coordinate. Every participant must send or receive a message."
+            ),
+        ),
+        FieldSpec(
+            "messages",
+            "array",
+            required=True,
+            item_ref="message",
+            min_items=1,
+            description=(
+                "What is said, drawn top to bottom in the order written: the order is "
+                "the diagram. A call (`flow`) answered later by a `weak` reply opens an "
+                "activation bar on the receiver from the call's row to the reply's; "
+                "nobody writes how tall it is."
+            ),
+        ),
+        FieldSpec(
+            "fragments",
+            "array",
+            item_ref="fragment",
+            description=(
+                "Frames round a run of messages, `from` to `to`, and every participant "
+                "they touch. Fragments nest or are apart; one that starts inside "
+                "another and ends outside it is refused."
+            ),
+        ),
+        FieldSpec(
+            "groups",
+            "array",
+            item_ref="group",
+            description=(
+                "A frame round a run of neighbouring lifelines, named at its top — "
+                "*inside our account*. Members must be next to each other in "
+                "`participants`, and a participant is in one group or none."
+            ),
+        ),
+    ),
     ("scatter",): (
         FieldSpec(
             "axes",
@@ -1341,6 +1544,37 @@ class Group:
     text: str = ""
     initial: str = ""
     """For a composite state: the member it is entered at, or empty."""
+
+
+@dataclass(frozen=True)
+class Message:
+    """One message of a `sequence`: who says it, to whom, and in what role."""
+
+    source: str
+    target: str
+    text: str = ""
+    role: str = "flow"
+    id: str = ""
+    note: str = ""
+
+
+@dataclass(frozen=True)
+class Branch:
+    """Where an `alt` or `par` frame is divided: above message `at`."""
+
+    at: str
+    text: str = ""
+
+
+@dataclass(frozen=True)
+class Fragment:
+    """A frame round the messages `start` to `end`, inclusive, by message id."""
+
+    operator: str
+    start: str
+    end: str
+    text: str = ""
+    branches: tuple[Branch, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -1512,6 +1746,13 @@ class Document:
     """How a `files` tree orders siblings — the document's `sort`."""
 
     style: str = "icons"
+    participants: tuple[Node, ...] = ()
+    """A `sequence`'s participants, left to right."""
+
+    messages: tuple[Message, ...] = ()
+    """A `sequence`'s messages, top to bottom."""
+
+    fragments: tuple[Fragment, ...] = ()
 
     @property
     def family(self) -> str:
@@ -1523,6 +1764,7 @@ class Document:
             ("chart", CHART_KINDS),
             ("files", FILES_KINDS),
             ("states", STATES_KINDS),
+            ("sequence", SEQUENCE_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -1771,6 +2013,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
     found: list[Violation] = []
     if kind in STATES_KINDS:
         return _states_violations(document)
+    if kind in SEQUENCE_KINDS:
+        return _sequence_violations(document)
     if kind in FILES_KINDS:
         entries = document.get("entries", ())
         # Only a well-formed list is worth reading for paths: the structural pass
@@ -2464,6 +2708,263 @@ def _loop_violations(edges: Sequence[Any], groups: Set[str], name: str) -> list[
     return found
 
 
+def _sequence_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """What a sequence diagram may not be: ids that do not land, and frames that cannot draw.
+
+    Ids first — participants and groups named once, every message's ends a
+    participant, every fragment's ends a message — then the claims only this
+    kind makes: a participant nobody talks to, a group whose lifelines are not
+    neighbours, a fragment that ends before it starts or half-overlaps another,
+    and a branch divider that is not inside its own frame.
+    """
+    found: list[Violation] = []
+    participants: dict[str, int] = {}
+    for index, participant in enumerate(_listed(document, "participants")):
+        identifier = participant.get("id") if isinstance(participant, dict) else None
+        if not isinstance(identifier, str):
+            continue
+        if identifier in participants:
+            found.append(
+                Violation(
+                    _pointer("participants", index, "id"),
+                    f"duplicate participant id {identifier!r}",
+                )
+            )
+            continue
+        participants[identifier] = index
+
+    talking: set[str] = set()
+    message_ids: dict[str, int] = {}
+    for index, message in enumerate(_listed(document, "messages")):
+        if not isinstance(message, dict):
+            continue
+        for end in ("from", "to"):
+            target = message.get(end)
+            if not isinstance(target, str):
+                continue
+            if target not in participants:
+                found.append(
+                    Violation(
+                        _pointer("messages", index, end),
+                        f"{target!r} is not the id of any participant in this document",
+                    )
+                )
+            talking.add(target)
+        identifier = message.get("id")
+        if isinstance(identifier, str):
+            if identifier in message_ids:
+                found.append(
+                    Violation(
+                        _pointer("messages", index, "id"),
+                        f"duplicate message id {identifier!r}",
+                    )
+                )
+            else:
+                message_ids[identifier] = index
+
+    for identifier, index in participants.items():
+        if identifier not in talking:
+            found.append(
+                Violation(
+                    _pointer("participants", index),
+                    f"no message is sent to or from {identifier!r}, so its lifeline would be "
+                    f"a box with a line under it. It is usually a mistyped id in a message; "
+                    f"otherwise delete the participant.",
+                )
+            )
+
+    found.extend(_sequence_group_violations(document, participants))
+    found.extend(_fragment_violations(document, message_ids))
+    return found
+
+
+def _sequence_group_violations(
+    document: Mapping[str, Any], participants: Mapping[str, int]
+) -> list[Violation]:
+    """Groups over lifelines: known members, one group each, and neighbours."""
+    found: list[Violation] = []
+    names = {index: identifier for identifier, index in participants.items()}
+    owner: dict[str, str] = {}
+    group_ids: set[str] = set()
+    for index, group in enumerate(_listed(document, "groups")):
+        if not isinstance(group, dict):
+            continue
+        identifier = group.get("id")
+        if isinstance(identifier, str):
+            if identifier in participants:
+                found.append(
+                    Violation(
+                        _pointer("groups", index, "id"),
+                        f"{identifier!r} is already the id of a participant",
+                    )
+                )
+            elif identifier in group_ids:
+                found.append(
+                    Violation(_pointer("groups", index, "id"), f"duplicate group id {identifier!r}")
+                )
+            group_ids.add(identifier)
+        members = group.get("members")
+        if not isinstance(members, list):
+            continue
+        positions: list[int] = []
+        sound = True
+        for position, member in enumerate(members):
+            if not isinstance(member, str):
+                sound = False
+                continue
+            pointer = _pointer("groups", index, "members", position)
+            if member not in participants:
+                found.append(Violation(pointer, f"{member!r} is not the id of any participant"))
+                sound = False
+            elif member in owner:
+                found.append(
+                    Violation(
+                        pointer,
+                        f"{member!r} is already in {owner[member]!r}. A lifeline is in one "
+                        f"group or none.",
+                    )
+                )
+                sound = False
+            else:
+                owner[member] = str(identifier)
+                positions.append(participants[member])
+        if not sound or not positions:
+            continue
+        inside = set(positions)
+        between = [
+            names[spot] for spot in range(min(positions), max(positions) + 1) if spot not in inside
+        ]
+        if between:
+            found.append(
+                Violation(
+                    _pointer("groups", index, "members"),
+                    f"{between[0]!r} stands between members of {identifier!r} in "
+                    f"'participants', so the group's frame would enclose a lifeline that is "
+                    f"not in it. Reorder 'participants' so the members are next to each other.",
+                )
+            )
+    return found
+
+
+def _fragment_violations(
+    document: Mapping[str, Any], message_ids: Mapping[str, int]
+) -> list[Violation]:
+    """Fragments: ends that are messages, in order, nested or apart, and branches inside."""
+    found: list[Violation] = []
+    spans: list[tuple[int, int, int]] = []
+    fragments = _listed(document, "fragments")
+    for index, fragment in enumerate(fragments):
+        if not isinstance(fragment, dict):
+            continue
+        ends: dict[str, int] = {}
+        for end in ("from", "to"):
+            target = fragment.get(end)
+            if not isinstance(target, str):
+                continue
+            if target not in message_ids:
+                found.append(
+                    Violation(
+                        _pointer("fragments", index, end),
+                        f"{target!r} is not the id of any message. A fragment names its first "
+                        f"and last message by their 'id'.",
+                    )
+                )
+            else:
+                ends[end] = message_ids[target]
+        if len(ends) < 2:
+            continue
+        start, finish = ends["from"], ends["to"]
+        if finish < start:
+            found.append(
+                Violation(
+                    _pointer("fragments", index, "to"),
+                    f"{fragment['to']!r} comes before {fragment['from']!r}, so the frame would "
+                    f"end before it starts. Swap them.",
+                )
+            )
+            continue
+        spans.append((index, start, finish))
+
+    for position, (index, start, finish) in enumerate(spans):
+        for other, first, last in spans[:position]:
+            if first < start <= last < finish or start < first <= finish < last:
+                found.append(
+                    Violation(
+                        _pointer("fragments", index),
+                        f"this fragment starts inside fragment {other} and ends outside it "
+                        f"(or the other way round), and no frame drawing of that does not "
+                        f"cross. Fragments nest or are apart: end one inside the other, or "
+                        f"after it.",
+                    )
+                )
+
+    span_of = {index: (start, finish) for index, start, finish in spans}
+    for index, fragment in enumerate(fragments):
+        if not isinstance(fragment, dict) or "else" not in fragment:
+            continue
+        branches = fragment.get("else")
+        if not isinstance(branches, list):
+            continue
+        operator = fragment.get("operator")
+        if operator not in BRANCHING_OPERATORS:
+            found.append(
+                Violation(
+                    _pointer("fragments", index, "else"),
+                    f"a {operator!r} fragment has one branch, so it has nothing to divide. "
+                    f"Only {' and '.join(repr(name) for name in BRANCHING_OPERATORS)} take "
+                    f"'else'.",
+                )
+            )
+            continue
+        if index not in span_of:
+            continue
+        start, finish = span_of[index]
+        previous = start
+        for position, branch in enumerate(branches):
+            at = branch.get("at") if isinstance(branch, dict) else None
+            if not isinstance(at, str):
+                continue
+            pointer = _pointer("fragments", index, "else", position, "at")
+            if at not in message_ids:
+                found.append(Violation(pointer, f"{at!r} is not the id of any message"))
+                continue
+            row = message_ids[at]
+            if not start < row <= finish:
+                found.append(
+                    Violation(
+                        pointer,
+                        f"{at!r} is not after the fragment's first message and within it, so "
+                        f"the divider above it would be "
+                        + ("at the frame's top" if row == start else "outside the frame")
+                        + ". A branch starts at a later message inside the fragment.",
+                    )
+                )
+                continue
+            if row <= previous and position:
+                found.append(
+                    Violation(
+                        pointer,
+                        f"{at!r} does not come after the previous divider. List the "
+                        f"branches in the order their messages are.",
+                    )
+                )
+                continue
+            previous = row
+            for other, (first, last) in span_of.items():
+                inner = other != index and start <= first and last <= finish
+                if inner and (first, last) != (start, finish) and first < row <= last:
+                    found.append(
+                        Violation(
+                            pointer,
+                            f"{at!r} is inside fragment {other}, which is nested in this one, "
+                            f"so the divider would cut through that frame. Divide at its "
+                            f"first message, or at one outside it.",
+                        )
+                    )
+                    break
+    return found
+
+
 def _listed(document: Mapping[str, Any], name: str) -> list[Any]:
     value = document.get(name)
     return value if isinstance(value, list) else []
@@ -2720,6 +3221,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
     kind = str(document["kind"])
     if kind in STATES_KINDS:
         return _states_document(document)
+    if kind in SEQUENCE_KINDS:
+        return _sequence_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -2872,6 +3375,52 @@ def _states_document(document: Mapping[str, Any]) -> Document:
                 text=entry["text"],
                 initial=entry.get("initial", ""),
             )
+            for entry in document.get("groups", ())
+        ),
+    )
+
+
+def _sequence_document(document: Mapping[str, Any]) -> Document:
+    """A sequence diagram: participants as nodes, and its own messages and fragments."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        participants=tuple(
+            Node(id=entry["id"], text=entry["text"], role=entry.get("role", "step"))
+            for entry in document["participants"]
+        ),
+        messages=tuple(
+            Message(
+                source=entry["from"],
+                target=entry["to"],
+                text=entry.get("text", ""),
+                role=entry.get("role", "flow"),
+                id=entry.get("id", ""),
+                note=entry.get("note", ""),
+            )
+            for entry in document["messages"]
+        ),
+        fragments=tuple(
+            Fragment(
+                operator=entry["operator"],
+                start=entry["from"],
+                end=entry["to"],
+                text=entry.get("text", ""),
+                branches=tuple(
+                    Branch(at=branch["at"], text=branch.get("text", ""))
+                    for branch in entry.get("else", ())
+                ),
+            )
+            for entry in document.get("fragments", ())
+        ),
+        groups=tuple(
+            Group(id=entry["id"], members=tuple(entry["members"]), text=entry.get("text", ""))
             for entry in document.get("groups", ())
         ),
     )
@@ -3091,28 +3640,35 @@ __all__ = [
     "COMMON_FIELDS",
     "CONTAINER_KINDS",
     "DOCUMENT_VERSION",
+    "FRAGMENT_OPERATORS",
     "GRAPH_KINDS",
     "GRID_KINDS",
     "HUB_EDGE_ROLES",
     "HUB_MINIMUM_NODES",
     "KINDS",
+    "MESSAGE_ROLES",
     "OBJECTS",
+    "PARTICIPANT_ROLES",
     "REJECTED_FIELDS",
     "SCHEMA_FILENAME",
     "SCHEMA_ID",
+    "SEQUENCE_KINDS",
     "SHAPE_KINDS",
     "STATES_KINDS",
     "STATE_ROLES",
     "TRANSITION_ROLES",
     "Axis",
     "Band",
+    "Branch",
     "Cell",
     "Curve",
     "Document",
     "Edge",
     "FieldSpec",
+    "Fragment",
     "Group",
     "Item",
+    "Message",
     "Node",
     "Position",
     "Series",

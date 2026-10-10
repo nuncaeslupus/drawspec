@@ -1126,6 +1126,92 @@
         "initial"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "sequence",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "sequence"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "participants": {
+          "type": "array",
+          "description": "Who takes part, drawn left to right in the order written, each a head with a dashed lifeline under it. The order is the reading order, not a coordinate. Every participant must send or receive a message.",
+          "items": {
+            "$ref": "#/$defs/participant"
+          },
+          "minItems": 2
+        },
+        "messages": {
+          "type": "array",
+          "description": "What is said, drawn top to bottom in the order written: the order is the diagram. A call (`flow`) answered later by a `weak` reply opens an activation bar on the receiver from the call's row to the reply's; nobody writes how tall it is.",
+          "items": {
+            "$ref": "#/$defs/message"
+          },
+          "minItems": 1
+        },
+        "fragments": {
+          "type": "array",
+          "description": "Frames round a run of messages, `from` to `to`, and every participant they touch. Fragments nest or are apart; one that starts inside another and ends outside it is refused.",
+          "items": {
+            "$ref": "#/$defs/fragment"
+          }
+        },
+        "groups": {
+          "type": "array",
+          "description": "A frame round a run of neighbouring lifelines, named at its top — *inside our account*. Members must be next to each other in `participants`, and a participant is in one group or none.",
+          "items": {
+            "$ref": "#/$defs/group"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "participants",
+        "messages"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -1241,6 +1327,23 @@
       "required": [
         "text",
         "members"
+      ],
+      "additionalProperties": false
+    },
+    "branch": {
+      "type": "object",
+      "properties": {
+        "at": {
+          "type": "string",
+          "description": "The id of the first message of this branch. The divider is drawn above it, so it is after the fragment's first message and no later than its last."
+        },
+        "text": {
+          "type": "string",
+          "description": "This branch's condition. Written plainly; drawspec adds the brackets. Omit it for a `par` branch, which runs alongside the others and has none."
+        }
+      },
+      "required": [
+        "at"
       ],
       "additionalProperties": false
     },
@@ -1435,6 +1538,46 @@
       ],
       "additionalProperties": false
     },
+    "fragment": {
+      "type": "object",
+      "properties": {
+        "operator": {
+          "type": "string",
+          "description": "What the frame says about the messages inside it, written in its tab: `loop` repeats them, `opt` may happen, `alt` is one branch of several, `par` runs its branches at once.",
+          "enum": [
+            "loop",
+            "alt",
+            "opt",
+            "par"
+          ]
+        },
+        "from": {
+          "type": "string",
+          "description": "The id of the first message inside the frame."
+        },
+        "to": {
+          "type": "string",
+          "description": "The id of the last message inside the frame — the same as `from` for a frame round one message. Not before `from`."
+        },
+        "text": {
+          "type": "string",
+          "description": "The condition, beside the tab: what the loop runs over, when the option or the first branch happens. Written plainly; drawspec adds the brackets."
+        },
+        "else": {
+          "type": "array",
+          "description": "For `alt` and `par` only: where the frame is divided, each a dashed line above a message inside it, with that branch's condition under it.",
+          "items": {
+            "$ref": "#/$defs/branch"
+          }
+        }
+      },
+      "required": [
+        "operator",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    },
     "group": {
       "type": "object",
       "properties": {
@@ -1578,6 +1721,45 @@
       ],
       "additionalProperties": false
     },
+    "message": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Optional, and only needed to name this message from a fragment. Unique among the messages."
+        },
+        "from": {
+          "type": "string",
+          "description": "The participant that sends it."
+        },
+        "to": {
+          "type": "string",
+          "description": "The participant that receives it. The same id as `from` is a message to itself, drawn as a hook on the right of its lifeline."
+        },
+        "text": {
+          "type": "string",
+          "description": "What is said, written above the arrow. May carry inline spans. Omit for a bare arrow."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'flow'.",
+          "enum": [
+            "flow",
+            "weak",
+            "strong"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "description": "A short aside about this message, drawn on its row in one column to the right of the last lifeline, so the notes read down as one margin."
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    },
     "node": {
       "type": "object",
       "properties": {
@@ -1621,6 +1803,33 @@
             "added",
             "changed",
             "removed"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "participant": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique within the document, among the participants and the groups."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
           ]
         }
       },

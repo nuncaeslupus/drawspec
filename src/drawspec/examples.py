@@ -44,6 +44,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "curve": "a named shape with labelled waypoints",
     "files": "a directory listing — folders and files from their paths",
     "states": "a state machine — the conditions something is in, and the events that move it",
+    "sequence": "who says what to whom, in order — messages between participants, read down",
 }
 
 #: The smallest document of each kind that renders.
@@ -202,6 +203,18 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "transitions": [
             {"from": "off", "to": "on", "event": "switch pressed"},
             {"from": "on", "to": "off", "event": "switch pressed"},
+        ],
+    },
+    "sequence": {
+        "version": 1,
+        "kind": "sequence",
+        "participants": [
+            {"id": "browser", "text": "Browser"},
+            {"id": "server", "text": "Server"},
+        ],
+        "messages": [
+            {"from": "browser", "to": "server", "text": "GET /"},
+            {"from": "server", "to": "browser", "text": "the page", "role": "weak"},
         ],
     },
     "scatter": {

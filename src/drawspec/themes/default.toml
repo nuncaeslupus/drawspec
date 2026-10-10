@@ -129,6 +129,13 @@ ramp = [0.08, 0.18, 0.28, 0.38, 0.48]
 dot = 10.0
 ring = 3.0
 
+[sequence]
+# A sequence diagram's activation bar, inferred from a call and its reply: about
+# the cap height of the body type across, so it reads as a bar and not a line. A
+# lifeline is drawn in an edge role with no head; `aside` keeps it light.
+activation = 10.0
+lifeline = "aside"
+
 # ---------------------------------------------------------------------------
 # Node roles. Shape and line treatment per semantic role. The author names the
 # role; every appearance decision below is taken here, once, for all diagrams.

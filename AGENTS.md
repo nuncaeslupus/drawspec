@@ -10,10 +10,9 @@ drawspec validate diagram.json                # every violation, with a JSON poi
 drawspec schema --out schema.json             # the full JSON Schema
 ```
 
-**If your client speaks MCP**, `drawspec-mcp` serves the same three things as
-tools — `validate`, `render`, `kinds` — and `validate`'s violations arrive as
-`{"pointer": "/edges/0/to", "message": …}` rather than as text to read. Install
-it with `pip install 'drawspec[mcp]'`; see [`docs/guide.md`](docs/guide.md).
+**If your client speaks MCP**, `drawspec-mcp` serves `validate`, `render` and
+`kinds` as tools, with each violation as `{"pointer": "/edges/0/to", "message": …}`
+rather than text. Install `pip install 'drawspec[mcp]'`; see [`docs/guide.md`](docs/guide.md).
 
 ## The one rule
 
@@ -21,8 +20,7 @@ it with `pip install 'drawspec[mcp]'`; see [`docs/guide.md`](docs/guide.md).
 No `x`, `y`, `width` on a box, `font_size`, `color`, `stroke`, `points`, `dx`,
 `z` — 26 such fields are refused **by name**, each with the JSON pointer of where
 you wrote it. That is not a restriction to work around; it is the whole design.
-If you find yourself wanting a coordinate, the answer is a different `kind` or a
-different `role`.
+If you find yourself wanting a coordinate, the answer is another `kind` or `role`.
 
 You *may* set `width` and `height` at the **top level** — a budget for the whole
 canvas, not for one box.
@@ -76,11 +74,13 @@ Pick by what the reader must **understand**, not by what it looks like.
 | The shape of a change: a hype cycle, a burndown | `curve` | `axes` + `curves` |
 | What is in a directory | `files` | `entries` (+ `root`, `sort`, `style`) |
 | The conditions something is in, and the events that move it | `states` | `states` + `initial` + `transitions` (`event`/`guard`/`action`; + `final`, `groups`); every state reachable |
+| Who says what to whom, in order, between a fixed set of participants | `sequence` | `participants` + `messages` (+ `fragments` `loop`/`alt`/`opt`/`par`, `groups`, `note`); a `weak` reply to a call draws the activation bar |
 
 `flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may
 branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring
 through **every** node, and is refused if it does not. `flow` vs `states`: a
-box something *is in*, re-entered, labelled by events, is a state.
+box something *is in*, re-entered, labelled by events, is a state. `flow` vs
+`sequence`: the same few participants talking in turn, in order, is a sequence.
 
 **Keep it readable.** Each kind has a budget ([`docs/format.md`](docs/format.md#the-readability-budget);
 a `flow`: 15 nodes, 16 edges). Past it a document is refused even though it

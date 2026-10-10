@@ -1,6 +1,7 @@
 # Proposal: `sequence` — who says what to whom, in order
 
-Status: **proposed**. Size **L** (a new layout family; no existing engine places it).
+Status: **implemented** — see *As built* at the end for where it departs from this text.
+Size **L** (a new layout family; no existing engine places it).
 
 ## Why
 
@@ -195,3 +196,50 @@ which is the one thing hand-drawn sequence diagrams get wrong most.
   reader of course notes.
 * A "time passes" divider (`…an hour later…`) between rows is common in runbooks. Cheap
   (`{"gap": "an hour later"}` as a message-less entry), but waits for an original.
+
+## As built
+
+Implemented as proposed, with these changes:
+
+* **No `aside` messages.** Rendered, a dashed headless line between two
+  lifelines said nothing about which way the signal went, and a message always
+  has a direction. Message roles are `flow`, `weak` and `strong`; a signal
+  nobody answers is a `flow` with no reply, which already draws with no bar (use
+  case 2's *a new object arrived* is one). `aside`, `link`, `exchange` and `owns`
+  are refused at the message's `role`.
+* **Arrows end on the bar, not always on the lifeline.** Where an activation bar
+  stands on the target's lifeline at that row, the head lands on the bar's near
+  edge: ending at the lifeline put the head inside the bar, crossed by its
+  outline. With no bar it ends exactly on the lifeline, as proposed. Bars reach
+  a few units above the call and below the reply, so heads meet a side rather
+  than a corner, and a nested bar is set half a bar to the right, the outer
+  bar's side broken behind it.
+* **Calls are `flow` and `strong`.** Both open a bar; a reply is `weak`. A reply
+  inside one branch of an `alt` does not end a call made before the frame: the
+  bar runs to the last answer in the frame (use case 4, `sequence-checkout`, has
+  a reply in each branch). Without that, the bar stopped at the first branch's
+  answer and the second branch's reply came from nowhere.
+* **Lifelines** are drawn in the theme's `aside` role (dashed, light) rather
+  than `weak`, so the messages across them are what the eye follows; the new
+  `[sequence] lifeline` key names any edge role. `[sequence] activation` sets the
+  bar's width. Lifelines and a bar's sides stop at a fragment's tab, which is
+  drawn opaque; under labels they are broken by `drawspec.clearance` like every
+  other stroke, as is a group frame a crossing label sits on.
+* **Fragments**: the condition is written in brackets beside the tab (`[scan
+  passed]`), as the `states` guard is, and is wrapped to the frame's width where
+  that fits, so a long condition takes two lines rather than widening the frame
+  past the drawing. `else` text is optional, for `par`, whose branches have no
+  condition. Refused besides the proposal's list: a divider at the fragment's
+  first message (an empty first branch), dividers out of order, and a divider
+  inside a nested fragment, which would cut its frame.
+* **Groups** reuse the group object; a participant is in at most one, and a
+  group's id may not be a participant's.
+* **Widths.** Heads, labels and notes are wrapped to a share of the canvas; a
+  drawing too wide is retried twice with narrower shares before the `FitError`,
+  which names the longest label. Use case 1 needs the narrowest step, and the
+  fit pass then sets its type two per cent smaller.
+* **Notes** go in one column right of everything else — lifelines, self-message
+  labels, fragment and group frames — top-aligned with their message's row.
+* **References.** The three use cases plus `sequence-checkout`: a `note`-role
+  participant, an unanswered call answered by webhook, nested bars, an `alt`
+  with a reply in each branch, and a `par` nested inside it.

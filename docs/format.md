@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-16 kinds. The machine-readable form of this page is the published
+17 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states` | **yes** | Which of the sixteen diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence` | **yes** | Which of the seventeen diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -139,6 +139,15 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `transitions` | array of [transition](#transition-object) | no | What moves the machine from one state to another, each labelled `event [guard] / action` from its own fields. |
 | `groups` | array of [composite](#composite-object) | no | Composite states: a frame around the states inside it, named at its corner. Groups may nest. A transition from a group leaves it from any state inside; one to a group enters it at the group's `initial`. |
 
+### `sequence`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `participants` | array of [participant](#participant-object), at least 2 | **yes** | Who takes part, drawn left to right in the order written, each a head with a dashed lifeline under it. The order is the reading order, not a coordinate. Every participant must send or receive a message. |
+| `messages` | array of [message](#message-object), at least 1 | **yes** | What is said, drawn top to bottom in the order written: the order is the diagram. A call (`flow`) answered later by a `weak` reply opens an activation bar on the receiver from the call's row to the reply's; nobody writes how tall it is. |
+| `fragments` | array of [fragment](#fragment-object) | no | Frames round a run of messages, `from` to `to`, and every participant they touch. Fragments nest or are apart; one that starts inside another and ends outside it is refused. |
+| `groups` | array of [group](#group-object) | no | A frame round a run of neighbouring lifelines, named at its top — *inside our account*. Members must be next to each other in `participants`, and a participant is in one group or none. |
+
 ### `scatter`
 
 | Field | Type | Required | What it is |
@@ -187,6 +196,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `curve` | 4 `curves` |
 | `files` | 30 `entries` |
 | `states` | 14 `states`, 24 `transitions` |
+| `sequence` | 8 `participants`, 30 `messages` |
 
 ## Emphasis
 
@@ -259,6 +269,42 @@ name, so a misspelt key is an error at the point it was written.
 | `text` | string | **yes** | The composite state's name, drawn at its frame's corner. |
 | `members` | array of string, at least 1 | **yes** | The states (or groups) inside this composite state. |
 | `initial` | string | no | The member this composite is entered at, drawn as a dot inside the frame. Required when a transition, or the machine's own `initial`, names the group. |
+
+### `participant` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique within the document, among the participants and the groups. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+
+### `message` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | no | Optional, and only needed to name this message from a fragment. Unique among the messages. |
+| `from` | string | **yes** | The participant that sends it. |
+| `to` | string | **yes** | The participant that receives it. The same id as `from` is a message to itself, drawn as a hook on the right of its lifeline. |
+| `text` | string | no | What is said, written above the arrow. May carry inline spans. Omit for a bare arrow. |
+| `role` | string — one of `flow`, `weak`, `strong` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
+| `note` | string | no | A short aside about this message, drawn on its row in one column to the right of the last lifeline, so the notes read down as one margin. |
+
+### `fragment` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `operator` | string — one of `loop`, `alt`, `opt`, `par` | **yes** | What the frame says about the messages inside it, written in its tab: `loop` repeats them, `opt` may happen, `alt` is one branch of several, `par` runs its branches at once. |
+| `from` | string | **yes** | The id of the first message inside the frame. |
+| `to` | string | **yes** | The id of the last message inside the frame — the same as `from` for a frame round one message. Not before `from`. |
+| `text` | string | no | The condition, beside the tab: what the loop runs over, when the option or the first branch happens. Written plainly; drawspec adds the brackets. |
+| `else` | array of [branch](#branch-object) | no | For `alt` and `par` only: where the frame is divided, each a dashed line above a message inside it, with that branch's condition under it. |
+
+### `branch` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `at` | string | **yes** | The id of the first message of this branch. The divider is drawn above it, so it is after the fragment's first message and no later than its last. |
+| `text` | string | no | This branch's condition. Written plainly; drawspec adds the brackets. Omit it for a `par` branch, which runs alongside the others and has none. |
 
 ### `group` object
 

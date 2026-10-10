@@ -12,6 +12,30 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`sequence`, the seventeenth kind** — who says what to whom, in order:
+  `participants` drawn left to right as heads over dashed lifelines, and
+  `messages` top to bottom, each an arrow with its label above it. Message roles
+  are `flow` (a call), `weak` (a reply: dashed, open head) and `strong`. A call
+  answered later by a `weak` reply draws an **activation bar** on the receiver
+  from the call's row to the reply's, nested when calls nest, and running to the
+  last answer when the replies sit in the branches of an `alt`; an unanswered
+  call has none. A message to itself is a hook right of its lifeline; a `note` is
+  set on its message's row in one column right of the last lifeline.
+  `fragments` (`loop`, `alt`, `opt`, `par`) frame the messages `from`…`to` and
+  every participant they touch, with the operator in an opaque tab and the
+  condition beside it; `alt` and `par` take `else` dividers. `groups` frame a run
+  of neighbouring lifelines. Columns are as far apart as the labels need, and a
+  drawing too wide is retried with narrower wrapping before a `FitError` naming
+  the longest label. Refused at their pointers: a message naming an unknown
+  participant, a participant no message names, a fragment ending before it
+  starts or partly overlapping another, `else` on `loop`/`opt` or a divider
+  outside, at the top of, or inside a nested frame, a group whose members are
+  not neighbours or a participant in two groups, and the roles `aside`, `link`,
+  `exchange`, `owns`. New theme section `[sequence]`: `activation` (the bar's
+  width) and `lifeline` (the edge role it is drawn in, `aside` by default).
+  Budget: 8 participants, 30 messages. References: `sequence-dns`,
+  `sequence-upload`, `sequence-drain`, `sequence-checkout`.
+
 - **`states`, the sixteenth kind** — a state machine: `states`, a required
   `initial`, optional `final`, and `transitions` whose label drawspec composes
   from `event`, `guard` and `action` (one part per line: `event`, `[guard]`,
