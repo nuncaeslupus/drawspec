@@ -28,6 +28,9 @@ against it would stop working. Everything below is about the *package*.
   read `AGENTS.md`, write JSON, `drawspec validate`, `drawspec render`, fix
   refusals) with triggers and do-not-use cases in its description. A test holds
   every command, flag and MCP tool it names to the real CLI and server.
+- **Gallery renders on every pull request.** CI's `gallery` job renders
+  `docs/reference/` with the branch's code and uploads the SVGs as the
+  `gallery-pr-<number>` workflow artifact, so reviewers can see the drawings.
 
 ### Changed
 
