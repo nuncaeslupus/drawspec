@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-28 kinds. The machine-readable form of this page is the published
+29 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel` | **yes** | Which of the twenty-eight diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall` | **yes** | Which of the twenty-nine diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -237,6 +237,13 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `bars` | array of [barmodel-bar](#barmodel-bar-object), at least 1 | **yes** | One to three bars, top to bottom, all starting at one left edge, every length in one scale: the longest bar fills the width. |
 | `braces` | array of [barmodel-brace](#barmodel-brace-object) | no | What a stretch adds up to — the whole, a difference, a total over two bars — each a brace with its amount or its `?`. |
 
+### `waterfall`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `axis` | [waterfall-axis object](#waterfall-axis-object) | **yes** | The vertical axis: its `label`, what the numbers are and their unit. |
+| `bars` | array of [waterfall-bar](#waterfall-bar-object), at least 3 | **yes** | The bars, left to right: a `total` first, signed `amount` steps, any subtotals (a `total` mid-way, checked against the running sum), and a `total` last. |
+
 ### `scatter`
 
 | Field | Type | Required | What it is |
@@ -297,6 +304,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `sankey` | 14 `nodes`, 24 `flows` |
 | `numberline` | 15 `points`, 4 `ranges` |
 | `barmodel` | 3 `bars`, 8 `parts` per bar, 6 `braces` |
+| `waterfall` | 12 `bars` |
 
 ## Emphasis
 
@@ -634,6 +642,21 @@ name, so a misspelt key is an error at the point it was written.
 | `over` | array of string, at least 1 | **yes** | What the brace spans: the ids of side-by-side parts of one bar, drawn over it (under it, for the last of several bars), or of whole bars — one bar the same way, several consecutive bars with an upright brace at their right. |
 | `amount` | number, greater than 0 | no | What the stretch adds up to. Checked: the parts' amounts must sum to it, and with units every brace must make one unit worth the same. Written unless `text` is given. |
 | `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `waterfall-axis` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `label` | string | **yes** | What the numbers are, with their unit — `Borrowing, £ billion`. Set beside the vertical axis; required, as on every chart. |
+
+### `waterfall-bar` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `total` | number | no | A total: the bar stands on zero and runs to it. The first bar is one and so is the last; one in between is a subtotal. Every total after the first is checked: it must be the running sum. Not with `amount`. |
+| `amount` | number | no | A signed step, not 0: the bar floats from the running sum to the running sum plus this, and is written `+6.1` or `−9.4`. Not with `total`. |
+| `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis` (the bar the chart is about: a heavier outline, its number bold). |
 
 ### `treemap-group` object
 

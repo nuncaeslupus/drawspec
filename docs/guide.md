@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Twenty-eight exist, and they fall into seventeen families:
+fields are legal. Twenty-nine exist, and they fall into eighteen families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -166,6 +166,7 @@ fields are legal. Twenty-eight exist, and they fall into seventeen families:
 | Share | `treemap` | The parts of one known total: each a rectangle by its area, labelled inside itself. |
 | Quantity | `sankey` | Where a known quantity goes: nodes in derived columns, joined by bands as thick as their amounts. |
 | Word problem | `barmodel` | Quantities in a word problem: bars of parts in proportion, braced — a part and a whole, a comparison, a ratio (the bar model, or tape diagram). |
+| Bridge | `waterfall` | How one total became another: a start total, signed steps floating on the running sum, checked subtotals, an end total — the bridge chart. |
 | Scale | `numberline` | Where values sit on one scale: points and ranges, each end in or out — an inequality, the pH scale, a spectrum. |
 
 One worked document per kind lives in [`reference/`](reference), and `make
@@ -1522,6 +1523,61 @@ narrow for its words at the scale the longest bar sets is a `FitError` naming it
 [`reference/barmodel-ratio.json`](reference/barmodel-ratio.json),
 [`reference/barmodel-fraction.json`](reference/barmodel-fraction.json) and
 [`reference/barmodel-savings.json`](reference/barmodel-savings.json).
+
+## A waterfall
+
+A budget paper explains how one number became another — last year's deficit to this
+year's plan, a forecast to an outturn — as a **waterfall**, or bridge chart: a total,
+the steps that moved it, and the total it arrived at. That is `waterfall`:
+
+```json
+{
+  "version": 1,
+  "kind": "waterfall",
+  "title": "How the council's budget gap closed",
+  "axis": {"label": "Budget gap, £ million"},
+  "bars": [
+    {"text": "Autumn forecast", "total": 18.4},
+    {"text": "Council tax rise", "amount": -4.2},
+    {"text": "Grant settlement", "amount": -6.5},
+    {"text": "Social care demand", "amount": 5.1},
+    {"text": "Savings programme", "amount": -7.6, "role": "emphasis"},
+    {"text": "Remaining gap", "total": 5.2}
+  ]
+}
+```
+
+Each of the 3 to 12 `bars`, left to right, is one of two things. A **`total`** stands
+on zero and runs to its value: the first bar is one, the last is one, and one in
+between is a **subtotal**. An **`amount`** is a signed step (not 0) that floats from
+the running sum to the running sum plus it. **Every total after the first is
+checked**: it must be the running sum, and one that is not is refused with the sum
+and the difference — the chart would otherwise show a step that is not there. The
+end total is written, not derived: you state the number the reader is told, and
+drawspec says whether the steps get there.
+
+Every bar's number is written beyond its far end — above a rise or a positive total,
+under a fall or a negative one — the steps signed (`+5.1`, `−7.6`, with a true minus),
+all with as many decimals as the most precise figure. Thin dashed connectors join each
+bar to the next at the running sum. Totals, rises and falls take the theme's first
+three mark fills, so they are told apart in greyscale too. A bridge entirely below
+zero (a deficit getting smaller) hangs from the zero line; one that crosses zero is
+drawn across it. `axis.label` is required: what the numbers are, with their unit.
+`role: "emphasis"` marks the step the chart is about (a heavier outline, a bold
+number).
+
+Refused, each at its pointer: a first bar that is not a `total`; a last bar that is
+not one (the refusal says what the steps add up to); a total that is not the running
+sum; a total straight after a total; a bar with both `total` and `amount`, or
+neither; an `amount` of 0; `value` (it is `amount` or `total`), `subtotal`, `start`,
+`end` (each is a `total`), `unit` (it goes in the axis label), `series`, `axes` (a
+`chart`), `edges`. Budget: 12 bars — split a longer bridge at a subtotal. A name with
+a word wider than its bar's band, or a number wider than the band, is a `FitError`. See
+[`reference/waterfall-budget-gap.json`](reference/waterfall-budget-gap.json),
+[`reference/waterfall-deficit.json`](reference/waterfall-deficit.json) (every bar below
+zero, two subtotals),
+[`reference/waterfall-cash.json`](reference/waterfall-cash.json) and
+[`reference/waterfall-result.json`](reference/waterfall-result.json) (crossing zero).
 
 ## Asking for a wide drawing instead of a tall one
 

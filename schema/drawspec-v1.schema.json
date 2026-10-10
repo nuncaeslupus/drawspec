@@ -2053,6 +2053,74 @@
         "bars"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "waterfall",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "waterfall"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "axis": {
+          "$ref": "#/$defs/waterfall-axis",
+          "description": "The vertical axis: its `label`, what the numbers are and their unit."
+        },
+        "bars": {
+          "type": "array",
+          "description": "The bars, left to right: a `total` first, signed `amount` steps, any subtotals (a `total` mid-way, checked against the running sum), and a `total` last.",
+          "items": {
+            "$ref": "#/$defs/waterfall-bar"
+          },
+          "minItems": 3
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "axis",
+        "bars"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -3786,6 +3854,48 @@
       },
       "required": [
         "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "waterfall-axis": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "What the numbers are, with their unit — `Borrowing, £ billion`. Set beside the vertical axis; required, as on every chart."
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    "waterfall-bar": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "total": {
+          "type": "number",
+          "description": "A total: the bar stands on zero and runs to it. The first bar is one and so is the last; one in between is a subtotal. Every total after the first is checked: it must be the running sum. Not with `amount`."
+        },
+        "amount": {
+          "type": "number",
+          "description": "A signed step, not 0: the bar floats from the running sum to the running sum plus this, and is written `+6.1` or `−9.4`. Not with `total`."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default) or `emphasis` (the bar the chart is about: a heavier outline, its number bold).",
+          "enum": [
+            "step",
+            "emphasis"
+          ]
+        }
+      },
+      "required": [
         "text"
       ],
       "additionalProperties": false

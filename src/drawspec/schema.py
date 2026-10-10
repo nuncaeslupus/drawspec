@@ -356,6 +356,18 @@ BARMODEL_PART_MAX: Final = 8
 BARMODEL_UNIT_MAX: Final = 12
 BARMODEL_BRACE_MAX: Final = 6
 
+#: Waterfalls (bridge charts): from one total to another, step by step — every
+#: step a bar floating on the running sum, subtotals checked against it. A
+#: layout family of its own, sharing the chart kind's ticks.
+WATERFALL_KINDS: Final = ("waterfall",)
+
+#: The roles a bar may take: the default, and the step the chart is about.
+WATERFALL_ROLES: Final = ("step", "emphasis")
+
+#: The most bars a waterfall holds. The corpus (W1 to W4) draws five to ten; past
+#: twelve the names under the bars are too narrow to read at the canvas width.
+WATERFALL_BAR_MAX: Final = 12
+
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
 #: into each other at the canvas width.
 NUMBERLINE_TICK_MAX: Final = 30
@@ -416,6 +428,8 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: spans cannot say whether an end belongs to the range.
 #: `barmodel` is the fifteenth: a word problem as bars of parts in one scale,
 #: braced — a `chart`'s bars stand on an axis, and a `treemap` is unaligned.
+#: `waterfall` is the sixteenth: from one total to another, step by step — a
+#: `chart`'s bars stand on the baseline, and nothing in it checks a total.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -435,6 +449,7 @@ KINDS: Final = (
     + SANKEY_KINDS
     + NUMBERLINE_KINDS
     + BARMODEL_KINDS
+    + WATERFALL_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -542,6 +557,8 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
         ("bars/parts", BARMODEL_PART_MAX),
         ("braces", BARMODEL_BRACE_MAX),
     ),  # [3 bars, 2 parts, 2 braces]
+    # Set by the corpus: five to ten bars, start and end totals included.
+    "waterfall": (("bars", WATERFALL_BAR_MAX),),  # [9]
 }
 
 
@@ -1721,6 +1738,46 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         ),
         _text(required=False),
     ),
+    "waterfall-axis": (
+        FieldSpec(
+            "label",
+            "string",
+            required=True,
+            description=(
+                "What the numbers are, with their unit — `Borrowing, £ billion`. Set beside "
+                "the vertical axis; required, as on every chart."
+            ),
+        ),
+    ),
+    "waterfall-bar": (
+        _text(),
+        FieldSpec(
+            "total",
+            "number",
+            description=(
+                "A total: the bar stands on zero and runs to it. The first bar is one and so "
+                "is the last; one in between is a subtotal. Every total after the first is "
+                "checked: it must be the running sum. Not with `amount`."
+            ),
+        ),
+        FieldSpec(
+            "amount",
+            "number",
+            description=(
+                "A signed step, not 0: the bar floats from the running sum to the running "
+                "sum plus this, and is written `+6.1` or `\N{MINUS SIGN}9.4`. Not with `total`."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=WATERFALL_ROLES,
+            description=(
+                "`step` (the default) or `emphasis` (the bar the chart is about: a heavier "
+                "outline, its number bold)."
+            ),
+        ),
+    ),
     "treemap-group": (
         FieldSpec(
             "id",
@@ -2114,7 +2171,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the twenty-eight diagrams this is. It selects the fields that are "
+            "Which of the twenty-nine diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -2896,6 +2953,27 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    WATERFALL_KINDS: (
+        FieldSpec(
+            "axis",
+            "object",
+            required=True,
+            ref="waterfall-axis",
+            description="The vertical axis: its `label`, what the numbers are and their unit.",
+        ),
+        FieldSpec(
+            "bars",
+            "array",
+            required=True,
+            item_ref="waterfall-bar",
+            min_items=3,
+            description=(
+                "The bars, left to right: a `total` first, signed `amount` steps, any "
+                "subtotals (a `total` mid-way, checked against the running sum), and a "
+                "`total` last."
+            ),
+        ),
+    ),
     ("scatter",): (
         FieldSpec(
             "axes",
@@ -3334,6 +3412,16 @@ class ModelBrace:
 
 
 @dataclass(frozen=True)
+class WaterfallBar:
+    """One bar of a `waterfall`: a total standing on zero, or a signed step."""
+
+    text: str
+    total: float | None = None
+    amount: float | None = None
+    role: str = "step"
+
+
+@dataclass(frozen=True)
 class TreemapGroup:
     """One group of a `treemap`: a captioned frame around the parts that name it."""
 
@@ -3589,6 +3677,12 @@ class Document:
     model_braces: tuple[ModelBrace, ...] = ()
     """A `barmodel`'s braces, in the order written."""
 
+    waterfall_bars: tuple[WaterfallBar, ...] = ()
+    """A `waterfall`'s bars, left to right."""
+
+    waterfall_label: str = ""
+    """A `waterfall`'s axis label: what the numbers are, and their unit."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -3611,6 +3705,7 @@ class Document:
             ("sankey", SANKEY_KINDS),
             ("numberline", NUMBERLINE_KINDS),
             ("barmodel", BARMODEL_KINDS),
+            ("waterfall", WATERFALL_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -3813,6 +3908,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_numberline_refusal(violation, document) for violation in found]
     if kind in BARMODEL_KINDS:
         found = [_barmodel_refusal(violation) for violation in found]
+    if kind in WATERFALL_KINDS:
+        found = [_waterfall_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -3860,6 +3957,10 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
     ("barmodel", "bars"): (
         "Past three bars a bar model is a table of quantities. Draw the step the problem "
         "turns on, or one model per step of a multi-step problem."
+    ),
+    ("waterfall", "bars"): (
+        "Past twelve bars the names under them are too narrow to read. Split the bridge at "
+        "a subtotal into two waterfalls, or merge the smallest steps into one `Other` step."
     ),
     ("bars", "parts"): (
         "Past eight parts the boxes are too thin to write in: merge the parts the question "
@@ -4056,6 +4157,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _numberline_violations(document)
     if kind in BARMODEL_KINDS:
         return _barmodel_violations(document)
+    if kind in WATERFALL_KINDS:
+        return _waterfall_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -6492,6 +6595,154 @@ def _barmodel_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a waterfall has no place for a field an author may reach for.
+WATERFALL_REFUSED: Final = {
+    "edges": "a waterfall's connectors join each bar to the next for you, at the running sum",
+    "series": (
+        "a waterfall is one sequence of bars, totals and steps. Several series against an "
+        "axis are a `chart`"
+    ),
+    "axes": (
+        "a waterfall has one numeric axis, `axis`, and its bars in order across. Values "
+        "against two axes are a `chart`"
+    ),
+    "value": "a step's size is its signed `amount`, and a total's is its `total`",
+    "subtotal": "a subtotal is a `total` between the first bar and the last, checked",
+    "start": "the start is the first bar, a `total`",
+    "end": "the end is the last bar, a `total`, checked against the steps",
+    "unit": "the unit goes in the axis label: `Borrowing, £ billion`",
+}
+
+
+def _waterfall_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a waterfall, told what this kind means by it."""
+    name = violation.pointer.split("/")[-1]
+    unknown = "is not" in violation.message and "field" in violation.message
+    if name in WATERFALL_REFUSED and unknown:
+        return Violation(violation.pointer, f"{name!r}: {WATERFALL_REFUSED[name]}.")
+    return violation
+
+
+def _waterfall_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Bars that are each a total or a step, and totals that are the running sum.
+
+    The first and the last bar are totals; a total straight after a total says
+    nothing; a step of 0 is not drawn. Every total after the first is checked
+    against the sum of the bars before it, and refused with the difference.
+    """
+    found: list[Violation] = []
+    bars = [bar for bar in _listed(document, "bars") if isinstance(bar, dict)]
+    if len(bars) != len(_listed(document, "bars")):
+        return found
+    running: float | None = None
+    previous = ""
+    scale = max(
+        (
+            abs(float(bar[field]))
+            for bar in bars
+            for field in ("total", "amount")
+            if _is_number(bar.get(field))
+        ),
+        default=1.0,
+    )
+    tolerance = max(scale, 1.0) * 1e-9
+    for index, bar in enumerate(bars):
+        here = _pointer("bars", index)
+        sizes = [field for field in ("total", "amount") if field in bar]
+        if not sizes:
+            found.append(
+                Violation(
+                    here,
+                    "a bar is a `total` (it stands on zero) or a signed `amount` (a step "
+                    "from the running sum). Give it one.",
+                )
+            )
+            running, previous = None, ""
+            continue
+        if len(sizes) == 2:
+            found.append(
+                Violation(
+                    f"{here}/amount",
+                    "a bar is a `total` or an `amount`, not both. A subtotal is a `total` "
+                    "on a bar of its own.",
+                )
+            )
+            running, previous = None, ""
+            continue
+        size = sizes[0]
+        number = bar[size]
+        if not _is_number(number):
+            running, previous = None, ""
+            continue
+        if size == "amount":
+            if index == 0:
+                found.append(
+                    Violation(
+                        f"{here}/amount",
+                        "a waterfall starts from a total the reader knows: make the first "
+                        'bar `{"text": …, "total": …}`, and the steps follow it.',
+                    )
+                )
+            if number == 0:
+                found.append(
+                    Violation(
+                        f"{here}/amount",
+                        "a step of 0 moves nothing and has no bar to draw. Leave it out, or "
+                        "say it in the caption.",
+                    )
+                )
+            if running is not None:
+                running += float(number)
+            previous = "amount"
+            continue
+        if index and previous == "total":
+            found.append(
+                Violation(
+                    f"{here}/total",
+                    "a total straight after a total repeats it: a subtotal comes after the "
+                    "steps it adds up. Drop one of the two.",
+                )
+            )
+        elif running is not None and abs(running - float(number)) > tolerance:
+            difference = float(number) - running
+            found.append(
+                Violation(
+                    f"{here}/total",
+                    f"the bars before this total add up to {_figure(running)}, and it says "
+                    f"{_figure(float(number))} — {_figure(abs(difference))} "
+                    f"{'more' if difference > 0 else 'less'}. A total in a waterfall is the "
+                    f"running sum, or the chart shows a step that is not there: fix a step or "
+                    f"the total.",
+                )
+            )
+            previous = "total"
+            continue
+        running = float(number)
+        previous = "total"
+    if bars and previous == "amount" and running is not None:
+        found.append(
+            Violation(
+                _pointer("bars", len(bars) - 1),
+                f"a waterfall ends at a total, and the steps reach {_figure(running)}. Add a "
+                f'last bar: `{{"text": …, "total": {_figure(running)}}}`.',
+            )
+        )
+    elif bars and previous == "amount":
+        found.append(
+            Violation(
+                _pointer("bars", len(bars) - 1),
+                "a waterfall ends at a total: add a last bar with a `total`.",
+            )
+        )
+    return found
+
+
+def _figure(value: float) -> str:
+    """A number as an author wrote it: no float noise, no trailing zeros."""
+    text = f"{round(value, 9):.9f}".rstrip("0").rstrip(".")
+    return "0" if text in ("-0", "") else text
+
+
 def _is_number(value: object) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool)
 
@@ -6984,6 +7235,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _numberline_document(document)
     if kind in BARMODEL_KINDS:
         return _barmodel_document(document)
+    if kind in WATERFALL_KINDS:
+        return _waterfall_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -7582,6 +7835,30 @@ def _barmodel_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _waterfall_document(document: Mapping[str, Any]) -> Document:
+    """A waterfall: its axis label and its bars, left to right."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        waterfall_label=str(document["axis"]["label"]),
+        waterfall_bars=tuple(
+            WaterfallBar(
+                text=bar["text"],
+                total=_optional_number(bar.get("total")),
+                amount=_optional_number(bar.get("amount")),
+                role=bar.get("role", "step"),
+            )
+            for bar in document["bars"]
+        ),
+    )
+
+
 def _hub(entry: Mapping[str, Any] | None) -> Node | None:
     if entry is None:
         return None
@@ -7867,6 +8144,9 @@ __all__ = [
     "TREEMAP_PART_ROLES",
     "VENN_KINDS",
     "VENN_SET_ROLES",
+    "WATERFALL_BAR_MAX",
+    "WATERFALL_KINDS",
+    "WATERFALL_ROLES",
     "Axis",
     "Band",
     "BoardColumn",
@@ -7905,6 +8185,7 @@ __all__ = [
     "TreemapPart",
     "VennSet",
     "Violation",
+    "WaterfallBar",
     "Waypoint",
     "build_schema",
     "fields_for",

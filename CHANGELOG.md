@@ -12,6 +12,20 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`waterfall`, the twenty-ninth kind** — the bridge chart of a budget paper: how
+  one total became another, step by step. Its 3 to 12 `bars` are each a `total`
+  (standing on zero: the first, the last, and any subtotal between) or a signed
+  `amount` floating on the running sum; every total after the first is checked
+  against the running sum and refused with the difference. Numbers are written on
+  every bar, the steps signed with a true minus; dashed connectors follow the
+  running sum; totals, rises and falls take the first three mark fills. Bridges
+  below zero hang from the zero line, and ones crossing it are drawn across it.
+  `axis.label` is required. Refused at their pointers: a first or last bar that is
+  not a total (the last naming the sum to write), a total off the running sum, a
+  total straight after a total, a bar with both sizes or neither, a step of 0,
+  `value`, `subtotal`, `start`, `end`, `unit`, `series`, `axes` (naming `chart`),
+  `edges`. Budget: 12 bars. Built as its own kind rather than a `chart` mark, lifting
+  the deferral in `docs/proposals/README.md`; `docs/proposals/waterfall.md` records why.
 - **`barmodel`, the twenty-eighth kind** — the bar model, or tape diagram, of
   primary maths: a word problem drawn as up to three `bars` of parts, before the
   sum is written. Every length is in proportion, in one scale for every bar on one

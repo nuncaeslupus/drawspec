@@ -56,6 +56,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "sankey": "where a known quantity goes — bands as thick as the amounts, a few flows stated",
     "numberline": "values and ranges on one scale, each end in or out — an inequality, a spectrum",
     "barmodel": "a word problem as bars of parts in proportion, braced — the tape diagram",
+    "waterfall": "from one total to another, step by step, subtotals checked — the bridge chart",
 }
 
 #: The smallest document of each kind that renders.
@@ -314,6 +315,17 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "version": 1,
         "kind": "barmodel",
         "bars": [{"parts": [{"amount": 12}, {"amount": 18, "text": "?"}]}],
+    },
+    "waterfall": {
+        "version": 1,
+        "kind": "waterfall",
+        "axis": {"label": "Cash, £"},
+        "bars": [
+            {"text": "Opening", "total": 120},
+            {"text": "Sales", "amount": 45},
+            {"text": "Rent", "amount": -60},
+            {"text": "Closing", "total": 105},
+        ],
     },
     "scatter": {
         "version": 1,

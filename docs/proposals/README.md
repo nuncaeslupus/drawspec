@@ -52,15 +52,17 @@ the real originals each is checked against; a built one says so in its row.
 | 20 | [`argument.md`](argument.md) | `argument`: a claim, reasons and objections by stance, with co-premises under one bracket | M | `tree` layout; a hatch pattern for `against` |
 | 21 | [`pedigree.md`](pedigree.md) | `pedigree`: people, couples and children by generation, standard symbols, derived numbering | L | the layered engine's crossing reduction, with couples as units |
 | 22 | [`barmodel.md`](barmodel.md) | `barmodel`: a word problem as bars of parts in proportion, braced (the tape diagram) — **built** | S | round-2 corpus (B1–B4); owner decision: in |
+| 23 | [`waterfall.md`](waterfall.md) | `waterfall`: from one total to another, step by step, subtotals checked (the bridge chart) — **built** | S | round-2 corpus (W1–W4) lifted the deferral; owner decision: in; its own kind, not a `chart` mark |
 
 ## Deferred, not proposed
 
-The survey's two remaining *feature* verdicts are left unbuilt on purpose, each until a
-real original asks for it (the *find the originals* rule below), not for size:
+The survey's one remaining *feature* verdict is left unbuilt on purpose, until a real
+original asks for it (the *find the originals* rule below), not for size. Waterfall was
+deferred here too until the round-2 corpus found four originals (W1–W4); it is now
+built, as [`waterfall.md`](waterfall.md).
 
 | Type | Would be | Why deferred |
 |---|---|---|
-| waterfall | `chart` + a `bridge` mark (bars floating on a running total) | Charting-adjacent: a running total is arithmetic drawspec would do for the reader, against *not charting software*. Small to build, but none of the 89 originals in `docs/kinds-wanted.md` is one. |
 | wardley | `scatter`/`quadrant` + edges between positions | One niche strategy artefact; it needs routed edges on a numeric plane, which no chart kind has. Not small, and no original yet. |
 
 Also declined in the survey and not revisited: fan-in badges on `flow` (a count the
@@ -80,7 +82,7 @@ self-loop geometry that `flow` then either adopts or refuses.
   the gallery and looked at; `make docs` and `make schema` regenerated; a row in
   `AGENTS.md`'s kind table (a test enforces it); every refusal in the proposal as a test
   with its JSON pointer; `collisions.py` and `clipping.py` clean on the references.
-* **The README's count** (now "twenty-eight kinds") and the `kind` enum description change with
+* **The README's count** (now "twenty-nine kinds") and the `kind` enum description change with
   every new kind.
 
 ## Decisions for the owner

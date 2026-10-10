@@ -26,6 +26,7 @@ from drawspec.kinds.sequence import sequence_scene
 from drawspec.kinds.shape import shape_scene
 from drawspec.kinds.treemap import treemap_scene
 from drawspec.kinds.venn import venn_scene
+from drawspec.kinds.waterfall import waterfall_scene
 from drawspec.scene import Scene
 from drawspec.schema import (
     BARMODEL_KINDS,
@@ -43,6 +44,7 @@ from drawspec.schema import (
     SHAPE_KINDS,
     TREEMAP_KINDS,
     VENN_KINDS,
+    WATERFALL_KINDS,
     Document,
 )
 from drawspec.text.measure import TextMeasurer
@@ -68,6 +70,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *SANKEY_KINDS,
     *NUMBERLINE_KINDS,
     *BARMODEL_KINDS,
+    *WATERFALL_KINDS,
     "cycle",
 )
 
@@ -119,6 +122,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return numberline_scene(document, theme, measurer)
     if document.kind in BARMODEL_KINDS:
         return barmodel_scene(document, theme, measurer)
+    if document.kind in WATERFALL_KINDS:
+        return waterfall_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -152,4 +157,5 @@ __all__ = [
     "text_runs",
     "treemap_scene",
     "venn_scene",
+    "waterfall_scene",
 ]

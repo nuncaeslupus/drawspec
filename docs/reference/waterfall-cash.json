@@ -1,0 +1,18 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "waterfall",
+  "title": "Where the month's cash went",
+  "description": "A sole trader's month: the opening balance, sales in, wages, rent and supplies out, the position before tax, VAT paid and the closing balance.",
+  "axis": {"label": "Cash, £ thousand"},
+  "bars": [
+    {"text": "Opening balance", "total": 12.4},
+    {"text": "Sales", "amount": 18.6},
+    {"text": "Wages", "amount": -9.8},
+    {"text": "Rent", "amount": -2.5},
+    {"text": "Supplies", "amount": -4.1},
+    {"text": "Before tax", "total": 14.6},
+    {"text": "VAT paid", "amount": -3.2},
+    {"text": "Closing balance", "total": 11.4}
+  ]
+}
