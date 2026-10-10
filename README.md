@@ -177,6 +177,7 @@ pip install git+https://github.com/nuncaeslupus/drawspec   # not on PyPI yet
 drawspec render diagram.json -o diagram.svg   # or to stdout
 drawspec validate diagram.json                # every violation, by JSON pointer
 drawspec theme check default                  # including the greyscale invariant
+drawspec theme from site.css -o house.toml    # a theme from your brand's CSS or design tokens
 drawspec schema --out drawspec-v1.schema.json # for editor completion
 ```
 

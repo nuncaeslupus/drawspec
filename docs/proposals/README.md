@@ -32,6 +32,7 @@ regeneration, `AGENTS.md` row, and tests.
 | 12 | [`journey.md`](journey.md) | `journey`: stages, a named-feeling line, detail rows — **built** | M | `curve`'s through-every-point spline (exists) |
 | 13 | [`treemap.md`](treemap.md) | `treemap`: one total by area — **built** | M | owner decision on scope (decided) |
 | 14 | [`sankey.md`](sankey.md) | `sankey`: where a known quantity goes — **built** | L | owner decision on scope (decided); crossing reduction from the layered engine |
+| 15 | [`theme-from.md`](theme-from.md) | `drawspec theme from`: a theme derived from a brand's CSS or design tokens — **built** | S | — |
 
 Nothing here depends on another proposal, except that `states` (4) should land the
 self-loop geometry that `flow` then either adopts or refuses.

@@ -1,4 +1,4 @@
-"""The command line: four commands, and an exit code that means something.
+"""The command line: six commands, and an exit code that means something.
 
 The contract is specification §5.4, and the exit codes are the part of it that a
 build script actually consumes:
@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from collections.abc import Sequence
 from dataclasses import replace
@@ -40,6 +41,7 @@ from pathlib import Path
 from typing import Final, TextIO
 
 from drawspec import __version__
+from drawspec.brand import derive_theme
 from drawspec.emit import PROFILES
 from drawspec.errors import DocumentError, DrawspecError, ThemeError
 from drawspec.examples import EXAMPLES, PURPOSE
@@ -108,6 +110,28 @@ def build_parser() -> argparse.ArgumentParser:
         description=("Load a theme and run its invariants, the greyscale role pairing included."),
     )
     check.add_argument("theme", help="a bundled theme name or a theme file")
+    derive = theme_commands.add_parser(
+        "from",
+        help="derive a theme from a brand's CSS or design tokens",
+        description=(
+            "Read CSS custom properties (a .css file) or W3C design tokens (a .json or "
+            ".tokens file) and write the theme they map onto, as TOML. Fonts, the accent "
+            "and muted colours, a corner radius and a stroke weight are taken; every token "
+            "left out is reported on stderr with the reason. A colour that would not read "
+            "at 3:1 on both a white and a near-black page is darkened or lightened until it "
+            "does. Local files only: no URL is fetched."
+        ),
+    )
+    derive.add_argument(
+        "brand", nargs="+", help="a .css or design-tokens file; a later file wins a tie"
+    )
+    derive.add_argument("-o", "--out", help="write here instead of stdout")
+    derive.add_argument("--name", help="the theme's name; the first file's name by default")
+    derive.add_argument(
+        "--strict",
+        action="store_true",
+        help="refuse a colour that would need adjusting, instead of adjusting it",
+    )
 
     schema = commands.add_parser(
         "schema",
@@ -166,9 +190,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     if arguments.command == "example":
         return _example(arguments)
     if arguments.command == "theme":
-        if getattr(arguments, "theme_command", None) != "check":
+        command = getattr(arguments, "theme_command", None)
+        if command == "from":
+            return _theme_from(arguments)
+        if command != "check":
             parser.print_usage(sys.stderr)
-            print("drawspec: theme takes one command: check", file=sys.stderr)
+            print("drawspec: theme takes one of two commands: check, from", file=sys.stderr)
             return USAGE
         return _theme_check(arguments)
     return _schema(arguments)
@@ -295,6 +322,34 @@ def _theme_check(arguments: argparse.Namespace) -> int:
             print(f"{first} and {second} differ only by colour", file=sys.stderr)
         return REFUSED
     print(f"{theme.name}: {len(ambiguous)} ambiguous role pairs")
+    return OK
+
+
+def _theme_from(arguments: argparse.Namespace) -> int:
+    """A brand's tokens in, a theme out, and a line on stderr for every token.
+
+    The theme is the thing asked for, so it alone goes to stdout; the report is
+    about how it was made, and goes beside it. A URL is a usage error rather than
+    a refusal — nothing was read — and drawspec never fetches one.
+    """
+    for brand in arguments.brand:
+        if re.match(r"^[a-z][a-z0-9+.-]*://", brand, re.IGNORECASE):
+            print(
+                f"drawspec: {brand} is a URL. theme from reads local files only and makes "
+                f"no network request; save the stylesheet or tokens file and pass its path.",
+                file=sys.stderr,
+            )
+            return USAGE
+    try:
+        derived = derive_theme(arguments.brand, arguments.name, strict=arguments.strict)
+    except ThemeError as error:
+        return _refuse(error)
+
+    print(derived.report, file=sys.stderr)
+    if arguments.out:
+        Path(arguments.out).write_text(derived.toml, encoding="utf-8")
+    else:
+        sys.stdout.write(derived.toml)
     return OK
 
 

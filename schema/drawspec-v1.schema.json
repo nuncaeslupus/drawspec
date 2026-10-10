@@ -50,7 +50,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "nodes": {
           "type": "array",
@@ -134,7 +134,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "nodes": {
           "type": "array",
@@ -222,7 +222,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "items": {
           "type": "array",
@@ -285,7 +285,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "items": {
           "type": "array",
@@ -359,7 +359,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "items": {
           "type": "array",
@@ -426,7 +426,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "cells": {
           "type": "array",
@@ -525,7 +525,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "levels": {
           "type": "array",
@@ -588,7 +588,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "rings": {
           "type": "array",
@@ -651,7 +651,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "stages": {
           "type": "array",
@@ -714,7 +714,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "axes": {
           "$ref": "#/$defs/axes",
@@ -786,7 +786,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "axes": {
           "$ref": "#/$defs/axes",
@@ -854,7 +854,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "axes": {
           "$ref": "#/$defs/axes-continuous",
@@ -922,7 +922,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "spans": {
           "type": "array",
@@ -997,7 +997,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "root": {
           "type": "string",
@@ -1083,7 +1083,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "states": {
           "type": "array",
@@ -1172,7 +1172,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "participants": {
           "type": "array",
@@ -1258,7 +1258,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "nodes": {
           "type": "array",
@@ -1336,7 +1336,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "entities": {
           "type": "array",
@@ -1406,7 +1406,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "axis": {
           "$ref": "#/$defs/axis-gantt",
@@ -1495,7 +1495,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "columns": {
           "type": "array",
@@ -1579,7 +1579,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "effect": {
           "$ref": "#/$defs/effect",
@@ -1647,7 +1647,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "sets": {
           "type": "array",
@@ -1717,7 +1717,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "feelings": {
           "type": "array",
@@ -1797,7 +1797,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "parts": {
           "type": "array",
@@ -1876,7 +1876,7 @@
         },
         "theme": {
           "type": "string",
-          "description": "A bundled theme name or the path of a theme file."
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "nodes": {
           "type": "array",

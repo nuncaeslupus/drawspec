@@ -75,7 +75,7 @@ usage: drawspec validate [-h] [--theme THEME] document
 Tools for the files that decide appearance.
 
 ```
-usage: drawspec theme [-h] {check} ...
+usage: drawspec theme [-h] {check,from} ...
 ```
 
 #### `drawspec theme check`
@@ -89,6 +89,22 @@ usage: drawspec theme check [-h] theme
 | Argument | What it does |
 |---|---|
 | `theme` | A bundled theme name or a theme file. |
+
+#### `drawspec theme from`
+
+Read CSS custom properties (a .css file) or W3C design tokens (a .json or .tokens file) and write the theme they map onto, as TOML. Fonts, the accent and muted colours, a corner radius and a stroke weight are taken; every token left out is reported on stderr with the reason. A colour that would not read at 3:1 on both a white and a near-black page is darkened or lightened until it does. Local files only: no URL is fetched.
+
+```
+usage: drawspec theme from [-h] [-o OUT] [--name NAME] [--strict]
+                           brand [brand ...]
+```
+
+| Argument | What it does |
+|---|---|
+| `brand` | A .css or design-tokens file; a later file wins a tie. |
+| `-o`, `--out` | Write here instead of stdout. |
+| `--name` | The theme's name; the first file's name by default. |
+| `--strict` | Refuse a colour that would need adjusting, instead of adjusting it. |
 
 ### `drawspec schema`
 

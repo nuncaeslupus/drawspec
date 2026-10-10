@@ -8,6 +8,7 @@ every coordinate. This file is meant to be read whole; it is the short version o
 drawspec render diagram.json -o diagram.svg   # or to stdout
 drawspec validate diagram.json                # every violation, with a JSON pointer
 drawspec schema --out schema.json             # the full JSON Schema
+drawspec theme from site.css -o house.toml    # a theme from a brand's CSS or design tokens
 ```
 
 **If your client speaks MCP**, `drawspec-mcp` serves `validate`, `render` and `kinds` as tools,
@@ -134,8 +135,7 @@ A flow — `role` is the only appearance decision in the file:
 }
 ```
 
-A chart — no colour is named; series are told apart by fill pattern too, so the
-drawing survives greyscale:
+A chart — no colour is named; series are told apart by fill pattern too, so the drawing survives greyscale:
 
 ```json
 {

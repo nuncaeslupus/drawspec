@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping, Sequence, Set
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from difflib import get_close_matches
 from pathlib import Path
 from typing import Any, Final
@@ -1891,7 +1891,15 @@ COMMON_FIELDS: Final = (
         "boolean",
         description="Makes height a constraint rather than a hint.",
     ),
-    FieldSpec("theme", "string", description="A bundled theme name or the path of a theme file."),
+    FieldSpec(
+        "theme",
+        "string",
+        description=(
+            "A bundled theme name or the path of a theme file. A relative path is read "
+            "from the document's own folder when the file is there, so a theme can sit "
+            "beside the diagrams that use it."
+        ),
+    ),
 )
 
 #: The payload fields each kind family adds. The kind selects the family, and
@@ -6730,7 +6738,23 @@ def load_document(path: str | Path) -> Document:
         parsed = json.loads(text)
     except json.JSONDecodeError as error:
         raise DocumentError(f"document is not valid JSON: {location} ({error})", ()) from None
-    return parse_document(parsed)
+    document = parse_document(parsed)
+    return replace(document, theme=_beside(document.theme, location))
+
+
+def _beside(theme: str, location: Path) -> str:
+    """A relative theme path, read from the document's folder when the file is there.
+
+    A theme beside its diagrams is the natural layout — a derived brand theme
+    next to the documents that use it — and a path that only worked from one
+    working directory is a document that renders in one build and not another.
+    A bundled name, an absolute path, or a file that is not beside the document
+    is left as written, so nothing that resolved before resolves differently.
+    """
+    if not theme or not theme.endswith(".toml") or Path(theme).is_absolute():
+        return theme
+    beside = location.parent / theme
+    return str(beside) if beside.is_file() else theme
 
 
 # ---------------------------------------------------------------------------

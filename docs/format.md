@@ -35,7 +35,7 @@ These fields are legal whatever the kind is.
 | `width` | number, greater than 0 | no | Overrides the theme's canvas width. Binding. |
 | `height` | number, greater than 0 | no | Advisory unless height_binding is true. |
 | `height_binding` | boolean | no | Makes height a constraint rather than a hint. |
-| `theme` | string | no | A bundled theme name or the path of a theme file. |
+| `theme` | string | no | A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it. |
 
 ## What each kind adds
 

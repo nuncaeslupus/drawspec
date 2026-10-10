@@ -12,6 +12,24 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`drawspec theme from`, a theme derived from a brand** — reads CSS custom
+  properties (`.css`) and W3C design tokens (`.json`/`.tokens`: groups, inherited
+  `$type`, `{aliases}`, colour and dimension objects), local files only, and
+  writes the theme as TOML (stdout or `-o`), each key commented with its token. The
+  accent colour goes on `emphasis`, `terminal` and `strong`, muted on `note`,
+  `group` and `link` — the roles the `accent` theme colours — and the palette on
+  `[mark] colours`; font families on `[font]`; a radius, a stroke weight (every
+  weight scaled together) and a line height on `[box]`/`[edge]`, clamped; the text
+  colour on `[canvas] ink` (standalone only). Every token left out is reported on
+  stderr with why: backgrounds, surfaces, borders, status colours, interaction
+  states, dark-mode overrides, heading faces, sizes, spacing. A colour under 3:1 on
+  white or on `#121212` is darkened or lightened, hue kept, until it reads on both
+  (`--strict` refuses instead); the result is loaded, so every theme invariant has
+  run. A URL is a usage error. Sample brand in `docs/reference/brand/`, and three
+  gallery drawings in the theme it derives.
+- **A relative `theme` path in a document is read from the document's folder**
+  when the file is there, so a theme can sit beside the diagrams that use it.
+  Bundled names and paths that resolved before resolve the same way.
 - **`sankey`, the twenty-sixth kind** — where a known quantity goes: `nodes`
   joined by `flows`, each a band whose thickness is its `amount` (in the
   document's `unit`) at one scale for the whole drawing, each bar as tall as what

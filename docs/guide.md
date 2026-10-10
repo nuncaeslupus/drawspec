@@ -392,6 +392,60 @@ understanding before you change anything else:
   `[canvas] min_legible_size` nothing is drawn at all: it is a refusal, with a
   message, rather than text nobody can read.
 
+## Matching your brand
+
+If your project already has a design system, derive the theme from it rather than
+copying values across by hand:
+
+```bash
+drawspec theme from site.css                          # the theme on stdout
+drawspec theme from site.css tokens.json -o house.toml --name house
+drawspec theme check house.toml
+```
+
+It reads **CSS custom properties** (`--color-accent: #0f7b8a` in a `.css` file)
+and **W3C design tokens** (a `.json` or `.tokens` file of `$value`s, aliases and
+inherited `$type`s), writes the theme as TOML with each key commented with the
+token it came from, and prints one line per token on stderr: `used`, `adjusted`,
+or `ignored` and why. Local files only — save the stylesheet first; drawspec
+fetches nothing. A later file wins a tie, so a tokens file can refine a stylesheet.
+
+| The brand says (by token name) | The theme gets |
+|---|---|
+| an `accent`, `primary` or `brand` colour | the stroke of `emphasis`, `terminal` and `strong`, and the first chart colour |
+| a `secondary`, `tertiary` colour | the second and third chart colours |
+| a `muted`, `subtle` or `neutral` colour | the stroke of `note`, `group` and `link`, and the last chart colours |
+| a `text` or `foreground` colour | `[canvas] ink` — the `standalone` profile only |
+| a `sans`/`body`, `serif`, `mono`/`code` font family | `[font] sans`, `serif`, `mono`; a serif body face also sets `default = "serif"` |
+| a `radius` | `[box] corner_radius`, at most 12 |
+| a `border-width` or `stroke-width` | every stroke weight, scaled together (0.75–1.5×) so the ratios hold |
+| a unitless `line-height` | `[box] line_height`, 1.2–1.6 |
+
+**What it will not take, and why.** A drawspec SVG inherits its page: strokes and
+text are `currentColor` and there is no background, which is what makes a diagram
+follow its page into dark mode. So a brand's background, surface and border
+colours are ignored — the drawing already sits on the page's own — and so are
+dark-mode overrides (`@media (prefers-color-scheme: dark)`, or any selector other
+than `:root`). Status colours (`success`, `danger`) are ignored because colour may
+point but never carry. Font sizes and spacing are ignored: the type scale is
+relative to the canvas, which the page scales to its column, so a CSS pixel says
+nothing about it.
+
+**Colour is held to the page, both pages.** A brand colour does not follow dark
+mode, so it has to read on both: at least **3:1**, WCAG's figure for lines and
+shapes, against white *and* against `#121212`. A pale brand yellow is darkened, a
+deep violet lightened, hue kept, until it does, and the report gives both ratios.
+Pass `--strict` to refuse instead. Colour lands only where the `accent` theme puts
+it — on roles already told apart by weight, dash or shape, and over chart fill
+patterns that stay distinct — so the greyscale rule holds with no help from you.
+
+Name the family your page is set in and drawspec measures with it if it is
+installed; if not, it measures with the next family in the stack and says so. The
+gallery's `*-brand-*` drawings use a theme derived from
+[`docs/reference/brand/tidemark.css`](reference/brand/tidemark.css). A relative
+`theme` path in a document file is read from the document's own folder when the
+theme is there, and from the working directory otherwise.
+
 ## Using it from Python
 
 The CLI is the supported interface, but the library underneath it is small and
