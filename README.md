@@ -243,6 +243,10 @@ And if your client speaks **MCP**, `pip install 'drawspec[mcp]'` gives you
 prose on stderr it has to read. Same checks, same messages, no shell. See
 [the guide](docs/guide.md#using-it-from-an-agent-the-mcp-server).
 
+For agents that load [Agent Skills](https://agentskills.io), copy
+[`skills/drawspec/`](skills/drawspec/SKILL.md) into your skills directory: a
+short pointer that installs drawspec, reads `AGENTS.md`, and validates before rendering.
+
 It cannot drift either: a test asserts that every kind in the vocabulary is named
 in it, that every role the theme declares appears, and that **every example in it
 is a document that still validates**. An agent copying from a stale brief is the
@@ -264,6 +268,7 @@ Everything you would look in, and the two directories you can ignore.
 | `docs/brief.md` | The originating brief: the problem, the measured failure taxonomy, the acceptance tests. `theme-requirements.md`, `kinds-wanted.md` and the `plan-round-*.md` files sit beside it — the evidence each round was decided on |
 | `schema/` | The published JSON Schema, versioned and addressable. Copied into the wheel from here, so there is only ever one of it |
 | `corpus/` | 87 anonymized LLM-written diagrams and their measurements, as evidence |
+| `skills/` | An Agent Skill that points an agent at drawspec — install, read `AGENTS.md`, validate, render. A test holds every command it names to the CLI |
 | `tests/` | The suite. `test_acceptance.py` and `test_failure_families.py` are the two that encode the promises rather than the mechanics |
 | `tools/` | Development scripts, not shipped: the docs generator, the gallery builder, and the two checkers — `collisions.py` (is the word readable) and `clipping.py` (is the word on the page) |
 | `status/` | The origin documents: the specification this was built from, and its plan. Kept because `docs/brief.md` is the summary and this is the source, and because the session protocol reads `status/plan.md` |

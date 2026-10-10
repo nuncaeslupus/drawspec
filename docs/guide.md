@@ -471,6 +471,13 @@ the model's own loop, and the write-validate-fix cycle closes without a shell in
 it. It is the same check the CLI runs — the server does not describe the format a
 second time, and a refusal here says exactly what a refusal there says.
 
+**For agents that load skills**, [`skills/drawspec/SKILL.md`](../skills/drawspec/SKILL.md)
+is an [Agent Skill](https://agentskills.io): copy the directory into your skills
+folder and the agent learns *when* to reach for drawspec and the loop to follow
+— install, read `AGENTS.md`, write the JSON, validate, render. It is a pointer,
+not a copy of the format, so it cannot drift from it, and a test holds every
+command it names to the CLI.
+
 ## Groups and bands
 
 Both take a set of nodes, and they say different things about them.

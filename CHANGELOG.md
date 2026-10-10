@@ -24,6 +24,10 @@ against it would stop working. Everything below is about the *package*.
   `emphasis` role (nodes, items, positions, series, curves counted together);
   the third is refused at its `role` with the fix. `strong` edges are not
   counted — a path is several edges and reads as one line.
+- **An Agent Skill, `skills/drawspec/SKILL.md`** — a short pointer (install,
+  read `AGENTS.md`, write JSON, `drawspec validate`, `drawspec render`, fix
+  refusals) with triggers and do-not-use cases in its description. A test holds
+  every command, flag and MCP tool it names to the real CLI and server.
 
 ### Changed
 
