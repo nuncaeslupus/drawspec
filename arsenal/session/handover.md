@@ -10,7 +10,12 @@ features hub/scale/status, a flow self-loop fix, `drawspec theme from`, and a ba
 **Owner reviews tomorrow:** `docs/review-2026-10.md` is the index (drawings, what to look at, 7 open questions).
 Waterfall and wardley were deferred until a real diagram needs them.
 
-The five laptop-only tasks below (#65 to #69) are unchanged.
+**Later the same day:** merged #76, #79 (PNG export), #80/#81 (0.1.0 release and auto-tag on main), and #83 (blueprint theme, install from PyPI).
+**drawspec 0.1.0 is on PyPI**; Pages serves the gallery and schema.
+A release is now: bump the version, date `## [x.y.z] — YYYY-MM-DD` in CHANGELOG, merge. The workflow tags and publishes.
+
+**Open tasks:** #77 (research more diagram kinds), #65 (C1 repo topics/description; owner pastes the values in the task),
+#68 (C4: sweep `nuncaeslupus/opos` documents; needs a session with that repo attached).
 
 ---
 

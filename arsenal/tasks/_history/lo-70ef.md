@@ -3,6 +3,7 @@ id: lo-70ef
 title: "C3: settle the schema URL — does drawspec.dev resolve, and what is the fallback"
 priority: 10
 tags: [laptop, readiness]
+status: done
 ---
 
 `schema.SCHEMA_ID` is `https://drawspec.dev/schema/drawspec-v1.schema.json`, and

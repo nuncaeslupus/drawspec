@@ -3,6 +3,7 @@ id: lo-f0f8
 title: "C2: publish the gallery to GitHub Pages and link it from the README"
 priority: 5
 tags: [laptop, readiness]
+status: done
 ---
 
 **The most persuasive artefact this project has, and you currently have to clone
