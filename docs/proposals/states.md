@@ -46,7 +46,7 @@ today and draws as a route through its own incoming edge (see the coverage surve
     {"from": "running", "to": "ready", "event": "time slice used up"},
     {"from": "running", "to": "blocked", "event": "waits for I/O"},
     {"from": "blocked", "to": "ready", "event": "I/O completes"},
-    {"from": "running", "to": "exited", "event": "calls `exit()`"}
+    {"from": "running", "to": "exited", "event": "calls exit()"}
   ]
 }
 ```

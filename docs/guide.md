@@ -1210,7 +1210,7 @@ and a treemap says it as one block whose parts are visibly a whole. That is
 {
   "version": 1,
   "kind": "treemap",
-  "title": "Why `/var` is full on the build server",
+  "title": "Why /var is full on the build server",
   "unit": "GB",
   "groups": [
     {"id": "docker", "text": "`/var/lib/docker`"},
