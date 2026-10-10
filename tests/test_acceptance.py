@@ -417,7 +417,14 @@ def test_every_kind_sets_its_text_at_the_same_level(name: str) -> None:
     document = load_document(REFERENCE_DIR / f"{name}.json")
     measurer = TextMeasurer(theme.font.stacks())
     drawn = fit(theme, lambda scaled: scene_for(document, scaled, measurer)).value
-    shapes = [primitive for primitive in drawn.primitives if isinstance(primitive, Rect | Polygon)]
+    # A region is an extent drawn behind other things (a group's wash), not a
+    # shape holding text of its own.
+    shapes = [
+        primitive
+        for primitive in drawn.primitives
+        if isinstance(primitive, Rect | Polygon)
+        and not (isinstance(primitive, Polygon) and primitive.region)
+    ]
     levels = {
         primitive.level
         for primitive in drawn.primitives

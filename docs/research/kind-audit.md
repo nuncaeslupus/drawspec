@@ -233,3 +233,13 @@ the parallelogram leans 10 units (text inset by the lean at its own top and bott
 lines), the subroutine's inner lines are 6 units in (charged on top of the padding),
 and the drum's lid and base are 6 units deep (text under the lid's front rim). Arrows
 land on the slanted sides and on the lid's curve; labels still avoid the whole box.
+
+**Rank 4, toned containers** — built, theme only, and **on in the default theme**
+(owner question 3): the renders read clearly better — nesting is legible at a glance
+and lanes read as bands — and stay calm at these strengths. Not `[role.group] tone`
+as proposed but a section of its own, `[frames] tone` (0.05) and `levels` (3), since a
+node role's keys are shared by every role; `[lanes] stripe` is a number (0.04), not a
+boolean. A nested frame lays its wash over its parent's rather than taking a darker
+ramp step, which gives the same one-step-per-level result with one number. Treemap
+groups and entities headers are untouched.
+

@@ -279,7 +279,7 @@ def _shape_attributes(
         ),
     )
     paints = [fill]
-    if isinstance(primitive, Polygon) and primitive.fill_opacity < 1 and fill[1] != "none":
+    if isinstance(primitive, Polygon | Rect) and primitive.fill_opacity < 1 and fill[1] != "none":
         paints.append(("fill-opacity", format_number(primitive.fill_opacity)))
     if isinstance(primitive, Polygon) and primitive.region:
         return [*paints, ("stroke", "none")]

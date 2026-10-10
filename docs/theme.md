@@ -143,6 +143,15 @@ Whether a diagram carries its own title. Off until the question is settled.
 | `show` | `false` | Whether a document's `title` is drawn on the diagram as well as announced to a screen reader. Off by default: a figure caption is usually the page's job, not the drawing's. |
 | `level` | `"title"` | Which type level the drawn title takes. One of `title`, `heading`, `body`, `label`. |
 
+### `[frames]`
+
+How a container is told from the page: washed with a little of the ink.
+
+| Key | Default | What it is |
+|---|---|---|
+| `tone` | `0.05` | The share of the ink one frame lays down, from 0 (outlines only) to `TONE_CEILING`. |
+| `levels` | `3` | How many levels of nesting deepen the wash; a frame deeper than this is outlined only. |
+
 ### `[cycle]`
 
 How a `cycle`'s connectors are drawn. Appearance, so it lives here.
@@ -198,6 +207,7 @@ How a swimlane diagram lays its lanes out and divides them.
 |---|---|---|
 | `orientation` | `"auto"` | `rows`, `columns`, or `auto`: rows when they fit the width, else columns. One of `rows`, `columns`, `auto`. |
 | `separator` | `"link"` | The edge role the line between two lanes is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `stripe` | `0.04` | How much of the page's ink every second lane is washed with, from 0 (no stripes) to `TONE_CEILING`. A tint, not a colour, so dark mode and greyscale keep it. |
 
 ### `[entities]`
 

@@ -706,3 +706,27 @@ def test_text_on_the_heaviest_ramp_step_reads_on_both_pages(ink: str, page: str)
         f"{round(tone * a + (1 - tone) * b):02x}" for a, b in zip(ink_rgb, page_rgb, strict=True)
     )
     assert contrast(ink, cell) >= TEXT_CONTRAST
+
+
+@pytest.mark.parametrize(
+    "section",
+    [
+        "[frames]\ntone = 0.3",
+        "[frames]\ntone = -0.01",
+        "[frames]\nlevels = 0",
+        "[lanes]\nstripe = 0.5",
+    ],
+)
+def test_a_wash_heavier_than_the_ceiling_or_a_bad_level_count_is_refused(
+    tmp_path: Path, section: str
+) -> None:
+    """A container's wash sits behind words, so it stays well under a cell's tone."""
+    with pytest.raises(ThemeError, match=r"\[(frames|lanes)\]"):
+        load_theme(write_theme(tmp_path, MINIMAL + section + "\n"))
+
+
+def test_the_default_theme_washes_frames_and_stripes_lanes_faintly() -> None:
+    theme = load_theme()
+    assert 0 < theme.frames.tone <= 0.06
+    assert 0 < theme.lanes.stripe <= 0.06
+    assert theme.frames.tone_at(theme.frames.levels) == 0.0

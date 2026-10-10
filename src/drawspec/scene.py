@@ -61,6 +61,11 @@ class Rect(Primitive):
     """The colour that pattern is drawn in, when the theme declares one. Resolved
     from the theme by whoever chose the fill — never a value an author wrote."""
 
+    fill_opacity: float = field(default=1.0, repr=False)
+    """How much of the fill shows, as `Polygon.fill_opacity`: a container's wash.
+    Kept out of the repr the id digest reads, so no drawing without a wash
+    changed its ids."""
+
     """One of the theme's fill patterns, when the *geometry* decides its own fill.
 
     Empty means "ask the role", which is every box in every graph. A chart mark

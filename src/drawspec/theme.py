@@ -1675,11 +1675,17 @@ class LanesStyle:
     separator: str = "link"
     """The edge role the line between two lanes is drawn in, with no head."""
 
+    stripe: float = 0.0
+    """How much of the page's ink every second lane is washed with, from 0 (no
+    stripes) to `TONE_CEILING`. A tint, not a colour, so dark mode and greyscale
+    keep it."""
+
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> LanesStyle:
-        _reject_unknown(mapping, ("orientation", "separator"), "[lanes]")
+        _reject_unknown(mapping, ("orientation", "separator", "stripe"), "[lanes]")
         defaults = cls()
         return cls(
+            stripe=_tone(mapping.get("stripe", defaults.stripe), "[lanes] stripe"),
             orientation=_choice(
                 mapping.get("orientation", defaults.orientation),
                 LANES_ORIENTATIONS,
@@ -1689,6 +1695,55 @@ class LanesStyle:
                 mapping.get("separator", defaults.separator), EDGE_ROLES, "[lanes] separator"
             ),
         )
+
+
+#: The most ink a container's wash or a lane's stripe may lay down. A frame is
+#: behind words and boxes, so its tone has to stay well under a matrix cell's.
+TONE_CEILING: Final = 0.1
+
+
+def _tone(value: Any, where: str) -> float:
+    """A wash strength: a fraction of the ink from 0 to `TONE_CEILING`."""
+    tone = _number(value, where, positive=False)
+    if not 0.0 <= tone <= TONE_CEILING:
+        raise ThemeError(f"{where}: expected a fraction from 0 to {TONE_CEILING}, got {tone!r}")
+    return tone
+
+
+@dataclass(frozen=True)
+class FramesStyle:
+    """How a container is told from the page: washed with a little of the ink.
+
+    A group's frame (`flow` and `tree` groups, a state's composite) and a
+    sequence diagram's group are filled with `tone` of the page's ink, drawn as
+    `currentColor` at part opacity, so it follows the page into dark mode and
+    prints as a light grey. Frames inside frames lay their wash over their
+    parent's, so each level of nesting reads one step darker, up to `levels`
+    deep; deeper frames add no more.
+    """
+
+    tone: float = 0.0
+    """The share of the ink one frame lays down, from 0 (outlines only) to
+    `TONE_CEILING`."""
+
+    levels: int = 3
+    """How many levels of nesting deepen the wash; a frame deeper than this is
+    outlined only."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> FramesStyle:
+        _reject_unknown(mapping, ("tone", "levels"), "[frames]")
+        defaults = cls()
+        levels = mapping.get("levels", defaults.levels)
+        if isinstance(levels, bool) or not isinstance(levels, int) or not 1 <= levels <= 5:
+            raise ThemeError(
+                f"[frames] levels: expected a whole number from 1 to 5, got {levels!r}"
+            )
+        return cls(tone=_tone(mapping.get("tone", defaults.tone), "[frames] tone"), levels=levels)
+
+    def tone_at(self, depth: int) -> float:
+        """The wash a frame `depth` levels inside others lays down, or 0."""
+        return self.tone if depth < self.levels else 0.0
 
 
 #: What a `files` page says about its file's type.
@@ -1893,6 +1948,7 @@ _TOP_LEVEL_KEYS: Final = (
     "edge",
     "mark",
     "title",
+    "frames",
     "cycle",
     "funnel",
     "files",
@@ -1936,6 +1992,7 @@ class Theme:
     states: StatesStyle = StatesStyle()
     sequence: SequenceStyle = SequenceStyle()
     lanes: LanesStyle = LanesStyle()
+    frames: FramesStyle = FramesStyle()
     entities: EntitiesStyle = EntitiesStyle()
     gantt: GanttStyle = GanttStyle()
     board: BoardStyle = BoardStyle()
@@ -2001,6 +2058,7 @@ class Theme:
             states=StatesStyle.from_mapping(_section(mapping, "states")),
             sequence=SequenceStyle.from_mapping(_section(mapping, "sequence")),
             lanes=LanesStyle.from_mapping(_section(mapping, "lanes")),
+            frames=FramesStyle.from_mapping(_section(mapping, "frames")),
             entities=EntitiesStyle.from_mapping(_section(mapping, "entities")),
             gantt=GanttStyle.from_mapping(_section(mapping, "gantt")),
             board=BoardStyle.from_mapping(_section(mapping, "board")),

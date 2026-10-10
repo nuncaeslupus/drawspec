@@ -34,7 +34,7 @@ from drawspec.kinds.containers import GROUP_LEVEL, GROUP_ROLE, Arrangement
 from drawspec.layout import Layout, LayoutEdge, LayoutNode, Placement, Spacing
 from drawspec.layout.base import rank_nodes
 from drawspec.routing import Obstacle, Route
-from drawspec.scene import Path, Primitive
+from drawspec.scene import Path, Polygon, Primitive
 from drawspec.schema import Document
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme
@@ -593,10 +593,26 @@ def _bold(name: str) -> str:
 def lanes_primitives(
     lanes: Swimlanes, theme: Theme, measurer: TextMeasurer
 ) -> tuple[Primitive, ...]:
-    """The separators, then each lane's heading."""
-    lines: list[Primitive] = [
-        Path(theme.lanes.separator, points=points) for points in lanes.separators()
-    ]
+    """Every second lane's stripe, the separators, then each lane's heading."""
+    lines: list[Primitive] = []
+    if theme.lanes.stripe:
+        lines.extend(
+            Polygon(
+                GROUP_ROLE,
+                points=(
+                    (lane.x, lane.y),
+                    (lane.right, lane.y),
+                    (lane.right, lane.bottom),
+                    (lane.x, lane.bottom),
+                ),
+                fill="solid",
+                fill_colour="currentColor",
+                fill_opacity=theme.lanes.stripe,
+                region=True,
+            )
+            for lane in lanes.lanes[1::2]
+        )
+    lines.extend(Path(theme.lanes.separator, points=points) for points in lanes.separators())
     for lane in lanes.lanes:
         lines.extend(text_runs(lane.heading, theme, measurer))
     return tuple(lines)

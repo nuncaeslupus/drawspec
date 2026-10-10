@@ -527,9 +527,13 @@ def border_obstacles(frame: Frame, theme: Theme) -> tuple[Obstacle, ...]:
 
 def frame_primitives(frame: Frame, theme: Theme, measurer: TextMeasurer) -> tuple[Primitive, ...]:
     """The frame's outline, then its caption across the top of it."""
-    outline: tuple[Primitive, ...] = (
-        Rect(GROUP_ROLE, x=frame.x, y=frame.y, width=frame.width, height=frame.height),
-    )
+    tone = theme.frames.tone_at(frame.depth)
+    rect = Rect(GROUP_ROLE, x=frame.x, y=frame.y, width=frame.width, height=frame.height)
+    if tone:
+        # Washed, not coloured: the page's ink at part opacity, laid over any
+        # parent frame's wash, so nesting reads a step darker per level.
+        rect = replace(rect, fill="solid", fill_colour="currentColor", fill_opacity=tone)
+    outline: tuple[Primitive, ...] = (rect,)
     if frame.caption is None:
         return outline
     return (*outline, *text_runs(frame.caption, theme, measurer))

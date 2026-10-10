@@ -123,6 +123,15 @@ gap = 0.3
 # page and on a dark one.
 ramp = [0.08, 0.16, 0.24, 0.32, 0.4]
 
+[frames]
+# A container — a group's frame, a composite state, a sequence group — is washed
+# with this much of the page's ink (0 for outlines only). It is the ink at part
+# opacity, never a colour, so it follows a dark page and prints as a light grey;
+# a frame inside a frame lays its wash over its parent's, one step darker per
+# level, for `levels` levels.
+tone = 0.05
+levels = 3
+
 [states]
 # A state machine's pseudo-states: the filled dot it starts from, and the ringed
 # dot each final state leads to. Marks with no words, so sized here: the dot
@@ -144,6 +153,9 @@ lifeline = "aside"
 # crossing it — the hand-offs — are what the eye follows.
 orientation = "auto"
 separator = "link"
+# Every second lane is washed with this much of the page's ink, so a row of five
+# or six lanes reads as bands rather than as lines to count. 0 for none.
+stripe = 0.04
 
 [entities]
 # How an entity diagram draws a relation's cardinality — the author says `one`

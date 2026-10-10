@@ -12,6 +12,13 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **Washed frames and striped lanes**, theme only. A group's frame, a composite
+  state and a sequence group are filled with `[frames] tone` of the page's ink (0.05
+  in the default theme), drawn as `currentColor` at part opacity so dark mode and
+  greyscale keep it; nested frames lay wash over wash, one step darker per level for
+  `[frames] levels` (3) levels. `[lanes] stripe` (0.04) washes every second lane.
+  Both cap at 0.1; 0 turns them off. This changes every grouped drawing and every
+  swimlane in the gallery.
 - **Three flowchart symbols as node roles**, on `flow`, `tree` and `lanes` nodes:
   `io` (a parallelogram: data in or out), `subroutine` (a box with doubled vertical
   sides: a process defined elsewhere) and `store` (a drum: a database, a queue, a file

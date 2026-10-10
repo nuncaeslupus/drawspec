@@ -695,6 +695,14 @@ band has not got — so a long name beside a short bar comes back as two or thre
 lines rather than one long one. A single word longer than the bar is refused, and
 the message names the band rather than the diagram.
 
+**Frames are washed, faintly.** A group's frame — and a composite state, and a
+sequence diagram's group — is filled with a little of the page's ink
+(`[frames] tone`, 0.05 by default): drawn as `currentColor` at part opacity, so it
+follows a dark page and prints as a light grey, never a colour. A frame inside a
+frame lays its wash over its parent's, so each level of nesting reads one step
+darker, for `[frames] levels` levels (3); deeper frames are outlined only. A theme
+that wants outlines only sets `tone = 0`.
+
 ## Drawing a change
 
 A design document proposing a change usually wants to say *what is new, what
@@ -1018,7 +1026,9 @@ column of names at the left) or down it as columns (ranks reading down, a name
 over each) is the theme's `[lanes] orientation`: `auto`, the default, takes rows
 when they fit the width and columns when they do not. At the default width, a
 process of more than four or five steps in a row reads down. `[lanes] separator`
-is the edge role the line between two lanes is drawn in.
+is the edge role the line between two lanes is drawn in, and `[lanes] stripe`
+(0.04 by default, 0 for none) washes every second lane with that share of the
+page's ink, so five or six lanes read as bands.
 
 Refused, each at its pointer: a node with no `actor` (the message points you back
 to `flow`); an actor not in `lanes`, naming the closest lane; a lane in `lanes`
@@ -1028,8 +1038,10 @@ a lane is already the container and a frame or band would cross it; and the
 from the actors when `lanes` is omitted. See
 [`reference/lanes-disclosure.json`](reference/lanes-disclosure.json),
 [`reference/lanes-tender.json`](reference/lanes-tender.json),
-[`reference/lanes-expense.json`](reference/lanes-expense.json) and
-[`reference/lanes-onboarding.json`](reference/lanes-onboarding.json).
+[`reference/lanes-expense.json`](reference/lanes-expense.json),
+[`reference/lanes-onboarding.json`](reference/lanes-onboarding.json) and
+[`reference/lanes-appointment.json`](reference/lanes-appointment.json), which draws
+the flowchart symbols (`io`, `subroutine`, `store`).
 
 ## Data models, schemas and class diagrams
 

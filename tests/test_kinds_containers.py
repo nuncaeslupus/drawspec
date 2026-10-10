@@ -9,10 +9,12 @@ frame makes: what is inside it is inside it.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
+from drawspec import render
 from drawspec.errors import DocumentError, DrawspecError
 from drawspec.kinds.common import line_bounds
 from drawspec.kinds.containers import GROUP_ROLE, Frame, nesting_of
@@ -20,7 +22,7 @@ from drawspec.kinds.graph import GraphDrawing, graph_drawing, graph_scene
 from drawspec.scene import Rect, TextLine
 from drawspec.schema import Document, load_document, parse_document
 from drawspec.text import TextMeasurer
-from drawspec.theme import load_theme
+from drawspec.theme import Theme, load_theme
 
 REFERENCE_DIR = Path(__file__).resolve().parents[1] / "docs" / "reference"
 
@@ -578,3 +580,52 @@ def test_a_tree_may_name_a_group_too() -> None:
     frame = frame_named(built, "branch")
     assert frame.x - 1e-6 <= route.points[-1][0] <= frame.right + 1e-6
     assert frame.y - 1e-6 <= route.points[-1][1] <= frame.bottom + 1e-6
+
+
+# --------------------------------------------------------------------------
+# Washed frames and striped lanes: `[frames] tone`, `[lanes] stripe`
+# --------------------------------------------------------------------------
+
+
+WASHED: dict[str, object] = {
+    "version": 1,
+    "kind": "flow",
+    "nodes": [{"id": "a", "text": "Web server"}, {"id": "b", "text": "Database"}],
+    "edges": [{"from": "a", "to": "b"}],
+    "groups": [
+        {"id": "outer", "text": "Region", "members": ["inner", "b"]},
+        {"id": "inner", "text": "Zone", "members": ["a"]},
+    ],
+}
+
+
+def _frames(theme: Theme) -> list[Rect]:
+    scene = graph_scene(parse_document(WASHED), theme, MEASURER)
+    return [p for p in scene.primitives if isinstance(p, Rect) and p.role == GROUP_ROLE]
+
+
+def test_a_frame_is_washed_with_the_ink_and_nesting_lays_wash_over_wash() -> None:
+    frames = _frames(THEME)
+    assert len(frames) == 2
+    for frame in frames:
+        assert (frame.fill, frame.fill_colour) == ("solid", "currentColor")
+        assert frame.fill_opacity == pytest.approx(THEME.frames.tone)
+    assert 0 < THEME.frames.tone <= 0.1
+
+
+def test_a_frame_deeper_than_the_levels_is_outlined_only() -> None:
+    shallow = replace(THEME, frames=replace(THEME.frames, levels=1))
+    opacities = sorted(frame.fill_opacity for frame in _frames(shallow))
+    assert opacities == [pytest.approx(THEME.frames.tone), 1.0]
+    assert sorted(frame.fill for frame in _frames(shallow)) == ["", "solid"]
+
+
+def test_a_tone_of_zero_draws_outlines_exactly_as_before() -> None:
+    plain = replace(THEME, frames=replace(THEME.frames, tone=0.0))
+    assert all(frame.fill == "" for frame in _frames(plain))
+    assert "fill-opacity" not in render(WASHED, theme=plain)
+
+
+def test_the_wash_is_emitted_as_the_page_s_ink_at_part_opacity() -> None:
+    svg = render(WASHED, theme=THEME)
+    assert f'fill="currentColor" fill-opacity="{THEME.frames.tone:g}"' in svg

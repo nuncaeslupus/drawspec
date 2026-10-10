@@ -22,7 +22,7 @@ from drawspec.errors import DocumentError, FitError, ThemeError
 from drawspec.kinds.graph import GraphDrawing, graph_drawing, graph_scene
 from drawspec.kinds.lanes import Swimlanes, acyclic
 from drawspec.layout import LayoutEdge
-from drawspec.scene import TextLine, TextRun
+from drawspec.scene import Polygon, TextLine, TextRun
 from drawspec.schema import (
     LANES_MAX,
     READABILITY_BUDGET,
@@ -418,3 +418,15 @@ def test_a_refused_document_raises_with_every_violation() -> None:
         "/groups",
         "/nodes/0/actor",
     }
+
+
+def test_every_second_lane_is_striped_with_a_faint_wash_of_the_ink() -> None:
+    document = chain(4, ("Customer", "Shop", "Courier", "Bank"))
+    scene = graph_scene(parse_document(document), THEME, MEASURER)
+    stripes = [p for p in scene.primitives if isinstance(p, Polygon) and p.region]
+    lanes = lanes_of(drawn(document)).lanes
+    assert len(stripes) == len(lanes) // 2
+    for stripe, lane in zip(stripes, lanes[1::2], strict=True):
+        assert stripe.fill_opacity == pytest.approx(THEME.lanes.stripe)
+        assert stripe.fill_colour == "currentColor"
+        assert min(x for x, _ in stripe.points) == pytest.approx(lane.x)
