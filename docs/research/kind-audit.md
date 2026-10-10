@@ -210,3 +210,11 @@ drawn in each quarter's **outer corner** at part opacity of the page ink (a new
 `min`/`max` is **allowed**, not refused: a quadrant draws no numbers either way, and
 `min`/`max` only frame where the scores fall. A quadrant axis got its own schema type,
 so `categories` there — previously accepted and ignored — is now refused.
+
+**Rank 6, `funnel` amounts** — built as proposed: `amount` on stages, top-level `unit`
+and `values` (as `treemap` and `sankey` do units: one per document, no per-stage unit,
+since a funnel counts one thing throughout). The taper stays uniform (owner question 5,
+the audit's recommendation). The count and share are a line under the stage's words,
+`310 people · 7.4% kept`; the share is whole above 10 %, one decimal below. Refused:
+a mix of stages with and without, a rising amount, an amount of zero or less, a `unit`
+with no amounts.

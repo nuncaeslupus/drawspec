@@ -1090,6 +1090,33 @@ operations per entity. See
 [`reference/entities-shapes.json`](reference/entities-shapes.json) and
 [`reference/entities-enrolment.json`](reference/entities-enrolment.json).
 
+## A funnel that says how many
+
+A `funnel`'s stages narrow to an outcome, and the point is what is lost on the way. Give
+every stage an `amount` and it says how much: each stage writes its count under its
+name, and from the second on the share of the stage before that reached it.
+
+```json
+{
+  "version": 1,
+  "kind": "funnel",
+  "unit": "people",
+  "stages": [
+    {"text": "Saw the advert", "amount": 4200},
+    {"text": "Applied", "amount": 310},
+    {"text": "**Started**", "amount": 5}
+  ]
+}
+```
+
+The second stage reads *310 people · 7.4% kept*. The share is derived, never written,
+and the taper stays the funnel's own uniform one: widths in proportion would make it a
+bar chart, and a stage keeping 2 % would be too thin to hold its name. `"values": false`
+leaves the numbers out. Amounts go on every stage or none, never rise from one stage to
+the next (things joining part-way are a `flow` or a `sankey`), and are above zero; a
+`unit` needs amounts to follow. Each is refused at its pointer. See
+[`reference/funnel-applications.json`](reference/funnel-applications.json).
+
 ## Naming a quadrant's quarters
 
 A quadrant's most recognisable part is often the names of its four quarters — *Do

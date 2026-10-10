@@ -12,6 +12,12 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`funnel` stages can carry an `amount`**, with a top-level `unit` and `values`: each
+  stage writes its count under its name and, from the second on, the share kept from
+  the stage before (`310 people · 7.4% kept`), derived rather than written. The taper
+  stays the drawing's uniform one, not to scale. Refused at their pointers: some stages
+  with an amount and some without, an amount above the stage before's, an amount of zero
+  or less, and a `unit` with no amounts. See `reference/funnel-applications.json`.
 - **`quadrant` names its quarters and the ends of its axes.** `quadrants`: exactly four
   names, top right first and then counter-clockwise (Mermaid's order), each written
   faint (the page's ink at part opacity, so dark mode keeps it) in its quarter's outer

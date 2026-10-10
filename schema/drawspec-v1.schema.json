@@ -750,6 +750,14 @@
             "$ref": "#/$defs/stage"
           },
           "minItems": 1
+        },
+        "unit": {
+          "type": "string",
+          "description": "What the stages' amounts count — `visitors`, `applications`, `£k` — written after each one. Only with amounts."
+        },
+        "values": {
+          "type": "boolean",
+          "description": "`false` leaves the amounts and shares out and writes the stage names alone. Defaults to true."
         }
       },
       "required": [
@@ -4726,6 +4734,11 @@
         "note": {
           "type": "string",
           "description": "A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead."
+        },
+        "amount": {
+          "type": "number",
+          "description": "On a `funnel` stage: how many reached it. Written under the name, with the share kept from the stage before; the taper stays the drawing's own, not to scale. Every stage or none, never more than the stage before.",
+          "exclusiveMinimum": 0
         }
       },
       "required": [

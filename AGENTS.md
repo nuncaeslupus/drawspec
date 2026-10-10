@@ -62,7 +62,7 @@ Pick by what the reader must **understand**, not by what it looks like.
 | How much, cell by cell: a heatmap, a risk or skills matrix | `matrix` + `scale` | `cells` whose `group` is a `scale` step, weakest first |
 | Levels where size means quantity or rank | `pyramid` | `levels` |
 | Scopes nested inside scopes | `rings` | `rings` |
-| What is lost between narrowing stages | `funnel` | `stages` |
+| What is lost between narrowing stages | `funnel` | `stages` (+ `amount` on every stage or none, never rising; top-level `unit`: each count and the share kept are written, the taper stays uniform) |
 | A small number you already know | `chart` | `axes` + `series` (`categories` on the vertical axis: horizontal bars, each point `[amount, position]`) |
 | Where items fall against two named judgements | `quadrant` | `axes` (+ `ends`: low and high words) + `positions` (+ 4 `quadrants`, top right first, counter-clockwise) |
 | Where items fall by two measured values | `scatter` | `axes` + `positions` |

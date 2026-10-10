@@ -110,6 +110,8 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | Field | Type | Required | What it is |
 |---|---|---|---|
 | `stages` | array of [stage](#stage-object), at least 1 | **yes** | Widest first: a funnel is a pyramid lying down. |
+| `unit` | string | no | What the stages' amounts count — `visitors`, `applications`, `£k` — written after each one. Only with amounts. |
+| `values` | boolean | no | `false` leaves the amounts and shares out and writes the stage names alone. Defaults to true. |
 
 ### `chart`
 
@@ -952,6 +954,7 @@ name, so a misspelt key is an error at the point it was written.
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 | `gate` | string | no | What stands between this stage and the next — the threshold a thing has to pass to get from one to the other, which is what makes a stage-gate model one. Drawn on the divider, which breaks to let it through. The last stage has no next stage, so it may not carry one. |
 | `note` | string | no | A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead. |
+| `amount` | number, greater than 0 | no | On a `funnel` stage: how many reached it. Written under the name, with the share kept from the stage before; the taper stays the drawing's own, not to scale. Every stage or none, never more than the stage before. |
 
 ### `span` object
 

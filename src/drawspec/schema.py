@@ -2707,6 +2707,16 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
+        FieldSpec(
+            "amount",
+            "number",
+            exclusive_minimum=0,
+            description=(
+                "On a `funnel` stage: how many reached it. Written under the name, with the "
+                "share kept from the stage before; the taper stays the drawing's own, not to "
+                "scale. Every stage or none, never more than the stage before."
+            ),
+        ),
     ),
     "span": (
         _text(),
@@ -3162,6 +3172,22 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             item_ref="stage",
             min_items=1,
             description="Widest first: a funnel is a pyramid lying down.",
+        ),
+        FieldSpec(
+            "unit",
+            "string",
+            description=(
+                "What the stages' amounts count — `visitors`, `applications`, `£k` — written "
+                "after each one. Only with amounts."
+            ),
+        ),
+        FieldSpec(
+            "values",
+            "boolean",
+            description=(
+                "`false` leaves the amounts and shares out and writes the stage names alone. "
+                "Defaults to true."
+            ),
         ),
     ),
     ("chart",): (
@@ -4509,6 +4535,8 @@ class Item:
     at: float | None = None
     gate: str = ""
     """For a `funnel` stage: what separates it from the next one."""
+    amount: float | None = None
+    """For a `funnel` stage: how many reached it, or `None`."""
 
 
 @dataclass(frozen=True)
@@ -5638,6 +5666,7 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return found
     if kind == "funnel":
         stages = document.get("stages")
+        found.extend(_funnel_amount_violations(document))
         if isinstance(stages, list) and stages:
             last = stages[-1]
             if isinstance(last, dict) and last.get("gate"):
@@ -5896,6 +5925,47 @@ def _quadrant_violations(document: Mapping[str, Any]) -> list[Violation]:
                     f"{len(ends)} ends: an axis has two, the low end's word then the high end's.",
                 )
             )
+    return found
+
+
+def _funnel_amount_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Amounts on every stage or on none, each no more than the one before."""
+    found: list[Violation] = []
+    stages = [stage for stage in _listed(document, "stages") if isinstance(stage, dict)]
+    counted = [index for index, stage in enumerate(stages) if "amount" in stage]
+    if counted and len(counted) < len(stages):
+        missing = next(index for index in range(len(stages)) if index not in counted)
+        found.append(
+            Violation(
+                _pointer("stages", missing, "amount"),
+                f"{len(counted)} of the {len(stages)} stages have an amount and this one has "
+                f"none, so the share kept here could not be said. Give every stage its "
+                f"amount, or none.",
+            )
+        )
+    if "unit" in document and not counted:
+        found.append(
+            Violation(
+                "/unit",
+                "a unit with no amounts names nothing: no stage has an `amount` to write "
+                "it after. Drop it, or give the stages their amounts.",
+            )
+        )
+    previous: float | None = None
+    for index, stage in enumerate(stages):
+        if not _is_number(stage.get("amount")):
+            continue
+        amount = float(stage["amount"])
+        if previous is not None and amount > previous:
+            found.append(
+                Violation(
+                    _pointer("stages", index, "amount"),
+                    f"{_figure(amount)} reached this stage, more than the {_figure(previous)} "
+                    f"at the one before. A funnel only narrows: if things join part-way, "
+                    f"draw it as a `flow` or a `sankey`.",
+                )
+            )
+        previous = amount
     return found
 
 
@@ -9931,6 +10001,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         items=_items(document.get("items", ())),
         levels=_items(document.get("levels", ())),
         stages=_items(document.get("stages", ())),
+        unit=str(document.get("unit", "")),
         rings=_items(document.get("rings", ())),
         cells=tuple(
             Cell(
@@ -10733,6 +10804,7 @@ def _items(entries: Sequence[Mapping[str, Any]]) -> tuple[Item, ...]:
             note=entry.get("note", ""),
             at=None if entry.get("at") is None else float(entry["at"]),
             gate=entry.get("gate", ""),
+            amount=None if entry.get("amount") is None else float(entry["amount"]),
         )
         for entry in entries
     )
