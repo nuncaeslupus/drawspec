@@ -12,6 +12,58 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`clock`, the thirty-sixth kind** — analogue clock faces showing a time, for teaching
+  it: 1–12 `clocks`, up to four to a row, each a `time` (`H:MM` or `HH:MM`, 0:00 to
+  23:59; leave it out for a face with no hands, to draw on), an optional `text` under it,
+  and an optional `since`, an earlier time whose passing is shaded round the face (the
+  minute hand's sweep up to an hour, the hour hand's beyond) and said in the readout.
+  The hour hand moves on with the minutes. `numerals` (`arabic`, `roman`, `quarters`,
+  `none`) and `readout` (`words`, `digits`, `both`, `none` for a worksheet) are the
+  sheet's. Refused at their pointers: seconds, `am`/`pm` (the 24-hour clock instead), a
+  date, any other spelling of a time, a `since` with no time or 12 hours or more before
+  it, `seconds`, `hands`, `hour`, `minute`, `angle`, `label`, `numerals` or `readout` on
+  a face, `edges`. Budget: 12 faces. `docs/proposals/clock.md` records the design, and
+  section 12 of `docs/research/corpus-round2.md` the originals.
+- **`rag`, the thirty-fifth kind** — a RAG status report: 1–15 `rows`, each a `text` (a
+  newline adds a caption: an owner), a `rag` of `red`, `amber` or `green`, and optionally
+  a `trend` (`better`, `same`, `worse`) and a `note`, ruled apart with every column lined
+  up. A rating is never told by colour alone: the new theme table `[rag]` gives each a
+  word and a shape (square, triangle, circle by default; the loader refuses repeats) and,
+  optionally, a colour, which `accent` sets. A trend is an arrow with its word beside it,
+  because an arrow up means *improving* in one report and *risk rising* in another. The
+  field is `rag` because `status` already marks a change on `flow` and `tree`. Refused at
+  their pointers: any other rating (`amber/green`, `blue`), a trend of `up`/`down`,
+  `status`, `colour`, `score`, `likelihood`, `impact`, `owner`, `commentary`, `columns`,
+  `edges`. Budget: 15 rows. `docs/proposals/rag.md` records the design, and section 11 of
+  `docs/research/corpus-round2.md` the originals.
+- **`meter`, the thirty-fourth kind** — one amount against its scale, alone or up to
+  six to a panel, in one `style` per document: `bar` (a progress bar; the default),
+  `thermometer` (a goal filling up), `dial` (a needle on a half-circle, the only style
+  that takes a `min`) or `bullet` (a thin bar on named bands with ticks from zero). Each
+  meter is `text` (a newline adds a caption), `amount`, `max`, and optionally `unit`
+  (`%`, a currency sign before the number, or a word after it), a `target` drawn
+  across the track, and 2–5 named `bands` (`{text, to}`, rising to `max`; required on a
+  bullet, optional on a dial) in ramp tones with their words on them, never colour
+  alone. A readout says every number: the amount, the band it is in, the target.
+  Refused at their pointers: a reading or target off the scale, `min` off a dial, bands
+  on a bar (a `bullet`) or a thermometer, a bullet without them, bands that do not rise
+  to `max`, `style` on a meter, `value`, `goal`, `percent`, a band's `from`. Budget: 6
+  meters, 5 bands. `docs/proposals/meter.md` records the design, and section 10 of
+  `docs/research/corpus-round2.md` the originals.
+- **`familytree`, the thirty-third kind** — a family tree, or a pedigree in genetics
+  and medicine: `people` and the `couples` they form, each couple's `children` in
+  birth order. Generations are rows (I, II, III) and people are numbered left to right
+  in each (II-3), all derived. The standard's symbols: `sex` picks square, circle or
+  diamond (`gender`, per the 2022 revision, picks it instead, with `AMAB`/`AFAB`
+  under it when they differ); `status` affected (filled) or carrier (the new theme
+  key `[familytree] carrier`: `dot` or `half`), keyed under the drawing; `deceased`,
+  `proband`, `consultand`, `adopted`, `pregnancy` (`ongoing`, `loss`). Couples may be
+  `consanguineous` or `separated` and have `twins` (`monozygotic`, `dizygotic`,
+  `unknown`). Up to 6 partners each, the later ones over the row on levels of their
+  own so no lines cross; 30 people, 4 generations. Refused at their pointers: a child
+  of two couples, a cycle, partners in different rows, a person in no couple, two
+  unrelated families, an ancestor-only chart (a `tree`), `generation` and `number`.
+  `docs/proposals/familytree.md` (was `pedigree.md`) records the design.
 - **`argument`, the thirty-second kind** — an argument map: a `claim` at the top and
   up to 15 `points`, each `on` the box it bears on, `for` or `against` it (a rebuttal
   is an `against` on an `against`; no third stance), down to four levels. Stance is

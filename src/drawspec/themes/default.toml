@@ -218,6 +218,27 @@ for_tag = "because"
 against_tag = "but"
 against_fill = "hatch"
 
+[familytree]
+# How a family tree marks a carrier. `dot` is the standard nomenclature's (a dot
+# in the middle of the symbol); `half` fills its left half, as exam pedigrees do.
+carrier = "dot"
+
+[rag]
+# How a RAG report draws a rating: its word and its shape, both always, so a
+# greyscale print or a reader who cannot tell red from green loses nothing. The
+# three words differ and so do the three shapes; a colour is added only when a
+# theme names one (`red_colour`, …), which this one does not: marks are drawn in
+# the page's ink. A trend's arrow (up, across, down) carries its word too.
+red = "Red"
+amber = "Amber"
+green = "Green"
+red_shape = "square"
+amber_shape = "triangle"
+green_shape = "circle"
+better = "improving"
+same = "no change"
+worse = "worsening"
+
 # ---------------------------------------------------------------------------
 # Node roles. Shape and line treatment per semantic role. The author names the
 # role; every appearance decision below is taken here, once, for all diagrams.

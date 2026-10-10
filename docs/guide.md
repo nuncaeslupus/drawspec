@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Thirty-two exist, and they fall into twenty-one families:
+fields are legal. Thirty-four exist, and they fall into twenty-three families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -170,6 +170,10 @@ fields are legal. Thirty-two exist, and they fall into twenty-one families:
 | Bridge | `waterfall` | How one total became another: a start total, signed steps floating on the running sum, checked subtotals, an end total — the bridge chart. |
 | Scale | `numberline` | Where values sit on one scale: points and ranges, each end in or out — an inequality, the pH scale, a spectrum. |
 | Topic | `mindmap` | Things round one topic, as peers: a centre and its branches nested three levels deep, on both sides — revision notes, a brainstorm, a plan (a mind map). |
+| Family | `familytree` | Who is whose child and partner: people, couples and their children a generation to a row, in the standard symbols — a family tree, or a pedigree in genetics. |
+| Gauge | `meter` | How far one amount is along its scale: a progress bar, a fundraising thermometer, a dial with named bands, a bullet graph — alone or a few to a panel. |
+| Status | `rag` | Things rated red, amber or green: workstreams or risks a row each, the rating a word and a shape (a colour only by the theme), a trend in words and a note — a highlight report, a risk register. |
+| Time | `clock` | A time of day on an analogue face, for teaching it: two hands placed by the time, the numerals the lesson uses, the time in words under it, how long since an earlier time shaded round the face. |
 | Reasoning | `argument` | Things said for and against a claim: reasons, objections, rebuttals and evidence by stance, co-premises under one bracket (an argument map). |
 
 One worked document per kind lives in [`reference/`](reference), and `make
@@ -1860,6 +1864,242 @@ reason. See [`reference/argument-contract.json`](reference/argument-contract.jso
 [`reference/argument-congestion.json`](reference/argument-congestion.json) (with
 evidence), [`reference/argument-readmissions.json`](reference/argument-readmissions.json)
 and [`reference/argument-homework.json`](reference/argument-homework.json).
+
+## A family tree, or a pedigree
+
+A biology lesson on inheritance, a genetics clinic's letter and a history lesson on a
+dynasty draw the same figure: people, who partnered whom, and the children of each
+couple, a generation to a row. Genetics and medicine call it a **pedigree**; everyone
+else a family tree. A `tree` cannot draw it — a child there has one parent, and a
+partner who married in has none — so it is `familytree`:
+
+```json
+{
+  "version": 1,
+  "kind": "familytree",
+  "title": "A recessive condition skips a generation",
+  "people": [
+    {"id": "gf", "sex": "male"},
+    {"id": "gm", "sex": "female", "status": "carrier"},
+    {"id": "dad", "sex": "male", "status": "carrier"},
+    {"id": "aunt", "sex": "female"},
+    {"id": "mum", "sex": "female", "status": "carrier"},
+    {"id": "c1", "sex": "female"},
+    {"id": "c2", "sex": "male", "status": "affected", "proband": true}
+  ],
+  "couples": [
+    {"between": ["gf", "gm"], "children": ["dad", "aunt"]},
+    {"between": ["dad", "mum"], "children": ["c1", "c2"]}
+  ]
+}
+```
+
+Every person has an `id` and a `sex`, which is the symbol: a square (`male`), a circle
+(`female`) or a diamond (`unknown`). Each couple names its two partners in `between`
+and its `children` in birth order. **Nothing else places anyone**: a child is one row
+below its parents, a partner who married in takes their partner's row, the rows are
+numbered I, II, III at the left and people 1, 2, 3 left to right in each, under the
+symbol — so "II-3" in a letter is a number drawspec keeps right when someone is
+added. `generation` and `number` are refused by name. `text` goes under the number:
+a name, an age, a test result.
+
+**The standard's marks.** `status` is the one trait the tree tracks: `affected` fills
+the symbol, `carrier` draws the theme's carrier mark (`[familytree] carrier`: a dot in
+the middle, the standard's, or `half`, the exam pedigree's half-shaded symbol), and a
+key under the drawing names the ones used — no colour, so greyscale holds. `deceased`
+strokes through the symbol; `proband` (one per tree) is an arrow at the lower left with
+a `P`, `consultand` the arrow alone; `adopted` puts brackets round the symbol and a
+dashed line down to it, from the couple that raised them; `pregnancy: ongoing` writes
+a `P` in it, and `pregnancy: loss` draws a small triangle instead. Under the 2022
+revision of the standard the symbol shows **gender**: write `gender` (`man`, `woman`,
+`nonbinary`) and the shape follows it, with the sex assigned at birth noted under it
+(`AMAB`, `AFAB`) when the two differ.
+
+**Couples.** A couple's line joins the two partners; `consanguineous` doubles it and
+`separated` puts two strokes across it. Children hang from a sibship line under it;
+`twins` (`of` two or three children written together, `zygosity` `monozygotic`,
+`dizygotic` or `unknown`) leave it from one point. A person's couples are their
+partners in marriage order, at most six: two sit one on each side, and past two the
+first is on the left and the rest on the right, the line to each later one running
+over the row on its own level, so none cross.
+
+Refused, each at its pointer: an id that names no one; a couple that is not two
+different people, or a pair written twice; a child of two couples (an adopted child is
+listed once, `adopted`, in the couple that raised them); someone their own ancestor;
+partners whose descent puts them in different rows; a person in no couple, or a second
+family with no couple joining it; past 6 partners, 4 generations or 30 people; past two
+partners, a later one with parents in the tree; two partners who both have other
+partners; twins not written together; a second proband; a pregnancy with partners. **An
+ancestor chart** — one person, their two parents, four grandparents, every couple with
+one child — is a genealogist's *pedigree chart* and a binary tree: it is refused with a
+pointer to `tree`. See [`reference/familytree-cousins.json`](reference/familytree-cousins.json)
+(an exam pedigree, four generations, a consanguineous couple),
+[`reference/familytree-clinic.json`](reference/familytree-clinic.json) (a clinic letter),
+[`reference/familytree-tudors.json`](reference/familytree-tudors.json) (six marriages)
+and [`reference/familytree-reunion.json`](reference/familytree-reunion.json) (remarriage,
+twins, adoption, gender).
+
+## A meter: progress bar, thermometer, dial, bullet
+
+Some figures say one thing: *this much, out of that*. A parish's roof appeal draws a
+thermometer filling toward its goal; a delivery plan draws a progress bar per project; a
+roadside fire sign is a half-circle of named bands with a needle on today's; a dashboard
+draws a bullet graph, a bar on bands of grey with a target tick across it. That is
+`meter`:
+
+```json
+{
+  "version": 1,
+  "kind": "meter",
+  "style": "thermometer",
+  "title": "The chapel roof appeal",
+  "meters": [
+    {"text": "Chapel roof appeal", "amount": 41250, "max": 60000, "target": 45000, "unit": "£"}
+  ]
+}
+```
+
+Each of the 1 to 6 `meters` is an `amount` read against its own scale, which ends at
+`max`. `style` is set once for the whole document — `bar` (the default), `thermometer`,
+`dial` or `bullet` — because a panel compares like with like: lengths with lengths,
+needles with needles. A document wanting two styles is two documents.
+
+* **`bar`**: a progress bar. One row per meter, names in a column at the left, the
+  tracks lined up, the readouts in a column at the right.
+* **`thermometer`**: a tube on a bulb, filled from zero toward the goal (`max`), its
+  scale ticked at the left. Several stand side by side.
+* **`dial`**: a needle on a half-circle from `min` (the only style that takes one; 0 by
+  default) at the left to `max` at the right, up to three to a row. A needle reads a
+  position, so a dial may start anywhere; a bar's length is its amount, so the others
+  start at zero.
+* **`bullet`**: a thin bar on named bands, with ticks from zero under it — Few's bullet
+  graph, the honest replacement for a dial.
+
+`target` is a mark on the scale — the plan for now, a stage of an appeal — drawn as a
+short heavy stroke across the track. `bands` are 2 to 5 named stretches of the scale,
+each `{"text", "to"}`, running from the end of the band before (or `min`) and rising to
+`max`; required on a `bullet`, optional on a `dial`, refused on the others. **A band is
+never told by colour alone**: it is drawn in a tone of the page's ink, lightest first,
+and its word is written on it. If the reader is taught red, amber and green, write
+`Red`, `Amber`, `Green` — the words carry it, and the theme decides the tones.
+
+Every number is said in words in the meter's **readout**: the amount in bold — *of*
+`max` on a bar and a thermometer (`23 of 30 sessions`, `£41,250 of £60,000`; just `64%`
+for a percentage of 100) — then the band the amount is in, then the target. `unit` is
+`%`, a currency sign written before the number (`£`, `$`, `€`, `¥`) or a word written
+after it. A newline in a meter's `text` makes the rest a caption under its name: what
+the reading is *of*. `role: "emphasis"` makes one meter's name and readout bold.
+
+Refused, each at its pointer: an `amount` or `target` outside the scale; `max` not above
+`min`; `min` on a bar, a bullet or a thermometer; `bands` on a bar (that is a `bullet`)
+or a thermometer; a bullet without them; bands that do not rise, or whose last `to` is
+not `max`; one band; `style` on a meter (it is the document's); `value` (it is
+`amount`), `goal` (`max`, or a `target` under it), `percent`, a band's `from`, `colour`;
+`series`, `axes`, `edges`. Budget: 6 meters, 5 bands. A band's word longer than its
+band on a bullet, or band words that run into each other round a dial, are a
+`FitError`. See [`reference/meter-appeal.json`](reference/meter-appeal.json) (a
+fundraising thermometer with a stage target),
+[`reference/meter-migration.json`](reference/meter-migration.json) (a project progress
+panel), [`reference/meter-ward.json`](reference/meter-ward.json) (KPI dials, one rated
+red, amber or green in words) and
+[`reference/meter-library.json`](reference/meter-library.json) (a bullet-graph set).
+
+## A RAG status report: highlight reports and risk registers
+
+A programme board's highlight report, a council's risk register and a trust's board
+assurance framework print the same figure: a list of workstreams or risks, each rated
+red, amber or green, often with a direction of travel since the last report and a
+sentence saying why. In most of them the colour is the only thing that says the rating,
+so a greyscale print loses the page's whole point. That is `rag`:
+
+```json
+{
+  "version": 1,
+  "kind": "rag",
+  "title": "Library refit: highlight report, period 7",
+  "rows": [
+    {"text": "Building works\nLead: estates", "rag": "amber", "trend": "worse",
+     "note": "The asbestos survey added two weeks."},
+    {"text": "Staff training", "rag": "red", "trend": "same",
+     "note": "**Decision needed:** approve the trainer's quote."}
+  ]
+}
+```
+
+Each of the 1 to 15 `rows` is a `text` (a newline adds a caption under it: an owner, a
+reference), a `rag` of `red`, `amber` or `green`, and optionally a `trend` and a `note`.
+The rows are drawn in the order written, ruled apart, every column lined up: the name in
+bold, the mark, the trend, and the note wrapped in the rest of the width. A report with
+no notes is centred.
+
+**A rating is never told by colour alone.** The theme's `[rag]` table gives each rating
+a word (`Red`, `Amber`, `Green`; a house that says *On track* sets it there) and a shape
+(a square, a triangle and a circle by default); the loader refuses a theme whose three
+words or three shapes repeat. A colour is added only when a theme declares one — the
+default theme draws the marks in the page's ink, and `accent` colours them.
+
+`trend` is `better`, `same` or `worse`, not a direction: an arrow up means *improving* in
+one report and *the risk rose* in another. The arrow points up, across or down, and the
+theme's word for it (`improving`, `no change`, `worsening`) is written beside it.
+
+Why `rag` and not `status`: on `flow` and `tree`, `status` already marks a change as
+`added`, `changed` or `removed`.
+
+Refused, each at its pointer: a rating other than the three (`amber/green`: pick one and
+say why in the note; `blue`: a finished workstream is `green`, *Complete*); a trend of
+`up`, `down` or `improving`; `status`, `colour`, `score`, `likelihood`, `impact`
+(a scored risk grid is a `matrix` with a `scale`), `owner` (a caption), `commentary` (a
+`note`); `columns` (one rating per row: cost, time and scope rated apart are a table);
+`edges`. Budget: 15 rows. See [`reference/rag-refit.json`](reference/rag-refit.json) (a
+highlight report), [`reference/rag-register.json`](reference/rag-register.json) (a risk
+register), [`reference/rag-confidence.json`](reference/rag-confidence.json) (delivery
+confidence, in the accent theme) and [`reference/rag-school.json`](reference/rag-school.json)
+(a school's priorities, no notes).
+
+## A clock face: teaching the time
+
+Every primary maths scheme teaches the analogue clock — o'clock and half past, then
+quarter past and quarter to, five-minute times, the nearest minute, Roman numerals and
+the 24-hour clock — and every lesson and worksheet draws the same face. That is `clock`:
+
+```json
+{
+  "version": 1,
+  "kind": "clock",
+  "title": "Quarter past and quarter to",
+  "clocks": [{"time": "3:15"}, {"time": "3:45"}]
+}
+```
+
+Each of the 1 to 12 `clocks` is a `time`, `H:MM` or `HH:MM` from `0:00` to `23:59`, and
+optionally a `text` under the face (a name, or a prompt). Faces sit up to four to a row,
+the rows kept even. The hands are placed by the time and told apart by shape — the hour
+hand short and broad, the minute hand long and narrow — and **the hour hand moves on with
+the minutes**: at half past seven it is halfway from the 7 to the 8, the point every
+lesson makes. A face with no `time` has no hands: one for the pupil to draw on.
+
+`numerals` is the sheet's: `arabic` (the default), `roman` (I to XII, with IV as taught),
+`quarters` (12, 3, 6 and 9 only) or `none`. `readout` says what is written under each
+face: `words` (the default: *quarter past three*, *twenty-two minutes to twelve*),
+`digits` (the time as written, so `15:15` stays on the 24-hour clock), `both`, or `none`
+for a worksheet whose answers are the pupil's.
+
+`since` is an earlier time, less than 12 hours before: the face shades what has passed —
+the minute hand's sweep when it is an hour or less, the hour hand's, nearer the hub,
+when it is more, with a dashed line where the hand started — and the readout adds *40
+minutes after 2:35*. Two or three faces in a row, each `since` the one before, is an
+elapsed-time question.
+
+Refused, each at its pointer: a time with seconds (no teaching face has a seconds hand to
+read); `am`/`pm` (write the 24-hour time: `15:15`); a date; any other spelling (`9.30`,
+`9:5`, `24:00`); `since` with no `time`, equal to it, or 12 hours or more before;
+`seconds`, `date`, `hands`, `hour`, `minute`, `angle`, `label` (the `text`), `numerals` or
+`readout` on a face (they are the sheet's); `edges`. Budget: 12 faces. A face too small
+for its numerals is a `FitError`. See [`reference/clock-quarters.json`](reference/clock-quarters.json)
+(o'clock to quarter to), [`reference/clock-worksheet.json`](reference/clock-worksheet.json)
+(read and draw, answers hidden), [`reference/clock-roman.json`](reference/clock-roman.json)
+(Roman numerals to the minute, in words and digits) and
+[`reference/clock-journey.json`](reference/clock-journey.json) (how long between times).
 
 ## Asking for a wide drawing instead of a tall one
 

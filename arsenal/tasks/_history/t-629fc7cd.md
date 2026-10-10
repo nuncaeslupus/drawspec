@@ -1,8 +1,9 @@
 ---
-id: t-875d4d3f
-title: "RAG status marks (traffic light) with words, on lists and existing kinds"
+id: t-629fc7cd
+title: "Clock face kind for teaching time"
 priority: 5
 tags: [kinds]
+status: done
 ---
 
 ## Goal
@@ -11,5 +12,5 @@ Collect at least two real public examples first (append to docs/research/corpus-
 ## Acceptance gate
 
 ```bash
-uv run pytest -q tests/test_status*.py
+uv run pytest -q tests/test_clock*.py
 ```

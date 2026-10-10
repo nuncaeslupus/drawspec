@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "kind": "familytree",
+  "title": "Family history for a referral: an X-linked condition",
+  "description": "A genetics clinic letter's pedigree: both sides of the family, the condition passed through the maternal line, a pregnancy under way and the mother asking about testing.",
+  "caption": "The mother (II-3) is an obligate carrier: her brother and her son are affected. Her sister has not been tested.",
+  "people": [
+    {"id": "pgf", "sex": "male", "deceased": true, "text": "d. 79"},
+    {"id": "pgm", "sex": "female", "text": "82"},
+    {"id": "mgf", "sex": "male", "status": "affected", "deceased": true, "text": "d. 51"},
+    {"id": "mgm", "sex": "female", "status": "carrier", "text": "76"},
+    {"id": "uncle", "sex": "male", "text": "54"},
+    {"id": "father", "sex": "male", "text": "45"},
+    {"id": "mother", "sex": "female", "status": "carrier", "consultand": true, "text": "41"},
+    {"id": "maunt", "sex": "female", "text": "44, untested"},
+    {"id": "auntman", "sex": "male", "text": "46"},
+    {"id": "muncle", "sex": "male", "status": "affected", "deceased": true, "text": "d. 19"},
+    {"id": "loss", "sex": "unknown", "pregnancy": "loss", "text": "10 wk"},
+    {"id": "patient", "sex": "male", "status": "affected", "proband": true, "text": "8, referred"},
+    {"id": "sister", "sex": "female", "text": "5, untested"},
+    {"id": "preg", "sex": "unknown", "pregnancy": "ongoing", "text": "16 wk"},
+    {"id": "tw1", "sex": "male", "text": "12"},
+    {"id": "tw2", "sex": "female", "text": "12"}
+  ],
+  "couples": [
+    {"between": ["pgf", "pgm"], "children": ["uncle", "father"]},
+    {"between": ["mgf", "mgm"], "children": ["mother", "maunt", "muncle"]},
+    {"between": ["father", "mother"], "children": ["loss", "patient", "sister", "preg"]},
+    {"between": ["maunt", "auntman"], "children": ["tw1", "tw2"], "twins": [{"of": ["tw1", "tw2"], "zygosity": "dizygotic"}]}
+  ]
+}

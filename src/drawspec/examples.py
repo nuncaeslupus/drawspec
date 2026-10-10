@@ -60,6 +60,10 @@ PURPOSE: Final[Mapping[str, str]] = {
     "waterfall": "from one total to another, step by step, subtotals checked — the bridge chart",
     "mindmap": "a topic in the middle, its branches as peers round it — revision notes, a plan",
     "argument": "a claim, the reasons for it and the objections, by stance — an argument map",
+    "familytree": "people, couples and their children by generation — a family tree or pedigree",
+    "meter": "one amount against its scale — a progress bar, a thermometer, a dial, a bullet",
+    "rag": "workstreams or risks rated red, amber or green, in words and shapes — a status report",
+    "clock": "analogue clock faces showing a time, for teaching it — quarter past, half past",
 }
 
 #: The smallest document of each kind that renders.
@@ -353,6 +357,31 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"id": "fit", "on": "claim", "stance": "for", "text": "It keeps me fit"},
             {"id": "rain", "on": "claim", "stance": "against", "text": "It often rains"},
         ],
+    },
+    "familytree": {
+        "version": 1,
+        "kind": "familytree",
+        "people": [
+            {"id": "mum", "sex": "female"},
+            {"id": "dad", "sex": "male"},
+            {"id": "kid", "sex": "unknown"},
+        ],
+        "couples": [{"between": ["mum", "dad"], "children": ["kid"]}],
+    },
+    "meter": {
+        "version": 1,
+        "kind": "meter",
+        "meters": [{"text": "Chapters drafted", "amount": 7, "max": 12, "unit": "chapters"}],
+    },
+    "clock": {
+        "version": 1,
+        "kind": "clock",
+        "clocks": [{"time": "3:15"}],
+    },
+    "rag": {
+        "version": 1,
+        "kind": "rag",
+        "rows": [{"text": "Data migration", "rag": "amber", "trend": "worse"}],
     },
     "scatter": {
         "version": 1,

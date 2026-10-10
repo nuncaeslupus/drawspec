@@ -1,6 +1,9 @@
-# Proposal: `pedigree`: people, couples and their children, generation by generation
+# Proposal: `familytree`: people, couples and their children, generation by generation
 
-Status: **proposed, not built**. It comes from `docs/research/kinds-survey.md` (rank 5).
+Status: **built** (see *As built* at the end). Proposed as `pedigree`; the owner named
+the kind `familytree`, the most-used term in the round-2 corpus (F1–F4). **Pedigree**,
+the only name in genetics and medicine, is recorded in the docs as the clinical name for
+the same kind. It comes from `docs/research/kinds-survey.md` (rank 5).
 Size **L**: a new layout family. Generations are ranks, but a child hangs from a
 *couple*, not from a person, and partners must share a row. The layered ranker
 cannot express either.
@@ -33,7 +36,7 @@ the layout assigns. An author who numbers by hand gets it wrong when someone is 
 ```json
 {
   "version": 1,
-  "kind": "pedigree",
+  "kind": "familytree",
   "title": "A recessive condition skips a generation",
   "people": [
     {"id": "gf", "sex": "male"},
@@ -60,7 +63,7 @@ key under the drawing lists only the statuses used: affected, carrier, unaffecte
 ```json
 {
   "version": 1,
-  "kind": "pedigree",
+  "kind": "familytree",
   "title": "Family history, maternal side",
   "people": [
     {"id": "mgf", "sex": "male", "status": "affected", "deceased": true, "text": "d. 61"},
@@ -87,7 +90,7 @@ so `text` is an aside: an age, a test result.
 ```json
 {
   "version": 1,
-  "kind": "pedigree",
+  "kind": "familytree",
   "title": "Henry VIII's heirs, by marriage",
   "people": [
     {"id": "h7", "sex": "male", "text": "Henry VII"},
@@ -171,3 +174,71 @@ two `emphasis`, as everywhere.
 * Every refusal above, at its pointer, including the derived-number fields refused by
   name.
 * Greyscale: affected, carrier and unaffected are told apart without colour.
+
+## As built
+
+Checked against the round-2 corpus (F1–F7). Clinical and exam pedigrees (F5, F7) fit as
+proposed; history trees (F1, F2) needed many partners and half-siblings; the
+genealogist's ancestor chart (F3) is a different figure. What changed or was decided:
+
+* **Named `familytree`** (the owner's decision, from the corpus count); *pedigree* is
+  the alias in `AGENTS.md`, the guide and the reference.
+* **`sex` stays, and `gender` is added, minimally** (F6, the 2022 revision of the
+  standard). Without `gender` the symbol is `sex`'s square, circle or diamond, as the
+  proposal had it. With `gender` (`man`, `woman`, `nonbinary`) the symbol shows the
+  gender, as the 2022 standard draws it, and the sex assigned at birth is written under
+  it (`AMAB`, `AFAB`) only when the two differ. One optional field: an author who
+  writes neither gets the 2008 figure, and the 2022 one costs a single word. No
+  `UAAB`, no intersex annotations: no original asked for them.
+* **Partners: 6, not 3** (F1, Henry VIII). Two partners sit one on each side; with
+  more, the first is on the left and the rest on the right in marriage order. The
+  line to each partner past the second runs over the row on a level of its own, the
+  farthest highest, leaving the person's top right of centre, and its descent drops
+  through the gap just before that partner: so no line crosses another (left-alternating
+  would cross from the third on). Two limits follow and are refused with the reason:
+  past two partners, only the first may have parents in the tree (a drop from above
+  into a later partner would cross the lines over the row); and two people who both
+  have other partners cannot be partners of each other (a row draws one person's
+  partners beside them).
+* **People: 30, not 20; generations: 4** (F4's royal tree has about thirty in four).
+  Budget `people` 30; generations and partners are checked with the couples.
+* **Added, from F5:** `twins` on a couple (`of` 2–3 children written together,
+  `zygosity` `monozygotic` — a bar between the lines — `dizygotic` or `unknown`, a `?`),
+  `consultand` (the arrow without the `P`; the proband is one per tree),
+  `pregnancy: ongoing` (a `P` in the symbol) and `pregnancy: loss` (a small triangle,
+  shaded when affected). A loss is a field of its own rather than a `status`, because
+  a loss can itself be affected. Both are children only. **Adoption** (`adopted`) is
+  in: brackets round the symbol and a dashed drop from the couple that raised them,
+  which is also the answer to "a child in two couples", still refused, now with that
+  pointer.
+* **The ancestor-only chart (F3) is refused**, at `/couples`, pointing to `tree`: three
+  or more generations in which every couple has one child and some couple's partners
+  both have parents. It is a binary tree of one person's forebears.
+* **The carrier mark is the theme's** — `[familytree] carrier`, `dot` by default (the
+  standard's) or `half` (the exam pedigree's half-shaded heterozygote).
+* **The key** lists the statuses when any is used: affected, carrier when used,
+  unaffected. Shapes and marks (deceased, proband) are the standard's and not keyed.
+* **`emphasis` only**, no `note` role: a person drawn faint has no meaning in the
+  standard. `emphasis` draws a heavier symbol and a bold name.
+* **Placement.** Households (a person and their partners) are ordered by the
+  barycentre of their parents above and children below, sibships kept in birth order,
+  a sibling partnered into another family moved to that side; a married-in partner of
+  a first-born goes on the outside. Positions are then relaxed person by person, so a
+  partner line may lengthen to let each couple's children sit under it; no gap ever
+  closes. Overlapping sibship lines take lanes of their own. The sweeps start from
+  four orders (as written; families with no parents here first; last; reversed) and
+  the drawing with fewest crossing lines wins. The references, and every tree where
+  one family marries into another, draw with none; a random stress set of trees where
+  several families marry in from both sides still drew one crossing in about one in
+  ten. Not refused: it is a heuristic's limit, not a meaning the kind cannot hold.
+* **Refused at their pointers**, beyond the proposal's: a person in no couple; two
+  families with no couple between them; a second proband; a pregnancy with partners;
+  `deceased` on a loss; a shaded ongoing pregnancy; twins not written together or not
+  this couple's children; `generation`, `number`, `parents`, `partner(s)`, `spouse`,
+  `children` on a person, `edges`, `nodes` and `groups`, each with what to write.
+
+References: `familytree-cousins` (an exam pedigree: a recessive trait and a
+consanguineous couple, four generations), `familytree-clinic` (a clinic letter: both
+sides, consultand, proband, a loss, a pregnancy, twins), `familytree-tudors` (six
+marriages and three heirs), `familytree-reunion` (two marriages, identical twins, an
+adoption, a nonbinary grandchild).

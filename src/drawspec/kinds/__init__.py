@@ -12,18 +12,22 @@ from drawspec.errors import DrawspecError
 from drawspec.kinds.argument import argument_scene
 from drawspec.kinds.barmodel import barmodel_scene
 from drawspec.kinds.board import board_scene
+from drawspec.kinds.clock import clock_scene
 from drawspec.kinds.common import box_primitives, captioned, outline, text_runs
 from drawspec.kinds.cycle import cycle_scene
 from drawspec.kinds.entities import entities_scene
+from drawspec.kinds.familytree import familytree_scene
 from drawspec.kinds.files import files_scene
 from drawspec.kinds.fishbone import fishbone_scene
 from drawspec.kinds.gantt import gantt_scene
 from drawspec.kinds.graph import DRAWN_KINDS, graph_scene
 from drawspec.kinds.grid import grid_scene
 from drawspec.kinds.journey import journey_scene
+from drawspec.kinds.meter import meter_scene
 from drawspec.kinds.mindmap import mindmap_scene
 from drawspec.kinds.numberline import numberline_scene
 from drawspec.kinds.pie import pie_scene
+from drawspec.kinds.rag import rag_scene
 from drawspec.kinds.sankey import sankey_scene
 from drawspec.kinds.sequence import sequence_scene
 from drawspec.kinds.shape import shape_scene
@@ -36,15 +40,19 @@ from drawspec.schema import (
     BARMODEL_KINDS,
     BOARD_KINDS,
     CHART_KINDS,
+    CLOCK_KINDS,
     ENTITIES_KINDS,
+    FAMILYTREE_KINDS,
     FILES_KINDS,
     FISHBONE_KINDS,
     GANTT_KINDS,
     GRID_KINDS,
     JOURNEY_KINDS,
+    METER_KINDS,
     MINDMAP_KINDS,
     NUMBERLINE_KINDS,
     PIE_KINDS,
+    RAG_KINDS,
     SANKEY_KINDS,
     SEQUENCE_KINDS,
     SHAPE_KINDS,
@@ -80,6 +88,10 @@ IMPLEMENTED: tuple[str, ...] = (
     *PIE_KINDS,
     *MINDMAP_KINDS,
     *ARGUMENT_KINDS,
+    *FAMILYTREE_KINDS,
+    *METER_KINDS,
+    *RAG_KINDS,
+    *CLOCK_KINDS,
     "cycle",
 )
 
@@ -139,6 +151,14 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return mindmap_scene(document, theme, measurer)
     if document.kind in ARGUMENT_KINDS:
         return argument_scene(document, theme, measurer)
+    if document.kind in FAMILYTREE_KINDS:
+        return familytree_scene(document, theme, measurer)
+    if document.kind in METER_KINDS:
+        return meter_scene(document, theme, measurer)
+    if document.kind in RAG_KINDS:
+        return rag_scene(document, theme, measurer)
+    if document.kind in CLOCK_KINDS:
+        return clock_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -157,17 +177,21 @@ __all__ = [
     "board_scene",
     "box_primitives",
     "captioned",
+    "clock_scene",
     "cycle_scene",
     "entities_scene",
+    "familytree_scene",
     "files_scene",
     "fishbone_scene",
     "gantt_scene",
     "graph_scene",
     "journey_scene",
+    "meter_scene",
     "mindmap_scene",
     "numberline_scene",
     "outline",
     "pie_scene",
+    "rag_scene",
     "sankey_scene",
     "scene_for",
     "sequence_scene",

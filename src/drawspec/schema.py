@@ -452,6 +452,104 @@ ARGUMENT_POINT_MAX: Final = 15
 ARGUMENT_DEPTH_MAX: Final = 4
 ARGUMENT_GROUP_MAX: Final = 4
 
+#: Family trees (pedigrees, in genetics and medicine): people, the couples they
+#: form and the children of each couple, a generation to a row. A layout family
+#: of its own: a child hangs from a couple, not a person, and partners share a row.
+FAMILYTREE_KINDS: Final = ("familytree",)
+
+#: What a person's symbol is: square, circle or diamond. Under the 2022 revision
+#: of the standard nomenclature the shape shows gender when `gender` is written,
+#: and `sex` becomes the note under it; without `gender` it is the shape.
+FAMILYTREE_SEXES: Final = ("male", "female", "unknown")
+FAMILYTREE_GENDERS: Final = ("man", "woman", "nonbinary")
+
+#: The one trait a family tree tracks: shaded in full, the theme's carrier mark,
+#: or empty. A tree of two conditions is two trees.
+FAMILYTREE_STATUSES: Final = ("affected", "carrier", "unaffected")
+
+#: A pregnancy, drawn in the symbol (`P`), or a pregnancy loss: a small triangle.
+FAMILYTREE_PREGNANCIES: Final = ("ongoing", "loss")
+
+#: Twins come from one point on the sibship line; identical twins have a bar
+#: between their two lines, and twins of unknown zygosity a `?`.
+FAMILYTREE_ZYGOSITIES: Final = ("monozygotic", "dizygotic", "unknown")
+
+#: The roles a person may take: the default, and the person the figure is about.
+FAMILYTREE_ROLES: Final = ("step", "emphasis")
+
+#: The most people; the most generations; the most partners one person may have
+#: (Henry VIII's six, the corpus's F1); and the most children of one birth. The
+#: clinical and exam pedigrees of the corpus (F5, F7) hold ten to twenty people in
+#: three generations; a royal tree (F4) about thirty in four.
+FAMILYTREE_PEOPLE_MAX: Final = 30
+FAMILYTREE_GENERATION_MAX: Final = 4
+FAMILYTREE_PARTNER_MAX: Final = 6
+FAMILYTREE_TWIN_MAX: Final = 3
+
+#: Meters: one amount against its scale — a progress bar, a fundraising
+#: thermometer, a dial, a bullet graph — alone or a few to a panel. A layout
+#: family of its own; every reading is placed by arithmetic.
+METER_KINDS: Final = ("meter",)
+
+#: How the meters of a document are drawn: one style for the whole panel, so
+#: like is compared with like. `bar` is the default.
+METER_STYLES: Final = ("bar", "thermometer", "dial", "bullet")
+
+#: The styles whose meters may start above zero. A bar's length is its amount,
+#: so only a needle, which encodes a position rather than a length, may.
+METER_MIN_STYLES: Final = ("dial",)
+
+#: The styles that take `bands`: required on a bullet, optional on a dial.
+METER_BAND_STYLES: Final = ("dial", "bullet")
+
+#: The roles a meter may take: the default, and the meter the panel is about.
+METER_ROLES: Final = ("step", "emphasis")
+
+#: The most meters to a panel and bands to a meter. The corpus (G4, G9) stacks a
+#: handful of meters; the bullet graph's specification (G8) allows two to five
+#: ranges, and past five neighbouring tones blur.
+METER_MAX: Final = 6
+METER_BAND_MIN: Final = 2
+METER_BAND_MAX: Final = 5
+
+#: The units written before the number rather than after it.
+METER_CURRENCIES: Final = ("£", "$", "€", "¥")
+
+#: RAG status reports: workstreams or risks, one row each, rated red, amber or
+#: green, with a direction of travel and a note. A layout family of its own: rows
+#: set one under another, every column lined up.
+RAG_KINDS: Final = ("rag",)
+
+#: The three ratings, worst first. Boards settle on three (corpus R3); the theme
+#: says the word, the shape and the colour each is drawn with.
+RAG_VALUES: Final = ("red", "amber", "green")
+
+#: The direction of travel since the last report, said as what it means: an arrow
+#: up means *improving* in one report and *risk rising* in another (R2, R5).
+RAG_TRENDS: Final = ("better", "same", "worse")
+
+#: The most rows to one report: the largest register in the corpus has 13 (R4).
+RAG_ROW_MAX: Final = 15
+
+#: Clock faces: an analogue clock showing a time, for teaching it — alone, a few
+#: in a row, or a worksheet of them. A layout family of its own; each hand is
+#: placed by arithmetic from the time.
+CLOCK_KINDS: Final = ("clock",)
+
+#: The numbers round a face: all twelve, Roman I-XII, only 12, 3, 6 and 9, or none.
+CLOCK_NUMERALS: Final = ("arabic", "roman", "quarters", "none")
+
+#: What is written under each face: the time in words, in digits, both, or
+#: nothing (a worksheet, whose answers are the pupil's).
+CLOCK_READOUTS: Final = ("words", "digits", "both", "none")
+
+#: The most faces to a sheet: a worksheet holds a dozen (corpus C4).
+CLOCK_MAX: Final = 12
+
+#: How long before a face's time its `since` may be, in minutes: past twelve
+#: hours the hour hand has gone all the way round and the sweep says nothing.
+CLOCK_SINCE_MAX: Final = 12 * 60
+
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
 #: into each other at the canvas width.
 NUMBERLINE_TICK_MAX: Final = 30
@@ -520,6 +618,14 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: round it — a `tree` is ranked from a root at one edge, which says *first*.
 #: `argument` is the nineteenth: a claim and the points for and against it — a
 #: `tree` cannot say which way a box bears, or that two reasons count only together.
+#: `familytree` is the twentieth: people, couples and children by generation — a
+#: `tree` gives a child one parent, and a married-in partner none.
+#: `meter` is the twenty-first: one amount against its scale — a `chart`'s bar
+#: has no end to be read against, and a `numberline` no fill, target or bands.
+#: `rag` is the twenty-second: rows rated red, amber or green in words and shapes
+#: — a `matrix` scale is a tone with no word on it, and a `board` sorts, not rates.
+#: `clock` is the twenty-third: two hands placed by a time — a `meter` dial reads
+#: one amount on a half-circle, and nothing else places a hand by the hour.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -543,6 +649,10 @@ KINDS: Final = (
     + PIE_KINDS
     + MINDMAP_KINDS
     + ARGUMENT_KINDS
+    + FAMILYTREE_KINDS
+    + METER_KINDS
+    + RAG_KINDS
+    + CLOCK_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -665,6 +775,16 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # Set by the corpus: argument maps in study guides hold about a dozen boxes.
     # The depth (4) and a co-premise group's size (4) are checked with the points.
     "argument": (("points", ARGUMENT_POINT_MAX),),  # [7]
+    # Set by the corpus: clinical pedigrees hold ten to twenty people, a royal tree
+    # about thirty. Generations (4) and partners (6) are checked with the couples.
+    "familytree": (("people", FAMILYTREE_PEOPLE_MAX),),  # [16]
+    # Set by the corpus: a panel stacks a handful of meters, and a bullet graph
+    # two to five bands.
+    "meter": (("meters", METER_MAX), ("meters/bands", METER_BAND_MAX)),  # [5 meters, 4 bands]
+    # Set by the corpus: the largest risk register found rates 13 risks (R4).
+    "rag": (("rows", RAG_ROW_MAX),),  # [10]
+    # Set by the corpus: a worksheet holds a dozen faces (C4).
+    "clock": (("clocks", CLOCK_MAX),),  # [8]
 }
 
 
@@ -2005,6 +2125,331 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "familytree-person": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique within the document: what `couples` name.",
+        ),
+        FieldSpec(
+            "sex",
+            "string",
+            required=True,
+            enum=FAMILYTREE_SEXES,
+            missing=(
+                "'sex' is required: it is the symbol, a square (`male`), a circle (`female`) "
+                "or a diamond (`unknown`). Write `unknown` when it is not known or not said."
+            ),
+            description=(
+                "The symbol: a square (`male`), a circle (`female`) or a diamond (`unknown`), "
+                "as the standard nomenclature draws them. With `gender`, the symbol shows the "
+                "gender instead and this is noted under it (`AMAB`, `AFAB`) when the two differ."
+            ),
+        ),
+        FieldSpec(
+            "gender",
+            "string",
+            enum=FAMILYTREE_GENDERS,
+            description=(
+                "Gender identity, per the 2022 revision of the standard: the symbol becomes "
+                "a square (`man`), a circle (`woman`) or a diamond (`nonbinary`), and `sex` is "
+                "the sex assigned at birth, written under it when it differs. Leave it out "
+                "and the symbol follows `sex`."
+            ),
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description=(
+                "The name, or an age or a test result, under the symbol and its number. A "
+                "newline makes it a lead and a detail, as anywhere: a name over the years."
+            ),
+        ),
+        FieldSpec(
+            "status",
+            "string",
+            enum=FAMILYTREE_STATUSES,
+            description=(
+                "The one trait the tree tracks: `affected` (the symbol filled), `carrier` (the "
+                "theme's carrier mark: a dot in the middle, or the left half filled) or "
+                "`unaffected` (the default: empty). Told apart without colour; a key under "
+                "the drawing names the ones used."
+            ),
+        ),
+        FieldSpec(
+            "deceased",
+            "boolean",
+            description="A diagonal stroke through the symbol. An age or year goes in `text`.",
+        ),
+        FieldSpec(
+            "proband",
+            "boolean",
+            description=(
+                "The affected person through whom the family came to attention: an arrow at "
+                "the lower left with a `P`. One per tree."
+            ),
+        ),
+        FieldSpec(
+            "consultand",
+            "boolean",
+            description=(
+                "The person asking for advice or testing: the arrow without the `P`. May be "
+                "the proband too."
+            ),
+        ),
+        FieldSpec(
+            "adopted",
+            "boolean",
+            description=(
+                "Adopted into the couple whose `children` list them: brackets round the "
+                "symbol and a dashed line down from the sibship line. A child is listed "
+                "once, in the couple that raised them."
+            ),
+        ),
+        FieldSpec(
+            "pregnancy",
+            "string",
+            enum=FAMILYTREE_PREGNANCIES,
+            description=(
+                "`ongoing`: a `P` in the symbol (the weeks go in `text`); `loss`: a small "
+                "triangle in place of the symbol, shaded when `affected`. Either is a child "
+                "only: no partners."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=FAMILYTREE_ROLES,
+            description=(
+                "`step` (the default) or `emphasis`: the person the figure is about when "
+                "there is no proband — a heavier symbol and a bold name."
+            ),
+        ),
+    ),
+    "familytree-couple": (
+        FieldSpec(
+            "between",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=2,
+            description=(
+                "The two partners' ids, in either order: drawspec puts them side by side, "
+                "joined by the partner line. A person's couples are their partners in the "
+                "order written — marriage order — at most 6."
+            ),
+        ),
+        FieldSpec(
+            "children",
+            "array",
+            item_kind="string",
+            description=(
+                "Their children's ids, in birth order: left to right under the sibship line. "
+                "Leave it out for a couple with none."
+            ),
+        ),
+        FieldSpec(
+            "twins",
+            "array",
+            item_ref="familytree-twins",
+            description=(
+                "Children of one birth, each set written next to each other in `children`."
+            ),
+        ),
+        FieldSpec(
+            "separated",
+            "boolean",
+            description="The relationship has ended: two short strokes across the partner line.",
+        ),
+        FieldSpec(
+            "consanguineous",
+            "boolean",
+            description="The partners are related by blood: a double partner line.",
+        ),
+    ),
+    "meter-meter": (
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description=(
+                "The meter's name. A second line after a newline is its caption, drawn plain "
+                "under the name: what the reading is of — `This year's milestones only`."
+            ),
+        ),
+        FieldSpec(
+            "amount",
+            "number",
+            required=True,
+            description=(
+                "The reading, on the scale from `min` to `max`. Written with its `unit` in the "
+                "readout; never as a percentage the author worked out."
+            ),
+        ),
+        FieldSpec(
+            "max",
+            "number",
+            required=True,
+            description=(
+                "The end of the scale: a thermometer's goal, a progress bar's whole, a dial's "
+                "right-hand end."
+            ),
+        ),
+        FieldSpec(
+            "min",
+            "number",
+            description=(
+                "Where the scale starts, on a `dial` only (0 by default): a needle reads a "
+                "position, so it may start anywhere. A bar's length is its amount, so a bar, a "
+                "bullet and a thermometer start at 0."
+            ),
+        ),
+        FieldSpec(
+            "unit",
+            "string",
+            description=(
+                "What the numbers are in: `%`, a currency sign (`£`, `$`, `€`, `¥`, written "
+                "before the number) or a word (`tasks`, after it)."
+            ),
+        ),
+        FieldSpec(
+            "target",
+            "number",
+            description=(
+                "A mark on the scale — the plan, a stage of an appeal — drawn across the "
+                "track and written in the readout. Inside the scale."
+            ),
+        ),
+        FieldSpec(
+            "bands",
+            "array",
+            item_ref="meter-band",
+            min_items=METER_BAND_MIN,
+            description=(
+                "Named stretches of the scale, rising: each runs from the end of the one "
+                "before (or `min`) to its own `to`, and the last ends at `max`. Required on a "
+                "`bullet`, optional on a `dial`, refused on the others. Drawn in tones of the "
+                "page's ink with their words on them, so a band is never told by colour alone."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=METER_ROLES,
+            description=(
+                "`step` (the default) or `emphasis` (the meter the panel is about: its name "
+                "and reading bold)."
+            ),
+        ),
+    ),
+    "clock-face": (
+        FieldSpec(
+            "time",
+            "string",
+            description=(
+                "The time the hands show, `H:MM` or `HH:MM` from `0:00` to `23:59` — `15:40` "
+                "for twenty to four in the afternoon. No seconds, no date. Leave it out for a "
+                "face with no hands, to draw them on."
+            ),
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description=("A name or a prompt under the face: `Home time`, `Draw half past seven`."),
+        ),
+        FieldSpec(
+            "since",
+            "string",
+            description=(
+                "An earlier time, `H:MM`, up to 12 hours before `time`: the face shades what "
+                "has passed since it, and the readout says how long."
+            ),
+        ),
+    ),
+    "rag-row": (
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description=(
+                "The workstream or risk. A second line after a newline is a caption under it, "
+                "at the label size: an owner, a reference."
+            ),
+        ),
+        FieldSpec(
+            "rag",
+            "string",
+            required=True,
+            enum=RAG_VALUES,
+            description=(
+                "The rating: `red`, `amber` or `green`. Drawn as the theme's word and shape for "
+                "it (and its colour, when the theme has one), so it is never told by colour "
+                "alone."
+            ),
+        ),
+        FieldSpec(
+            "trend",
+            "string",
+            enum=RAG_TRENDS,
+            description=(
+                "The direction of travel since the last report: `better`, `same` or `worse`. "
+                "Drawn as an arrow (up, across, down) with the theme's word beside it."
+            ),
+        ),
+        FieldSpec(
+            "note",
+            "string",
+            description=(
+                "Why: a sentence or two of commentary, wrapped in the last column. "
+                "`**bold**` for a decision asked for."
+            ),
+        ),
+    ),
+    "meter-band": (
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description=(
+                "The band's name, written on it: `Good`, `Strained`, or `Green` when that is "
+                "the word the reader is taught. One or two short words."
+            ),
+        ),
+        FieldSpec(
+            "to",
+            "number",
+            required=True,
+            description="Where the band ends; it starts where the band before ends.",
+        ),
+    ),
+    "familytree-twins": (
+        FieldSpec(
+            "of",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=2,
+            description=(
+                "Two or three of the couple's children, next to each other in `children`: "
+                "drawn from one point on the sibship line."
+            ),
+        ),
+        FieldSpec(
+            "zygosity",
+            "string",
+            required=True,
+            enum=FAMILYTREE_ZYGOSITIES,
+            missing=(
+                "'zygosity' is required: `monozygotic` (identical: a bar joins their lines), "
+                "`dizygotic` (fraternal) or `unknown` (a `?` between them)."
+            ),
+            description=(
+                "`monozygotic` (identical: a bar joins their lines), `dizygotic` (fraternal) "
+                "or `unknown` (a `?` between them)."
+            ),
+        ),
+    ),
     "mindmap-branch": (
         _text(),
         FieldSpec(
@@ -2421,7 +2866,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the thirty-two diagrams this is. It selects the fields that are "
+            "Which of the thirty-six diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -3259,6 +3704,99 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    FAMILYTREE_KINDS: (
+        FieldSpec(
+            "people",
+            "array",
+            required=True,
+            item_ref="familytree-person",
+            min_items=2,
+            description=(
+                "Everyone in the tree. Generations and numbers are derived: a child is one "
+                "row below its parents, a partner shares their partner's row, and people "
+                "are numbered left to right in each row (II-3). At most 30, in 4 generations."
+            ),
+        ),
+        FieldSpec(
+            "couples",
+            "array",
+            required=True,
+            item_ref="familytree-couple",
+            min_items=1,
+            description=(
+                "Who partnered whom, and their children. Everyone is in at least one couple, "
+                "as a partner or a child."
+            ),
+        ),
+    ),
+    METER_KINDS: (
+        FieldSpec(
+            "style",
+            "string",
+            enum=METER_STYLES,
+            description=(
+                "How every meter in the document is drawn: `bar` (the default, a progress "
+                "bar), `thermometer` (a goal filling up), `dial` (a needle on a half-circle) "
+                "or `bullet` (a bar on named bands, with a target tick). One for the whole "
+                "panel, so like is compared with like."
+            ),
+        ),
+        FieldSpec(
+            "meters",
+            "array",
+            required=True,
+            item_ref="meter-meter",
+            min_items=1,
+            description=(
+                "The meters, 1 to 6, in reading order: rows for bars and bullets, columns for "
+                "thermometers, up to three dials to a row. Each has its own scale."
+            ),
+        ),
+    ),
+    CLOCK_KINDS: (
+        FieldSpec(
+            "clocks",
+            "array",
+            required=True,
+            item_ref="clock-face",
+            min_items=1,
+            description=(
+                "The faces, 1 to 12, in reading order, up to four to a row: each a `time`, "
+                "and optionally a `text` under it and a `since`."
+            ),
+        ),
+        FieldSpec(
+            "numerals",
+            "string",
+            enum=CLOCK_NUMERALS,
+            description=(
+                "The numbers round every face: `arabic` (the default, 1 to 12), `roman` (I to "
+                "XII), `quarters` (12, 3, 6 and 9 only) or `none`."
+            ),
+        ),
+        FieldSpec(
+            "readout",
+            "string",
+            enum=CLOCK_READOUTS,
+            description=(
+                "What is written under each face: `words` (the default: `quarter past three`), "
+                "`digits` (`3:15`, as written), `both`, or `none` for a worksheet."
+            ),
+        ),
+    ),
+    RAG_KINDS: (
+        FieldSpec(
+            "rows",
+            "array",
+            required=True,
+            item_ref="rag-row",
+            min_items=1,
+            description=(
+                "The workstreams or risks, 1 to 15, in the order written: each a name, its "
+                "`rag`, and optionally a `trend` and a `note`."
+            ),
+        ),
+    ),
     MINDMAP_KINDS: (
         FieldSpec(
             "centre",
@@ -3771,6 +4309,83 @@ class WaterfallBar:
 
 
 @dataclass(frozen=True)
+class ClockFace:
+    """One clock face: the time its hands show, if any, a text, and a time since."""
+
+    time: str = ""
+    text: str = ""
+    since: str = ""
+
+
+@dataclass(frozen=True)
+class RagRow:
+    """One row of a RAG report: a name, its rating, and optionally a trend and a note."""
+
+    text: str
+    rag: str
+    trend: str = ""
+    note: str = ""
+
+
+@dataclass(frozen=True)
+class MeterBand:
+    """One named stretch of a meter's scale, from the band before it to `to`."""
+
+    text: str
+    to: float
+
+
+@dataclass(frozen=True)
+class Meter:
+    """One meter: an amount against its scale, with a target and bands if given."""
+
+    text: str
+    amount: float
+    max: float
+    min: float = 0.0
+    unit: str = ""
+    target: float | None = None
+    bands: tuple[MeterBand, ...] = ()
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class FamilyPerson:
+    """One person in a `familytree`."""
+
+    id: str
+    sex: str
+    gender: str = ""
+    text: str = ""
+    status: str = "unaffected"
+    deceased: bool = False
+    proband: bool = False
+    consultand: bool = False
+    adopted: bool = False
+    pregnancy: str = ""
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class FamilyTwins:
+    """Children of one birth, in birth order."""
+
+    of: tuple[str, ...]
+    zygosity: str
+
+
+@dataclass(frozen=True)
+class FamilyCouple:
+    """Two partners and their children, in birth order."""
+
+    between: tuple[str, str]
+    children: tuple[str, ...] = ()
+    twins: tuple[FamilyTwins, ...] = ()
+    separated: bool = False
+    consanguineous: bool = False
+
+
+@dataclass(frozen=True)
 class ArgumentPoint:
     """One point of an `argument`: a box bearing for or against another."""
 
@@ -4081,6 +4696,30 @@ class Document:
     points: tuple[ArgumentPoint, ...] = ()
     """An `argument`'s points, in the order written."""
 
+    people: tuple[FamilyPerson, ...] = ()
+    """A `familytree`'s people, in the order written."""
+
+    couples: tuple[FamilyCouple, ...] = ()
+    """A `familytree`'s couples, in the order written: each person's in marriage order."""
+
+    meter_style: str = "bar"
+    """How a `meter` document's meters are drawn: one style for the panel."""
+
+    meters: tuple[Meter, ...] = ()
+    """A `meter` document's meters, in reading order."""
+
+    rag_rows: tuple[RagRow, ...] = ()
+    """A `rag` document's rows, in the order written."""
+
+    clocks: tuple[ClockFace, ...] = ()
+    """A `clock` document's faces, in reading order."""
+
+    clock_numerals: str = "arabic"
+    """The numbers round a `clock` document's faces."""
+
+    clock_readout: str = "words"
+    """What is written under a `clock` document's faces."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -4107,6 +4746,10 @@ class Document:
             ("pie", PIE_KINDS),
             ("mindmap", MINDMAP_KINDS),
             ("argument", ARGUMENT_KINDS),
+            ("familytree", FAMILYTREE_KINDS),
+            ("meter", METER_KINDS),
+            ("rag", RAG_KINDS),
+            ("clock", CLOCK_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -4317,6 +4960,14 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_mindmap_refusal(violation) for violation in found]
     if kind in ARGUMENT_KINDS:
         found = [_argument_refusal(violation, document) for violation in found]
+    if kind in FAMILYTREE_KINDS:
+        found = [_familytree_refusal(violation) for violation in found]
+    if kind in METER_KINDS:
+        found = [_meter_refusal(violation) for violation in found]
+    if kind in RAG_KINDS:
+        found = [_rag_refusal(violation) for violation in found]
+    if kind in CLOCK_KINDS:
+        found = [_clock_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -4370,6 +5021,10 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
         "with the claim and the top-level reasons and objections, and a map per contested "
         "reason, with that reason as its claim."
     ),
+    ("familytree", "people"): (
+        "Past thirty people a family tree is searched, not read. Split it by branch: one "
+        "tree per side of the family, each naming where it joins the other in a `caption`."
+    ),
     ("mindmap", "branches"): (
         "Past eight main branches they stop reading as peers round one centre. Group the "
         "ones that belong together under a new main branch, or split the topic into two maps."
@@ -4377,6 +5032,22 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
     ("mindmap", "branches*"): (
         "Split it: an overview map naming the main branches, and a map per main branch "
         "carrying its detail, with that branch as its centre."
+    ),
+    ("meter", "meters"): (
+        "Past six meters a panel is a dashboard, read as a table. Keep the ones the page is "
+        "about, and put the rest in a table beside it."
+    ),
+    ("clock", "clocks"): (
+        "Past twelve faces a sheet is two sheets: split it by the skill each practises — "
+        "o'clock and half past on one, quarters on the next."
+    ),
+    ("rag", "rows"): (
+        "Past fifteen rows a status report is searched, not read: split it by programme or "
+        "directorate, one report each, or put the green rows in a table beside it."
+    ),
+    ("meters", "bands"): (
+        "Past five bands neighbouring tones blur: merge the bands the reader need not tell "
+        "apart. Few's bullet graph uses two to five."
     ),
     ("pie", "parts"): (
         "Past eight sectors the smallest are slivers no one compares: keep the largest seven "
@@ -4627,6 +5298,12 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _mindmap_violations(document)
     if kind in ARGUMENT_KINDS:
         return _argument_violations(document)
+    if kind in FAMILYTREE_KINDS:
+        return _familytree_violations(document)
+    if kind in METER_KINDS:
+        return _meter_violations(document)
+    if kind in CLOCK_KINDS:
+        return _clock_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -7231,6 +7908,296 @@ def _waterfall_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a clock has no place for a field an author may reach for.
+CLOCK_REFUSED: Final = {
+    "edges": "two faces are related by `since`, which shades the time between them",
+    "seconds": (
+        "a teaching face has two hands, and no lesson asks a pupil to read a seconds hand: "
+        "say the seconds in the `text`"
+    ),
+    "date": "a clock reads a time of day; dates belong on a `timeline`",
+    "hands": "the hands are placed by the `time`; leave it out for a face with none",
+    "hour": 'the hands are placed by the `time`: `"time": "3:15"`',
+    "minute": 'the hands are placed by the `time`: `"time": "3:15"`',
+    "angle": "the hands are placed by the `time`",
+    "numerals": "the numerals are the sheet's, at the top: one face style per sheet",
+    "readout": "the readout is the sheet's, at the top: a worksheet hides every answer",
+    "label": "the words under a face are its `text`",
+}
+
+
+def _clock_refusal(violation: Violation) -> Violation:
+    """A structural refusal on a clock sheet, told what this kind means by it."""
+    name = violation.pointer.split("/")[-1]
+    unknown = "is not" in violation.message and "field" in violation.message
+    if name in CLOCK_REFUSED and unknown:
+        return Violation(violation.pointer, f"{name!r}: {CLOCK_REFUSED[name]}.")
+    return violation
+
+
+#: A clock time: one or two digits of hour, 0-23, then two of minute.
+_CLOCK_TIME: Final = re.compile(r"^([01]?[0-9]|2[0-3]):([0-5][0-9])$")
+
+
+def clock_minutes(text: str) -> int | None:
+    """Minutes past midnight for an `H:MM` time, or None when it is not one."""
+    match = _CLOCK_TIME.match(text)
+    if match is None:
+        return None
+    return int(match.group(1)) * 60 + int(match.group(2))
+
+
+def _clock_time_problem(text: Any) -> str | None:
+    """Why `text` is not a clock time, or None when it is one."""
+    if not isinstance(text, str):
+        return None  # The structural check has already said so.
+    if clock_minutes(text) is not None:
+        return None
+    if re.match(r"^\d{1,2}:\d{2}:\d{2}$", text.strip()):
+        return (
+            f"{text!r} has seconds. A teaching face has an hour hand and a minute hand, and "
+            f"no lesson asks a pupil to read a seconds hand: write `H:MM`."
+        )
+    if re.search(r"(?i)\d\s*[ap]\.?m\.?\s*$", text):
+        return (
+            f"{text!r}: a time is written on the 24-hour clock, `H:MM` — `15:15` for a quarter "
+            f"past three in the afternoon. The face is the same; the readout writes it as given."
+        )
+    if re.search(r"\d{4}-\d{2}|T\d", text):
+        return f"{text!r} carries a date. A clock reads a time of day: `H:MM`."
+    return (
+        f"{text!r} is not a time: write `H:MM` or `HH:MM`, from `0:00` to `23:59` — "
+        f"`9:05`, `15:40`."
+    )
+
+
+def _clock_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Each face's times well formed, and each `since` before its time, within 12 hours."""
+    found: list[Violation] = []
+    for index, face in enumerate(_listed(document, "clocks")):
+        if not isinstance(face, dict):
+            continue
+        here = _pointer("clocks", index)
+        for name in ("time", "since"):
+            problem = _clock_time_problem(face.get(name))
+            if problem is not None:
+                found.append(Violation(f"{here}/{name}", problem))
+        if "since" not in face:
+            continue
+        if "time" not in face:
+            found.append(
+                Violation(
+                    f"{here}/since",
+                    "a face with no hands has nothing to measure from: give it a `time`, or "
+                    "leave `since` out.",
+                )
+            )
+            continue
+        start, end = clock_minutes(str(face["since"])), clock_minutes(str(face["time"]))
+        if start is None or end is None:
+            continue
+        gap = (end - start) % (24 * 60)
+        if gap == 0 or gap >= CLOCK_SINCE_MAX:
+            found.append(
+                Violation(
+                    f"{here}/since",
+                    f"{face['since']!r} must be before {face['time']!r} and less than 12 hours "
+                    f"before it: past that the hour hand has gone all the way round, and the "
+                    f"face cannot show how long. Say a longer time in the `text`.",
+                )
+            )
+    return found
+
+
+#: Why a RAG row has no place for a field an author may reach for.
+RAG_REFUSED: Final = {
+    "edges": "a RAG report rates each row on its own; there is nothing to connect",
+    "columns": (
+        "one rating per row. Cost, time and scope rated separately are a table, or one "
+        "report per dimension"
+    ),
+    "status": (
+        "a rating is `rag` (`red`, `amber`, `green`); `status` marks a change on `flow` and `tree`"
+    ),
+    "colour": (
+        "the rating is `rag`, and the theme draws it as a word, a shape and a colour. Write "
+        '`"rag": "green"`'
+    ),
+    "score": (
+        "a risk score is a number on a likelihood-by-impact grid: a `matrix` with a `scale`. "
+        "Here the row carries its `rag`"
+    ),
+    "likelihood": "a likelihood-by-impact grid is a `matrix` with a `scale`",
+    "impact": "a likelihood-by-impact grid is a `matrix` with a `scale`",
+    "owner": "an owner is a caption: a second line in `text`, after a newline",
+    "comment": "the commentary is `note`",
+    "commentary": "the commentary is `note`",
+}
+
+#: What an author may mean by a rating or a trend outside the vocabulary.
+RAG_VALUE_ADVICE: Final = (
+    "Three ratings, as boards settle on: choose the nearer of the two in a split rating "
+    "(`amber/green`) and say why in the `note`; a finished workstream is `green` with "
+    "*Complete* in its note."
+)
+RAG_TREND_ADVICE: Final = (
+    "Say what the change means — `better`, `same` or `worse` — not which way an arrow "
+    "points: an arrow up means *improving* in one report and *risk rising* in another."
+)
+
+
+def _rag_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a RAG report, told what this kind means by it."""
+    name = violation.pointer.split("/")[-1]
+    unknown = "is not" in violation.message and "field" in violation.message
+    if name in RAG_REFUSED and unknown:
+        return Violation(violation.pointer, f"{name!r}: {RAG_REFUSED[name]}.")
+    if "is not one of" in violation.message and name in ("rag", "trend"):
+        advice = RAG_VALUE_ADVICE if name == "rag" else RAG_TREND_ADVICE
+        return Violation(violation.pointer, violation.message.split(".")[0] + ". " + advice)
+    return violation
+
+
+#: Why a meter has no place for a field an author may reach for.
+METER_REFUSED: Final = {
+    "edges": "a meter has nothing to connect: each one is read against its own scale",
+    "series": "a meter is one amount against a scale. Values against an axis are a `chart`",
+    "axes": "a meter's scale is its `min` and `max`. Values against two axes are a `chart`",
+    "value": "a meter's reading is its `amount`",
+    "goal": "a thermometer's goal is the top of its scale, `max`; a stage under it is a `target`",
+    "percent": (
+        'write the reading as it is, with `"unit": "%"` and `"max": 100` for a percentage, '
+        "or the amount and the whole it is out of"
+    ),
+    "style": (
+        "the style is the document's, at the top: one panel, one style, so like is "
+        "compared with like. Two styles are two documents"
+    ),
+    "from": "a band runs from the end of the one before it, or from the scale's start",
+    "colour": (
+        "a band is told by its words and drawn in the theme's tones. Write the word the "
+        "reader is taught — `Green`, or `On track`"
+    ),
+}
+
+
+def _meter_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a meter panel, told what this kind means by it."""
+    name = violation.pointer.split("/")[-1]
+    unknown = "is not" in violation.message and "field" in violation.message
+    if name in METER_REFUSED and unknown:
+        return Violation(violation.pointer, f"{name!r}: {METER_REFUSED[name]}.")
+    return violation
+
+
+def _meter_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Each meter's reading, target and bands inside its scale, and bands its style takes.
+
+    A bar, a bullet and a thermometer start at zero (their length is their
+    amount); bands go on a bullet, which needs them, and a dial; they rise, and
+    the last one ends the scale.
+    """
+    found: list[Violation] = []
+    style = document.get("style", "bar")
+    if style not in METER_STYLES:
+        return found
+    for index, meter in enumerate(_listed(document, "meters")):
+        if not isinstance(meter, dict):
+            continue
+        here = _pointer("meters", index)
+        high: Any = meter.get("max")
+        if "min" in meter and style not in METER_MIN_STYLES:
+            found.append(
+                Violation(
+                    f"{here}/min",
+                    f"a {style}'s length is its amount, so its scale starts at 0. A reading "
+                    f"on a scale that starts elsewhere — a temperature — is a "
+                    f'`"style": "dial"`, whose needle reads a position.',
+                )
+            )
+            continue
+        low: Any = meter.get("min", 0)
+        if not (_is_number(high) and _is_number(low)):
+            continue
+        if high <= low:
+            found.append(
+                Violation(
+                    f"{here}/max",
+                    f"the scale runs from {_figure(float(low))} up to `max`, so `max` must be "
+                    f"more than {_figure(float(low))}.",
+                )
+            )
+            continue
+        for name in ("amount", "target"):
+            reading: Any = meter.get(name)
+            if _is_number(reading) and not low <= reading <= high:
+                found.append(
+                    Violation(
+                        f"{here}/{name}",
+                        f"{_figure(float(reading))} is outside the scale, "
+                        f"{_figure(float(low))} to {_figure(float(high))}: a meter has nowhere "
+                        f"to point past its ends. Change `max`"
+                        + (" or `min`." if style in METER_MIN_STYLES else ".")
+                        + (
+                            " A goal beaten is a full thermometer with the amount in the caption."
+                            if style == "thermometer" and name == "amount"
+                            else ""
+                        ),
+                    )
+                )
+        bands = meter.get("bands")
+        if bands is not None and style not in METER_BAND_STYLES:
+            advice = (
+                'a bar on named bands is a bullet graph: say `"style": "bullet"`.'
+                if style == "bar"
+                else "a thermometer fills toward one goal. Bands on a scale are a "
+                '`"style": "bullet"` or a `"dial"`.'
+            )
+            found.append(Violation(f"{here}/bands", advice))
+            continue
+        if bands is None and style == "bullet":
+            found.append(
+                Violation(
+                    here,
+                    "a bullet graph is a bar on named bands: give it `bands` — "
+                    '`[{"text": "Poor", "to": …}, …]` — or say `"style": "bar"`.',
+                )
+            )
+            continue
+        if not isinstance(bands, list):
+            continue
+        start = float(low)
+        for position, band in enumerate(bands):
+            if not isinstance(band, dict) or not _is_number(band.get("to")):
+                start = float("nan")
+                continue
+            end = float(band["to"])
+            if not end > start:
+                found.append(
+                    Violation(
+                        f"{here}/bands/{position}/to",
+                        f"bands rise along the scale, each from the end of the one before: "
+                        f"this one must end above {_figure(start)}.",
+                    )
+                )
+            start = end
+        last: Any = bands[-1] if bands else None
+        if (
+            isinstance(last, dict)
+            and _is_number(last.get("to"))
+            and not math.isclose(float(last["to"]), float(high))
+        ):
+            found.append(
+                Violation(
+                    f"{here}/bands/{len(bands) - 1}/to",
+                    f"the last band ends the scale: its `to` is `max`, "
+                    f"{_figure(float(high))}. Bands cover the scale once, with no gap at the "
+                    f"top.",
+                )
+            )
+    return found
+
+
 #: Why a pie has no place for a field an author may reach for.
 PIE_REFUSED: Final = {
     "edges": "a pie's parts are related by being one whole; there is nothing to connect",
@@ -7543,6 +8510,461 @@ def _argument_violations(document: Mapping[str, Any]) -> list[Violation]:
                     f"own reasons under it.",
                 )
             )
+    return found
+
+
+#: Why a family tree has no place for a field an author may reach for.
+FAMILYTREE_REFUSED: Final = {
+    "edges": "a family tree's lines are its `couples`: partners, and the children of each",
+    "nodes": "a family tree's symbols are its `people`",
+    "groups": "a family's branches are drawn from its `couples`; split a tree by branch instead",
+    "generation": (
+        "generations are derived: a child is one row below its parents' couple, a partner "
+        "shares their partner's row"
+    ),
+    "number": "people are numbered for you, left to right in each generation (II-3)",
+    "parents": "a person's parents are the couple whose `children` list them",
+    "children": "a person's children are listed on the couple they had them with, in `couples`",
+    "partner": "partners are a couple: `couples: [{between: [a, b]}]`, in marriage order",
+    "partners": "partners are couples: one `{between: [a, b]}` per partner, in marriage order",
+    "spouse": "partners are a couple: `couples: [{between: [a, b]}]`",
+    "twin": "twins are written on their parents' couple: `twins: [{of: [a, b], zygosity}]`",
+    "ancestors": (
+        "a family tree draws couples and all their children; a chart of one person's "
+        "ancestors only is a binary tree — draw it as a `tree`"
+    ),
+}
+
+
+def _familytree_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a family tree, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    if "is not a known field" in violation.message and name in FAMILYTREE_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {FAMILYTREE_REFUSED[name]}.")
+    if name == "role" and "is not one of" in violation.message:
+        return Violation(
+            violation.pointer,
+            violation.message.split(".")[0]
+            + ". A person's shape is their `sex` and their shading their `status`; `role` is "
+            "`step`, or `emphasis` for the person the figure is about.",
+        )
+    if name == "status" and "is not one of" in violation.message:
+        return Violation(
+            violation.pointer,
+            violation.message.split(".")[0]
+            + ". A family tree tracks one trait; a second condition is a second tree. A "
+            "pregnancy loss is `pregnancy: loss`, and death is `deceased`.",
+        )
+    return violation
+
+
+def _familytree_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Ids that resolve, one set of parents each, rows that agree, and one family."""
+    found: list[Violation] = []
+    people = [
+        (index, entry)
+        for index, entry in enumerate(_listed(document, "people"))
+        if isinstance(entry, dict)
+    ]
+    ids: dict[str, int] = {}
+    for index, entry in people:
+        name = entry.get("id")
+        text = entry.get("text")
+        if isinstance(text, str) and not text.strip():
+            found.append(
+                Violation(
+                    _pointer("people", index, "text"),
+                    "an empty name: leave `text` out for a person drawn by number only.",
+                )
+            )
+        if not isinstance(name, str):
+            continue
+        if name in ids:
+            found.append(
+                Violation(
+                    _pointer("people", index, "id"),
+                    f"{name!r} is already the id of person {ids[name]}: ids are unique.",
+                )
+            )
+        else:
+            ids[name] = index
+    person = {name: dict(people)[index] for name, index in ids.items()}
+
+    probands = [index for index, entry in people if entry.get("proband") is True]
+    for index in probands[1:]:
+        found.append(
+            Violation(
+                _pointer("people", index, "proband"),
+                f"a family tree has one proband, and person {probands[0]} is already it. "
+                f"Anyone else who asked for advice or testing is a `consultand`.",
+            )
+        )
+    for index, entry in people:
+        pregnancy = entry.get("pregnancy")
+        if pregnancy == "loss" and entry.get("deceased") is True:
+            found.append(
+                Violation(
+                    _pointer("people", index, "deceased"),
+                    "a pregnancy loss is its own symbol, a small triangle; `deceased` is for "
+                    "someone who was born.",
+                )
+            )
+        if pregnancy == "ongoing" and entry.get("status") in ("affected", "carrier"):
+            found.append(
+                Violation(
+                    _pointer("people", index, "status"),
+                    "an ongoing pregnancy carries a `P` in its symbol, so it is not shaded: "
+                    "write a prenatal result in `text`.",
+                )
+            )
+
+    # Couples: two known, distinct partners; known children, each with one set of
+    # parents; twins next to each other among them.
+    couples = [
+        (index, entry)
+        for index, entry in enumerate(_listed(document, "couples"))
+        if isinstance(entry, dict)
+    ]
+    pairs: dict[frozenset[str], int] = {}
+    partners: dict[str, list[tuple[int, str]]] = {name: [] for name in ids}
+    parents_of: dict[str, int] = {}
+    valid: list[tuple[int, tuple[str, str], list[str]]] = []
+    # Everyone a couple names, valid or not: a refused couple is reported once, not
+    # again as people in no couple.
+    mentioned: set[object] = set()
+    for _, entry in couples:
+        for field_name in ("between", "children"):
+            listed = entry.get(field_name)
+            if isinstance(listed, list):
+                mentioned.update(each for each in listed if isinstance(each, str))
+    for index, entry in couples:
+        between = entry.get("between")
+        where = _pointer("couples", index, "between")
+        if not isinstance(between, list):
+            continue
+        if len(between) != 2:
+            if len(between) > 2:
+                found.append(
+                    Violation(
+                        where,
+                        f"a couple is two people, and this names {len(between)}. A person with "
+                        f"several partners is in one couple per partner, in marriage order.",
+                    )
+                )
+            continue
+        names = [name for name in between if isinstance(name, str)]
+        if len(names) != 2:
+            continue
+        bad = False
+        for position, name in enumerate(names):
+            if name not in ids:
+                found.append(
+                    Violation(
+                        _pointer("couples", index, "between", position),
+                        f"{name!r} is not the id of a person. Known ids: "
+                        f"{', '.join(sorted(ids)) or 'none'}.",
+                    )
+                )
+                bad = True
+        if bad:
+            continue
+        if names[0] == names[1]:
+            found.append(
+                Violation(where, f"a couple is two people; this names {names[0]!r} twice.")
+            )
+            continue
+        key = frozenset(names)
+        if key in pairs:
+            found.append(
+                Violation(
+                    where,
+                    f"{names[0]!r} and {names[1]!r} are already couple {pairs[key]}: list all "
+                    f"their children there.",
+                )
+            )
+            continue
+        pairs[key] = index
+        for name in names:
+            if person[name].get("pregnancy") in FAMILYTREE_PREGNANCIES:
+                found.append(
+                    Violation(
+                        where,
+                        f"{name!r} is a pregnancy, which is drawn as a child only: it has no "
+                        f"partners.",
+                    )
+                )
+                bad = True
+        if bad:
+            continue
+        for name in names:
+            partners[name].append((index, names[1] if name == names[0] else names[0]))
+        kids: list[str] = []
+        children = entry.get("children")
+        for position, child in enumerate(children if isinstance(children, list) else []):
+            if not isinstance(child, str):
+                continue
+            here = _pointer("couples", index, "children", position)
+            if child not in ids:
+                found.append(
+                    Violation(
+                        here,
+                        f"{child!r} is not the id of a person. Known ids: "
+                        f"{', '.join(sorted(ids)) or 'none'}.",
+                    )
+                )
+            elif child in names:
+                found.append(
+                    Violation(here, f"{child!r} is a partner in this couple, not a child.")
+                )
+            elif child in kids:
+                found.append(Violation(here, f"{child!r} is already a child of this couple."))
+            elif child in parents_of:
+                found.append(
+                    Violation(
+                        here,
+                        f"{child!r} is already a child of couple {parents_of[child]}: a person "
+                        f"has one set of parents. An adopted child is listed once, in the couple "
+                        f"that raised them, with `adopted: true`.",
+                    )
+                )
+            else:
+                parents_of[child] = index
+                kids.append(child)
+        twinned: set[str] = set()
+        twins = entry.get("twins")
+        for position, birth in enumerate(twins if isinstance(twins, list) else []):
+            members = birth.get("of") if isinstance(birth, dict) else None
+            if not isinstance(members, list):
+                continue
+            here = _pointer("couples", index, "twins", position, "of")
+            named = [member for member in members if isinstance(member, str)]
+            if len(named) > FAMILYTREE_TWIN_MAX:
+                found.append(
+                    Violation(
+                        here,
+                        f"{len(named)} children of one birth, and a tree draws "
+                        f"{FAMILYTREE_TWIN_MAX} at most from one point. Write the number in a "
+                        f"`caption`, and the children as ordinary siblings.",
+                    )
+                )
+                continue
+            strays = [member for member in named if member not in kids]
+            if strays:
+                found.append(
+                    Violation(
+                        here,
+                        f"{strays[0]!r} is not one of this couple's `children`: twins are "
+                        f"children of the couple they are written on.",
+                    )
+                )
+                continue
+            if len(set(named)) != len(named) or twinned & set(named):
+                found.append(
+                    Violation(here, "a child is in one set of twins, and named once in it.")
+                )
+                continue
+            places = sorted(kids.index(member) for member in named)
+            if places != list(range(places[0], places[0] + len(places))):
+                found.append(
+                    Violation(
+                        here,
+                        f"twins {', '.join(repr(member) for member in named)} are not next to "
+                        f"each other in `children`: children of one birth are drawn from one "
+                        f"point, so write them together.",
+                    )
+                )
+                continue
+            twinned.update(named)
+        valid.append((index, (names[0], names[1]), kids))
+
+    for name, mine in partners.items():
+        for index, _ in mine[FAMILYTREE_PARTNER_MAX:]:
+            found.append(
+                Violation(
+                    _pointer("couples", index, "between"),
+                    f"{name!r} is in {len(mine)} couples, past what one row can draw — "
+                    f"{FAMILYTREE_PARTNER_MAX} partners at most. Draw the later partners' "
+                    f"families as a tree of their own.",
+                )
+            )
+    for name, index in ids.items():
+        entry = person[name]
+        if entry.get("adopted") is True and name not in parents_of:
+            found.append(
+                Violation(
+                    _pointer("people", index, "adopted"),
+                    f"{name!r} is adopted, but no couple lists them among its `children`: "
+                    f"list them in the couple that raised them.",
+                )
+            )
+        if name not in mentioned:
+            found.append(
+                Violation(
+                    _pointer("people", index),
+                    f"{name!r} is in no couple, as a partner or a child, so nothing places "
+                    f"them in the tree.",
+                )
+            )
+    if found:
+        return found
+
+    # Descent goes one way: nobody is their own ancestor.
+    below: dict[str, list[str]] = {name: [] for name in ids}
+    for _, pair, kids in valid:
+        for parent in pair:
+            below[parent].extend(kids)
+    state: dict[str, int] = {}
+
+    def cycle(name: str, trail: list[str]) -> list[str] | None:
+        state[name] = 1
+        for child in below[name]:
+            if state.get(child) == 1:
+                return [*trail, name, child]
+            if child not in state:
+                looped = cycle(child, [*trail, name])
+                if looped:
+                    return looped
+        state[name] = 2
+        return None
+
+    for name in ids:
+        if name not in state:
+            looped = cycle(name, [])
+            if looped:
+                begin = looped.index(looped[-1])
+                return [
+                    Violation(
+                        _pointer("couples", parents_of[looped[-1]], "children"),
+                        f"descent goes round in a circle ({' -> '.join(looped[begin:])}): "
+                        f"nobody is their own ancestor.",
+                    )
+                ]
+
+    # Generations: partners share a row, a child is one row below its couple.
+    generation: dict[str, int] = {}
+    links: dict[str, list[tuple[str, int, int]]] = {name: [] for name in ids}
+    for index, pair, kids in valid:
+        links[pair[0]].append((pair[1], 0, index))
+        links[pair[1]].append((pair[0], 0, index))
+        for child in kids:
+            for parent in pair:
+                links[parent].append((child, 1, index))
+                links[child].append((parent, -1, index))
+    families = 0
+    for start in ids:
+        if start in generation:
+            continue
+        families += 1
+        if families > 1:
+            return [
+                Violation(
+                    _pointer("people", ids[start]),
+                    f"{start!r} is not related to {next(iter(ids))!r} through any couple: one "
+                    f"family tree is one family. Draw the other family as a tree of its own.",
+                )
+            ]
+        generation[start] = 0
+        # Parents and children first, partners only when nothing else is left: so
+        # a contradiction surfaces at the couple whose partners cannot share a row.
+        queue = [start]
+        later: list[tuple[str, str, int]] = []
+        while queue or later:
+            if not queue:
+                current, other, index = later.pop(0)
+                if other not in generation:
+                    generation[other] = generation[current]
+                    queue.append(other)
+                elif generation[other] != generation[current]:
+                    return [
+                        Violation(
+                            _pointer("couples", index, "between"),
+                            f"{current!r} and {other!r} are partners, but their descent puts "
+                            f"them {abs(generation[other] - generation[current])} generation(s) "
+                            f"apart, and partners share a row. A family where they cannot is "
+                            f"drawn as two trees.",
+                        )
+                    ]
+                continue
+            current = queue.pop(0)
+            for other, step, index in links[current]:
+                if step == 0:
+                    later.append((current, other, index))
+                    continue
+                expected = generation[current] + step
+                if other not in generation:
+                    generation[other] = expected
+                    queue.append(other)
+                elif generation[other] != expected:
+                    return [
+                        Violation(
+                            _pointer("couples", index, "children"),
+                            f"the generations of couple {index} disagree with the rest of the "
+                            f"tree: partners share a row and a child is one row below its "
+                            f"parents, and no rows satisfy both here.",
+                        )
+                    ]
+    low = min(generation.values())
+    rows = max(generation.values()) - low + 1
+    if rows > FAMILYTREE_GENERATION_MAX:
+        deepest = next(name for name in ids if generation[name] - low == FAMILYTREE_GENERATION_MAX)
+        found.append(
+            Violation(
+                _pointer("people", ids[deepest]),
+                f"the tree spans {rows} generations, past what one family tree can be read at "
+                f"— {FAMILYTREE_GENERATION_MAX} at most. Split it: the older generations as one "
+                f"tree, and each branch below as a tree of its own.",
+            )
+        )
+
+    # A row draws one person's partners beside them; a partner of theirs with
+    # partners of their own would need a second row.
+    for name, mine in partners.items():
+        if len(mine) < 2:
+            continue
+        for index, other in mine:
+            if len(partners[other]) > 1:
+                found.append(
+                    Violation(
+                        _pointer("couples", index, "between"),
+                        f"{name!r} and {other!r} both have other partners, and a row draws one "
+                        f"person's partners beside them. Leave one of the earlier couples out, "
+                        f"or draw it as a tree of its own.",
+                    )
+                )
+                return found
+        if len(mine) > 2:
+            for index, other in mine[1:]:
+                if other in parents_of:
+                    found.append(
+                        Violation(
+                            _pointer("couples", index, "between"),
+                            f"{other!r} is {name!r}'s partner number "
+                            f"{mine.index((index, other)) + 1}, "
+                            f"and has parents in the tree. Past two partners, the line to each "
+                            f"later one runs over the row, so only the first partner's family "
+                            f"can be drawn above. Draw {other!r}'s family as a tree of its own.",
+                        )
+                    )
+
+    # An ancestor chart — a person, their parents, their four grandparents — is a
+    # binary tree, not a family: every couple has one child, and couples marry
+    # into each other from both sides.
+    if (
+        rows >= 3
+        and len(valid) >= 3
+        and all(len(kids) == 1 for _, _, kids in valid)
+        and any(all(parent in parents_of for parent in pair) for _, pair, _ in valid)
+    ):
+        found.append(
+            Violation(
+                "/couples",
+                "every couple here has one child, and partners come from both sides: this is "
+                "an ancestor chart (a genealogist's pedigree chart), one person and their "
+                "forebears. That is a binary tree, so draw it as a `tree`. A family tree draws "
+                "couples and all their children.",
+            )
+        )
     return found
 
 
@@ -8282,6 +9704,14 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _mindmap_document(document)
     if kind in ARGUMENT_KINDS:
         return _argument_document(document)
+    if kind in FAMILYTREE_KINDS:
+        return _familytree_document(document)
+    if kind in METER_KINDS:
+        return _meter_document(document)
+    if kind in RAG_KINDS:
+        return _rag_document(document)
+    if kind in CLOCK_KINDS:
+        return _clock_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -8914,6 +10344,130 @@ def _waterfall_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _clock_document(document: Mapping[str, Any]) -> Document:
+    """A clock sheet: its faces, in reading order, and how each is numbered and read."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        clock_numerals=str(document.get("numerals", "arabic")),
+        clock_readout=str(document.get("readout", "words")),
+        clocks=tuple(
+            ClockFace(
+                time=str(face.get("time", "")),
+                text=str(face.get("text", "")),
+                since=str(face.get("since", "")),
+            )
+            for face in document["clocks"]
+        ),
+    )
+
+
+def _rag_document(document: Mapping[str, Any]) -> Document:
+    """A RAG report: its rows, in the order written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        rag_rows=tuple(
+            RagRow(
+                text=str(row["text"]),
+                rag=str(row["rag"]),
+                trend=str(row.get("trend", "")),
+                note=str(row.get("note", "")),
+            )
+            for row in document["rows"]
+        ),
+    )
+
+
+def _meter_document(document: Mapping[str, Any]) -> Document:
+    """A meter panel: its style and its meters, in reading order."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        meter_style=str(document.get("style", "bar")),
+        meters=tuple(
+            Meter(
+                text=str(meter["text"]),
+                amount=float(meter["amount"]),
+                max=float(meter["max"]),
+                min=float(meter.get("min", 0.0)),
+                unit=str(meter.get("unit", "")),
+                target=_optional_number(meter.get("target")),
+                bands=tuple(
+                    MeterBand(text=str(band["text"]), to=float(band["to"]))
+                    for band in meter.get("bands", ())
+                ),
+                role=str(meter.get("role", "step")),
+            )
+            for meter in document["meters"]
+        ),
+    )
+
+
+def _familytree_document(document: Mapping[str, Any]) -> Document:
+    """A family tree: its people and its couples, in the order written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        people=tuple(
+            FamilyPerson(
+                id=str(person["id"]),
+                sex=str(person["sex"]),
+                gender=str(person.get("gender", "")),
+                text=str(person.get("text", "")),
+                status=str(person.get("status", "unaffected")),
+                deceased=bool(person.get("deceased", False)),
+                proband=bool(person.get("proband", False)),
+                consultand=bool(person.get("consultand", False)),
+                adopted=bool(person.get("adopted", False)),
+                pregnancy=str(person.get("pregnancy", "")),
+                role=str(person.get("role", "step")),
+            )
+            for person in document["people"]
+        ),
+        couples=tuple(
+            FamilyCouple(
+                between=(str(couple["between"][0]), str(couple["between"][1])),
+                children=tuple(str(child) for child in couple.get("children", ())),
+                twins=tuple(
+                    FamilyTwins(
+                        of=tuple(str(each) for each in twins["of"]),
+                        zygosity=str(twins["zygosity"]),
+                    )
+                    for twins in couple.get("twins", ())
+                ),
+                separated=bool(couple.get("separated", False)),
+                consanguineous=bool(couple.get("consanguineous", False)),
+            )
+            for couple in document["couples"]
+        ),
+    )
+
+
 def _argument_document(document: Mapping[str, Any]) -> Document:
     """An argument map: its claim and its points, in the order written."""
     return Document(
@@ -9231,12 +10785,28 @@ __all__ = [
     "CARDINALITIES",
     "CAUSE_ROLES",
     "CHART_KINDS",
+    "CLOCK_KINDS",
+    "CLOCK_MAX",
+    "CLOCK_NUMERALS",
+    "CLOCK_READOUTS",
+    "CLOCK_SINCE_MAX",
     "COMMON_FIELDS",
     "CONTAINER_KINDS",
     "DOCUMENT_VERSION",
     "ENTITIES_KINDS",
     "ENTITY_EDGE_ROLES",
     "ENTITY_ROLES",
+    "FAMILYTREE_GENDERS",
+    "FAMILYTREE_GENERATION_MAX",
+    "FAMILYTREE_KINDS",
+    "FAMILYTREE_PARTNER_MAX",
+    "FAMILYTREE_PEOPLE_MAX",
+    "FAMILYTREE_PREGNANCIES",
+    "FAMILYTREE_ROLES",
+    "FAMILYTREE_SEXES",
+    "FAMILYTREE_STATUSES",
+    "FAMILYTREE_TWIN_MAX",
+    "FAMILYTREE_ZYGOSITIES",
     "FIELD_KEYS",
     "FISHBONE_CATEGORY_MAX",
     "FISHBONE_CAUSE_MAX",
@@ -9256,6 +10826,15 @@ __all__ = [
     "LOOP_MAX",
     "LOOP_TYPES",
     "MESSAGE_ROLES",
+    "METER_BAND_MAX",
+    "METER_BAND_MIN",
+    "METER_BAND_STYLES",
+    "METER_CURRENCIES",
+    "METER_KINDS",
+    "METER_MAX",
+    "METER_MIN_STYLES",
+    "METER_ROLES",
+    "METER_STYLES",
     "MINDMAP_BRANCH_MAX",
     "MINDMAP_DEPTH_MAX",
     "MINDMAP_KINDS",
@@ -9275,6 +10854,10 @@ __all__ = [
     "PIE_SHARE_MIN",
     "POLARITIES",
     "POLARITY_EDGE_ROLES",
+    "RAG_KINDS",
+    "RAG_ROW_MAX",
+    "RAG_TRENDS",
+    "RAG_VALUES",
     "REGION_ROLES",
     "REJECTED_FIELDS",
     "SANKEY_BAND",
@@ -9308,18 +10891,24 @@ __all__ = [
     "CausalLoop",
     "Cause",
     "Cell",
+    "ClockFace",
     "Curve",
     "Detail",
     "Document",
     "Edge",
     "Entity",
     "EntityField",
+    "FamilyCouple",
+    "FamilyPerson",
+    "FamilyTwins",
     "FieldSpec",
     "Fragment",
     "Group",
     "Item",
     "JourneyStage",
     "Message",
+    "Meter",
+    "MeterBand",
     "MindmapBranch",
     "ModelBar",
     "ModelBrace",
@@ -9330,6 +10919,7 @@ __all__ = [
     "NumberRange",
     "PiePart",
     "Position",
+    "RagRow",
     "Region",
     "Relation",
     "SankeyFlow",
@@ -9343,6 +10933,7 @@ __all__ = [
     "WaterfallBar",
     "Waypoint",
     "build_schema",
+    "clock_minutes",
     "fields_for",
     "lane_order",
     "load_document",

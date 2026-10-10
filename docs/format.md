@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-32 kinds. The machine-readable form of this page is the published
+36 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument` | **yes** | Which of the thirty-two diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock` | **yes** | Which of the thirty-six diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -257,6 +257,34 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `claim` | string | **yes** | The contention, drawn at the top in the heavy outline. Points name it as `"on": "claim"`. A qualifier (*probably*, *in most cases*) is a word in it. |
 | `points` | array of [argument-point](#argument-point-object), at least 1 | **yes** | Every reason, objection, rebuttal and piece of evidence, each `on` the box it bears on, `for` or `against` it. Drawn as a tree down from the claim, siblings in the order written; at most 15, and 4 deep. |
 
+### `familytree`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `people` | array of [familytree-person](#familytree-person-object), at least 2 | **yes** | Everyone in the tree. Generations and numbers are derived: a child is one row below its parents, a partner shares their partner's row, and people are numbered left to right in each row (II-3). At most 30, in 4 generations. |
+| `couples` | array of [familytree-couple](#familytree-couple-object), at least 1 | **yes** | Who partnered whom, and their children. Everyone is in at least one couple, as a partner or a child. |
+
+### `meter`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `style` | string — one of `bar`, `thermometer`, `dial`, `bullet` | no | How every meter in the document is drawn: `bar` (the default, a progress bar), `thermometer` (a goal filling up), `dial` (a needle on a half-circle) or `bullet` (a bar on named bands, with a target tick). One for the whole panel, so like is compared with like. |
+| `meters` | array of [meter-meter](#meter-meter-object), at least 1 | **yes** | The meters, 1 to 6, in reading order: rows for bars and bullets, columns for thermometers, up to three dials to a row. Each has its own scale. |
+
+### `clock`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `clocks` | array of [clock-face](#clock-face-object), at least 1 | **yes** | The faces, 1 to 12, in reading order, up to four to a row: each a `time`, and optionally a `text` under it and a `since`. |
+| `numerals` | string — one of `arabic`, `roman`, `quarters`, `none` | no | The numbers round every face: `arabic` (the default, 1 to 12), `roman` (I to XII), `quarters` (12, 3, 6 and 9 only) or `none`. |
+| `readout` | string — one of `words`, `digits`, `both`, `none` | no | What is written under each face: `words` (the default: `quarter past three`), `digits` (`3:15`, as written), `both`, or `none` for a worksheet. |
+
+### `rag`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `rows` | array of [rag-row](#rag-row-object), at least 1 | **yes** | The workstreams or risks, 1 to 15, in the order written: each a name, its `rag`, and optionally a `trend` and a `note`. |
+
 ### `mindmap`
 
 | Field | Type | Required | What it is |
@@ -336,6 +364,10 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `pie` | 8 `parts` |
 | `mindmap` | 8 `branches`, 30 `branches` in all, at every level |
 | `argument` | 15 `points` |
+| `familytree` | 30 `people` |
+| `meter` | 6 `meters`, 5 `bands` per meter |
+| `rag` | 15 `rows` |
+| `clock` | 12 `clocks` |
 
 ## Emphasis
 
@@ -717,6 +749,76 @@ name, so a misspelt key is an error at the point it was written.
 | `stance` | string — one of `for`, `against` | **yes** | `for` (a reason, drawn plain, tagged *because*) or `against` (an objection, hatched, tagged *but*) the box it is `on`. A rebuttal is an `against` on an `against`. |
 | `with` | array of string, at least 1 | no | Co-premises: the ids of points with the same `on` and `stance` that support it only together. Written once, on any member; the group is every point joined this way, at most 4, drawn side by side under one bracket with one connector. |
 | `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the decisive point: heavy outline and connector, bold words) or `note` (evidence or a source rather than a reason: the note type, unboxed, on a dashed connector). |
+
+### `familytree-person` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique within the document: what `couples` name. |
+| `sex` | string — one of `male`, `female`, `unknown` | **yes** | The symbol: a square (`male`), a circle (`female`) or a diamond (`unknown`), as the standard nomenclature draws them. With `gender`, the symbol shows the gender instead and this is noted under it (`AMAB`, `AFAB`) when the two differ. |
+| `gender` | string — one of `man`, `woman`, `nonbinary` | no | Gender identity, per the 2022 revision of the standard: the symbol becomes a square (`man`), a circle (`woman`) or a diamond (`nonbinary`), and `sex` is the sex assigned at birth, written under it when it differs. Leave it out and the symbol follows `sex`. |
+| `text` | string | no | The name, or an age or a test result, under the symbol and its number. A newline makes it a lead and a detail, as anywhere: a name over the years. |
+| `status` | string — one of `affected`, `carrier`, `unaffected` | no | The one trait the tree tracks: `affected` (the symbol filled), `carrier` (the theme's carrier mark: a dot in the middle, or the left half filled) or `unaffected` (the default: empty). Told apart without colour; a key under the drawing names the ones used. |
+| `deceased` | boolean | no | A diagonal stroke through the symbol. An age or year goes in `text`. |
+| `proband` | boolean | no | The affected person through whom the family came to attention: an arrow at the lower left with a `P`. One per tree. |
+| `consultand` | boolean | no | The person asking for advice or testing: the arrow without the `P`. May be the proband too. |
+| `adopted` | boolean | no | Adopted into the couple whose `children` list them: brackets round the symbol and a dashed line down from the sibship line. A child is listed once, in the couple that raised them. |
+| `pregnancy` | string — one of `ongoing`, `loss` | no | `ongoing`: a `P` in the symbol (the weeks go in `text`); `loss`: a small triangle in place of the symbol, shaded when `affected`. Either is a child only: no partners. |
+| `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis`: the person the figure is about when there is no proband — a heavier symbol and a bold name. |
+
+### `familytree-couple` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `between` | array of string, at least 2 | **yes** | The two partners' ids, in either order: drawspec puts them side by side, joined by the partner line. A person's couples are their partners in the order written — marriage order — at most 6. |
+| `children` | array of string | no | Their children's ids, in birth order: left to right under the sibship line. Leave it out for a couple with none. |
+| `twins` | array of [familytree-twins](#familytree-twins-object) | no | Children of one birth, each set written next to each other in `children`. |
+| `separated` | boolean | no | The relationship has ended: two short strokes across the partner line. |
+| `consanguineous` | boolean | no | The partners are related by blood: a double partner line. |
+
+### `meter-meter` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The meter's name. A second line after a newline is its caption, drawn plain under the name: what the reading is of — `This year's milestones only`. |
+| `amount` | number | **yes** | The reading, on the scale from `min` to `max`. Written with its `unit` in the readout; never as a percentage the author worked out. |
+| `max` | number | **yes** | The end of the scale: a thermometer's goal, a progress bar's whole, a dial's right-hand end. |
+| `min` | number | no | Where the scale starts, on a `dial` only (0 by default): a needle reads a position, so it may start anywhere. A bar's length is its amount, so a bar, a bullet and a thermometer start at 0. |
+| `unit` | string | no | What the numbers are in: `%`, a currency sign (`£`, `$`, `€`, `¥`, written before the number) or a word (`tasks`, after it). |
+| `target` | number | no | A mark on the scale — the plan, a stage of an appeal — drawn across the track and written in the readout. Inside the scale. |
+| `bands` | array of [meter-band](#meter-band-object), at least 2 | no | Named stretches of the scale, rising: each runs from the end of the one before (or `min`) to its own `to`, and the last ends at `max`. Required on a `bullet`, optional on a `dial`, refused on the others. Drawn in tones of the page's ink with their words on them, so a band is never told by colour alone. |
+| `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis` (the meter the panel is about: its name and reading bold). |
+
+### `clock-face` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `time` | string | no | The time the hands show, `H:MM` or `HH:MM` from `0:00` to `23:59` — `15:40` for twenty to four in the afternoon. No seconds, no date. Leave it out for a face with no hands, to draw them on. |
+| `text` | string | no | A name or a prompt under the face: `Home time`, `Draw half past seven`. |
+| `since` | string | no | An earlier time, `H:MM`, up to 12 hours before `time`: the face shades what has passed since it, and the readout says how long. |
+
+### `rag-row` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The workstream or risk. A second line after a newline is a caption under it, at the label size: an owner, a reference. |
+| `rag` | string — one of `red`, `amber`, `green` | **yes** | The rating: `red`, `amber` or `green`. Drawn as the theme's word and shape for it (and its colour, when the theme has one), so it is never told by colour alone. |
+| `trend` | string — one of `better`, `same`, `worse` | no | The direction of travel since the last report: `better`, `same` or `worse`. Drawn as an arrow (up, across, down) with the theme's word beside it. |
+| `note` | string | no | Why: a sentence or two of commentary, wrapped in the last column. `**bold**` for a decision asked for. |
+
+### `meter-band` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The band's name, written on it: `Good`, `Strained`, or `Green` when that is the word the reader is taught. One or two short words. |
+| `to` | number | **yes** | Where the band ends; it starts where the band before ends. |
+
+### `familytree-twins` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `of` | array of string, at least 2 | **yes** | Two or three of the couple's children, next to each other in `children`: drawn from one point on the sibship line. |
+| `zygosity` | string — one of `monozygotic`, `dizygotic`, `unknown` | **yes** | `monozygotic` (identical: a bar joins their lines), `dizygotic` (fraternal) or `unknown` (a `?` between them). |
 
 ### `mindmap-branch` object
 
