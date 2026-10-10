@@ -2,6 +2,7 @@
 id: t-2f4aa14a
 title: "Audit every existing kind: clearer, more expressive, no gimmicks"
 priority: 1
+status: done
 tags: [research]
 ---
 
