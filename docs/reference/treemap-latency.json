@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "kind": "treemap",
+  "title": "Where a checkout request's 480 ms go",
+  "unit": "ms",
+  "groups": [
+    {"id": "db", "text": "In the database"},
+    {"id": "api", "text": "In the API"},
+    {"id": "browser", "text": "In the browser"}
+  ],
+  "parts": [
+    {"text": "Inventory query", "amount": 160, "group": "db", "role": "emphasis"},
+    {"text": "Order insert", "amount": 55, "group": "db"},
+    {"text": "Lock wait", "amount": 30, "group": "db"},
+    {"text": "Price calculation", "amount": 70, "group": "api"},
+    {"text": "Auth check", "amount": 25, "group": "api"},
+    {"text": "Serialisation", "amount": 20, "group": "api"},
+    {"text": "TLS handshake", "amount": 60, "group": "browser"},
+    {"text": "Rendering", "amount": 45, "group": "browser"},
+    {"text": "Other", "amount": 15, "role": "note"}
+  ],
+  "caption": "The inventory query reads the whole table; an index is in review."
+}

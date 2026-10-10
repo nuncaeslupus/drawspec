@@ -278,6 +278,23 @@ JOURNEY_STAGE_MAX: Final = 7
 JOURNEY_FEELING_MAX: Final = 5
 JOURNEY_ROW_MAX: Final = 4
 
+#: Treemaps: one total split into a few parts, each drawn with an area in
+#: proportion to its value and labelled inside itself. A small set of proportions
+#: the author already knows, stated — not data to explore. A layout family of its
+#: own.
+TREEMAP_KINDS: Final = ("treemap",)
+
+#: The roles a part may take: the default; the part the diagram is about (not
+#: automatically the largest), outlined heavier with its words bold; and the
+#: remainder, a light dashed outline laid out after the others.
+TREEMAP_PART_ROLES: Final = ("step", "emphasis", "note")
+
+#: The most parts and groups a treemap holds. Past ten parts the smallest are
+#: slivers no label fits, and the drawing is a disk-usage tool's output; past four
+#: groups the frames crowd out the parts they hold.
+TREEMAP_PART_MAX: Final = 10
+TREEMAP_GROUP_MAX: Final = 4
+
 #: How a `files` tree is drawn. `icons` is the file-browser look; `plain` keeps
 #: the guides and drops the pictures; `unicode` and `ascii` are the tree as text,
 #: set in the monospace face, the way `tree` prints it.
@@ -325,6 +342,8 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: list memberships but cannot show an overlap.
 #: `journey` is the eleventh: a named feeling across stages — a `curve` would put
 #: a number on the feeling, and a `board` cannot draw the line through it.
+#: `treemap` is the twelfth: the parts of one known total by area — a `chart`'s
+#: bars compare the parts but do not show that they make one whole.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -340,6 +359,7 @@ KINDS: Final = (
     + FISHBONE_KINDS
     + VENN_KINDS
     + JOURNEY_KINDS
+    + TREEMAP_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -421,6 +441,12 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
         ("feelings", JOURNEY_FEELING_MAX),
         ("rows", JOURNEY_ROW_MAX),
     ),  # [7 stages, 5 feelings, 3 rows]
+    # Set by the proposal: past ten parts the smallest are slivers no label fits,
+    # and one level of four groups is as much framing as the parts can carry.
+    "treemap": (
+        ("parts", TREEMAP_PART_MAX),
+        ("groups", TREEMAP_GROUP_MAX),
+    ),  # [9 parts, 3 groups]
 }
 
 
@@ -1317,6 +1343,47 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         ),
         _text(),
     ),
+    "treemap-part": (
+        _text(),
+        FieldSpec(
+            "amount",
+            "number",
+            required=True,
+            exclusive_minimum=0,
+            description=(
+                "How much of the total this part is, in the treemap's `unit`: its area is in "
+                "proportion. A number you already know, more than 0."
+            ),
+        ),
+        FieldSpec(
+            "group",
+            "string",
+            description=(
+                "The id of one of the treemap's `groups`: the part is laid out with the "
+                "group's other parts inside its captioned frame. Omit it to sit beside the "
+                "groups."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=TREEMAP_PART_ROLES,
+            description=(
+                "`step` (the default), `emphasis` (the part the diagram is about — not "
+                "automatically the largest: a heavier outline, its words bold) or `note` (the "
+                "remainder, `Everything else`: a light dashed outline, laid out last)."
+            ),
+        ),
+    ),
+    "treemap-group": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the groups; what a part's `group` names.",
+        ),
+        _text(),
+    ),
     "effect": (_text(),),
     "category": (
         _text(),
@@ -1701,7 +1768,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the twenty-four diagrams this is. It selects the fields that are "
+            "Which of the twenty-five diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -2345,6 +2412,44 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    TREEMAP_KINDS: (
+        FieldSpec(
+            "parts",
+            "array",
+            required=True,
+            item_ref="treemap-part",
+            min_items=2,
+            description=(
+                "The parts of one total, each a rectangle whose area is in proportion to its "
+                "`amount`, with its words inside it. Laid out largest first whatever the "
+                "written order, which only breaks ties; `note` parts go last."
+            ),
+        ),
+        FieldSpec(
+            "groups",
+            "array",
+            item_ref="treemap-group",
+            min_items=1,
+            description=(
+                "One level of grouping: each group is a captioned frame holding the parts that "
+                "name it, filled with the theme's mark fills in the order written. Groups do "
+                "not nest."
+            ),
+        ),
+        FieldSpec(
+            "unit",
+            "string",
+            description="What the values are in — `kB`, `GB`, `hours` — written after each one.",
+        ),
+        FieldSpec(
+            "values",
+            "boolean",
+            description=(
+                "Whether to write each part's amount under its words, and each group's total "
+                "beside its name. Defaults to true."
+            ),
+        ),
+    ),
     ("scatter",): (
         FieldSpec(
             "axes",
@@ -2687,6 +2792,24 @@ class JourneyStage:
 
 
 @dataclass(frozen=True)
+class TreemapPart:
+    """One part of a `treemap`: a rectangle with an area in proportion to its amount."""
+
+    text: str
+    amount: float
+    group: str = ""
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class TreemapGroup:
+    """One group of a `treemap`: a captioned frame around the parts that name it."""
+
+    id: str
+    text: str
+
+
+@dataclass(frozen=True)
 class Band:
     """Something that runs alongside a set of boxes rather than containing them.
 
@@ -2904,6 +3027,15 @@ class Document:
     journey_stages: tuple[JourneyStage, ...] = ()
     """A `journey`'s stages, left to right."""
 
+    treemap_parts: tuple[TreemapPart, ...] = ()
+    """A `treemap`'s parts, in the order written: the tie-breaker between equal amounts."""
+
+    treemap_groups: tuple[TreemapGroup, ...] = ()
+    """A `treemap`'s groups, in the order written: the order their fills are taken in."""
+
+    unit: str = ""
+    """What a `treemap`'s amounts are in, written after each one."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -2922,6 +3054,7 @@ class Document:
             ("fishbone", FISHBONE_KINDS),
             ("venn", VENN_KINDS),
             ("journey", JOURNEY_KINDS),
+            ("treemap", TREEMAP_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -3116,6 +3249,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_venn_refusal(violation) for violation in found]
     if kind in JOURNEY_KINDS:
         found = [_journey_refusal(violation) for violation in found]
+    if kind in TREEMAP_KINDS:
+        found = [_treemap_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -3176,6 +3311,15 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
     ("journey", "rows"): (
         "Past four rows the map is a table with a line on it. Keep the rows the line is "
         "explained by, or split it into two journeys, before and after a hand-off."
+    ),
+    ("treemap", "parts"): (
+        "Past ten parts the smallest are slivers no label fits, and the drawing is a "
+        "disk-usage tool's output. Merge the smallest into one `note` part — `Everything "
+        "else` — and say what it holds in the caption."
+    ),
+    ("treemap", "groups"): (
+        "Past four groups the frames crowd out the parts they hold. Draw one treemap of the "
+        "groups' totals, then one per group that matters."
     ),
     ("categories", "causes"): (
         "Past five causes a bone is a list: keep the ones the investigation turned on, or "
@@ -3320,6 +3464,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _venn_violations(document)
     if kind in JOURNEY_KINDS:
         return _journey_violations(document)
+    if kind in TREEMAP_KINDS:
+        return _treemap_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -4987,6 +5133,109 @@ def _journey_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a treemap has no place for a field an author may reach for.
+TREEMAP_REFUSED: Final = {
+    "edges": (
+        "a treemap's parts are related by being one whole; there is nothing to connect. "
+        "Where a quantity goes from one place to another is a `flow`"
+    ),
+    "percent": (
+        "drawspec takes each part's share from its `amount` and the total, so the areas "
+        "cannot disagree with the numbers. Write the amount"
+    ),
+    "share": (
+        "drawspec takes each part's share from its `amount` and the total, so the areas "
+        "cannot disagree with the numbers. Write the amount"
+    ),
+    "children": (
+        "a treemap has one level of grouping: a part names its group in `group`, and a "
+        "group holds parts, not groups. Past one level it is a disk-usage tool's output"
+    ),
+    "parts": (
+        "a group does not list its parts: each part names its group in `group`. Groups do not nest"
+    ),
+    "groups": (
+        "a treemap has one level of grouping, so a group holds parts, never groups. Draw a "
+        "treemap per group instead"
+    ),
+    "group": (
+        "a treemap has one level of grouping, so a group holds parts, never groups. Draw a "
+        "treemap per group instead"
+    ),
+}
+
+
+def _treemap_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a treemap, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    in_group = parts[1:2] == ["groups"] and len(parts) == 4
+    if name == "value" and parts[1:2] == ["parts"] and len(parts) == 4:
+        return Violation(
+            violation.pointer,
+            "'value': a treemap part's number is its `amount` — how much of the total it is, "
+            "in the treemap's `unit`.",
+        )
+    if "is not a known field" in violation.message and name in TREEMAP_REFUSED:
+        if name in ("parts", "groups", "group") and not in_group:
+            return violation
+        return Violation(violation.pointer, f"{name!r}: {TREEMAP_REFUSED[name]}.")
+    if name == "amount" and parts[1:2] == ["parts"] and "greater than" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a part's amount is its area, so it must be more than 0. A part of nothing is not "
+            "drawn: leave it out, or say so in the caption.",
+        )
+    if parts[1:] == ["parts"] and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a treemap needs at least 2 parts: one part of a total is the total. Say it in a "
+            "sentence.",
+        )
+    return violation
+
+
+def _treemap_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Group ids that are unique, parts whose groups land, and no empty group."""
+    found: list[Violation] = []
+    groups: dict[str, int] = {}
+    for index, entry in enumerate(_listed(document, "groups")):
+        identifier = entry.get("id") if isinstance(entry, dict) else None
+        if not isinstance(identifier, str):
+            continue
+        if identifier in groups:
+            found.append(
+                Violation(_pointer("groups", index, "id"), f"duplicate group id {identifier!r}")
+            )
+            continue
+        groups[identifier] = index
+    named: set[str] = set()
+    for index, part in enumerate(_listed(document, "parts")):
+        group = part.get("group") if isinstance(part, dict) else None
+        if not isinstance(group, str):
+            continue
+        if group not in groups:
+            found.append(
+                Violation(
+                    _pointer("parts", index, "group"),
+                    f"{group!r} is not the id of any group"
+                    + (_closest(group, groups) if groups else ": this treemap has no `groups`."),
+                )
+            )
+            continue
+        named.add(group)
+    for identifier, index in groups.items():
+        if identifier not in named:
+            found.append(
+                Violation(
+                    _pointer("groups", index),
+                    f"no part names the group {identifier!r}, so it would be an empty frame. "
+                    f'Give it parts with `"group": "{identifier}"`, or drop it.',
+                )
+            )
+    return found
+
+
 def _is_number(value: object) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool)
 
@@ -5471,6 +5720,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _venn_document(document)
     if kind in JOURNEY_KINDS:
         return _journey_document(document)
+    if kind in TREEMAP_KINDS:
+        return _treemap_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -5930,6 +6181,34 @@ def _journey_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _treemap_document(document: Mapping[str, Any]) -> Document:
+    """A treemap: its parts and groups in the order written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        values=bool(document.get("values", True)),
+        theme=str(document.get("theme", "")),
+        unit=str(document.get("unit", "")),
+        treemap_parts=tuple(
+            TreemapPart(
+                text=entry["text"],
+                amount=float(entry["amount"]),
+                group=entry.get("group", ""),
+                role=entry.get("role", "step"),
+            )
+            for entry in document["parts"]
+        ),
+        treemap_groups=tuple(
+            TreemapGroup(id=entry["id"], text=entry["text"]) for entry in document.get("groups", ())
+        ),
+    )
+
+
 def _hub(entry: Mapping[str, Any] | None) -> Node | None:
     if entry is None:
         return None
@@ -6179,6 +6458,8 @@ __all__ = [
     "STATES_KINDS",
     "STATE_ROLES",
     "TRANSITION_ROLES",
+    "TREEMAP_KINDS",
+    "TREEMAP_PART_ROLES",
     "VENN_KINDS",
     "VENN_SET_ROLES",
     "Axis",
@@ -6207,6 +6488,8 @@ __all__ = [
     "Relation",
     "Series",
     "Slice",
+    "TreemapGroup",
+    "TreemapPart",
     "VennSet",
     "Violation",
     "Waypoint",

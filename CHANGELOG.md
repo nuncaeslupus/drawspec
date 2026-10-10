@@ -12,6 +12,26 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`treemap`, the twenty-fifth kind** — the parts of one known total, each a
+  rectangle whose area is in proportion to its `amount` (in the document's
+  `unit`), labelled inside itself: its words top-left, its amount under them
+  (`"values": false` drops the amounts). For stating a few proportions you
+  already know, not for exploring data — it keeps to `chart`'s line. Parts are
+  laid out largest first, written order breaking ties and `note` parts last, by
+  the best of every order-keeping cut of the block across its longer side: the
+  most labels fitting, then cells nearest a label's shape. The gap between cells
+  is taken from the cells and the areas corrected for it, so every drawn share is
+  the amount's share within a fraction of a percent. The block is three fifths of
+  the width tall, a little taller if a label needs it, or the top-level
+  `height`. One level of `groups`: a captioned frame in the `group` role with its
+  name and total, its parts filled with the theme's mark fills in the order
+  written. Part roles `step`, `emphasis` (heavier outline, bold words) and `note`
+  (light dashed outline). A part too small for its words is a `FitError` naming
+  it and the parts to merge into one `note` part — never a label outside its
+  cell. Refused at their pointers: one part, an amount of 0 or less, `value`
+  (naming `amount`), `percent`/`share`, an undeclared group (naming the
+  closest), an empty group, duplicate group ids, a second level of grouping,
+  `edges`. Budget: 10 parts, 4 groups.
 - **`journey`, the twenty-fourth kind** — a user or citizen journey map: one
   person's feeling across 2 to 7 `stages`, each naming one of the document's
   `feelings` (2 to 5 named levels, worst first — names, never scores). The levels

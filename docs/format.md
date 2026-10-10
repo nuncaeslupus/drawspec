@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-24 kinds. The machine-readable form of this page is the published
+25 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey` | **yes** | Which of the twenty-four diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap` | **yes** | Which of the twenty-five diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -204,6 +204,15 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `rows` | array of [journey-row](#journey-row-object), at least 1 | no | The detail rows under the feeling line, top to bottom: what the person does, where, what gets in the way. Optional: without rows the map is the stages and the line. |
 | `stages` | array of [journey-stage](#journey-stage-object), at least 2 | **yes** | Left to right as written, one column each, all one width. The feeling line passes through every stage's point. |
 
+### `treemap`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `parts` | array of [treemap-part](#treemap-part-object), at least 2 | **yes** | The parts of one total, each a rectangle whose area is in proportion to its `amount`, with its words inside it. Laid out largest first whatever the written order, which only breaks ties; `note` parts go last. |
+| `groups` | array of [treemap-group](#treemap-group-object), at least 1 | no | One level of grouping: each group is a captioned frame holding the parts that name it, filled with the theme's mark fills in the order written. Groups do not nest. |
+| `unit` | string | no | What the values are in — `kB`, `GB`, `hours` — written after each one. |
+| `values` | boolean | no | Whether to write each part's amount under its words, and each group's total beside its name. Defaults to true. |
+
 ### `scatter`
 
 | Field | Type | Required | What it is |
@@ -260,6 +269,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `fishbone` | 6 `categories`, 5 `causes` per category |
 | `venn` | 3 `sets`, 7 `regions` |
 | `journey` | 7 `stages`, 5 `feelings`, 4 `rows` |
+| `treemap` | 10 `parts`, 4 `groups` |
 
 ## Emphasis
 
@@ -513,6 +523,22 @@ name, so a misspelt key is an error at the point it was written.
 | Field | Type | Required | What it is |
 |---|---|---|---|
 | `row` | string | **yes** | The id of one of the journey's `rows`, at most once per stage. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `treemap-part` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `amount` | number, greater than 0 | **yes** | How much of the total this part is, in the treemap's `unit`: its area is in proportion. A number you already know, more than 0. |
+| `group` | string | no | The id of one of the treemap's `groups`: the part is laid out with the group's other parts inside its captioned frame. Omit it to sit beside the groups. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the part the diagram is about — not automatically the largest: a heavier outline, its words bold) or `note` (the remainder, `Everything else`: a light dashed outline, laid out last). |
+
+### `treemap-group` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the groups; what a part's `group` names. |
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 
 ### `effect` object

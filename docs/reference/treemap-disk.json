@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "kind": "treemap",
+  "title": "Why `/var` is full on the build server",
+  "unit": "GB",
+  "groups": [
+    {"id": "docker", "text": "`/var/lib/docker`"},
+    {"id": "log", "text": "`/var/log`"}
+  ],
+  "parts": [
+    {"text": "Dangling images", "amount": 61, "group": "docker", "role": "emphasis"},
+    {"text": "Build cache", "amount": 38, "group": "docker"},
+    {"text": "Volumes", "amount": 12, "group": "docker"},
+    {"text": "Journal", "amount": 9, "group": "log"},
+    {"text": "App logs", "amount": 6, "group": "log"},
+    {"text": "Other", "amount": 4, "role": "note"}
+  ]
+}

@@ -148,7 +148,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Twenty-four exist, and they fall into thirteen families:
+fields are legal. Twenty-five exist, and they fall into fourteen families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -165,6 +165,7 @@ fields are legal. Twenty-four exist, and they fall into thirteen families:
 | Cause | `fishbone` | Things that led to one effect: causes by category on bones slanting into a spine — a root-cause (Ishikawa) diagram. |
 | Overlap | `venn` | Things that share: two or three sets as equal circles, each region named by the sets it is in. |
 | Experience | `journey` | How one person feels, stage by stage: a named feeling per stage as a line, over what they do there. |
+| Share | `treemap` | The parts of one known total: each a rectangle by its area, labelled inside itself. |
 
 One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see
@@ -1143,6 +1144,61 @@ after a hand-off. A word wider than its column is a `FitError`. See
 [`reference/journey-first-week.json`](reference/journey-first-week.json),
 [`reference/journey-bug-report.json`](reference/journey-bug-report.json) and
 [`reference/journey-outpatient.json`](reference/journey-outpatient.json).
+
+## A treemap
+
+"What is in the bundle, and what dominates" is one total split into a few parts,
+and a treemap says it as one block whose parts are visibly a whole. That is
+`treemap`:
+
+```json
+{
+  "version": 1,
+  "kind": "treemap",
+  "title": "Why `/var` is full on the build server",
+  "unit": "GB",
+  "groups": [
+    {"id": "docker", "text": "`/var/lib/docker`"},
+    {"id": "log", "text": "`/var/log`"}
+  ],
+  "parts": [
+    {"text": "Dangling images", "amount": 61, "group": "docker", "role": "emphasis"},
+    {"text": "Build cache", "amount": 38, "group": "docker"},
+    {"text": "Journal", "amount": 9, "group": "log"},
+    {"text": "App logs", "amount": 6, "group": "log"},
+    {"text": "Other", "amount": 4, "role": "note"}
+  ]
+}
+```
+
+It is for **stating a small set of proportions you already know** — not for
+exploring data. drawspec is not charting software, and `treemap` keeps to the
+same line as `chart`: at most ten parts and one level of groups, and every part
+labelled inside itself. Each part's `amount` (more than 0, in the document's
+`unit`) sets its area; the gap between cells is taken from the cells and the
+areas corrected for it, so every drawn share is the amount's share of the total.
+Parts are laid out largest first — written order only breaks ties — and a
+`note` part, the remainder, goes last. The block is the canvas width wide and
+three fifths of it tall, a little taller if a label needs it, or the top-level
+`height`. A part's words sit top-left in its cell with its amount under them;
+`"values": false` drops the amounts. Roles: `emphasis` (the part the diagram is
+about, not automatically the largest) is outlined heavier with its words bold;
+`note` is a light dashed outline. A group is a captioned frame — its name and
+total at the top — and its parts take the theme's mark fills, one per group in
+the order written.
+
+Refused, each at its pointer: one part (it is the total); an `amount` of 0 or
+less; `value` (it is called `amount`); `percent` or `share` (drawspec computes
+the share); a `group` that is not declared (naming the closest), or a group no
+part names; duplicate group ids; a second level — `parts` or `groups` inside a
+group, or `children`; `edges`; `fill`. Budget: 10 parts, 4 groups. A part too
+small for its words at the tallest height tried is a `FitError` naming the part
+and its pointer, and saying which parts to merge into one `note` part — never a
+label outside its cell, never a legend. See
+[`reference/treemap-bundle.json`](reference/treemap-bundle.json),
+[`reference/treemap-disk.json`](reference/treemap-disk.json),
+[`reference/treemap-oncall.json`](reference/treemap-oncall.json) and
+[`reference/treemap-latency.json`](reference/treemap-latency.json).
 
 ## Asking for a wide drawing instead of a tall one
 

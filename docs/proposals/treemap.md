@@ -1,7 +1,9 @@
 # Proposal: `treemap` — the parts of one total, by area
 
-Status: **proposed, scope to be confirmed by the owner**. Size **M** (squarified layout is
-a known algorithm; the hard part is the label rule).
+Status: **implemented** — see *As built* at the end for where it departs from this
+text. Scope decided by the owner: in, kept to stating a small set of known
+proportions. Size **M** (squarified layout is a known algorithm; the hard part is
+the label rule).
 
 ## Why, and the limit on it
 
@@ -122,3 +124,56 @@ largest), `note` (the remainder). Group frames: the `group` role.
 * Each label wholly inside its cell (`clipping.py` against the cell, not the canvas).
 * The sliver refusal names the part and suggests the merge threshold.
 * Deterministic: equal values break ties by written order.
+
+## As built
+
+Built in `kinds/treemap.py`, a layout family of its own. The owner's decision on
+scope: **in, kept to stating a small set of known proportions — not data
+exploration**, the line the README draws under "not charting software"; the guide,
+`AGENTS.md` and the README say so. The three use cases are
+`docs/reference/treemap-bundle.json`, `treemap-disk.json` and `treemap-oncall.json`;
+`treemap-latency.json` is the largest, 9 parts in 3 groups plus a remainder. Where
+it departs from the text above:
+
+* **`amount`, not `value`.** `value` is refused by name everywhere (a matrix cell is
+  filled by its `scale` step, not a number), and no object may offer a field from
+  that table — the format's strongest invariant. So the number is `amount`, and a
+  `value` on a part is refused naming it. The top-level `values` switch keeps its
+  `chart` name.
+* **Not the squarified algorithm itself.** Its greedy rows leave the last part
+  whatever strip remains: the remainder of `treemap-latency` came out 32 by 192,
+  too narrow for "Other". With at most ten parts, every way of cutting the block in
+  two across its longer side, keeping the order (largest first, `note` last,
+  written order breaking ties), then each half again, can be tried — each half's
+  best in its own rectangle. The layout chosen is the one in which the most labels
+  fit, then the squarified measure: the worst cell's distance from a label's shape
+  (1.5 wide to 1 tall), then the sum.
+* **Height.** No theme aspect ratio: the block is 0.6 of the width tall, and when a
+  label does not fit it is tried at 0.65, 0.7 and 0.75 before the refusal, so a
+  long label costs some height before it costs the type size. A top-level `height`
+  is the one height tried.
+* **Gaps without a loss of proportion.** One gap (4 units) between cells, taken from
+  the cells; a uniform inset takes more of a small cell than a large one, so the
+  weights are corrected over a few passes until each drawn share is within 10⁻⁵ of
+  the amount's share (the test asks 2 %). A group's caption band is paid for the
+  same way.
+* **The sliver refusal is a `FitError`, not a `DocumentError`.** Whether words fit
+  depends on the theme's type and the measured text, which validation never sees,
+  and the elastic fit should try a smaller type before refusing. The message names
+  the part, its pointer, amount and cell size, and says to merge the parts of that
+  amount or less into one `note` part (`Everything else`). A group name wider than
+  its frame is a `FitError` naming the group.
+* **The amount is at the body size**, on its own line under the words: every word
+  inside a shape is set at one size in every kind. A group's caption is its name in
+  bold over its total, inside the frame, above its parts.
+* **Roles drawn**: `step` a solid outline, `emphasis` the emphasis role's heavier
+  outline with bold words, `note` a light dashed outline (the board's note card);
+  cells are sharp-cornered polygons, so a theme's corner radius or pill shape never
+  breaks the tiling. Group frames use the `group` role.
+* **Refused by name** besides the proposal's list: `percent` and `share` (drawspec
+  computes the share), `children`, and `parts`/`groups`/`group` inside a group (one
+  level), duplicate group ids and an undeclared group (naming the closest). The
+  caps live in the readability budget — 10 parts, 4 groups — the parts' advice
+  being to merge the smallest into one `note` part.
+* **No theme section.** The gap, inset and heights are fixed in units, so a theme
+  cannot change which documents fit; the fills are `[mark] fills`.

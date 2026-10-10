@@ -52,6 +52,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "fishbone": "one effect and its causes by category — a root-cause (Ishikawa) diagram",
     "venn": "two or three overlapping sets — what each holds alone, and what they share",
     "journey": "one person's feeling across the stages of an experience — a journey map",
+    "treemap": "the parts of one known total, each by its area — a few proportions, stated",
 }
 
 #: The smallest document of each kind that renders.
@@ -288,6 +289,11 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"text": "Orders", "feeling": "happy"},
             {"text": "Waits", "feeling": "unhappy"},
         ],
+    },
+    "treemap": {
+        "version": 1,
+        "kind": "treemap",
+        "parts": [{"text": "Rent", "amount": 60}, {"text": "Food", "amount": 40}],
     },
     "scatter": {
         "version": 1,

@@ -1751,6 +1751,85 @@
         "stages"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "treemap",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "treemap"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "parts": {
+          "type": "array",
+          "description": "The parts of one total, each a rectangle whose area is in proportion to its `amount`, with its words inside it. Laid out largest first whatever the written order, which only breaks ties; `note` parts go last.",
+          "items": {
+            "$ref": "#/$defs/treemap-part"
+          },
+          "minItems": 2
+        },
+        "groups": {
+          "type": "array",
+          "description": "One level of grouping: each group is a captioned frame holding the parts that name it, filled with the theme's mark fills in the order written. Groups do not nest.",
+          "items": {
+            "$ref": "#/$defs/treemap-group"
+          },
+          "minItems": 1
+        },
+        "unit": {
+          "type": "string",
+          "description": "What the values are in — `kB`, `GB`, `hours` — written after each one."
+        },
+        "values": {
+          "type": "boolean",
+          "description": "Whether to write each part's amount under its words, and each group's total beside its name. Defaults to true."
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "parts"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -3162,6 +3241,56 @@
       "required": [
         "from",
         "to"
+      ],
+      "additionalProperties": false
+    },
+    "treemap-group": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the groups; what a part's `group` names."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "treemap-part": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "amount": {
+          "type": "number",
+          "description": "How much of the total this part is, in the treemap's `unit`: its area is in proportion. A number you already know, more than 0.",
+          "exclusiveMinimum": 0
+        },
+        "group": {
+          "type": "string",
+          "description": "The id of one of the treemap's `groups`: the part is laid out with the group's other parts inside its captioned frame. Omit it to sit beside the groups."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default), `emphasis` (the part the diagram is about — not automatically the largest: a heavier outline, its words bold) or `note` (the remainder, `Everything else`: a light dashed outline, laid out last).",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        }
+      },
+      "required": [
+        "text",
+        "amount"
       ],
       "additionalProperties": false
     },
