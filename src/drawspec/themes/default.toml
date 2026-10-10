@@ -158,6 +158,13 @@ notation = "crowsfoot"
 milestone = "diamond"
 marks = "weak"
 
+[board]
+# A story map's slices are told apart by a line across every column in an edge
+# role with no head — dashed, so the cards and not the lines are what is read —
+# and the cut under the first release by the one heavy line on the board.
+separator = "weak"
+cut = "strong"
+
 # ---------------------------------------------------------------------------
 # Node roles. Shape and line treatment per semantic role. The author names the
 # role; every appearance decision below is taken here, once, for all diagrams.

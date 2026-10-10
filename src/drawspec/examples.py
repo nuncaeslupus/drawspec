@@ -48,6 +48,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "lanes": "a flow whose actors are swimlanes — the hand-offs between parties are the point",
     "entities": "a data model, schema or class diagram — boxes of fields, relations between them",
     "gantt": "a plan — one row per task, each an interval on a numbered axis; no dates",
+    "board": "cards sorted into columns — a kanban board, a retrospective, a story map",
 }
 
 #: The smallest document of each kind that renders.
@@ -247,6 +248,19 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"id": "ship", "text": "Ship it", "at": 3},
         ],
         "edges": [{"from": "build", "to": "ship"}],
+    },
+    "board": {
+        "version": 1,
+        "kind": "board",
+        "columns": [
+            {"id": "todo", "text": "To do"},
+            {"id": "doing", "text": "Doing", "limit": 2},
+            {"id": "done", "text": "Done"},
+        ],
+        "cards": [
+            {"text": "Write the tests", "column": "doing"},
+            {"text": "Draft the guide", "column": "todo"},
+        ],
     },
     "scatter": {
         "version": 1,

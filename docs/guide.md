@@ -148,7 +148,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Twenty exist, and they fall into nine families:
+fields are legal. Twenty-one exist, and they fall into ten families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -161,6 +161,7 @@ fields are legal. Twenty exist, and they fall into nine families:
 | Exchange | `sequence` | Things said in order: messages between a fixed set of participants, read down the page. |
 | Model | `entities` | Things with fields, and how they relate: an ER model, a database schema, a class diagram. |
 | Plan | `gantt` | Things that take time: one row per task, each an interval, with phases, milestones and what waits on what. |
+| Board | `board` | Things sorted, not joined: cards in columns — a kanban board, a retrospective, a story map sliced into releases. |
 
 One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see
@@ -948,6 +949,57 @@ task's `text` when it has an actor. Budget: 16 tasks, 20 edges and 4 marks. See
 [`reference/gantt-critical-path.json`](reference/gantt-critical-path.json),
 [`reference/gantt-upgrade.json`](reference/gantt-upgrade.json) and
 [`reference/gantt-semester.json`](reference/gantt-semester.json).
+
+## A board
+
+A kanban board, a retrospective and a story map are one picture: **cards sorted
+into columns, with no connectors**. That is `board`:
+
+```json
+{
+  "version": 1,
+  "kind": "board",
+  "columns": [
+    {"id": "todo", "text": "To do"},
+    {"id": "review", "text": "In review", "limit": 2},
+    {"id": "done", "text": "Published"}
+  ],
+  "cards": [
+    {"text": "Troubleshooting", "column": "todo"},
+    {"text": "Theming guide", "column": "review", "actor": "Ana"},
+    {"text": "MCP server", "column": "review", "role": "emphasis", "note": "blocked on a decision"},
+    {"text": "Gallery page", "column": "review"},
+    {"text": "Install guide", "column": "done"}
+  ]
+}
+```
+
+Columns are equal and left to right as written, each a bold heading over a
+rule. A column with a `limit` is **counted by drawspec**: the heading reads
+`3 / 2` here, and over its limit it takes `emphasis` (a heavier rule and a bold
+count) — never write the count yourself. Cards stack in each cell **in the order
+written**, top-aligned, so a short column looks short. Card roles: `step`,
+`emphasis` (blocked, at risk) and `note` (a placeholder or a summary such as
+`+ 6 more`, a light dashed card, not counted against a limit). An `actor` is the
+card's lead, as in a `flow` box; a card's `note` hangs under the card, smaller.
+
+With `rows` it is a **story map**: each row a slice across every column (a
+release), named in a margin at the left, and every card names its `row`. `cut`
+names the row the first release ends at; the board's one heavy line is drawn
+under it (the theme's `[board] cut`), and the other slices are parted by
+`[board] separator`.
+
+Refused, each at its pointer: `edges` — if the order between cards matters it is
+a `flow`, or `lanes`; a per-card `label`, `tag` or `colour` (a card's kind is its
+column); a card in an unknown column or row; a `row` on a board without rows, or
+a card without one on a board with them (half a story map is a mistake); a `cut`
+without rows, on an unknown row or on the last; and a newline in a card's `text`
+when it has an actor. Budget: 6 columns, 4 rows, 32 cards, and 8 cards in one
+cell — past that, end the cell with a summary card. See
+[`reference/board-migration.json`](reference/board-migration.json),
+[`reference/board-retrospective.json`](reference/board-retrospective.json),
+[`reference/board-story-map.json`](reference/board-story-map.json) and
+[`reference/board-onboarding.json`](reference/board-onboarding.json).
 
 ## Asking for a wide drawing instead of a tall one
 

@@ -1449,6 +1449,90 @@
         "tasks"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "board",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "board"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "columns": {
+          "type": "array",
+          "description": "Left to right as written: states on a kanban board, prompts on a retrospective, the steps of a story on a story map. All one width.",
+          "items": {
+            "$ref": "#/$defs/board-column"
+          },
+          "minItems": 1
+        },
+        "rows": {
+          "type": "array",
+          "description": "Slices across every column, top to bottom — the releases of a story map. With rows, every card names one.",
+          "items": {
+            "$ref": "#/$defs/slice"
+          },
+          "minItems": 1
+        },
+        "cut": {
+          "type": "string",
+          "description": "The id of a row: a heavy rule is drawn under it — everything above ships first. Not the last row, which has nothing below it to cut from."
+        },
+        "cards": {
+          "type": "array",
+          "description": "Each in a column (and a row, with rows). Within a cell they stack in the order written, top-aligned, so a short column looks short.",
+          "items": {
+            "$ref": "#/$defs/card"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "columns",
+        "cards"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -1600,6 +1684,37 @@
       ],
       "additionalProperties": false
     },
+    "board-column": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the columns; what a card's `column` names."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "limit": {
+          "type": "integer",
+          "description": "A work-in-progress limit. drawspec counts the column's cards (a `note` card is not work, so it is not counted) and writes `n / limit` in the heading; over the limit the heading takes `emphasis`. Never write the count yourself.",
+          "exclusiveMinimum": 0
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default) or `emphasis` (the column the board is about), drawn as the weight of the rule under the heading.",
+          "enum": [
+            "step",
+            "emphasis"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
     "branch": {
       "type": "object",
       "properties": {
@@ -1614,6 +1729,45 @@
       },
       "required": [
         "at"
+      ],
+      "additionalProperties": false
+    },
+    "card": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "column": {
+          "type": "string",
+          "description": "The id of the column it is in. Its kind is its column."
+        },
+        "row": {
+          "type": "string",
+          "description": "The id of the row (slice) it is in. Required when the board has `rows`, refused when it has none."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default), `emphasis` (blocked, at risk, the one that matters) or `note` (a placeholder or a summary such as `+ 6 more`, drawn lighter and not counted against a limit).",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        },
+        "actor": {
+          "type": "string",
+          "description": "Who holds it — free text, drawn as the card's lead, as in a `flow` box. A card with an actor may not put a newline in `text`."
+        },
+        "note": {
+          "type": "string",
+          "description": "A short aside hung under the card, smaller: `blocked on a decision`."
+        }
+      },
+      "required": [
+        "text",
+        "column"
       ],
       "additionalProperties": false
     },
@@ -2449,6 +2603,24 @@
       "required": [
         "name",
         "data"
+      ],
+      "additionalProperties": false
+    },
+    "slice": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the rows; what a card's `row` and the board's `cut` name."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "id",
+        "text"
       ],
       "additionalProperties": false
     },

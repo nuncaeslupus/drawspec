@@ -1,6 +1,7 @@
 # Proposal: `board` — cards in columns, with optional slices
 
-Status: **proposed**. Size **M** (a grid of stacks; no routing at all).
+Status: **implemented** — see *As built* at the end for where it departs from this
+text. Size **M** (a grid of stacks; no routing at all).
 
 ## One kind for kanban, story maps and retrospectives
 
@@ -152,3 +153,39 @@ weight; slice separators the `weak` role.
 * Card order inside a cell equals written order.
 * Every refusal above, `edges` with the `flow`/`lanes` hint.
 * No line primitive other than separators, rules and card borders (no connectors).
+
+## As built
+
+Built in `kinds/board.py`, a layout family of its own; the three use cases are
+`docs/reference/board-migration.json`, `board-story-map.json` and
+`board-retrospective.json`, and `board-onboarding.json` adds a five-column story
+map with actors, a note and a caption. Where it departs from the text above:
+
+* **A `note` card is not counted against a limit.** It is a placeholder or a
+  summary (`+ 6 more pages`), not a piece of work, and counting `+ 6 more` as one
+  card would be wrong either way; the limit's description says so.
+* **A card's `note` hangs under the card**, outside its border, at the label
+  size — not inside it. Every word inside a shape is set at one size in every
+  kind (an acceptance test holds all of them to it), and a note is an annotation
+  on the card, as a `timeline` note is on its entry.
+* **A heading is its name in bold, then `n / limit`, over a rule** as wide as the
+  column. The heading's role is the weight of that rule — `emphasis` heavier —
+  and over the limit the count is set bold too, so the column that broke its
+  limit is told apart by weight twice and never by colour. A boxed heading looked
+  like one more card.
+* **Theme `[board]`**: `separator` (`weak` by default) and `cut` (`strong`), the
+  edge roles the two lines are drawn in, with no head — as `[lanes] separator`
+  and `[gantt] marks` are. Both run the full width, through the slice margin, so
+  a slice's name reads as part of its row.
+* **Slice names are bold body text** in a margin as wide as the widest, up to a
+  fifth of the canvas, then wrapped — the weight of a `gantt` phase heading, not
+  a separate caption level.
+* **Budget**: 6 columns, 4 rows, 8 cards in one cell, as proposed, and also 32
+  cards in all. The cell cap lives in the readability budget like every count
+  cap, as `cards@cell` (drawn in the format reference as "8 `cards` per cell"),
+  and its refusal points at the ninth card and suggests a summary card.
+* **Also refused**: duplicate column or row ids, a `cut` on a board without
+  rows or naming an unknown row, a newline in a card's `text` when it has an
+  actor (the actor is the lead), and `tags` beside `label`, `tag` and `colour`
+  (`color` was already refused everywhere). `order` needed nothing: it is refused
+  by name in every kind.

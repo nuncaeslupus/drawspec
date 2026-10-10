@@ -203,6 +203,15 @@ How a plan draws the two marks that are not bars.
 | `milestone` | `"diamond"` | `diamond` or `circle`: the mark a task with `at` is drawn as, filled. One of `diamond`, `circle`. |
 | `marks` | `"weak"` | The edge role a mark's line across the rows is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
 
+### `[board]`
+
+How a board draws the two lines that are not card borders.
+
+| Key | Default | What it is |
+|---|---|---|
+| `separator` | `"weak"` | The edge role the line between two rows (slices) is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `cut` | `"strong"` | The edge role the cut under a row is drawn in, with no head: the board's one heavy line. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The

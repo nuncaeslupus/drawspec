@@ -71,6 +71,7 @@ from drawspec.theme import (
     THEME_VERSION,
     TYPE_LEVELS,
     WIDTH_MODES,
+    BoardStyle,
     BoxStyle,
     Canvas,
     CycleStyle,
@@ -113,6 +114,9 @@ def _cell(text: str) -> str:
 
 def _budgeted(name: str, limit: int) -> str:
     """One budget entry: `8 entities`, or `12 fields per entity` for a nested one."""
+    if "@" in name:
+        outer, per = name.split("@")
+        return f"{limit} `{outer}` per {per}"
     if "/" not in name:
         return f"{limit} `{name}`"
     outer, inner = name.split("/")
@@ -516,6 +520,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "lanes": LanesStyle,
     "entities": EntitiesStyle,
     "gantt": GanttStyle,
+    "board": BoardStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are
@@ -536,6 +541,8 @@ THEME_VOCABULARIES: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("entities", "notation"): ENTITIES_NOTATIONS,
     ("gantt", "milestone"): GANTT_MILESTONES,
     ("gantt", "marks"): EDGE_ROLES,
+    ("board", "separator"): EDGE_ROLES,
+    ("board", "cut"): EDGE_ROLES,
 }
 
 

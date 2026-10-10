@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "kind": "board",
+  "title": "A new hire's first fortnight",
+  "caption": "Above the line is what the first cohort gets; the rest waits for feedback.",
+  "columns": [
+    {"id": "before", "text": "Before"},
+    {"id": "day", "text": "Day one"},
+    {"id": "week", "text": "Week one"},
+    {"id": "fortnight", "text": "Week two"},
+    {"id": "review", "text": "Check-in"}
+  ],
+  "rows": [
+    {"id": "pilot", "text": "Pilot cohort"},
+    {"id": "everyone", "text": "Everyone"}
+  ],
+  "cut": "pilot",
+  "cards": [
+    {"text": "Laptop shipped", "column": "before", "row": "pilot", "actor": "IT"},
+    {"text": "Accounts created", "column": "before", "row": "pilot", "actor": "IT"},
+    {"text": "Welcome and tour", "column": "day", "row": "pilot", "actor": "Manager"},
+    {"text": "Set up the dev environment", "column": "day", "row": "pilot", "role": "emphasis", "note": "the step new hires stall on"},
+    {"text": "First small fix merged", "column": "week", "row": "pilot"},
+    {"text": "Shadow an on-call shift", "column": "fortnight", "row": "pilot"},
+    {"text": "Thirty-minute check-in", "column": "review", "row": "pilot", "actor": "Manager"},
+    {"text": "Reading list sent", "column": "before", "row": "everyone"},
+    {"text": "Buddy assigned", "column": "day", "row": "everyone"},
+    {"text": "Team lunch", "column": "week", "row": "everyone"},
+    {"text": "Own a small feature", "column": "fortnight", "row": "everyone"},
+    {"text": "Survey sent", "column": "review", "row": "everyone", "role": "note"}
+  ]
+}

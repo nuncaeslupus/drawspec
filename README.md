@@ -3,10 +3,10 @@
 Declarative diagram spec → clean, themeable SVG. Writable by an LLM with no
 coordinates to get wrong.
 
-> **Status: it draws.** All twenty kinds render — `flow`, `tree`, `cycle`,
+> **Status: it draws.** All twenty-one kinds render — `flow`, `tree`, `cycle`,
 > `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`,
 > `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`,
-> `entities` and `gantt` — and each of
+> `entities`, `gantt` and `board` — and each of
 > the eleven failure families below has a test asserting it cannot be expressed.
 > The vocabulary opened from nine to thirteen on evidence: see `docs/kinds-wanted.md`, which
 > sorts all 89 hand-drawn originals by the kind that would have to draw them.
@@ -25,6 +25,9 @@ coordinates to get wrong.
 > the ends, and inheritance with a hollow triangle. `gantt` is the twentieth: a
 > plan, one row per task, with phases, milestones, finish-to-start dependencies
 > and marks such as *today* — on a numbered axis in a unit you name, never dates.
+> `board` is the twenty-first: cards sorted into columns — a kanban board with
+> work-in-progress limits drawspec counts, a retrospective, or a story map whose
+> releases are slices across the columns with a heavy cut under the first.
 
 ## The problem
 
@@ -99,7 +102,7 @@ every diagram in your project changes with it.
 
 ### A timeline
 
-The twenty kinds are the part people do not expect, so here is one that is not
+The twenty-one kinds are the part people do not expect, so here is one that is not
 a box-and-arrow diagram at all:
 
 ```json
@@ -203,7 +206,7 @@ for several jobs it might look like it does.
 * **It is not a Graphviz replacement.** Graphviz is a graph-layout engine with
   decades of work behind its layered and force-directed placement, and it will
   lay out a hundred-node graph that drawspec refuses. drawspec's layout exists
-  to serve twenty named diagram shapes at the sizes a document reads at; past
+  to serve twenty-one named diagram shapes at the sizes a document reads at; past
   each kind's readability budget (fifteen boxes on a `flow`) it will tell you to
   split the diagram into an overview and details rather than produce something
   dense and unreadable, which is deliberate but is not what a graph tool does.

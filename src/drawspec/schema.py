@@ -215,6 +215,25 @@ DEPENDENCY_ROLES: Final = ("flow", "strong", "weak")
 #: The fields of a task that hold a position on the axis.
 TASK_VALUES: Final = ("start", "end", "at")
 
+#: Boards: cards sorted into columns, with no connectors — a kanban board, a
+#: retrospective, and (with `rows` and a `cut`) a story map. A layout family of
+#: its own: a grid of stacks, placed by counting, with nothing to route.
+BOARD_KINDS: Final = ("board",)
+
+#: The roles a card may take: the default, the one that matters (blocked, at
+#: risk), and a placeholder or summary card drawn lighter and not counted
+#: against its column's limit.
+CARD_ROLES: Final = ("step", "emphasis", "note")
+
+#: The roles a column's heading may take. A column over its `limit` takes
+#: `emphasis` whatever it was given, because drawspec counted and the author
+#: did not.
+BOARD_COLUMN_ROLES: Final = ("step", "emphasis")
+
+#: The most cards one cell of a board may stack — a column, or a column within
+#: one slice. Past it a reader counts instead of reading: write a summary card.
+BOARD_CELL_MAX: Final = 8
+
 #: How a `files` tree is drawn. `icons` is the file-browser look; `plain` keeps
 #: the guides and drops the pictures; `unicode` and `ascii` are the tree as text,
 #: set in the monospace face, the way `tree` prints it.
@@ -254,6 +273,8 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: `tree-compartments` could only imitate with a newline per attribute. `gantt`
 #: is the seventh: a plan, one row per task, each an interval — overlap is what
 #: the reader looks for, and a `timeline`'s one axis of instants cannot show it.
+#: `board` is the eighth: cards sorted into columns with no connectors — a
+#: matrix cell is one box, and a board's cell is a list whose count matters.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -265,6 +286,7 @@ KINDS: Final = (
     + LANES_KINDS
     + ENTITIES_KINDS
     + GANTT_KINDS
+    + BOARD_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -321,6 +343,15 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     ),  # [5 entities, 5 edges, 6 fields, 3 operations]
     # Set by the proposal: a two-hundred-line plan is a project tool's export.
     "gantt": (("tasks", 16), ("edges", 20), ("marks", 4)),  # [11 tasks, 9 edges, 2 marks]
+    # Set by the proposal: past six columns a card's words no longer fit its
+    # column. A name with an `@` counts the first array's entries per what the
+    # second names — here the cards that share a column and a slice.
+    "board": (
+        ("columns", 6),
+        ("rows", 4),
+        ("cards", 32),
+        ("cards@cell", BOARD_CELL_MAX),
+    ),  # [5 columns, 3 rows, 11 cards, 4 per cell]
 }
 
 
@@ -1045,6 +1076,83 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "board-column": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the columns; what a card's `column` names.",
+        ),
+        _text(),
+        FieldSpec(
+            "limit",
+            "integer",
+            exclusive_minimum=0,
+            description=(
+                "A work-in-progress limit. drawspec counts the column's cards (a `note` card "
+                "is not work, so it is not counted) and writes `n / limit` in the heading; "
+                "over the limit the heading takes `emphasis`. Never write the count yourself."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=BOARD_COLUMN_ROLES,
+            description=(
+                "`step` (the default) or `emphasis` (the column the board is about), drawn "
+                "as the weight of the rule under the heading."
+            ),
+        ),
+    ),
+    "slice": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the rows; what a card's `row` and the board's `cut` name.",
+        ),
+        _text(),
+    ),
+    "card": (
+        _text(),
+        FieldSpec(
+            "column",
+            "string",
+            required=True,
+            description="The id of the column it is in. Its kind is its column.",
+        ),
+        FieldSpec(
+            "row",
+            "string",
+            description=(
+                "The id of the row (slice) it is in. Required when the board has `rows`, "
+                "refused when it has none."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=CARD_ROLES,
+            description=(
+                "`step` (the default), `emphasis` (blocked, at risk, the one that matters) "
+                "or `note` (a placeholder or a summary such as `+ 6 more`, drawn lighter "
+                "and not counted against a limit)."
+            ),
+        ),
+        FieldSpec(
+            "actor",
+            "string",
+            description=(
+                "Who holds it — free text, drawn as the card's lead, as in a `flow` box. A "
+                "card with an actor may not put a newline in `text`."
+            ),
+        ),
+        FieldSpec(
+            "note",
+            "string",
+            description=("A short aside hung under the card, smaller: `blocked on a decision`."),
+        ),
+    ),
     "group": (
         FieldSpec("id", "string", required=True, description="Unique within the document."),
         _text(required=False),
@@ -1401,7 +1509,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the twenty diagrams this is. It selects the fields that are "
+            "Which of the twenty-one diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -1921,6 +2029,48 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    BOARD_KINDS: (
+        FieldSpec(
+            "columns",
+            "array",
+            required=True,
+            item_ref="board-column",
+            min_items=1,
+            description=(
+                "Left to right as written: states on a kanban board, prompts on a "
+                "retrospective, the steps of a story on a story map. All one width."
+            ),
+        ),
+        FieldSpec(
+            "rows",
+            "array",
+            item_ref="slice",
+            min_items=1,
+            description=(
+                "Slices across every column, top to bottom — the releases of a story map. "
+                "With rows, every card names one."
+            ),
+        ),
+        FieldSpec(
+            "cut",
+            "string",
+            description=(
+                "The id of a row: a heavy rule is drawn under it — everything above ships "
+                "first. Not the last row, which has nothing below it to cut from."
+            ),
+        ),
+        FieldSpec(
+            "cards",
+            "array",
+            required=True,
+            item_ref="card",
+            min_items=1,
+            description=(
+                "Each in a column (and a row, with rows). Within a cell they stack in the "
+                "order written, top-aligned, so a short column looks short."
+            ),
+        ),
+    ),
     ("scatter",): (
         FieldSpec(
             "axes",
@@ -2176,6 +2326,41 @@ class Mark:
 
 
 @dataclass(frozen=True)
+class BoardColumn:
+    """One column of a `board`, left to right, with an optional work-in-progress limit."""
+
+    id: str
+    text: str
+    limit: int | None = None
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class Slice:
+    """One row of a `board` — a release of a story map — across every column."""
+
+    id: str
+    text: str
+
+
+@dataclass(frozen=True)
+class Card:
+    """One card of a `board`: in a column, and in a row when the board has rows."""
+
+    text: str
+    column: str
+    row: str = ""
+    role: str = "step"
+    actor: str = ""
+    note: str = ""
+
+    @property
+    def label(self) -> str:
+        """The words of the card: the actor as the lead, as in a `flow` box."""
+        return f"{self.actor}\n{self.text}" if self.actor else self.text
+
+
+@dataclass(frozen=True)
 class Band:
     """Something that runs alongside a set of boxes rather than containing them.
 
@@ -2363,6 +2548,16 @@ class Document:
 
     marks: tuple[Mark, ...] = ()
 
+    board_columns: tuple[BoardColumn, ...] = ()
+    """A `board`'s columns, left to right. Not `columns`, which is a matrix's headings."""
+
+    slices: tuple[Slice, ...] = ()
+    """A `board`'s rows, top to bottom."""
+
+    cards: tuple[Card, ...] = ()
+    cut: str = ""
+    """The id of the slice a `board` draws its heavy rule under."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -2377,6 +2572,7 @@ class Document:
             ("lanes", LANES_KINDS),
             ("entities", ENTITIES_KINDS),
             ("gantt", GANTT_KINDS),
+            ("board", BOARD_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -2563,6 +2759,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_lanes_refusal(violation) for violation in found]
     if kind in GANTT_KINDS:
         found = [_gantt_refusal(violation, document) for violation in found]
+    if kind in BOARD_KINDS:
+        found = [_board_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -2610,6 +2808,9 @@ def _readability_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         if "/" in name:
             found.extend(_nested_budget(document, name, limit))
             continue
+        if "@" in name:
+            found.extend(_cell_budget(document, name, limit))
+            continue
         entries = document.get(name)
         if not isinstance(entries, list) or len(entries) <= limit:
             continue
@@ -2642,6 +2843,31 @@ def _nested_budget(document: Mapping[str, Any], name: str, limit: int) -> list[V
                 f"`...` field, which says there are more.",
             )
         )
+    return found
+
+
+def _cell_budget(document: Mapping[str, Any], name: str, limit: int) -> list[Violation]:
+    """The budget of a board's cell: how many cards share one column and one row."""
+    outer, _ = name.split("@")
+    found: list[Violation] = []
+    counts: dict[tuple[object, object], int] = {}
+    for index, card in enumerate(_listed(document, outer)):
+        if not isinstance(card, dict):
+            continue
+        cell = (card.get("column"), card.get("row"))
+        if not all(isinstance(part, str | None) for part in cell):
+            continue
+        counts[cell] = counts.get(cell, 0) + 1
+        if counts[cell] == limit + 1:
+            found.append(
+                Violation(
+                    _pointer(outer, index),
+                    f"this is card {limit + 1} in one cell, and a board's cell can be read at "
+                    f"{limit} at most — past that a reader counts instead of reading. Keep the "
+                    f'ones that matter and end with a summary card, `{{"text": "+ 6 more", '
+                    f'"role": "note"}}`, which says there are more.',
+                )
+            )
     return found
 
 
@@ -2690,6 +2916,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _entities_violations(document)
     if kind in GANTT_KINDS:
         return _gantt_violations(document)
+    if kind in BOARD_KINDS:
+        return _board_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -3980,6 +4208,127 @@ def _gantt_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Fields a board refuses by name, and why: what an author reaches for when the
+#: board is really something else, or when appearance is wanted per card.
+BOARD_REFUSED: Final = {
+    "edges": (
+        "a board has no connectors: its cards are sorted, not joined. If the order between "
+        "cards matters, it is a `flow` — or `lanes`, when who hands off to whom matters"
+    ),
+    "label": "a card has its `text`, and its kind is its column; a second label is a tag",
+    "tag": "appearance is the role's, and a card's kind is its column. Name it in the text",
+    "tags": "appearance is the role's, and a card's kind is its column. Name it in the text",
+    "colour": "appearance is the role's, and a card's kind is its column",
+}
+
+
+def _board_refusal(violation: Violation) -> Violation:
+    """An unknown field on a board, told why a board has no place for it."""
+    name = violation.pointer.rsplit("/", 1)[-1]
+    if name in BOARD_REFUSED and "is not a known field" in violation.message:
+        return Violation(violation.pointer, f"{name!r}: {BOARD_REFUSED[name]}.")
+    return violation
+
+
+def _board_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """What a board may not be: cards in columns or rows it does not have, half a story map.
+
+    Column and row ids are unique and land; with rows every card names one and
+    without them none does; a cut names a row that has another below it; a card
+    with an actor keeps its text on one line.
+    """
+    found: list[Violation] = []
+
+    def ids(name: str) -> dict[str, int]:
+        seen: dict[str, int] = {}
+        for index, entry in enumerate(_listed(document, name)):
+            identifier = entry.get("id") if isinstance(entry, dict) else None
+            if not isinstance(identifier, str):
+                continue
+            if identifier in seen:
+                found.append(
+                    Violation(
+                        _pointer(name, index, "id"), f"duplicate {name[:-1]} id {identifier!r}"
+                    )
+                )
+                continue
+            seen[identifier] = index
+        return seen
+
+    columns = ids("columns")
+    rows = ids("rows")
+    has_rows = isinstance(document.get("rows"), list)
+
+    cut = document.get("cut")
+    if isinstance(cut, str):
+        if not has_rows:
+            found.append(
+                Violation(
+                    "/cut",
+                    "a cut is drawn under a row, and this board has no `rows`. Add the slices "
+                    "(a first release and what follows), or drop the cut.",
+                )
+            )
+        elif cut not in rows:
+            found.append(
+                Violation("/cut", f"{cut!r} is not the id of any row" + _closest(cut, rows))
+            )
+        elif rows[cut] == len(document["rows"]) - 1:
+            found.append(
+                Violation(
+                    "/cut",
+                    f"{cut!r} is the last row, and a cut with nothing below it cuts nothing. "
+                    f"Name the row the first release ends at.",
+                )
+            )
+
+    for index, card in enumerate(_listed(document, "cards")):
+        if not isinstance(card, dict):
+            continue
+        column = card.get("column")
+        if isinstance(column, str) and column not in columns:
+            found.append(
+                Violation(
+                    _pointer("cards", index, "column"),
+                    f"{column!r} is not the id of any column" + _closest(column, columns),
+                )
+            )
+        row = card.get("row")
+        if has_rows and "row" not in card:
+            found.append(
+                Violation(
+                    _pointer("cards", index, "row"),
+                    "'row' is required: this board has rows, so every card is in one — half a "
+                    "story map is a mistake. Name the slice it ships in.",
+                )
+            )
+        elif not has_rows and "row" in card:
+            found.append(
+                Violation(
+                    _pointer("cards", index, "row"),
+                    "this board has no `rows`, so a card cannot be in one. Add the rows (a "
+                    "story map), or drop 'row' from every card (a kanban board).",
+                )
+            )
+        elif isinstance(row, str) and row not in rows:
+            found.append(
+                Violation(
+                    _pointer("cards", index, "row"),
+                    f"{row!r} is not the id of any row" + _closest(row, rows),
+                )
+            )
+        text = card.get("text")
+        if isinstance(card.get("actor"), str) and isinstance(text, str) and "\n" in text:
+            found.append(
+                Violation(
+                    _pointer("cards", index, "text"),
+                    "a card with an actor has the actor as its lead, so its text may not start "
+                    "a second paragraph. Put it on one line, or the rest in `note`.",
+                )
+            )
+    return found
+
+
 def _is_number(value: object) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool)
 
@@ -4456,6 +4805,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _entities_document(document)
     if kind in GANTT_KINDS:
         return _gantt_document(document)
+    if kind in BOARD_KINDS:
+        return _board_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -4796,6 +5147,44 @@ def _gantt_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _board_document(document: Mapping[str, Any]) -> Document:
+    """A board: its columns, its rows if any, its cut, and its cards in order."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        board_columns=tuple(
+            BoardColumn(
+                id=entry["id"],
+                text=entry["text"],
+                limit=entry.get("limit"),
+                role=entry.get("role", "step"),
+            )
+            for entry in document["columns"]
+        ),
+        slices=tuple(
+            Slice(id=entry["id"], text=entry["text"]) for entry in document.get("rows", ())
+        ),
+        cut=str(document.get("cut", "")),
+        cards=tuple(
+            Card(
+                text=entry["text"],
+                column=entry["column"],
+                row=entry.get("row", ""),
+                role=entry.get("role", "step"),
+                actor=entry.get("actor", ""),
+                note=entry.get("note", ""),
+            )
+            for entry in document["cards"]
+        ),
+    )
+
+
 def _hub(entry: Mapping[str, Any] | None) -> Node | None:
     if entry is None:
         return None
@@ -5006,6 +5395,8 @@ if __name__ == "__main__":
 
 __all__ = [
     "AXIS_ORDER",
+    "BOARD_CELL_MAX",
+    "BOARD_KINDS",
     "CARDINALITIES",
     "CHART_KINDS",
     "COMMON_FIELDS",
@@ -5038,7 +5429,9 @@ __all__ = [
     "TRANSITION_ROLES",
     "Axis",
     "Band",
+    "BoardColumn",
     "Branch",
+    "Card",
     "Cell",
     "Curve",
     "Document",
@@ -5054,6 +5447,7 @@ __all__ = [
     "Position",
     "Relation",
     "Series",
+    "Slice",
     "Violation",
     "Waypoint",
     "build_schema",

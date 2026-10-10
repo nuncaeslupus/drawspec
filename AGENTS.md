@@ -76,6 +76,7 @@ Pick by what the reader must **understand**, not by what it looks like.
 | A process whose hand-offs between parties are the point | `lanes` | a `flow`'s `nodes` + `edges`, `actor` required on each (+ `lanes`, their order); no `groups`, `bands`, `centre` |
 | What a data model, schema or class holds, and how its parts relate | `entities` | `entities` (`fields` with `type`/`key`, `operations`, `tag`) + `edges` (`from_field`/`to_field` land on a row; `from_end`/`to_end`: `one`, `zero-or-many`, …) |
 | What runs when in a plan, one row per task: overlap, phases, what waits on what | `gantt` | `axis` (numbers in a named unit, or `categories`; no dates) + `tasks` (`start`/`end`, or `at` for a milestone; `strong` on the critical path) (+ `groups` of consecutive tasks, `edges` finish-to-start, `marks`) |
+| Work sorted into columns, not joined: a kanban board, a retrospective, a story map | `board` | `columns` (a `limit` is counted for you) + `cards`, stacked in the order written (+ `rows` as slices, `cut` under the first release); no `edges` |
 
 `flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may
 branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring
@@ -194,7 +195,6 @@ Always run `drawspec validate` before calling a document done; it prints every p
 
 - Do not emit SVG yourself. The whole point is that you do not place anything.
 - Do not add fields hoping they are ignored — unknown fields are errors.
-- Do not use `chart` for exploring data. No statistics, dates, log scales or
-  second axis. It states a number you already know.
+- Do not use `chart` for exploring data. No statistics, dates, log scales or second axis. It states a number you already know.
 - Do not use drawspec for anything whose point is *where things are* — a floor
   plan, a map. There is no declarative description of those.

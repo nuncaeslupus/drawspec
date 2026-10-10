@@ -12,6 +12,22 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`board`, the twenty-first kind** — cards sorted into columns, with no
+  connectors: a kanban board, a retrospective, and — with `rows` and a `cut` — a
+  story map. `columns` are equal and left to right as written, each with a bold
+  heading over a rule; a column's `limit` makes drawspec count its cards (a
+  `note` card is not counted) and write `n / limit` in the heading, which takes
+  `emphasis` over the limit. `cards` stack in each cell in the order written,
+  top-aligned; an `actor` is a card's lead, a `note` hangs under the card.
+  `rows` are slices across every column, named in a left margin; the cut row has
+  the board's one heavy line under it. Card roles `step`, `emphasis` and `note`
+  (a light dashed card); column roles `step` and `emphasis`. New theme section
+  `[board]`: `separator` and `cut` (edge roles). Refused at their pointers:
+  `edges` (naming `flow` and `lanes`), a per-card `label`/`tag`/`colour`, a card
+  in an unknown column or row, a `row` on a board without rows or missing on one
+  with them, a cut without rows, unknown or on the last row, and a newline in a
+  card's text when it has an actor. Budget: 6 columns, 4 rows, 32 cards, 8 cards
+  per cell.
 - **`gantt`, the twentieth kind** — a plan: one row per task in the order
   written, each a bar from `start` to `end` on a numbered `axis`, or a milestone
   (`at`) drawn as a filled diamond. **No dates**, by the owner's decision: the

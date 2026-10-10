@@ -1072,6 +1072,33 @@ class GanttStyle:
         )
 
 
+@dataclass(frozen=True)
+class BoardStyle:
+    """How a board draws the two lines that are not card borders.
+
+    The author says the board has slices and that the first release ends at one
+    of them; which line runs between two slices and how heavy the cut is are
+    house style.
+    """
+
+    separator: str = "weak"
+    """The edge role the line between two rows (slices) is drawn in, with no head."""
+
+    cut: str = "strong"
+    """The edge role the cut under a row is drawn in, with no head: the board's one heavy line."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> BoardStyle:
+        _reject_unknown(mapping, ("separator", "cut"), "[board]")
+        defaults = cls()
+        return cls(
+            separator=_choice(
+                mapping.get("separator", defaults.separator), EDGE_ROLES, "[board] separator"
+            ),
+            cut=_choice(mapping.get("cut", defaults.cut), EDGE_ROLES, "[board] cut"),
+        )
+
+
 #: Which way a `lanes` diagram's lanes run: across the page, stacked top to
 #: bottom (`rows`), or down it, side by side (`columns`). `auto` tries rows and
 #: takes columns when rows do not fit the width.
@@ -1319,6 +1346,7 @@ _TOP_LEVEL_KEYS: Final = (
     "lanes",
     "entities",
     "gantt",
+    "board",
     "role",
     "edge_role",
 )
@@ -1346,6 +1374,7 @@ class Theme:
     lanes: LanesStyle = LanesStyle()
     entities: EntitiesStyle = EntitiesStyle()
     gantt: GanttStyle = GanttStyle()
+    board: BoardStyle = BoardStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
 
@@ -1401,6 +1430,7 @@ class Theme:
             lanes=LanesStyle.from_mapping(_section(mapping, "lanes")),
             entities=EntitiesStyle.from_mapping(_section(mapping, "entities")),
             gantt=GanttStyle.from_mapping(_section(mapping, "gantt")),
+            board=BoardStyle.from_mapping(_section(mapping, "board")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
         )
