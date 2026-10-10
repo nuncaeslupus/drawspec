@@ -148,11 +148,11 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Seventeen exist, and they fall into seven families:
+fields are legal. Eighteen exist, and they fall into seven families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
-| Graph | `flow`, `tree`, `cycle` | Things connected to other things: a process, a hierarchy, a loop that comes round again. |
+| Graph | `flow`, `tree`, `cycle`, `lanes` | Things connected to other things: a process, a hierarchy, a loop that comes round again, a process drawn in one strip per party. |
 | Grid | `stack`, `timeline`, `columns`, `matrix` | Things in an arrangement: layers, events in order, side-by-side comparison, rows against columns. |
 | Shape | `pyramid`, `rings`, `funnel` | Things in a proportion: levels narrowing to an apex, scopes nested inside scopes, stages narrowing to an outcome. |
 | Plot | `chart`, `quadrant`, `scatter`, `curve` | Things with numbers: series against axes, items placed in a plane, points by two measured values, a named shape with labelled waypoints. |
@@ -432,9 +432,9 @@ have thrown that away, and would not have covered `"Finance"` or
 
 Two things it deliberately is not:
 
-* **Not a swimlane.** Nothing is partitioned; the layout is unchanged. Lanes are
-  a layout constraint interacting with direction, groups and routing at once, and
-  nothing yet shows this is not enough.
+* **Not a swimlane.** Nothing is partitioned; the layout is unchanged. When the
+  hand-offs between parties are the point, change the kind to `lanes` — the same
+  document, drawn with one strip per actor; see [Swimlanes](#swimlanes).
 * **Not a band.** A band says *this runs alongside these*, and its bar spans its
   members' extent — so an owner holding the first, second and fourth step would
   draw a bar straight across the third, claiming a step it does not perform.
@@ -755,6 +755,59 @@ past that it is a trace; split it into phases. See
 [`reference/sequence-upload.json`](reference/sequence-upload.json),
 [`reference/sequence-drain.json`](reference/sequence-drain.json) and
 [`reference/sequence-checkout.json`](reference/sequence-checkout.json).
+
+## Swimlanes
+
+When what matters is *who hands off to whom* — a request crossing from support to
+engineering and back — draw `lanes`. It takes a `flow` document unchanged, with
+one difference: every node names its `actor`, and the actor is drawn once, as a
+strip of the page holding all of that party's steps, instead of as each box's
+lead. An arrow that crosses from one strip to another is a hand-off:
+
+```json
+{
+  "version": 1,
+  "kind": "lanes",
+  "lanes": ["Employee", "Manager", "Finance"],
+  "nodes": [
+    {"id": "submit", "text": "Submits receipts", "actor": "Employee", "role": "start"},
+    {"id": "approve", "text": "Approves?", "actor": "Manager", "role": "decision"},
+    {"id": "fix", "text": "Corrects the claim", "actor": "Employee"},
+    {"id": "pay", "text": "Pays it", "actor": "Finance", "role": "terminal"}
+  ],
+  "edges": [
+    {"from": "submit", "to": "approve"},
+    {"from": "approve", "to": "fix", "label": "no"},
+    {"from": "fix", "to": "approve", "role": "weak"},
+    {"from": "approve", "to": "pay", "label": "yes"}
+  ]
+}
+```
+
+The graph is ranked exactly as a `flow`'s, along the lanes; a box's lane decides
+the other coordinate, and two steps of one party at the same rank stack inside
+its strip. `lanes` gives the order of the strips — omit it and they come in the
+order their actors first appear. Since the actor is not in the box, `text` may
+use a newline for its own lead and detail again. Node and edge roles, edge
+labels, self-loops and `status` are a flow's.
+
+Whether the strips run across the page as rows (ranks reading left to right, a
+column of names at the left) or down it as columns (ranks reading down, a name
+over each) is the theme's `[lanes] orientation`: `auto`, the default, takes rows
+when they fit the width and columns when they do not. At the default width, a
+process of more than four or five steps in a row reads down. `[lanes] separator`
+is the edge role the line between two lanes is drawn in.
+
+Refused, each at its pointer: a node with no `actor` (the message points you back
+to `flow`); an actor not in `lanes`, naming the closest lane; a lane in `lanes`
+that no node names, or one listed twice; `groups`, `bands` and `centre`, because
+a lane is already the container and a frame or band would cross it; and the
+`group` node role. Budget: a flow's 15 nodes and 16 edges, and 6 lanes, counted
+from the actors when `lanes` is omitted. See
+[`reference/lanes-disclosure.json`](reference/lanes-disclosure.json),
+[`reference/lanes-tender.json`](reference/lanes-tender.json),
+[`reference/lanes-expense.json`](reference/lanes-expense.json) and
+[`reference/lanes-onboarding.json`](reference/lanes-onboarding.json).
 
 ## Asking for a wide drawing instead of a tall one
 

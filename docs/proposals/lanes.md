@@ -1,7 +1,7 @@
 # Proposal: `lanes` — a flow whose actors are the lanes
 
-Status: **proposed**. Size **M** (the ranker exists; it gains a fixed cross-axis
-partition).
+Status: **implemented** — see *As built* at the end for where it departs from this
+text. Size **M** (the ranker exists; it gains a fixed cross-axis partition).
 
 ## Why
 
@@ -152,3 +152,48 @@ a `FitError`. The author never chooses, consistent with direction everywhere els
 * Each refusal at its pointer; the missing-actor message mentions `flow`.
 * `orientation = "auto"` falls back to columns for a seven-step, two-lane document that
   does not fit across.
+
+## As built
+
+Built as its own kind, as decided, drawn by the graph family: `kinds/lanes.py`
+ranks and places the boxes and hands back the same `Arrangement` a flow's layout
+does, so sizing, self-loops, routing and label placement are `flow`'s code.
+
+* **Lane boundaries are `link`, not `weak`.** A `weak` line is dashed at an
+  arrow's weight, and next to a dashed return edge the two read as one; the
+  boundary is now a thin solid line, so every arrow — dashed or not — stands out
+  against it. It is a theme key, `[lanes] separator` (any edge role), beside
+  `orientation`.
+* **Headings.** Rows put the names in a column at the start of the strips, each
+  broken to a sixth of the canvas, with a line between them and the first step;
+  columns put a name over each strip, with a line under them. Set at the group
+  caption's level, in bold, so a party's name is not read as one more step.
+* **Budget.** A flow's 15 nodes and 16 edges, not 20 — the proposal said both —
+  plus 6 lanes. When `lanes` is omitted the cap applies to the distinct actors,
+  refused at the node that names the seventh.
+* **Cycles are broken from where the process starts.** The flow's ranker breaks
+  them from the ids in sorted order, which in a review loop put *Amends* beside
+  *Opens a pull request* as if both started the process. `lanes` searches from
+  the steps nothing leads to, in the order written, and follows edges in the
+  order written, so the reversed edge is the one that returns. `flow` is
+  unchanged (changing it would move existing drawings).
+* **Boxes are sized per orientation.** Lanes side by side share the canvas, so a
+  box is held to its lane's share and may not widen past it (it is a geometric
+  width there); ranks across the page share it too, so rows wrap boxes to their
+  rank's share. At the default 640 width, a process of more than four or five
+  ranks reads as columns; `auto` takes rows only when they fit.
+* **A boundary moves off a route.** A returning edge needs its arrow head's
+  length before it may turn, which is most of a lane's padding, so it ran
+  along the boundary. The router's channels are kept off the boundaries (a
+  sliver of each boundary is added to the grid inside the heading band), and
+  any boundary still within a lane-spacing of a route running along it is moved
+  to the middle of the widest clear gap between the two lanes' boxes.
+* **Crossing reduction within a lane** is one barycentre pass over each stack of
+  boxes sharing a lane and a rank, ties in the order written.
+* **Also refused:** a lane listed twice, a blank `actor` (as missing), and the
+  `group` node role — the lane is the container. Lane nodes take `id`, `text`,
+  `role`, `actor` and `status`; not `note`, which a flow accepts and never draws.
+  Self-loops and `status` are accepted, as on a flow.
+* **References.** The three use cases (`lanes-disclosure`, `lanes-tender`,
+  `lanes-expense`) all read as columns at the default width; `lanes-onboarding`
+  is short enough for rows, and stacks IT's two simultaneous steps in its lane.

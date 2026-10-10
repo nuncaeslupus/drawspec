@@ -12,6 +12,25 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`lanes`, the eighteenth kind** — swimlanes: a `flow` document whose every
+  node names its `actor`, drawn with one strip per actor instead of the actor as
+  each box's lead, so a hand-off is an arrow crossing a lane. Ranked as a `flow`
+  is, along the lanes; a box's lane decides the other coordinate, and steps of
+  one lane at the same rank stack in its strip. `lanes` (optional) orders the
+  strips; omitted, they come in the order the actors first appear. Routing,
+  labels, self-loops and `status` are the flow's. A cycle is broken from where
+  the process starts, in the order written, so a review loop returns rather
+  than starting the drawing. New theme section `[lanes]`: `orientation` (`rows`
+  across the page with the names in a column at the left, `columns` down it
+  with a name over each, or `auto` — rows when they fit the width, else columns)
+  and `separator` (the edge role of the line between lanes, `link`). Refused at
+  their pointers: a node with no `actor` (the message points back to `flow`),
+  an actor not in `lanes` (naming the closest lane), a listed lane no node
+  names or one listed twice, `groups`, `bands`, `centre` and the `group` node
+  role. Budget: 15 nodes, 16 edges, 6 lanes (counted from the actors when
+  `lanes` is omitted). References: `lanes-disclosure`, `lanes-tender`,
+  `lanes-expense`, `lanes-onboarding`.
+
 - **`sequence`, the seventeenth kind** — who says what to whom, in order:
   `participants` drawn left to right as heads over dashed lifelines, and
   `messages` top to bottom, each an arrow with its label above it. Message roles

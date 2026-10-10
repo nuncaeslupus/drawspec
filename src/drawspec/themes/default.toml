@@ -136,6 +136,14 @@ ring = 3.0
 activation = 10.0
 lifeline = "aside"
 
+[lanes]
+# A swimlane diagram's lanes run across the page as rows, the way they are drawn
+# by hand, when that fits the width; otherwise down it as columns. The line
+# between two lanes is drawn in an edge role with no head: dashed, so the arrows
+# crossing it — the hand-offs — are what the eye follows.
+orientation = "auto"
+separator = "link"
+
 # ---------------------------------------------------------------------------
 # Node roles. Shape and line treatment per semantic role. The author names the
 # role; every appearance decision below is taken here, once, for all diagrams.

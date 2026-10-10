@@ -177,6 +177,15 @@ How a sequence diagram's lifelines and activation bars are drawn.
 | `activation` | `10.0` | The width of an activation bar. A nested bar is set half this to the right. |
 | `lifeline` | `"aside"` | The edge role a lifeline is drawn in, with no head: dashed and light by default, so the messages across it are what the eye follows. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`. |
 
+### `[lanes]`
+
+How a swimlane diagram lays its lanes out and divides them.
+
+| Key | Default | What it is |
+|---|---|---|
+| `orientation` | `"auto"` | `rows`, `columns`, or `auto`: rows when they fit the width, else columns. One of `rows`, `columns`, `auto`. |
+| `separator` | `"link"` | The edge role the line between two lanes is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`. |
+
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The

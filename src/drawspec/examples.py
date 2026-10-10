@@ -45,6 +45,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "files": "a directory listing — folders and files from their paths",
     "states": "a state machine — the conditions something is in, and the events that move it",
     "sequence": "who says what to whom, in order — messages between participants, read down",
+    "lanes": "a flow whose actors are swimlanes — the hand-offs between parties are the point",
 }
 
 #: The smallest document of each kind that renders.
@@ -216,6 +217,15 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"from": "browser", "to": "server", "text": "GET /"},
             {"from": "server", "to": "browser", "text": "the page", "role": "weak"},
         ],
+    },
+    "lanes": {
+        "version": 1,
+        "kind": "lanes",
+        "nodes": [
+            {"id": "ask", "text": "Asks for access", "actor": "Requester"},
+            {"id": "grant", "text": "Grants it", "actor": "Owner"},
+        ],
+        "edges": [{"from": "ask", "to": "grant"}],
     },
     "scatter": {
         "version": 1,

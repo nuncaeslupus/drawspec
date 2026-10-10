@@ -64,6 +64,7 @@ from drawspec.theme import (
     FILL_PATTERNS,
     FONT_ROLES,
     FUNNEL_DIRECTIONS,
+    LANES_ORIENTATIONS,
     NODE_SHAPES,
     THEME_VERSION,
     TYPE_LEVELS,
@@ -76,6 +77,7 @@ from drawspec.theme import (
     FitBand,
     FontStacks,
     FunnelStyle,
+    LanesStyle,
     MarkStyle,
     Padding,
     SequenceStyle,
@@ -498,6 +500,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "files": FilesStyle,
     "states": StatesStyle,
     "sequence": SequenceStyle,
+    "lanes": LanesStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are
@@ -513,6 +516,8 @@ THEME_VOCABULARIES: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("files", "types"): FILES_TYPES,
     ("files", "align"): FILES_ALIGNS,
     ("sequence", "lifeline"): EDGE_ROLES,
+    ("lanes", "orientation"): LANES_ORIENTATIONS,
+    ("lanes", "separator"): EDGE_ROLES,
 }
 
 

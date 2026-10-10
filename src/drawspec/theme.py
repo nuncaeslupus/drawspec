@@ -995,6 +995,43 @@ class SequenceStyle:
         )
 
 
+#: Which way a `lanes` diagram's lanes run: across the page, stacked top to
+#: bottom (`rows`), or down it, side by side (`columns`). `auto` tries rows and
+#: takes columns when rows do not fit the width.
+LANES_ORIENTATIONS: Final = ("rows", "columns", "auto")
+
+
+@dataclass(frozen=True)
+class LanesStyle:
+    """How a swimlane diagram lays its lanes out and divides them.
+
+    The author says whose each step is; whether the parties' strips run across
+    the page or down it is a question about the drawing, answered here like
+    direction everywhere else — never by the document.
+    """
+
+    orientation: str = "auto"
+    """`rows`, `columns`, or `auto`: rows when they fit the width, else columns."""
+
+    separator: str = "link"
+    """The edge role the line between two lanes is drawn in, with no head."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> LanesStyle:
+        _reject_unknown(mapping, ("orientation", "separator"), "[lanes]")
+        defaults = cls()
+        return cls(
+            orientation=_choice(
+                mapping.get("orientation", defaults.orientation),
+                LANES_ORIENTATIONS,
+                "[lanes] orientation",
+            ),
+            separator=_choice(
+                mapping.get("separator", defaults.separator), EDGE_ROLES, "[lanes] separator"
+            ),
+        )
+
+
 #: What a `files` page says about its file's type.
 FILES_TYPES: Final = ("labels", "pictures", "none")
 
@@ -1202,6 +1239,7 @@ _TOP_LEVEL_KEYS: Final = (
     "files",
     "states",
     "sequence",
+    "lanes",
     "role",
     "edge_role",
 )
@@ -1226,6 +1264,7 @@ class Theme:
     files: FilesStyle = FilesStyle()
     states: StatesStyle = StatesStyle()
     sequence: SequenceStyle = SequenceStyle()
+    lanes: LanesStyle = LanesStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
 
@@ -1278,6 +1317,7 @@ class Theme:
             files=FilesStyle.from_mapping(_section(mapping, "files")),
             states=StatesStyle.from_mapping(_section(mapping, "states")),
             sequence=SequenceStyle.from_mapping(_section(mapping, "sequence")),
+            lanes=LanesStyle.from_mapping(_section(mapping, "lanes")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
         )

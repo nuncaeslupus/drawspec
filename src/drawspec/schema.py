@@ -34,6 +34,7 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping, Sequence, Set
 from dataclasses import dataclass
+from difflib import get_close_matches
 from pathlib import Path
 from typing import Any, Final
 
@@ -134,6 +135,21 @@ FRAGMENT_OPERATORS: Final = ("loop", "alt", "opt", "par")
 #: The operators whose frame may be divided into branches.
 BRANCHING_OPERATORS: Final = ("alt", "par")
 
+#: A `flow` whose actors are drawn as swimlanes. Drawn by the graph family, and
+#: not a graph kind to the schema: every node must name its `actor`, which is
+#: its lane rather than its box's lead, and a lane is already the container — so
+#: `groups`, `bands` and `centre` are refused rather than drawn across the lanes.
+LANES_KINDS: Final = ("lanes",)
+
+#: The most lanes one drawing may have, whether listed in `lanes` or read from
+#: the actors. Lanes are expensive across the reading direction: past six the
+#: strips are too thin to hold a stack, or the drawing too wide to read across.
+LANES_MAX: Final = 6
+
+#: The roles a lane's step may take: a flow's, but not `group` — the lane is the
+#: container, and a box drawn as a frame inside it would claim to be another.
+LANE_NODE_ROLES: Final = tuple(role for role in NODE_ROLES if role != "group")
+
 #: How a `files` tree is drawn. `icons` is the file-browser look; `plain` keeps
 #: the guides and drops the pictures; `unicode` and `ascii` are the tree as text,
 #: set in the monospace face, the way `tree` prints it.
@@ -164,7 +180,10 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: transitions, self-loops, and a reachability rule a `flow` cannot make.
 #: `sequence` is the fourth: who says what to whom, in order — a fixed set of
 #: participants exchanging messages down the page, which a `flow` can only draw
-#: by duplicating its boxes and losing the order to the ranker.
+#: by duplicating its boxes and losing the order to the ranker. `lanes` is the
+#: fifth: not a new picture of a process but a different claim about it — that
+#: the hand-offs between parties are the point, which a lead in each box cannot
+#: show and a strip per party can.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -173,6 +192,7 @@ KINDS: Final = (
     + FILES_KINDS
     + STATES_KINDS
     + SEQUENCE_KINDS
+    + LANES_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -214,6 +234,10 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # Set by the proposal: past eight lifelines and thirty messages a sequence
     # diagram is a trace, not an explanation — split it into phases.
     "sequence": (("participants", 8), ("messages", 30)),  # [5 participants, 13 messages]
+    # A flow's budget, and a cap on the strips: see `LANES_MAX`. When `lanes` is
+    # omitted the same cap is applied to the distinct actors, at the node that
+    # names the one too many.
+    "lanes": (("nodes", 15), ("edges", 16), ("lanes", LANES_MAX)),  # [7 nodes, 7 edges, 4 lanes]
 }
 
 
@@ -292,6 +316,8 @@ class FieldSpec:
     min_items: int = 0
     exclusive_minimum: float | None = None
     description: str = ""
+    missing: str = ""
+    """For a required field: what to say when it is absent, if more than that it is."""
 
 
 def _text(name: str = "text", *, required: bool = True) -> FieldSpec:
@@ -336,6 +362,15 @@ _NOTE_DESCRIPTION: Final = (
     "under the axis, beside the entry's own mark. Every other kind accepts the field "
     "and has nowhere to put it, so it is not drawn; for text belonging to the whole "
     "diagram, use the top-level `caption` instead."
+)
+
+
+#: What a lane diagram says to a node with no actor: the one thing a swimlane
+#: needs that a flow does not, and the way back to the kind that does not need it.
+LANES_ACTOR_MISSING: Final = (
+    "'actor' is required: every box in a lanes diagram is in a lane, and the actor "
+    "names it. If this step belongs to nobody, the diagram is a flow — change the kind, "
+    "and any actors become the boxes' leads."
 )
 
 
@@ -420,8 +455,35 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
                 "What a proposed change does to this connection: the same marks as a "
                 "node's, written before the label (`+`, `~`, `-`), with a key of the "
                 "marks under the drawing. A removed edge is drawn in the `aside` "
-                "treatment — dashed, no head — whatever its role. **Only a `flow` or a "
-                "`tree`.**"
+                "treatment — dashed, no head — whatever its role. **Only a `flow`, a "
+                "`tree` or `lanes`.**"
+            ),
+        ),
+    ),
+    "lane-node": (
+        FieldSpec("id", "string", required=True, description="Unique within the document."),
+        _text(),
+        _role(LANE_NODE_ROLES, "step"),
+        FieldSpec(
+            "actor",
+            "string",
+            required=True,
+            missing=LANES_ACTOR_MISSING,
+            description=(
+                "Who performs this step, and so which lane it is drawn in. Required: every "
+                "box in a swimlane diagram is in a lane. Drawn once, as the lane's heading, "
+                "and not repeated in the box — so `text` may again use a newline for its "
+                "own lead and detail. Free text, matched exactly against `lanes` when that "
+                "is given."
+            ),
+        ),
+        FieldSpec(
+            "status",
+            "string",
+            enum=STATUSES,
+            description=(
+                "What a proposed change does to this box, drawn as on a `flow`: the "
+                "labelled mark inside the box, never a colour."
             ),
         ),
     ),
@@ -998,7 +1060,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the seventeen diagrams this is. It selects the fields that are "
+            "Which of the eighteen diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -1409,6 +1471,41 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    LANES_KINDS: (
+        FieldSpec(
+            "nodes",
+            "array",
+            required=True,
+            item_ref="lane-node",
+            min_items=1,
+            description=(
+                "The steps, each in the lane its `actor` names. Ranked along the lanes as "
+                "a `flow` is; within one lane, order is the order siblings are drawn in."
+            ),
+        ),
+        FieldSpec(
+            "edges",
+            "array",
+            item_ref="edge",
+            description=(
+                "What follows what, as on a `flow`. An edge between two lanes crosses "
+                "the boundaries between them: that crossing is the hand-off."
+            ),
+        ),
+        FieldSpec(
+            "lanes",
+            "array",
+            item_kind="string",
+            min_items=1,
+            description=(
+                "The lanes in order — top to bottom when they run across the page, left "
+                "to right when they run down it; the theme decides which. Each must be "
+                "some node's `actor`, spelled exactly, and every actor must be listed. "
+                "Omit it and the lanes come in the order their actors first appear in "
+                f"`nodes`. At most {LANES_MAX}."
+            ),
+        ),
+    ),
     ("scatter",): (
         FieldSpec(
             "axes",
@@ -1504,6 +1601,10 @@ class Node:
 
     status: str = ""
     """What a proposed change does to this box: `added`, `changed`, `removed`, or empty."""
+
+    lane: str = ""
+    """The lane a `lanes` node is drawn in — its author's `actor`, which there is
+    a strip of the drawing rather than the box's lead, so `actor` stays empty."""
 
     @property
     def label(self) -> str:
@@ -1753,6 +1854,8 @@ class Document:
     """A `sequence`'s messages, top to bottom."""
 
     fragments: tuple[Fragment, ...] = ()
+    lanes: tuple[str, ...] = ()
+    """A `lanes` diagram's lanes in order: as listed, or as the actors first appear."""
 
     @property
     def family(self) -> str:
@@ -1765,6 +1868,7 @@ class Document:
             ("files", FILES_KINDS),
             ("states", STATES_KINDS),
             ("sequence", SEQUENCE_KINDS),
+            ("lanes", LANES_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -1900,7 +2004,10 @@ def _check_object(
         if spec.name not in mapping:
             if spec.required:
                 found.append(
-                    Violation(f"{pointer}/{_escape(spec.name)}", f"{spec.name!r} is required")
+                    Violation(
+                        f"{pointer}/{_escape(spec.name)}",
+                        spec.missing or f"{spec.name!r} is required",
+                    )
                 )
             continue
         _check_field(mapping[spec.name], spec, f"{pointer}/{_escape(spec.name)}", found)
@@ -1944,6 +2051,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
             )
         )
 
+    if kind in LANES_KINDS:
+        found = [_lanes_refusal(violation) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
     found.extend(_emphasis_violations(document))
@@ -2015,6 +2124,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _states_violations(document)
     if kind in SEQUENCE_KINDS:
         return _sequence_violations(document)
+    if kind in LANES_KINDS:
+        found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
         entries = document.get("entries", ())
         # Only a well-formed list is worth reading for paths: the structural pass
@@ -2283,7 +2394,7 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                     )
                 )
         return found
-    if kind not in GRAPH_KINDS:
+    if kind not in GRAPH_KINDS + LANES_KINDS:
         return found
 
     nodes = document.get("nodes")
@@ -2350,7 +2461,7 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                     )
                 )
         found.extend(_self_containment(edges, groups, endpoints))
-        if kind in CONTAINER_KINDS:
+        if kind in CONTAINER_KINDS + LANES_KINDS:
             found.extend(_loop_violations(edges, frozenset(containers), "edges"))
 
     if isinstance(groups, list):
@@ -2412,6 +2523,98 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                         Violation(
                             _pointer("bands", index, "members", position),
                             f"{member!r} is not the id of any node in this document",
+                        )
+                    )
+    return found
+
+
+#: Why a `lanes` document may not write what a `flow` may, by the field's name.
+LANES_REFUSED: Final[Mapping[str, str]] = {
+    "groups": (
+        "a lanes diagram has no 'groups': a lane is already the container, and a frame "
+        "drawn across lanes would put a box in two containers at once. Use a flow for "
+        "frames, or name the containing party as the nodes' actor."
+    ),
+    "bands": (
+        "a lanes diagram has no 'bands': a band runs alongside its boxes, and here that "
+        "would run across the lanes. Use a flow with bands, or make the activity a lane."
+    ),
+    "centre": (
+        "a lanes diagram is ranked along its lanes, so it has no middle to arrange "
+        "around. Use a flow."
+    ),
+}
+
+
+def _lanes_refusal(violation: Violation) -> Violation:
+    """An unknown field on a `lanes` document, with why a flow's field is not here."""
+    name = violation.pointer.rsplit("/", 1)[-1]
+    if name in LANES_REFUSED and "is not a known field" in violation.message:
+        return Violation(violation.pointer, LANES_REFUSED[name])
+    return violation
+
+
+def _lanes_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """What a swimlane diagram may not be: a box in no lane, or a lane with no box.
+
+    Ids and edges are the graph checks, shared with `flow`; these are the lane's
+    own. A listed lane must hold some node and every actor must be listed, since
+    either mismatch is nearly always a spelling difference — so the closest lane
+    is named. With no list, the distinct actors are capped as the list would be.
+    """
+    found: list[Violation] = []
+    actors: list[tuple[int, str]] = []
+    for index, node in enumerate(_listed(document, "nodes")):
+        if not isinstance(node, dict) or not isinstance(node.get("actor"), str):
+            continue
+        if not node["actor"].strip():
+            found.append(Violation(_pointer("nodes", index, "actor"), LANES_ACTOR_MISSING))
+            continue
+        actors.append((index, node["actor"]))
+
+    listed = document.get("lanes")
+    if isinstance(listed, list) and all(isinstance(lane, str) for lane in listed):
+        seen: set[str] = set()
+        for index, lane in enumerate(listed):
+            if lane in seen:
+                found.append(
+                    Violation(_pointer("lanes", index), f"the lane {lane!r} is listed twice.")
+                )
+            seen.add(lane)
+        named = {actor for _, actor in actors}
+        for index, actor in actors:
+            if actor in seen:
+                continue
+            close = get_close_matches(actor, listed, n=1, cutoff=0.0)
+            found.append(
+                Violation(
+                    _pointer("nodes", index, "actor"),
+                    f"{actor!r} is not one of the lanes"
+                    + (f" — did you mean {close[0]!r}?" if close else ".")
+                    + " An actor names its lane exactly; add it to 'lanes' if it is a new one.",
+                )
+            )
+        for index, lane in enumerate(listed):
+            if lane not in named and listed.index(lane) == index:
+                found.append(
+                    Violation(
+                        _pointer("lanes", index),
+                        f"no node names {lane!r} as its actor, so its lane would be an empty "
+                        f"strip saying that party does nothing. Drop it, or give it its step.",
+                    )
+                )
+    elif listed is None:
+        distinct: dict[str, int] = {}
+        for index, actor in actors:
+            if actor not in distinct:
+                distinct[actor] = index
+                if len(distinct) == LANES_MAX + 1:
+                    found.append(
+                        Violation(
+                            _pointer("nodes", index, "actor"),
+                            f"{actor!r} would be lane {LANES_MAX + 1}, and a lanes diagram "
+                            f"can be read at {LANES_MAX} at most. Merge parties that act "
+                            f"together, or split the process at a hand-off.",
                         )
                     )
     return found
@@ -3223,6 +3426,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _states_document(document)
     if kind in SEQUENCE_KINDS:
         return _sequence_document(document)
+    if kind in LANES_KINDS:
+        return _lanes_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -3334,6 +3539,59 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         order=str(document.get("sort", "given")),
         style=str(document.get("style", "icons")),
     )
+
+
+def _lanes_document(document: Mapping[str, Any]) -> Document:
+    """A swimlane diagram as the graph family reads it: a flow whose actors are lanes.
+
+    The actor is moved to `Node.lane`, so the box is sized from its own text and
+    the actor is drawn once, as its lane's heading, rather than in every box.
+    """
+    nodes = tuple(
+        Node(
+            id=entry["id"],
+            text=entry["text"],
+            role=entry.get("role", "step"),
+            status=entry.get("status", ""),
+            lane=entry["actor"],
+        )
+        for entry in document["nodes"]
+    )
+    return Document(
+        kind=str(document["kind"]),
+        version=DOCUMENT_VERSION,
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        nodes=nodes,
+        edges=tuple(
+            Edge(
+                source=entry["from"],
+                target=entry["to"],
+                label=entry.get("label", ""),
+                role=entry.get("role", "flow"),
+                status=entry.get("status", ""),
+            )
+            for entry in document.get("edges", ())
+        ),
+        lanes=lane_order(document),
+    )
+
+
+def lane_order(document: Mapping[str, Any]) -> tuple[str, ...]:
+    """The lanes of a `lanes` document, in order: as listed, or as first named."""
+    listed = document.get("lanes")
+    if isinstance(listed, list):
+        return tuple(str(lane) for lane in listed)
+    order: dict[str, None] = {}
+    for node in _listed(document, "nodes"):
+        if isinstance(node, dict) and isinstance(node.get("actor"), str):
+            order.setdefault(node["actor"], None)
+    return tuple(order)
 
 
 def _states_document(document: Mapping[str, Any]) -> Document:
@@ -3646,6 +3904,8 @@ __all__ = [
     "HUB_EDGE_ROLES",
     "HUB_MINIMUM_NODES",
     "KINDS",
+    "LANES_KINDS",
+    "LANES_MAX",
     "MESSAGE_ROLES",
     "OBJECTS",
     "PARTICIPANT_ROLES",
@@ -3676,6 +3936,7 @@ __all__ = [
     "Waypoint",
     "build_schema",
     "fields_for",
+    "lane_order",
     "load_document",
     "parse_document",
     "payload_for",

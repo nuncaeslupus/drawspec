@@ -30,6 +30,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
+from functools import partial
 from types import MappingProxyType
 from typing import Final
 
@@ -56,6 +57,7 @@ from drawspec.kinds.containers import (
     frame_primitives,
     nesting_of,
 )
+from drawspec.kinds.lanes import Swimlanes, lanes_arrangement, lanes_primitives
 from drawspec.layout import Layout, Placement, Spacing
 from drawspec.routing import (
     LOOP_SIDES,
@@ -87,7 +89,9 @@ from drawspec.theme import Theme
 #: belongs to `drawspec.kinds.cycle` — see D-1. `states` is not a graph kind to
 #: the schema, which parses its states and transitions into nodes and edges; it
 #: is drawn here with its pseudo-states added as dots (see `_with_pseudo_states`).
-DRAWN_KINDS: Final = ("flow", "tree", "states")
+#: Nor is `lanes`, whose nodes are laid out in strips by `kinds.lanes` and then
+#: routed and labelled here like any flow's.
+DRAWN_KINDS: Final = ("flow", "tree", "states", "lanes")
 
 #: How much of the canvas width one node box may take: a quarter, so four ranks
 #: fit beside each other with their gaps. A graph that has to go `right` to fit
@@ -218,6 +222,9 @@ class GraphDrawing:
     """The self-loops, placed — their routes and labels are also in `routes` and
     `labels`, so this is for asking which side each took."""
 
+    lanes: Swimlanes | None = None
+    """A `lanes` document's strips and headings; `None` for every other kind."""
+
 
 def graph_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     """Render a `flow` or `tree` document to a `Scene`.
@@ -230,6 +237,9 @@ def graph_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     drawing = graph_drawing(document, theme, measurer)
 
     primitives: list[Primitive] = []
+    # Lanes behind everything: a strip is the paper a party's steps are drawn on.
+    if drawing.lanes is not None:
+        primitives.extend(lanes_primitives(drawing.lanes, theme, measurer))
     # Frames first of all — a container is behind what it contains, and its
     # dashed border must never sit on top of a box or a route.
     for frame in drawing.frames:
@@ -296,6 +306,8 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
     document, markers = _with_pseudo_states(document)
     width = document.width if document.width else theme.canvas.width
     nesting = nesting_of(document)
+    # A lanes drawing sizes its boxes again for each orientation it tries: see
+    # `kinds.lanes.lanes_arrangement`. These are what its loops are measured on.
     boxes = _sized(document, theme, measurer, width * NODE_WIDTH_SHARE, nesting, markers)
     spacing = _spacing(theme)
     if document.kind == "states":
@@ -325,31 +337,37 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
             identifier: _loop_margins(boxes[identifier], labels_of[identifier], ways, theme)
             for identifier, ways in reserved.items()
         }
-        arrangement = arrange(
-            nesting.roots,
-            nesting,
-            pairs,
-            {
-                identifier: box.resized(
-                    width=box.width + margins[identifier][0] * 2,
-                    height=box.height + margins[identifier][1] * 2,
-                )
-                if identifier in margins
-                else box
-                for identifier, box in boxes.items()
-            },
-            captions,
-            theme,
-            spacing,
-            max_width=width,
-            prefer=PREFERRED_DIRECTION,
-            entered=crossed(pairs, nesting),
-            centre=next((node.id for node in document.nodes if node.centre), ""),
-            # A binding height is the only thing that can make a chain read across
-            # rather than down: see `layout.base.best_layout`. An advisory height is
-            # not passed, because it is advisory.
-            max_height=(document.height or 0.0) if document.height_binding else 0.0,
-        )
+        inflated = _grown(boxes, margins)
+        if document.kind == "lanes":
+            arrangement, swimlanes, boxes = lanes_arrangement(
+                document,
+                lambda limit: _sized(document, theme, measurer, limit, nesting, markers, 1.0),
+                partial(_grown, margins=dict(margins)),
+                theme,
+                measurer,
+                spacing,
+                max_width=width,
+                max_height=(document.height or 0.0) if document.height_binding else 0.0,
+            )
+        else:
+            swimlanes = None
+            arrangement = arrange(
+                nesting.roots,
+                nesting,
+                pairs,
+                inflated,
+                captions,
+                theme,
+                spacing,
+                max_width=width,
+                prefer=PREFERRED_DIRECTION,
+                entered=crossed(pairs, nesting),
+                centre=next((node.id for node in document.nodes if node.centre), ""),
+                # A binding height is the only thing that can make a chain read across
+                # rather than down: see `layout.base.best_layout`. An advisory height is
+                # not passed, because it is advisory.
+                max_height=(document.height or 0.0) if document.height_binding else 0.0,
+            )
         missing = {
             identifier
             for identifier in looped
@@ -424,6 +442,11 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         for index, loop in enumerate(loops)
         if loop.label is not None
     )
+    # A lane's heading is words and its divider a line nothing should run along,
+    # so routes go round the headings and labels keep off both; the lines between
+    # lanes are crossed freely, because crossing one is the hand-off.
+    headings = (*swimlanes.headings(), *swimlanes.markers()) if swimlanes is not None else ()
+    dividers = _divider_obstacles(swimlanes, theme) if swimlanes is not None else ()
     plain = tuple(connector for connector in connectors if connector.source != connector.target)
     # A state machine is full of return edges, and every one of its transitions
     # is labelled. Routed together, the returns took the lanes beside the boxes
@@ -448,7 +471,7 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         # beside the words rather than through them.
         fresh = route_edges(
             phase,
-            (*obstacles, *zones, *captions_blocked, *earlier),
+            (*obstacles, *zones, *captions_blocked, *earlier, *headings),
             theme,
             direction=layout.direction,
             # …and yet an edge may *end* on one. A frame is a box with an extent
@@ -457,6 +480,16 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
             # distinction — R5-2.
             anchors=anchors,
         )
+        if swimlanes is not None:
+            # A route running along a lane boundary moves the boundary, not the
+            # route — and before the labels, so they keep off where it lands.
+            swimlanes = swimlanes.settled(
+                (*routes, *fresh, *(loop.route for loop in loops)),
+                layout.placements,
+                {node.id: node.lane for node in document.nodes},
+                theme.edge.lane_spacing,
+            )
+            dividers = _divider_obstacles(swimlanes, theme)
         # Labels avoid the frames as well as the boxes — only the frames'
         # borders, so a label belonging to an edge inside a group can still sit
         # inside it. And the captions, for the same reason the routes avoid them:
@@ -482,6 +515,8 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
                     *captions_blocked,
                     *loop_words,
                     *earlier,
+                    *headings,
+                    *dividers,
                 ),
                 theme,
                 measurer,
@@ -491,6 +526,8 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
     routes = (*routes, *(loop.route for loop in loops))
     labels = (*labels, *(loop.label for loop in loops if loop.label is not None))
 
+    if swimlanes is not None:
+        swimlanes = swimlanes.covering(*_ink(obstacles, routes, labels))
     drawing = _framed(
         layout,
         boxes,
@@ -499,6 +536,7 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         labels,
         arrangement.frames,
         _bands(document, layout, theme, measurer),
+        swimlanes,
     )
     shift_x, shift_y = drawing.offset
     return replace(
@@ -704,6 +742,7 @@ def _sized(
     limit: float,
     nesting: Nesting,
     markers: Mapping[str, str] = MappingProxyType({}),
+    widen: float = NODE_WIDEN,
 ) -> dict[str, Box]:
     """One box per node, with peers normalised to a common width.
 
@@ -729,7 +768,7 @@ def _sized(
     travelling across the drawing.
     """
     nodes = [node for node in document.nodes if node.id not in markers]
-    boxes = {node.id: _sized_node(node, theme, measurer, limit) for node in nodes}
+    boxes = {node.id: _sized_node(node, theme, measurer, limit, widen) for node in nodes}
     peers: dict[tuple[str, str], list[str]] = {}
     for node in nodes:
         peers.setdefault((nesting.parent.get(node.id, ""), node.role), []).append(node.id)
@@ -760,7 +799,9 @@ def _marked(edge: Edge) -> str:
     return f"{mark} {edge.label}" if edge.label else mark
 
 
-def _sized_node(node: Node, theme: Theme, measurer: TextMeasurer, limit: float) -> Box:
+def _sized_node(
+    node: Node, theme: Theme, measurer: TextMeasurer, limit: float, widen: float = NODE_WIDEN
+) -> Box:
     """One node's box — with room for its change's tag as a last line, when it has one.
 
     The tag is sized as a paragraph of the box's own text so every shape makes
@@ -776,7 +817,7 @@ def _sized_node(node: Node, theme: Theme, measurer: TextMeasurer, limit: float) 
             role=node.role,
             level="body",
             max_width=limit,
-            widen=NODE_WIDEN,
+            widen=widen,
             lead=node.lead,
         )
     box = size_box(
@@ -786,7 +827,7 @@ def _sized_node(node: Node, theme: Theme, measurer: TextMeasurer, limit: float) 
         role=node.role,
         level="body",
         max_width=limit,
-        widen=NODE_WIDEN,
+        widen=widen,
         lead=bool(node.actor) or "\n" in node.text.strip(),
     )
     tag_width, _ = status_size(node.status, theme, measurer)
@@ -1067,6 +1108,50 @@ def marker_primitives(box: Box, marker: str, theme: Theme) -> tuple[Primitive, .
     return (Ellipse(MARKER_ROLE, cx=cx, cy=cy, rx=ring, ry=ring), filled)
 
 
+def _grown(boxes: Mapping[str, Box], margins: Mapping[str, tuple[float, float]]) -> dict[str, Box]:
+    """Each box with the room kept around it for its loops, across then down."""
+    return {
+        identifier: box.resized(
+            width=box.width + margins[identifier][0] * 2,
+            height=box.height + margins[identifier][1] * 2,
+        )
+        if identifier in margins
+        else box
+        for identifier, box in boxes.items()
+    }
+
+
+def _divider_obstacles(lanes: Swimlanes, theme: Theme) -> tuple[Obstacle, ...]:
+    """Each line between lanes as a thin obstacle, for labels: words never sit on one."""
+    half = theme.edge.clearance
+    found: list[Obstacle] = []
+    for index, ((x1, y1), (x2, y2)) in enumerate(lanes.separators()):
+        left, top = min(x1, x2) - half, min(y1, y2) - half
+        found.append(
+            Obstacle(
+                f"\x00lane divider {index}",
+                x=left,
+                y=top,
+                width=abs(x2 - x1) + half * 2,
+                height=abs(y2 - y1) + half * 2,
+            )
+        )
+    return tuple(found)
+
+
+def _ink(
+    obstacles: Sequence[Obstacle], routes: Sequence[Route], labels: Sequence[Label]
+) -> tuple[float, float, float, float]:
+    """Left, top, right and bottom of the boxes, routes and labels together."""
+    xs = [value for box in obstacles for value in (box.x, box.right)]
+    ys = [value for box in obstacles for value in (box.y, box.bottom)]
+    xs += [x for route in routes for x, _ in route.points]
+    ys += [y for route in routes for _, y in route.points]
+    xs += [value for label in labels for value in (label.left, label.left + label.width)]
+    ys += [value for label in labels for value in (label.top, label.top + label.height)]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
 def _framed(
     layout: Layout,
     boxes: Mapping[str, Box],
@@ -1075,6 +1160,7 @@ def _framed(
     labels: Sequence[Label],
     frames: Sequence[Frame] = (),
     bands: Sequence[BandBar] = (),
+    lanes: Swimlanes | None = None,
 ) -> GraphDrawing:
     """Shift everything so the drawing starts at its own ink, and measure it.
 
@@ -1110,6 +1196,10 @@ def _framed(
         left, top, right, bottom = bar.label_box
         xs += [left, right]
         ys += [top, bottom]
+    if lanes is not None:
+        left, top, right, bottom = lanes.bounds
+        xs += [left, right]
+        ys += [top, bottom]
 
     offset_x = -min(xs, default=0.0)
     offset_y = -min(ys, default=0.0)
@@ -1136,6 +1226,7 @@ def _framed(
         frames=tuple(frame.moved(offset_x, offset_y) for frame in frames),
         bands=tuple(bar.moved(offset_x, offset_y) for bar in bands),
         offset=(offset_x, offset_y),
+        lanes=None if lanes is None else lanes.moved(offset_x, offset_y),
     )
 
 

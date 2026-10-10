@@ -44,10 +44,9 @@ newline in `text` means *this is a lead and a detail*, not one sentence.
 
 ## Should this be a diagram at all?
 
-Draw only what a picture says better than prose. Things with no relation
-between them are a bullet list; things with attributes are a table; one shape
-or one step is a sentence. Ask whether a reader learns more from the picture
-than from the paragraph you would otherwise write. If not, write the paragraph.
+Draw only what a picture says better than prose. Unrelated things are a bullet
+list; things with attributes are a table; one shape or one step is a sentence.
+If a reader learns no more from the picture than the paragraph, write the paragraph.
 
 ## Choosing a kind
 
@@ -75,12 +74,14 @@ Pick by what the reader must **understand**, not by what it looks like.
 | What is in a directory | `files` | `entries` (+ `root`, `sort`, `style`) |
 | The conditions something is in, and the events that move it | `states` | `states` + `initial` + `transitions` (`event`/`guard`/`action`; + `final`, `groups`); every state reachable |
 | Who says what to whom, in order, between a fixed set of participants | `sequence` | `participants` + `messages` (+ `fragments` `loop`/`alt`/`opt`/`par`, `groups`, `note`); a `weak` reply to a call draws the activation bar |
+| A process whose hand-offs between parties are the point | `lanes` | a `flow`'s `nodes` + `edges`, `actor` required on each (+ `lanes`, their order); no `groups`, `bands`, `centre` |
 
 `flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may
 branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring
 through **every** node, and is refused if it does not. `flow` vs `states`: a
 box something *is in*, re-entered, labelled by events, is a state. `flow` vs
 `sequence`: the same few participants talking in turn, in order, is a sequence.
+`flow` vs `lanes`: same document; when *who hands off to whom* matters, say `lanes`.
 
 **Keep it readable.** Each kind has a budget ([`docs/format.md`](docs/format.md#the-readability-budget);
 a `flow`: 15 nodes, 16 edges). Past it a document is refused even though it
@@ -102,10 +103,9 @@ not a step, `link` for a connection with no direction.
 
 **Who performs a step is not a role.** Use `actor` — free text on a node,
 orthogonal to `role`, drawn as the box's lead so the names line up in a column:
-`{"id": "approve", "text": "Sign off", "actor": "A release manager"}`. Do not
-reach for `decision` to make a human step stand out; a diamond promises a branch.
-A box has one lead, so a node with an `actor` may not also put a newline in its
-`text`.
+`{"id": "approve", "text": "Sign off", "actor": "A release manager"}`. A human step
+is not a `decision`: a diamond promises a branch. A box has one lead, so an `actor`
+forbids a newline in `text` — except in `lanes`, where the actor is the lane.
 
 ## Worked examples
 

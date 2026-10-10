@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-17 kinds. The machine-readable form of this page is the published
+18 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence` | **yes** | Which of the seventeen diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes` | **yes** | Which of the eighteen diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -148,6 +148,14 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `fragments` | array of [fragment](#fragment-object) | no | Frames round a run of messages, `from` to `to`, and every participant they touch. Fragments nest or are apart; one that starts inside another and ends outside it is refused. |
 | `groups` | array of [group](#group-object) | no | A frame round a run of neighbouring lifelines, named at its top — *inside our account*. Members must be next to each other in `participants`, and a participant is in one group or none. |
 
+### `lanes`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `nodes` | array of [lane-node](#lane-node-object), at least 1 | **yes** | The steps, each in the lane its `actor` names. Ranked along the lanes as a `flow` is; within one lane, order is the order siblings are drawn in. |
+| `edges` | array of [edge](#edge-object) | no | What follows what, as on a `flow`. An edge between two lanes crosses the boundaries between them: that crossing is the hand-off. |
+| `lanes` | array of string, at least 1 | no | The lanes in order — top to bottom when they run across the page, left to right when they run down it; the theme decides which. Each must be some node's `actor`, spelled exactly, and every actor must be listed. Omit it and the lanes come in the order their actors first appear in `nodes`. At most 6. |
+
 ### `scatter`
 
 | Field | Type | Required | What it is |
@@ -197,6 +205,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `files` | 30 `entries` |
 | `states` | 14 `states`, 24 `transitions` |
 | `sequence` | 8 `participants`, 30 `messages` |
+| `lanes` | 15 `nodes`, 16 `edges`, 6 `lanes` |
 
 ## Emphasis
 
@@ -232,7 +241,17 @@ name, so a misspelt key is an error at the point it was written.
 | `to` | string | **yes** | The id of the target node — or, in a `flow` or a `tree`, of a group. The same id space as `from`. The same id as `from` draws a loop on the side of that box, across the reading direction, with its label outside it: two per box at most, and never on a group. |
 | `label` | string | no | A short label placed along the edge. |
 | `role` | string — one of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
-| `status` | string — one of `added`, `changed`, `removed` | no | What a proposed change does to this connection: the same marks as a node's, written before the label (`+`, `~`, `-`), with a key of the marks under the drawing. A removed edge is drawn in the `aside` treatment — dashed, no head — whatever its role. **Only a `flow` or a `tree`.** |
+| `status` | string — one of `added`, `changed`, `removed` | no | What a proposed change does to this connection: the same marks as a node's, written before the label (`+`, `~`, `-`), with a key of the marks under the drawing. A removed edge is drawn in the `aside` treatment — dashed, no head — whatever its role. **Only a `flow`, a `tree` or `lanes`.** |
+
+### `lane-node` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique within the document. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `actor` | string | **yes** | Who performs this step, and so which lane it is drawn in. Required: every box in a swimlane diagram is in a lane. Drawn once, as the lane's heading, and not repeated in the box — so `text` may again use a newline for its own lead and detail. Free text, matched exactly against `lanes` when that is given. |
+| `status` | string — one of `added`, `changed`, `removed` | no | What a proposed change does to this box, drawn as on a `flow`: the labelled mark inside the box, never a colour. |
 
 ### `hub` object
 

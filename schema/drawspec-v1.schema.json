@@ -1212,6 +1212,84 @@
         "messages"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "lanes",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "lanes"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "nodes": {
+          "type": "array",
+          "description": "The steps, each in the lane its `actor` names. Ranked along the lanes as a `flow` is; within one lane, order is the order siblings are drawn in.",
+          "items": {
+            "$ref": "#/$defs/lane-node"
+          },
+          "minItems": 1
+        },
+        "edges": {
+          "type": "array",
+          "description": "What follows what, as on a `flow`. An edge between two lanes crosses the boundaries between them: that crossing is the hand-off.",
+          "items": {
+            "$ref": "#/$defs/edge"
+          }
+        },
+        "lanes": {
+          "type": "array",
+          "description": "The lanes in order — top to bottom when they run across the page, left to right when they run down it; the theme decides which. Each must be some node's `actor`, spelled exactly, and every actor must be listed. Omit it and the lanes come in the order their actors first appear in `nodes`. At most 6.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "nodes"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -1494,7 +1572,7 @@
         },
         "status": {
           "type": "string",
-          "description": "What a proposed change does to this connection: the same marks as a node's, written before the label (`+`, `~`, `-`), with a key of the marks under the drawing. A removed edge is drawn in the `aside` treatment — dashed, no head — whatever its role. **Only a `flow` or a `tree`.**",
+          "description": "What a proposed change does to this connection: the same marks as a node's, written before the label (`+`, `~`, `-`), with a key of the marks under the drawing. A removed edge is drawn in the `aside` treatment — dashed, no head — whatever its role. **Only a `flow`, a `tree` or `lanes`.**",
           "enum": [
             "added",
             "changed",
@@ -1688,6 +1766,50 @@
       "required": [
         "group",
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "lane-node": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique within the document."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "start",
+            "step",
+            "decision",
+            "terminal",
+            "emphasis",
+            "note"
+          ]
+        },
+        "actor": {
+          "type": "string",
+          "description": "Who performs this step, and so which lane it is drawn in. Required: every box in a swimlane diagram is in a lane. Drawn once, as the lane's heading, and not repeated in the box — so `text` may again use a newline for its own lead and detail. Free text, matched exactly against `lanes` when that is given."
+        },
+        "status": {
+          "type": "string",
+          "description": "What a proposed change does to this box, drawn as on a `flow`: the labelled mark inside the box, never a colour.",
+          "enum": [
+            "added",
+            "changed",
+            "removed"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "actor"
       ],
       "additionalProperties": false
     },
