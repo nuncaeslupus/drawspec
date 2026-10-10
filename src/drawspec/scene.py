@@ -235,6 +235,18 @@ class TextLine(Primitive):
     defect a span's name had before it was made to go through `wrap`.
     """
 
+    strike: bool = field(default=False, repr=False)
+    """Whether the line is struck through — a box a proposed change removes.
+
+    A property of the words rather than a line drawn over them, so the renderer
+    puts the stroke where *its* font's middle is, and nothing that checks for a
+    line crossing a word mistakes the one meant to for a collision.
+
+    Out of the `repr` because the emitter digests reprs into the id prefix, and a
+    field every unstruck line carried would have renamed the ids of every drawing
+    that has text; `emit.namespace_for` adds it to the digest when it is set.
+    """
+
     @property
     def text(self) -> str:
         return "".join(span.text for span in self.spans)

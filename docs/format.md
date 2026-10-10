@@ -201,6 +201,7 @@ name, so a misspelt key is an error at the point it was written.
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 | `actor` | string | no | Who performs this step — free text, and orthogonal to `role`. `role` says what kind of step it is; this says whose it is, and the two are independent: a human step can be routine and an automated one can be the critical path. Drawn as the box's **lead**, the name over what belongs to it, so the same words sit in the same place in every box and a reader can scan a column of them. Free text rather than an enum on purpose: an actor is told apart by its **name**, which is legible in greyscale and in any medium, so it costs none of the four non-colour channels the roles are told apart by. **Only a `flow`, a `tree` or a `cycle` draws one**, and a node that names an actor may not also write its own lead — the box has one lead and this is it. |
 | `note` | string | no | A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead. |
+| `status` | string — one of `added`, `changed`, `removed` | no | What a proposed change does to this box, as a diff would say it — for one drawing of the target state with the change marked on it, instead of a before and an after to compare by eye. Drawn as the labelled mark `files` uses (`+ added`, `~ changed`, `- removed`) inside the box, never as a colour; a removed box is also dashed and its text struck through. **Only a `flow` or a `tree`**: a loop that changes is a different loop. An edge touching a removed box must be `removed`, and one touching an added box must be `added`. |
 
 ### `edge` object
 
@@ -210,6 +211,7 @@ name, so a misspelt key is an error at the point it was written.
 | `to` | string | **yes** | The id of the target node — or, in a `flow` or a `tree`, of a group. The same id space as `from`. |
 | `label` | string | no | A short label placed along the edge. |
 | `role` | string — one of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
+| `status` | string — one of `added`, `changed`, `removed` | no | What a proposed change does to this connection: the same marks as a node's, written before the label (`+`, `~`, `-`), with a key of the marks under the drawing. A removed edge is drawn in the `aside` treatment — dashed, no head — whatever its role. **Only a `flow` or a `tree`.** |
 
 ### `hub` object
 

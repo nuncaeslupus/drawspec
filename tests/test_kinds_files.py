@@ -188,7 +188,7 @@ def test_the_names_are_drawn_as_written() -> None:
     svg = render(PROJECT)
     for name in ("Button.tsx", "index.ts", "12 more", "entry point", "../shared/utils"):
         assert name in svg
-    assert "+ added" in svg and "~ changed" in svg and "- removed" in svg
+    assert "+ added" in svg and "~ changed" in svg and "\u2212 removed" in svg
 
 
 def test_folders_are_tinted_in_the_default_theme_and_outlined_at_zero_tint() -> None:

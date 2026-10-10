@@ -15,7 +15,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Final
 
-from drawspec.filetree import STATUS_MARKS, Row, rows, text
+from drawspec.filetree import Row, rows, text
+from drawspec.kinds.common import DRAWN_MARKS
 from drawspec.scene import Path, Polygon, Primitive, Rect, Scene, TextRun
 from drawspec.schema import Document
 from drawspec.text.measure import TextMeasurer
@@ -336,7 +337,7 @@ def _pill(
     metrics: _Metrics,
     measurer: TextMeasurer,
 ) -> float:
-    words = f"{STATUS_MARKS[status]} {STATUS_WORDS[status]}"
+    words = f"{DRAWN_MARKS[status]} {STATUS_WORDS[status]}"
     width = measurer.advance(words, "sans", metrics.label) + 10 * metrics.unit
     extents = measurer.measure(words, "sans", metrics.label)
     height = extents.height + 3 * metrics.unit

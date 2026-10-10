@@ -309,6 +309,21 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         _role(NODE_ROLES, "step"),
         FieldSpec("actor", "string", description=_ACTOR_DESCRIPTION),
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
+        FieldSpec(
+            "status",
+            "string",
+            enum=STATUSES,
+            description=(
+                "What a proposed change does to this box, as a diff would say it — for "
+                "one drawing of the target state with the change marked on it, instead "
+                "of a before and an after to compare by eye. Drawn as the labelled mark "
+                "`files` uses (`+ added`, `~ changed`, `- removed`) inside the box, never "
+                "as a colour; a removed box is also dashed and its text struck through. "
+                "**Only a `flow` or a `tree`**: a loop that changes is a different loop. "
+                "An edge touching a removed box must be `removed`, and one touching an "
+                "added box must be `added`."
+            ),
+        ),
     ),
     "edge": (
         FieldSpec(
@@ -334,6 +349,18 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         ),
         FieldSpec("label", "string", description="A short label placed along the edge."),
         _role(EDGE_ROLES, "flow"),
+        FieldSpec(
+            "status",
+            "string",
+            enum=STATUSES,
+            description=(
+                "What a proposed change does to this connection: the same marks as a "
+                "node's, written before the label (`+`, `~`, `-`), with a key of the "
+                "marks under the drawing. A removed edge is drawn in the `aside` "
+                "treatment — dashed, no head — whatever its role. **Only a `flow` or a "
+                "`tree`.**"
+            ),
+        ),
     ),
     "hub": (
         FieldSpec(
@@ -1109,6 +1136,9 @@ class Node:
     actor: str = ""
     """Who performs this step. Free text, and empty when nobody was named."""
 
+    status: str = ""
+    """What a proposed change does to this box: `added`, `changed`, `removed`, or empty."""
+
     @property
     def label(self) -> str:
         """The words this node's box is sized and drawn from.
@@ -1137,6 +1167,8 @@ class Edge:
     target: str
     label: str = ""
     role: str = "flow"
+    status: str = ""
+    """What a proposed change does to this connection, or empty."""
 
 
 @dataclass(frozen=True)
@@ -1752,6 +1784,14 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                             f"anything can name it.",
                         )
                     )
+            if "status" in edge:
+                found.append(
+                    Violation(
+                        _pointer("edges", index, "status"),
+                        "a matrix is not a drawing of a change; 'status' marks one on a "
+                        "flow or a tree.",
+                    )
+                )
             if isinstance(edge.get("from"), str) and edge["from"] == edge.get("to"):
                 found.append(
                     Violation(
@@ -1840,6 +1880,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                 Violation(_pointer("nodes", index, "id"), f"duplicate node id {identifier!r}")
             )
         seen.add(identifier)
+
+    found.extend(_status_violations(document, kind))
 
     if kind == "cycle":
         found.extend(_hub_violations(document, seen))
@@ -1948,6 +1990,75 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                             f"{member!r} is not the id of any node in this document",
                         )
                     )
+    return found
+
+
+def _status_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
+    """Where a change's marks contradict each other, or are on a kind with no change.
+
+    Marks on a drawing of a change make claims about the state after it, so two
+    of them can disagree: an edge that stays, drawn to a box that goes, would
+    outlive what it connects; an edge that was always there cannot reach a box
+    that is new. Each is refused at the edge's `status`, where the fix is.
+    """
+    nodes = document.get("nodes")
+    edges = document.get("edges")
+    found: list[Violation] = []
+    if kind == "cycle":
+        for name, entries in (("nodes", nodes), ("edges", edges)):
+            for index, entry in enumerate(entries if isinstance(entries, list) else ()):
+                if isinstance(entry, dict) and "status" in entry:
+                    found.append(
+                        Violation(
+                            _pointer(name, index, "status"),
+                            "a cycle that changes is a different cycle, and a ring with a "
+                            "step marked removed is still drawn as a ring through it. Draw "
+                            "the loop before and the loop after as two cycles.",
+                        )
+                    )
+        return found
+    status_of = {
+        node["id"]: node.get("status", "")
+        for node in (nodes if isinstance(nodes, list) else ())
+        if isinstance(node, dict) and isinstance(node.get("id"), str)
+    }
+    for index, edge in enumerate(edges if isinstance(edges, list) else ()):
+        if not isinstance(edge, dict):
+            continue
+        ends = {
+            end: status_of.get(edge.get(end), "")
+            for end in ("from", "to")
+            if isinstance(edge.get(end), str)
+        }
+        marked = edge.get("status", "")
+        gone = [edge[end] for end, status in ends.items() if status == "removed"]
+        new = [edge[end] for end, status in ends.items() if status == "added"]
+        pointer = _pointer("edges", index, "status")
+        if gone and new:
+            found.append(
+                Violation(
+                    pointer,
+                    f"this edge joins {new[0]!r}, which the change adds, to {gone[0]!r}, "
+                    f"which it removes. The two never exist at the same time, so nothing "
+                    f"can connect them.",
+                )
+            )
+        elif gone and marked != "removed":
+            found.append(
+                Violation(
+                    pointer,
+                    f"{gone[0]!r} is removed by this change, so an edge to it cannot "
+                    f"outlive it: mark this edge 'removed' too.",
+                )
+            )
+        elif new and marked != "added":
+            found.append(
+                Violation(
+                    pointer,
+                    f"{new[0]!r} is added by this change, so an edge to it is new as well: "
+                    f"mark this edge 'added'.",
+                )
+            )
     return found
 
 
@@ -2151,6 +2262,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
                 centre=bool(entry.get("centre", False)),
                 note=entry.get("note", ""),
                 actor=entry.get("actor", ""),
+                status=entry.get("status", ""),
             )
             for entry in document.get("nodes", ())
         ),
@@ -2161,6 +2273,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
                 target=entry["to"],
                 label=entry.get("label", ""),
                 role=entry.get("role", "flow"),
+                status=entry.get("status", ""),
             )
             for entry in document.get("edges", ())
         ),

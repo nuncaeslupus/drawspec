@@ -1268,6 +1268,15 @@
             "strong",
             "aside"
           ]
+        },
+        "status": {
+          "type": "string",
+          "description": "What a proposed change does to this connection: the same marks as a node's, written before the label (`+`, `~`, `-`), with a key of the marks under the drawing. A removed edge is drawn in the `aside` treatment — dashed, no head — whatever its role. **Only a `flow` or a `tree`.**",
+          "enum": [
+            "added",
+            "changed",
+            "removed"
+          ]
         }
       },
       "required": [
@@ -1484,6 +1493,15 @@
         "note": {
           "type": "string",
           "description": "A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead."
+        },
+        "status": {
+          "type": "string",
+          "description": "What a proposed change does to this box, as a diff would say it — for one drawing of the target state with the change marked on it, instead of a before and an after to compare by eye. Drawn as the labelled mark `files` uses (`+ added`, `~ changed`, `- removed`) inside the box, never as a colour; a removed box is also dashed and its text struck through. **Only a `flow` or a `tree`**: a loop that changes is a different loop. An edge touching a removed box must be `removed`, and one touching an added box must be `added`.",
+          "enum": [
+            "added",
+            "changed",
+            "removed"
+          ]
         }
       },
       "required": [

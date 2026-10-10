@@ -155,6 +155,8 @@ def namespace_for(scene: Scene, theme: Theme, profile: str) -> str:
     digest.update(repr((scene.width, scene.height, scene.title, scene.description)).encode())
     for primitive in scene.primitives:
         digest.update(repr(primitive).encode())
+        if getattr(primitive, "strike", False):
+            digest.update(b"|strike")
     digest.update(f"{theme.name}|{profile}".encode())
     return f"ds{digest.hexdigest()}"
 
@@ -386,6 +388,8 @@ def _text_line_element(line: TextLine, theme: Theme, profile: str) -> str:
     ]
     if line.anchor != "start":
         attributes.append(("text-anchor", line.anchor))
+    if line.strike:
+        attributes.append(("text-decoration", "line-through"))
     if line.rotate:
         attributes.append(
             (

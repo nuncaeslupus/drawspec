@@ -1,6 +1,7 @@
 # Proposal: `flow` + `status` — what a change does to an architecture
 
-Status: **proposed**. Size **S** (the vocabulary and the marks exist in `files`).
+Status: **implemented** — see *As built* at the end for where it departs from this text.
+Size **S** (the vocabulary and the marks exist in `files`).
 
 ## Why a feature and not a kind
 
@@ -106,3 +107,35 @@ the target state with the change marked on it.
 * Removed nodes struck through; removed edges dashed with no head.
 * The consistency refusals above at the edge's pointer.
 * The key lists exactly the statuses used.
+
+## As built
+
+Implemented as proposed, with these changes:
+
+* **The node's mark is a tag inside the box, under its text**, not "after its
+  text". A box is sized from its words, and a pill appended on the same line made
+  every marked box wider than its peers for a word that is not part of its name.
+  The tag is sized as one more line of the box's own text — so a diamond or a
+  pill makes room for it the way it makes room for words — and drawn as the
+  `files` pill in that line's place. It never turns a one-paragraph label into a
+  bold lead over it; an author's or an actor's lead is kept.
+* **Strike-through is a text decoration.** `files` draws its strike as a path
+  over the name. Here it is `text-decoration="line-through"` on the line, so the
+  renderer puts it at its own font's middle and `tools/collisions.py` does not
+  read a deliberate line through the words as a defect.
+* **A removed box is outlined in the `weak` treatment** (dashed, at the box's
+  own corner radius) by tracing its shape as a path — a removed decision keeps its
+  diamond — rather than switching its role, which would also change its shape.
+* **Removal is drawn with a true minus sign, `−`.** Beside an edge, alone, a
+  hyphen is a tick a quarter of an em long and reads as a flaw in the line. The
+  `files` pill now uses the same glyph; its plain-text tree keeps ASCII `-`.
+* **The key is drawn only when an edge is marked.** A marked box's tag already
+  says its word, so a key repeating it says nothing new; a bare `+` on an edge is
+  what needs one. When drawn, it lists exactly the statuses used, as tags.
+* **Changed edges** take `~` before their label and keep their role; the
+  proposal did not say.
+* **One more refusal**: an edge between an added and a removed box ("the two
+  never exist at the same time"). A `changed` edge touching a removed or an added
+  box is refused with the unmarked case. `status` on a `matrix` edge is refused
+  too: `edge` is one object shared with `matrix`, so the field is in its schema
+  and the refusal is at validation, with the pointer.

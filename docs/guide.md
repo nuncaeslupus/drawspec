@@ -524,6 +524,45 @@ band has not got — so a long name beside a short bar comes back as two or thre
 lines rather than one long one. A single word longer than the bar is refused, and
 the message names the band rather than the diagram.
 
+## Drawing a change
+
+A design document proposing a change usually wants to say *what is new, what
+goes, what changes* — and hand-drawn, that is two diagrams side by side that the
+reader has to diff by eye. In a `flow` or a `tree`, draw the target state **once**
+and mark the change on it with `status`, the same vocabulary `files` uses:
+
+```json
+{
+  "version": 1,
+  "kind": "flow",
+  "nodes": [
+    {"id": "web", "text": "Web front end"},
+    {"id": "mono", "text": "Monolith", "status": "changed"},
+    {"id": "sess", "text": "Session service", "status": "added"},
+    {"id": "table", "text": "Sessions table", "status": "removed"}
+  ],
+  "edges": [
+    {"from": "web", "to": "mono"},
+    {"from": "web", "to": "sess", "status": "added"},
+    {"from": "mono", "to": "table", "status": "removed"}
+  ]
+}
+```
+
+A marked box carries a tag inside it — `+ added`, `~ changed`, `− removed`, a
+mark and a word, never a colour — and a removed box is also outlined dashed with
+its words struck through. A marked edge writes its mark before its label (or
+alone, mid-edge), and a removed edge is drawn dashed with no head whatever its
+role. When any edge is marked, a key of the statuses used goes under the drawing.
+
+The marks have to agree with each other: an edge touching a removed box must be
+`removed` (it cannot outlive what it connects), and one touching an added box must
+be `added` (an edge to something new is new). Either is refused at the edge's
+`status`. A `cycle` refuses `status` — a loop that changes is a different loop,
+so draw both. See [`reference/flow-status-search.json`](reference/flow-status-search.json),
+[`reference/flow-status-failover.json`](reference/flow-status-failover.json) and
+[`reference/tree-status-reorg.json`](reference/tree-status-reorg.json).
+
 ## A grid whose cells say how much
 
 A `matrix` fills cells that share a `group` alike, and by default the groups are a

@@ -12,6 +12,17 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`status` on `flow` and `tree`** nodes and edges — `added`, `changed`,
+  `removed`, the `files` vocabulary — so a proposed change is one drawing of the
+  target state rather than a before and an after. A marked box carries a
+  `+ added` / `~ changed` / `− removed` tag inside it; a removed box is dashed
+  and its text struck through (`text-decoration`, so no stroke crosses the
+  words). A marked edge writes its mark before its label; a removed edge is
+  drawn dashed and headless. A key of the statuses used goes under the drawing
+  when an edge is marked. An edge touching a removed node must be `removed`,
+  one touching an added node `added`; `status` on a `cycle` or a `matrix` edge
+  is refused. References: `flow-status-search`, `flow-status-failover`,
+  `tree-status-reorg`.
 - **`scale` on `matrix`** — the groups as an order, weakest first (2 to 5
   steps), for heatmaps, risk matrices and skills matrices. Cells are filled by
   tone from the theme's new `[mark] ramp` (the page's ink at increasing
@@ -53,6 +64,8 @@ against it would stop working. Everything below is about the *package*.
 
 ### Changed
 
+- A `files` status tag draws removal with a true minus sign, `− removed`, as
+  the new graph marks do; the plain-text tree keeps the ASCII `-`.
 - **`AGENTS.md` routes by purpose.** It opens with *should this be a diagram at
   all?* (a list is bullets, attributes are a table, one shape is a sentence),
   chooses the kind from what the reader must understand — including `rise` for

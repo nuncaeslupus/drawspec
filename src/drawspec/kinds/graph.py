@@ -34,7 +34,14 @@ from typing import Final
 
 from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
-from drawspec.kinds.common import box_primitives
+from drawspec.kinds.common import (
+    DRAWN_MARKS,
+    box_primitives,
+    status_box_primitives,
+    status_key,
+    status_size,
+    status_words,
+)
 from drawspec.kinds.containers import (
     Frame,
     Nesting,
@@ -59,8 +66,8 @@ from drawspec.routing import (
     place_labels,
     route_edges,
 )
-from drawspec.scene import Path, Primitive, Scene, TextLine, TextSpan
-from drawspec.schema import Band, Document
+from drawspec.scene import Path, Primitive, Scene, TextLine, TextSpan, moved
+from drawspec.schema import Band, Document, Edge, Node
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
 from drawspec.theme import Theme
@@ -205,8 +212,13 @@ def graph_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     # should be the box.
     for route in drawing.routes:
         primitives.extend(edge_primitives(route, theme))
+    status = {node.id: node.status for node in document.nodes}
     for identifier in sorted(drawing.boxes):
-        primitives.extend(box_primitives(drawing.boxes[identifier], theme, measurer))
+        box = drawing.boxes[identifier]
+        if status.get(identifier):
+            primitives.extend(status_box_primitives(box, status[identifier], theme, measurer))
+        else:
+            primitives.extend(box_primitives(box, theme, measurer))
     for label in drawing.labels:
         primitives.extend(label_primitives(label))
     # Bands last: they sit outside the boxes, so nothing is over them, and the
@@ -214,9 +226,25 @@ def graph_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     for bar in drawing.bands:
         primitives.extend(band_primitives(bar, theme))
 
+    width, height = drawing.width, drawing.height
+    # The key of a drawing of a change: the tags of every status used, under it.
+    # Only when an edge carries one — a box's own tag already says its word, and
+    # it is the bare `+` on a line that needs a key to be read.
+    if any(edge.status for edge in document.edges):
+        used = {node.status for node in document.nodes} | {e.status for e in document.edges}
+        top = height + theme.box.padding.top
+        key, row, tall = status_key(used - {""}, top, max(width, 0.0), theme, measurer)
+        if row > width:
+            across = (row - width) / 2
+            primitives = [moved(primitive, across, 0.0) for primitive in primitives]
+            key = tuple(moved(primitive, across, 0.0) for primitive in key)
+            width = row
+        primitives.extend(key)
+        height = top + tall
+
     return Scene(
-        width=drawing.width,
-        height=drawing.height,
+        width=width,
+        height=height,
         primitives=tuple(primitives),
         title=document.title,
         description=document.description,
@@ -283,7 +311,7 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
     )
     routes = route_edges(
         tuple(
-            Connector(edge.source, edge.target, role=edge.role, label=edge.label)
+            Connector(edge.source, edge.target, role=_drawn_role(edge), label=_marked(edge))
             for edge in document.edges
         ),
         # Frames do not obstruct — an edge into a group must cross its border —
@@ -532,19 +560,7 @@ def _sized(
     other, and a box in another frame is not. Same alignment, and it stops
     travelling across the drawing.
     """
-    boxes = {
-        node.id: size_box(
-            node.label,
-            theme=theme,
-            measurer=measurer,
-            role=node.role,
-            level="body",
-            max_width=limit,
-            widen=NODE_WIDEN,
-            lead=node.lead,
-        )
-        for node in document.nodes
-    }
+    boxes = {node.id: _sized_node(node, theme, measurer, limit) for node in document.nodes}
     peers: dict[tuple[str, str], list[str]] = {}
     for node in document.nodes:
         peers.setdefault((nesting.parent.get(node.id, ""), node.role), []).append(node.id)
@@ -554,6 +570,56 @@ def _sized(
         ):
             boxes[identifier] = box
     return boxes
+
+
+#: The role a removed edge is drawn in, whatever role it was written with:
+#: dashed and headless, a connection that is no longer there to go anywhere.
+REMOVED_EDGE_ROLE: Final = "aside"
+
+
+def _drawn_role(edge: Edge) -> str:
+    return REMOVED_EDGE_ROLE if edge.status == "removed" else edge.role
+
+
+def _marked(edge: Edge) -> str:
+    """An edge's label with its change's mark written first — or the mark alone."""
+    if not edge.status:
+        return edge.label
+    mark = DRAWN_MARKS[edge.status]
+    return f"{mark} {edge.label}" if edge.label else mark
+
+
+def _sized_node(node: Node, theme: Theme, measurer: TextMeasurer, limit: float) -> Box:
+    """One node's box — with room for its change's tag as a last line, when it has one.
+
+    The tag is sized as a paragraph of the box's own text so every shape makes
+    room for it the way it makes room for words, then drawn as a pill in that
+    line's place. It must not become the detail of a lead nobody wrote, so a
+    single-paragraph label stays one: the lead is the author's, or the actor's.
+    """
+    if not node.status:
+        return size_box(
+            node.label,
+            theme=theme,
+            measurer=measurer,
+            role=node.role,
+            level="body",
+            max_width=limit,
+            widen=NODE_WIDEN,
+            lead=node.lead,
+        )
+    box = size_box(
+        f"{node.label}\n{status_words(node.status)}",
+        theme=theme,
+        measurer=measurer,
+        role=node.role,
+        level="body",
+        max_width=limit,
+        widen=NODE_WIDEN,
+        lead=bool(node.actor) or "\n" in node.text.strip(),
+    )
+    tag_width, _ = status_size(node.status, theme, measurer)
+    return box.resized(width=tag_width + theme.box.padding.horizontal)
 
 
 def _framed(
