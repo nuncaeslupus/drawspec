@@ -78,6 +78,7 @@ from drawspec.theme import (
     EdgeStyle,
     EntitiesStyle,
     FilesStyle,
+    FishboneStyle,
     FitBand,
     FontStacks,
     FunnelStyle,
@@ -521,6 +522,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "entities": EntitiesStyle,
     "gantt": GanttStyle,
     "board": BoardStyle,
+    "fishbone": FishboneStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are
@@ -543,6 +545,9 @@ THEME_VOCABULARIES: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("gantt", "marks"): EDGE_ROLES,
     ("board", "separator"): EDGE_ROLES,
     ("board", "cut"): EDGE_ROLES,
+    ("fishbone", "spine"): EDGE_ROLES,
+    ("fishbone", "bone"): EDGE_ROLES,
+    ("fishbone", "cause"): EDGE_ROLES,
 }
 
 

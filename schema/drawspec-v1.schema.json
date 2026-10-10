@@ -1533,6 +1533,74 @@
         "cards"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "fishbone",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "fishbone"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "effect": {
+          "$ref": "#/$defs/effect",
+          "description": "The observed problem, stated as a fact: drawn in the head box at the end of the spine, always as the diagram's emphasis."
+        },
+        "categories": {
+          "type": "array",
+          "description": "The bones, drawn alternately above and below the spine, nearest the head first: the written order is the reading order from the head outwards.",
+          "items": {
+            "$ref": "#/$defs/category"
+          },
+          "minItems": 2
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "effect",
+        "categories"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -1771,6 +1839,50 @@
       ],
       "additionalProperties": false
     },
+    "category": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "causes": {
+          "type": "array",
+          "description": "What was investigated under this category, in reading order from the category's name inwards to the spine. Leaves: a cause has no causes.",
+          "items": {
+            "$ref": "#/$defs/cause"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "text",
+        "causes"
+      ],
+      "additionalProperties": false
+    },
+    "cause": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default), `emphasis` (the confirmed root cause: its bone is drawn heavy up to the spine) or `note` (investigated and ruled out, its tick drawn light and dashed).",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "additionalProperties": false
+    },
     "cell": {
       "type": "object",
       "properties": {
@@ -1956,6 +2068,19 @@
       "required": [
         "from",
         "to"
+      ],
+      "additionalProperties": false
+    },
+    "effect": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "text"
       ],
       "additionalProperties": false
     },

@@ -1,6 +1,7 @@
 # Proposal: `fishbone` — one effect, its causes by category
 
-Status: **proposed**. Size **M** (fixed two-level structure; one new geometry).
+Status: **implemented** — see *As built* at the end for where it departs from this
+text. Size **M** (fixed two-level structure; one new geometry).
 
 ## Why
 
@@ -133,3 +134,38 @@ angles throughout). The author never sets it.
 * The `emphasis` cause's bone is drawn in the `strong` weight; others are not.
 * Third-level causes refused with the "second fishbone" message.
 * `slant = 90` renders vertical bones with the same structure.
+
+## As built
+
+Built in `kinds/fishbone.py`, a layout family of its own; the three use cases are
+`docs/reference/fishbone-backup.json`, `fishbone-late-orders.json` and
+`fishbone-flaky-ci.json`, and `fishbone-signups.json` adds five categories, two
+kinds of cause role and a caption. Where it departs from the text above:
+
+* **The effect takes no `role`.** It is the head, always drawn in `emphasis`, and
+  a role there could only make it less than the headline. Writing one is refused
+  with the reason; it does not count against the emphasis cap, so a document may
+  still mark two confirmed root causes.
+* **Every bone is one length** — the longest stack of causes — rather than each
+  its own. Bones of different lengths read as an accident, and a category with one
+  cause came out as a stub on the spine; equal bones keep the fish symmetric and
+  let a short category read as short by its empty stretch near the spine.
+* **Causes read from the category's name inwards**, the order written, and their
+  words are set *right*-aligned, ending a fixed gap short of the bone, standing on
+  a tick that runs from just before the words to the bone. Left-aligned words at
+  the tick's open end left a ragged edge against the slanted bone.
+* **Slots interleave.** Instead of spacing a slot by the widest cause on either of
+  its bones, each slot moves as near the head as it can while every word, tick,
+  name and slice of bone in it stays left of whatever it shares a height with —
+  a bone leaning away from a neighbour's words makes room for them. When the
+  whole is still too wide the causes wrap narrower (each balanced, so a second
+  line is not one orphaned word), and only when no width works is it a
+  `FitError`, naming the longest cause.
+* **Three more theme keys beside `slant`**: `spine` (`strong`), `bone` (`flow`)
+  and `cause` (`link`), edge roles drawn with no head, as `[board]` does. `slant`
+  is held to 30–90 degrees. A root cause is also set **bold**, so it is told
+  apart by weight in the words as well as the line; a ruled-out cause's words
+  keep their weight (text has one ink) and its tick is `aside`, light and dashed.
+* **The counts live in the readability budget** — `categories` 6 and
+  `categories/causes` 5 — with refusals that say to merge categories or split a
+  bone into its own fishbone, rather than the generic "overview plus details".

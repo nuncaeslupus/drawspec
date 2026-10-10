@@ -12,6 +12,21 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`fishbone`, the twenty-second kind** — a root-cause (Ishikawa) diagram: one
+  `effect` in a box at the head of a spine, and 2 to 6 `categories` drawn as bones
+  slanting into the spine, alternately above and below, nearest the head first.
+  Each category lists 1 to 5 `causes`, ticks off its bone with the words standing
+  on them, from the category's name inwards. Cause roles `step`, `emphasis` (the
+  confirmed root cause: bold, its tick and bone to the spine drawn in the spine's
+  role) and `note` (ruled out, a light dashed tick). Slots along the spine
+  interleave: each goes as near the head as its words allow; causes wrap narrower
+  until the drawing fits, or `FitError` names the longest. New theme section
+  `[fishbone]`: `slant` (30 to 90 degrees, default 60 — the one diagonal drawspec
+  draws on purpose), `spine`, `bone` and `cause` (edge roles, drawn with no
+  head). Refused at their pointers: a third level (`causes` in a cause, "a second
+  fishbone"), a category with no causes, one category, `edges`, a cause role
+  with a shape, and a `role` on the effect. Budget: 6 categories, 5 causes per
+  category.
 - **`board`, the twenty-first kind** — cards sorted into columns, with no
   connectors: a kanban board, a retrospective, and — with `rows` and a `cut` — a
   story map. `columns` are equal and left to right as written, each with a bold

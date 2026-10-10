@@ -148,7 +148,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Twenty-one exist, and they fall into ten families:
+fields are legal. Twenty-two exist, and they fall into eleven families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -162,6 +162,7 @@ fields are legal. Twenty-one exist, and they fall into ten families:
 | Model | `entities` | Things with fields, and how they relate: an ER model, a database schema, a class diagram. |
 | Plan | `gantt` | Things that take time: one row per task, each an interval, with phases, milestones and what waits on what. |
 | Board | `board` | Things sorted, not joined: cards in columns — a kanban board, a retrospective, a story map sliced into releases. |
+| Cause | `fishbone` | Things that led to one effect: causes by category on bones slanting into a spine — a root-cause (Ishikawa) diagram. |
 
 One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see
@@ -1000,6 +1001,52 @@ cell — past that, end the cell with a summary card. See
 [`reference/board-retrospective.json`](reference/board-retrospective.json),
 [`reference/board-story-map.json`](reference/board-story-map.json) and
 [`reference/board-onboarding.json`](reference/board-onboarding.json).
+
+## A fishbone
+
+A root-cause review has one claim, and it is fixed: **one effect; causes grouped
+into categories; nothing deeper**. Drawn as a two-level `tree`, the effect sits on
+top as if it owned its causes. `fishbone` draws it the other way round —
+everything flows into the head:
+
+```json
+{
+  "version": 1,
+  "kind": "fishbone",
+  "title": "Why the backup finished at 09:40",
+  "effect": {"text": "Nightly backup overran its window by 3 h 40 min"},
+  "categories": [
+    {"text": "Data", "causes": [
+      {"text": "Audit table grew 4× after the logging change", "role": "emphasis"},
+      {"text": "No retention on audit rows"}
+    ]},
+    {"text": "Infrastructure", "causes": [{"text": "Backup volume on slower storage tier"}]},
+    {"text": "Monitoring", "causes": [{"text": "Duration alert only at 6 h", "role": "note"}]}
+  ]
+}
+```
+
+The effect is the box at the head of the spine, always drawn as the emphasis (it
+takes no `role`). Categories are bones, alternately above and below the spine,
+**nearest the head first**, all one length and slanted at the theme's `[fishbone]
+slant` (60° by default; `90` draws upright bones). A cause is a tick off its bone
+with its words standing on it, listed from the category's name inwards. Cause
+roles: `step`, `emphasis` — the confirmed root cause, set bold, its tick and the
+rest of its bone to the spine drawn in the spine's heavy role — and `note`, a
+cause investigated and ruled out, on a light dashed tick. Keep the ruled-out
+causes: a fishbone records what was investigated.
+
+Refused, each at its pointer: `causes` inside a cause — a sub-cause of a cause is
+a second fishbone with that cause as its effect; a category with no causes (write
+`"nothing found"` as a `note` cause instead); fewer than 2 categories; `edges` (a
+cause that feeds another cause is a `flow`); a cause role with a shape
+(`decision`, `terminal`); a `role` on the effect. Budget: 6 categories and 5
+causes in one. When the causes will not fit the width, they wrap narrower; when no
+width works, `FitError` names the longest cause. See
+[`reference/fishbone-backup.json`](reference/fishbone-backup.json),
+[`reference/fishbone-late-orders.json`](reference/fishbone-late-orders.json),
+[`reference/fishbone-flaky-ci.json`](reference/fishbone-flaky-ci.json) and
+[`reference/fishbone-signups.json`](reference/fishbone-signups.json).
 
 ## Asking for a wide drawing instead of a tall one
 

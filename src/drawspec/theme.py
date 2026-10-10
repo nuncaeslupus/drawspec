@@ -1099,6 +1099,59 @@ class BoardStyle:
         )
 
 
+#: The narrowest and widest slant a fishbone's bones may take, in degrees from
+#: the spine. Below thirty a bone lies almost along the spine and its causes
+#: crowd it; ninety is a comb of upright bones.
+FISHBONE_SLANT_RANGE: Final = (30.0, 90.0)
+
+
+@dataclass(frozen=True)
+class FishboneStyle:
+    """How a fishbone draws its spine, its bones and the ticks its causes sit on.
+
+    The author says which causes fall under which category; the angle the bones
+    meet the spine at, and the weight of each line, are house style.
+    """
+
+    slant: float = 60.0
+    """The angle, in degrees from the spine, each bone meets it at: 30 to 90. A
+    fishbone's bones slant by convention — the one place drawspec draws a
+    diagonal on purpose, because the slant *is* the shape. `90` draws a comb of
+    upright bones for a theme that keeps right angles throughout."""
+
+    spine: str = "strong"
+    """The edge role the spine is drawn in, with no head: from the far end of the
+    last bone into the effect's box."""
+
+    bone: str = "flow"
+    """The edge role a category's bone is drawn in, with no head. The bone of a
+    confirmed root cause (`emphasis`) is drawn in the spine's role from that cause
+    to the spine, so the path from cause to effect is one weight."""
+
+    cause: str = "link"
+    """The edge role the tick a cause's words sit on is drawn in, with no head. A
+    ruled-out cause (`note`) is drawn in `aside` instead: light and dashed."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> FishboneStyle:
+        _reject_unknown(mapping, ("slant", "spine", "bone", "cause"), "[fishbone]")
+        defaults = cls()
+        slant = _number(mapping.get("slant", defaults.slant), "[fishbone] slant")
+        low, high = FISHBONE_SLANT_RANGE
+        if not low <= slant <= high:
+            raise ThemeError(
+                f"[fishbone] slant: {slant:g} is outside {low:g} to {high:g} degrees — below "
+                f"{low:g} a bone lies along the spine, and past {high:g} it leans away from "
+                f"the head"
+            )
+        return cls(
+            slant=slant,
+            spine=_choice(mapping.get("spine", defaults.spine), EDGE_ROLES, "[fishbone] spine"),
+            bone=_choice(mapping.get("bone", defaults.bone), EDGE_ROLES, "[fishbone] bone"),
+            cause=_choice(mapping.get("cause", defaults.cause), EDGE_ROLES, "[fishbone] cause"),
+        )
+
+
 #: Which way a `lanes` diagram's lanes run: across the page, stacked top to
 #: bottom (`rows`), or down it, side by side (`columns`). `auto` tries rows and
 #: takes columns when rows do not fit the width.
@@ -1347,6 +1400,7 @@ _TOP_LEVEL_KEYS: Final = (
     "entities",
     "gantt",
     "board",
+    "fishbone",
     "role",
     "edge_role",
 )
@@ -1375,6 +1429,7 @@ class Theme:
     entities: EntitiesStyle = EntitiesStyle()
     gantt: GanttStyle = GanttStyle()
     board: BoardStyle = BoardStyle()
+    fishbone: FishboneStyle = FishboneStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
 
@@ -1431,6 +1486,7 @@ class Theme:
             entities=EntitiesStyle.from_mapping(_section(mapping, "entities")),
             gantt=GanttStyle.from_mapping(_section(mapping, "gantt")),
             board=BoardStyle.from_mapping(_section(mapping, "board")),
+            fishbone=FishboneStyle.from_mapping(_section(mapping, "fishbone")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
         )

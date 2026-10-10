@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-21 kinds. The machine-readable form of this page is the published
+22 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board` | **yes** | Which of the twenty-one diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone` | **yes** | Which of the twenty-two diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -182,6 +182,13 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `cut` | string | no | The id of a row: a heavy rule is drawn under it — everything above ships first. Not the last row, which has nothing below it to cut from. |
 | `cards` | array of [card](#card-object), at least 1 | **yes** | Each in a column (and a row, with rows). Within a cell they stack in the order written, top-aligned, so a short column looks short. |
 
+### `fishbone`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `effect` | [effect object](#effect-object) | **yes** | The observed problem, stated as a fact: drawn in the head box at the end of the spine, always as the diagram's emphasis. |
+| `categories` | array of [category](#category-object), at least 2 | **yes** | The bones, drawn alternately above and below the spine, nearest the head first: the written order is the reading order from the head outwards. |
+
 ### `scatter`
 
 | Field | Type | Required | What it is |
@@ -235,6 +242,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `entities` | 8 `entities`, 12 `edges`, 12 `fields` per entity, 8 `operations` per entity |
 | `gantt` | 16 `tasks`, 20 `edges`, 4 `marks` |
 | `board` | 6 `columns`, 4 `rows`, 32 `cards`, 8 `cards` per cell |
+| `fishbone` | 6 `categories`, 5 `causes` per category |
 
 ## Emphasis
 
@@ -450,6 +458,26 @@ name, so a misspelt key is an error at the point it was written.
 | `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (blocked, at risk, the one that matters) or `note` (a placeholder or a summary such as `+ 6 more`, drawn lighter and not counted against a limit). |
 | `actor` | string | no | Who holds it — free text, drawn as the card's lead, as in a `flow` box. A card with an actor may not put a newline in `text`. |
 | `note` | string | no | A short aside hung under the card, smaller: `blocked on a decision`. |
+
+### `effect` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `category` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `causes` | array of [cause](#cause-object), at least 1 | **yes** | What was investigated under this category, in reading order from the category's name inwards to the spine. Leaves: a cause has no causes. |
+
+### `cause` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the confirmed root cause: its bone is drawn heavy up to the spine) or `note` (investigated and ruled out, its tick drawn light and dashed). |
 
 ### `group` object
 

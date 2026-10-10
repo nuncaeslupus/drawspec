@@ -165,6 +165,16 @@ marks = "weak"
 separator = "weak"
 cut = "strong"
 
+[fishbone]
+# A fishbone's bones slant into the spine by convention — the slant is the shape,
+# so this is the one diagonal drawspec draws on purpose; 90 draws upright bones.
+# The spine is the heavy line everything flows into; a bone is an ordinary line,
+# and the tick a cause sits on the lightest, so the words are what is read.
+slant = 60.0
+spine = "strong"
+bone = "flow"
+cause = "link"
+
 # ---------------------------------------------------------------------------
 # Node roles. Shape and line treatment per semantic role. The author names the
 # role; every appearance decision below is taken here, once, for all diagrams.

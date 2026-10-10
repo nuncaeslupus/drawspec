@@ -212,6 +212,17 @@ How a board draws the two lines that are not card borders.
 | `separator` | `"weak"` | The edge role the line between two rows (slices) is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
 | `cut` | `"strong"` | The edge role the cut under a row is drawn in, with no head: the board's one heavy line. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
 
+### `[fishbone]`
+
+How a fishbone draws its spine, its bones and the ticks its causes sit on.
+
+| Key | Default | What it is |
+|---|---|---|
+| `slant` | `60.0` | The angle, in degrees from the spine, each bone meets it at: 30 to 90. A fishbone's bones slant by convention — the one place drawspec draws a diagonal on purpose, because the slant *is* the shape. `90` draws a comb of upright bones for a theme that keeps right angles throughout. |
+| `spine` | `"strong"` | The edge role the spine is drawn in, with no head: from the far end of the last bone into the effect's box. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `bone` | `"flow"` | The edge role a category's bone is drawn in, with no head. The bone of a confirmed root cause (`emphasis`) is drawn in the spine's role from that cause to the spine, so the path from cause to effect is one weight. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `cause` | `"link"` | The edge role the tick a cause's words sit on is drawn in, with no head. A ruled-out cause (`note`) is drawn in `aside` instead: light and dashed. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The

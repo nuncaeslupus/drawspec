@@ -49,6 +49,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "entities": "a data model, schema or class diagram — boxes of fields, relations between them",
     "gantt": "a plan — one row per task, each an interval on a numbered axis; no dates",
     "board": "cards sorted into columns — a kanban board, a retrospective, a story map",
+    "fishbone": "one effect and its causes by category — a root-cause (Ishikawa) diagram",
 }
 
 #: The smallest document of each kind that renders.
@@ -260,6 +261,15 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "cards": [
             {"text": "Write the tests", "column": "doing"},
             {"text": "Draft the guide", "column": "todo"},
+        ],
+    },
+    "fishbone": {
+        "version": 1,
+        "kind": "fishbone",
+        "effect": {"text": "The build is slow"},
+        "categories": [
+            {"text": "Code", "causes": [{"text": "No incremental compile"}]},
+            {"text": "Machines", "causes": [{"text": "Runners share one disk"}]},
         ],
     },
     "scatter": {

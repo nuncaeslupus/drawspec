@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "kind": "fishbone",
+  "title": "Why sign-ups fell after the redesign",
+  "caption": "Dashed: investigated and ruled out. Bold: confirmed by the A/B rerun.",
+  "effect": {"text": "Weekly sign-ups down 18 % since the new landing page"},
+  "categories": [
+    {"text": "Form", "causes": [
+      {"text": "Phone number became a required field", "role": "emphasis"},
+      {"text": "Password rules shown only after an error"},
+      {"text": "Captcha on every attempt"}
+    ]},
+    {"text": "Traffic", "causes": [
+      {"text": "Paid campaign paused the same week", "role": "note"},
+      {"text": "Search ranking unchanged", "role": "note"}
+    ]},
+    {"text": "Page", "causes": [
+      {"text": "Sign-up button below the fold on phones"},
+      {"text": "Hero image adds 1.2 s to load"}
+    ]},
+    {"text": "Measurement", "causes": [
+      {"text": "Tracking event renamed in the release", "role": "note"}
+    ]},
+    {"text": "Trust", "causes": [
+      {"text": "Pricing link removed from the header"},
+      {"text": "Customer logos dropped"}
+    ]}
+  ]
+}

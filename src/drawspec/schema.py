@@ -234,6 +234,21 @@ BOARD_COLUMN_ROLES: Final = ("step", "emphasis")
 #: one slice. Past it a reader counts instead of reading: write a summary card.
 BOARD_CELL_MAX: Final = 8
 
+#: Fishbone (Ishikawa) diagrams: one effect, its causes grouped by category. A
+#: fixed two-level structure — effect, categories, causes — drawn as bones
+#: slanting into a spine that ends at the effect. A layout family of its own.
+FISHBONE_KINDS: Final = ("fishbone",)
+
+#: The roles a cause may take: the default, the confirmed root cause (its bone
+#: is drawn heavy all the way to the spine), and one investigated and ruled out.
+CAUSE_ROLES: Final = ("step", "emphasis", "note")
+
+#: The most categories one fishbone may have, and causes one category may list.
+#: Past six bones the drawing stops being scannable; past five causes a bone is
+#: a list.
+FISHBONE_CATEGORY_MAX: Final = 6
+FISHBONE_CAUSE_MAX: Final = 5
+
 #: How a `files` tree is drawn. `icons` is the file-browser look; `plain` keeps
 #: the guides and drops the pictures; `unicode` and `ascii` are the tree as text,
 #: set in the monospace face, the way `tree` prints it.
@@ -275,6 +290,8 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: the reader looks for, and a `timeline`'s one axis of instants cannot show it.
 #: `board` is the eighth: cards sorted into columns with no connectors — a
 #: matrix cell is one box, and a board's cell is a list whose count matters.
+#: `fishbone` is the ninth: one effect and its causes by category — a two-level
+#: `tree` with the effect on top reads as if it owned its causes.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -287,6 +304,7 @@ KINDS: Final = (
     + ENTITIES_KINDS
     + GANTT_KINDS
     + BOARD_KINDS
+    + FISHBONE_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -352,6 +370,12 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
         ("cards", 32),
         ("cards@cell", BOARD_CELL_MAX),
     ),  # [5 columns, 3 rows, 11 cards, 4 per cell]
+    # Set by the proposal: past six bones a fishbone stops being scannable, and
+    # past five causes a bone is a list. Both refusals say what to do instead.
+    "fishbone": (
+        ("categories", FISHBONE_CATEGORY_MAX),
+        ("categories/causes", FISHBONE_CAUSE_MAX),
+    ),  # [6 categories, 3 causes]
 }
 
 
@@ -1153,6 +1177,34 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             description=("A short aside hung under the card, smaller: `blocked on a decision`."),
         ),
     ),
+    "effect": (_text(),),
+    "category": (
+        _text(),
+        FieldSpec(
+            "causes",
+            "array",
+            required=True,
+            item_ref="cause",
+            min_items=1,
+            description=(
+                "What was investigated under this category, in reading order from the "
+                "category's name inwards to the spine. Leaves: a cause has no causes."
+            ),
+        ),
+    ),
+    "cause": (
+        _text(),
+        FieldSpec(
+            "role",
+            "string",
+            enum=CAUSE_ROLES,
+            description=(
+                "`step` (the default), `emphasis` (the confirmed root cause: its bone is "
+                "drawn heavy up to the spine) or `note` (investigated and ruled out, its "
+                "tick drawn light and dashed)."
+            ),
+        ),
+    ),
     "group": (
         FieldSpec("id", "string", required=True, description="Unique within the document."),
         _text(required=False),
@@ -1509,7 +1561,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the twenty-one diagrams this is. It selects the fields that are "
+            "Which of the twenty-two diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -2071,6 +2123,29 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    FISHBONE_KINDS: (
+        FieldSpec(
+            "effect",
+            "object",
+            required=True,
+            ref="effect",
+            description=(
+                "The observed problem, stated as a fact: drawn in the head box at the end of "
+                "the spine, always as the diagram's emphasis."
+            ),
+        ),
+        FieldSpec(
+            "categories",
+            "array",
+            required=True,
+            item_ref="category",
+            min_items=2,
+            description=(
+                "The bones, drawn alternately above and below the spine, nearest the head "
+                "first: the written order is the reading order from the head outwards."
+            ),
+        ),
+    ),
     ("scatter",): (
         FieldSpec(
             "axes",
@@ -2361,6 +2436,22 @@ class Card:
 
 
 @dataclass(frozen=True)
+class Cause:
+    """One cause on a `fishbone` bone: a leaf, with a role."""
+
+    text: str
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class Category:
+    """One bone of a `fishbone`: a category's name and the causes under it."""
+
+    text: str
+    causes: tuple[Cause, ...] = ()
+
+
+@dataclass(frozen=True)
 class Band:
     """Something that runs alongside a set of boxes rather than containing them.
 
@@ -2558,6 +2649,12 @@ class Document:
     cut: str = ""
     """The id of the slice a `board` draws its heavy rule under."""
 
+    effect: str = ""
+    """A `fishbone`'s effect: the words in the head box."""
+
+    categories: tuple[Category, ...] = ()
+    """A `fishbone`'s bones, nearest the head first."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -2573,6 +2670,7 @@ class Document:
             ("entities", ENTITIES_KINDS),
             ("gantt", GANTT_KINDS),
             ("board", BOARD_KINDS),
+            ("fishbone", FISHBONE_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -2761,6 +2859,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_gantt_refusal(violation, document) for violation in found]
     if kind in BOARD_KINDS:
         found = [_board_refusal(violation) for violation in found]
+    if kind in FISHBONE_KINDS:
+        found = [_fishbone_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -2797,6 +2897,21 @@ def _edge_role_refusal(violation: Violation, document: Mapping[str, Any], kind: 
     return violation
 
 
+#: What to do instead, for a budget whose generic advice ("split it into an
+#: overview and details") is not the remedy. Keyed by (kind, array) for a
+#: top-level budget and by (outer, inner) for a nested one.
+BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
+    ("fishbone", "categories"): (
+        "Past six bones a fishbone stops being scannable: merge the categories that overlap, "
+        "or draw the biggest category as a fishbone of its own."
+    ),
+    ("categories", "causes"): (
+        "Past five causes a bone is a list: keep the ones the investigation turned on, or "
+        "make this category its own fishbone with these causes as its categories."
+    ),
+}
+
+
 def _readability_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
     """Every counted array that holds more than its kind's readability budget.
 
@@ -2818,10 +2933,15 @@ def _readability_violations(document: Mapping[str, Any], kind: str) -> list[Viol
             Violation(
                 _pointer(name, limit),
                 f"{len(entries)} {name} is past what one {kind} can be read at — "
-                f"{limit} at most. Past that a reader searches the diagram instead of "
-                f"taking it in. Split it: an overview that names each part once, plus a "
-                f"detail diagram per part, each within the budget. The budget is not a "
-                f"canvas size, so a larger top-level 'width' does not lift it.",
+                f"{limit} at most. "
+                + BUDGET_ADVICE.get(
+                    (kind, name),
+                    "Past that a reader searches the diagram instead of "
+                    "taking it in. Split it: an overview that names each part once, plus a "
+                    "detail diagram per part, each within the budget.",
+                )
+                + " The budget is not a canvas size, so a larger top-level 'width' does not "
+                "lift it.",
             )
         )
     return found
@@ -2835,12 +2955,16 @@ def _nested_budget(document: Mapping[str, Any], name: str, limit: int) -> list[V
         rows = entry.get(inner) if isinstance(entry, dict) else None
         if not isinstance(rows, list) or len(rows) <= limit:
             continue
+        advice = BUDGET_ADVICE.get((outer, inner))
         found.append(
             Violation(
                 _pointer(outer, index, inner, limit),
                 f"{len(rows)} {inner} is past what one box can be read at — {limit} at "
                 f"most. Show the ones this diagram is about and end the list with a "
-                f"`...` field, which says there are more.",
+                f"`...` field, which says there are more."
+                if advice is None
+                else f"{len(rows)} {inner} is past what one {outer[:-3]}y can be read at — "
+                f"{limit} at most. {advice}",
             )
         )
     return found
@@ -2918,6 +3042,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _gantt_violations(document)
     if kind in BOARD_KINDS:
         return _board_violations(document)
+    if kind in FISHBONE_KINDS:
+        return []
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -4329,6 +4455,58 @@ def _board_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a fishbone has no place for a field an author may reach for.
+FISHBONE_REFUSED: Final = {
+    "edges": (
+        "the connections of a fishbone are its structure, so there is nothing to add. A cause "
+        "that contributes to another cause is a different diagram: a `flow`"
+    ),
+    "causes": (
+        "a cause is a leaf. A sub-cause of a cause is a second fishbone, with that cause as "
+        "its effect — draw that one beside this"
+    ),
+    "role": (
+        "the effect is the head, always drawn as the diagram's emphasis; it takes no role. "
+        "Mark the confirmed root cause with `emphasis` on that cause instead"
+    ),
+}
+
+
+def _fishbone_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a fishbone, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    unknown = "is not a known field" in violation.message
+    if unknown and name == "edges" and len(parts) == 2:
+        return Violation(violation.pointer, f"'edges': {FISHBONE_REFUSED['edges']}.")
+    if unknown and name == "causes" and len(parts) == 6:
+        return Violation(violation.pointer, f"'causes': {FISHBONE_REFUSED['causes']}.")
+    if unknown and name == "role" and parts[1:2] == ["effect"]:
+        return Violation(violation.pointer, f"'role': {FISHBONE_REFUSED['role']}.")
+    if "needs at least" in violation.message:
+        if parts[1:] == ["categories"]:
+            return Violation(
+                violation.pointer,
+                "a fishbone needs at least 2 categories: one category is a list of causes. "
+                "Write it as a list, or name the second category the causes fall under.",
+            )
+        if len(parts) == 4 and name == "causes":
+            return Violation(
+                violation.pointer,
+                "a category with no causes is a heading with no investigation under it. If "
+                'nothing was found, say so: `{"text": "nothing found", "role": "note"}`.',
+            )
+    if len(parts) == 6 and name == "role" and "is not one of" in violation.message:
+        return Violation(
+            violation.pointer,
+            violation.message.split(".")[0]
+            + ". A cause is a tick on a bone, with no shape to mean `decision` or "
+            "`terminal`: `step`, `emphasis` for the confirmed root cause, `note` for one "
+            "ruled out.",
+        )
+    return violation
+
+
 def _is_number(value: object) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool)
 
@@ -4807,6 +4985,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _gantt_document(document)
     if kind in BOARD_KINDS:
         return _board_document(document)
+    if kind in FISHBONE_KINDS:
+        return _fishbone_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -5185,6 +5365,31 @@ def _board_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _fishbone_document(document: Mapping[str, Any]) -> Document:
+    """A fishbone: its effect and its categories, each with its causes, in order."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        effect=str(document["effect"]["text"]),
+        categories=tuple(
+            Category(
+                text=entry["text"],
+                causes=tuple(
+                    Cause(text=cause["text"], role=cause.get("role", "step"))
+                    for cause in entry["causes"]
+                ),
+            )
+            for entry in document["categories"]
+        ),
+    )
+
+
 def _hub(entry: Mapping[str, Any] | None) -> Node | None:
     if entry is None:
         return None
@@ -5398,6 +5603,7 @@ __all__ = [
     "BOARD_CELL_MAX",
     "BOARD_KINDS",
     "CARDINALITIES",
+    "CAUSE_ROLES",
     "CHART_KINDS",
     "COMMON_FIELDS",
     "CONTAINER_KINDS",
@@ -5406,6 +5612,9 @@ __all__ = [
     "ENTITY_EDGE_ROLES",
     "ENTITY_ROLES",
     "FIELD_KEYS",
+    "FISHBONE_CATEGORY_MAX",
+    "FISHBONE_CAUSE_MAX",
+    "FISHBONE_KINDS",
     "FRAGMENT_OPERATORS",
     "GRAPH_EDGE_ROLES",
     "GRAPH_KINDS",
@@ -5432,6 +5641,8 @@ __all__ = [
     "BoardColumn",
     "Branch",
     "Card",
+    "Category",
+    "Cause",
     "Cell",
     "Curve",
     "Document",
