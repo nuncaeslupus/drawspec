@@ -12,6 +12,55 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`lanes` take `phases`**, the second axis of a cross-functional flowchart:
+  `[{text, members}]` in the order the process runs, every step in exactly one.
+  Drawn as a band of phase names along the lanes' outer edge (over the strips in
+  rows, beside them in columns) and a light line across every lane between phases,
+  in the new theme key `[lanes] phase` (edge role, `aside` by default). Each phase's
+  steps are ranked after all of the phases before it, so phases never interleave;
+  an arrow back into an earlier phase is drawn as a return. Refused at their
+  pointers: an unknown step, a step in two phases or in none, fewer than 2 or more
+  than 6 phases (budget), and a backward arrow that is not a loop (phases out of
+  order). See `reference/lanes-phases-purchase.json`, `lanes-phases-release.json`
+  and `lanes-phases-loan.json`.
+- **Washed frames and striped lanes**, theme only. A group's frame, a composite
+  state and a sequence group are filled with `[frames] tone` of the page's ink (0.05
+  in the default theme), drawn as `currentColor` at part opacity so dark mode and
+  greyscale keep it; nested frames lay wash over wash, one step darker per level for
+  `[frames] levels` (3) levels. `[lanes] stripe` (0.04) washes every second lane.
+  Both cap at 0.1; 0 turns them off. This changes every grouped drawing and every
+  swimlane in the gallery.
+- **Three flowchart symbols as node roles**, on `flow`, `tree` and `lanes` nodes:
+  `io` (a parallelogram: data in or out), `subroutine` (a box with doubled vertical
+  sides: a process defined elsewhere) and `store` (a drum: a database, a queue, a file
+  kept). New theme shapes `parallelogram`, `subroutine` and `cylinder`; text is fitted
+  inside the slanted sides, the inner lines and under the lid, and arrows land on the
+  visible outline. A `cycle` refuses them at the node's `role`; every kind with its own
+  role vocabulary still does. See `reference/flow-meter-readings.json` and
+  `reference/lanes-appointment.json`.
+- **`gantt` tasks take `done`**, a number from 0 to 100: how much of the task is
+  complete, drawn as a solid band through the middle of the bar from its start (MS
+  Project's progress line). It is the page's ink at the strength of the new theme key
+  `[gantt] done` (default 0.7), so it holds in greyscale and on a dark page. Refused at
+  its pointer: a value outside 0–100, and `done` on a milestone. `progress`, `complete`
+  and `percent` are still refused by name, now pointing to `done`. See
+  `reference/gantt-progress.json`.
+- **`funnel` stages can carry an `amount`**, with a top-level `unit` and `values`: each
+  stage writes its count under its name and, from the second on, the share kept from
+  the stage before (`310 people · 7.4% kept`), derived rather than written. The taper
+  stays the drawing's uniform one, not to scale. Refused at their pointers: some stages
+  with an amount and some without, an amount above the stage before's, an amount of zero
+  or less, and a `unit` with no amounts. See `reference/funnel-applications.json`.
+- **`quadrant` names its quarters and the ends of its axes.** `quadrants`: exactly four
+  names, top right first and then counter-clockwise (Mermaid's order), each written
+  faint (the page's ink at part opacity, so dark mode keeps it) in its quarter's outer
+  corner; an empty string leaves a quarter unnamed. Each axis takes `ends`, the
+  `numberline` field: two words for its low and high end, written at the two ends of the
+  axis between it and its caption (turned, on the vertical axis). Refused at their
+  pointers: `quadrants` not four, `ends` past two, and — since a quadrant axis now has
+  its own type — `categories`, which was accepted and ignored. A point landing on a
+  quarter name, or a name wider than half the plot, is a fit refusal. See
+  `reference/quadrant-priorities.json`.
 - **`clock`, the thirty-sixth kind** — analogue clock faces showing a time, for teaching
   it: 1–12 `clocks`, up to four to a row, each a `time` (`H:MM` or `HH:MM`, 0:00 to
   23:59; leave it out for a face with no hands, to draw on), an optional `text` under it,
@@ -197,6 +246,22 @@ against it would stop working. Everything below is about the *package*.
   sheet of reference drawings as plates, a JSON flow spec beside the drawing it
   renders, and a title block; the fonts are embedded as subset `@font-face` so
   the SVG renders the same through GitHub's `<img>`.
+
+### Fixed
+
+- **A chart's numbers print at the precision written.** Bar and point labels used
+  the fewest decimals that kept the chart's values apart, so `8.4` among whole
+  numbers printed `8`, a value the data does not hold. Every label in the set now
+  carries the most decimals any of its values was written with (`12.0`, `8.4`),
+  capped at three.
+- **A `chart` with `categories` on its vertical axis** was accepted and drawn wrongly:
+  upright bars standing at the amounts, each as tall as its category's number. It now
+  draws **horizontal bars** — each category a row, the first at the top, its name on
+  the left wrapped to about a third of the width, each bar growing right from zero with
+  its number past its end (inside, for a stacked segment). Each point is
+  `[amount, position]`. Refused at their pointers: a series that is not `bar`, a
+  position that names no category, an amount below zero, `min`/`max` on the category
+  axis, and `categories` on both axes. See `reference/chart-across.json`.
 
 ## [0.1.0] — 2026-10-10
 

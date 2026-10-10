@@ -1,0 +1,26 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "flow",
+  "title": "A month's meter readings, from upload to bill",
+  "description": "A flowchart in the standard symbols: the supplier's file comes in and the rejection report goes out as parallelograms, the two jobs documented elsewhere are boxes with doubled sides, and the database the readings rest in is a drum.",
+  "nodes": [
+    { "id": "upload", "text": "A supplier uploads the month's file", "role": "start" },
+    { "id": "read", "text": "Read the file's rows", "role": "io" },
+    { "id": "parses", "text": "Does it parse?", "role": "decision" },
+    { "id": "report", "text": "Send the supplier a rejection report", "role": "io" },
+    { "id": "check", "text": "Validate every row\nthe row checks, documented separately", "role": "subroutine" },
+    { "id": "store", "text": "Readings database", "role": "store" },
+    { "id": "bill", "text": "Run the billing job", "role": "subroutine" },
+    { "id": "done", "text": "Bills issued", "role": "terminal" }
+  ],
+  "edges": [
+    { "from": "upload", "to": "read" },
+    { "from": "read", "to": "parses" },
+    { "from": "parses", "to": "report", "label": "no" },
+    { "from": "parses", "to": "check", "label": "yes" },
+    { "from": "check", "to": "store", "label": "valid rows" },
+    { "from": "store", "to": "bill" },
+    { "from": "bill", "to": "done" }
+  ]
+}

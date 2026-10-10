@@ -34,7 +34,7 @@ from drawspec.kinds.graph import (
     graph_drawing,
     graph_scene,
 )
-from drawspec.scene import Path, Scene, TextRun
+from drawspec.scene import Path, Polygon, Rect, Scene, TextRun
 from drawspec.schema import load_document, parse_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
@@ -480,3 +480,65 @@ def test_two_bands_sit_the_same_distance_out_whatever_their_names() -> None:
     cross = 1 if first.rotate == 0.0 else 0
 
     assert near - first.points[0][cross] == pytest.approx(second.points[0][cross] - far)
+
+
+# --------------------------------------------------------------------------
+# The flowchart symbols: `io`, `subroutine`, `store`
+# --------------------------------------------------------------------------
+
+
+SYMBOLS = {"io": "parallelogram", "subroutine": "subroutine", "store": "cylinder"}
+
+
+def _symbols(kind: str) -> dict[str, object]:
+    nodes: list[dict[str, object]] = [
+        {"id": role, "text": f"A {role} box", "role": role} for role in SYMBOLS
+    ]
+    edges = [{"from": "io", "to": "subroutine"}, {"from": "subroutine", "to": "store"}]
+    if kind == "lanes":
+        for node in nodes:
+            node["actor"] = "Clerk"
+    return {"version": 1, "kind": kind, "nodes": nodes, "edges": edges}
+
+
+@pytest.mark.parametrize("kind", ["flow", "tree", "lanes"])
+def test_the_flowchart_symbols_are_accepted_where_a_box_is_a_step(kind: str) -> None:
+    assert render(_symbols(kind), theme=THEME).startswith("<svg")
+
+
+@pytest.mark.parametrize("role", list(SYMBOLS))
+def test_a_cycle_refuses_a_flowchart_symbol_at_its_role(role: str) -> None:
+    document = json.loads(json.dumps(raw("cycle-review")))
+    document["nodes"][0]["role"] = role
+    with pytest.raises(DocumentError) as caught:
+        render(document, theme=THEME)
+    assert "/nodes/0/role" in str(caught.value)
+    assert "flowchart symbol" in str(caught.value)
+
+
+def test_a_kind_with_its_own_vocabulary_refuses_a_flowchart_symbol() -> None:
+    document = {"version": 1, "kind": "stack", "items": [{"text": "Disk", "role": "store"}]}
+    with pytest.raises(DocumentError, match="/items/0/role"):
+        render(document, theme=THEME)
+
+
+def test_each_symbol_is_drawn_in_its_own_outline() -> None:
+    scene = graph_scene(parse_document(_symbols("flow")), STRICT, MEASURER)
+    io = [p for p in scene.primitives if isinstance(p, Polygon) and p.role == "io"]
+    assert len(io) == 1 and len(io[0].points) == 4
+    top, bottom = sorted(io[0].points, key=lambda point: point[1])[::3]
+    assert top[0] != bottom[0], "a parallelogram leans"
+    sub_rects = [p for p in scene.primitives if isinstance(p, Rect) and p.role == "subroutine"]
+    sub_lines = [p for p in scene.primitives if isinstance(p, Path) and p.role == "subroutine"]
+    assert len(sub_rects) == 1 and len(sub_lines) == 2
+    drum = [p for p in scene.primitives if isinstance(p, Polygon) and p.role == "store"]
+    rim = [p for p in scene.primitives if isinstance(p, Path) and p.role == "store"]
+    assert len(drum) == 1 and len(rim) == 1
+
+
+def test_an_arrow_into_a_drum_lands_on_its_lid_not_on_its_box() -> None:
+    drawing = graph_drawing(parse_document(_symbols("flow")), STRICT, MEASURER)
+    into_store = next(route for route in drawing.routes if route.target == "store")
+    lid = drawing.boxes["store"]
+    _, y = into_store.points[-1]
+    assert lid.y - 1e-6 <= y <= lid.y + 6.0 + 1e-6

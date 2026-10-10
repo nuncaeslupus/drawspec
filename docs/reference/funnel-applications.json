@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "kind": "funnel",
+  "title": "From advert to first day",
+  "description": "One round of hiring for the support desk. Each stage says how many reached it and what share of the stage before that was; the shape tapers evenly and is not drawn to scale.",
+  "unit": "people",
+  "stages": [
+    { "text": "Saw the advert", "amount": 4200 },
+    { "text": "Applied", "amount": 310 },
+    { "text": "Phone screen", "amount": 64 },
+    { "text": "Interviewed", "amount": 18 },
+    { "text": "**Started**", "amount": 5 }
+  ]
+}

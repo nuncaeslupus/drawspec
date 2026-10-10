@@ -143,6 +143,15 @@ Whether a diagram carries its own title. Off until the question is settled.
 | `show` | `false` | Whether a document's `title` is drawn on the diagram as well as announced to a screen reader. Off by default: a figure caption is usually the page's job, not the drawing's. |
 | `level` | `"title"` | Which type level the drawn title takes. One of `title`, `heading`, `body`, `label`. |
 
+### `[frames]`
+
+How a container is told from the page: washed with a little of the ink.
+
+| Key | Default | What it is |
+|---|---|---|
+| `tone` | `0.05` | The share of the ink one frame lays down, from 0 (outlines only) to `TONE_CEILING`. |
+| `levels` | `3` | How many levels of nesting deepen the wash; a frame deeper than this is outlined only. |
+
 ### `[cycle]`
 
 How a `cycle`'s connectors are drawn. Appearance, so it lives here.
@@ -198,6 +207,8 @@ How a swimlane diagram lays its lanes out and divides them.
 |---|---|---|
 | `orientation` | `"auto"` | `rows`, `columns`, or `auto`: rows when they fit the width, else columns. One of `rows`, `columns`, `auto`. |
 | `separator` | `"link"` | The edge role the line between two lanes is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `stripe` | `0.04` | How much of the page's ink every second lane is washed with, from 0 (no stripes) to `TONE_CEILING`. A tint, not a colour, so dark mode and greyscale keep it. |
+| `phase` | `"aside"` | The edge role the line between two phases is drawn in, across every lane: lighter than a lane's own separator, since a phase is crossed by every lane. |
 
 ### `[entities]`
 
@@ -215,6 +226,7 @@ How a plan draws the two marks that are not bars.
 |---|---|---|
 | `milestone` | `"diamond"` | `diamond` or `circle`: the mark a task with `at` is drawn as, filled. One of `diamond`, `circle`. |
 | `marks` | `"weak"` | The edge role a mark's line across the rows is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `done` | `0.7` | How much of the ink a task's `done` band takes, above 0 and at most 1. The page's own ink at that strength, so a dark page draws it light. |
 
 ### `[board]`
 
@@ -319,8 +331,8 @@ How a RAG report draws a rating: a word, a shape and, optionally, a colour.
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The
-vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group`. `shape` is one of
-`rect`, `pill`, `diamond`, `ellipse`, `none` and `fill_pattern` one of `none`, `solid`, `hatch`, `dots`, `cross`, `grid`.
+vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group`, `io`, `subroutine`, `store`. `shape` is one of
+`rect`, `pill`, `diamond`, `ellipse`, `parallelogram`, `subroutine`, `cylinder`, `none` and `fill_pattern` one of `none`, `solid`, `hatch`, `dots`, `cross`, `grid`.
 
 | Role | `shape` | `stroke` | `fill` | `fill_pattern` | `dash` | `stroke_width` |
 |---|---|---|---|---|---|---|
@@ -331,6 +343,9 @@ vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note
 | `emphasis` | `"rect"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `2.5` |
 | `note` | `"none"` | `"currentColor"` | `"none"` | `"none"` | `"3 2"` | `1.0` |
 | `group` | `"rect"` | `"currentColor"` | `"none"` | `"none"` | `"6 3"` | `1.0` |
+| `io` | `"parallelogram"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
+| `subroutine` | `"subroutine"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
+| `store` | `"cylinder"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
 
 ## `[edge_role.*]` — the edge roles
 

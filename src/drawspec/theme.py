@@ -40,7 +40,22 @@ THEME_VERSION: Final = 1
 
 #: Semantic node roles. The closed vocabulary a document's `role` field draws
 #: from — see specification §5.1.
-NODE_ROLES: Final = ("start", "step", "decision", "terminal", "emphasis", "note", "group")
+#: `io`, `subroutine` and `store` are the flowchart symbols that carry meaning
+#: across standards (ISO 5807, DFDs, Mermaid): data in or out, a process defined
+#: elsewhere, and where data rests. The theme draws every role, but a document may
+#: name those three only where a box is a step of a process (`schema.SHAPED_ROLES`).
+NODE_ROLES: Final = (
+    "start",
+    "step",
+    "decision",
+    "terminal",
+    "emphasis",
+    "note",
+    "group",
+    "io",
+    "subroutine",
+    "store",
+)
 
 #: Semantic edge roles. `link` is how "merely associated" is said, and `aside`
 #: how "loosely associated, and in no direction" is: dashed and headless, which
@@ -64,7 +79,18 @@ EDGE_ROLES: Final = (
 )
 
 #: Shapes a node role may take.
-NODE_SHAPES: Final = ("rect", "pill", "diamond", "ellipse", "none")
+#: `parallelogram` slants its sides, `subroutine` is a box with doubled vertical
+#: sides, and `cylinder` is a drum with an elliptical lid.
+NODE_SHAPES: Final = (
+    "rect",
+    "pill",
+    "diamond",
+    "ellipse",
+    "parallelogram",
+    "subroutine",
+    "cylinder",
+    "none",
+)
 
 #: Fill treatments. A non-colour channel, so it counts toward greyscale safety.
 FILL_PATTERNS: Final = ("none", "solid", "hatch", "dots", "cross", "grid")
@@ -1175,15 +1201,25 @@ class GanttStyle:
     marks: str = "weak"
     """The edge role a mark's line across the rows is drawn in, with no head."""
 
+    done: float = 0.7
+    """How much of the ink a task's `done` band takes, above 0 and at most 1. The
+    page's own ink at that strength, so a dark page draws it light."""
+
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> GanttStyle:
-        _reject_unknown(mapping, ("milestone", "marks"), "[gantt]")
+        _reject_unknown(mapping, ("milestone", "marks", "done"), "[gantt]")
         defaults = cls()
+        done = _number(mapping.get("done", defaults.done), "[gantt] done")
+        if not 0.0 < done <= 1.0:
+            raise ThemeError(
+                f"[gantt] done: expected a fraction above 0 and at most 1, got {done!r}"
+            )
         return cls(
             milestone=_choice(
                 mapping.get("milestone", defaults.milestone), GANTT_MILESTONES, "[gantt] milestone"
             ),
             marks=_choice(mapping.get("marks", defaults.marks), EDGE_ROLES, "[gantt] marks"),
+            done=done,
         )
 
 
@@ -1639,11 +1675,21 @@ class LanesStyle:
     separator: str = "link"
     """The edge role the line between two lanes is drawn in, with no head."""
 
+    stripe: float = 0.0
+    """How much of the page's ink every second lane is washed with, from 0 (no
+    stripes) to `TONE_CEILING`. A tint, not a colour, so dark mode and greyscale
+    keep it."""
+
+    phase: str = "aside"
+    """The edge role the line between two phases is drawn in, across every lane:
+    lighter than a lane's own separator, since a phase is crossed by every lane."""
+
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> LanesStyle:
-        _reject_unknown(mapping, ("orientation", "separator"), "[lanes]")
+        _reject_unknown(mapping, ("orientation", "separator", "stripe", "phase"), "[lanes]")
         defaults = cls()
         return cls(
+            stripe=_tone(mapping.get("stripe", defaults.stripe), "[lanes] stripe"),
             orientation=_choice(
                 mapping.get("orientation", defaults.orientation),
                 LANES_ORIENTATIONS,
@@ -1652,7 +1698,57 @@ class LanesStyle:
             separator=_choice(
                 mapping.get("separator", defaults.separator), EDGE_ROLES, "[lanes] separator"
             ),
+            phase=_choice(mapping.get("phase", defaults.phase), EDGE_ROLES, "[lanes] phase"),
         )
+
+
+#: The most ink a container's wash or a lane's stripe may lay down. A frame is
+#: behind words and boxes, so its tone has to stay well under a matrix cell's.
+TONE_CEILING: Final = 0.1
+
+
+def _tone(value: Any, where: str) -> float:
+    """A wash strength: a fraction of the ink from 0 to `TONE_CEILING`."""
+    tone = _number(value, where, positive=False)
+    if not 0.0 <= tone <= TONE_CEILING:
+        raise ThemeError(f"{where}: expected a fraction from 0 to {TONE_CEILING}, got {tone!r}")
+    return tone
+
+
+@dataclass(frozen=True)
+class FramesStyle:
+    """How a container is told from the page: washed with a little of the ink.
+
+    A group's frame (`flow` and `tree` groups, a state's composite) and a
+    sequence diagram's group are filled with `tone` of the page's ink, drawn as
+    `currentColor` at part opacity, so it follows the page into dark mode and
+    prints as a light grey. Frames inside frames lay their wash over their
+    parent's, so each level of nesting reads one step darker, up to `levels`
+    deep; deeper frames add no more.
+    """
+
+    tone: float = 0.0
+    """The share of the ink one frame lays down, from 0 (outlines only) to
+    `TONE_CEILING`."""
+
+    levels: int = 3
+    """How many levels of nesting deepen the wash; a frame deeper than this is
+    outlined only."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> FramesStyle:
+        _reject_unknown(mapping, ("tone", "levels"), "[frames]")
+        defaults = cls()
+        levels = mapping.get("levels", defaults.levels)
+        if isinstance(levels, bool) or not isinstance(levels, int) or not 1 <= levels <= 5:
+            raise ThemeError(
+                f"[frames] levels: expected a whole number from 1 to 5, got {levels!r}"
+            )
+        return cls(tone=_tone(mapping.get("tone", defaults.tone), "[frames] tone"), levels=levels)
+
+    def tone_at(self, depth: int) -> float:
+        """The wash a frame `depth` levels inside others lays down, or 0."""
+        return self.tone if depth < self.levels else 0.0
 
 
 #: What a `files` page says about its file's type.
@@ -1857,6 +1953,7 @@ _TOP_LEVEL_KEYS: Final = (
     "edge",
     "mark",
     "title",
+    "frames",
     "cycle",
     "funnel",
     "files",
@@ -1900,6 +1997,7 @@ class Theme:
     states: StatesStyle = StatesStyle()
     sequence: SequenceStyle = SequenceStyle()
     lanes: LanesStyle = LanesStyle()
+    frames: FramesStyle = FramesStyle()
     entities: EntitiesStyle = EntitiesStyle()
     gantt: GanttStyle = GanttStyle()
     board: BoardStyle = BoardStyle()
@@ -1965,6 +2063,7 @@ class Theme:
             states=StatesStyle.from_mapping(_section(mapping, "states")),
             sequence=SequenceStyle.from_mapping(_section(mapping, "sequence")),
             lanes=LanesStyle.from_mapping(_section(mapping, "lanes")),
+            frames=FramesStyle.from_mapping(_section(mapping, "frames")),
             entities=EntitiesStyle.from_mapping(_section(mapping, "entities")),
             gantt=GanttStyle.from_mapping(_section(mapping, "gantt")),
             board=BoardStyle.from_mapping(_section(mapping, "board")),

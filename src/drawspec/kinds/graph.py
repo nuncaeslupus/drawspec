@@ -547,7 +547,9 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
     labels = (*labels, *(loop.label for loop in loops if loop.label is not None))
 
     if swimlanes is not None:
-        swimlanes = swimlanes.covering(*_ink(obstacles, routes, labels))
+        swimlanes = swimlanes.covering(
+            *_ink(obstacles, routes, labels), margin=theme.edge.lane_spacing
+        )
     drawing = _framed(
         layout,
         boxes,
@@ -1153,10 +1155,10 @@ def _grown(boxes: Mapping[str, Box], margins: Mapping[str, tuple[float, float]])
 
 
 def _divider_obstacles(lanes: Swimlanes, theme: Theme) -> tuple[Obstacle, ...]:
-    """Each line between lanes as a thin obstacle, for labels: words never sit on one."""
+    """Each line between lanes or phases as a thin obstacle, for labels: words never sit on one."""
     half = theme.edge.clearance
     found: list[Obstacle] = []
-    for index, ((x1, y1), (x2, y2)) in enumerate(lanes.separators()):
+    for index, ((x1, y1), (x2, y2)) in enumerate((*lanes.separators(), *lanes.phase_lines())):
         left, top = min(x1, x2) - half, min(y1, y2) - half
         found.append(
             Obstacle(

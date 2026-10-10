@@ -458,7 +458,7 @@ def test_progress_is_refused_with_its_reason() -> None:
     document = plan()
     document["tasks"][0]["progress"] = 40
     assert pointers(document) == ["/tasks/0/progress"]
-    assert "status, not plan" in messages(document)
+    assert "`done`" in messages(document)
 
 
 def test_an_actor_forbids_a_second_paragraph() -> None:
@@ -490,3 +490,71 @@ def test_a_refused_document_raises_with_every_violation() -> None:
     with pytest.raises(DocumentError) as error:
         parse_document(document)
     assert len(error.value.violations) == 2
+
+
+# ---------------------------------------------------------------------------
+# done: how much of a task is complete
+# ---------------------------------------------------------------------------
+
+
+def _bands(drawing: GanttDrawing) -> list[Polygon]:
+    return [
+        item
+        for item in drawing.scene.primitives
+        if isinstance(item, Polygon) and item.region and item.fill == "solid"
+    ]
+
+
+def test_done_draws_a_band_inside_the_bar_from_its_start() -> None:
+    """Rank 7 of the kind audit: MS Project's progress line, in the page's ink."""
+    document = plan()
+    document["tasks"][1]["done"] = 60
+    drawing = drawn(document)
+    (band,) = _bands(drawing)
+    left, top, right, bottom = drawing.bars["copy"]
+    xs = [x for x, _ in band.points]
+    ys = [y for _, y in band.points]
+    assert min(xs) == pytest.approx(left)
+    assert max(xs) == pytest.approx(left + (right - left) * 0.6)
+    assert top < min(ys) and max(ys) < bottom, "inside the bar, not over its outline"
+    assert band.fill_colour == "currentColor", "the page's ink: legible on a dark page"
+    assert 0 < band.fill_opacity <= 1
+
+
+def test_done_zero_draws_no_band_and_a_hundred_fills_the_bar() -> None:
+    document = plan()
+    document["tasks"][0]["done"] = 0
+    document["tasks"][2]["done"] = 100
+    drawing = drawn(document)
+    (band,) = _bands(drawing)
+    _, _, right, _ = drawing.bars["check"]
+    assert max(x for x, _ in band.points) == pytest.approx(right)
+
+
+def test_done_is_said_in_the_description_after_the_authors_own() -> None:
+    """The band is only drawn, so the accessible description says each share,
+    `done: 0` included, after whatever the author wrote."""
+    document = plan()
+    document["description"] = "The spring release."
+    document["tasks"][0]["done"] = 0
+    document["tasks"][1]["done"] = 60
+    description = drawn(document).scene.description
+    assert description.startswith("The spring release. Progress: ")
+    assert "0% done" in description and "60% done" in description
+
+
+@pytest.mark.parametrize(("index", "value"), [(0, 120), (0, -5), (3, 50)])
+def test_done_out_of_range_or_on_a_milestone_is_refused(index: int, value: float) -> None:
+    document = plan()
+    document["tasks"][index]["done"] = value
+    assert pointers(document) == [f"/tasks/{index}/done"]
+
+
+def test_the_theme_sets_how_strong_the_done_band_is() -> None:
+    document = plan()
+    document["tasks"][1]["done"] = 50
+    lighter = load_theme({"version": 1, "gantt": {"done": 0.4}})
+    (band,) = _bands(drawn(document, lighter))
+    assert band.fill_opacity == pytest.approx(0.4)
+    with pytest.raises(ThemeError, match=r"\[gantt\] done"):
+        load_theme({"version": 1, "gantt": {"done": 1.5}})

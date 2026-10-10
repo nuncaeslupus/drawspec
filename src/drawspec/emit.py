@@ -158,6 +158,8 @@ def namespace_for(scene: Scene, theme: Theme, profile: str, sheet: Sheet | None 
         digest.update(repr(primitive).encode())
         if getattr(primitive, "strike", False):
             digest.update(b"|strike")
+        if isinstance(primitive, TextRun) and primitive.opacity < 1:
+            digest.update(f"|opacity {primitive.opacity}".encode())
         if isinstance(primitive, Ellipse) and primitive.fill:
             digest.update(f"|{primitive.fill}|{primitive.fill_colour}".encode())
     digest.update(f"{theme.name}|{profile}".encode())
@@ -277,7 +279,7 @@ def _shape_attributes(
         ),
     )
     paints = [fill]
-    if isinstance(primitive, Polygon) and primitive.fill_opacity < 1 and fill[1] != "none":
+    if isinstance(primitive, Polygon | Rect) and primitive.fill_opacity < 1 and fill[1] != "none":
         paints.append(("fill-opacity", format_number(primitive.fill_opacity)))
     if isinstance(primitive, Polygon) and primitive.region:
         return [*paints, ("stroke", "none")]
@@ -306,7 +308,7 @@ def _element(primitive: Primitive, namespace: str, theme: Theme, profile: str) -
         # produces a box sized for a diamond's inscribed rectangle, so the label
         # floats in a lot of empty space. It happened, in T7's spike harness,
         # and survived review; hence a check rather than a convention.
-        if isinstance(role, NodeRole) and role.shape not in ("rect", "pill"):
+        if isinstance(role, NodeRole) and role.shape not in ("rect", "pill", "subroutine"):
             raise EmitError(
                 f"a Rect is tagged with role {primitive.role!r}, which theme "
                 f"{theme.name!r} draws as a {role.shape!r}. Build shapes with "
@@ -361,6 +363,8 @@ def _text_element(run: TextRun, theme: Theme, profile: str) -> str:
         ("font-size", format_number(run.size or theme.scale[run.level])),
         ("fill", _resolve(run.paint or "currentColor", theme, profile)),
     ]
+    if run.opacity < 1:
+        attributes.append(("fill-opacity", format_number(run.opacity)))
     if run.weight != "normal":
         attributes.append(("font-weight", run.weight))
     if run.anchor != "start":

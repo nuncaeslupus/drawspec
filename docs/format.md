@@ -110,6 +110,8 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | Field | Type | Required | What it is |
 |---|---|---|---|
 | `stages` | array of [stage](#stage-object), at least 1 | **yes** | Widest first: a funnel is a pyramid lying down. |
+| `unit` | string | no | What the stages' amounts count — `visitors`, `applications`, `£k` — written after each one. Only with amounts. |
+| `values` | boolean | no | `false` leaves the amounts and shares out and writes the stage names alone. Defaults to true. |
 
 ### `chart`
 
@@ -123,7 +125,8 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `axes` | [axes object](#axes-object) | **yes** | The two named axes whose crossing makes the four quadrants. |
+| `axes` | [axes-quadrant object](#axes-quadrant-object) | **yes** | The two named axes whose crossing makes the four quadrants. |
+| `quadrants` | array of string | no | Exactly four names, one per quarter, written faint in its outer corner: top right first, then counter-clockwise — top left, bottom left, bottom right (Mermaid's order). An empty string leaves that quarter unnamed. |
 | `positions` | array of [position](#position-object), at least 1 | **yes** | The items placed in the plane, each by what it scores, not by where it goes. |
 
 ### `files`
@@ -161,6 +164,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `nodes` | array of [lane-node](#lane-node-object), at least 1 | **yes** | The steps, each in the lane its `actor` names. Ranked along the lanes as a `flow` is; within one lane, order is the order siblings are drawn in. |
 | `edges` | array of [edge](#edge-object) | no | What follows what, as on a `flow`. An edge between two lanes crosses the boundaries between them: that crossing is the hand-off. |
 | `lanes` | array of string, at least 1 | no | The lanes in order — top to bottom when they run across the page, left to right when they run down it; the theme decides which. Each must be some node's `actor`, spelled exactly, and every actor must be listed. Omit it and the lanes come in the order their actors first appear in `nodes`. At most 6. |
+| `phases` | array of [phase](#phase-object), at least 2 | no | The stages the process passes through, in the order it runs — named in a band along the lanes' edge and divided by faint lines across every lane (a cross-functional flowchart's phases). Each phase lists its steps, and with `phases` given every step is in exactly one. A phase's steps are drawn after every step of the phases before it, so the phases never interleave. 2 to 6. |
 
 ### `entities`
 
@@ -349,7 +353,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `files` | 30 `entries` |
 | `states` | 14 `states`, 24 `transitions` |
 | `sequence` | 8 `participants`, 30 `messages` |
-| `lanes` | 15 `nodes`, 16 `edges`, 6 `lanes` |
+| `lanes` | 15 `nodes`, 16 `edges`, 6 `lanes`, 6 `phases` |
 | `entities` | 8 `entities`, 12 `edges`, 12 `fields` per entity, 8 `operations` per entity |
 | `gantt` | 16 `tasks`, 20 `edges`, 4 `marks` |
 | `board` | 6 `columns`, 4 `rows`, 32 `cards`, 8 `cards` per cell |
@@ -390,7 +394,7 @@ name, so a misspelt key is an error at the point it was written.
 | `id` | string | **yes** | Unique within the document. |
 | `centre` | boolean | no | Whether this node is the subject the rest are arranged around. One node per document may say so, and only a `flow`. For the diagram that starts in the middle rather than at the top: a thing with named relations on every side, where the relations are peers and there is no sequence between them. Ranked instead, the middle object becomes just another row. |
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
-| `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group`, `io`, `subroutine`, `store` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 | `actor` | string | no | Who performs this step — free text, and orthogonal to `role`. `role` says what kind of step it is; this says whose it is, and the two are independent: a human step can be routine and an automated one can be the critical path. Drawn as the box's **lead**, the name over what belongs to it, so the same words sit in the same place in every box and a reader can scan a column of them. Free text rather than an enum on purpose: an actor is told apart by its **name**, which is legible in greyscale and in any medium, so it costs none of the four non-colour channels the roles are told apart by. **Only a `flow`, a `tree` or a `cycle` draws one**, and a node that names an actor may not also write its own lead — the box has one lead and this is it. |
 | `note` | string | no | A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead. |
 | `status` | string — one of `added`, `changed`, `removed` | no | What a proposed change does to this box, as a diff would say it — for one drawing of the target state with the change marked on it, instead of a before and an after to compare by eye. Drawn as the labelled mark `files` uses (`+ added`, `~ changed`, `- removed`) inside the box, never as a colour; a removed box is also dashed and its text struck through. **Only a `flow` or a `tree`**: a loop that changes is a different loop. An edge touching a removed box must be `removed`, and one touching an added box must be `added`. |
@@ -421,7 +425,7 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `id` | string | **yes** | Unique within the document. |
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
-| `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `io`, `subroutine`, `store` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 | `actor` | string | **yes** | Who performs this step, and so which lane it is drawn in. Required: every box in a swimlane diagram is in a lane. Drawn once, as the lane's heading, and not repeated in the box — so `text` may again use a newline for its own lead and detail. Free text, matched exactly against `lanes` when that is given. |
 | `status` | string — one of `added`, `changed`, `removed` | no | What a proposed change does to this box, drawn as on a `flow`: the labelled mark inside the box, never a colour. |
 
@@ -540,6 +544,7 @@ name, so a misspelt key is an error at the point it was written.
 | `end` | number | no | Where it ends, after `start`. With categories, 4 is where the fourth period begins. |
 | `at` | number | no | Instead of `start` and `end`: makes the task a milestone, drawn as a mark at this point with no length. |
 | `actor` | string | no | Who does it — free text, drawn as the row label's lead, so the names line up in a column. A task with an actor may not put a newline in `text`. |
+| `done` | number | no | How much of the task is complete, 0 to 100: drawn as a solid band inside the bar from its start, MS Project's progress line. Not on a milestone. |
 | `role` | string — one of `step`, `strong`, `emphasis`, `note` | no | `step` (the default bar), `strong` (on the critical path: drawn heavier, the word its dependencies take), `emphasis` (the task the diagram is about) or `note` (outside the plan, drawn lighter). |
 
 ### `dependency` object
@@ -870,6 +875,13 @@ name, so a misspelt key is an error at the point it was written.
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `members` | array of string, at least 1 | **yes** | The ids of the nodes this band accompanies. Unlike a group's, they are a set rather than a container: a band names something that runs alongside those boxes, and the same box may be under any number of bands. |
 
+### `phase` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `members` | array of string, at least 1 | **yes** | The ids of the steps in this phase, in any order and in any lane. Every step is in one phase, so a step left out or listed twice is refused. |
+
 ### `item` object
 
 | Field | Type | Required | What it is |
@@ -951,6 +963,7 @@ name, so a misspelt key is an error at the point it was written.
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 | `gate` | string | no | What stands between this stage and the next — the threshold a thing has to pass to get from one to the other, which is what makes a stage-gate model one. Drawn on the divider, which breaks to let it through. The last stage has no next stage, so it may not carry one. |
 | `note` | string | no | A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead. |
+| `amount` | number, greater than 0 | no | On a `funnel` stage: how many reached it. Written under the name, with the share kept from the stage before; the taper stays the drawing's own, not to scale. Every stage or none, never more than the stage before. |
 
 ### `span` object
 
@@ -975,7 +988,7 @@ name, so a misspelt key is an error at the point it was written.
 | `unit` | string | no | What the numbers are in, written after the label. |
 | `min` | number | no | Where the axis starts. Omit to take it from the data. |
 | `max` | number | no | Where the axis ends. Omit to take it from the data. |
-| `categories` | array of string | no | Names for the positions 1, 2, 3 … along this axis, instead of numbers. What a bar chart's horizontal axis usually is: the quarters, the service models, the teams. |
+| `categories` | array of string | no | Names for the positions 1, 2, 3 … along this axis, instead of numbers. What a bar chart's horizontal axis usually is: the quarters, the service models, the teams. On a chart's vertical axis they make horizontal bars: every series a `bar`, each point `[amount, position]`, the first category the top row, names on the left. |
 
 ### `axes` object
 
@@ -983,6 +996,23 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `horizontal` | [axis object](#axis-object) | **yes** | The axis across. |
 | `vertical` | [axis object](#axis-object) | **yes** | The axis up. |
+
+### `axis-quadrant` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `label` | string | **yes** | Required: an unlabelled axis cannot be read. |
+| `unit` | string | no | What the scores are in, written after the label. |
+| `min` | number | no | Where the axis starts. Omit to take it from the positions. |
+| `max` | number | no | Where the axis ends. Omit to take it from the positions. |
+| `ends` | array of string, at least 2 | no | Two words for the low and the high end — `Low` and `High`, `Rarely` and `Often` — written at the two ends of the axis, as on a `numberline`. |
+
+### `axes-quadrant` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `horizontal` | [axis-quadrant object](#axis-quadrant-object) | **yes** | The judgement across. |
+| `vertical` | [axis-quadrant object](#axis-quadrant-object) | **yes** | The judgement up. |
 
 ### `axis-continuous` object
 

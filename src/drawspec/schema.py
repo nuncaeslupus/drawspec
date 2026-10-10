@@ -70,6 +70,15 @@ SCHEMA_FILENAME: Final = "drawspec-v1.schema.json"
 
 GRAPH_KINDS: Final = ("flow", "tree", "cycle")
 
+#: The node roles that draw a flowchart symbol — a parallelogram for data in or
+#: out, a doubled-sided box for a process defined elsewhere, a drum for where data
+#: rests. Named only where a box is a step of a process: a `flow`, a `tree` and a
+#: `lanes` node. Every other kind's roles are fixed by what it draws.
+SHAPED_ROLES: Final = ("io", "subroutine", "store")
+
+#: The node roles everywhere else a kind takes the general vocabulary.
+PLAIN_NODE_ROLES: Final = tuple(role for role in NODE_ROLES if role not in SHAPED_ROLES)
+
 #: The graph kinds that *draw* their containers, and so may name a group at an
 #: edge's end — R5-2. `cycle` is a graph kind to the schema and a parametric
 #: template to the renderer (D-1): it places its steps on a ring and draws no
@@ -151,6 +160,10 @@ LANES_MAX: Final = 6
 #: The roles a lane's step may take: a flow's, but not `group` — the lane is the
 #: container, and a box drawn as a frame inside it would claim to be another.
 LANE_NODE_ROLES: Final = tuple(role for role in NODE_ROLES if role != "group")
+
+#: The most phases one swimlane diagram names across its lanes: past six the
+#: header band is a table of contents, and the cells too narrow for their names.
+LANES_PHASES_MAX: Final = 6
 
 #: Data models, schemas and class diagrams: named boxes holding lists, and typed
 #: relations between them. A layout family of its own — a box's rows are known
@@ -698,7 +711,13 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # A flow's budget, and a cap on the strips: see `LANES_MAX`. When `lanes` is
     # omitted the same cap is applied to the distinct actors, at the node that
     # names the one too many.
-    "lanes": (("nodes", 15), ("edges", 16), ("lanes", LANES_MAX)),  # [7 nodes, 7 edges, 4 lanes]
+    # `phases` is the proposal's (kind audit rank 8), not the references'.
+    "lanes": (
+        ("nodes", 15),
+        ("edges", 16),
+        ("lanes", LANES_MAX),
+        ("phases", LANES_PHASES_MAX),
+    ),  # [7 nodes, 7 edges, 4 lanes, 3 phases]
     # Set by the proposal: a schema of thirty tables is a database tool's output.
     # A name with a slash counts inside each entry of the array before it — the
     # rows of one box — and its refusal says to show the ones that matter.
@@ -1087,7 +1106,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
         _text(),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
     ),
     "state": (
         FieldSpec(
@@ -1470,6 +1489,14 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             description=(
                 "Who does it — free text, drawn as the row label's lead, so the names line "
                 "up in a column. A task with an actor may not put a newline in `text`."
+            ),
+        ),
+        FieldSpec(
+            "done",
+            "number",
+            description=(
+                "How much of the task is complete, 0 to 100: drawn as a solid band inside "
+                "the bar from its start, MS Project's progress line. Not on a milestone."
             ),
         ),
         FieldSpec(
@@ -2541,10 +2568,24 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "phase": (
+        _text(required=True),
+        FieldSpec(
+            "members",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=1,
+            description=(
+                "The ids of the steps in this phase, in any order and in any lane. Every "
+                "step is in one phase, so a step left out or listed twice is refused."
+            ),
+        ),
+    ),
     "item": (
         FieldSpec("id", "string", description="Optional; generated from position when absent."),
         _text(),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
         FieldSpec(
             "at",
@@ -2557,12 +2598,12 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
     ),
     "level": (
         _text(),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
     ),
     "ring": (
         _text(),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
     ),
     "cell": (
         FieldSpec(
@@ -2594,7 +2635,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
                 "author's decision."
             ),
         ),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
     ),
     "waypoint": (
         FieldSpec(
@@ -2640,7 +2681,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             min_items=2,
             description="The points the curve passes through, in order. Two is a line.",
         ),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
     ),
     "entry": (
         FieldSpec(
@@ -2691,11 +2732,11 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             required=True,
             description="Where this sits on the vertical axis. Data, not a coordinate.",
         ),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
     ),
     "stage": (
         _text(),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
         FieldSpec(
             "gate",
             "string",
@@ -2707,6 +2748,16 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
+        FieldSpec(
+            "amount",
+            "number",
+            exclusive_minimum=0,
+            description=(
+                "On a `funnel` stage: how many reached it. Written under the name, with the "
+                "share kept from the stage before; the taper stays the drawing's own, not to "
+                "scale. Every stage or none, never more than the stage before."
+            ),
+        ),
     ),
     "span": (
         _text(),
@@ -2759,7 +2810,9 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             description=(
                 "Names for the positions 1, 2, 3 … along this axis, instead of "
                 "numbers. What a bar chart's horizontal axis usually is: the "
-                "quarters, the service models, the teams."
+                "quarters, the service models, the teams. On a chart's vertical axis "
+                "they make horizontal bars: every series a `bar`, each point "
+                "`[amount, position]`, the first category the top row, names on the left."
             ),
         ),
     ),
@@ -2770,6 +2823,53 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             "horizontal", "object", required=True, ref="axis", description="The axis across."
         ),
         FieldSpec("vertical", "object", required=True, ref="axis", description="The axis up."),
+    ),
+    # `quadrant`'s own axis type: no `categories` (a quadrant's directions are
+    # judgements, not a list), and two named `ends` — the field `numberline` uses.
+    "axis-quadrant": (
+        FieldSpec(
+            "label",
+            "string",
+            required=True,
+            description="Required: an unlabelled axis cannot be read.",
+        ),
+        FieldSpec("unit", "string", description="What the scores are in, written after the label."),
+        FieldSpec(
+            "min",
+            "number",
+            description="Where the axis starts. Omit to take it from the positions.",
+        ),
+        FieldSpec(
+            "max",
+            "number",
+            description="Where the axis ends. Omit to take it from the positions.",
+        ),
+        FieldSpec(
+            "ends",
+            "array",
+            item_kind="string",
+            min_items=2,
+            description=(
+                "Two words for the low and the high end — `Low` and `High`, `Rarely` and "
+                "`Often` — written at the two ends of the axis, as on a `numberline`."
+            ),
+        ),
+    ),
+    "axes-quadrant": (
+        FieldSpec(
+            "horizontal",
+            "object",
+            required=True,
+            ref="axis-quadrant",
+            description="The judgement across.",
+        ),
+        FieldSpec(
+            "vertical",
+            "object",
+            required=True,
+            ref="axis-quadrant",
+            description="The judgement up.",
+        ),
     ),
     # `scatter`'s own axis type, not `axis` above: it has no `categories`, so a
     # document that sets one fails the published schema directly rather than
@@ -2828,7 +2928,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             min_items=1,
             description="The values to plot, as [x, y] pairs. Data, not coordinates.",
         ),
-        _role(NODE_ROLES, "step"),
+        _role(PLAIN_NODE_ROLES, "step"),
         FieldSpec(
             "mark",
             "string",
@@ -3114,6 +3214,22 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             min_items=1,
             description="Widest first: a funnel is a pyramid lying down.",
         ),
+        FieldSpec(
+            "unit",
+            "string",
+            description=(
+                "What the stages' amounts count — `visitors`, `applications`, `£k` — written "
+                "after each one. Only with amounts."
+            ),
+        ),
+        FieldSpec(
+            "values",
+            "boolean",
+            description=(
+                "`false` leaves the amounts and shares out and writes the stage names alone. "
+                "Defaults to true."
+            ),
+        ),
     ),
     ("chart",): (
         FieldSpec(
@@ -3146,8 +3262,18 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             "axes",
             "object",
             required=True,
-            ref="axes",
+            ref="axes-quadrant",
             description="The two named axes whose crossing makes the four quadrants.",
+        ),
+        FieldSpec(
+            "quadrants",
+            "array",
+            item_kind="string",
+            description=(
+                "Exactly four names, one per quarter, written faint in its outer corner: "
+                "top right first, then counter-clockwise — top left, bottom left, bottom "
+                "right (Mermaid's order). An empty string leaves that quarter unnamed."
+            ),
         ),
         FieldSpec(
             "positions",
@@ -3329,6 +3455,20 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
                 "some node's `actor`, spelled exactly, and every actor must be listed. "
                 "Omit it and the lanes come in the order their actors first appear in "
                 f"`nodes`. At most {LANES_MAX}."
+            ),
+        ),
+        FieldSpec(
+            "phases",
+            "array",
+            item_ref="phase",
+            min_items=2,
+            description=(
+                "The stages the process passes through, in the order it runs — named in a "
+                "band along the lanes' edge and divided by faint lines across every lane "
+                "(a cross-functional flowchart's phases). Each phase lists its steps, and "
+                "with `phases` given every step is in exactly one. A phase's steps are "
+                "drawn after every step of the phases before it, so the phases never "
+                f"interleave. 2 to {LANES_PHASES_MAX}."
             ),
         ),
     ),
@@ -4085,6 +4225,8 @@ class Task:
     at: float | None = None
     role: str = "step"
     actor: str = ""
+    done: float | None = None
+    """How much is complete, 0 to 100, or `None` for a plan that does not say."""
 
     @property
     def milestone(self) -> bool:
@@ -4442,6 +4584,20 @@ class Band:
 
 
 @dataclass(frozen=True)
+class Phase:
+    """A named run of a `lanes` diagram's steps, across every lane.
+
+    Not a `Group`: a group is a frame round its members inside one drawing's
+    flow, and a phase is the other axis of a swimlane grid — a stretch of the
+    process every lane passes through, drawn as a cell of a header band and a
+    line across all the lanes.
+    """
+
+    text: str
+    members: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class Item:
     text: str
     id: str = ""
@@ -4450,6 +4606,8 @@ class Item:
     at: float | None = None
     gate: str = ""
     """For a `funnel` stage: what separates it from the next one."""
+    amount: float | None = None
+    """For a `funnel` stage: how many reached it, or `None`."""
 
 
 @dataclass(frozen=True)
@@ -4519,6 +4677,8 @@ class Axis:
     maximum: float | None = None
     categories: tuple[str, ...] = ()
     """Names for the positions 1, 2, 3 … Empty for an axis that carries numbers."""
+    ends: tuple[str, ...] = ()
+    """A quadrant axis's words for its low and high end, or empty."""
 
 
 @dataclass(frozen=True)
@@ -4583,6 +4743,8 @@ class Document:
     key: tuple[Key, ...] = ()
     spans: tuple[Span, ...] = ()
     positions: tuple[Position, ...] = ()
+    quadrants: tuple[str, ...] = ()
+    """A quadrant's four quarter names, top right first, counter-clockwise."""
     curves: tuple[Curve, ...] = ()
     axes: tuple[Axis, ...] = ()
     """The horizontal axis then the vertical one, for `chart`. Empty otherwise."""
@@ -4605,6 +4767,9 @@ class Document:
     fragments: tuple[Fragment, ...] = ()
     lanes: tuple[str, ...] = ()
     """A `lanes` diagram's lanes in order: as listed, or as the actors first appear."""
+
+    phases: tuple[Phase, ...] = ()
+    """A `lanes` diagram's phases, in the order the process runs."""
 
     entities: tuple[Entity, ...] = ()
     relations: tuple[Relation, ...] = ()
@@ -5008,6 +5173,10 @@ def _edge_role_refusal(violation: Violation, document: Mapping[str, Any], kind: 
 #: overview and details") is not the remedy. Keyed by (kind, array) for a
 #: top-level budget and by (outer, inner) for a nested one.
 BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
+    ("lanes", "phases"): (
+        f"Past {LANES_PHASES_MAX} phases the header band is a table of contents. Merge "
+        "neighbouring phases, or split the process at a phase boundary into two diagrams."
+    ),
     ("fishbone", "categories"): (
         "Past six bones a fishbone stops being scannable: merge the categories that overlap, "
         "or draw the biggest category as a fishbone of its own."
@@ -5304,6 +5473,10 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _meter_violations(document)
     if kind in CLOCK_KINDS:
         return _clock_violations(document)
+    if kind == "chart":
+        return _chart_violations(document)
+    if kind == "quadrant":
+        return _quadrant_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -5571,6 +5744,7 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return found
     if kind == "funnel":
         stages = document.get("stages")
+        found.extend(_funnel_amount_violations(document))
         if isinstance(stages, list) and stages:
             last = stages[-1]
             if isinstance(last, dict) and last.get("gate"):
@@ -5607,6 +5781,7 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
     found.extend(_causal_violations(document, kind, seen))
 
     if kind == "cycle":
+        found.extend(_shaped_in_cycle(nodes))
         found.extend(_hub_violations(document, seen))
         hub = document.get("hub")
         if isinstance(hub, dict) and isinstance(hub.get("id"), str):
@@ -5736,6 +5911,145 @@ LANES_REFUSED: Final[Mapping[str, str]] = {
 }
 
 
+def _chart_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """A chart with `categories` on its vertical axis: horizontal bars, checked.
+
+    The categories become rows, so every series is bars, every point is
+    `[amount, position]` with a position that names a row, and the category axis
+    takes no `min`/`max` — the rows frame it. Amounts start at zero: a bar that
+    runs left of the names is a diverging chart, which this kind does not draw.
+    """
+    found: list[Violation] = []
+    axes = document.get("axes")
+    if not isinstance(axes, dict):
+        return found
+    vertical, horizontal = axes.get("vertical"), axes.get("horizontal")
+    if not isinstance(vertical, dict) or not vertical.get("categories"):
+        return found
+    count = len(vertical["categories"])
+    if isinstance(horizontal, dict) and horizontal.get("categories"):
+        found.append(
+            Violation(
+                "/axes/horizontal/categories",
+                "both axes name categories, so no axis carries an amount for a bar to "
+                "measure. With `categories` on the vertical axis the bars run across: "
+                "give the horizontal axis numbers.",
+            )
+        )
+    for name in ("min", "max"):
+        if name in vertical:
+            found.append(
+                Violation(
+                    _pointer("axes", "vertical", name),
+                    f"with `categories` the vertical axis is the {count} rows, one per "
+                    f"category, top first, so it takes no {name!r}. Drop it.",
+                )
+            )
+    for index, series in enumerate(_listed(document, "series")):
+        if not isinstance(series, dict):
+            continue
+        if series.get("mark", "line") != "bar":
+            found.append(
+                Violation(
+                    _pointer("series", index, "mark"),
+                    "with `categories` on the vertical axis this is a horizontal bar chart, "
+                    'and every series is `"mark": "bar"`. A line drawn down a list of '
+                    "names joins things that have no order between them.",
+                )
+            )
+        for point, pair in enumerate(series.get("data", ()) or ()):
+            if not isinstance(pair, list) or len(pair) != 2:
+                continue
+            amount, position = pair
+            if _is_number(position) and (
+                not 1 <= position <= count or not float(position).is_integer()
+            ):
+                found.append(
+                    Violation(
+                        _pointer("series", index, "data", point, 1),
+                        f"a horizontal bar is `[amount, position]`, and the position names a "
+                        f"category: a whole number from 1 to {count}, not {position!r}.",
+                    )
+                )
+            if _is_number(amount) and amount < 0:
+                found.append(
+                    Violation(
+                        _pointer("series", index, "data", point, 0),
+                        f"{amount!r} is below zero, and a horizontal bar grows right from "
+                        f"zero beside its name. A chart of gains and losses is upright: put "
+                        f"the categories on the horizontal axis, or use a `waterfall`.",
+                    )
+                )
+    return found
+
+
+def _quadrant_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Four quarter names exactly, and two ends to an axis."""
+    found: list[Violation] = []
+    quadrants = document.get("quadrants")
+    if isinstance(quadrants, list) and len(quadrants) != 4:
+        found.append(
+            Violation(
+                "/quadrants",
+                f"{len(quadrants)} names: a quadrant has four quarters, named top right "
+                f"first, then counter-clockwise. Leave a quarter unnamed with an empty string.",
+            )
+        )
+    axes = document.get("axes")
+    for name in AXIS_ORDER:
+        axis = axes.get(name) if isinstance(axes, dict) else None
+        ends = axis.get("ends") if isinstance(axis, dict) else None
+        if isinstance(ends, list) and len(ends) > 2:
+            found.append(
+                Violation(
+                    _pointer("axes", name, "ends"),
+                    f"{len(ends)} ends: an axis has two, the low end's word then the high end's.",
+                )
+            )
+    return found
+
+
+def _funnel_amount_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Amounts on every stage or on none, each no more than the one before."""
+    found: list[Violation] = []
+    stages = [stage for stage in _listed(document, "stages") if isinstance(stage, dict)]
+    counted = [index for index, stage in enumerate(stages) if "amount" in stage]
+    if counted and len(counted) < len(stages):
+        missing = next(index for index in range(len(stages)) if index not in counted)
+        found.append(
+            Violation(
+                _pointer("stages", missing, "amount"),
+                f"{len(counted)} of the {len(stages)} stages have an amount and this one has "
+                f"none, so the share kept here could not be said. Give every stage its "
+                f"amount, or none.",
+            )
+        )
+    if "unit" in document and not counted:
+        found.append(
+            Violation(
+                "/unit",
+                "a unit with no amounts names nothing: no stage has an `amount` to write "
+                "it after. Drop it, or give the stages their amounts.",
+            )
+        )
+    previous: float | None = None
+    for index, stage in enumerate(stages):
+        if not _is_number(stage.get("amount")):
+            continue
+        amount = float(stage["amount"])
+        if previous is not None and amount > previous:
+            found.append(
+                Violation(
+                    _pointer("stages", index, "amount"),
+                    f"{_figure(amount)} reached this stage, more than the {_figure(previous)} "
+                    f"at the one before. A funnel only narrows: if things join part-way, "
+                    f"draw it as a `flow` or a `sankey`.",
+                )
+            )
+        previous = amount
+    return found
+
+
 def _lanes_refusal(violation: Violation) -> Violation:
     """An unknown field on a `lanes` document, with why a flow's field is not here."""
     name = violation.pointer.rsplit("/", 1)[-1]
@@ -5807,6 +6121,94 @@ def _lanes_violations(document: Mapping[str, Any]) -> list[Violation]:
                             f"together, or split the process at a hand-off.",
                         )
                     )
+    found.extend(_phase_violations(document))
+    return found
+
+
+def _phase_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """A swimlane diagram's phases: known steps, each in one phase, in the order run.
+
+    The phases partition the steps, as a gantt's groups partition its tasks, so
+    every step's column (or row) of the grid is the author's and never the
+    layout's guess. Order is checked on the arrows: one that runs from a later
+    phase into an earlier one is a loop back only if the earlier step leads on to
+    the later one again; otherwise the phases are written out of order, or the
+    step is in the wrong one.
+    """
+    phases = document.get("phases")
+    if not isinstance(phases, list):
+        return []
+    ids = [
+        node["id"]
+        for node in _listed(document, "nodes")
+        if isinstance(node, dict) and isinstance(node.get("id"), str)
+    ]
+    known = set(ids)
+    found: list[Violation] = []
+    phase_of: dict[str, int] = {}
+    for index, phase in enumerate(phases):
+        if not isinstance(phase, dict):
+            continue
+        for position, member in enumerate(_listed(phase, "members")):
+            if not isinstance(member, str):
+                continue
+            pointer = _pointer("phases", index, "members", position)
+            if member not in known:
+                close = get_close_matches(member, ids, n=1)
+                found.append(
+                    Violation(
+                        pointer,
+                        f"{member!r} is not the id of any step"
+                        + (f" — did you mean {close[0]!r}?" if close else "."),
+                    )
+                )
+            elif member in phase_of:
+                earlier = phases[phase_of[member]].get("text")
+                found.append(
+                    Violation(
+                        pointer,
+                        f"{member!r} is already in the phase {earlier!r}. Phases do not "
+                        f"overlap: a step happens in one phase, so name it once.",
+                    )
+                )
+            else:
+                phase_of[member] = index
+    for index, identifier in enumerate(ids):
+        if identifier not in phase_of and phase_of:
+            found.append(
+                Violation(
+                    _pointer("nodes", index),
+                    f"{identifier!r} is in no phase. With 'phases' given every step is in "
+                    f"exactly one: add it to the 'members' of the phase it happens in.",
+                )
+            )
+    if found:
+        return found
+    following: dict[str, list[str]] = {identifier: [] for identifier in ids}
+    edges = _listed(document, "edges")
+    for edge in edges:
+        if isinstance(edge, dict) and edge.get("from") in known and edge.get("to") in known:
+            following[edge["from"]].append(edge["to"])
+    for index, edge in enumerate(edges):
+        if not isinstance(edge, dict):
+            continue
+        source, target = edge.get("from"), edge.get("to")
+        if source not in phase_of or target not in phase_of:
+            continue
+        if phase_of[source] <= phase_of[target] or _reaches(following, target, source):
+            continue
+        later = phases[phase_of[source]].get("text")
+        earlier = phases[phase_of[target]].get("text")
+        found.append(
+            Violation(
+                _pointer("edges", index),
+                f"this arrow runs from {source!r} in the phase {later!r} back to {target!r} "
+                f"in the earlier phase {earlier!r}, and nothing leads from {target!r} on to "
+                f"{source!r}, so it is not a loop back. The phases are out of order, or one "
+                f"of the two steps is in the wrong phase: list the phases in the order the "
+                f"process runs.",
+            )
+        )
     return found
 
 
@@ -6367,9 +6769,8 @@ def _gantt_refusal(violation: Violation, document: Mapping[str, Any]) -> Violati
         if parts[1] == "tasks" and name in ("progress", "complete", "percent"):
             return Violation(
                 violation.pointer,
-                f"{name!r} is not drawn: how far a task has got is status, not plan, and it "
-                f"is out of date the day the drawing is made. Say it in the text, or draw "
-                f"what is done as tasks that have ended before a `today` mark.",
+                f"{name!r} is not a field: how much of a task is complete is `done`, a "
+                f"number from 0 to 100, drawn as a band inside the bar.",
             )
     return violation
 
@@ -6432,6 +6833,23 @@ def _gantt_violations(document: Mapping[str, Any]) -> list[Violation]:
         values = {name: task[name] for name in TASK_VALUES if _is_number(task.get(name))}
         given = {name for name in TASK_VALUES if name in task}
         span: tuple[float, float] | None = None
+        done = float(task["done"]) if _is_number(task.get("done")) else None
+        if done is not None and not 0 <= done <= 100:
+            found.append(
+                Violation(
+                    _pointer("tasks", index, "done"),
+                    f"{_figure(done)} is not a share of a task: `done` runs from 0 (not "
+                    f"started) to 100 (finished).",
+                )
+            )
+        elif "done" in task and "at" in given:
+            found.append(
+                Violation(
+                    _pointer("tasks", index, "done"),
+                    "a milestone is a moment, so it is reached or not and has no part done. "
+                    "Drop `done`, or make the task an interval with `start` and `end`.",
+                )
+            )
         if "at" in given and given & {"start", "end"}:
             found.append(
                 Violation(
@@ -9421,6 +9839,20 @@ def _causal_violations(document: Mapping[str, Any], kind: str, nodes: set[str]) 
     return found
 
 
+def _shaped_in_cycle(nodes: Any) -> list[Violation]:
+    """A cycle step drawn as a flowchart symbol: a ring of boxes has no data in it."""
+    return [
+        Violation(
+            _pointer("nodes", index, "role"),
+            f"{node['role']!r} draws a flowchart symbol, and a cycle is a ring of steps "
+            f"that each lead to the next: there is no input, store or sub-process on it. "
+            f"Draw the process as a `flow` if those matter.",
+        )
+        for index, node in enumerate(nodes if isinstance(nodes, list) else ())
+        if isinstance(node, dict) and node.get("role") in SHAPED_ROLES
+    ]
+
+
 def _status_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
     """Where a change's marks contradict each other, or are on a kind with no change.
 
@@ -9768,6 +10200,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         items=_items(document.get("items", ())),
         levels=_items(document.get("levels", ())),
         stages=_items(document.get("stages", ())),
+        unit=str(document.get("unit", "")),
         rings=_items(document.get("rings", ())),
         cells=tuple(
             Cell(
@@ -9801,6 +10234,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
             )
             for entry in document.get("positions", ())
         ),
+        quadrants=tuple(str(name) for name in document.get("quadrants", ())),
         curves=tuple(
             Curve(
                 name=entry.get("name", ""),
@@ -9873,6 +10307,10 @@ def _lanes_document(document: Mapping[str, Any]) -> Document:
             for entry in document.get("edges", ())
         ),
         lanes=lane_order(document),
+        phases=tuple(
+            Phase(text=entry["text"], members=tuple(entry["members"]))
+            for entry in document.get("phases", ())
+        ),
     )
 
 
@@ -10045,6 +10483,7 @@ def _gantt_document(document: Mapping[str, Any]) -> Document:
                 at=_optional_number(entry.get("at")),
                 role=entry.get("role", "step"),
                 actor=entry.get("actor", ""),
+                done=_optional_number(entry.get("done")),
             )
             for entry in document["tasks"]
         ),
@@ -10569,6 +11008,7 @@ def _items(entries: Sequence[Mapping[str, Any]]) -> tuple[Item, ...]:
             note=entry.get("note", ""),
             at=None if entry.get("at") is None else float(entry["at"]),
             gate=entry.get("gate", ""),
+            amount=None if entry.get("amount") is None else float(entry["amount"]),
         )
         for entry in entries
     )
@@ -10588,6 +11028,7 @@ def _axis(entry: Mapping[str, Any]) -> Axis:
         minimum=_optional_number(entry.get("min")),
         maximum=_optional_number(entry.get("max")),
         categories=tuple(str(name) for name in entry.get("categories", ())),
+        ends=tuple(str(name) for name in entry.get("ends", ())),
     )
 
 
@@ -10852,6 +11293,7 @@ __all__ = [
     "PIE_PERCENT_TOLERANCE",
     "PIE_ROLES",
     "PIE_SHARE_MIN",
+    "PLAIN_NODE_ROLES",
     "POLARITIES",
     "POLARITY_EDGE_ROLES",
     "RAG_KINDS",
@@ -10868,6 +11310,7 @@ __all__ = [
     "SCHEMA_FILENAME",
     "SCHEMA_ID",
     "SEQUENCE_KINDS",
+    "SHAPED_ROLES",
     "SHAPE_KINDS",
     "STATES_KINDS",
     "STATE_ROLES",
@@ -10917,6 +11360,7 @@ __all__ = [
     "NumberAxis",
     "NumberPoint",
     "NumberRange",
+    "Phase",
     "PiePart",
     "Position",
     "RagRow",

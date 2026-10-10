@@ -218,7 +218,7 @@ written down. Here it is.
 
 **A role says what a box is; the theme decides what that looks like.** So the
 question to ask is never "should this be a diamond" — it is "is this a
-question?". These are the seven, and the shape each one currently gets from the
+question?". These are the ten, and the shape each one currently gets from the
 bundled theme:
 
 | Role | Use it for | Drawn as |
@@ -230,6 +230,15 @@ bundled theme:
 | `emphasis` | The one box the diagram is about. One per drawing, two at most — a third is refused, because when three things say *look here first* none of them is first | a rectangle, heavier |
 | `note` | An aside — a caveat, a source, a reminder. Not part of the argument | no outline at all |
 | `group` | A container drawn around other boxes. Set by naming `members`; rarely written by hand | a dashed rectangle |
+| `io` | Data coming in or going out: a file read, a form filled in, a report sent | a parallelogram |
+| `subroutine` | A process defined elsewhere — a routine with its own chart, a job run by name | a box with doubled sides |
+| `store` | Where data rests: a database, a queue, a file kept | a drum (cylinder) |
+
+The last three are the flowchart symbols (ISO 5807, a data-flow diagram's store)
+and are named only on a `flow`, `tree` or `lanes` node; every other kind's boxes
+have a fixed vocabulary of their own, and a `cycle` refuses them. Reach for one
+only when the distinction is the point — a chart whose every box is `io` has
+said nothing.
 
 Two mistakes worth naming, both made in the corpus and both caught in review:
 
@@ -686,6 +695,14 @@ band has not got — so a long name beside a short bar comes back as two or thre
 lines rather than one long one. A single word longer than the bar is refused, and
 the message names the band rather than the diagram.
 
+**Frames are washed, faintly.** A group's frame — and a composite state, and a
+sequence diagram's group — is filled with a little of the page's ink
+(`[frames] tone`, 0.05 by default): drawn as `currentColor` at part opacity, so it
+follows a dark page and prints as a light grey, never a colour. A frame inside a
+frame lays its wash over its parent's, so each level of nesting reads one step
+darker, for `[frames] levels` levels (3); deeper frames are outlined only. A theme
+that wants outlines only sets `tone = 0`.
+
 ## Drawing a change
 
 A design document proposing a change usually wants to say *what is new, what
@@ -1009,18 +1026,58 @@ column of names at the left) or down it as columns (ranks reading down, a name
 over each) is the theme's `[lanes] orientation`: `auto`, the default, takes rows
 when they fit the width and columns when they do not. At the default width, a
 process of more than four or five steps in a row reads down. `[lanes] separator`
-is the edge role the line between two lanes is drawn in.
+is the edge role the line between two lanes is drawn in, and `[lanes] stripe`
+(0.04 by default, 0 for none) washes every second lane with that share of the
+page's ink, so five or six lanes read as bands.
+
+### Phases
+
+A cross-functional flowchart's second axis is its **phases**: stretches of the
+process every lane passes through — *Request*, *Order*, *Pay*. `phases` names them
+in the order the process runs, and each lists its steps:
+
+```json
+"phases": [
+  {"text": "Request", "members": ["submit", "approve", "fix"]},
+  {"text": "Payment", "members": ["pay"]}
+]
+```
+
+They are drawn as a band along the lanes' outer edge — over the strips when they
+run across the page, beside them when they run down it — with each phase's name in
+its cell, and a light dashed line (`[lanes] phase`, `aside` by default) across
+every lane between one phase and the next. Both orientations draw them.
+
+Why the steps, not the first step of each phase: the steps are what you know when
+you write the document, and what the drawing shows is decided by them. Each phase's
+steps are placed after every step of the phases before it, so the phases never
+interleave and you never have to predict where the layout puts a step. A returning
+arrow into an earlier phase — *changes requested* sending work back to *Build* — is
+fine: it is drawn as a return. With `phases`, **every step is in exactly one**.
+
+Refused, each at its pointer: a member that is not a step (naming the closest id);
+a step in two phases (phases do not overlap); a step in no phase; fewer than 2
+phases, or more than 6; and an arrow from a later phase back into an earlier one
+that is not a loop — nothing leads back from where it lands — because then the
+phases are out of order or the step is in the wrong one. See
+[`reference/lanes-phases-purchase.json`](reference/lanes-phases-purchase.json),
+[`reference/lanes-phases-release.json`](reference/lanes-phases-release.json) and
+[`reference/lanes-phases-loan.json`](reference/lanes-phases-loan.json) (rows).
+
+### Refusals
 
 Refused, each at its pointer: a node with no `actor` (the message points you back
 to `flow`); an actor not in `lanes`, naming the closest lane; a lane in `lanes`
 that no node names, or one listed twice; `groups`, `bands` and `centre`, because
 a lane is already the container and a frame or band would cross it; and the
-`group` node role. Budget: a flow's 15 nodes and 16 edges, and 6 lanes, counted
-from the actors when `lanes` is omitted. See
+`group` node role. Budget: a flow's 15 nodes and 16 edges, 6 lanes, counted
+from the actors when `lanes` is omitted, and 6 phases. See
 [`reference/lanes-disclosure.json`](reference/lanes-disclosure.json),
 [`reference/lanes-tender.json`](reference/lanes-tender.json),
-[`reference/lanes-expense.json`](reference/lanes-expense.json) and
-[`reference/lanes-onboarding.json`](reference/lanes-onboarding.json).
+[`reference/lanes-expense.json`](reference/lanes-expense.json),
+[`reference/lanes-onboarding.json`](reference/lanes-onboarding.json) and
+[`reference/lanes-appointment.json`](reference/lanes-appointment.json), which draws
+the flowchart symbols (`io`, `subroutine`, `store`).
 
 ## Data models, schemas and class diagrams
 
@@ -1090,6 +1147,90 @@ operations per entity. See
 [`reference/entities-shapes.json`](reference/entities-shapes.json) and
 [`reference/entities-enrolment.json`](reference/entities-enrolment.json).
 
+## A funnel that says how many
+
+A `funnel`'s stages narrow to an outcome, and the point is what is lost on the way. Give
+every stage an `amount` and it says how much: each stage writes its count under its
+name, and from the second on the share of the stage before that reached it.
+
+```json
+{
+  "version": 1,
+  "kind": "funnel",
+  "unit": "people",
+  "stages": [
+    {"text": "Saw the advert", "amount": 4200},
+    {"text": "Applied", "amount": 310},
+    {"text": "**Started**", "amount": 5}
+  ]
+}
+```
+
+The second stage reads *310 people · 7.4% kept*. The share is derived, never written,
+and the taper stays the funnel's own uniform one: widths in proportion would make it a
+bar chart, and a stage keeping 2 % would be too thin to hold its name. `"values": false`
+leaves the numbers out. Amounts go on every stage or none, never rise from one stage to
+the next (things joining part-way are a `flow` or a `sankey`), and are above zero; a
+`unit` needs amounts to follow. Each is refused at its pointer. See
+[`reference/funnel-applications.json`](reference/funnel-applications.json).
+
+## Naming a quadrant's quarters
+
+A quadrant's most recognisable part is often the names of its four quarters — *Do
+now*, *Plan it*, *Drop it*, *Hand it on* — and of the two ends of each axis. Both are
+words in the document, not drawing:
+
+```json
+{
+  "version": 1,
+  "kind": "quadrant",
+  "axes": {
+    "horizontal": {"label": "How urgent", "ends": ["Can wait", "Today"]},
+    "vertical": {"label": "How important", "ends": ["Minor", "Matters"]}
+  },
+  "quadrants": ["Do now", "Plan it", "Drop it", "Hand it on"],
+  "positions": [{"text": "Payroll file rejected", "across": 0.9, "up": 0.85}]
+}
+```
+
+`quadrants` is exactly four names, **top right first, then counter-clockwise** — top
+left, bottom left, bottom right — the order Mermaid numbers them in. Each is written
+faint in its quarter's outer corner, behind the points; `""` leaves a quarter unnamed.
+An axis's `ends` are its low and high words, as on a `numberline`, written at the two
+ends of the axis. Refused: `quadrants` not four, more than two `ends`, and
+`categories` on a quadrant axis. See
+[`reference/quadrant-priorities.json`](reference/quadrant-priorities.json).
+
+## Bars on their side
+
+A bar chart whose categories are sentences — *Report a pothole or broken street
+light* — has no room for them under upright bars. Put the `categories` on the
+**vertical** axis instead and the bars lie down: each category is a row, the first
+at the top (an ordered bar chart reads like a list), its name on the left, and each
+bar grows right from zero.
+
+```json
+{
+  "version": 1,
+  "kind": "chart",
+  "axes": {
+    "horizontal": {"label": "Calls", "unit": "thousands"},
+    "vertical": {"label": "Reason", "categories": ["Missed bin collection", "Parking permit or fine"]}
+  },
+  "series": [{"name": "Calls", "mark": "bar", "data": [[8.4, 1], [4.7, 2]]}]
+}
+```
+
+Each point is turned round: `[amount, position]`, the position naming the category,
+1 for the first. Names wrap to about a third of the width; the numbers are written
+past the bars' ends (inside each segment, when series share a `stack`), at the
+precision you wrote them: the most decimals any value carries, for every bar, so
+`8.4` beside `12` prints `8.4` and `12.0` (at most three; upright bars and line
+points follow the same rule). Every series
+must be a `bar`, amounts start at zero, and the category axis takes no `min`/`max`:
+each is refused at its pointer. See
+[`reference/chart-across.json`](reference/chart-across.json).
+
 ## A plan
 
 A `timeline` is one axis of instants: *when things happened*. A plan is one row
@@ -1135,6 +1276,13 @@ critical path — heavier, the same word its dependencies take, and not counted 
 the emphasis cap), `emphasis` (the task the diagram is about — heavier and
 differently filled) and `note` (outside the plan — a light dashed outline).
 
+A task's `done`, a number from 0 to 100, is how much of it is complete — drawn as a
+solid band through the middle of its bar from the start, the progress line MS Project
+draws. It is ink, not colour: the theme's `[gantt] done` sets how strong (0.7 by
+default), so the band reads in greyscale and on a dark page. Pair it with a `today`
+mark and the plan says where each task should be and where it is. See
+[`reference/gantt-progress.json`](reference/gantt-progress.json).
+
 `edges` are finish-to-start: each is drawn from the end of one bar into the start
 of the other, and the line goes round the bars it can rather than through them.
 Roles `flow`, `strong` (the critical path) and `weak` (a soft dependency).
@@ -1150,7 +1298,8 @@ value or mark off the axis; a dependency whose `to` starts before its `from` end
 (either the plan or the dependency is wrong, and only the author knows which); a
 dependency on an unknown task or on itself; a phase whose tasks are not
 consecutive, a task in two phases, and — with phases — a task in none; a phase
-with no `text`; `progress`, which is status rather than plan; and a newline in a
+with no `text`; `progress` (the field is `done`); `done` outside 0–100 or on a
+milestone; and a newline in a
 task's `text` when it has an actor. Budget: 16 tasks, 20 edges and 4 marks. See
 [`reference/gantt-migration.json`](reference/gantt-migration.json),
 [`reference/gantt-critical-path.json`](reference/gantt-critical-path.json),

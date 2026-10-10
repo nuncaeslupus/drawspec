@@ -37,7 +37,7 @@ from drawspec.charts import AXIS_ROLE, FURNITURE_ROLE, TARGET_TICKS, Scale, _nic
 from drawspec.errors import FitError
 from drawspec.routing import Route, edge_primitives
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextLine, TextSpan
-from drawspec.schema import Axis, Document, Task
+from drawspec.schema import Axis, Document, Task, _figure
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
 from drawspec.theme import Theme
@@ -259,6 +259,8 @@ def gantt_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         box = (left, middle - bar / 2, right, middle + bar / 2)
         bars[task.id] = box
         primitives.append(_bar(task, box, theme))
+        if task.done:
+            primitives.append(_done(task.done, box, theme))
         ends[task.id] = ((left, middle), (right, middle))
 
     # Dependencies, finish to start: the first candidate that crosses no other task.
@@ -366,7 +368,7 @@ def gantt_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         height=height,
         primitives=(*primitives, *texts),
         title=document.title,
-        description=document.description,
+        description=_described(document),
     )
     return GanttDrawing(
         scene=scene,
@@ -525,6 +527,24 @@ def _with_unit(axis: Axis) -> str:
     return f"{axis.label} ({axis.unit})" if axis.unit else axis.label
 
 
+def _described(document: Document) -> str:
+    """The author's description, then each task's `done` share in words.
+
+    The band is drawn, never written, so without this a reader who cannot see it
+    cannot tell how far any task has got. `done: 0` is said too: "not started"
+    is information the author gave.
+    """
+    done = [
+        f"{task.label.replace('**', '')} {_figure(task.done)}% done"
+        for task in document.tasks
+        if task.done is not None
+    ]
+    parts = [document.description] if document.description else []
+    if done:
+        parts.append("Progress: " + "; ".join(done) + ".")
+    return " ".join(parts)
+
+
 def _label(task: Task) -> str:
     return task.label
 
@@ -614,6 +634,37 @@ def _bar(task: Task, box: tuple[float, float, float, float], theme: Theme) -> Pr
         points=points,
         fill=theme.mark.fill_for(index),
         fill_colour=theme.mark.colour_for(index),
+    )
+
+
+#: How much of a bar's height its `done` band takes, centred in it. Less than the
+#: whole, so the bar's own fill still shows above and below and the band reads as
+#: a line drawn *through* the task — MS Project's progress bar — not a second task.
+DONE_SHARE: Final = 0.4
+
+
+def _done(done: float, box: tuple[float, float, float, float], theme: Theme) -> Primitive:
+    """How much of a task is complete: a solid band from the bar's start.
+
+    The page's ink at the theme's `[gantt] done` strength, never a colour, so it
+    survives greyscale and a dark page. A region, unstroked: its edge is where
+    the work has got to, and an outline would draw a second bar inside the first.
+    """
+    left, top, right, bottom = box
+    middle, half = (top + bottom) / 2, (bottom - top) * DONE_SHARE / 2
+    end = left + (right - left) * done / 100
+    return Polygon(
+        "step",
+        points=(
+            (left, middle - half),
+            (end, middle - half),
+            (end, middle + half),
+            (left, middle + half),
+        ),
+        fill="solid",
+        fill_colour="currentColor",
+        fill_opacity=theme.gantt.done,
+        region=True,
     )
 
 

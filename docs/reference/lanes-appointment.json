@@ -1,0 +1,27 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "lanes",
+  "title": "Booking a clinic appointment",
+  "description": "A swimlane process with flowchart symbols: the patient's request comes in as a parallelogram, the slot search is a routine the booking system documents elsewhere, and the diary it searches is a store.",
+  "lanes": ["Patient", "Reception", "Booking system"],
+  "nodes": [
+    { "id": "ask", "text": "Asks for an appointment", "actor": "Patient", "role": "start" },
+    { "id": "request", "text": "Enters the request", "actor": "Reception", "role": "io" },
+    { "id": "find", "text": "Find a free slot", "actor": "Booking system", "role": "subroutine" },
+    { "id": "diary", "text": "Appointment diary", "actor": "Booking system", "role": "store" },
+    { "id": "free", "text": "A slot this week?", "actor": "Reception", "role": "decision" },
+    { "id": "wait", "text": "Adds to the waiting list", "actor": "Reception" },
+    { "id": "text", "text": "Sends a confirmation text", "actor": "Booking system", "role": "io" },
+    { "id": "attend", "text": "Attends", "actor": "Patient", "role": "terminal" }
+  ],
+  "edges": [
+    { "from": "ask", "to": "request" },
+    { "from": "request", "to": "find" },
+    { "from": "find", "to": "diary", "role": "exchange", "label": "searches" },
+    { "from": "find", "to": "free" },
+    { "from": "free", "to": "wait", "label": "no" },
+    { "from": "free", "to": "text", "label": "yes" },
+    { "from": "text", "to": "attend" }
+  ]
+}

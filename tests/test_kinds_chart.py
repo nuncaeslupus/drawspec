@@ -1478,3 +1478,229 @@ def test_the_end_bars_stand_inside_the_plot_without_explicit_bounds(
     else:
         assert min(xs) >= left - 1e-6
     assert max(xs) <= right + 1e-6
+
+
+# ---------------------------------------------------------------------------
+# Horizontal bars: `categories` on the vertical axis
+# ---------------------------------------------------------------------------
+
+ACROSS_AXES = {
+    "horizontal": {"label": "Calls", "unit": "thousands"},
+    "vertical": {"label": "Reason", "categories": ["Missed bin", "Council tax", "Parking"]},
+}
+
+
+def _across(**extra: object) -> Scene:
+    series = [{"name": "Calls", "mark": "bar", "data": [[8.4, 1], [6.1, 2], [5.8, 3]]}]
+    return chart_scene(
+        parse_document(document(axes=ACROSS_AXES, series=series, **extra)), THEME, MEASURER
+    )
+
+
+def test_categories_on_the_vertical_axis_draw_bars_running_across() -> None:
+    """The regression: this was accepted and drawn as upright bars at x = 8.4, 6.1 …
+
+    with each bar's *height* the category's index — a valid-looking chart that
+    said the opposite of its data. Now each category is a row, top first, and
+    its bar grows right from the axis by its amount.
+    """
+    built = _across()
+    bars = filled_of(built)
+    assert len(bars) == 3
+    spans = []
+    for bar in bars:
+        xs = [x for x, _ in bar.points]
+        ys = [y for _, y in bar.points]
+        spans.append((min(xs), max(xs), min(ys)))
+        # wider than tall: lying on its side
+        assert max(xs) - min(xs) > max(ys) - min(ys)
+    starts = {round(start, 6) for start, _, _ in spans}
+    assert len(starts) == 1, "every bar starts at zero"
+    lengths = [end - start for start, end, _ in spans]
+    assert lengths == sorted(lengths, reverse=True)
+    assert lengths[0] / lengths[2] == pytest.approx(8.4 / 5.8, rel=1e-6)
+    tops = [top for _, _, top in spans]
+    assert tops == sorted(tops), "the first category is the top row"
+
+
+def test_horizontal_bar_names_sit_left_of_the_bars_beside_their_own_bar() -> None:
+    built = _across()
+    runs = {run.text: run for run in built.primitives if isinstance(run, TextRun)}
+    bars = filled_of(built)
+    for name, bar in zip(("Missed bin", "Council tax", "Parking"), bars, strict=True):
+        run = runs[name]
+        assert run.anchor == "end"
+        assert run.x < min(x for x, _ in bar.points)
+        ys = [y for _, y in bar.points]
+        assert min(ys) <= run.y <= max(ys) + THEME.scale["label"]
+
+
+def test_horizontal_bar_numbers_are_written_past_each_bar() -> None:
+    built = _across()
+    runs = {run.text: run for run in built.primitives if isinstance(run, TextRun)}
+    for text, bar in zip(("8.4", "6.1", "5.8"), filled_of(built), strict=True):
+        assert runs[text].x > max(x for x, _ in bar.points)
+        assert runs[text].x < built.width
+
+
+@pytest.mark.parametrize(
+    ("change", "pointer"),
+    [
+        ({"mark": "line"}, "/series/0/mark"),
+        ({"data": [[8.4, 4]]}, "/series/0/data/0/1"),
+        ({"data": [[8.4, 1.5]]}, "/series/0/data/0/1"),
+        ({"data": [[-2, 1]]}, "/series/0/data/0/0"),
+        ({"data": [[8.4, float("inf")]]}, "/series/0/data/0/1"),
+        ({"data": [[8.4, float("nan")]]}, "/series/0/data/0/1"),
+    ],
+)
+def test_horizontal_bars_refuse_what_they_cannot_draw(
+    change: dict[str, object], pointer: str
+) -> None:
+    series = [{"name": "Calls", "mark": "bar", "data": [[8.4, 1]], **change}]
+    with pytest.raises(DocumentError, match=pointer):
+        parse_document(document(axes=ACROSS_AXES, series=series))
+
+
+def test_horizontal_bars_refuse_two_category_axes_and_bounds_on_the_rows() -> None:
+    axes = {
+        "horizontal": {"label": "Calls", "categories": ["a", "b"]},
+        "vertical": {"label": "Reason", "categories": ["x", "y"], "min": 0},
+    }
+    series = [{"name": "Calls", "mark": "bar", "data": [[1, 1]]}]
+    with pytest.raises(DocumentError) as error:
+        parse_document(document(axes=axes, series=series))
+    assert "/axes/horizontal/categories" in str(error.value)
+    assert "/axes/vertical/min" in str(error.value)
+
+
+# ---------------------------------------------------------------------------
+# quadrant: quarter names and axis ends
+# ---------------------------------------------------------------------------
+
+NAMED: dict[str, object] = {
+    "version": 1,
+    "kind": "quadrant",
+    "axes": {
+        "horizontal": {"label": "How urgent", "ends": ["Can wait", "Today"]},
+        "vertical": {"label": "How important", "ends": ["Minor", "Matters"]},
+    },
+    "quadrants": ["Do now", "Plan it", "Drop it", "Hand it on"],
+    "positions": list(CORNERS),
+}
+
+
+def _named(**change: object) -> dict[str, object]:
+    return {**NAMED, **change}
+
+
+def test_quarter_names_go_top_right_first_then_counter_clockwise() -> None:
+    """Mermaid's order: quadrant-1 is top right, then top left, bottom left, bottom right."""
+    built = chart_scene(parse_document(NAMED), THEME, MEASURER)
+    runs = {run.text: run for run in texts(built)}
+    middle_x = built.width / 2
+    do, plan, drop, hand = (runs[name] for name in ("Do now", "Plan it", "Drop it", "Hand it on"))
+    assert do.x > middle_x and do.anchor == "end"
+    assert plan.x < middle_x and plan.anchor == "start"
+    assert drop.x < middle_x and hand.x > middle_x
+    assert do.y == plan.y < drop.y == hand.y
+    for run in (do, plan, drop, hand):
+        assert 0 < run.opacity < 1, "a quarter name is ground, drawn faint"
+
+
+def test_axis_ends_are_written_at_the_two_ends_of_each_axis() -> None:
+    built = chart_scene(parse_document(NAMED), THEME, MEASURER)
+    runs = {run.text: run for run in texts(built)}
+    assert runs["Can wait"].x < runs["Today"].x
+    assert runs["Can wait"].anchor == "start" and runs["Today"].anchor == "end"
+    assert runs["Minor"].rotate == runs["Matters"].rotate == -90.0
+    assert runs["Minor"].y > runs["Matters"].y, "the low end is at the bottom"
+    # each end row sits between the axis and its caption
+    assert runs["Today"].y < runs["How urgent"].y
+    assert runs["How important"].x < runs["Minor"].x
+
+
+def test_no_quadrant_label_overlaps_a_quarter_name() -> None:
+    corner = {"text": "Right in the corner", "across": 1.0, "up": 0.97}
+    built = chart_scene(parse_document(_named(positions=[*CORNERS, corner])), THEME, MEASURER)
+    runs = {run.text: run for run in texts(built)}
+    name, label = runs["Do now"], runs["Right in the corner"]
+    assert label.y - name.y > THEME.scale["label"] or label.x < name.x - 40
+
+
+@pytest.mark.parametrize(
+    ("change", "pointer"),
+    [
+        ({"quadrants": ["a", "b", "c"]}, "/quadrants"),
+        ({"quadrants": ["a", "b", "c", "d", "e"]}, "/quadrants"),
+        (
+            {
+                "axes": {
+                    "horizontal": {"label": "x", "ends": ["low", "mid", "high"]},
+                    "vertical": {"label": "y"},
+                }
+            },
+            "/axes/horizontal/ends",
+        ),
+        (
+            {
+                "axes": {
+                    "horizontal": {"label": "x", "categories": ["a", "b"]},
+                    "vertical": {"label": "y"},
+                }
+            },
+            "/axes/horizontal/categories",
+        ),
+    ],
+)
+def test_wrong_counts_of_names_and_ends_are_refused(
+    change: dict[str, object], pointer: str
+) -> None:
+    with pytest.raises(DocumentError, match=pointer):
+        parse_document(_named(**change))
+
+
+def test_a_quadrant_without_names_or_ends_draws_as_before() -> None:
+    plain = quadrant(*CORNERS)
+    assert not [run for run in texts(plain) if run.opacity < 1]
+
+
+# --------------------------------------------------------------------------
+# A bar's number is printed as written
+# --------------------------------------------------------------------------
+
+
+def test_a_horizontal_bar_prints_8_4_as_8_4_and_its_neighbours_alike() -> None:
+    """Regression: 8.4 beside 12 and 5 was printed `8`, because the old rule kept
+    only the decimals needed to tell the values apart. The author wrote one
+    decimal, so every bar's number carries one: `12.0`, `8.4`, `5.0`."""
+    built = chart_scene(
+        parse_document(
+            {
+                "version": 1,
+                "kind": "chart",
+                "axes": {
+                    "horizontal": {"label": "Calls"},
+                    "vertical": {"label": "Reason", "categories": ["Bins", "Tax", "Parking"]},
+                },
+                "series": [{"name": "Calls", "mark": "bar", "data": [[12, 1], [8.4, 2], [5, 3]]}],
+            }
+        ),
+        THEME,
+        MEASURER,
+    )
+    printed = {text.text for text in labels(built)}
+    assert {"12.0", "8.4", "5.0"} <= printed
+    assert "8" not in printed
+
+
+def test_a_vertical_bar_prints_its_value_at_the_precision_written() -> None:
+    built = marked({"name": "Count", "mark": "bar", "data": [[1, 12], [2, 8.4], [3, 5]]})
+    printed = {text.text for text in labels(built)}
+    assert {"12.0", "8.4", "5.0"} <= printed
+
+
+def test_whole_values_still_print_whole() -> None:
+    built = marked({"name": "Count", "mark": "bar", "data": [[1, 12], [2, 8], [3, 5.0]]})
+    printed = {text.text for text in labels(built)}
+    assert {"12", "8", "5"} <= printed

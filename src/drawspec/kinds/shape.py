@@ -35,13 +35,14 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
+from dataclasses import replace
 from typing import Final
 
 from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, size_box
 from drawspec.kinds.common import text_runs
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextRun
-from drawspec.schema import Document, Item
+from drawspec.schema import Document, Item, sankey_amount
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme
 
@@ -380,9 +381,46 @@ def _funnel(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     band is continuous and something passes through it, which is what a stage
     boundary in a funnel means and what a solid line would deny.
     """
+    document = replace(document, stages=_counted(document))
     if theme.funnel.direction == "down":
         return _funnel_down(document, theme, measurer)
     return _funnel_right(document, theme, measurer)
+
+
+def _counted(document: Document) -> tuple[Item, ...]:
+    """The stages with their amounts written in, when they have them.
+
+    Each amount goes on a line of its own under the stage's words, and from the
+    second stage on it carries the share of the stage before that reached this
+    one — the number a funnel is drawn to make a reader ask for. Derived, never
+    written: an author who typed `31%` beside two counts could get it wrong.
+
+    The taper stays the drawing's own. Proportional widths would make the funnel
+    a bar chart, and a stage that keeps 2 % of the one before would be a sliver
+    too thin to hold its own name.
+    """
+    stages = document.stages
+    if not document.values or not stages or any(item.amount is None for item in stages):
+        return stages
+    counted: list[Item] = []
+    previous: float | None = None
+    for item in stages:
+        amount = item.amount
+        assert amount is not None
+        line = sankey_amount(amount, document.unit)
+        if previous is not None:
+            line += f" · {_share(amount, previous)} kept"
+        counted.append(replace(item, text=f"{item.text}\n{line}"))
+        previous = amount
+    return tuple(counted)
+
+
+def _share(amount: float, previous: float) -> str:
+    """A percentage a reader can say aloud: whole under 100, one decimal under 10."""
+    share = 100 * amount / previous
+    if share >= 10 or share == 0:
+        return f"{share:.0f}%"
+    return f"{share:.1f}%"
 
 
 def _funnel_down(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:

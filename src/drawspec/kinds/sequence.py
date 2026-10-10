@@ -39,7 +39,7 @@ from drawspec.errors import FitError
 from drawspec.geometry import Box, size_box
 from drawspec.kinds.common import box_primitives
 from drawspec.routing import Route, edge_primitives
-from drawspec.scene import Path, Primitive, Scene, TextLine, TextSpan, moved
+from drawspec.scene import Path, Polygon, Primitive, Scene, TextLine, TextSpan, moved
 from drawspec.schema import Document, Fragment, Message
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
@@ -649,6 +649,17 @@ class _Layout:
         for (left, right), block in zip(group_spans, group_labels, strict=True):
             low = bottom + GROUP_PAD * unit / 2
             group_boxes.append((left, 0.0, right, low))
+            if theme.frames.tone:
+                frames_below.append(
+                    Polygon(
+                        GROUP,
+                        points=((left, 0.0), (right, 0.0), (right, low), (left, low)),
+                        fill="solid",
+                        fill_colour="currentColor",
+                        fill_opacity=theme.frames.tone,
+                        region=True,
+                    )
+                )
             frames_below.append(Path(GROUP, points=_outline(left, 0.0, right, low)))
             if block:
                 texts.extend(_lines(block, left + GROUP_PAD * unit, TAB_PAD * unit, GROUP, "start"))

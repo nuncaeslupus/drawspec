@@ -751,3 +751,68 @@ def test_a_set_with_no_detail_anywhere_is_left_plain() -> None:
     """The rule only fires when the set has said it is names-and-details."""
     weights = _weights(funnel(*STAGES, theme=THEME))
     assert set(weights.values()) == {"normal"}
+
+
+# ---------------------------------------------------------------------------
+# funnel amounts
+# ---------------------------------------------------------------------------
+
+
+def counted_funnel(*amounts: float | None, **extra: object) -> dict[str, object]:
+    stages: list[dict[str, object]] = []
+    for index, amount in enumerate(amounts):
+        stage: dict[str, object] = {"text": f"Stage {index + 1}"}
+        if amount is not None:
+            stage["amount"] = amount
+        stages.append(stage)
+    return {"version": 1, "kind": "funnel", "stages": stages, **extra}
+
+
+def _words(built: Scene) -> str:
+    parts: list[str] = []
+    for item in built.primitives:
+        if isinstance(item, TextLine):
+            parts.append("".join(span.text for span in item.spans))
+        elif isinstance(item, TextRun):
+            parts.append(item.text)
+    return " | ".join(parts)
+
+
+def test_a_funnel_writes_each_amount_and_the_share_kept_from_the_stage_before() -> None:
+    """Rank 6 of the kind audit: a funnel shows what is lost, so it can now say how much."""
+    built = shape_scene(
+        parse_document(counted_funnel(4200, 310, 64, unit="people")), THEME, MEASURER
+    )
+    words = _words(built)
+    assert "4200 people" in words
+    assert "310 people · 7.4% kept" in words
+    assert "64 people · 21% kept" in words
+
+
+def test_amounts_leave_the_taper_uniform() -> None:
+    """A diagram, not a bar chart: the outline is the same whatever the counts."""
+    with_counts = shape_scene(parse_document(counted_funnel(1000, 10, 1)), THEME, MEASURER)
+    outline = next(item for item in with_counts.primitives if isinstance(item, Polygon))
+    (left, _), (right, _), (low_right, _), (low_left, _) = outline.points
+    assert (low_right - low_left) / (right - left) == pytest.approx(FUNNEL_TAPER)
+
+
+def test_values_false_writes_the_names_alone() -> None:
+    built = shape_scene(parse_document(counted_funnel(100, 50, values=False)), THEME, MEASURER)
+    assert "kept" not in _words(built)
+
+
+@pytest.mark.parametrize(
+    ("document", "pointer"),
+    [
+        (counted_funnel(100, None, 20), "/stages/1/amount"),
+        (counted_funnel(100, 120), "/stages/1/amount"),
+        (counted_funnel(100, 0), "/stages/1/amount"),
+        (counted_funnel(None, None, unit="people"), "/unit"),
+    ],
+)
+def test_funnel_amounts_that_cannot_be_drawn_are_refused(
+    document: dict[str, object], pointer: str
+) -> None:
+    with pytest.raises(DocumentError, match=pointer):
+        parse_document(document)

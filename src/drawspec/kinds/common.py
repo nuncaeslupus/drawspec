@@ -24,7 +24,7 @@ from typing import Final
 
 from drawspec.errors import FitError
 from drawspec.filetree import STATUSES
-from drawspec.geometry import Box, span_at
+from drawspec.geometry import CYLINDER_CAP, PARALLELOGRAM_SLANT, SUBROUTINE_INSET, Box, span_at
 from drawspec.scene import (
     Ellipse,
     Path,
@@ -84,6 +84,15 @@ def outline(box: Box, theme: Theme) -> tuple[Primitive, ...]:
         # The emitter reads the role's shape to decide the corner radius, so a
         # pill and a rect are the same primitive here.
         return (Rect(box.role, x=box.x, y=box.y, width=box.width, height=box.height),)
+    if shape == "subroutine":
+        return (
+            Rect(box.role, x=box.x, y=box.y, width=box.width, height=box.height),
+            *_subroutine_sides(box),
+        )
+    if shape == "parallelogram":
+        return (Polygon(box.role, points=_parallelogram(box)),)
+    if shape == "cylinder":
+        return _cylinder(box)
     if shape == "ellipse":
         return (
             Ellipse(
@@ -109,6 +118,61 @@ def outline(box: Box, theme: Theme) -> tuple[Primitive, ...]:
             ),
         )
     raise KeyError(f"no primitive for shape {shape!r}")
+
+
+def _subroutine_sides(box: Box, role: str | None = None) -> tuple[Path, Path]:
+    """The two inner verticals that make a box a `subroutine`."""
+    bottom = box.y + box.height
+    left, right = box.x + SUBROUTINE_INSET, box.x + box.width - SUBROUTINE_INSET
+    drawn = role or box.role
+    return (
+        Path(drawn, points=((left, box.y), (left, bottom))),
+        Path(drawn, points=((right, box.y), (right, bottom))),
+    )
+
+
+def _parallelogram(box: Box) -> tuple[tuple[float, float], ...]:
+    """A `parallelogram`'s corners, clockwise from top left, leaning right."""
+    slant = min(PARALLELOGRAM_SLANT, box.width / 2)
+    right, bottom = box.x + box.width, box.y + box.height
+    return ((box.x + slant, box.y), (right, box.y), (right - slant, bottom), (box.x, bottom))
+
+
+def _arc(
+    cx: float, cy: float, rx: float, ry: float, start: float, end: float
+) -> list[tuple[float, float]]:
+    """Points along an ellipse from angle `start` to `end` (radians, y down)."""
+    steps = 2 * _ROUND_SEGMENTS
+    return [
+        (
+            cx + rx * math.cos(start + (end - start) * step / steps),
+            cy + ry * math.sin(start + (end - start) * step / steps),
+        )
+        for step in range(steps + 1)
+    ]
+
+
+def _cylinder_silhouette(box: Box) -> list[tuple[float, float]]:
+    """A drum's outline: the lid's back rim, down one side, the base, up the other."""
+    cap = min(CYLINDER_CAP, box.height / 4)
+    half = box.width / 2
+    cx = box.x + half
+    top, bottom = box.y + cap, box.y + box.height - cap
+    return [
+        *_arc(cx, top, half, cap, math.pi, 2 * math.pi),
+        *_arc(cx, bottom, half, cap, 0.0, math.pi),
+    ]
+
+
+def _cylinder(box: Box) -> tuple[Primitive, ...]:
+    """A `cylinder`: its silhouette, then the front rim of its lid."""
+    cap = min(CYLINDER_CAP, box.height / 4)
+    half = box.width / 2
+    rim = _arc(box.x + half, box.y + cap, half, cap, math.pi, 0.0)
+    return (
+        Polygon(box.role, points=tuple(_cylinder_silhouette(box))),
+        Path(box.role, points=tuple(reversed(rim))),
+    )
 
 
 def text_runs(box: Box, theme: Theme, measurer: TextMeasurer) -> tuple[TextLine, ...]:
@@ -376,6 +440,16 @@ def removed_outline(box: Box, theme: Theme) -> tuple[Primitive, ...]:
     if shape == "diamond":
         middle_x, middle_y = left + width / 2, top + height / 2
         corners = [(middle_x, top), (right, middle_y), (middle_x, bottom), (left, middle_y)]
+    elif shape == "parallelogram":
+        corners = list(_parallelogram(box))
+    elif shape == "cylinder":
+        corners = _cylinder_silhouette(box)
+        cap = min(CYLINDER_CAP, height / 4)
+        rim = _arc(left + width / 2, top + cap, width / 2, cap, 0.0, math.pi)
+        return (
+            Path(REMOVED_ROLE, points=(*corners, corners[0])),
+            Path(REMOVED_ROLE, points=tuple(rim)),
+        )
     elif shape == "ellipse":
         cx, cy = left + width / 2, top + height / 2
         corners = [
@@ -419,7 +493,10 @@ def removed_outline(box: Box, theme: Theme) -> tuple[Primitive, ...]:
                 )
                 for step in range(quarter + 1)
             )
-    return (Path(REMOVED_ROLE, points=(*corners, corners[0])),)
+    trace = Path(REMOVED_ROLE, points=(*corners, corners[0]))
+    if shape == "subroutine":
+        return (trace, *_subroutine_sides(box, REMOVED_ROLE))
+    return (trace,)
 
 
 __all__ = [

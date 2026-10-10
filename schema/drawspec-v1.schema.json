@@ -750,6 +750,14 @@
             "$ref": "#/$defs/stage"
           },
           "minItems": 1
+        },
+        "unit": {
+          "type": "string",
+          "description": "What the stages' amounts count — `visitors`, `applications`, `£k` — written after each one. Only with amounts."
+        },
+        "values": {
+          "type": "boolean",
+          "description": "`false` leaves the amounts and shares out and writes the stage names alone. Defaults to true."
         }
       },
       "required": [
@@ -879,8 +887,15 @@
           "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "axes": {
-          "$ref": "#/$defs/axes",
+          "$ref": "#/$defs/axes-quadrant",
           "description": "The two named axes whose crossing makes the four quadrants."
+        },
+        "quadrants": {
+          "type": "array",
+          "description": "Exactly four names, one per quarter, written faint in its outer corner: top right first, then counter-clockwise — top left, bottom left, bottom right (Mermaid's order). An empty string leaves that quarter unnamed.",
+          "items": {
+            "type": "string"
+          }
         },
         "positions": {
           "type": "array",
@@ -1372,6 +1387,14 @@
             "type": "string"
           },
           "minItems": 1
+        },
+        "phases": {
+          "type": "array",
+          "description": "The stages the process passes through, in the order it runs — named in a band along the lanes' edge and divided by faint lines across every lane (a cross-functional flowchart's phases). Each phase lists its steps, and with `phases` given every step is in exactly one. A phase's steps are drawn after every step of the phases before it, so the phases never interleave. 2 to 6.",
+          "items": {
+            "$ref": "#/$defs/phase"
+          },
+          "minItems": 2
         }
       },
       "required": [
@@ -2797,6 +2820,24 @@
       ],
       "additionalProperties": false
     },
+    "axes-quadrant": {
+      "type": "object",
+      "properties": {
+        "horizontal": {
+          "$ref": "#/$defs/axis-quadrant",
+          "description": "The judgement across."
+        },
+        "vertical": {
+          "$ref": "#/$defs/axis-quadrant",
+          "description": "The judgement up."
+        }
+      },
+      "required": [
+        "horizontal",
+        "vertical"
+      ],
+      "additionalProperties": false
+    },
     "axis": {
       "type": "object",
       "properties": {
@@ -2818,7 +2859,7 @@
         },
         "categories": {
           "type": "array",
-          "description": "Names for the positions 1, 2, 3 … along this axis, instead of numbers. What a bar chart's horizontal axis usually is: the quarters, the service models, the teams.",
+          "description": "Names for the positions 1, 2, 3 … along this axis, instead of numbers. What a bar chart's horizontal axis usually is: the quarters, the service models, the teams. On a chart's vertical axis they make horizontal bars: every series a `bar`, each point `[amount, position]`, the first category the top row, names on the left.",
           "items": {
             "type": "string"
           }
@@ -2923,6 +2964,39 @@
       "required": [
         "min",
         "max"
+      ],
+      "additionalProperties": false
+    },
+    "axis-quadrant": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Required: an unlabelled axis cannot be read."
+        },
+        "unit": {
+          "type": "string",
+          "description": "What the scores are in, written after the label."
+        },
+        "min": {
+          "type": "number",
+          "description": "Where the axis starts. Omit to take it from the positions."
+        },
+        "max": {
+          "type": "number",
+          "description": "Where the axis ends. Omit to take it from the positions."
+        },
+        "ends": {
+          "type": "array",
+          "description": "Two words for the low and the high end — `Low` and `High`, `Rarely` and `Often` — written at the two ends of the axis, as on a `numberline`.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2
+        }
+      },
+      "required": [
+        "label"
       ],
       "additionalProperties": false
     },
@@ -3884,7 +3958,10 @@
             "decision",
             "terminal",
             "emphasis",
-            "note"
+            "note",
+            "io",
+            "subroutine",
+            "store"
           ]
         },
         "actor": {
@@ -4149,7 +4226,10 @@
             "terminal",
             "emphasis",
             "note",
-            "group"
+            "group",
+            "io",
+            "subroutine",
+            "store"
           ]
         },
         "actor": {
@@ -4265,6 +4345,28 @@
       "required": [
         "id",
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "phase": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "members": {
+          "type": "array",
+          "description": "The ids of the steps in this phase, in any order and in any lane. Every step is in one phase, so a step left out or listed twice is refused.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "text",
+        "members"
       ],
       "additionalProperties": false
     },
@@ -4668,6 +4770,11 @@
         "note": {
           "type": "string",
           "description": "A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead."
+        },
+        "amount": {
+          "type": "number",
+          "description": "On a `funnel` stage: how many reached it. Written under the name, with the share kept from the stage before; the taper stays the drawing's own, not to scale. Every stage or none, never more than the stage before.",
+          "exclusiveMinimum": 0
         }
       },
       "required": [
@@ -4728,6 +4835,10 @@
         "actor": {
           "type": "string",
           "description": "Who does it — free text, drawn as the row label's lead, so the names line up in a column. A task with an actor may not put a newline in `text`."
+        },
+        "done": {
+          "type": "number",
+          "description": "How much of the task is complete, 0 to 100: drawn as a solid band inside the bar from its start, MS Project's progress line. Not on a milestone."
         },
         "role": {
           "type": "string",

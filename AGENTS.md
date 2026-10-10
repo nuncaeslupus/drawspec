@@ -62,17 +62,17 @@ Pick by what the reader must **understand**, not by what it looks like.
 | How much, cell by cell: a heatmap, a risk or skills matrix | `matrix` + `scale` | `cells` whose `group` is a `scale` step, weakest first |
 | Levels where size means quantity or rank | `pyramid` | `levels` |
 | Scopes nested inside scopes | `rings` | `rings` |
-| What is lost between narrowing stages | `funnel` | `stages` |
-| A small number you already know | `chart` | `axes` + `series` |
-| Where items fall against two named judgements | `quadrant` | `axes` + `positions` |
+| What is lost between narrowing stages | `funnel` | `stages` (+ `amount` on every stage or none, never rising; top-level `unit`: each count and the share kept are written, the taper stays uniform) |
+| A small number you already know | `chart` | `axes` + `series` (`categories` on the vertical axis: horizontal bars, each point `[amount, position]`) |
+| Where items fall against two named judgements | `quadrant` | `axes` (+ `ends`: low and high words) + `positions` (+ 4 `quadrants`, top right first, counter-clockwise) |
 | Where items fall by two measured values | `scatter` | `axes` + `positions` |
 | The shape of a change: a hype cycle, a burndown | `curve` | `axes` + `curves` |
 | What is in a directory | `files` | `entries` (+ `root`, `sort`, `style`) |
 | The conditions something is in, and the events that move it | `states` | `states` + `initial` + `transitions` (`event`/`guard`/`action`; + `final`, `groups`); every state reachable |
 | Who says what to whom, in order, between a fixed set of participants | `sequence` | `participants` + `messages` (+ `fragments` `loop`/`alt`/`opt`/`par`, `groups`, `note`); a `weak` reply to a call draws the activation bar |
-| A process whose hand-offs between parties are the point | `lanes` | a `flow`'s `nodes` + `edges`, `actor` required on each (+ `lanes`, their order); no `groups`, `bands`, `centre` |
+| A process whose hand-offs between parties are the point | `lanes` | a `flow`'s `nodes` + `edges`, `actor` required on each (+ `lanes`, their order; + `phases`: `[{text, members}]` in run order, every step in one); no `groups`, `bands`, `centre` |
 | What a data model, schema or class holds, and how its parts relate | `entities` | `entities` (`fields` with `type`/`key`, `operations`, `tag`) + `edges` (`from_field`/`to_field` land on a row; `from_end`/`to_end`: `one`, `zero-or-many`, …) |
-| What runs when in a plan, one row per task: overlap, phases, what waits on what | `gantt` | `axis` (numbers in a named unit, or `categories`; no dates) + `tasks` (`start`/`end`, or `at` for a milestone; `strong` on the critical path) (+ `groups` of consecutive tasks, `edges` finish-to-start, `marks`) |
+| What runs when in a plan, one row per task: overlap, phases, what waits on what | `gantt` | `axis` (numbers in a named unit, or `categories`; no dates) + `tasks` (`start`/`end`, or `at` for a milestone; `strong` on the critical path; `done` 0–100 fills the bar) (+ `groups` of consecutive tasks, `edges` finish-to-start, `marks`) |
 | Work sorted into columns, not joined: a kanban board, a retrospective, a story map | `board` | `columns` (a `limit` is counted for you) + `cards`, stacked in the order written (+ `rows` as slices, `cut` under the first release); no `edges` |
 | One observed problem and the causes investigated, by category: a root-cause review | `fishbone` | `effect` + 2–6 `categories`, each with 1–5 `causes` (leaves: no third level; `emphasis` = confirmed root cause, `note` = ruled out); no `edges` |
 | What two to four sets share, and what each holds alone | `venn` | `sets` (2 or 3 equal circles; 4 equal ellipses, region text ≤ 12 characters; no sizes) + `regions`, each named by `in`: exactly the set ids it is in; a region not listed is empty |
@@ -103,8 +103,8 @@ Past it a document is refused even though it would fit: split it into an **overv
 A role is semantic. The theme turns it into a shape and a weight — you never
 name either.
 
-**Nodes** — `start`, `step` (default), `decision`, `terminal`, `emphasis`,
-`note`, `group`.
+**Nodes** — `start`, `step` (default), `decision`, `terminal`, `emphasis`, `note`, `group`;
+`io` (data in/out), `subroutine` (defined elsewhere), `store` (database, queue) in `flow`/`tree`/`lanes`.
 **Edges** — `flow` (default), `link`, `exchange`, `weak`, `owns`, `strong`,
 `aside`; `inherits` and `realizes` (hollow triangle) in `entities` only.
 

@@ -61,6 +61,11 @@ class Rect(Primitive):
     """The colour that pattern is drawn in, when the theme declares one. Resolved
     from the theme by whoever chose the fill — never a value an author wrote."""
 
+    fill_opacity: float = field(default=1.0, repr=False)
+    """How much of the fill shows, as `Polygon.fill_opacity`: a container's wash.
+    Kept out of the repr the id digest reads, so no drawing without a wash
+    changed its ids."""
+
     """One of the theme's fill patterns, when the *geometry* decides its own fill.
 
     Empty means "ask the role", which is every box in every graph. A chart mark
@@ -180,6 +185,11 @@ class TextRun(Primitive):
     paint: str = ""
     """The colour the letters are drawn in, when the theme chose one for this run —
     a `files` label's letters on its coloured tag. Empty is the page's ink."""
+
+    opacity: float = field(default=1.0, repr=False)
+    """How much of the ink the letters take, below 1 for words that are ground
+    rather than content — a quadrant's quarter names. Still the page's ink, so a
+    dark page keeps them legible; never a colour."""
 
     size: float = 0.0
     """A size of its own, for lettering that is part of a picture rather than text

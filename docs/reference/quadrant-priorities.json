@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "kind": "quadrant",
+  "title": "This week's requests, sorted",
+  "description": "An urgent-important grid for a small team's inbox. The quarter names say what to do with what lands there; the axis ends say which way is more.",
+  "axes": {
+    "horizontal": { "label": "How urgent", "ends": ["Can wait", "Today"] },
+    "vertical": { "label": "How important", "ends": ["Minor", "Matters"] }
+  },
+  "quadrants": ["Do now", "Plan it", "Drop it", "Hand it on"],
+  "positions": [
+    { "text": "Payroll file rejected", "across": 0.9, "up": 0.85, "role": "emphasis" },
+    { "text": "Next year's budget", "across": 0.2, "up": 0.8 },
+    { "text": "Printer jam on floor 2", "across": 0.75, "up": 0.2 },
+    { "text": "Rename the shared drive", "across": 0.15, "up": 0.15 },
+    { "text": "Visitor badges", "across": 0.65, "up": 0.35 },
+    { "text": "Team training plan", "across": 0.35, "up": 0.6 }
+  ]
+}

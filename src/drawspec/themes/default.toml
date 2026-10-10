@@ -123,6 +123,15 @@ gap = 0.3
 # page and on a dark one.
 ramp = [0.08, 0.16, 0.24, 0.32, 0.4]
 
+[frames]
+# A container — a group's frame, a composite state, a sequence group — is washed
+# with this much of the page's ink (0 for outlines only). It is the ink at part
+# opacity, never a colour, so it follows a dark page and prints as a light grey;
+# a frame inside a frame lays its wash over its parent's, one step darker per
+# level, for `levels` levels.
+tone = 0.05
+levels = 3
+
 [states]
 # A state machine's pseudo-states: the filled dot it starts from, and the ringed
 # dot each final state leads to. Marks with no words, so sized here: the dot
@@ -144,6 +153,12 @@ lifeline = "aside"
 # crossing it — the hand-offs — are what the eye follows.
 orientation = "auto"
 separator = "link"
+# Every second lane is washed with this much of the page's ink, so a row of five
+# or six lanes reads as bands rather than as lines to count. 0 for none.
+stripe = 0.04
+# The line between two phases runs across every lane, so it is the lighter
+# dashed role: the lanes stay the grid's first axis, the phases its second.
+phase = "aside"
 
 [entities]
 # How an entity diagram draws a relation's cardinality — the author says `one`
@@ -158,6 +173,9 @@ notation = "crowsfoot"
 # dashed, so it reads as a reference and not as a task.
 milestone = "diamond"
 marks = "weak"
+# A task's `done` is a solid band through its bar, in the page's ink at this
+# strength (0 to 1), so it reads on a dark page and in greyscale.
+done = 0.7
 
 [board]
 # A story map's slices are told apart by a line across every column in an edge
@@ -287,6 +305,34 @@ fill = "none"
 fill_pattern = "none"
 dash = "none"
 stroke_width = 2.5
+
+# A flowchart's three standard symbols beyond the box and the diamond, each told
+# apart by its outline alone: data coming in or going out is a parallelogram, a
+# process defined elsewhere is a box with doubled sides, and where data rests (a
+# database, a queue, a file) is a drum.
+[role.io]
+shape = "parallelogram"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "none"
+stroke_width = 1.5
+
+[role.subroutine]
+shape = "subroutine"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "none"
+stroke_width = 1.5
+
+[role.store]
+shape = "cylinder"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "none"
+stroke_width = 1.5
 
 # An aside is set beside the argument, not boxed off from it: a note is words on
 # the page, and the box drawspec used to draw round them was a border with

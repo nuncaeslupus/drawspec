@@ -38,6 +38,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
+from decimal import Decimal
 from itertools import pairwise
 from typing import Final
 
@@ -175,6 +176,8 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     if not document.series:
         raise DrawspecError("a chart needs at least one series")
     horizontal, vertical = document.axes
+    if vertical.categories:
+        return _across_bars(document, theme, measurer)
 
     width = document.width if document.width else theme.canvas.width
     height = document.height if document.height else width * CHART_ASPECT
@@ -871,26 +874,32 @@ def _band(across: Scale, values: list[float], plot_left: float, plot_right: floa
 
 
 def _point_decimals(series: tuple[Series, ...]) -> int:
-    """The fewest decimals that still tell the chart's own values apart.
+    """The decimals the author wrote, the most any of these values carries.
 
-    A point label is there to say *which* value this point is, and rounding it to
-    the axis's step defeats that exactly when the points are close together —
-    which is when a reader most wants the number. The reference chart is the
-    case: four points at 7.2, 6.8, 7.4 and 6.9 all rounded to `7`, so the drawing
-    showed four labels reading `7` at four visibly different heights, and the
-    obvious reading is that the chart is broken.
+    A point or bar label says *which* value this is, so it prints the value as
+    written: `8.4` prints `8.4`, never `8`. It used to be the fewest decimals that
+    kept the chart's values apart, which is right for 7.2 against 6.8 and wrong
+    for 8.4 beside 12: no other value was near it, so it lost its decimal and the
+    label claimed a number the data does not hold. Rounding the axis step was the
+    rule before that, and failed the other way (four points near 7 all read `7`).
 
-    So the precision is a property of the data rather than of the axis: the
-    fewest decimals at which no two different values print the same. Capped,
-    because past three the label is longer than the gap it has to sit in and the
-    points were never that far apart to begin with.
+    Uniform across the drawing: every label in the set takes the most decimals
+    any one value was written with, so `12.0` sits beside `8.4` and a column of
+    numbers lines up the way a table's does. Capped, because past three the label
+    is longer than the gap it has to sit in.
     """
-    values = sorted({value for item in series for _, value in item.data})
-    for decimals in range(MAXIMUM_DECIMALS + 1):
-        printed = {f"{value:.{decimals}f}" for value in values}
-        if len(printed) == len(values):
-            return decimals
-    return MAXIMUM_DECIMALS
+    written = (_written_decimals(value) for item in series for _, value in item.data)
+    return min(max(written, default=0), MAXIMUM_DECIMALS)
+
+
+def _written_decimals(value: float) -> int:
+    """How many decimals `value` was written with: `8.4` one, `12` and `12.0` none.
+
+    Read from the shortest text that round-trips the float, which is what the
+    JSON said, less any trailing zeros JSON could not have kept anyway.
+    """
+    exponent = Decimal(repr(float(value))).normalize().as_tuple().exponent
+    return max(0, -exponent) if isinstance(exponent, int) else 0
 
 
 def _point_labels(
@@ -1070,8 +1079,11 @@ def _quadrant(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
     across = _quadrant_scale(horizontal, [item.across for item in positions])
     up = _quadrant_scale(vertical, [item.up for item in positions])
 
-    left = line.height + gap
-    bottom = _caption_band(line, gap)
+    # An axis's two end words take a row of their own between the axis and its
+    # caption: under the horizontal axis, and — turned like the caption — beside
+    # the vertical one.
+    left = line.height + gap + (line.height + gap if vertical.ends else 0.0)
+    bottom = _caption_band(line, gap) + (line.height + gap if horizontal.ends else 0.0)
     top = line.height + gap
     right = line.height + gap
     plot_left, plot_right = left, width - right
@@ -1081,6 +1093,8 @@ def _quadrant(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
             f"a quadrant {width:.0f} x {height:.0f} has no room for its plot once the "
             f"axis labels are measured. Give it more width or height."
         )
+    _refuse_crowded_ends(horizontal, plot_right - plot_left, theme, measurer)
+    _refuse_crowded_ends(vertical, plot_bottom - plot_top, theme, measurer)
 
     across = Scale(across.low, across.high, plot_left, plot_right)
     up = Scale(up.low, up.high, plot_bottom, plot_top)
@@ -1105,14 +1119,35 @@ def _quadrant(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
         ),
     ]
 
+    primitives.extend(
+        _axis_ends(
+            horizontal, vertical, plot_left, plot_right, plot_top, plot_bottom, theme, measurer
+        )
+    )
+
     dividers: list[tuple[tuple[float, float], ...]] = [
         ((plot_left, middle_y), (plot_right, middle_y)),
         ((middle_x, plot_top), (middle_x, plot_bottom)),
     ]
     radius = theme.edge.head_length * MARKER_FRACTION
-    placed: list[tuple[float, float, float, float]] = []
+    names = _quadrant_names(
+        document.quadrants,
+        (plot_left, plot_top, plot_right, plot_bottom),
+        theme,
+        measurer,
+    )
+    placed: list[tuple[float, float, float, float]] = [box for box, _ in names]
+    primitives.extend(run for _, run in names)
     for item in positions:
         x, y = across.to_pixels(item.across), up.to_pixels(item.up)
+        dot = (x - radius, y - radius, x + radius, y + radius)
+        for box, run in names:
+            if _overlaps(_grown(box, LABEL_DAYLIGHT), dot):
+                raise FitError(
+                    f"the point {item.text[:32]!r} lands on the quarter name "
+                    f"{run.text!r}, written in that quarter's outer corner. Leave the "
+                    f"corner its room — widen the axis's `min`/`max` — or shorten the name."
+                )
         primitives.append(Ellipse(item.role, cx=x, cy=y, rx=radius, ry=radius))
         label = _place_label(
             item,
@@ -1144,6 +1179,142 @@ def _quadrant(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
         title=document.title,
         description=document.description,
     )
+
+
+#: How much of the ink a quadrant's quarter names take. They name the ground the
+#: points stand on, so they sit behind them: legible, and plainly not a label.
+QUARTER_NAME_OPACITY: Final = 0.55
+
+
+def _quadrant_names(
+    names: Sequence[str],
+    plot: tuple[float, float, float, float],
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> list[tuple[tuple[float, float, float, float], TextRun]]:
+    """Each quarter's name, faint, in the quarter's outer corner.
+
+    Top right first and counter-clockwise, as Mermaid numbers them: so the
+    first name is anchored to the plot's top-right corner, the second to its
+    top-left, the third bottom-left, the fourth bottom-right. The outer corner
+    is the one furthest from the midlines, where the points are least likely
+    to be — and it keeps each name flush with an edge a reader's eye is already on.
+
+    A name wider than half its quarter would reach across the midline into the
+    next one, which is refused rather than wrapped: these are two or three words.
+    """
+    left, top, right, bottom = plot
+    gap = theme.box.padding.top
+    size = theme.scale["body"]
+    extents = measurer.measure("0", theme.font.default, size)
+    room = (right - left) / 2 - 2 * gap
+    corners = (
+        (right - gap, top + gap + extents.ascent, "end"),
+        (left + gap, top + gap + extents.ascent, "start"),
+        (left + gap, bottom - gap - extents.descent, "start"),
+        (right - gap, bottom - gap - extents.descent, "end"),
+    )
+    placed: list[tuple[tuple[float, float, float, float], TextRun]] = []
+    for name, (x, y, anchor) in zip(names, corners, strict=False):
+        if not name:
+            continue
+        measured = measurer.measure(name, theme.font.default, size)
+        if measured.width > room:
+            raise FitError(
+                f"the quarter name {name!r} is wider than half the plot, so it would "
+                f"run into the next quarter. Shorten it, or give the diagram more width."
+            )
+        start = x if anchor == "start" else x - measured.width
+        box = (start, y - extents.ascent, start + measured.width, y + extents.descent)
+        placed.append(
+            (
+                box,
+                TextRun(
+                    FURNITURE_ROLE,
+                    x=x,
+                    y=y,
+                    text=name,
+                    level="body",
+                    font=theme.font.default,
+                    anchor=anchor,
+                    opacity=QUARTER_NAME_OPACITY,
+                ),
+            )
+        )
+    return placed
+
+
+def _axis_ends(
+    horizontal: Axis,
+    vertical: Axis,
+    left: float,
+    right: float,
+    top: float,
+    bottom: float,
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> tuple[Primitive, ...]:
+    """The two end words of each axis, at its two ends.
+
+    Under the horizontal axis the low word starts at the left end and the high
+    one finishes at the right. Beside the vertical axis they are turned like its
+    caption, reading upwards: the low word starting at the bottom, the high one
+    finishing at the top. Both sit in the row the gutters reserved for them,
+    between the axis and its caption.
+    """
+    size = theme.scale["label"]
+    gap = theme.box.padding.top
+    line = measurer.measure("0", theme.font.default, size)
+    runs: list[Primitive] = []
+    if len(horizontal.ends) == 2:
+        y = bottom + gap + line.ascent
+        for text, x, anchor in (
+            (horizontal.ends[0], left, "start"),
+            (horizontal.ends[1], right, "end"),
+        ):
+            runs.append(
+                TextRun(
+                    FURNITURE_ROLE,
+                    x=x,
+                    y=y,
+                    text=text,
+                    level="label",
+                    font=theme.font.default,
+                    anchor=anchor,
+                )
+            )
+    if len(vertical.ends) == 2:
+        x = left - gap - line.descent
+        for text, y, anchor in (
+            (vertical.ends[0], bottom, "start"),
+            (vertical.ends[1], top, "end"),
+        ):
+            runs.append(
+                TextRun(
+                    FURNITURE_ROLE,
+                    x=x,
+                    y=y,
+                    text=text,
+                    level="label",
+                    font=theme.font.default,
+                    anchor=anchor,
+                    rotate=-90.0,
+                )
+            )
+    return tuple(runs)
+
+
+def _refuse_crowded_ends(axis: Axis, length: float, theme: Theme, measurer: TextMeasurer) -> None:
+    """Two end words that would meet in the middle of their axis are refused."""
+    if len(axis.ends) != 2:
+        return
+    size = theme.scale["label"]
+    total = sum(measurer.measure(text, theme.font.default, size).width for text in axis.ends)
+    if total + theme.box.padding.top * 2 > length:
+        raise FitError(
+            f"the ends {list(axis.ends)!r} of the axis {axis.label!r} are wider together "
+            f"than the axis is long. Shorten them, or give the diagram more room."
+        )
 
 
 def _quadrant_scale(axis: Axis, values: list[float]) -> Scale:
@@ -1788,3 +1959,237 @@ def _smooth(points: list[tuple[float, float]]) -> tuple[tuple[float, float], ...
                 )
             )
     return tuple(sampled)
+
+
+# ---------------------------------------------------------------------------
+# chart, horizontal bars
+# ---------------------------------------------------------------------------
+
+#: The most of the canvas width the category names on the left may take. A
+#: horizontal bar chart exists for names too long to sit under a column, so they
+#: get a real share — but the bars are the point, and past this they wrap.
+NAME_SHARE: Final = 0.36
+
+
+def _across_bars(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
+    """A bar chart lying on its side: `categories` on the vertical axis.
+
+    Each point is `[amount, position]` — the amount along the horizontal axis,
+    the position the category it belongs to, 1 for the first. The categories
+    run down the page in the order written, because that is the order a reader
+    reads a list in: an *ordered* bar chart puts its first entry at the top.
+
+    The names sit to the left of the axis, right-aligned against it and wrapped
+    to at most `NAME_SHARE` of the width — the long name is why anyone turns a
+    bar chart on its side. Each bar grows right from zero, and its number, when
+    `values` is on, is written past its end, in a gutter reserved for the
+    widest one so that no number is ever dropped for want of room.
+
+    The rest is the upright chart's furniture with the axes' jobs exchanged:
+    numbered ticks along the bottom, the amount's label and unit under them, the
+    category axis's label rotated at the far left, the key under everything.
+    """
+    horizontal, vertical = document.axes
+    width = document.width if document.width else theme.canvas.width
+    height = document.height if document.height else width * CHART_ASPECT
+
+    size = theme.scale["label"]
+    gap = theme.box.padding.top
+    tick = theme.edge.head_length
+    line = measurer.measure("0", theme.font.default, size)
+    count = len(vertical.categories)
+
+    # The same series with each point turned round to (position, amount), so the
+    # piling arithmetic the upright chart uses runs unchanged.
+    turned = tuple(
+        Series(item.name, tuple((p, a) for a, p in item.data), item.role, item.mark, item.stack)
+        for item in document.series
+    )
+    amounts = _scale_for(horizontal, _stacked_heights(turned), include_zero=True, headroom=True)
+    ticks = _ticks(amounts.low, amounts.high)
+
+    key = entries_for([(item.name, item.role, True) for item in document.series], theme)
+    legend = height_of(key, theme, measurer, width)
+
+    decimals = _point_decimals(turned)
+    unstacked = [item for item in document.series if not item.stack]
+    widest_value = max(
+        (
+            measurer.measure(_printed(a, decimals), theme.font.default, size).width
+            for item in unstacked
+            for a, _ in item.data
+        ),
+        default=0.0,
+    )
+    names = []
+    for name in vertical.categories:
+        try:
+            names.append(wrap(name, width * NAME_SHARE, measurer, theme=theme, level="label"))
+        except FitError as error:
+            raise FitError(
+                f"the category {name!r} has a word wider than the {width * NAME_SHARE:.0f} "
+                f"units the names may take. Shorten it, or give the chart more width."
+            ) from error
+
+    left = line.height + gap + _block_widest(names) + gap + tick
+    right = max(_widest(ticks, theme, measurer, size) / 2, line.height)
+    if document.values and widest_value:
+        right = max(right, gap + widest_value + line.height / 2)
+    top = line.height
+    bottom = tick + gap + line.height + _caption_band(line, gap) + legend
+
+    plot_left, plot_right = left, width - right
+    plot_top, plot_bottom = top, height - bottom
+    if plot_right - plot_left <= 0 or plot_bottom - plot_top <= 0:
+        raise FitError(
+            f"a chart {width:.0f} x {height:.0f} has no room left for the bars once the "
+            f"category names, ticks and axis labels are measured. Give it more width or "
+            f"height, or shorten the names."
+        )
+    row = (plot_bottom - plot_top) / count
+    for name, block in zip(vertical.categories, names, strict=True):
+        if block.height > row:
+            raise FitError(
+                f"the category {name!r} wraps to {len(block)} lines, taller than the "
+                f"{row:.0f} units each of the {count} rows has. Shorten it, give the chart "
+                f"more height, or use fewer categories."
+            )
+
+    across = Scale(amounts.low, amounts.high, plot_left, plot_right)
+    zero = across.to_pixels(min(max(0.0, amounts.low), amounts.high))
+
+    def middle(position: float) -> float:
+        return plot_top + (position - 0.5) * row
+
+    fills = {id(item): theme.mark.fill_for(index) for index, item in enumerate(document.series)}
+    inks = {id(item): theme.mark.colour_for(index) for index, item in enumerate(document.series)}
+    columns = _columns(list(document.series))
+    usable = row * (1.0 - theme.mark.gap)
+    thickness = usable / max(len(columns), 1)
+
+    bars: list[Primitive] = []
+    numbers: list[tuple[Series, float, tuple[float, float, float, float]]] = []
+    reached: dict[tuple[str, float], float] = {}
+    for item in document.series:
+        slot = columns.index(item.stack or item.name)
+        for amount, position in item.data:
+            upper = middle(position) - usable / 2 + slot * thickness
+            lower = upper + thickness
+            start = reached.get((item.stack, position), zero) if item.stack else zero
+            end = start + across.to_pixels(amount) - zero
+            if item.stack:
+                reached[(item.stack, position)] = end
+            low, high = sorted((start, end))
+            bars.append(
+                Polygon(
+                    item.role,
+                    points=((low, upper), (high, upper), (high, lower), (low, lower)),
+                    fill=fills[id(item)],
+                    fill_colour=inks[id(item)],
+                )
+            )
+            numbers.append((item, amount, (low, upper, high, lower)))
+
+    primitives: list[Primitive] = [*bars, *_axes(plot_left, plot_right, plot_top, plot_bottom)]
+    for value, _ in ticks:
+        x = across.to_pixels(value)
+        primitives.append(Path(AXIS_ROLE, points=((x, plot_bottom), (x, plot_bottom + tick))))
+    for index in range(count):
+        y = middle(index + 1)
+        primitives.append(Path(AXIS_ROLE, points=((plot_left - tick, y), (plot_left, y))))
+
+    baseline = plot_bottom + tick + gap + line.ascent
+    for value, text in ticks:
+        primitives.append(
+            TextRun(
+                FURNITURE_ROLE,
+                x=across.to_pixels(value),
+                y=baseline,
+                text=text,
+                level="label",
+                font=theme.font.default,
+                anchor="middle",
+            )
+        )
+    names_right = plot_left - tick - gap
+    for index, block in enumerate(names):
+        top_of = middle(index + 1) - block.height / 2
+        for number, entry in enumerate(block):
+            primitives.append(
+                TextRun(
+                    FURNITURE_ROLE,
+                    x=names_right,
+                    y=top_of + block.baseline(number),
+                    text=entry.text,
+                    level="label",
+                    font=theme.font.default,
+                    anchor="end",
+                )
+            )
+    primitives.extend(
+        _axis_labels(
+            horizontal,
+            vertical,
+            plot_left,
+            plot_right,
+            plot_top,
+            plot_bottom,
+            height - legend,
+            theme,
+            measurer,
+            gap,
+        )
+    )
+    primitives.extend(primitives_for(key, theme, measurer, left, height - legend, width - left))
+    if document.values:
+        primitives.extend(_across_bar_labels(numbers, theme, measurer, decimals))
+
+    return Scene(
+        width=width,
+        height=height,
+        primitives=tuple(primitives),
+        title=document.title,
+        description=document.description,
+    )
+
+
+def _across_bar_labels(
+    numbers: list[tuple[Series, float, tuple[float, float, float, float]]],
+    theme: Theme,
+    measurer: TextMeasurer,
+    decimals: int,
+) -> tuple[Primitive, ...]:
+    """Each bar's number: past its end when it stands alone, inside it when stacked.
+
+    The upright chart's rule turned on its side. A bar with nothing after it
+    has open ground past its end, and the right gutter was sized for the widest
+    of those numbers. A segment of a pile has the next segment there, so its
+    number goes inside — and only if every segment can hold its own; all or none.
+    """
+    size = theme.scale["label"]
+    gap = theme.edge.clearance
+    labels: list[Primitive] = []
+    for series, amount, (low, upper, high, lower) in numbers:
+        text = _printed(amount, decimals)
+        extents = measurer.measure(text, theme.font.default, size)
+        if extents.height > lower - upper:
+            return ()  # the bars are thinner than a line of text
+        y = (upper + lower) / 2 + (extents.ascent - extents.descent) / 2
+        if series.stack:
+            if extents.width + 2 * gap > high - low:
+                return ()
+            x, anchor = (low + high) / 2, "middle"
+        else:
+            x, anchor = high + gap, "start"
+        labels.append(
+            TextRun(
+                series.role,
+                x=x,
+                y=y,
+                text=text,
+                level="label",
+                font=theme.font.default,
+                anchor=anchor,
+            )
+        )
+    return tuple(labels)
