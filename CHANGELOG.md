@@ -189,7 +189,6 @@ against it would stop working. Everything below is about the *package*.
   role. Budget: 15 nodes, 16 edges, 6 lanes (counted from the actors when
   `lanes` is omitted). References: `lanes-disclosure`, `lanes-tender`,
   `lanes-expense`, `lanes-onboarding`.
-
 - **`sequence`, the seventeenth kind** — who says what to whom, in order:
   `participants` drawn left to right as heads over dashed lifelines, and
   `messages` top to bottom, each an arrow with its label above it. Message roles
@@ -213,7 +212,6 @@ against it would stop working. Everything below is about the *package*.
   width) and `lifeline` (the edge role it is drawn in, `aside` by default).
   Budget: 8 participants, 30 messages. References: `sequence-dns`,
   `sequence-upload`, `sequence-drain`, `sequence-checkout`.
-
 - **`states`, the sixteenth kind** — a state machine: `states`, a required
   `initial`, optional `final`, and `transitions` whose label drawspec composes
   from `event`, `guard` and `action` (one part per line: `event`, `[guard]`,
@@ -232,7 +230,6 @@ against it would stop working. Everything below is about the *package*.
   transition roles `flow`/`strong`/`weak`. Budget: 14 states, 24 transitions.
   References: `states-process`, `states-breaker`, `states-invoice`,
   `states-ticket`.
-
 - **`status` on `flow` and `tree`** nodes and edges — `added`, `changed`,
   `removed`, the `files` vocabulary — so a proposed change is one drawing of the
   target state rather than a before and an after. A marked box carries a
@@ -283,40 +280,6 @@ against it would stop working. Everything below is about the *package*.
 - **Gallery renders on every pull request.** CI's `gallery` job renders
   `docs/reference/` with the branch's code and uploads the SVGs as the
   `gallery-pr-<number>` workflow artifact, so reviewers can see the drawings.
-
-### Fixed
-
-- **A `chart` of bars with no horizontal `min`/`max`** drew the first and last
-  bar half outside the axes, because the range stopped exactly at the first and
-  last x (1 … N for `categories`). An unpinned side now gets half a bar band of
-  room; a side the author pins is unchanged, so no reference drawing moves.
-- **A self-loop in a `flow` or a `tree`** (an edge from a box to itself) left
-  the box's side and re-entered through the middle of its top, where its
-  incoming arrow lands, so the two heads met and the loop read as a branch of
-  the edge above. It now uses the `states` geometry: out and back on the same
-  side, across the reading direction, its label outside it and its room
-  reserved in the layout so no neighbour sits on it. A loop on a group and a
-  third loop on one box are refused at the edge's `to`. Reference: `flow-retry`.
-- An edge from a group's frame no longer starts on the line an edge from a box
-  inside it leaves by, which drew the two as one edge from that box; and an
-  edge arriving at the far side of a frame, out past every box, is routed
-  instead of refused with "no orthogonal route".
-
-### Changed
-
-- A `files` status tag draws removal with a true minus sign, `− removed`, as
-  the new graph marks do; the plain-text tree keeps the ASCII `-`.
-- **`AGENTS.md` routes by purpose.** It opens with *should this be a diagram at
-  all?* (a list is bullets, attributes are a table, one shape is a sentence),
-  chooses the kind from what the reader must understand — including `rise` for
-  a ranking or ascent — and states the readability budget, the emphasis cap and
-  the overview-plus-detail split. The timeline worked example moved out to keep
-  the page under its 200-line limit; the README still carries it.
-
-- `docs/reference/scatter-pareto.json` emphasises two initiatives, not three:
-  *Add SSO* had the same impact as *Cache the slow query* at four times the
-  cost, so it was not a pick.
-
 - **`files`, the fifteenth kind** — a directory listing drawn from flat paths
   (`src/app/main.py`); the folders a path passes through are inferred, so there
   is no nesting depth to get wrong. A trailing `/` marks an empty folder, a last
@@ -336,7 +299,6 @@ against it would stop working. Everything below is about the *package*.
   solid tag), `label_ink` (its letters' colour) and `align` (`left`, the
   default, or `centre`). The `accent` theme colours them — white `PDF` on red;
   the default stays monochrome.
-
 - **`rise` on `columns` and `timeline`** — the series ascends, each column drawn taller than
   the one before it on a common baseline, for a scale whose order is the
   content. Two corpus originals drew one by hand and both said so in their own
@@ -372,6 +334,38 @@ against it would stop working. Everything below is about the *package*.
   apart by and the greyscale invariant is untouched. A box has one lead, so a
   node naming an actor may not also write its own; that is refused by pointer.
 - `CONTRIBUTING.md` and this changelog.
+
+### Fixed
+
+- **A `chart` of bars with no horizontal `min`/`max`** drew the first and last
+  bar half outside the axes, because the range stopped exactly at the first and
+  last x (1 … N for `categories`). An unpinned side now gets half a bar band of
+  room; a side the author pins is unchanged, so no reference drawing moves.
+- **A self-loop in a `flow` or a `tree`** (an edge from a box to itself) left
+  the box's side and re-entered through the middle of its top, where its
+  incoming arrow lands, so the two heads met and the loop read as a branch of
+  the edge above. It now uses the `states` geometry: out and back on the same
+  side, across the reading direction, its label outside it and its room
+  reserved in the layout so no neighbour sits on it. A loop on a group and a
+  third loop on one box are refused at the edge's `to`. Reference: `flow-retry`.
+- An edge from a group's frame no longer starts on the line an edge from a box
+  inside it leaves by, which drew the two as one edge from that box; and an
+  edge arriving at the far side of a frame, out past every box, is routed
+  instead of refused with "no orthogonal route".
+
+### Changed
+
+- A `files` status tag draws removal with a true minus sign, `− removed`, as
+  the new graph marks do; the plain-text tree keeps the ASCII `-`.
+- **`AGENTS.md` routes by purpose.** It opens with *should this be a diagram at
+  all?* (a list is bullets, attributes are a table, one shape is a sentence),
+  chooses the kind from what the reader must understand — including `rise` for
+  a ranking or ascent — and states the readability budget, the emphasis cap and
+  the overview-plus-detail split. The timeline worked example moved out to keep
+  the page under its 200-line limit; the README still carries it.
+- `docs/reference/scatter-pareto.json` emphasises two initiatives, not three:
+  *Add SSO* had the same impact as *Cache the slow query* at four times the
+  cost, so it was not a pick.
 
 ## 0.1.0 — unreleased
 

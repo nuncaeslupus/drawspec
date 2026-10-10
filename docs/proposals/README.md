@@ -61,7 +61,7 @@ self-loop geometry that `flow` then either adopts or refuses.
   the gallery and looked at; `make docs` and `make schema` regenerated; a row in
   `AGENTS.md`'s kind table (a test enforces it); every refusal in the proposal as a test
   with its JSON pointer; `collisions.py` and `clipping.py` clean on the references.
-* **The README's count** ("fifteen kinds") and the `kind` enum description change with
+* **The README's count** (now "twenty-six kinds") and the `kind` enum description change with
   every new kind.
 
 ## Decisions for the owner
@@ -90,4 +90,6 @@ self-loop geometry that `flow` then either adopts or refuses.
    stage. Built.*
 7. **Count caps.** The proposals give explicit maxima (8 participants, 16 tasks, …)
    beside `FitError`. drawspec has so far refused by fit, not by count; confirm hard caps
-   are wanted, or keep fit as the only limit.
+   are wanted, or keep fit as the only limit. — *Decided: caps are wanted, and they live
+   in each kind's readability budget (`docs/format.md`), refused before the fit limit;
+   every new kind got an entry.*

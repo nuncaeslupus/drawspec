@@ -1,6 +1,6 @@
 ---
 name: drawspec
-description: Draw an explanatory diagram (a process, hierarchy, loop, timeline, comparison, matrix, pyramid, funnel, small chart, quadrant, scatter, curve or directory tree) as clean SVG by writing a declarative drawspec JSON document instead of SVG by hand. Use when a document, README, design note or answer needs a diagram, or when asked to "draw", "diagram" or "chart" something for a page. Do NOT use for exploring data (use a plotting library), for anything whose point is where things are (a map, a floor plan), for a list or a table that prose would carry, or to edit SVG directly.
+description: Draw an explanatory diagram (a process, swimlanes, hierarchy, loop, state machine, sequence diagram, ER or class model, gantt plan, kanban board, fishbone, venn, journey map, timeline, comparison, matrix or heatmap, pyramid, funnel, small chart, quadrant, scatter, curve, treemap, sankey or directory tree) as clean SVG by writing a declarative drawspec JSON document instead of SVG by hand. Use when a document, README, design note or answer needs a diagram, or when asked to "draw", "diagram" or "chart" something for a page. Do NOT use for exploring data (use a plotting library), for anything whose point is where things are (a map, a floor plan), for a list or a table that prose would carry, or to edit SVG directly.
 ---
 
 # drawspec
