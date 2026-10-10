@@ -449,6 +449,40 @@ understanding before you change anything else:
   `[canvas] min_legible_size` nothing is drawn at all: it is a refusal, with a
   message, rather than text nobody can read.
 
+### The greys the default theme adds, and how to turn each off
+
+The default theme is ink only, with three faint greys that carry order or
+grouping the document already states. Each is the page's ink at part opacity
+(`currentColor` with a `fill-opacity`), never a colour, so it follows a dark page
+and prints as grey. **All three are on by default and each is optional**: one line
+in your theme turns it off.
+
+| What is grey | Key and default | Turn it off |
+|---|---|---|
+| A group's frame, a composite state, a sequence group (deeper nesting darker) | `[frames] tone = 0.05` | `[frames]` `tone = 0` (or `false`) |
+| Every second lane of a swimlane diagram | `[lanes] stripe = 0.04` | `[lanes]` `stripe = 0` (or `false`) |
+| The levels of a `pyramid`, the stages of a `funnel`, `rings` and a `stack`'s layers, lightest first in the order written | `[levels] shade = true` | `[levels]` `shade = false` |
+
+```toml
+version = 1
+name = "outlines"
+
+[frames]
+tone = 0
+
+[lanes]
+stripe = 0
+
+[levels]
+shade = false
+```
+
+Graded levels take their tones from `[mark] ramp`, the same steps a matrix
+`scale` is filled with: one step per level from the lightest, spread across the
+ramp only when there are more levels than steps. The ramp's ceiling is what keeps
+a label legible on the darkest level, on a white page and a dark one. A `note`
+level stays unfilled, and so does a level whose role your theme already fills.
+
 ### A drafting sheet: the `blueprint` theme
 
 ```bash
@@ -701,7 +735,8 @@ sequence diagram's group — is filled with a little of the page's ink
 follows a dark page and prints as a light grey, never a colour. A frame inside a
 frame lays its wash over its parent's, so each level of nesting reads one step
 darker, for `[frames] levels` levels (3); deeper frames are outlined only. A theme
-that wants outlines only sets `tone = 0`.
+that wants outlines only sets `[frames] tone = 0` (or `false`); see
+[the greys the default theme adds](#the-greys-the-default-theme-adds-and-how-to-turn-each-off).
 
 ## Drawing a change
 
@@ -1027,7 +1062,7 @@ over each) is the theme's `[lanes] orientation`: `auto`, the default, takes rows
 when they fit the width and columns when they do not. At the default width, a
 process of more than four or five steps in a row reads down. `[lanes] separator`
 is the edge role the line between two lanes is drawn in, and `[lanes] stripe`
-(0.04 by default, 0 for none) washes every second lane with that share of the
+(0.04 by default; `stripe = 0` or `false` in a theme for none) washes every second lane with that share of the
 page's ink, so five or six lanes read as bands.
 
 ### Phases

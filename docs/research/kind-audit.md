@@ -259,3 +259,16 @@ both orientations: a band over the strips in rows, a column beside them in colum
 names in each cell, and a light `aside` line (`[lanes] phase`) across band and lanes
 in the gap between phases, which is widened by a node gap and settled off any route
 running along it, as lane boundaries are. Budget 2–6 phases.
+
+**Rank 9, graded levels** — built, theme only, and **on by default** (owner: "default,
+but optional", as for frames and stripes). One switch, `[levels] shade` (`true`/`false`),
+for all four kinds rather than a key per kind: the meaning is the same everywhere (the
+order written) and a theme turning it off wants it off everywhere. Tones come from
+`[mark] ramp`, **first written lightest** (owner: light to dark in level order), one ramp
+step per level and spread across the ramp only past five levels, so a three-level
+pyramid stays light; the ramp's ceiling (already checked for text contrast on light and
+dark pages) bounds the darkest level. Rings composite each circle over the ones around
+it so every band shows exactly its tone; funnel stages are regions behind the one
+outline. A `note` level, and a level whose role the theme already fills, stay unfilled.
+`[frames] tone` and `[lanes] stripe` now also accept `false`; the guide has one table
+saying how to turn each of the three off.

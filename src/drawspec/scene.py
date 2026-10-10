@@ -93,6 +93,9 @@ class Ellipse(Primitive):
     fill_colour: str = field(default="", repr=False)
     """As `Rect.fill_colour`: the colour that fill is drawn in."""
 
+    fill_opacity: float = field(default=1.0, repr=False)
+    """As `Rect.fill_opacity`: a graded ring's share of the ink."""
+
 
 @dataclass(frozen=True)
 class Polygon(Primitive):

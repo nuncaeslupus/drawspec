@@ -19,6 +19,7 @@ width to place its first span — which is exactly what `TextBlock` carries.
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import replace
 from typing import Final
 
@@ -45,6 +46,46 @@ from drawspec.theme import Theme
 def box_primitives(box: Box, theme: Theme, measurer: TextMeasurer) -> tuple[Primitive, ...]:
     """The outline of `box`, its lead rule if it has one, then its text."""
     return (*outline(box, theme), *lead_rule(box), *text_runs(box, theme, measurer))
+
+
+def level_tones(roles: Sequence[str], theme: Theme) -> list[float]:
+    """Each level's share of the ink when the theme grades levels, else 0.
+
+    `[levels] shade` grades a pyramid's levels, a funnel's stages, rings and a
+    stack's layers from `[mark] ramp`, lightest first in the order written. A
+    `note` level — "not the content, the rest" — stays unfilled, and so does one
+    whose role the theme already fills or draws without an outline: the grade
+    never paints over a choice the theme made.
+    """
+    count = len(roles)
+    if not theme.levels.shade:
+        return [0.0] * count
+    return [
+        theme.mark.level_tone(index, count) if _gradable(role, theme) else 0.0
+        for index, role in enumerate(roles)
+    ]
+
+
+def _gradable(role: str, theme: Theme) -> bool:
+    drawn = theme.roles.get(role)
+    return (
+        role != "note"
+        and drawn is not None
+        and drawn.shape != "none"
+        and drawn.fill == "none"
+        and drawn.fill_pattern == "none"
+    )
+
+
+def toned[P: Primitive](primitive: P, tone: float) -> P:
+    """`primitive` filled with `tone` of the page's ink, or as it was for 0.
+
+    The ink at part opacity rather than a colour, so a graded level follows the
+    page into dark mode and prints as a grey.
+    """
+    if not tone or not isinstance(primitive, Rect | Polygon | Ellipse):
+        return primitive
+    return replace(primitive, fill="solid", fill_colour="currentColor", fill_opacity=tone)
 
 
 def lead_rule(box: Box) -> tuple[Primitive, ...]:
@@ -506,6 +547,7 @@ __all__ = [
     "STATUS_ROLE",
     "box_primitives",
     "captioned",
+    "level_tones",
     "line_bounds",
     "outline",
     "removed_outline",
@@ -515,4 +557,5 @@ __all__ = [
     "status_tag",
     "status_words",
     "text_runs",
+    "toned",
 ]

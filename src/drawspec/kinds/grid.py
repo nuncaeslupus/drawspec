@@ -22,7 +22,7 @@ from itertools import pairwise
 
 from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
-from drawspec.kinds.common import box_primitives, text_runs
+from drawspec.kinds.common import box_primitives, level_tones, text_runs, toned
 from drawspec.legend import Entry, entries_for, height_of, primitives_for
 from drawspec.scene import (
     Path,
@@ -120,10 +120,11 @@ def _stack(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
 
     primitives: list[Primitive] = []
     y = 0.0
-    for box in boxes:
+    tones = level_tones([item.role for item in document.items], theme)
+    for box, tone in zip(boxes, tones, strict=True):
         # Full width, not the width its own text happened to need.
         placed = box.resized(width=width).moved_to(0.0, y)
-        primitives.extend(box_primitives(placed, theme, measurer))
+        primitives.extend(toned(part, tone) for part in box_primitives(placed, theme, measurer))
         y += placed.height + gap
 
     return _scene(document, primitives, width, max(y - gap, 0.0))

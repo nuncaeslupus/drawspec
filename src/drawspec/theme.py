@@ -898,6 +898,17 @@ class MarkStyle:
             return self.ramp[-1]
         return self.ramp[round(index * (len(self.ramp) - 1) / (count - 1))]
 
+    def level_tone(self, index: int, count: int) -> float:
+        """The tone for level `index` of `count` graded levels, lightest first.
+
+        One ramp step per level from the lightest, so three levels stay light,
+        and spread across the whole ramp only when there are more levels than
+        steps — a graded shape is mostly area, where a heatmap is mostly cells.
+        """
+        if count <= len(self.ramp):
+            return self.ramp[index]
+        return self.tone_for(index, count)
+
     def fill_for(self, index: int) -> str:
         """The fill for the `index`-th filled mark, cycling if there are more."""
         return self.fills[index % len(self.fills)]
@@ -1708,7 +1719,17 @@ TONE_CEILING: Final = 0.1
 
 
 def _tone(value: Any, where: str) -> float:
-    """A wash strength: a fraction of the ink from 0 to `TONE_CEILING`."""
+    """A wash strength: a fraction of the ink from 0 to `TONE_CEILING`.
+
+    `false` is read as 0, so a theme can say "off" in the words it would use for
+    a switch; `true` is refused, since it names no strength.
+    """
+    if value is False:
+        return 0.0
+    if value is True:
+        raise ThemeError(
+            f"{where}: expected a fraction from 0 to {TONE_CEILING} (or false), got true"
+        )
     tone = _number(value, where, positive=False)
     if not 0.0 <= tone <= TONE_CEILING:
         raise ThemeError(f"{where}: expected a fraction from 0 to {TONE_CEILING}, got {tone!r}")
@@ -1749,6 +1770,33 @@ class FramesStyle:
     def tone_at(self, depth: int) -> float:
         """The wash a frame `depth` levels inside others lays down, or 0."""
         return self.tone if depth < self.levels else 0.0
+
+
+@dataclass(frozen=True)
+class LevelsStyle:
+    """Whether the levels of a `pyramid`, `funnel`, `rings` and `stack` are graded.
+
+    Each level, stage, ring or layer is filled from `[mark] ramp`, the tones a
+    matrix `scale` uses: the first written lightest, one ramp step darker per
+    level after it (spread across the ramp when there are more levels than
+    steps). The page's ink at part opacity, never a colour, so it follows a dark
+    page and prints as greys, and the ramp's own ceiling keeps text legible on
+    the darkest step. A `note` level stays unfilled, and so does a level whose
+    role the theme already fills.
+    """
+
+    shade: bool = False
+    """Whether levels are graded from the ramp; `false` draws outlines only."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> LevelsStyle:
+        _reject_unknown(mapping, ("shade",), "[levels]")
+        shade = mapping.get("shade", cls().shade)
+        if shade in (0, 1) and not isinstance(shade, float):
+            shade = bool(shade)
+        if not isinstance(shade, bool):
+            raise ThemeError(f"[levels] shade: expected true or false, got {shade!r}")
+        return cls(shade=shade)
 
 
 #: What a `files` page says about its file's type.
@@ -1954,6 +2002,7 @@ _TOP_LEVEL_KEYS: Final = (
     "mark",
     "title",
     "frames",
+    "levels",
     "cycle",
     "funnel",
     "files",
@@ -1998,6 +2047,7 @@ class Theme:
     sequence: SequenceStyle = SequenceStyle()
     lanes: LanesStyle = LanesStyle()
     frames: FramesStyle = FramesStyle()
+    levels: LevelsStyle = LevelsStyle()
     entities: EntitiesStyle = EntitiesStyle()
     gantt: GanttStyle = GanttStyle()
     board: BoardStyle = BoardStyle()
@@ -2064,6 +2114,7 @@ class Theme:
             sequence=SequenceStyle.from_mapping(_section(mapping, "sequence")),
             lanes=LanesStyle.from_mapping(_section(mapping, "lanes")),
             frames=FramesStyle.from_mapping(_section(mapping, "frames")),
+            levels=LevelsStyle.from_mapping(_section(mapping, "levels")),
             entities=EntitiesStyle.from_mapping(_section(mapping, "entities")),
             gantt=GanttStyle.from_mapping(_section(mapping, "gantt")),
             board=BoardStyle.from_mapping(_section(mapping, "board")),

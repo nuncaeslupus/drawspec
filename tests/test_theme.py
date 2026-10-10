@@ -730,3 +730,33 @@ def test_the_default_theme_washes_frames_and_stripes_lanes_faintly() -> None:
     assert 0 < theme.frames.tone <= 0.06
     assert 0 < theme.lanes.stripe <= 0.06
     assert theme.frames.tone_at(theme.frames.levels) == 0.0
+
+
+@pytest.mark.parametrize(
+    ("section", "attribute"),
+    [("[frames]\ntone = false", "frames"), ("[lanes]\nstripe = false", "lanes")],
+)
+def test_a_wash_is_turned_off_with_false_as_well_as_zero(
+    tmp_path: Path, section: str, attribute: str
+) -> None:
+    theme = load_theme(write_theme(tmp_path, MINIMAL + section + "\n"))
+    style = getattr(theme, attribute)
+    assert (style.tone if attribute == "frames" else style.stripe) == 0.0
+
+
+def test_levels_are_graded_by_default_and_a_theme_turns_it_off(tmp_path: Path) -> None:
+    assert load_theme().levels.shade is True
+    off = load_theme(write_theme(tmp_path, MINIMAL + "[levels]\nshade = false\n"))
+    assert off.levels.shade is False
+    with pytest.raises(ThemeError, match=r"\[levels\] shade"):
+        load_theme(write_theme(tmp_path, MINIMAL + '[levels]\nshade = "ramp"\n'))
+    with pytest.raises(ThemeError, match=r"\[frames\] tone"):
+        load_theme(write_theme(tmp_path, MINIMAL + "[frames]\ntone = true\n"))
+
+
+def test_no_graded_level_is_darker_than_the_ramp_ceiling_text_is_checked_on() -> None:
+    """So `test_text_on_the_heaviest_ramp_step_reads_on_both_pages` covers every
+    level's text too."""
+    mark = load_theme().mark
+    for count in range(1, 12):
+        assert max(mark.level_tone(index, count) for index in range(count)) <= mark.ramp[-1]

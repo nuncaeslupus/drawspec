@@ -152,6 +152,14 @@ How a container is told from the page: washed with a little of the ink.
 | `tone` | `0.05` | The share of the ink one frame lays down, from 0 (outlines only) to `TONE_CEILING`. |
 | `levels` | `3` | How many levels of nesting deepen the wash; a frame deeper than this is outlined only. |
 
+### `[levels]`
+
+Whether the levels of a `pyramid`, `funnel`, `rings` and `stack` are graded.
+
+| Key | Default | What it is |
+|---|---|---|
+| `shade` | `true` | Whether levels are graded from the ramp; `false` draws outlines only. |
+
 ### `[cycle]`
 
 How a `cycle`'s connectors are drawn. Appearance, so it lives here.

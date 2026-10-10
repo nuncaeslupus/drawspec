@@ -132,6 +132,13 @@ ramp = [0.08, 0.16, 0.24, 0.32, 0.4]
 tone = 0.05
 levels = 3
 
+[levels]
+# A pyramid's levels, a funnel's stages, rings and a stack's layers are graded
+# from the ramp above: the first written lightest, one step darker per level, so
+# the order the author wrote reads at a glance and in greyscale. The ink at part
+# opacity, as a frame's wash is; false for outlines only.
+shade = true
+
 [states]
 # A state machine's pseudo-states: the filled dot it starts from, and the ringed
 # dot each final state leads to. Marks with no words, so sized here: the dot

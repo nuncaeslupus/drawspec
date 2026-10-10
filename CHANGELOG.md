@@ -12,6 +12,15 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **Graded levels**, theme only: a `pyramid`'s levels, a `funnel`'s stages, `rings`
+  and a `stack`'s layers are filled from `[mark] ramp`, lightest first in the order
+  written, one ramp step per level (spread across the ramp past five). The page's ink
+  at part opacity, so dark mode and greyscale keep it, and the ramp's ceiling keeps
+  text legible. On by default; the new key `[levels] shade = false` turns it off. A
+  `note` level stays unfilled. `[frames] tone` and `[lanes] stripe` now also take
+  `false` for off, and the guide lists all three greys and how to turn each off.
+  Changes every pyramid, funnel, rings and stack drawing in the gallery.
+
 - **`lanes` take `phases`**, the second axis of a cross-functional flowchart:
   `[{text, members}]` in the order the process runs, every step in exactly one.
   Drawn as a band of phase names along the lanes' outer edge (over the strips in
