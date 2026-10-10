@@ -33,7 +33,7 @@ from xml.etree import ElementTree
 
 import pytest
 
-from drawspec import render, render_document
+from drawspec import render, render_document, sheet
 from drawspec.emit import PROFILES
 from drawspec.errors import FitError, LayoutError
 from drawspec.geometry import fit
@@ -203,15 +203,19 @@ def test_every_reference_document_is_drawn_to_the_same_canvas_width(name: str) -
     round: unused paper costs nothing to read past, and a different type size in
     every figure was the single most repeated complaint in the corpus.
     """
-    theme = load_theme()
-    svg = render_document(load_document(REFERENCE_DIR / f"{name}.json"), profile="standalone")
+    document = load_document(REFERENCE_DIR / f"{name}.json")
+    theme = load_theme(document.theme or None)
+    svg = render_document(document, profile="standalone")
     width = float(ElementTree.fromstring(svg).get("width", "0"))
     # The outer margin frames the drawing on both sides — see `theme.Canvas.margin`,
     # which is why it is *added* to the width rather than taken out of it: taken
     # out, this equality would still hold and every drawing would have lost the
     # margin from its own budget. The ink inset is half a stroke either side of
-    # that again — see `emit`.
+    # that again — see `emit`. A sheet's border goes around all of it, the same
+    # for every drawing in its theme.
     drawn = theme.canvas.width + theme.canvas.margin * 2
+    if theme.canvas.border != "none":
+        drawn += 2 * (sheet.INSET + sheet.BAND + sheet.PAD)
     assert width == pytest.approx(drawn + theme.edge.stroke_width, abs=1.6)
 
 

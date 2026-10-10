@@ -23,15 +23,13 @@ so none of them can quietly go out of date:
 drawspec is a pure-Python package. It needs Python 3.12 or newer and pulls in
 one dependency, `fonttools`.
 
-It is **not on PyPI yet**, so install it from the repository:
-
 ```bash
-pip install git+https://github.com/nuncaeslupus/drawspec
+pip install drawspec
 # or, with uv:
-uv add git+https://github.com/nuncaeslupus/drawspec
+uv add drawspec
 ```
 
-Once it is published, `pip install drawspec` will be the whole of it.
+Extras: `drawspec[png]` for PNG export, `drawspec[mcp]` for the MCP server.
 
 There is **no system dependency** — no Graphviz, no Cairo, no headless browser,
 nothing to apt-get in a CI image. That is a deliberate acceptance criterion
@@ -431,6 +429,43 @@ understanding before you change anything else:
   so a tight diagram never gains a type size its neighbours do not have. Below
   `[canvas] min_legible_size` nothing is drawn at all: it is a refusal, with a
   message, rather than text nobody can read.
+
+### A drafting sheet: the `blueprint` theme
+
+```bash
+drawspec render pump.json --theme blueprint -o pump.png
+```
+
+Any diagram comes out on an engineering drawing sheet: white ink on blueprint
+blue, a fine grid, a double border with zone numbers and letters, registration
+marks, and a title block filled from the document — its `title` (or its kind),
+a drawing number derived from its content, its `kind`, the drawing's size, and
+its format `version`. It is the sheet the README banner is drawn on.
+
+The sheet is `[canvas]` furniture, so any theme can have it:
+
+```toml
+version = 1
+name = "drafting"
+
+[canvas]
+ground = "#0b2d52"      # the sheet; "none" draws it on the page
+ink = "#f2f8ff"         # must read on the ground at 4.5:1, or the theme is refused
+rule = "#8fbbe6"        # grid and quiet lettering; empty means the ink
+accent = "#ffb547"      # registration marks and the drawing number
+pattern = "grid"        # or "none"
+border = "zoned"        # or "none"
+title_block = true
+```
+
+Three things to know. It is drawn **only in the `standalone` profile** — a
+linked `.svg`, a PDF, a PNG; pasted inline, the same theme inherits the page's
+ink and background like any other, so a README can show it either way. The
+canvas **grows** to hold it rather than drawing over the diagram: every diagram
+in the theme gains the same border, so they are still one width, and the title
+block has a strip of its own below the drawing. And a title too long to set on
+one line in the block is a `FitError` on a fixed-width canvas — shorten the
+`title`. The gallery's `*-blueprint-*` drawings are rendered this way.
 
 ## Matching your brand
 

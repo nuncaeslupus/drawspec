@@ -1,0 +1,29 @@
+# drawspec's blueprint theme: any diagram on a drafting sheet.
+#
+# Merged over `default.toml`. White ink on cyanotype blue, a fine grid, a
+# double border with zone numbers and letters, registration marks, and an
+# engineering title block filled from the document — the sheet the README's
+# banner is drawn on.
+#
+# Every one of those is `standalone` furniture: a linked `.svg`, a PDF, or a
+# PNG from `--format png`. Pasted inline, a drawing in this theme inherits its
+# page like any other — the page's ink, the page's background, no sheet — so
+# the same document still reads in a light or a dark Markdown page.
+#
+# The roles are the default theme's, all in `currentColor`: on the sheet that
+# is the ink below, and every pair still differs by shape, dash or weight. The
+# one warm colour is the accent, and it marks the sheet, never the drawing.
+#
+# The loader checks the ground: the ink must read on it as text (4.5:1) and
+# every other colour declared here as a line (3:1).
+version = 1
+name = "blueprint"
+
+[canvas]
+ground = "#0b2d52"
+ink = "#f2f8ff"
+rule = "#8fbbe6"
+accent = "#ffb547"
+pattern = "grid"
+border = "zoned"
+title_block = true

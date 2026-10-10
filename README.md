@@ -179,10 +179,11 @@ JSON pointer of the place they were written. A document may size the whole canva
 ## Try it
 
 ```bash
-pip install git+https://github.com/nuncaeslupus/drawspec   # not on PyPI yet
+pip install drawspec               # or drawspec[png] for PNG export
 
 drawspec render diagram.json -o diagram.svg   # or to stdout
 drawspec render diagram.json -o diagram.png   # needs drawspec[png]; --background dark, --scale 3
+drawspec render diagram.json --theme blueprint -o sheet.png  # on a drafting sheet, like the banner
 drawspec validate diagram.json                # every violation, by JSON pointer
 drawspec theme check default                  # including the greyscale invariant
 drawspec theme from site.css -o house.toml    # a theme from your brand's CSS or design tokens

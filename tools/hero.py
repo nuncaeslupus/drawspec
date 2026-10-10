@@ -45,6 +45,7 @@ from fontTools import subset
 from fontTools.ttLib import TTFont
 
 import drawspec
+from drawspec import sheet
 from drawspec.text.fontlib import bundled_font_path
 from drawspec.theme import Theme
 
@@ -191,6 +192,26 @@ class Metrics:
 METRICS: Final = Metrics()
 
 
+PALETTE: Final = sheet.Palette(ground=GROUND, ink=INK, soft=SOFT, grid=GRID, accent=ACCENT)
+
+#: The banner's title block is set larger and looser than a diagram's.
+BLOCK_STYLE: Final = sheet.BlockStyle(
+    head_height=38,
+    row_height=30,
+    foot_height=30,
+    key_size=6.5,
+    head_size=19,
+    number_size=9,
+    row_size=10.5,
+    cell_size=9.5,
+    head_key_drop=11,
+    key_drop=10,
+    head_rise=7,
+    number_rise=8,
+    value_rise=6,
+)
+
+
 def text(
     x: float,
     y: float,
@@ -204,110 +225,46 @@ def text(
     spacing: float = 0,
     opacity: float = 1,
 ) -> str:
-    attrs = [
-        f'x="{x:.2f}"',
-        f'y="{y:.2f}"',
-        f'font-family="{FAMILIES[role]}"',
-        f'font-size="{size:g}"',
-        f'fill="{fill}"',
-    ]
-    if weight != "normal":
-        attrs.append(f'font-weight="{weight}"')
-    if anchor != "start":
-        attrs.append(f'text-anchor="{anchor}"')
-    if spacing:
-        attrs.append(f'letter-spacing="{spacing:g}"')
-    if opacity != 1:
-        attrs.append(f'fill-opacity="{opacity:g}"')
-    return f"<text {' '.join(attrs)}>{escape(content)}</text>"
-
-
-def line(x1: float, y1: float, x2: float, y2: float, stroke: str, width: float = 1) -> str:
-    return (
-        f'<line x1="{x1:.2f}" y1="{y1:.2f}" x2="{x2:.2f}" y2="{y2:.2f}" '
-        f'stroke="{stroke}" stroke-width="{width:g}"/>'
+    return sheet.text(
+        x,
+        y,
+        content,
+        size,
+        fill,
+        family=FAMILIES[role],
+        weight=weight,
+        anchor=anchor,
+        spacing=spacing,
+        opacity=opacity,
     )
 
 
-# --- the sheet's furniture ---------------------------------------------------
+# --- the sheet's furniture: drawspec's own, from `drawspec.sheet` -------------
 
 
 def grid() -> str:
-    """A fine 16-unit grid with a heavier line every fifth, inside the border."""
-    minor, major = 16, 80
-    return (
-        "<defs>"
-        f'<pattern id="hero-grid-minor" width="{minor}" height="{minor}" '
-        'patternUnits="userSpaceOnUse">'
-        f'<path d="M {minor} 0 L 0 0 0 {minor}" fill="none" stroke="{GRID}" '
-        'stroke-width="0.5" stroke-opacity="0.09"/></pattern>'
-        f'<pattern id="hero-grid-major" width="{major}" height="{major}" '
-        'patternUnits="userSpaceOnUse">'
-        f'<path d="M {major} 0 L 0 0 0 {major}" fill="none" stroke="{GRID}" '
-        'stroke-width="0.8" stroke-opacity="0.16"/></pattern>'
-        "</defs>"
-        f'<rect width="{WIDTH}" height="{HEIGHT}" fill="{GROUND}"/>'
-        f'<rect width="{WIDTH}" height="{HEIGHT}" fill="url(#hero-grid-minor)"/>'
-        f'<rect width="{WIDTH}" height="{HEIGHT}" fill="url(#hero-grid-major)"/>'
-    )
+    """A fine 16-unit grid with a heavier line every fifth, on the ground."""
+    return sheet.grid("hero", WIDTH, HEIGHT, PALETTE)
 
 
 def border() -> str:
     """A double border with zone numbers across and zone letters down, as a sheet has."""
-    out = []
-    outer, inner = INSET, INSET + 12
-    out.append(
-        f'<rect x="{outer}" y="{outer}" width="{WIDTH - 2 * outer}" '
-        f'height="{HEIGHT - 2 * outer}" fill="none" stroke="{INK}" '
-        'stroke-opacity="0.55" stroke-width="1"/>'
+    return sheet.border(
+        WIDTH,
+        HEIGHT,
+        PALETTE,
+        family=FAMILIES["mono"],
+        inset=INSET,
+        band=12,
+        across=ZONES_ACROSS,
+        down=ZONES_DOWN,
+        size=8,
     )
-    out.append(
-        f'<rect x="{inner}" y="{inner}" width="{WIDTH - 2 * inner}" '
-        f'height="{HEIGHT - 2 * inner}" fill="none" stroke="{INK}" '
-        'stroke-opacity="0.8" stroke-width="1.6"/>'
-    )
-    span_x = (WIDTH - 2 * inner) / ZONES_ACROSS
-    for i in range(ZONES_ACROSS + 1):
-        x = inner + i * span_x
-        if 0 < i < ZONES_ACROSS:
-            out.append(line(x, outer, x, inner, INK, 0.8))
-            out.append(line(x, HEIGHT - inner, x, HEIGHT - outer, INK, 0.8))
-        if i < ZONES_ACROSS:
-            label = str(ZONES_ACROSS - i)
-            mid = x + span_x / 2
-            for row in (outer + 9, HEIGHT - outer - 3):
-                out.append(text(mid, row, label, 8, SOFT, role="mono", anchor="middle"))
-    span_y = (HEIGHT - 2 * inner) / ZONES_DOWN
-    for i in range(ZONES_DOWN + 1):
-        y = inner + i * span_y
-        if 0 < i < ZONES_DOWN:
-            out.append(line(outer, y, inner, y, INK, 0.8))
-            out.append(line(WIDTH - inner, y, WIDTH - outer, y, INK, 0.8))
-        if i < ZONES_DOWN:
-            label = "ABCD"[i]
-            mid = y + span_y / 2 + 3
-            for x in (outer + 6, WIDTH - outer - 6):
-                out.append(text(x, mid, label, 8, SOFT, role="mono", anchor="middle"))
-    # Centring arrows at the middle of each edge, as a drafting sheet carries.
-    cx, cy = WIDTH / 2, HEIGHT / 2
-    out.append(
-        f'<path d="M {cx - 5} {inner} L {cx} {inner + 8} L {cx + 5} {inner} Z '
-        f"M {cx - 5} {HEIGHT - inner} L {cx} {HEIGHT - inner - 8} L {cx + 5} {HEIGHT - inner} Z "
-        f"M {inner} {cy - 5} L {inner + 8} {cy} L {inner} {cy + 5} Z "
-        f'M {WIDTH - inner} {cy - 5} L {WIDTH - inner - 8} {cy} L {WIDTH - inner} {cy + 5} Z" '
-        f'fill="{INK}" fill-opacity="0.8"/>'
-    )
-    return "".join(out)
 
 
 def registration(x: float, y: float, r: float = 7) -> str:
     """A registration mark: a ring with crosshairs that overrun it."""
-    return (
-        f'<g stroke="{ACCENT}" stroke-width="0.9" fill="none" stroke-opacity="0.9">'
-        f'<circle cx="{x}" cy="{y}" r="{r}"/>'
-        f'<path d="M {x - r * 1.7} {y} H {x + r * 1.7} M {x} {y - r * 1.7} V {y + r * 1.7}"/>'
-        "</g>"
-    )
+    return sheet.registration(x, y, ACCENT, r)
 
 
 def crop(x: float, y: float, w: float, h: float, arm: float = 9, stroke: str = INK) -> str:
@@ -340,33 +297,17 @@ def dimension(x1: float, x2: float, y: float, label: str) -> str:
 def title_block(x: float, y: float, w: float) -> str:
     """The engineering title block: the project's name largest, then the title, then
     scale, sheet and revision side by side."""
-    head, mid, foot = 38.0, 30.0, 30.0
-    h = head + mid + foot
-    out = [
-        f'<rect x="{x}" y="{y}" width="{w}" height="{h}" fill="{GROUND}" '
-        f'stroke="{INK}" stroke-opacity="0.85" stroke-width="1.3"/>',
-        line(x, y + head, x + w, y + head, INK, 0.8),
-        line(x, y + head + mid, x + w, y + head + mid, INK, 0.8),
-        text(x + 9, y + 11, "PROJECT", 6.5, SOFT, role="mono", spacing=1),
-        text(x + 9, y + head - 7, "drawspec", 19, INK, role="mono", weight="bold"),
-        text(x + w - 9, y + head - 8, "DWG 001", 9, ACCENT, role="mono", anchor="end"),
-        text(x + 9, y + head + 10, "TITLE", 6.5, SOFT, role="mono", spacing=1),
-        text(x + 9, y + head + mid - 6, "Diagrams from meaning", 10.5, INK, role="mono"),
-    ]
-    cells = (
-        ("SCALE", "no coordinates", 0.44),
-        ("SHEET", "1 of 26 kinds", 0.33),
-        ("REV", f"v{drawspec.__version__}", 0.23),
+    block = sheet.TitleBlock(
+        head=sheet.Field("PROJECT", "drawspec"),
+        number="DWG 001",
+        rows=(sheet.Field("TITLE", "Diagrams from meaning"),),
+        cells=(
+            (sheet.Field("SCALE", "no coordinates"), w * 0.44),
+            (sheet.Field("SHEET", "1 of 26 kinds"), w * 0.33),
+            (sheet.Field("REV", f"v{drawspec.__version__}"), w * 0.23),
+        ),
     )
-    cx = x
-    top = y + head + mid
-    for index, (key, value, share) in enumerate(cells):
-        if index:
-            out.append(line(cx, top, cx, top + foot, INK, 0.6))
-        out.append(text(cx + 9, top + 10, key, 6.5, SOFT, role="mono", spacing=1))
-        out.append(text(cx + 9, top + foot - 6, value, 9.5, INK, role="mono"))
-        cx += w * share
-    return "".join(out)
+    return sheet.title_block(x, y, block, PALETTE, family=FAMILIES["mono"], style=BLOCK_STYLE)
 
 
 # --- the JSON snippet --------------------------------------------------------
