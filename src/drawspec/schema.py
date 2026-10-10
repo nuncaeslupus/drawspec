@@ -486,6 +486,35 @@ FAMILYTREE_GENERATION_MAX: Final = 4
 FAMILYTREE_PARTNER_MAX: Final = 6
 FAMILYTREE_TWIN_MAX: Final = 3
 
+#: Meters: one amount against its scale — a progress bar, a fundraising
+#: thermometer, a dial, a bullet graph — alone or a few to a panel. A layout
+#: family of its own; every reading is placed by arithmetic.
+METER_KINDS: Final = ("meter",)
+
+#: How the meters of a document are drawn: one style for the whole panel, so
+#: like is compared with like. `bar` is the default.
+METER_STYLES: Final = ("bar", "thermometer", "dial", "bullet")
+
+#: The styles whose meters may start above zero. A bar's length is its amount,
+#: so only a needle, which encodes a position rather than a length, may.
+METER_MIN_STYLES: Final = ("dial",)
+
+#: The styles that take `bands`: required on a bullet, optional on a dial.
+METER_BAND_STYLES: Final = ("dial", "bullet")
+
+#: The roles a meter may take: the default, and the meter the panel is about.
+METER_ROLES: Final = ("step", "emphasis")
+
+#: The most meters to a panel and bands to a meter. The corpus (G4, G9) stacks a
+#: handful of meters; the bullet graph's specification (G8) allows two to five
+#: ranges, and past five neighbouring tones blur.
+METER_MAX: Final = 6
+METER_BAND_MIN: Final = 2
+METER_BAND_MAX: Final = 5
+
+#: The units written before the number rather than after it.
+METER_CURRENCIES: Final = ("£", "$", "€", "¥")
+
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
 #: into each other at the canvas width.
 NUMBERLINE_TICK_MAX: Final = 30
@@ -556,6 +585,8 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: `tree` cannot say which way a box bears, or that two reasons count only together.
 #: `familytree` is the twentieth: people, couples and children by generation — a
 #: `tree` gives a child one parent, and a married-in partner none.
+#: `meter` is the twenty-first: one amount against its scale — a `chart`'s bar
+#: has no end to be read against, and a `numberline` no fill, target or bands.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -580,6 +611,7 @@ KINDS: Final = (
     + MINDMAP_KINDS
     + ARGUMENT_KINDS
     + FAMILYTREE_KINDS
+    + METER_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -705,6 +737,9 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # Set by the corpus: clinical pedigrees hold ten to twenty people, a royal tree
     # about thirty. Generations (4) and partners (6) are checked with the couples.
     "familytree": (("people", FAMILYTREE_PEOPLE_MAX),),  # [16]
+    # Set by the corpus: a panel stacks a handful of meters, and a bullet graph
+    # two to five bands.
+    "meter": (("meters", METER_MAX), ("meters/bands", METER_BAND_MAX)),  # [5 meters, 4 bands]
 }
 
 
@@ -2188,6 +2223,98 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             description="The partners are related by blood: a double partner line.",
         ),
     ),
+    "meter-meter": (
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description=(
+                "The meter's name. A second line after a newline is its caption, drawn plain "
+                "under the name: what the reading is of — `This year's milestones only`."
+            ),
+        ),
+        FieldSpec(
+            "amount",
+            "number",
+            required=True,
+            description=(
+                "The reading, on the scale from `min` to `max`. Written with its `unit` in the "
+                "readout; never as a percentage the author worked out."
+            ),
+        ),
+        FieldSpec(
+            "max",
+            "number",
+            required=True,
+            description=(
+                "The end of the scale: a thermometer's goal, a progress bar's whole, a dial's "
+                "right-hand end."
+            ),
+        ),
+        FieldSpec(
+            "min",
+            "number",
+            description=(
+                "Where the scale starts, on a `dial` only (0 by default): a needle reads a "
+                "position, so it may start anywhere. A bar's length is its amount, so a bar, a "
+                "bullet and a thermometer start at 0."
+            ),
+        ),
+        FieldSpec(
+            "unit",
+            "string",
+            description=(
+                "What the numbers are in: `%`, a currency sign (`£`, `$`, `€`, `¥`, written "
+                "before the number) or a word (`tasks`, after it)."
+            ),
+        ),
+        FieldSpec(
+            "target",
+            "number",
+            description=(
+                "A mark on the scale — the plan, a stage of an appeal — drawn across the "
+                "track and written in the readout. Inside the scale."
+            ),
+        ),
+        FieldSpec(
+            "bands",
+            "array",
+            item_ref="meter-band",
+            min_items=METER_BAND_MIN,
+            description=(
+                "Named stretches of the scale, rising: each runs from the end of the one "
+                "before (or `min`) to its own `to`, and the last ends at `max`. Required on a "
+                "`bullet`, optional on a `dial`, refused on the others. Drawn in tones of the "
+                "page's ink with their words on them, so a band is never told by colour alone."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=METER_ROLES,
+            description=(
+                "`step` (the default) or `emphasis` (the meter the panel is about: its name "
+                "and reading bold)."
+            ),
+        ),
+    ),
+    "meter-band": (
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description=(
+                "The band's name, written on it: `Good`, `Strained`, or `Green` when that is "
+                "the word the reader is taught. One or two short words."
+            ),
+        ),
+        FieldSpec(
+            "to",
+            "number",
+            required=True,
+            description="Where the band ends; it starts where the band before ends.",
+        ),
+    ),
     "familytree-twins": (
         FieldSpec(
             "of",
@@ -2631,7 +2758,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the thirty-three diagrams this is. It selects the fields that are "
+            "Which of the thirty-four diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -3494,6 +3621,30 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    METER_KINDS: (
+        FieldSpec(
+            "style",
+            "string",
+            enum=METER_STYLES,
+            description=(
+                "How every meter in the document is drawn: `bar` (the default, a progress "
+                "bar), `thermometer` (a goal filling up), `dial` (a needle on a half-circle) "
+                "or `bullet` (a bar on named bands, with a target tick). One for the whole "
+                "panel, so like is compared with like."
+            ),
+        ),
+        FieldSpec(
+            "meters",
+            "array",
+            required=True,
+            item_ref="meter-meter",
+            min_items=1,
+            description=(
+                "The meters, 1 to 6, in reading order: rows for bars and bullets, columns for "
+                "thermometers, up to three dials to a row. Each has its own scale."
+            ),
+        ),
+    ),
     MINDMAP_KINDS: (
         FieldSpec(
             "centre",
@@ -4006,6 +4157,28 @@ class WaterfallBar:
 
 
 @dataclass(frozen=True)
+class MeterBand:
+    """One named stretch of a meter's scale, from the band before it to `to`."""
+
+    text: str
+    to: float
+
+
+@dataclass(frozen=True)
+class Meter:
+    """One meter: an amount against its scale, with a target and bands if given."""
+
+    text: str
+    amount: float
+    max: float
+    min: float = 0.0
+    unit: str = ""
+    target: float | None = None
+    bands: tuple[MeterBand, ...] = ()
+    role: str = "step"
+
+
+@dataclass(frozen=True)
 class FamilyPerson:
     """One person in a `familytree`."""
 
@@ -4358,6 +4531,12 @@ class Document:
     couples: tuple[FamilyCouple, ...] = ()
     """A `familytree`'s couples, in the order written: each person's in marriage order."""
 
+    meter_style: str = "bar"
+    """How a `meter` document's meters are drawn: one style for the panel."""
+
+    meters: tuple[Meter, ...] = ()
+    """A `meter` document's meters, in reading order."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -4385,6 +4564,7 @@ class Document:
             ("mindmap", MINDMAP_KINDS),
             ("argument", ARGUMENT_KINDS),
             ("familytree", FAMILYTREE_KINDS),
+            ("meter", METER_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -4597,6 +4777,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_argument_refusal(violation, document) for violation in found]
     if kind in FAMILYTREE_KINDS:
         found = [_familytree_refusal(violation) for violation in found]
+    if kind in METER_KINDS:
+        found = [_meter_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -4661,6 +4843,14 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
     ("mindmap", "branches*"): (
         "Split it: an overview map naming the main branches, and a map per main branch "
         "carrying its detail, with that branch as its centre."
+    ),
+    ("meter", "meters"): (
+        "Past six meters a panel is a dashboard, read as a table. Keep the ones the page is "
+        "about, and put the rest in a table beside it."
+    ),
+    ("meters", "bands"): (
+        "Past five bands neighbouring tones blur: merge the bands the reader need not tell "
+        "apart. Few's bullet graph uses two to five."
     ),
     ("pie", "parts"): (
         "Past eight sectors the smallest are slivers no one compares: keep the largest seven "
@@ -4913,6 +5103,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _argument_violations(document)
     if kind in FAMILYTREE_KINDS:
         return _familytree_violations(document)
+    if kind in METER_KINDS:
+        return _meter_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -7517,6 +7709,146 @@ def _waterfall_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a meter has no place for a field an author may reach for.
+METER_REFUSED: Final = {
+    "edges": "a meter has nothing to connect: each one is read against its own scale",
+    "series": "a meter is one amount against a scale. Values against an axis are a `chart`",
+    "axes": "a meter's scale is its `min` and `max`. Values against two axes are a `chart`",
+    "value": "a meter's reading is its `amount`",
+    "goal": "a thermometer's goal is the top of its scale, `max`; a stage under it is a `target`",
+    "percent": (
+        'write the reading as it is, with `"unit": "%"` and `"max": 100` for a percentage, '
+        "or the amount and the whole it is out of"
+    ),
+    "style": (
+        "the style is the document's, at the top: one panel, one style, so like is "
+        "compared with like. Two styles are two documents"
+    ),
+    "from": "a band runs from the end of the one before it, or from the scale's start",
+    "colour": (
+        "a band is told by its words and drawn in the theme's tones. Write the word the "
+        "reader is taught — `Green`, or `On track`"
+    ),
+}
+
+
+def _meter_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a meter panel, told what this kind means by it."""
+    name = violation.pointer.split("/")[-1]
+    unknown = "is not" in violation.message and "field" in violation.message
+    if name in METER_REFUSED and unknown:
+        return Violation(violation.pointer, f"{name!r}: {METER_REFUSED[name]}.")
+    return violation
+
+
+def _meter_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Each meter's reading, target and bands inside its scale, and bands its style takes.
+
+    A bar, a bullet and a thermometer start at zero (their length is their
+    amount); bands go on a bullet, which needs them, and a dial; they rise, and
+    the last one ends the scale.
+    """
+    found: list[Violation] = []
+    style = document.get("style", "bar")
+    if style not in METER_STYLES:
+        return found
+    for index, meter in enumerate(_listed(document, "meters")):
+        if not isinstance(meter, dict):
+            continue
+        here = _pointer("meters", index)
+        high: Any = meter.get("max")
+        if "min" in meter and style not in METER_MIN_STYLES:
+            found.append(
+                Violation(
+                    f"{here}/min",
+                    f"a {style}'s length is its amount, so its scale starts at 0. A reading "
+                    f"on a scale that starts elsewhere — a temperature — is a "
+                    f'`"style": "dial"`, whose needle reads a position.',
+                )
+            )
+            continue
+        low: Any = meter.get("min", 0)
+        if not (_is_number(high) and _is_number(low)):
+            continue
+        if high <= low:
+            found.append(
+                Violation(
+                    f"{here}/max",
+                    f"the scale runs from {_figure(float(low))} up to `max`, so `max` must be "
+                    f"more than {_figure(float(low))}.",
+                )
+            )
+            continue
+        for name in ("amount", "target"):
+            reading: Any = meter.get(name)
+            if _is_number(reading) and not low <= reading <= high:
+                found.append(
+                    Violation(
+                        f"{here}/{name}",
+                        f"{_figure(float(reading))} is outside the scale, "
+                        f"{_figure(float(low))} to {_figure(float(high))}: a meter has nowhere "
+                        f"to point past its ends. Change `max`"
+                        + (" or `min`." if style in METER_MIN_STYLES else ".")
+                        + (
+                            " A goal beaten is a full thermometer with the amount in the caption."
+                            if style == "thermometer" and name == "amount"
+                            else ""
+                        ),
+                    )
+                )
+        bands = meter.get("bands")
+        if bands is not None and style not in METER_BAND_STYLES:
+            advice = (
+                'a bar on named bands is a bullet graph: say `"style": "bullet"`.'
+                if style == "bar"
+                else "a thermometer fills toward one goal. Bands on a scale are a "
+                '`"style": "bullet"` or a `"dial"`.'
+            )
+            found.append(Violation(f"{here}/bands", advice))
+            continue
+        if bands is None and style == "bullet":
+            found.append(
+                Violation(
+                    here,
+                    "a bullet graph is a bar on named bands: give it `bands` — "
+                    '`[{"text": "Poor", "to": …}, …]` — or say `"style": "bar"`.',
+                )
+            )
+            continue
+        if not isinstance(bands, list):
+            continue
+        start = float(low)
+        for position, band in enumerate(bands):
+            if not isinstance(band, dict) or not _is_number(band.get("to")):
+                start = float("nan")
+                continue
+            end = float(band["to"])
+            if not end > start:
+                found.append(
+                    Violation(
+                        f"{here}/bands/{position}/to",
+                        f"bands rise along the scale, each from the end of the one before: "
+                        f"this one must end above {_figure(start)}.",
+                    )
+                )
+            start = end
+        last: Any = bands[-1] if bands else None
+        if (
+            isinstance(last, dict)
+            and _is_number(last.get("to"))
+            and not math.isclose(float(last["to"]), float(high))
+        ):
+            found.append(
+                Violation(
+                    f"{here}/bands/{len(bands) - 1}/to",
+                    f"the last band ends the scale: its `to` is `max`, "
+                    f"{_figure(float(high))}. Bands cover the scale once, with no gap at the "
+                    f"top.",
+                )
+            )
+    return found
+
+
 #: Why a pie has no place for a field an author may reach for.
 PIE_REFUSED: Final = {
     "edges": "a pie's parts are related by being one whole; there is nothing to connect",
@@ -9025,6 +9357,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _argument_document(document)
     if kind in FAMILYTREE_KINDS:
         return _familytree_document(document)
+    if kind in METER_KINDS:
+        return _meter_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -9657,6 +9991,37 @@ def _waterfall_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _meter_document(document: Mapping[str, Any]) -> Document:
+    """A meter panel: its style and its meters, in reading order."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        meter_style=str(document.get("style", "bar")),
+        meters=tuple(
+            Meter(
+                text=str(meter["text"]),
+                amount=float(meter["amount"]),
+                max=float(meter["max"]),
+                min=float(meter.get("min", 0.0)),
+                unit=str(meter.get("unit", "")),
+                target=_optional_number(meter.get("target")),
+                bands=tuple(
+                    MeterBand(text=str(band["text"]), to=float(band["to"]))
+                    for band in meter.get("bands", ())
+                ),
+                role=str(meter.get("role", "step")),
+            )
+            for meter in document["meters"]
+        ),
+    )
+
+
 def _familytree_document(document: Mapping[str, Any]) -> Document:
     """A family tree: its people and its couples, in the order written."""
     return Document(
@@ -10056,6 +10421,15 @@ __all__ = [
     "LOOP_MAX",
     "LOOP_TYPES",
     "MESSAGE_ROLES",
+    "METER_BAND_MAX",
+    "METER_BAND_MIN",
+    "METER_BAND_STYLES",
+    "METER_CURRENCIES",
+    "METER_KINDS",
+    "METER_MAX",
+    "METER_MIN_STYLES",
+    "METER_ROLES",
+    "METER_STYLES",
     "MINDMAP_BRANCH_MAX",
     "MINDMAP_DEPTH_MAX",
     "MINDMAP_KINDS",
@@ -10123,6 +10497,8 @@ __all__ = [
     "Item",
     "JourneyStage",
     "Message",
+    "Meter",
+    "MeterBand",
     "MindmapBranch",
     "ModelBar",
     "ModelBrace",

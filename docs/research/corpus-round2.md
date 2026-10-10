@@ -213,6 +213,40 @@ text short (a number or a few words), since the small regions are tiny: refuse r
 text longer than ~12 characters with four sets. The ikigai figure is then a four-set Venn
 with some regions left empty, which costs nothing extra.
 
+## 10. Meter: progress bar, thermometer, dial, bullet ([`meter.md`](../proposals/meter.md))
+
+Added for arsenal task `t-df2996f3` (issue #96), after the nine above. The same limits
+apply, and more strongly: these rows were found by web search and **read from the search
+engine's summary of each page only**. Direct fetches failed from this environment (the
+one tried, Few's specification, did not resolve), so no figure here was opened, and every
+row is **(check)**. Counts are what the summaries say, not what was measured.
+
+| # | Source | Style | What it shows | Size | Needs |
+|---|---|---|---|---|---|
+| G1 | [Kendall Church, *Fundraisers*](https://kendallchurch.org/fundraisers.php) (congregation) | thermometer | A match challenge toward a roof and building project, tracked on a hand-made thermometer shown in the church. **(check)** | 1 meter; a goal and an amount raised | One amount against one goal; the goal is the top of the tube. |
+| G2 | [Thurston Elementary PTO, *Fundraising goal tracker*](https://thurston.a2schools.org/pto/donate/fundraising-goal-tracker) (school parents' group) | thermometer | A year's fundraising goal, the thermometer filled as families give, volunteer or join events. **(check)** | 1 meter | As G1. The page is dated: a drawing states one moment, so the date belongs in the caption. |
+| G3 | [All Saints Loughborough, *Restoring the roof: Lent 2024 appeal*](https://allsaintsloughborough.org.uk/resources/restoring-the-roof-lent-2024-appeal) (parish) | thermometer | A roof appeal run in stages: a first-stage target well under the whole cost, most of it already raised. Whether a thermometer is drawn was not read. **(check)** | 1 meter, a stage target under the goal | A **target below the goal**: a mark on the tube, not a second meter. |
+| G4 | [North Hertfordshire DC, *Council Delivery Plan, Q2 update*](https://democracy.north-herts.gov.uk/documents/s23849/Q2%20Update%20on%20progress%20against%20the%20Council%20Delivery%20Plan.pdf) and [*Q3 update*](https://democracy.north-herts.gov.uk/documents/s24510/Council+Delivery+Plan+Q3+update+and+projects+for+2425.pdf) (local authority) | bar | A progress bar on each council project, the share of this year's milestones complete, beside a status rating. **(check)** | one bar per project, several per page | Several bars **aligned in a panel**, each with its name; the bar says *of what* (this year's milestones only), which is a caption. |
+| G5 | [Aberdeen City HSCP, *Delivery plan overview*, appendix A](https://committees.aberdeencity.gov.uk/documents/s166414/Appendix+A+-+Delivery+Plan+Overview+Y3Q3.pdf) (health and social care partnership) | bar | Programmes by status (blue, red, amber, green, plus not started and closed), with the share of projects in each. **(check)** | ~5–7 statuses | The status is named in words in the table beside the colour; a progress panel with RAG words, never colour alone. |
+| G6 | [Science Learning Hub, *The fire danger sign*](https://www.sciencelearn.org.nz/resources/745-the-fire-danger-sign-and-bernie) (New Zealand science education) | dial | The semicircular roadside sign: a needle over bands from low to extreme, set each day by fire managers. **(check)** | 1 dial, 5 named bands | **Named bands round a half-circle** and one needle; no number is read at all, only the band. |
+| G7 | [Museum of Fire, *From slide rule to sign post: the history of Australia's fire danger meter*](https://www.museumoffire.net/single-post/from-slide-rule-to-sign-post-the-history-of-australia-s-fire-danger-meter) and [ACM news, *Australia's new bushfire rating system*](https://www.portnews.com.au/story/7884927/everything-you-need-to-know-about-australias-new-bushfire-rating-system/) (museum; regional press) | dial | The Australian roadside meter since the 1960s: an arc of five bands and a pointer; the 2022 system cut it to four named levels plus a resting place for the needle. **(check)** | 1 dial, 4–5 named bands | As G6. The bands are **words**, and the colours repeat them. |
+| G8 | [Wikipedia, *Bullet graph*](https://en.wikipedia.org/wiki/Bullet_graph), on S. Few's 2005 design (reference) | bullet | One measure as a bar, a target as a short line across it, and two to five qualitative ranges (poor, satisfactory, good) behind it in shades of one hue; designed to replace dashboard gauges. **(check)** | 1 bar, 1 target, 2–5 ranges | Bands as **tones of one ink**, not traffic lights; a linear scale from zero. |
+| G9 | S. Few, *Bullet Graph Design Specification* (Perceptual Edge, 2013), `perceptualedge.com/articles/misc/Bullet_Graph_Design_Spec.pdf`, as cited by [BetterEvaluation](https://betterevaluation.org/node/1784) (evaluation methods site) | bullet | The specification: a text label, one linear scale, the featured measure, one or two comparative measures, and two to five ranges; graphs stacked with their scales aligned. Not opened: the host did not resolve. **(check)** | ~4–8 graphs stacked | **A stacked panel**, labels in one column, scales aligned. |
+
+**What the corpus says.** Every original states **one amount against one scale**, and a
+page that has several draws them **as a panel of the same style**, aligned (G4, G9);
+nothing found mixes a dial with bars. That is the case for `style` on the document, not
+on each meter. Fundraising thermometers (G1–G3) are single, start at zero and end at the
+goal, and sometimes carry a stage target under it. Progress bars (G4, G5) come several
+to a page with a status in words. Dials worth the name (G6, G7) are read by their
+**named bands**, the needle saying which one; the words are on the sign and the colours
+repeat them. The bullet graph (G8, G9) was designed as the honest replacement for the
+dial: bands in tones of one ink, a target tick, a scale from zero. Two gaps: no
+non-vendor *bullet* original was found in a public report (vendor tutorials only), so the
+use case rests on the specification; and no KPI dial was found in a board paper (they
+appear in vendor galleries), so the dial use case rests on the fire signs. Budget: six
+meters to a panel, five bands.
+
 ---
 
 ## Summary for the builders
@@ -228,3 +262,4 @@ with some regions left empty, which costs nothing extra.
 | bars | 1–3 bars, ≤ 8 parts | Proportional lengths, units, `?` unknown, braces; sums checked |
 | pie | School 3–6, public finance 8–15; donut only in templates | ≤ 8 sectors, labelled, sum checked; donut as a theme variant |
 | four-set Venn | Research Venns use 4 ellipses, 15 regions, counts | Four-ellipse layout; short region text |
+| meter | One amount against one scale; panels of one style; dials read by named bands | `style` per document; ≤ 6 meters, ≤ 5 bands with words; bullet bands in tones |

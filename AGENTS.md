@@ -86,11 +86,12 @@ Pick by what the reader must **understand**, not by what it looks like.
 | A claim, the reasons for it and the objections to them: a case, a policy option, a paper's conclusion (an argument map) | `argument` | `claim` + ≤ 15 `points`, each `id`, `text`, `on` (`claim` or a point), `stance` `for`/`against` (a rebuttal is an `against` on an `against`), `with` for co-premises; `note` = evidence |
 | Who is whose child and partner, generation by generation: a family tree, or a pedigree in genetics | `familytree` | ≤ 30 `people` (`id`, `sex` → square/circle/diamond; `status` `affected`/`carrier`, `deceased`, `proband`, `consultand`, `adopted`, `pregnancy`, `gender`) + `couples` (`between` two, `children` in birth order, `twins`, `separated`, `consanguineous`); rows and numbers derived; ≤ 6 partners, 4 generations |
 | How one total became another, step by step: a budget gap, a deficit, a forecast to an outturn (bridge chart) | `waterfall` | `axis` (`label`, with the unit) + 3–12 `bars` left to right: each a `total` (stands on zero; first, last, and subtotals checked against the running sum) or a signed `amount` |
+| How far one amount is along its scale: a progress bar, a fundraising thermometer, a KPI dial, a bullet graph | `meter` | `style` (`bar`, `thermometer`, `dial`, `bullet`; one per document) + 1–6 `meters`, each `text`, `amount`, `max` (+ `unit`, `target`; `min` on a dial; 2–5 named `bands`, `{text, to}`, rising to `max`: required on a bullet) |
 
 `flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring through **every** node, and is refused if it does not.
 `flow` vs `states`: a box something *is in*, re-entered, labelled by events, is a state. `flow` vs `sequence`: the same few participants talking in turn, in order, is a sequence. `flow` vs `lanes`: same document; when *who hands off to whom* matters, say `lanes`.
 `tree` vs `mindmap`: a tree ranks from a root (*this first*); a mind map's main branches are peers round a centre. Links across branches make a concept map: a `flow`. `tree` vs `argument`: when each box is *for* or *against* the one above, it is an argument. `tree` vs `familytree`: a child of two parents is a family tree; one person's ancestors only is a `tree`.
-`timeline` vs `numberline`: *when* things happened, in order, is a timeline; where values sit on one measured or named scale, and whether a range's ends are in it, is a number line.
+`timeline` vs `numberline`: *when* things happened, in order, is a timeline; where values sit on one measured or named scale, and whether a range's ends are in it, is a number line; one amount read against its scale, with a target or named bands, is a `meter`.
 
 **Keep it readable.** Each kind has a budget ([`docs/format.md`](docs/format.md#the-readability-budget);
 a `flow`: 15 nodes, 16 edges). Past it a document is refused even though it
@@ -185,8 +186,7 @@ A refusal is information, not an obstacle. Three kinds, and each tells you what 
 - **`DocumentError`** — a field is wrong or an id does not resolve. The message carries a JSON pointer (`/edges/2/to`). Fix that path.
   All violations are reported at once, so read them all before editing. A budget refusal (`… is past what one flow can be read at`)
   means split, not trim; an emphasis refusal means give all but one or two their ordinary role.
-- **`FitError`** — the diagram does not fit its width in either direction. Shorten the longest label, split the diagram,
-  or raise the top-level `width`. Do **not** try to shrink a gap; you cannot, and that is deliberate.
+- **`FitError`** — the diagram does not fit its width in either direction. Shorten the longest label, split the diagram, or raise the top-level `width`. Do **not** try to shrink a gap; you cannot, and that is deliberate.
 - **A refused field** — you wrote a coordinate or a style. Delete it; express the
   intent with `kind` or `role` instead.
 
@@ -196,5 +196,5 @@ Always run `drawspec validate` before calling a document done; it prints every p
 
 - Do not emit SVG yourself. The whole point is that you do not place anything.
 - Do not add fields hoping they are ignored — unknown fields are errors.
-- Do not use `chart`, `treemap`, `sankey`, `pie` or `waterfall` for exploring data. No statistics, dates, log scales or second axis. They state a few numbers you already know.
+- Do not use `chart`, `treemap`, `sankey`, `pie`, `waterfall` or `meter` for exploring data. No statistics, dates, log scales or second axis. They state a few numbers you already know.
 - Do not use drawspec for anything whose point is *where things are* — a floor plan, a map. There is no declarative description of those.

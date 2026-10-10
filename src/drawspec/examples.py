@@ -61,6 +61,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "mindmap": "a topic in the middle, its branches as peers round it — revision notes, a plan",
     "argument": "a claim, the reasons for it and the objections, by stance — an argument map",
     "familytree": "people, couples and their children by generation — a family tree or pedigree",
+    "meter": "one amount against its scale — a progress bar, a thermometer, a dial, a bullet",
 }
 
 #: The smallest document of each kind that renders.
@@ -364,6 +365,11 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"id": "kid", "sex": "unknown"},
         ],
         "couples": [{"between": ["mum", "dad"], "children": ["kid"]}],
+    },
+    "meter": {
+        "version": 1,
+        "kind": "meter",
+        "meters": [{"text": "Chapters drafted", "amount": 7, "max": 12, "unit": "chapters"}],
     },
     "scatter": {
         "version": 1,

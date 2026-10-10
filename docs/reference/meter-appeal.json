@@ -1,0 +1,12 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "meter",
+  "style": "thermometer",
+  "title": "The chapel roof appeal",
+  "description": "A fundraising thermometer: £41,250 raised toward a £60,000 goal, with the first stage's target of £45,000 marked on the tube.",
+  "caption": "Gifts received by 30 September; Gift Aid not yet claimed.",
+  "meters": [
+    {"text": "Chapel roof appeal\nStage one: the lead and timbers", "amount": 41250, "max": 60000, "target": 45000, "unit": "£"}
+  ]
+}

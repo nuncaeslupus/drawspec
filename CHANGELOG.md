@@ -12,6 +12,20 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`meter`, the thirty-fourth kind** — one amount against its scale, alone or up to
+  six to a panel, in one `style` per document: `bar` (a progress bar; the default),
+  `thermometer` (a goal filling up), `dial` (a needle on a half-circle, the only style
+  that takes a `min`) or `bullet` (a thin bar on named bands with ticks from zero). Each
+  meter is `text` (a newline adds a caption), `amount`, `max`, and optionally `unit`
+  (`%`, a currency sign before the number, or a word after it), a `target` drawn
+  across the track, and 2–5 named `bands` (`{text, to}`, rising to `max`; required on a
+  bullet, optional on a dial) in ramp tones with their words on them, never colour
+  alone. A readout says every number: the amount, the band it is in, the target.
+  Refused at their pointers: a reading or target off the scale, `min` off a dial, bands
+  on a bar (a `bullet`) or a thermometer, a bullet without them, bands that do not rise
+  to `max`, `style` on a meter, `value`, `goal`, `percent`, a band's `from`. Budget: 6
+  meters, 5 bands. `docs/proposals/meter.md` records the design, and section 10 of
+  `docs/research/corpus-round2.md` the originals.
 - **`familytree`, the thirty-third kind** — a family tree, or a pedigree in genetics
   and medicine: `people` and the `couples` they form, each couple's `children` in
   birth order. Generations are rows (I, II, III) and people are numbered left to right

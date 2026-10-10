@@ -7,10 +7,10 @@
 Declarative diagram spec → clean, themeable SVG. Writable by an LLM with no
 coordinates to get wrong.
 
-> **Status: it draws.** All thirty-three kinds render — `flow`, `tree`, `cycle`,
+> **Status: it draws.** All thirty-four kinds render — `flow`, `tree`, `cycle`,
 > `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`,
 > `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`,
-> `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument` and `familytree` — and each of
+> `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree` and `meter` — and each of
 > the eleven failure families below has a test asserting it cannot be expressed.
 > The vocabulary opened from nine to thirteen on evidence: see `docs/kinds-wanted.md`, which
 > sorts all 89 hand-drawn originals by the kind that would have to draw them.
@@ -58,6 +58,9 @@ coordinates to get wrong.
 > `familytree` is the thirty-third: people, the couples they form and their children,
 > a generation to a row and numbered for you (II-3), in the standard's symbols — the
 > pedigree of a genetics clinic, and the family tree of a history lesson.
+> `meter` is the thirty-fourth: one amount against its scale — a progress bar, a
+> fundraising thermometer, a dial or a bullet graph, alone or a few to a panel, every
+> band named in words.
 > A `flow` also draws a causal loop diagram: a sign on every arrow, delay marks,
 > and named loops marked R or B, the type derived from the signs, never written.
 
@@ -137,7 +140,7 @@ every diagram in your project changes with it.
 
 ### A timeline
 
-The thirty-three kinds are the part people do not expect, so here is one that is not
+The thirty-four kinds are the part people do not expect, so here is one that is not
 a box-and-arrow diagram at all:
 
 ```json
@@ -244,7 +247,7 @@ for several jobs it might look like it does.
 * **It is not a Graphviz replacement.** Graphviz is a graph-layout engine with
   decades of work behind its layered and force-directed placement, and it will
   lay out a hundred-node graph that drawspec refuses. drawspec's layout exists
-  to serve thirty-three named diagram shapes at the sizes a document reads at; past
+  to serve thirty-four named diagram shapes at the sizes a document reads at; past
   each kind's readability budget (fifteen boxes on a `flow`) it will tell you to
   split the diagram into an overview and details rather than produce something
   dense and unreadable, which is deliberate but is not what a graph tool does.

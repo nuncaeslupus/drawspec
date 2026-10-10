@@ -2490,6 +2490,79 @@
         "couples"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "meter",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "meter"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "style": {
+          "type": "string",
+          "description": "How every meter in the document is drawn: `bar` (the default, a progress bar), `thermometer` (a goal filling up), `dial` (a needle on a half-circle) or `bullet` (a bar on named bands, with a target tick). One for the whole panel, so like is compared with like.",
+          "enum": [
+            "bar",
+            "thermometer",
+            "dial",
+            "bullet"
+          ]
+        },
+        "meters": {
+          "type": "array",
+          "description": "The meters, 1 to 6, in reading order: rows for bars and bullets, columns for thermometers, up to three dials to a row. Each has its own scale.",
+          "items": {
+            "$ref": "#/$defs/meter-meter"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "meters"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -3785,6 +3858,75 @@
       "required": [
         "from",
         "to"
+      ],
+      "additionalProperties": false
+    },
+    "meter-band": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The band's name, written on it: `Good`, `Strained`, or `Green` when that is the word the reader is taught. One or two short words."
+        },
+        "to": {
+          "type": "number",
+          "description": "Where the band ends; it starts where the band before ends."
+        }
+      },
+      "required": [
+        "text",
+        "to"
+      ],
+      "additionalProperties": false
+    },
+    "meter-meter": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The meter's name. A second line after a newline is its caption, drawn plain under the name: what the reading is of — `This year's milestones only`."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The reading, on the scale from `min` to `max`. Written with its `unit` in the readout; never as a percentage the author worked out."
+        },
+        "max": {
+          "type": "number",
+          "description": "The end of the scale: a thermometer's goal, a progress bar's whole, a dial's right-hand end."
+        },
+        "min": {
+          "type": "number",
+          "description": "Where the scale starts, on a `dial` only (0 by default): a needle reads a position, so it may start anywhere. A bar's length is its amount, so a bar, a bullet and a thermometer start at 0."
+        },
+        "unit": {
+          "type": "string",
+          "description": "What the numbers are in: `%`, a currency sign (`£`, `$`, `€`, `¥`, written before the number) or a word (`tasks`, after it)."
+        },
+        "target": {
+          "type": "number",
+          "description": "A mark on the scale — the plan, a stage of an appeal — drawn across the track and written in the readout. Inside the scale."
+        },
+        "bands": {
+          "type": "array",
+          "description": "Named stretches of the scale, rising: each runs from the end of the one before (or `min`) to its own `to`, and the last ends at `max`. Required on a `bullet`, optional on a `dial`, refused on the others. Drawn in tones of the page's ink with their words on them, so a band is never told by colour alone.",
+          "items": {
+            "$ref": "#/$defs/meter-band"
+          },
+          "minItems": 2
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default) or `emphasis` (the meter the panel is about: its name and reading bold).",
+          "enum": [
+            "step",
+            "emphasis"
+          ]
+        }
+      },
+      "required": [
+        "text",
+        "amount",
+        "max"
       ],
       "additionalProperties": false
     },

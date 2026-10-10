@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Thirty-three exist, and they fall into twenty-two families:
+fields are legal. Thirty-four exist, and they fall into twenty-three families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -171,6 +171,7 @@ fields are legal. Thirty-three exist, and they fall into twenty-two families:
 | Scale | `numberline` | Where values sit on one scale: points and ranges, each end in or out — an inequality, the pH scale, a spectrum. |
 | Topic | `mindmap` | Things round one topic, as peers: a centre and its branches nested three levels deep, on both sides — revision notes, a brainstorm, a plan (a mind map). |
 | Family | `familytree` | Who is whose child and partner: people, couples and their children a generation to a row, in the standard symbols — a family tree, or a pedigree in genetics. |
+| Gauge | `meter` | How far one amount is along its scale: a progress bar, a fundraising thermometer, a dial with named bands, a bullet graph — alone or a few to a panel. |
 | Reasoning | `argument` | Things said for and against a claim: reasons, objections, rebuttals and evidence by stance, co-premises under one bracket (an argument map). |
 
 One worked document per kind lives in [`reference/`](reference), and `make
@@ -1935,6 +1936,71 @@ pointer to `tree`. See [`reference/familytree-cousins.json`](reference/familytre
 [`reference/familytree-tudors.json`](reference/familytree-tudors.json) (six marriages)
 and [`reference/familytree-reunion.json`](reference/familytree-reunion.json) (remarriage,
 twins, adoption, gender).
+
+## A meter: progress bar, thermometer, dial, bullet
+
+Some figures say one thing: *this much, out of that*. A parish's roof appeal draws a
+thermometer filling toward its goal; a delivery plan draws a progress bar per project; a
+roadside fire sign is a half-circle of named bands with a needle on today's; a dashboard
+draws a bullet graph, a bar on bands of grey with a target tick across it. That is
+`meter`:
+
+```json
+{
+  "version": 1,
+  "kind": "meter",
+  "style": "thermometer",
+  "title": "The chapel roof appeal",
+  "meters": [
+    {"text": "Chapel roof appeal", "amount": 41250, "max": 60000, "target": 45000, "unit": "£"}
+  ]
+}
+```
+
+Each of the 1 to 6 `meters` is an `amount` read against its own scale, which ends at
+`max`. `style` is set once for the whole document — `bar` (the default), `thermometer`,
+`dial` or `bullet` — because a panel compares like with like: lengths with lengths,
+needles with needles. A document wanting two styles is two documents.
+
+* **`bar`**: a progress bar. One row per meter, names in a column at the left, the
+  tracks lined up, the readouts in a column at the right.
+* **`thermometer`**: a tube on a bulb, filled from zero toward the goal (`max`), its
+  scale ticked at the left. Several stand side by side.
+* **`dial`**: a needle on a half-circle from `min` (the only style that takes one; 0 by
+  default) at the left to `max` at the right, up to three to a row. A needle reads a
+  position, so a dial may start anywhere; a bar's length is its amount, so the others
+  start at zero.
+* **`bullet`**: a thin bar on named bands, with ticks from zero under it — Few's bullet
+  graph, the honest replacement for a dial.
+
+`target` is a mark on the scale — the plan for now, a stage of an appeal — drawn as a
+short heavy stroke across the track. `bands` are 2 to 5 named stretches of the scale,
+each `{"text", "to"}`, running from the end of the band before (or `min`) and rising to
+`max`; required on a `bullet`, optional on a `dial`, refused on the others. **A band is
+never told by colour alone**: it is drawn in a tone of the page's ink, lightest first,
+and its word is written on it. If the reader is taught red, amber and green, write
+`Red`, `Amber`, `Green` — the words carry it, and the theme decides the tones.
+
+Every number is said in words in the meter's **readout**: the amount in bold — *of*
+`max` on a bar and a thermometer (`23 of 30 sessions`, `£41,250 of £60,000`; just `64%`
+for a percentage of 100) — then the band the amount is in, then the target. `unit` is
+`%`, a currency sign written before the number (`£`, `$`, `€`, `¥`) or a word written
+after it. A newline in a meter's `text` makes the rest a caption under its name: what
+the reading is *of*. `role: "emphasis"` makes one meter's name and readout bold.
+
+Refused, each at its pointer: an `amount` or `target` outside the scale; `max` not above
+`min`; `min` on a bar, a bullet or a thermometer; `bands` on a bar (that is a `bullet`)
+or a thermometer; a bullet without them; bands that do not rise, or whose last `to` is
+not `max`; one band; `style` on a meter (it is the document's); `value` (it is
+`amount`), `goal` (`max`, or a `target` under it), `percent`, a band's `from`, `colour`;
+`series`, `axes`, `edges`. Budget: 6 meters, 5 bands. A band's word longer than its
+band on a bullet, or band words that run into each other round a dial, are a
+`FitError`. See [`reference/meter-appeal.json`](reference/meter-appeal.json) (a
+fundraising thermometer with a stage target),
+[`reference/meter-migration.json`](reference/meter-migration.json) (a project progress
+panel), [`reference/meter-ward.json`](reference/meter-ward.json) (KPI dials, one rated
+red, amber or green in words) and
+[`reference/meter-library.json`](reference/meter-library.json) (a bullet-graph set).
 
 ## Asking for a wide drawing instead of a tall one
 

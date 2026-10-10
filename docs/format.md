@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-33 kinds. The machine-readable form of this page is the published
+34 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree` | **yes** | Which of the thirty-three diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter` | **yes** | Which of the thirty-four diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -264,6 +264,13 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `people` | array of [familytree-person](#familytree-person-object), at least 2 | **yes** | Everyone in the tree. Generations and numbers are derived: a child is one row below its parents, a partner shares their partner's row, and people are numbered left to right in each row (II-3). At most 30, in 4 generations. |
 | `couples` | array of [familytree-couple](#familytree-couple-object), at least 1 | **yes** | Who partnered whom, and their children. Everyone is in at least one couple, as a partner or a child. |
 
+### `meter`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `style` | string — one of `bar`, `thermometer`, `dial`, `bullet` | no | How every meter in the document is drawn: `bar` (the default, a progress bar), `thermometer` (a goal filling up), `dial` (a needle on a half-circle) or `bullet` (a bar on named bands, with a target tick). One for the whole panel, so like is compared with like. |
+| `meters` | array of [meter-meter](#meter-meter-object), at least 1 | **yes** | The meters, 1 to 6, in reading order: rows for bars and bullets, columns for thermometers, up to three dials to a row. Each has its own scale. |
+
 ### `mindmap`
 
 | Field | Type | Required | What it is |
@@ -344,6 +351,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `mindmap` | 8 `branches`, 30 `branches` in all, at every level |
 | `argument` | 15 `points` |
 | `familytree` | 30 `people` |
+| `meter` | 6 `meters`, 5 `bands` per meter |
 
 ## Emphasis
 
@@ -751,6 +759,26 @@ name, so a misspelt key is an error at the point it was written.
 | `twins` | array of [familytree-twins](#familytree-twins-object) | no | Children of one birth, each set written next to each other in `children`. |
 | `separated` | boolean | no | The relationship has ended: two short strokes across the partner line. |
 | `consanguineous` | boolean | no | The partners are related by blood: a double partner line. |
+
+### `meter-meter` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The meter's name. A second line after a newline is its caption, drawn plain under the name: what the reading is of — `This year's milestones only`. |
+| `amount` | number | **yes** | The reading, on the scale from `min` to `max`. Written with its `unit` in the readout; never as a percentage the author worked out. |
+| `max` | number | **yes** | The end of the scale: a thermometer's goal, a progress bar's whole, a dial's right-hand end. |
+| `min` | number | no | Where the scale starts, on a `dial` only (0 by default): a needle reads a position, so it may start anywhere. A bar's length is its amount, so a bar, a bullet and a thermometer start at 0. |
+| `unit` | string | no | What the numbers are in: `%`, a currency sign (`£`, `$`, `€`, `¥`, written before the number) or a word (`tasks`, after it). |
+| `target` | number | no | A mark on the scale — the plan, a stage of an appeal — drawn across the track and written in the readout. Inside the scale. |
+| `bands` | array of [meter-band](#meter-band-object), at least 2 | no | Named stretches of the scale, rising: each runs from the end of the one before (or `min`) to its own `to`, and the last ends at `max`. Required on a `bullet`, optional on a `dial`, refused on the others. Drawn in tones of the page's ink with their words on them, so a band is never told by colour alone. |
+| `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis` (the meter the panel is about: its name and reading bold). |
+
+### `meter-band` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The band's name, written on it: `Good`, `Strained`, or `Green` when that is the word the reader is taught. One or two short words. |
+| `to` | number | **yes** | Where the band ends; it starts where the band before ends. |
 
 ### `familytree-twins` object
 

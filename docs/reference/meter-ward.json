@@ -1,0 +1,39 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "meter",
+  "style": "dial",
+  "title": "A medical ward this week",
+  "description": "Three dials, each a needle over named bands: bed occupancy, patients seen within four hours rated red, amber or green, and staff vacancies.",
+  "caption": "Week ending Sunday; bands as agreed by the division's board.",
+  "meters": [
+    {
+      "text": "Bed occupancy",
+      "amount": 91, "min": 60, "max": 100, "unit": "%",
+      "bands": [
+        {"text": "Low", "to": 75},
+        {"text": "Safe", "to": 85},
+        {"text": "Strained", "to": 95},
+        {"text": "Critical", "to": 100}
+      ]
+    },
+    {
+      "text": "Seen within 4 hours",
+      "amount": 78, "min": 50, "max": 100, "unit": "%", "target": 95,
+      "bands": [
+        {"text": "Red", "to": 85},
+        {"text": "Amber", "to": 95},
+        {"text": "Green", "to": 100}
+      ]
+    },
+    {
+      "text": "Nursing vacancies",
+      "amount": 6.5, "max": 15, "unit": "%",
+      "bands": [
+        {"text": "Low", "to": 5},
+        {"text": "Moderate", "to": 10},
+        {"text": "High", "to": 15}
+      ]
+    }
+  ]
+}
