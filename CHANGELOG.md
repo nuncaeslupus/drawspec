@@ -10,6 +10,15 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+### Added
+
+- **A hero image for the README and the GitHub social preview**, drawn by
+  drawspec itself: `docs/hero.svg` and a 1280x640 `docs/hero.png`, composed by
+  `tools/hero.py` (`make hero`; `--check` reports a stale file). A blueprint
+  sheet of reference drawings as plates, a JSON flow spec beside the drawing it
+  renders, and a title block; the fonts are embedded as subset `@font-face` so
+  the SVG renders the same through GitHub's `<img>`.
+
 ## [0.1.0] — 2026-10-10
 
 ### Added
