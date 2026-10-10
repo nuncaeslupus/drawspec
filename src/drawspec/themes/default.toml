@@ -175,6 +175,14 @@ spine = "strong"
 bone = "flow"
 cause = "link"
 
+[journey]
+# A journey map's feeling line is the one heavy line on it; the guide each level
+# is named on is light and dashed, so the line reads over the grid, and the rule
+# above each detail row is thin and solid, a table's line rather than a level's.
+line = "strong"
+guide = "aside"
+separator = "link"
+
 # ---------------------------------------------------------------------------
 # Node roles. Shape and line treatment per semantic role. The author names the
 # role; every appearance decision below is taken here, once, for all diagrams.

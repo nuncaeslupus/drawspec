@@ -223,6 +223,16 @@ How a fishbone draws its spine, its bones and the ticks its causes sit on.
 | `bone` | `"flow"` | The edge role a category's bone is drawn in, with no head. The bone of a confirmed root cause (`emphasis`) is drawn in the spine's role from that cause to the spine, so the path from cause to effect is one weight. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
 | `cause` | `"link"` | The edge role the tick a cause's words sit on is drawn in, with no head. A ruled-out cause (`note`) is drawn in `aside` instead: light and dashed. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
 
+### `[journey]`
+
+How a journey draws the lines that are not words: the feeling line and its rules.
+
+| Key | Default | What it is |
+|---|---|---|
+| `line` | `"strong"` | The edge role the feeling line is drawn in, with no head: the one heavy line, through every stage's point. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `guide` | `"aside"` | The edge role each feeling level's guide is drawn in, across every stage: light, so the line and not the grid is what is read. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `separator` | `"link"` | The edge role the rule above each detail row is drawn in, across the whole map. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The

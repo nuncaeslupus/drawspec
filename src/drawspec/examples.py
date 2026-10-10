@@ -51,6 +51,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "board": "cards sorted into columns — a kanban board, a retrospective, a story map",
     "fishbone": "one effect and its causes by category — a root-cause (Ishikawa) diagram",
     "venn": "two or three overlapping sets — what each holds alone, and what they share",
+    "journey": "one person's feeling across the stages of an experience — a journey map",
 }
 
 #: The smallest document of each kind that renders.
@@ -278,6 +279,15 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "kind": "venn",
         "sets": [{"id": "a", "text": "Cats"}, {"id": "b", "text": "Dogs"}],
         "regions": [{"in": ["a", "b"], "text": "Pets"}],
+    },
+    "journey": {
+        "version": 1,
+        "kind": "journey",
+        "feelings": ["unhappy", "happy"],
+        "stages": [
+            {"text": "Orders", "feeling": "happy"},
+            {"text": "Waits", "feeling": "unhappy"},
+        ],
     },
     "scatter": {
         "version": 1,

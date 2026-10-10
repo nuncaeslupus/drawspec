@@ -1671,6 +1671,86 @@
         "sets"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "journey",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "journey"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "feelings": {
+          "type": "array",
+          "description": "The named levels a stage's feeling may take, **worst first**: drawn as guides across the map, the worst at the bottom, each named once on the left. Names, not scores.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2
+        },
+        "rows": {
+          "type": "array",
+          "description": "The detail rows under the feeling line, top to bottom: what the person does, where, what gets in the way. Optional: without rows the map is the stages and the line.",
+          "items": {
+            "$ref": "#/$defs/journey-row"
+          },
+          "minItems": 1
+        },
+        "stages": {
+          "type": "array",
+          "description": "Left to right as written, one column each, all one width. The feeling line passes through every stage's point.",
+          "items": {
+            "$ref": "#/$defs/journey-stage"
+          },
+          "minItems": 2
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "feelings",
+        "stages"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -2097,6 +2177,24 @@
       ],
       "additionalProperties": false
     },
+    "detail": {
+      "type": "object",
+      "properties": {
+        "row": {
+          "type": "string",
+          "description": "The id of one of the journey's `rows`, at most once per stage."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "row",
+        "text"
+      ],
+      "additionalProperties": false
+    },
     "edge": {
       "type": "object",
       "properties": {
@@ -2391,6 +2489,57 @@
       },
       "required": [
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "journey-row": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the rows; what a stage's `details` name in `row`."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "journey-stage": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "feeling": {
+          "type": "string",
+          "description": "One of the journey's `feelings`, by name: the level this stage's point is drawn at. A name, never a score."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default) or `emphasis` (the stage the map is about, usually the trough): its column framed, its point drawn larger and solid.",
+          "enum": [
+            "step",
+            "emphasis"
+          ]
+        },
+        "details": {
+          "type": "array",
+          "description": "What this stage holds in each detail row, a `{row, text}` per row it fills. A row it does not name is drawn as an empty cell.",
+          "items": {
+            "$ref": "#/$defs/detail"
+          }
+        }
+      },
+      "required": [
+        "text",
+        "feeling"
       ],
       "additionalProperties": false
     },

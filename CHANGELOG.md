@@ -12,6 +12,22 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`journey`, the twenty-fourth kind** — a user or citizen journey map: one
+  person's feeling across 2 to 7 `stages`, each naming one of the document's
+  `feelings` (2 to 5 named levels, worst first — names, never scores). The levels
+  are light guides named once on the left, worst at the bottom; the feeling line
+  is a monotone cubic through every stage's point, so it never overshoots and two
+  neighbours at one level are joined flat. Stages are equal columns under bold
+  headings. Optional `rows` (up to 4) run under the line as a table, filled by each
+  stage's `details`, a list of `{row, text}` — not an object keyed by row ids; a
+  row a stage does not name is an empty cell. Stage roles `step` and `emphasis`
+  (the column framed, the point larger and solid). New theme section
+  `[journey]`: `line` (`strong`), `guide` (`aside`), `separator` (`link`).
+  Refused at their pointers: a number for a feeling, a feeling not in `feelings`
+  (naming the closest), a stage with no feeling (naming `flow`), `personas`,
+  `score`, `edges`, a detail in an undeclared row or twice in one stage, one
+  feeling or one stage, and duplicate feelings or row ids. Budget: 7 stages,
+  5 feelings, 4 rows, with "split it into two journeys" as the advice.
 - **`venn`, the twenty-third kind** — two or three overlapping sets as equal
   circles (centres a radius apart: side by side, or a triangle), and `regions`
   named by membership: `in` is exactly the set ids a region is in, so no

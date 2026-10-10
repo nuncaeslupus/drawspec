@@ -37,8 +37,7 @@ selects — a `flow` with no `nodes` is refused rather than drawn empty. `title`
 `"$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json"` for editor
 completion.
 
-`text` anywhere carries `**bold**` and `` `code` `` spans, and nothing else. A
-newline in `text` means *this is a lead and a detail*, not one sentence.
+`text` anywhere carries `**bold**` and `` `code` `` spans, and nothing else. A newline in `text` means *this is a lead and a detail*, not one sentence.
 
 ## Should this be a diagram at all?
 
@@ -78,6 +77,7 @@ Pick by what the reader must **understand**, not by what it looks like.
 | Work sorted into columns, not joined: a kanban board, a retrospective, a story map | `board` | `columns` (a `limit` is counted for you) + `cards`, stacked in the order written (+ `rows` as slices, `cut` under the first release); no `edges` |
 | One observed problem and the causes investigated, by category: a root-cause review | `fishbone` | `effect` + 2–6 `categories`, each with 1–5 `causes` (leaves: no third level; `emphasis` = confirmed root cause, `note` = ruled out); no `edges` |
 | What two or three sets share, and what each holds alone | `venn` | `sets` (2 or 3, equal circles; no sizes) + `regions`, each named by `in`: exactly the set ids it is in; a region not listed is empty |
+| One person's feeling, stage by stage, against what they do: a user or citizen journey | `journey` | `feelings` (named levels, worst first; no scores) + 2–7 `stages`, each with a `feeling` (+ `rows`, filled by each stage's `details`: `{row, text}`); one person, no `edges` |
 
 `flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may
 branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring

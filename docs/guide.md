@@ -148,7 +148,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Twenty-three exist, and they fall into twelve families:
+fields are legal. Twenty-four exist, and they fall into thirteen families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -164,6 +164,7 @@ fields are legal. Twenty-three exist, and they fall into twelve families:
 | Board | `board` | Things sorted, not joined: cards in columns — a kanban board, a retrospective, a story map sliced into releases. |
 | Cause | `fishbone` | Things that led to one effect: causes by category on bones slanting into a spine — a root-cause (Ishikawa) diagram. |
 | Overlap | `venn` | Things that share: two or three sets as equal circles, each region named by the sets it is in. |
+| Experience | `journey` | How one person feels, stage by stage: a named feeling per stage as a line, over what they do there. |
 
 One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see
@@ -1092,6 +1093,56 @@ a `FitError` naming the region. See
 [`reference/venn-data-roles.json`](reference/venn-data-roles.json),
 [`reference/venn-parity.json`](reference/venn-parity.json) and
 [`reference/venn-telemetry.json`](reference/venn-telemetry.json).
+
+## A journey map
+
+"What does a citizen go through to get X, and how does it feel" is a journey map:
+one person's feeling across the stages of an experience, set against what they
+do at each. The feeling line is the reason to draw it, and the feeling is a
+**name**, not a score. That is `journey`:
+
+```json
+{
+  "version": 1,
+  "kind": "journey",
+  "title": "The first week, as the new starter lives it",
+  "feelings": ["lost", "neutral", "welcome"],
+  "rows": [{"id": "does", "text": "Does"}, {"id": "needs", "text": "Needs"}],
+  "stages": [
+    {"text": "Day 1", "feeling": "welcome", "details": [
+      {"row": "does", "text": "Meets the team"}, {"row": "needs", "text": "A buddy to ask"}]},
+    {"text": "Day 2", "feeling": "lost", "role": "emphasis", "details": [
+      {"row": "does", "text": "Waits for accounts"}, {"row": "needs", "text": "Access on day one"}]},
+    {"text": "Day 5", "feeling": "welcome", "details": [
+      {"row": "does", "text": "Ships a first change"}]}
+  ]
+}
+```
+
+`feelings` are the levels, **worst first**: each is a light guide across the map,
+named once on the left, the worst at the bottom. Every stage names one, and its
+point sits on that guide at the middle of its column; the heavy line passes
+through every point and never overshoots, so two neighbours at one level are
+joined by a flat segment. Stages are equal columns, left to right as written,
+each under its bold heading. `rows` are optional detail bands under the line —
+what the person does, where, what gets in the way — and a stage fills them with
+`details`, a `{row, text}` per row; a row a stage does not name is an empty cell.
+Without rows the map is the headings and the line. The `emphasis` stage — usually
+the trough — has its column framed and its point drawn larger and solid. The
+theme's `[journey]` section picks the line's, the guides' and the row rules' edge
+roles.
+
+Refused, each at its pointer: a number for a feeling, or a feeling not in
+`feelings` (naming the closest); a stage with no `feeling` (it is a `flow` or a
+`timeline`); `personas` (two lines cross and erase each other — one map per
+person); `score`; `edges` (the stages are already in order); a detail in a row
+that is not declared, or twice in one stage; one feeling or one stage. Budget:
+7 stages, 5 feelings, 4 rows — past that, split it into two journeys, before and
+after a hand-off. A word wider than its column is a `FitError`. See
+[`reference/journey-parking-permit.json`](reference/journey-parking-permit.json),
+[`reference/journey-first-week.json`](reference/journey-first-week.json),
+[`reference/journey-bug-report.json`](reference/journey-bug-report.json) and
+[`reference/journey-outpatient.json`](reference/journey-outpatient.json).
 
 ## Asking for a wide drawing instead of a tall one
 

@@ -29,7 +29,7 @@ regeneration, `AGENTS.md` row, and tests.
 | 9 | [`board.md`](board.md) | `board`: kanban, story map, retrospective — **built** | M | — |
 | 10 | [`fishbone.md`](fishbone.md) | `fishbone`: one effect, causes by category — **built** | M | theme `[fishbone] slant` |
 | 11 | [`venn.md`](venn.md) | `venn`: two or three sets, regions named by membership — **built** | S | — |
-| 12 | [`journey.md`](journey.md) | `journey`: stages, a named-feeling line, detail rows | M | `curve`'s through-every-point spline (exists) |
+| 12 | [`journey.md`](journey.md) | `journey`: stages, a named-feeling line, detail rows — **built** | M | `curve`'s through-every-point spline (exists) |
 | 13 | [`treemap.md`](treemap.md) | `treemap`: one total by area | M | owner decision on scope |
 | 14 | [`sankey.md`](sankey.md) | `sankey`: where a known quantity goes | L | owner decision on scope; crossing reduction from the layered engine |
 
@@ -67,7 +67,8 @@ self-loop geometry that `flow` then either adopts or refuses.
    `flow` field (`"lanes": [...]`). The kind keeps `flow`'s refusals simple. —
    *Decided: its own kind; built.*
 6. **`journey.details`** is the first object keyed by ids in the format. Accept it, or
-   use a flat `cells`-style array?
+   use a flat `cells`-style array? — *Decided: neither; a list of `{row, text}` per
+   stage. Built.*
 7. **Count caps.** The proposals give explicit maxima (8 participants, 16 tasks, …)
    beside `FitError`. drawspec has so far refused by fit, not by count; confirm hard caps
    are wanted, or keep fit as the only limit.

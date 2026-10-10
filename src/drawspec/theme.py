@@ -1152,6 +1152,39 @@ class FishboneStyle:
         )
 
 
+@dataclass(frozen=True)
+class JourneyStyle:
+    """How a journey draws the lines that are not words: the feeling line and its rules.
+
+    The author names each stage's feeling; the weight of the line through them,
+    of the guides each level is named on, and of the rules between detail rows
+    are house style.
+    """
+
+    line: str = "strong"
+    """The edge role the feeling line is drawn in, with no head: the one heavy line,
+    through every stage's point."""
+
+    guide: str = "aside"
+    """The edge role each feeling level's guide is drawn in, across every stage: light,
+    so the line and not the grid is what is read."""
+
+    separator: str = "link"
+    """The edge role the rule above each detail row is drawn in, across the whole map."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> JourneyStyle:
+        _reject_unknown(mapping, ("line", "guide", "separator"), "[journey]")
+        defaults = cls()
+        return cls(
+            line=_choice(mapping.get("line", defaults.line), EDGE_ROLES, "[journey] line"),
+            guide=_choice(mapping.get("guide", defaults.guide), EDGE_ROLES, "[journey] guide"),
+            separator=_choice(
+                mapping.get("separator", defaults.separator), EDGE_ROLES, "[journey] separator"
+            ),
+        )
+
+
 #: Which way a `lanes` diagram's lanes run: across the page, stacked top to
 #: bottom (`rows`), or down it, side by side (`columns`). `auto` tries rows and
 #: takes columns when rows do not fit the width.
@@ -1401,6 +1434,7 @@ _TOP_LEVEL_KEYS: Final = (
     "gantt",
     "board",
     "fishbone",
+    "journey",
     "role",
     "edge_role",
 )
@@ -1430,6 +1464,7 @@ class Theme:
     gantt: GanttStyle = GanttStyle()
     board: BoardStyle = BoardStyle()
     fishbone: FishboneStyle = FishboneStyle()
+    journey: JourneyStyle = JourneyStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
 
@@ -1487,6 +1522,7 @@ class Theme:
             gantt=GanttStyle.from_mapping(_section(mapping, "gantt")),
             board=BoardStyle.from_mapping(_section(mapping, "board")),
             fishbone=FishboneStyle.from_mapping(_section(mapping, "fishbone")),
+            journey=JourneyStyle.from_mapping(_section(mapping, "journey")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
         )

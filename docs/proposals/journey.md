@@ -1,7 +1,8 @@
 # Proposal: `journey` — what a person does, and how it feels, stage by stage
 
-Status: **proposed**. Size **M** (columns of text plus a named-level curve; both exist in
-pieces — `matrix`'s grid and `curve`'s through-every-point line).
+Status: **implemented** — see *As built* at the end for where it departs from this
+text. Size **M** (columns of text plus a named-level curve; both exist in pieces —
+`matrix`'s grid and `curve`'s through-every-point line).
 
 ## Why
 
@@ -141,3 +142,43 @@ size and fill).
 * Two adjacent stages at the same level → a flat segment (no overshoot from the spline).
 * Each refusal at its pointer.
 * A journey with no `rows` renders headings + band only.
+
+## As built
+
+Built in `kinds/journey.py`, a layout family of its own. The three use cases are
+`docs/reference/journey-parking-permit.json`, `journey-first-week.json` and
+`journey-bug-report.json` (no rows, with a caption); `journey-outpatient.json` is
+a full-budget map, 7 stages, with a flat run and two troughs. Where it departs
+from the text above:
+
+* **`details` is a list per stage, not an object keyed by row ids** (owner's
+  decision). Each entry is `{"row": "<id>", "text": "..."}`, the same id
+  reference `from`/`to`, `column` and `in` already use, so nothing in the format
+  is keyed by an id. An undeclared row is refused with the closest id; a row
+  named twice in one stage is refused (one cell per row); a detail in a journey
+  with no `rows` says to declare them. An object where the list goes is refused
+  as a type error.
+* **A monotone cubic, not the `curve` spline.** Catmull-Rom passes through every
+  point but overshoots: between two equal neighbours it bulges, which would break
+  the "flat segment" acceptance test and draw the line past a level nobody named.
+  The line is Fritsch–Carlson (Butland's slopes): zero slope where it turns or
+  runs level, so it is flat between equal neighbours and stays between the heights
+  of any two consecutive points.
+* **No `[journey] band` height.** Levels are a fixed distance apart in units (more
+  if a wrapped level name needs it), so a theme cannot change which documents fit.
+  `[journey]` instead names the three lines' edge roles, like `[board]`: `line`
+  (`strong`), `guide` (`aside`, light and dashed, rather than `weak`, whose head
+  and weight belong to a relation) and `separator` (`link`, the thin solid rule
+  above each row).
+* **Level names are right-aligned** against their guides, the way tick labels
+  sit; row names are bold and left-aligned, top-aligned with their cells, as a
+  board's slice names are. Cells are centred in their column, top-aligned.
+* **The emphasis frame** is the `emphasis` role's own rounded box from the top of
+  the headings to the bottom of the last row (a plain rectangle in a theme whose
+  `emphasis` is another shape). Every heading's rule is one weight: a heavier rule
+  inside the frame said it twice.
+* **Refused by name** besides the proposal's list: `score` and `value` on a stage
+  (a feeling is a name), duplicate feelings and row ids, and one feeling or one
+  stage. A stage with no `feeling` names `flow` and `timeline`. The caps live in
+  the readability budget — 7 stages, 5 feelings, 4 rows — each with "split it into
+  two journeys" (or "merge the levels") as the advice.

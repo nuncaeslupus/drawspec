@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-23 kinds. The machine-readable form of this page is the published
+24 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn` | **yes** | Which of the twenty-three diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey` | **yes** | Which of the twenty-four diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -196,6 +196,14 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `sets` | array of [venn-set](#venn-set-object), at least 2 | **yes** | Two or three sets, each a circle of one size with its name outside it. Not sizes: the circles are equal, because a Venn diagram says what overlaps, not how much. |
 | `regions` | array of [region](#region-object) | no | What each region holds, named by membership. A region not listed is drawn empty: its set's name says enough. |
 
+### `journey`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `feelings` | array of string, at least 2 | **yes** | The named levels a stage's feeling may take, **worst first**: drawn as guides across the map, the worst at the bottom, each named once on the left. Names, not scores. |
+| `rows` | array of [journey-row](#journey-row-object), at least 1 | no | The detail rows under the feeling line, top to bottom: what the person does, where, what gets in the way. Optional: without rows the map is the stages and the line. |
+| `stages` | array of [journey-stage](#journey-stage-object), at least 2 | **yes** | Left to right as written, one column each, all one width. The feeling line passes through every stage's point. |
+
 ### `scatter`
 
 | Field | Type | Required | What it is |
@@ -251,6 +259,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `board` | 6 `columns`, 4 `rows`, 32 `cards`, 8 `cards` per cell |
 | `fishbone` | 6 `categories`, 5 `causes` per category |
 | `venn` | 3 `sets`, 7 `regions` |
+| `journey` | 7 `stages`, 5 `feelings`, 4 `rows` |
 
 ## Emphasis
 
@@ -482,6 +491,29 @@ name, so a misspelt key is an error at the point it was written.
 | `in` | array of string, at least 1 | **yes** | The ids of exactly the sets this region is in, and no others: `["gdpr"]` is what only that set holds, `["gdpr", "ens"]` what the two share. drawspec knows where that region is. |
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis` (the region the diagram is about): its words bold and the region filled with the theme's first mark fill. |
+
+### `journey-row` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the rows; what a stage's `details` name in `row`. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `journey-stage` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `feeling` | string | **yes** | One of the journey's `feelings`, by name: the level this stage's point is drawn at. A name, never a score. |
+| `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis` (the stage the map is about, usually the trough): its column framed, its point drawn larger and solid. |
+| `details` | array of [detail](#detail-object) | no | What this stage holds in each detail row, a `{row, text}` per row it fills. A row it does not name is drawn as an empty cell. |
+
+### `detail` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `row` | string | **yes** | The id of one of the journey's `rows`, at most once per stage. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 
 ### `effect` object
 

@@ -262,6 +262,22 @@ VENN_SET_ROLES: Final = ("step", "emphasis")
 #: about — its words bold and the region filled with the theme's first mark fill.
 REGION_ROLES: Final = ("step", "emphasis")
 
+#: Journey maps: one person's feeling across the stages of an experience, a named
+#: level per stage, set against what they do there. The feeling is ordinal and
+#: named — there is no number to read off the line. A layout family of its own.
+JOURNEY_KINDS: Final = ("journey",)
+
+#: The roles a stage may take: the default, and the stage the map is about —
+#: usually the trough — its column framed and its point drawn larger and solid.
+JOURNEY_STAGE_ROLES: Final = ("step", "emphasis")
+
+#: The most stages, feeling levels and detail rows a journey holds. Past seven
+#: stages the columns are too narrow to read; past five levels two neighbours
+#: cannot be told apart; past four rows the map is a table with a line on it.
+JOURNEY_STAGE_MAX: Final = 7
+JOURNEY_FEELING_MAX: Final = 5
+JOURNEY_ROW_MAX: Final = 4
+
 #: How a `files` tree is drawn. `icons` is the file-browser look; `plain` keeps
 #: the guides and drops the pictures; `unicode` and `ascii` are the tree as text,
 #: set in the monospace face, the way `tree` prints it.
@@ -307,6 +323,8 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: `tree` with the effect on top reads as if it owned its causes.
 #: `venn` is the tenth: two or three sets and what they share — a `matrix` can
 #: list memberships but cannot show an overlap.
+#: `journey` is the eleventh: a named feeling across stages — a `curve` would put
+#: a number on the feeling, and a `board` cannot draw the line through it.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -321,6 +339,7 @@ KINDS: Final = (
     + BOARD_KINDS
     + FISHBONE_KINDS
     + VENN_KINDS
+    + JOURNEY_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -395,6 +414,13 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # Set by the proposal: no arrangement of four circles shows every region,
     # and two or three sets have at most seven regions.
     "venn": (("sets", 3), ("regions", 7)),  # [3 sets, 6 regions]
+    # Set by the proposal: columns narrow past seven, neighbouring levels blur
+    # past five, and past four rows the map is a table with a line on it.
+    "journey": (
+        ("stages", JOURNEY_STAGE_MAX),
+        ("feelings", JOURNEY_FEELING_MAX),
+        ("rows", JOURNEY_ROW_MAX),
+    ),  # [7 stages, 5 feelings, 3 rows]
 }
 
 
@@ -1238,6 +1264,59 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "journey-row": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the rows; what a stage's `details` name in `row`.",
+        ),
+        _text(),
+    ),
+    "journey-stage": (
+        _text(),
+        FieldSpec(
+            "feeling",
+            "string",
+            required=True,
+            missing=(
+                "'feeling' is required: the feeling line is the reason to draw a journey, "
+                "and it passes through every stage. A stage nobody can name a feeling for "
+                "means the diagram is a `flow` or a `timeline`."
+            ),
+            description=(
+                "One of the journey's `feelings`, by name: the level this stage's point is "
+                "drawn at. A name, never a score."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=JOURNEY_STAGE_ROLES,
+            description=(
+                "`step` (the default) or `emphasis` (the stage the map is about, usually the "
+                "trough): its column framed, its point drawn larger and solid."
+            ),
+        ),
+        FieldSpec(
+            "details",
+            "array",
+            item_ref="detail",
+            description=(
+                "What this stage holds in each detail row, a `{row, text}` per row it fills. "
+                "A row it does not name is drawn as an empty cell."
+            ),
+        ),
+    ),
+    "detail": (
+        FieldSpec(
+            "row",
+            "string",
+            required=True,
+            description="The id of one of the journey's `rows`, at most once per stage.",
+        ),
+        _text(),
+    ),
     "effect": (_text(),),
     "category": (
         _text(),
@@ -1622,7 +1701,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the twenty-three diagrams this is. It selects the fields that are "
+            "Which of the twenty-four diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -2230,6 +2309,42 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    JOURNEY_KINDS: (
+        FieldSpec(
+            "feelings",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=2,
+            description=(
+                "The named levels a stage's feeling may take, **worst first**: drawn as "
+                "guides across the map, the worst at the bottom, each named once on the "
+                "left. Names, not scores."
+            ),
+        ),
+        FieldSpec(
+            "rows",
+            "array",
+            item_ref="journey-row",
+            min_items=1,
+            description=(
+                "The detail rows under the feeling line, top to bottom: what the person "
+                "does, where, what gets in the way. Optional: without rows the map is the "
+                "stages and the line."
+            ),
+        ),
+        FieldSpec(
+            "stages",
+            "array",
+            required=True,
+            item_ref="journey-stage",
+            min_items=2,
+            description=(
+                "Left to right as written, one column each, all one width. The feeling line "
+                "passes through every stage's point."
+            ),
+        ),
+    ),
     ("scatter",): (
         FieldSpec(
             "axes",
@@ -2496,7 +2611,7 @@ class BoardColumn:
 
 @dataclass(frozen=True)
 class Slice:
-    """One row of a `board` — a release of a story map — across every column."""
+    """One row across every column: a `board`'s release, or a `journey`'s detail row."""
 
     id: str
     text: str
@@ -2551,6 +2666,24 @@ class Region:
     members: tuple[str, ...]
     text: str
     role: str = "step"
+
+
+@dataclass(frozen=True)
+class Detail:
+    """What one stage of a `journey` holds in one detail row."""
+
+    row: str
+    text: str
+
+
+@dataclass(frozen=True)
+class JourneyStage:
+    """One stage of a `journey`: a column, its feeling by name, and its details."""
+
+    text: str
+    feeling: str
+    role: str = "step"
+    details: tuple[Detail, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -2762,6 +2895,15 @@ class Document:
 
     regions: tuple[Region, ...] = ()
 
+    feelings: tuple[str, ...] = ()
+    """A `journey`'s named levels, worst first."""
+
+    journey_rows: tuple[Slice, ...] = ()
+    """A `journey`'s detail rows, top to bottom."""
+
+    journey_stages: tuple[JourneyStage, ...] = ()
+    """A `journey`'s stages, left to right."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -2779,6 +2921,7 @@ class Document:
             ("board", BOARD_KINDS),
             ("fishbone", FISHBONE_KINDS),
             ("venn", VENN_KINDS),
+            ("journey", JOURNEY_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -2971,6 +3114,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_fishbone_refusal(violation) for violation in found]
     if kind in VENN_KINDS:
         found = [_venn_refusal(violation) for violation in found]
+    if kind in JOURNEY_KINDS:
+        found = [_journey_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -3019,6 +3164,18 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
         "No arrangement of four circles shows every region, so a fourth set cannot be drawn "
         "honestly. Use a `matrix`: the sets as columns, the items as rows, a mark where an "
         "item belongs."
+    ),
+    ("journey", "stages"): (
+        "Past seven stages the columns are too narrow to read. Split it into two journeys, "
+        "before and after a hand-off, each with its own feeling line."
+    ),
+    ("journey", "feelings"): (
+        "Past five levels two neighbours cannot be told apart on the page. Merge the levels "
+        "nobody could tell apart in a sentence either."
+    ),
+    ("journey", "rows"): (
+        "Past four rows the map is a table with a line on it. Keep the rows the line is "
+        "explained by, or split it into two journeys, before and after a hand-off."
     ),
     ("categories", "causes"): (
         "Past five causes a bone is a list: keep the ones the investigation turned on, or "
@@ -3161,6 +3318,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return []
     if kind in VENN_KINDS:
         return _venn_violations(document)
+    if kind in JOURNEY_KINDS:
+        return _journey_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -4712,6 +4871,122 @@ def _venn_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a journey has no place for a field an author may reach for.
+JOURNEY_REFUSED: Final = {
+    "edges": (
+        "a journey's stages are already in order, left to right, and the feeling line joins "
+        "them; an arrow between two stages adds nothing. Branching steps are a `flow`"
+    ),
+    "personas": (
+        "a journey map is one person's: two feeling lines cross and erase each other. Draw "
+        "one journey per person, with the same stages"
+    ),
+    "score": (
+        "a feeling is a name, not a score — a numeric axis invites reading 3.4 off a sketch. "
+        "Name the levels in `feelings`, worst first, and give each stage one by name"
+    ),
+    "value": (
+        "a feeling is a name, not a score — a numeric axis invites reading 3.4 off a sketch. "
+        "Name the levels in `feelings`, worst first, and give each stage one by name"
+    ),
+}
+
+
+def _journey_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a journey, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    if name in JOURNEY_REFUSED and "is not a known field" in violation.message:
+        return Violation(violation.pointer, f"{name!r}: {JOURNEY_REFUSED[name]}.")
+    numeric = violation.message in ("expected string, got int", "expected string, got float")
+    if numeric and (name == "feeling" or parts[1:2] == ["feelings"]):
+        return Violation(violation.pointer, f"a number: {JOURNEY_REFUSED['score']}.")
+    if parts[1:] == ["feelings"] and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a journey needs at least 2 feelings: with one level the line is flat and says "
+            "nothing. Name the levels the person moves between, worst first.",
+        )
+    if parts[1:] == ["stages"] and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a journey needs at least 2 stages: a feeling at one stage is a sentence, not a line.",
+        )
+    return violation
+
+
+def _journey_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Feelings and row ids that are unique, and stages whose names land."""
+    found: list[Violation] = []
+    feelings: dict[str, int] = {}
+    for index, feeling in enumerate(_listed(document, "feelings")):
+        if not isinstance(feeling, str):
+            continue
+        if feeling in feelings:
+            found.append(
+                Violation(
+                    _pointer("feelings", index),
+                    f"{feeling!r} is already level {feelings[feeling]}: each level is named once.",
+                )
+            )
+            continue
+        feelings[feeling] = index
+    rows: dict[str, int] = {}
+    for index, entry in enumerate(_listed(document, "rows")):
+        identifier = entry.get("id") if isinstance(entry, dict) else None
+        if not isinstance(identifier, str):
+            continue
+        if identifier in rows:
+            found.append(
+                Violation(_pointer("rows", index, "id"), f"duplicate row id {identifier!r}")
+            )
+            continue
+        rows[identifier] = index
+    has_rows = isinstance(document.get("rows"), list)
+    for index, stage in enumerate(_listed(document, "stages")):
+        if not isinstance(stage, dict):
+            continue
+        feeling = stage.get("feeling")
+        if isinstance(feeling, str) and feelings and feeling not in feelings:
+            found.append(
+                Violation(
+                    _pointer("stages", index, "feeling"),
+                    f"{feeling!r} is not one of the feelings, {', '.join(feelings)}"
+                    + (_closest(feeling, feelings) or ". Name one of them, or add it there."),
+                )
+            )
+        named: set[str] = set()
+        details = stage.get("details")
+        for position, detail in enumerate(details if isinstance(details, list) else []):
+            row = detail.get("row") if isinstance(detail, dict) else None
+            if not isinstance(row, str):
+                continue
+            where = _pointer("stages", index, "details", position, "row")
+            if not has_rows:
+                found.append(
+                    Violation(
+                        where,
+                        "this journey has no `rows`, so a detail has no row to go in. Declare "
+                        "the rows (what the person does, where, what gets in the way), or drop "
+                        "'details'.",
+                    )
+                )
+            elif row not in rows:
+                found.append(
+                    Violation(where, f"{row!r} is not the id of any row" + _closest(row, rows))
+                )
+            elif row in named:
+                found.append(
+                    Violation(
+                        where,
+                        f"{row!r} is named twice in this stage: a stage has one cell per row. "
+                        f"Put both in one text.",
+                    )
+                )
+            named.add(row)
+    return found
+
+
 def _is_number(value: object) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool)
 
@@ -5194,6 +5469,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _fishbone_document(document)
     if kind in VENN_KINDS:
         return _venn_document(document)
+    if kind in JOURNEY_KINDS:
+        return _journey_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -5623,6 +5900,36 @@ def _venn_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _journey_document(document: Mapping[str, Any]) -> Document:
+    """A journey: its feelings worst first, its rows, and its stages in order."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        feelings=tuple(document["feelings"]),
+        journey_rows=tuple(
+            Slice(id=entry["id"], text=entry["text"]) for entry in document.get("rows", ())
+        ),
+        journey_stages=tuple(
+            JourneyStage(
+                text=entry["text"],
+                feeling=entry["feeling"],
+                role=entry.get("role", "step"),
+                details=tuple(
+                    Detail(row=detail["row"], text=detail["text"])
+                    for detail in entry.get("details", ())
+                ),
+            )
+            for entry in document["stages"]
+        ),
+    )
+
+
 def _hub(entry: Mapping[str, Any] | None) -> Node | None:
     if entry is None:
         return None
@@ -5855,6 +6162,8 @@ __all__ = [
     "HIERARCHY_ROLES",
     "HUB_EDGE_ROLES",
     "HUB_MINIMUM_NODES",
+    "JOURNEY_KINDS",
+    "JOURNEY_STAGE_ROLES",
     "KINDS",
     "LANES_KINDS",
     "LANES_MAX",
@@ -5881,6 +6190,7 @@ __all__ = [
     "Cause",
     "Cell",
     "Curve",
+    "Detail",
     "Document",
     "Edge",
     "Entity",
@@ -5889,6 +6199,7 @@ __all__ = [
     "Fragment",
     "Group",
     "Item",
+    "JourneyStage",
     "Message",
     "Node",
     "Position",

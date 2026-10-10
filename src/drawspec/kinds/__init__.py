@@ -18,6 +18,7 @@ from drawspec.kinds.fishbone import fishbone_scene
 from drawspec.kinds.gantt import gantt_scene
 from drawspec.kinds.graph import DRAWN_KINDS, graph_scene
 from drawspec.kinds.grid import grid_scene
+from drawspec.kinds.journey import journey_scene
 from drawspec.kinds.sequence import sequence_scene
 from drawspec.kinds.shape import shape_scene
 from drawspec.kinds.venn import venn_scene
@@ -30,6 +31,7 @@ from drawspec.schema import (
     FISHBONE_KINDS,
     GANTT_KINDS,
     GRID_KINDS,
+    JOURNEY_KINDS,
     SEQUENCE_KINDS,
     SHAPE_KINDS,
     VENN_KINDS,
@@ -53,6 +55,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *BOARD_KINDS,
     *FISHBONE_KINDS,
     *VENN_KINDS,
+    *JOURNEY_KINDS,
     "cycle",
 )
 
@@ -94,6 +97,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return fishbone_scene(document, theme, measurer)
     if document.kind in VENN_KINDS:
         return venn_scene(document, theme, measurer)
+    if document.kind in JOURNEY_KINDS:
+        return journey_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -116,6 +121,7 @@ __all__ = [
     "fishbone_scene",
     "gantt_scene",
     "graph_scene",
+    "journey_scene",
     "outline",
     "scene_for",
     "sequence_scene",

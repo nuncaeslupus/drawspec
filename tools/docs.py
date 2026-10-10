@@ -83,6 +83,7 @@ from drawspec.theme import (
     FontStacks,
     FunnelStyle,
     GanttStyle,
+    JourneyStyle,
     LanesStyle,
     MarkStyle,
     Padding,
@@ -523,6 +524,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "gantt": GanttStyle,
     "board": BoardStyle,
     "fishbone": FishboneStyle,
+    "journey": JourneyStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are
@@ -548,6 +550,9 @@ THEME_VOCABULARIES: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("fishbone", "spine"): EDGE_ROLES,
     ("fishbone", "bone"): EDGE_ROLES,
     ("fishbone", "cause"): EDGE_ROLES,
+    ("journey", "line"): EDGE_ROLES,
+    ("journey", "guide"): EDGE_ROLES,
+    ("journey", "separator"): EDGE_ROLES,
 }
 
 
