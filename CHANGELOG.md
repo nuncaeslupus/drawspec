@@ -285,6 +285,10 @@ against it would stop working. Everything below is about the *package*.
 
 ### Fixed
 
+- **A `chart` of bars with no horizontal `min`/`max`** drew the first and last
+  bar half outside the axes, because the range stopped exactly at the first and
+  last x (1 … N for `categories`). An unpinned side now gets half a bar band of
+  room; a side the author pins is unchanged, so no reference drawing moves.
 - **A self-loop in a `flow` or a `tree`** (an edge from a box to itself) left
   the box's side and re-entered through the middle of its top, where its
   incoming arrow lands, so the two heads met and the loop read as a branch of

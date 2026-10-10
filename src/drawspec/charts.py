@@ -186,6 +186,7 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
 
     filled = tuple(item for item in document.series if item.mark in ("bar", "area"))
     across = _scale_for(horizontal, [point[0] for item in document.series for point in item.data])
+    across = _bar_room(horizontal, across, document.series)
     up = _scale_for(
         vertical, _stacked_heights(document.series), include_zero=bool(filled), headroom=True
     )
@@ -388,6 +389,24 @@ def _scale_for(
         # A flat series still has to be drawn somewhere: give it a unit of room.
         low, high = low - 0.5, high + 0.5
     return Scale(low, high, 0.0, 1.0)
+
+
+def _bar_room(axis: Axis, scale: Scale, series: tuple[Series, ...]) -> Scale:
+    """Widen an unpinned horizontal range so the end bars stand inside the plot.
+
+    A bar is centred on its x and is a band wide, so a range that stops exactly
+    at the first and last x leaves half of each end bar outside the axes. Every
+    bar chart with `categories` and no `min`/`max` did this: the categories sit
+    at 1 … N and the range was 1 … N. Half a band on each side the author left
+    open is the room those halves need; a side they pinned is theirs.
+    """
+    xs = sorted({x for item in series if item.mark == "bar" for x, _ in item.data})
+    if len(xs) < 2:
+        return scale
+    half = min(second - first for first, second in pairwise(xs)) / 2
+    low = scale.low if axis.minimum is not None else min(scale.low, xs[0] - half)
+    high = scale.high if axis.maximum is not None else max(scale.high, xs[-1] + half)
+    return Scale(low, high, scale.start, scale.end)
 
 
 def _ticks(low: float, high: float) -> tuple[tuple[float, str], ...]:

@@ -1429,3 +1429,52 @@ def test_two_waypoints_at_one_place_are_refused_rather_than_dropped() -> None:
     }
     with pytest.raises(DocumentError, match="no distance between them"):
         parse_document(document)
+
+
+def _plot_edges(built: Scene) -> tuple[float, float]:
+    """The left and right ends of the horizontal axis line."""
+    axis = next(
+        item
+        for item in lines(built)
+        if len(item.points) == 2 and item.points[0][1] == item.points[1][1]
+    )
+    return axis.points[0][0], axis.points[1][0]
+
+
+@pytest.mark.parametrize(
+    "horizontal",
+    [
+        {"label": "Quarter", "categories": ["Q1", "Q2", "Q3", "Q4"]},
+        {"label": "Quarter"},
+        {"label": "Quarter", "min": 1, "categories": ["Q1", "Q2", "Q3", "Q4"]},
+    ],
+)
+def test_the_end_bars_stand_inside_the_plot_without_explicit_bounds(
+    horizontal: dict[str, object],
+) -> None:
+    """The first and last bar used to hang half outside the axes.
+
+    Categories sit at 1 … N, and with no `min`/`max` the range was exactly
+    1 … N, so each end bar — centred on its x — spilled half a bar past the
+    axis line. A side the author pins is left where they put it.
+    """
+    built = chart_scene(
+        parse_document(
+            document(
+                axes={"horizontal": horizontal, "vertical": {"label": "Hours"}},
+                series=[
+                    {"name": "Planned", "mark": "bar", "data": [[1, 4], [2, 6], [3, 5], [4, 8]]},
+                    {"name": "Actual", "mark": "bar", "data": [[1, 5], [2, 7], [3, 4], [4, 9]]},
+                ],
+            )
+        ),
+        THEME,
+        MEASURER,
+    )
+    left, right = _plot_edges(built)
+    xs = [x for bar in filled_of(built) for x, _ in bar.points]
+    if "min" in horizontal:
+        assert min(xs) < left
+    else:
+        assert min(xs) >= left - 1e-6
+    assert max(xs) <= right + 1e-6
