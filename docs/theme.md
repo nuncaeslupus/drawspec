@@ -60,6 +60,12 @@ The one width every diagram is drawn to, and the legibility floor.
 | `min_legible_size` | `9.0` | The floor the fit band may not push type below. |
 | `caption` | `"below"` | Where a document's `caption` sits: `below` the drawing, or `above` it. |
 | `ink` | `"#1a1a1a"` | What `currentColor` resolves to in the `standalone` profile. |
+| `ground` | `"none"` | The sheet's colour behind the drawing, in the `standalone` profile and PNG. |
+| `pattern` | `"none"` | What is ruled on the ground: `none`, or a fine drafting `grid`. Standalone only. One of `none`, `grid`. |
+| `border` | `"none"` | The sheet's frame: `none`, or `zoned` — a double border with zone numbers and letters, centring arrows and registration marks. Standalone only. One of `none`, `zoned`. |
+| `title_block` | `false` | Whether to draw an engineering title block below the drawing. Standalone only. |
+| `rule` | `""` | The colour of the grid and of the sheet's quiet lettering — zone letters and the title block's field names. Empty means `ink`. |
+| `accent` | `""` | The colour of the registration marks and the drawing number. Empty means `ink`. |
 
 ### `[font]`
 
@@ -283,4 +289,23 @@ one of `arrow`, `open`, `diamond`, `circle`, `bar`, `triangle`, `none`.
 | `accent` | Colour that points and never carries: six roles are coloured, and every one of them already differed from its neighbours by weight, dash or shape. |
 | `wheel` | The broad tapered cycle connector — `[cycle] connector = "band"` — for a cycle drawn loudly. |
 | `compartment` | A rule between a label's lead and its detail — `[box] lead = "rule"` — for a diagram whose boxes are a name over what belongs to it. |
+| `blueprint` | A drafting sheet — white ink on blue, a grid, a zoned border and a title block filled from the document — in the `standalone` profile and PNG. Inline, the page's own ink and background, like `default`. |
+
+## The drafting sheet
+
+`ground`, `pattern`, `border`, `title_block`, `rule` and `accent` in
+`[canvas]` are **standalone furniture**: a linked `.svg`, a PDF, or a PNG.
+The `inline` profile ignores them, as it ignores `ink` — an inline drawing is
+on its page's background, in its page's ink. They are not refused there,
+because one theme serves both profiles.
+
+The canvas grows to hold the sheet rather than drawing over the diagram: the
+border goes around the framed drawing, the same width for every diagram in
+the theme, and the title block takes a strip of its own below it. Its fields
+are the document's `title` (or its kind), a drawing number derived from its
+content, its `kind`, the drawing's size, and its format `version`. A title
+too long for the block on a fixed-width canvas is a `FitError`.
+
+A theme with a `ground` is checked against it when it loads: `ink` must read
+on it at 4.5:1, and every other colour the theme declares at 3:1.
 

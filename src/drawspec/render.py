@@ -15,6 +15,9 @@ design in one place:
    the same for every kind, and were not while each family decided its own.
 6. **Clear**: break every stroke that would be drawn through a word, which is the
    one defect a family cannot see because it only knows its own primitives.
+   In the `standalone` profile, a theme with a sheet (`[canvas] border`, …)
+   then moves the drawing clear of its border and title block — see
+   `drawspec.sheet`.
 7. **Emit**, which is the only place styling happens and therefore the only place
    embedding safety is enforced.
 
@@ -38,6 +41,7 @@ from drawspec.geometry import fit
 from drawspec.kinds import scene_for
 from drawspec.scene import Scene, moved
 from drawspec.schema import FILES_KINDS, Document, parse_document
+from drawspec.sheet import around
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme, load_theme
 
@@ -89,7 +93,13 @@ def render_document(
         ),
     )
     placed = framed(_placed(fitted.value, fitted.theme, document), fitted.theme)
-    return emit(cleared(placed, fitted.theme, measurer), fitted.theme, profile)
+    drawing = cleared(placed, fitted.theme, measurer)
+    if profile == "standalone" and fitted.theme.canvas.sheet:
+        # The sheet is the standalone canvas's furniture; inline, the page is
+        # the canvas and the theme's sheet is ignored like its `ink` is.
+        drawing, sheet = around(drawing, fitted.theme, document, measurer)
+        return emit(drawing, fitted.theme, profile, sheet=sheet)
+    return emit(drawing, fitted.theme, profile)
 
 
 def _placed(scene: Scene, theme: Theme, document: Document) -> Scene:

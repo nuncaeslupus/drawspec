@@ -45,6 +45,7 @@ from drawspec.scene import (
     TextLine,
     TextRun,
 )
+from drawspec.sheet import Palette, Sheet
 from drawspec.theme import EdgeRole, NodeRole, Theme, load_theme
 
 #: The two embedding profiles, per specification §1.
@@ -144,7 +145,7 @@ def ink_inset(scene: Scene, theme: Theme) -> float:
     return max(widths, default=0.0) / 2
 
 
-def namespace_for(scene: Scene, theme: Theme, profile: str) -> str:
+def namespace_for(scene: Scene, theme: Theme, profile: str, sheet: Sheet | None = None) -> str:
     """A short id prefix, derived from what is being drawn.
 
     Derived rather than random for two reasons: the same document must render to
@@ -160,6 +161,8 @@ def namespace_for(scene: Scene, theme: Theme, profile: str) -> str:
         if isinstance(primitive, Ellipse) and primitive.fill:
             digest.update(f"|{primitive.fill}|{primitive.fill_colour}".encode())
     digest.update(f"{theme.name}|{profile}".encode())
+    if sheet is not None:
+        digest.update(repr(sheet).encode())
     return f"ds{digest.hexdigest()}"
 
 
@@ -504,8 +507,12 @@ def emit(
     profile: str = "inline",
     *,
     namespace: str | None = None,
+    sheet: Sheet | None = None,
 ) -> str:
     """Serialise `scene` to SVG under `profile`, styled by `theme`.
+
+    `sheet` is drawing-sheet furniture laid out by `drawspec.sheet.around`, drawn
+    under the drawing in the `standalone` profile and ignored in `inline`.
 
     Raises:
         EmitError: a primitive names a role the theme does not declare, or the
@@ -525,7 +532,9 @@ def emit(
             f"style is a programming error in the rendering family that produced it."
         )
 
-    prefix = namespace or namespace_for(scene, resolved_theme, profile)
+    if profile != "standalone":
+        sheet = None
+    prefix = namespace or namespace_for(scene, resolved_theme, profile, sheet)
 
     # The viewBox is the bounds of the ink, so a shape flush against the edge of
     # the drawing keeps its whole outline instead of half of it.
@@ -560,6 +569,18 @@ def emit(
         body.append(f'<title id="{prefix}-title">{escape(scene.title)}</title>')
     if scene.description:
         body.append(f'<desc id="{prefix}-desc">{escape(scene.description)}</desc>')
+
+    if sheet is not None:
+        canvas = resolved_theme.canvas
+        palette = Palette(
+            ground=canvas.ground,
+            ink=canvas.ink,
+            soft=canvas.rule or canvas.ink,
+            grid=canvas.rule or canvas.ink,
+            accent=canvas.accent or canvas.ink,
+        )
+        family = _font_family(resolved_theme.font.stacks()["mono"])
+        body.append(sheet.drawn(prefix, palette, family, bleed=inset))
 
     definitions = _pattern_definitions(scene, prefix, resolved_theme, profile)
     if definitions:

@@ -34,17 +34,23 @@ from typing import Any, Final, cast
 
 from drawspec.errors import ThemeError
 from drawspec.text.fontlib import GENERIC_KEYWORDS, default_search_paths, resolve_stack
-from drawspec.theme import Theme, load_theme, relative_luminance
+from drawspec.theme import (
+    GRAPHIC_CONTRAST,
+    TEXT_CONTRAST,
+    Theme,
+    contrast,
+    load_theme,
+    relative_luminance,
+)
 
 #: The two pages a pinned colour has to read on: paper, and a dark-mode screen.
 LIGHT_PAGE: Final = "#ffffff"
 DARK_PAGE: Final = "#121212"
 
-#: WCAG 2.2's floor for the parts of a graphic needed to understand it (1.4.11).
-GRAPHIC_CONTRAST: Final = 3.0
-
-#: WCAG 2.2's floor for body text (1.4.3) — the standalone ink is a text colour.
-TEXT_CONTRAST: Final = 4.5
+# WCAG 2.2's floors — `GRAPHIC_CONTRAST` for the parts of a graphic needed to
+# understand it (1.4.11), `TEXT_CONTRAST` for body text (1.4.3), since the
+# standalone ink is a text colour — are the theme's, which checks a sheet's
+# ground against the same two.
 
 #: How far a brand's stroke weight may scale every line in the theme. Outside
 #: it a `link` gets too faint to see, or a `strong` line outweighs its own label.
@@ -425,13 +431,6 @@ def _hex(red: float, green: float, blue: float) -> str:
 
 def _channels(colour: str) -> tuple[int, int, int]:
     return int(colour[1:3], 16), int(colour[3:5], 16), int(colour[5:7], 16)
-
-
-def contrast(first: str, second: str) -> float:
-    """WCAG contrast ratio between two hex colours, from 1 to 21."""
-    one = relative_luminance(first) or 0.0
-    two = relative_luminance(second) or 0.0
-    return (max(one, two) + 0.05) / (min(one, two) + 0.05)
 
 
 def fit_colour(colour: str, *, minimum: float, pages: Sequence[str]) -> str | None:

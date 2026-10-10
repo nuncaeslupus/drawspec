@@ -40,6 +40,7 @@ from drawspec.emit import PROFILES
 from drawspec.errors import DrawspecError, FitError
 from drawspec.render import render_document
 from drawspec.schema import load_document
+from drawspec.theme import load_theme
 
 ROOT = Path(__file__).resolve().parents[1]
 REFERENCE_DIR = ROOT / "docs" / "reference"
@@ -68,16 +69,23 @@ def reference_documents() -> list[Path]:
 
 
 def build(profile: str = "inline") -> list[Entry]:
-    """Render every reference document, recording why any did not draw."""
+    """Render every reference document, recording why any did not draw.
+
+    A document whose theme draws a sheet (`blueprint`) is rendered `standalone`
+    whatever `profile` says: the sheet is standalone furniture, and inline it
+    would be the same drawing as any other theme's. A standalone SVG keeps every
+    embedding rule but inheriting the page's ink, so it still sits on this page.
+    """
     entries: list[Entry] = []
     for path in reference_documents():
         document = load_document(path)
         try:
+            sheet = load_theme(document.theme or None).canvas.sheet
             entries.append(
                 Entry(
                     name=path.stem,
                     kind=document.kind,
-                    svg=render_document(document, profile=profile),
+                    svg=render_document(document, profile="standalone" if sheet else profile),
                 )
             )
         except FitError as error:

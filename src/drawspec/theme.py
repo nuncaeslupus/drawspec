@@ -135,6 +135,13 @@ def relative_luminance(colour: str) -> float | None:
     return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
 
 
+def contrast(first: str, second: str) -> float:
+    """WCAG contrast ratio between two hex colours, from 1 to 21."""
+    one = relative_luminance(first) or 0.0
+    two = relative_luminance(second) or 0.0
+    return (max(one, two) + 0.05) / (min(one, two) + 0.05)
+
+
 def _colour(value: object, where: str) -> str:
     """Validate and normalise one colour, so each has exactly one spelling."""
     if not isinstance(value, str):
@@ -243,6 +250,16 @@ WIDTH_MODES: Final = ("fixed", "ink")
 #: What a theme may do to the first paragraph of a two-part label.
 LEAD_TREATMENTS: Final = ("bold", "plain", "rule")
 
+#: What a standalone sheet may have ruled on its ground.
+SHEET_PATTERNS: Final = ("none", "grid")
+
+#: How a standalone sheet may be framed.
+SHEET_BORDERS: Final = ("none", "zoned")
+
+#: WCAG 2.2's contrast floors: text (1.4.3) and the parts of a graphic (1.4.11).
+TEXT_CONTRAST: Final = 4.5
+GRAPHIC_CONTRAST: Final = 3.0
+
 #: Where a diagram-level caption sits relative to the drawing.
 CAPTION_POSITIONS: Final = ("below", "above")
 
@@ -334,13 +351,88 @@ class Canvas:
     than a converter default.
     """
 
+    ground: str = "none"
+    """The sheet's colour behind the drawing, in the `standalone` profile and PNG.
+
+    `none` draws no ground, and the drawing sits on whatever it is put on. Like
+    `ink`, the `inline` profile ignores it: an inline drawing is on the page's own
+    background, and a coloured rectangle pasted into somebody else's document is
+    not a figure. A ground is checked when the theme loads: `ink` must read on it
+    as text (4.5:1) and every other colour the theme declares as a line (3:1).
+    """
+
+    pattern: str = "none"
+    """What is ruled on the ground: `none`, or a fine drafting `grid`. Standalone only."""
+
+    border: str = "none"
+    """The sheet's frame: `none`, or `zoned` — a double border with zone numbers
+    and letters, centring arrows and registration marks. Standalone only.
+
+    The canvas grows to hold it: the drawing is moved inside the border, never
+    drawn under it, and every diagram in one theme still comes out one width.
+    """
+
+    title_block: bool = False
+    """Whether to draw an engineering title block below the drawing. Standalone only.
+
+    It is filled from the document: its `title` (or its kind, when it has none),
+    a drawing number derived from its content, its kind, the size of the
+    drawing, and its format `version`. It takes a strip of its own under the
+    drawing, so it can never cover any of it.
+    """
+
+    rule: str = ""
+    """The colour of the grid and of the sheet's quiet lettering — zone letters and
+    the title block's field names. Empty means `ink`."""
+
+    accent: str = ""
+    """The colour of the registration marks and the drawing number. Empty means `ink`."""
+
+    @property
+    def sheet(self) -> bool:
+        """True when the standalone canvas has any furniture to draw."""
+        return (
+            self.ground != "none"
+            or self.pattern != "none"
+            or self.border != "none"
+            or self.title_block
+        )
+
+    @property
+    def sheet_colours(self) -> tuple[str, ...]:
+        """Every colour the sheet paints, `none` aside, ground first."""
+        colours = (self.ground, self.rule or self.ink, self.accent or self.ink)
+        return tuple(colour for colour in colours if colour != "none")
+
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> Canvas:
         _reject_unknown(
             mapping,
-            ("width", "width_mode", "margin", "min_legible_size", "caption", "ink"),
+            (
+                "width",
+                "width_mode",
+                "margin",
+                "min_legible_size",
+                "caption",
+                "ink",
+                "ground",
+                "pattern",
+                "border",
+                "title_block",
+                "rule",
+                "accent",
+            ),
             "[canvas]",
         )
+        title_block = mapping.get("title_block", False)
+        if not isinstance(title_block, bool):
+            raise ThemeError(f"[canvas] title_block: expected true or false, got {title_block!r}")
+        ground = _colour(mapping.get("ground", "none"), "[canvas] ground")
+        if ground == "currentColor":
+            raise ThemeError(
+                "[canvas] ground: 'currentColor' is the ink, and ink on a ground of "
+                "itself is a blank sheet. Name a colour, or 'none' for no ground."
+            )
         return cls(
             width=_number(mapping.get("width", 640.0), "[canvas] width"),
             width_mode=_choice(
@@ -352,7 +444,27 @@ class Canvas:
             ),
             caption=_choice(mapping.get("caption", "below"), CAPTION_POSITIONS, "[canvas] caption"),
             ink=_colour(mapping.get("ink", "#1a1a1a"), "[canvas] ink"),
+            ground=ground,
+            pattern=_choice(mapping.get("pattern", "none"), SHEET_PATTERNS, "[canvas] pattern"),
+            border=_choice(mapping.get("border", "none"), SHEET_BORDERS, "[canvas] border"),
+            title_block=title_block,
+            rule=_sheet_colour(mapping.get("rule", ""), "[canvas] rule"),
+            accent=_sheet_colour(mapping.get("accent", ""), "[canvas] accent"),
         )
+
+
+def _sheet_colour(value: object, where: str) -> str:
+    """A sheet colour: empty for the ink, or a hex value — never a keyword.
+
+    `currentColor` would be the ink anyway, said less plainly, and `none` would
+    be furniture drawn in nothing.
+    """
+    if value == "":
+        return ""
+    colour = _colour(value, where)
+    if not colour.startswith("#"):
+        raise ThemeError(f"{where}: expected a hex colour, or empty for the ink; got {value!r}")
+    return colour
 
 
 @dataclass(frozen=True)
@@ -1540,6 +1652,7 @@ class Theme:
                 f"{LUMINANCE_DELTA}, or a reader printing in greyscale cannot tell them "
                 f"apart."
             )
+        _check_ground(theme)
         return theme
 
     # -- derived views ----------------------------------------------------
@@ -1571,6 +1684,7 @@ class Theme:
             self.canvas.ink,
             *self.mark.colours,
             *self.files.colours.values(),
+            *self.canvas.sheet_colours,
         }
         if self.files.label_ink:
             colours.add(self.files.label_ink)
@@ -1678,6 +1792,33 @@ def _build_edge_roles(declared: Mapping[str, Any]) -> dict[str, EdgeRole]:
     return {name: EdgeRole.from_mapping(name, table, EdgeRole()) for name, table in tables.items()}
 
 
+def _check_ground(theme: Theme) -> None:
+    """Every colour the theme draws in must read on its sheet's ground.
+
+    A ground is the page of a standalone drawing, so the check a brand import
+    makes against white and near-black is made here against the ground instead:
+    the ink as text, everything else as line work.
+    """
+    ground = theme.canvas.ground
+    if ground == "none":
+        return
+    ink = theme.canvas.ink
+    if contrast(ink, ground) < TEXT_CONTRAST:
+        raise ThemeError(
+            f"theme {theme.name!r}: [canvas] ink {ink} on ground {ground} is "
+            f"{contrast(ink, ground):.1f}:1, and text needs {TEXT_CONTRAST}:1."
+        )
+    drawn = theme.declared_colours() - {"currentColor", "none", ink, ground}
+    faint = sorted(colour for colour in drawn if contrast(colour, ground) < GRAPHIC_CONTRAST)
+    if faint:
+        raise ThemeError(
+            f"theme {theme.name!r}: {', '.join(faint)} read at under "
+            f"{GRAPHIC_CONTRAST}:1 on [canvas] ground {ground}. A sheet's ground is the "
+            f"page a standalone drawing is read on, so every colour drawn on it must "
+            f"stand out from it."
+        )
+
+
 def _indistinguishable(first: NodeRole | EdgeRole, second: NodeRole | EdgeRole) -> bool:
     """True when nothing but colour separates two roles, and colour is too close."""
     if first.channels != second.channels:
@@ -1770,12 +1911,16 @@ __all__ = [
     "EDGE_ROLES",
     "FILL_PATTERNS",
     "FONT_ROLES",
+    "GRAPHIC_CONTRAST",
     "LUMINANCE_DELTA",
     "NODE_ROLES",
     "NODE_SHAPES",
     "RAMP_CEILING",
     "RAMP_CONTRAST",
     "RAMP_STEPS",
+    "SHEET_BORDERS",
+    "SHEET_PATTERNS",
+    "TEXT_CONTRAST",
     "THEME_VERSION",
     "TYPE_LEVELS",
     "WIDTH_MODES",
@@ -1791,6 +1936,7 @@ __all__ = [
     "Theme",
     "TitleStyle",
     "TypeScale",
+    "contrast",
     "load_theme",
     "relative_luminance",
 ]

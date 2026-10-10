@@ -68,6 +68,8 @@ from drawspec.theme import (
     GANTT_MILESTONES,
     LANES_ORIENTATIONS,
     NODE_SHAPES,
+    SHEET_BORDERS,
+    SHEET_PATTERNS,
     THEME_VERSION,
     TYPE_LEVELS,
     WIDTH_MODES,
@@ -532,6 +534,8 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
 #: this page stale — only a *new* constrained key needs adding here.
 THEME_VOCABULARIES: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("canvas", "width_mode"): WIDTH_MODES,
+    ("canvas", "pattern"): SHEET_PATTERNS,
+    ("canvas", "border"): SHEET_BORDERS,
     ("font", "default"): FONT_ROLES,
     ("mark", "fills"): FILL_PATTERNS,
     ("title", "level"): TYPE_LEVELS,
@@ -737,8 +741,32 @@ def theme_markdown() -> str:
                     'A rule between a label\'s lead and its detail — `[box] lead = "rule"` — for '
                     "a diagram whose boxes are a name over what belongs to it.",
                 ],
+                [
+                    "`blueprint`",
+                    "A drafting sheet — white ink on blue, a grid, a zoned border and a title "
+                    "block filled from the document — in the `standalone` profile and PNG. "
+                    "Inline, the page's own ink and background, like `default`.",
+                ],
             ],
         ),
+        "",
+        "## The drafting sheet",
+        "",
+        "`ground`, `pattern`, `border`, `title_block`, `rule` and `accent` in",
+        "`[canvas]` are **standalone furniture**: a linked `.svg`, a PDF, or a PNG.",
+        "The `inline` profile ignores them, as it ignores `ink` — an inline drawing is",
+        "on its page's background, in its page's ink. They are not refused there,",
+        "because one theme serves both profiles.",
+        "",
+        "The canvas grows to hold the sheet rather than drawing over the diagram: the",
+        "border goes around the framed drawing, the same width for every diagram in",
+        "the theme, and the title block takes a strip of its own below it. Its fields",
+        "are the document's `title` (or its kind), a drawing number derived from its",
+        "content, its `kind`, the drawing's size, and its format `version`. A title",
+        "too long for the block on a fixed-width canvas is a `FitError`.",
+        "",
+        "A theme with a `ground` is checked against it when it loads: `ink` must read",
+        "on it at 4.5:1, and every other colour the theme declares at 3:1.",
         "",
     ]
     return "\n".join(lines) + "\n"

@@ -12,6 +12,17 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **A drafting sheet for any diagram, and the bundled `blueprint` theme.** New
+  `[canvas]` keys — `ground`, `pattern = "grid"`, `border = "zoned"`,
+  `title_block`, `rule` and `accent` — draw a ground, a fine grid, a double
+  border with zone numbers and letters, centring arrows, registration marks and
+  an engineering title block (the document's title, a content-derived drawing
+  number, its kind, the drawing's size and format version) in the `standalone`
+  profile and PNG export; `inline` ignores them, as it ignores `ink`. The canvas
+  grows to hold the sheet, so nothing in the drawing sits under it. A theme with
+  a `ground` is refused unless its ink reads on it at 4.5:1 and every other
+  declared colour at 3:1. The furniture lives in `drawspec.sheet`, which
+  `tools/hero.py` now draws its banner with. Three gallery drawings use it.
 - **A hero image for the README and the GitHub social preview**, drawn by
   drawspec itself: `docs/hero.svg` and a 1280x640 `docs/hero.png`, composed by
   `tools/hero.py` (`make hero`; `--check` reports a stale file). A blueprint
