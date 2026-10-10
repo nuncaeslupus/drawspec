@@ -12,6 +12,13 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`gantt` tasks take `done`**, a number from 0 to 100: how much of the task is
+  complete, drawn as a solid band through the middle of the bar from its start (MS
+  Project's progress line). It is the page's ink at the strength of the new theme key
+  `[gantt] done` (default 0.7), so it holds in greyscale and on a dark page. Refused at
+  its pointer: a value outside 0–100, and `done` on a milestone. `progress`, `complete`
+  and `percent` are still refused by name, now pointing to `done`. See
+  `reference/gantt-progress.json`.
 - **`funnel` stages can carry an `amount`**, with a top-level `unit` and `values`: each
   stage writes its count under its name and, from the second on, the share kept from
   the stage before (`310 people · 7.4% kept`), derived rather than written. The taper

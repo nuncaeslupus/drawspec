@@ -543,6 +543,7 @@ name, so a misspelt key is an error at the point it was written.
 | `end` | number | no | Where it ends, after `start`. With categories, 4 is where the fourth period begins. |
 | `at` | number | no | Instead of `start` and `end`: makes the task a milestone, drawn as a mark at this point with no length. |
 | `actor` | string | no | Who does it — free text, drawn as the row label's lead, so the names line up in a column. A task with an actor may not put a newline in `text`. |
+| `done` | number | no | How much of the task is complete, 0 to 100: drawn as a solid band inside the bar from its start, MS Project's progress line. Not on a milestone. |
 | `role` | string — one of `step`, `strong`, `emphasis`, `note` | no | `step` (the default bar), `strong` (on the critical path: drawn heavier, the word its dependencies take), `emphasis` (the task the diagram is about) or `note` (outside the plan, drawn lighter). |
 
 ### `dependency` object

@@ -158,6 +158,9 @@ notation = "crowsfoot"
 # dashed, so it reads as a reference and not as a task.
 milestone = "diamond"
 marks = "weak"
+# A task's `done` is a solid band through its bar, in the page's ink at this
+# strength (0 to 1), so it reads on a dark page and in greyscale.
+done = 0.7
 
 [board]
 # A story map's slices are told apart by a line across every column in an edge

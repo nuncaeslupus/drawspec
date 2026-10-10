@@ -4800,6 +4800,10 @@
           "type": "string",
           "description": "Who does it — free text, drawn as the row label's lead, so the names line up in a column. A task with an actor may not put a newline in `text`."
         },
+        "done": {
+          "type": "number",
+          "description": "How much of the task is complete, 0 to 100: drawn as a solid band inside the bar from its start, MS Project's progress line. Not on a milestone."
+        },
         "role": {
           "type": "string",
           "description": "`step` (the default bar), `strong` (on the critical path: drawn heavier, the word its dependencies take), `emphasis` (the task the diagram is about) or `note` (outside the plan, drawn lighter).",

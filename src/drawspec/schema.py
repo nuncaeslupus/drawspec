@@ -1473,6 +1473,14 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
         FieldSpec(
+            "done",
+            "number",
+            description=(
+                "How much of the task is complete, 0 to 100: drawn as a solid band inside "
+                "the bar from its start, MS Project's progress line. Not on a milestone."
+            ),
+        ),
+        FieldSpec(
             "role",
             "string",
             enum=TASK_ROLES,
@@ -4170,6 +4178,8 @@ class Task:
     at: float | None = None
     role: str = "step"
     actor: str = ""
+    done: float | None = None
+    """How much is complete, 0 to 100, or `None` for a plan that does not say."""
 
     @property
     def milestone(self) -> bool:
@@ -6600,9 +6610,8 @@ def _gantt_refusal(violation: Violation, document: Mapping[str, Any]) -> Violati
         if parts[1] == "tasks" and name in ("progress", "complete", "percent"):
             return Violation(
                 violation.pointer,
-                f"{name!r} is not drawn: how far a task has got is status, not plan, and it "
-                f"is out of date the day the drawing is made. Say it in the text, or draw "
-                f"what is done as tasks that have ended before a `today` mark.",
+                f"{name!r} is not a field: how much of a task is complete is `done`, a "
+                f"number from 0 to 100, drawn as a band inside the bar.",
             )
     return violation
 
@@ -6665,6 +6674,23 @@ def _gantt_violations(document: Mapping[str, Any]) -> list[Violation]:
         values = {name: task[name] for name in TASK_VALUES if _is_number(task.get(name))}
         given = {name for name in TASK_VALUES if name in task}
         span: tuple[float, float] | None = None
+        done = float(task["done"]) if _is_number(task.get("done")) else None
+        if done is not None and not 0 <= done <= 100:
+            found.append(
+                Violation(
+                    _pointer("tasks", index, "done"),
+                    f"{_figure(done)} is not a share of a task: `done` runs from 0 (not "
+                    f"started) to 100 (finished).",
+                )
+            )
+        elif "done" in task and "at" in given:
+            found.append(
+                Violation(
+                    _pointer("tasks", index, "done"),
+                    "a milestone is a moment, so it is reached or not and has no part done. "
+                    "Drop `done`, or make the task an interval with `start` and `end`.",
+                )
+            )
         if "at" in given and given & {"start", "end"}:
             found.append(
                 Violation(
@@ -10280,6 +10306,7 @@ def _gantt_document(document: Mapping[str, Any]) -> Document:
                 at=_optional_number(entry.get("at")),
                 role=entry.get("role", "step"),
                 actor=entry.get("actor", ""),
+                done=_optional_number(entry.get("done")),
             )
             for entry in document["tasks"]
         ),

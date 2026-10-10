@@ -1216,6 +1216,13 @@ critical path — heavier, the same word its dependencies take, and not counted 
 the emphasis cap), `emphasis` (the task the diagram is about — heavier and
 differently filled) and `note` (outside the plan — a light dashed outline).
 
+A task's `done`, a number from 0 to 100, is how much of it is complete — drawn as a
+solid band through the middle of its bar from the start, the progress line MS Project
+draws. It is ink, not colour: the theme's `[gantt] done` sets how strong (0.7 by
+default), so the band reads in greyscale and on a dark page. Pair it with a `today`
+mark and the plan says where each task should be and where it is. See
+[`reference/gantt-progress.json`](reference/gantt-progress.json).
+
 `edges` are finish-to-start: each is drawn from the end of one bar into the start
 of the other, and the line goes round the bars it can rather than through them.
 Roles `flow`, `strong` (the critical path) and `weak` (a soft dependency).
@@ -1231,7 +1238,8 @@ value or mark off the axis; a dependency whose `to` starts before its `from` end
 (either the plan or the dependency is wrong, and only the author knows which); a
 dependency on an unknown task or on itself; a phase whose tasks are not
 consecutive, a task in two phases, and — with phases — a task in none; a phase
-with no `text`; `progress`, which is status rather than plan; and a newline in a
+with no `text`; `progress` (the field is `done`); `done` outside 0–100 or on a
+milestone; and a newline in a
 task's `text` when it has an actor. Budget: 16 tasks, 20 edges and 4 marks. See
 [`reference/gantt-migration.json`](reference/gantt-migration.json),
 [`reference/gantt-critical-path.json`](reference/gantt-critical-path.json),

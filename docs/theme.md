@@ -215,6 +215,7 @@ How a plan draws the two marks that are not bars.
 |---|---|---|
 | `milestone` | `"diamond"` | `diamond` or `circle`: the mark a task with `at` is drawn as, filled. One of `diamond`, `circle`. |
 | `marks` | `"weak"` | The edge role a mark's line across the rows is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `done` | `0.7` | How much of the ink a task's `done` band takes, above 0 and at most 1. The page's own ink at that strength, so a dark page draws it light. |
 
 ### `[board]`
 

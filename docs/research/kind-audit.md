@@ -218,3 +218,9 @@ the audit's recommendation). The count and share are a line under the stage's wo
 `310 people · 7.4% kept`; the share is whole above 10 %, one decimal below. Refused:
 a mix of stages with and without, a rising amount, an amount of zero or less, a `unit`
 with no amounts.
+
+**Rank 7, `gantt` `done`** — built as proposed. The band is a third-plus of the bar's
+height (40 %), centred, unstroked, in `currentColor` at the theme's `[gantt] done`
+fill opacity (new key, default 0.7): solid ink as proposed, but a theme can lighten it.
+`done: 0` draws no band. The old refusal of `progress` (status, not plan) is kept as a
+name refusal that now points at `done`.

@@ -1175,15 +1175,25 @@ class GanttStyle:
     marks: str = "weak"
     """The edge role a mark's line across the rows is drawn in, with no head."""
 
+    done: float = 0.7
+    """How much of the ink a task's `done` band takes, above 0 and at most 1. The
+    page's own ink at that strength, so a dark page draws it light."""
+
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> GanttStyle:
-        _reject_unknown(mapping, ("milestone", "marks"), "[gantt]")
+        _reject_unknown(mapping, ("milestone", "marks", "done"), "[gantt]")
         defaults = cls()
+        done = _number(mapping.get("done", defaults.done), "[gantt] done")
+        if not 0.0 < done <= 1.0:
+            raise ThemeError(
+                f"[gantt] done: expected a fraction above 0 and at most 1, got {done!r}"
+            )
         return cls(
             milestone=_choice(
                 mapping.get("milestone", defaults.milestone), GANTT_MILESTONES, "[gantt] milestone"
             ),
             marks=_choice(mapping.get("marks", defaults.marks), EDGE_ROLES, "[gantt] marks"),
+            done=done,
         )
 
 
