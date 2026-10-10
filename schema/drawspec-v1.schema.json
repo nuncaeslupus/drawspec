@@ -2818,7 +2818,7 @@
         },
         "categories": {
           "type": "array",
-          "description": "Names for the positions 1, 2, 3 … along this axis, instead of numbers. What a bar chart's horizontal axis usually is: the quarters, the service models, the teams.",
+          "description": "Names for the positions 1, 2, 3 … along this axis, instead of numbers. What a bar chart's horizontal axis usually is: the quarters, the service models, the teams. On a chart's vertical axis they make horizontal bars: every series a `bar`, each point `[amount, position]`, the first category the top row, names on the left.",
           "items": {
             "type": "string"
           }

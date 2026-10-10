@@ -192,3 +192,14 @@ instead of patterns for groups (a theme default, no field). LEAVE otherwise.
 - MS Project percent complete: https://support.microsoft.com/lv-lv/project/track-percent-complete-for-tasks ; Mermaid gantt tags (tutorial): https://dev.to/integerman/creating-gantt-charts-with-markdown-and-mermaidjs-k0g
 - Plotly funnel `textinfo`: https://plotly.com/python/funnel-charts/
 - Decision-tree chance nodes: see `kinds-survey.md` (OpenLearn, Cognito rows).
+
+## As built
+
+**Rank 1, `chart` horizontal bars** — built, not refused. `categories` on the vertical
+axis make every category a row, **the first at the top** (an ordered bar chart reads
+like a list, so the written order wins over "position 1 is lowest"), names on the left
+wrapped to 36 % of the width, bars growing right from zero with their numbers past the
+end (inside a stacked segment). Points are `[amount, position]`. Narrowed to what
+draws well: every series a `bar` (a line down a list of names is refused), no negative
+amounts (a diverging bar chart is out of scope), no `min`/`max` on the category axis,
+not both axes categorical — each refused at its pointer.

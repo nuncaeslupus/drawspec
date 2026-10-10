@@ -1478,3 +1478,95 @@ def test_the_end_bars_stand_inside_the_plot_without_explicit_bounds(
     else:
         assert min(xs) >= left - 1e-6
     assert max(xs) <= right + 1e-6
+
+
+# ---------------------------------------------------------------------------
+# Horizontal bars: `categories` on the vertical axis
+# ---------------------------------------------------------------------------
+
+ACROSS_AXES = {
+    "horizontal": {"label": "Calls", "unit": "thousands"},
+    "vertical": {"label": "Reason", "categories": ["Missed bin", "Council tax", "Parking"]},
+}
+
+
+def _across(**extra: object) -> Scene:
+    series = [{"name": "Calls", "mark": "bar", "data": [[8.4, 1], [6.1, 2], [5.8, 3]]}]
+    return chart_scene(
+        parse_document(document(axes=ACROSS_AXES, series=series, **extra)), THEME, MEASURER
+    )
+
+
+def test_categories_on_the_vertical_axis_draw_bars_running_across() -> None:
+    """The regression: this was accepted and drawn as upright bars at x = 8.4, 6.1 …
+
+    with each bar's *height* the category's index — a valid-looking chart that
+    said the opposite of its data. Now each category is a row, top first, and
+    its bar grows right from the axis by its amount.
+    """
+    built = _across()
+    bars = filled_of(built)
+    assert len(bars) == 3
+    spans = []
+    for bar in bars:
+        xs = [x for x, _ in bar.points]
+        ys = [y for _, y in bar.points]
+        spans.append((min(xs), max(xs), min(ys)))
+        # wider than tall: lying on its side
+        assert max(xs) - min(xs) > max(ys) - min(ys)
+    starts = {round(start, 6) for start, _, _ in spans}
+    assert len(starts) == 1, "every bar starts at zero"
+    lengths = [end - start for start, end, _ in spans]
+    assert lengths == sorted(lengths, reverse=True)
+    assert lengths[0] / lengths[2] == pytest.approx(8.4 / 5.8, rel=1e-6)
+    tops = [top for _, _, top in spans]
+    assert tops == sorted(tops), "the first category is the top row"
+
+
+def test_horizontal_bar_names_sit_left_of_the_bars_beside_their_own_bar() -> None:
+    built = _across()
+    runs = {run.text: run for run in built.primitives if isinstance(run, TextRun)}
+    bars = filled_of(built)
+    for name, bar in zip(("Missed bin", "Council tax", "Parking"), bars, strict=True):
+        run = runs[name]
+        assert run.anchor == "end"
+        assert run.x < min(x for x, _ in bar.points)
+        ys = [y for _, y in bar.points]
+        assert min(ys) <= run.y <= max(ys) + THEME.scale["label"]
+
+
+def test_horizontal_bar_numbers_are_written_past_each_bar() -> None:
+    built = _across()
+    runs = {run.text: run for run in built.primitives if isinstance(run, TextRun)}
+    for text, bar in zip(("8.4", "6.1", "5.8"), filled_of(built), strict=True):
+        assert runs[text].x > max(x for x, _ in bar.points)
+        assert runs[text].x < built.width
+
+
+@pytest.mark.parametrize(
+    ("change", "pointer"),
+    [
+        ({"mark": "line"}, "/series/0/mark"),
+        ({"data": [[8.4, 4]]}, "/series/0/data/0/1"),
+        ({"data": [[8.4, 1.5]]}, "/series/0/data/0/1"),
+        ({"data": [[-2, 1]]}, "/series/0/data/0/0"),
+    ],
+)
+def test_horizontal_bars_refuse_what_they_cannot_draw(
+    change: dict[str, object], pointer: str
+) -> None:
+    series = [{"name": "Calls", "mark": "bar", "data": [[8.4, 1]], **change}]
+    with pytest.raises(DocumentError, match=pointer):
+        parse_document(document(axes=ACROSS_AXES, series=series))
+
+
+def test_horizontal_bars_refuse_two_category_axes_and_bounds_on_the_rows() -> None:
+    axes = {
+        "horizontal": {"label": "Calls", "categories": ["a", "b"]},
+        "vertical": {"label": "Reason", "categories": ["x", "y"], "min": 0},
+    }
+    series = [{"name": "Calls", "mark": "bar", "data": [[1, 1]]}]
+    with pytest.raises(DocumentError) as error:
+        parse_document(document(axes=axes, series=series))
+    assert "/axes/horizontal/categories" in str(error.value)
+    assert "/axes/vertical/min" in str(error.value)

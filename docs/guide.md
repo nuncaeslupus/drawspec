@@ -1090,6 +1090,33 @@ operations per entity. See
 [`reference/entities-shapes.json`](reference/entities-shapes.json) and
 [`reference/entities-enrolment.json`](reference/entities-enrolment.json).
 
+## Bars on their side
+
+A bar chart whose categories are sentences — *Report a pothole or broken street
+light* — has no room for them under upright bars. Put the `categories` on the
+**vertical** axis instead and the bars lie down: each category is a row, the first
+at the top (an ordered bar chart reads like a list), its name on the left, and each
+bar grows right from zero.
+
+```json
+{
+  "version": 1,
+  "kind": "chart",
+  "axes": {
+    "horizontal": {"label": "Calls", "unit": "thousands"},
+    "vertical": {"label": "Reason", "categories": ["Missed bin collection", "Parking permit or fine"]}
+  },
+  "series": [{"name": "Calls", "mark": "bar", "data": [[8.4, 1], [4.7, 2]]}]
+}
+```
+
+Each point is turned round: `[amount, position]`, the position naming the category,
+1 for the first. Names wrap to about a third of the width; the numbers are written
+past the bars' ends (inside each segment, when series share a `stack`). Every series
+must be a `bar`, amounts start at zero, and the category axis takes no `min`/`max`:
+each is refused at its pointer. See
+[`reference/chart-across.json`](reference/chart-across.json).
+
 ## A plan
 
 A `timeline` is one axis of instants: *when things happened*. A plan is one row

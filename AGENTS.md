@@ -63,7 +63,7 @@ Pick by what the reader must **understand**, not by what it looks like.
 | Levels where size means quantity or rank | `pyramid` | `levels` |
 | Scopes nested inside scopes | `rings` | `rings` |
 | What is lost between narrowing stages | `funnel` | `stages` |
-| A small number you already know | `chart` | `axes` + `series` |
+| A small number you already know | `chart` | `axes` + `series` (`categories` on the vertical axis: horizontal bars, each point `[amount, position]`) |
 | Where items fall against two named judgements | `quadrant` | `axes` + `positions` |
 | Where items fall by two measured values | `scatter` | `axes` + `positions` |
 | The shape of a change: a hype cycle, a burndown | `curve` | `axes` + `curves` |

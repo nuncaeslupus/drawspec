@@ -975,7 +975,7 @@ name, so a misspelt key is an error at the point it was written.
 | `unit` | string | no | What the numbers are in, written after the label. |
 | `min` | number | no | Where the axis starts. Omit to take it from the data. |
 | `max` | number | no | Where the axis ends. Omit to take it from the data. |
-| `categories` | array of string | no | Names for the positions 1, 2, 3 … along this axis, instead of numbers. What a bar chart's horizontal axis usually is: the quarters, the service models, the teams. |
+| `categories` | array of string | no | Names for the positions 1, 2, 3 … along this axis, instead of numbers. What a bar chart's horizontal axis usually is: the quarters, the service models, the teams. On a chart's vertical axis they make horizontal bars: every series a `bar`, each point `[amount, position]`, the first category the top row, names on the left. |
 
 ### `axes` object
 

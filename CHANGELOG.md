@@ -198,6 +198,17 @@ against it would stop working. Everything below is about the *package*.
   renders, and a title block; the fonts are embedded as subset `@font-face` so
   the SVG renders the same through GitHub's `<img>`.
 
+### Fixed
+
+- **A `chart` with `categories` on its vertical axis** was accepted and drawn wrongly:
+  upright bars standing at the amounts, each as tall as its category's number. It now
+  draws **horizontal bars** — each category a row, the first at the top, its name on
+  the left wrapped to about a third of the width, each bar growing right from zero with
+  its number past its end (inside, for a stacked segment). Each point is
+  `[amount, position]`. Refused at their pointers: a series that is not `bar`, a
+  position that names no category, an amount below zero, `min`/`max` on the category
+  axis, and `categories` on both axes. See `reference/chart-across.json`.
+
 ## [0.1.0] — 2026-10-10
 
 ### Added

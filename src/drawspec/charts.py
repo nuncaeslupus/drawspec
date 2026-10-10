@@ -175,6 +175,8 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     if not document.series:
         raise DrawspecError("a chart needs at least one series")
     horizontal, vertical = document.axes
+    if vertical.categories:
+        return _across_bars(document, theme, measurer)
 
     width = document.width if document.width else theme.canvas.width
     height = document.height if document.height else width * CHART_ASPECT
@@ -1788,3 +1790,237 @@ def _smooth(points: list[tuple[float, float]]) -> tuple[tuple[float, float], ...
                 )
             )
     return tuple(sampled)
+
+
+# ---------------------------------------------------------------------------
+# chart, horizontal bars
+# ---------------------------------------------------------------------------
+
+#: The most of the canvas width the category names on the left may take. A
+#: horizontal bar chart exists for names too long to sit under a column, so they
+#: get a real share — but the bars are the point, and past this they wrap.
+NAME_SHARE: Final = 0.36
+
+
+def _across_bars(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
+    """A bar chart lying on its side: `categories` on the vertical axis.
+
+    Each point is `[amount, position]` — the amount along the horizontal axis,
+    the position the category it belongs to, 1 for the first. The categories
+    run down the page in the order written, because that is the order a reader
+    reads a list in: an *ordered* bar chart puts its first entry at the top.
+
+    The names sit to the left of the axis, right-aligned against it and wrapped
+    to at most `NAME_SHARE` of the width — the long name is why anyone turns a
+    bar chart on its side. Each bar grows right from zero, and its number, when
+    `values` is on, is written past its end, in a gutter reserved for the
+    widest one so that no number is ever dropped for want of room.
+
+    The rest is the upright chart's furniture with the axes' jobs exchanged:
+    numbered ticks along the bottom, the amount's label and unit under them, the
+    category axis's label rotated at the far left, the key under everything.
+    """
+    horizontal, vertical = document.axes
+    width = document.width if document.width else theme.canvas.width
+    height = document.height if document.height else width * CHART_ASPECT
+
+    size = theme.scale["label"]
+    gap = theme.box.padding.top
+    tick = theme.edge.head_length
+    line = measurer.measure("0", theme.font.default, size)
+    count = len(vertical.categories)
+
+    # The same series with each point turned round to (position, amount), so the
+    # piling arithmetic the upright chart uses runs unchanged.
+    turned = tuple(
+        Series(item.name, tuple((p, a) for a, p in item.data), item.role, item.mark, item.stack)
+        for item in document.series
+    )
+    amounts = _scale_for(horizontal, _stacked_heights(turned), include_zero=True, headroom=True)
+    ticks = _ticks(amounts.low, amounts.high)
+
+    key = entries_for([(item.name, item.role, True) for item in document.series], theme)
+    legend = height_of(key, theme, measurer, width)
+
+    decimals = _point_decimals(turned)
+    unstacked = [item for item in document.series if not item.stack]
+    widest_value = max(
+        (
+            measurer.measure(_printed(a, decimals), theme.font.default, size).width
+            for item in unstacked
+            for a, _ in item.data
+        ),
+        default=0.0,
+    )
+    names = []
+    for name in vertical.categories:
+        try:
+            names.append(wrap(name, width * NAME_SHARE, measurer, theme=theme, level="label"))
+        except FitError as error:
+            raise FitError(
+                f"the category {name!r} has a word wider than the {width * NAME_SHARE:.0f} "
+                f"units the names may take. Shorten it, or give the chart more width."
+            ) from error
+
+    left = line.height + gap + _block_widest(names) + gap + tick
+    right = max(_widest(ticks, theme, measurer, size) / 2, line.height)
+    if document.values and widest_value:
+        right = max(right, gap + widest_value + line.height / 2)
+    top = line.height
+    bottom = tick + gap + line.height + _caption_band(line, gap) + legend
+
+    plot_left, plot_right = left, width - right
+    plot_top, plot_bottom = top, height - bottom
+    if plot_right - plot_left <= 0 or plot_bottom - plot_top <= 0:
+        raise FitError(
+            f"a chart {width:.0f} x {height:.0f} has no room left for the bars once the "
+            f"category names, ticks and axis labels are measured. Give it more width or "
+            f"height, or shorten the names."
+        )
+    row = (plot_bottom - plot_top) / count
+    for name, block in zip(vertical.categories, names, strict=True):
+        if block.height > row:
+            raise FitError(
+                f"the category {name!r} wraps to {len(block)} lines, taller than the "
+                f"{row:.0f} units each of the {count} rows has. Shorten it, give the chart "
+                f"more height, or use fewer categories."
+            )
+
+    across = Scale(amounts.low, amounts.high, plot_left, plot_right)
+    zero = across.to_pixels(min(max(0.0, amounts.low), amounts.high))
+
+    def middle(position: float) -> float:
+        return plot_top + (position - 0.5) * row
+
+    fills = {id(item): theme.mark.fill_for(index) for index, item in enumerate(document.series)}
+    inks = {id(item): theme.mark.colour_for(index) for index, item in enumerate(document.series)}
+    columns = _columns(list(document.series))
+    usable = row * (1.0 - theme.mark.gap)
+    thickness = usable / max(len(columns), 1)
+
+    bars: list[Primitive] = []
+    numbers: list[tuple[Series, float, tuple[float, float, float, float]]] = []
+    reached: dict[tuple[str, float], float] = {}
+    for item in document.series:
+        slot = columns.index(item.stack or item.name)
+        for amount, position in item.data:
+            upper = middle(position) - usable / 2 + slot * thickness
+            lower = upper + thickness
+            start = reached.get((item.stack, position), zero) if item.stack else zero
+            end = start + across.to_pixels(amount) - zero
+            if item.stack:
+                reached[(item.stack, position)] = end
+            low, high = sorted((start, end))
+            bars.append(
+                Polygon(
+                    item.role,
+                    points=((low, upper), (high, upper), (high, lower), (low, lower)),
+                    fill=fills[id(item)],
+                    fill_colour=inks[id(item)],
+                )
+            )
+            numbers.append((item, amount, (low, upper, high, lower)))
+
+    primitives: list[Primitive] = [*bars, *_axes(plot_left, plot_right, plot_top, plot_bottom)]
+    for value, _ in ticks:
+        x = across.to_pixels(value)
+        primitives.append(Path(AXIS_ROLE, points=((x, plot_bottom), (x, plot_bottom + tick))))
+    for index in range(count):
+        y = middle(index + 1)
+        primitives.append(Path(AXIS_ROLE, points=((plot_left - tick, y), (plot_left, y))))
+
+    baseline = plot_bottom + tick + gap + line.ascent
+    for value, text in ticks:
+        primitives.append(
+            TextRun(
+                FURNITURE_ROLE,
+                x=across.to_pixels(value),
+                y=baseline,
+                text=text,
+                level="label",
+                font=theme.font.default,
+                anchor="middle",
+            )
+        )
+    names_right = plot_left - tick - gap
+    for index, block in enumerate(names):
+        top_of = middle(index + 1) - block.height / 2
+        for number, entry in enumerate(block):
+            primitives.append(
+                TextRun(
+                    FURNITURE_ROLE,
+                    x=names_right,
+                    y=top_of + block.baseline(number),
+                    text=entry.text,
+                    level="label",
+                    font=theme.font.default,
+                    anchor="end",
+                )
+            )
+    primitives.extend(
+        _axis_labels(
+            horizontal,
+            vertical,
+            plot_left,
+            plot_right,
+            plot_top,
+            plot_bottom,
+            height - legend,
+            theme,
+            measurer,
+            gap,
+        )
+    )
+    primitives.extend(primitives_for(key, theme, measurer, left, height - legend, width - left))
+    if document.values:
+        primitives.extend(_across_bar_labels(numbers, theme, measurer, decimals))
+
+    return Scene(
+        width=width,
+        height=height,
+        primitives=tuple(primitives),
+        title=document.title,
+        description=document.description,
+    )
+
+
+def _across_bar_labels(
+    numbers: list[tuple[Series, float, tuple[float, float, float, float]]],
+    theme: Theme,
+    measurer: TextMeasurer,
+    decimals: int,
+) -> tuple[Primitive, ...]:
+    """Each bar's number: past its end when it stands alone, inside it when stacked.
+
+    The upright chart's rule turned on its side. A bar with nothing after it
+    has open ground past its end, and the right gutter was sized for the widest
+    of those numbers. A segment of a pile has the next segment there, so its
+    number goes inside — and only if every segment can hold its own; all or none.
+    """
+    size = theme.scale["label"]
+    gap = theme.edge.clearance
+    labels: list[Primitive] = []
+    for series, amount, (low, upper, high, lower) in numbers:
+        text = _printed(amount, decimals)
+        extents = measurer.measure(text, theme.font.default, size)
+        if extents.height > lower - upper:
+            return ()  # the bars are thinner than a line of text
+        y = (upper + lower) / 2 + (extents.ascent - extents.descent) / 2
+        if series.stack:
+            if extents.width + 2 * gap > high - low:
+                return ()
+            x, anchor = (low + high) / 2, "middle"
+        else:
+            x, anchor = high + gap, "start"
+        labels.append(
+            TextRun(
+                series.role,
+                x=x,
+                y=y,
+                text=text,
+                level="label",
+                font=theme.font.default,
+                anchor=anchor,
+            )
+        )
+    return tuple(labels)
