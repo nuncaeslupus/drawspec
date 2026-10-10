@@ -3,6 +3,7 @@ id: t-629fc7cd
 title: "Clock face kind for teaching time"
 priority: 5
 tags: [kinds]
+status: done
 ---
 
 ## Goal

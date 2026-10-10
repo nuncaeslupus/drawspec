@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-35 kinds. The machine-readable form of this page is the published
+36 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag` | **yes** | Which of the thirty-five diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock` | **yes** | Which of the thirty-six diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -271,6 +271,14 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `style` | string — one of `bar`, `thermometer`, `dial`, `bullet` | no | How every meter in the document is drawn: `bar` (the default, a progress bar), `thermometer` (a goal filling up), `dial` (a needle on a half-circle) or `bullet` (a bar on named bands, with a target tick). One for the whole panel, so like is compared with like. |
 | `meters` | array of [meter-meter](#meter-meter-object), at least 1 | **yes** | The meters, 1 to 6, in reading order: rows for bars and bullets, columns for thermometers, up to three dials to a row. Each has its own scale. |
 
+### `clock`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `clocks` | array of [clock-face](#clock-face-object), at least 1 | **yes** | The faces, 1 to 12, in reading order, up to four to a row: each a `time`, and optionally a `text` under it and a `since`. |
+| `numerals` | string — one of `arabic`, `roman`, `quarters`, `none` | no | The numbers round every face: `arabic` (the default, 1 to 12), `roman` (I to XII), `quarters` (12, 3, 6 and 9 only) or `none`. |
+| `readout` | string — one of `words`, `digits`, `both`, `none` | no | What is written under each face: `words` (the default: `quarter past three`), `digits` (`3:15`, as written), `both`, or `none` for a worksheet. |
+
 ### `rag`
 
 | Field | Type | Required | What it is |
@@ -359,6 +367,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `familytree` | 30 `people` |
 | `meter` | 6 `meters`, 5 `bands` per meter |
 | `rag` | 15 `rows` |
+| `clock` | 12 `clocks` |
 
 ## Emphasis
 
@@ -779,6 +788,14 @@ name, so a misspelt key is an error at the point it was written.
 | `target` | number | no | A mark on the scale — the plan, a stage of an appeal — drawn across the track and written in the readout. Inside the scale. |
 | `bands` | array of [meter-band](#meter-band-object), at least 2 | no | Named stretches of the scale, rising: each runs from the end of the one before (or `min`) to its own `to`, and the last ends at `max`. Required on a `bullet`, optional on a `dial`, refused on the others. Drawn in tones of the page's ink with their words on them, so a band is never told by colour alone. |
 | `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis` (the meter the panel is about: its name and reading bold). |
+
+### `clock-face` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `time` | string | no | The time the hands show, `H:MM` or `HH:MM` from `0:00` to `23:59` — `15:40` for twenty to four in the afternoon. No seconds, no date. Leave it out for a face with no hands, to draw them on. |
+| `text` | string | no | A name or a prompt under the face: `Home time`, `Draw half past seven`. |
+| `since` | string | no | An earlier time, `H:MM`, up to 12 hours before `time`: the face shades what has passed since it, and the readout says how long. |
 
 ### `rag-row` object
 

@@ -12,6 +12,7 @@ from drawspec.errors import DrawspecError
 from drawspec.kinds.argument import argument_scene
 from drawspec.kinds.barmodel import barmodel_scene
 from drawspec.kinds.board import board_scene
+from drawspec.kinds.clock import clock_scene
 from drawspec.kinds.common import box_primitives, captioned, outline, text_runs
 from drawspec.kinds.cycle import cycle_scene
 from drawspec.kinds.entities import entities_scene
@@ -39,6 +40,7 @@ from drawspec.schema import (
     BARMODEL_KINDS,
     BOARD_KINDS,
     CHART_KINDS,
+    CLOCK_KINDS,
     ENTITIES_KINDS,
     FAMILYTREE_KINDS,
     FILES_KINDS,
@@ -89,6 +91,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *FAMILYTREE_KINDS,
     *METER_KINDS,
     *RAG_KINDS,
+    *CLOCK_KINDS,
     "cycle",
 )
 
@@ -154,6 +157,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return meter_scene(document, theme, measurer)
     if document.kind in RAG_KINDS:
         return rag_scene(document, theme, measurer)
+    if document.kind in CLOCK_KINDS:
+        return clock_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -172,6 +177,7 @@ __all__ = [
     "board_scene",
     "box_primitives",
     "captioned",
+    "clock_scene",
     "cycle_scene",
     "entities_scene",
     "familytree_scene",

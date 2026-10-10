@@ -12,6 +12,18 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`clock`, the thirty-sixth kind** — analogue clock faces showing a time, for teaching
+  it: 1–12 `clocks`, up to four to a row, each a `time` (`H:MM` or `HH:MM`, 0:00 to
+  23:59; leave it out for a face with no hands, to draw on), an optional `text` under it,
+  and an optional `since`, an earlier time whose passing is shaded round the face (the
+  minute hand's sweep up to an hour, the hour hand's beyond) and said in the readout.
+  The hour hand moves on with the minutes. `numerals` (`arabic`, `roman`, `quarters`,
+  `none`) and `readout` (`words`, `digits`, `both`, `none` for a worksheet) are the
+  sheet's. Refused at their pointers: seconds, `am`/`pm` (the 24-hour clock instead), a
+  date, any other spelling of a time, a `since` with no time or 12 hours or more before
+  it, `seconds`, `hands`, `hour`, `minute`, `angle`, `label`, `numerals` or `readout` on
+  a face, `edges`. Budget: 12 faces. `docs/proposals/clock.md` records the design, and
+  section 12 of `docs/research/corpus-round2.md` the originals.
 - **`rag`, the thirty-fifth kind** — a RAG status report: 1–15 `rows`, each a `text` (a
   newline adds a caption: an owner), a `rag` of `red`, `amber` or `green`, and optionally
   a `trend` (`better`, `same`, `worse`) and a `note`, ruled apart with every column lined

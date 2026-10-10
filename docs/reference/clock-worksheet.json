@@ -1,0 +1,18 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "clock",
+  "title": "Telling the time to five minutes",
+  "description": "A worksheet of eight faces: four with hands to read, with the answers hidden, and four with no hands, each with a time to draw.",
+  "readout": "none",
+  "clocks": [
+    {"time": "7:10", "text": "1. What time is it?"},
+    {"time": "11:35", "text": "2. What time is it?"},
+    {"time": "4:50", "text": "3. What time is it?"},
+    {"time": "8:25", "text": "4. What time is it?"},
+    {"text": "5. Draw twenty past six"},
+    {"text": "6. Draw five to two"},
+    {"text": "7. Draw quarter to ten"},
+    {"text": "8. Draw ten past twelve"}
+  ]
+}

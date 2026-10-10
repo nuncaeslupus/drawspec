@@ -278,6 +278,32 @@ left out; one mark per row covers every original. Budget: 15 rows (R4: 13).
 
 ---
 
+## 12. Clock faces: telling the time ([`clock.md`](../proposals/clock.md))
+
+Added for arsenal task `t-629fc7cd` (issue #98). Same limits: search summaries only,
+every row **(check)**. Most published clock sheets come from resource vendors; those kept
+are marked, and the curriculum and lesson rows carry the evidence.
+
+| # | Source | What it shows | Size | Needs |
+|---|---|---|---|---|
+| C1 | [Oak National Academy, *Tell and write quarter past and quarter to on a clock face*](https://www.thenational.academy/teachers/lessons/tell-and-write-quarter-past-and-quarter-to-on-a-clock-face) and [*Identifying quarter past on an analogue clock*](https://thenational.academy/teachers/lessons/identifying-quarter-past-on-an-analogue-clock-68rp8e) (national curriculum body; Year 2) | Faces showing quarter past (minute hand on 3) and quarter to (on 9); the teacher notes warn that pupils leave the **hour hand on the o'clock** instead of moving it on. Quizzes ask the value of a mark on the minute scale. **(check)** | 1–4 faces | Hour and minute hands, 12 numbers, 60 minute ticks; **the hour hand must sit between the numbers**; the time in words. |
+| C2 | [Oak National Academy, *Tell and write the time including using Roman numerals*](https://thenational.academy/teachers/programmes/maths-primary-ks2/units/tell-the-time-to-the-nearest-minute-and-compare-units-of-time/lessons/tell-and-write-the-time-including-using-roman-numerals) and the KS2 programme of study as quoted by a [Cheshire primary's Year 3 plan](https://grange-pri.cheshire.sch.uk/wp-content/uploads/2023/11/Year-3-Summer-2-Maths.pdf) (national curriculum; school) | Year 3: read analogue time **to the nearest minute**, with **Roman numerals I to XII**, and 12- and 24-hour clocks; pupils misread IX and put a half-past hour hand on the number. **(check)** | 1 face per question | `numerals` as Roman; any minute, not only fives; the digits as written (`15:40`). No seconds hand: seconds are a fact to know, not a hand to read. |
+| C3 | [Classroom Secrets, *Telling the time to the minute, Year 3*](https://classroomsecrets.co.uk/telling-the-time-to-the-minute-homework-extension-year-3-time) (vendor) | Graded faces: the expected level marks **only 12, 3, 6 and 9**, or all hours in Roman numerals. **(check)** | ~6 faces | `numerals`: all, quarters, Roman, none. |
+| C4 | [Twinkl, *O'clock, half past, quarter past and quarter to worksheet*](https://www.twinkl.co.uk/resource/telling-the-time-oclock-half-past-quarter-past-and-quarter-to-worksheet-ages-5-7-t-m-30797) and [Mrs Mactivity, *Year 2 telling the time revision mats*](https://www.mrsmactivity.co.uk/downloads/year-2-telling-the-time-revision-mats/) (vendors) | A dozen faces to read and write the time under, and the reverse: **blank faces to draw the hands on** for a written time. **(check)** | ~12 faces, 3–4 to a row | Up to 12 faces in rows; a face with **no hands** (a prompt under it); the answer hidden on a worksheet. |
+| C5 | [Teach Starter, *Elapsed time with clocks worksheet*](https://shop.teachstarter.com/us/teaching-resource/elapsed-time-with-clocks-worksheet/) and [Tutoring Hour, *Elapsed time worksheets*](https://www.tutoringhour.com/worksheets/time/elapsed-time) (vendors; US grades 2–4) | Two faces, a start and an end, and the question *how long*; some count on round the face, some on a number line of hops. **(check)** | 2 faces | A **sequence of faces** and the time between them; minutes counted round the face. |
+
+**What the corpus says.** A teaching clock has two hands, twelve numbers and sixty minute
+ticks; the curriculum's variants are Roman numerals and quarter numbers only (C2, C3).
+No source shows a seconds hand on a face to be read, so it is refused. The one error
+every lesson warns about is the hour hand left on the hour (C1, C2), so the hour hand is
+always placed from the minutes too. Sheets hold up to a dozen faces in rows (C4), with
+the answer *hidden*: the time in words is optional, and a face may have no hands at all,
+to draw on. Elapsed time is two faces and the time between them (C5); counting on round
+the face is the classroom method, so the later face can shade the minutes passed. Times
+are clock readings (`HH:MM`), never dates. Budget: 12 faces.
+
+---
+
 ## Summary for the builders
 
 | Kind | Corpus says | Change to the proposal |
@@ -293,3 +319,4 @@ left out; one mark per row covers every original. Budget: 15 rows (R4: 13).
 | four-set Venn | Research Venns use 4 ellipses, 15 regions, counts | Four-ellipse layout; short region text |
 | meter | One amount against one scale; panels of one style; dials read by named bands | `style` per document; ≤ 6 meters, ≤ 5 bands with words; bullet bands in tones |
 | rag | Lists of workstreams or risks; three ratings; trend ambiguous by arrow | New kind `rag`: rows with mark, `trend` in words, note; ≤ 15 rows; no per-dimension marks |
+| clock | Two hands, 12 numbers, 60 ticks; Roman/quarters variants; worksheets of ~12 | New kind `clock`: `HH:MM` per face, `numerals`, optional words, `since` shading; no seconds; ≤ 12 faces |

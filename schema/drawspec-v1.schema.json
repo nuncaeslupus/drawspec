@@ -2626,6 +2626,89 @@
         "rows"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "clock",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "clock"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "clocks": {
+          "type": "array",
+          "description": "The faces, 1 to 12, in reading order, up to four to a row: each a `time`, and optionally a `text` under it and a `since`.",
+          "items": {
+            "$ref": "#/$defs/clock-face"
+          },
+          "minItems": 1
+        },
+        "numerals": {
+          "type": "string",
+          "description": "The numbers round every face: `arabic` (the default, 1 to 12), `roman` (I to XII), `quarters` (12, 3, 6 and 9 only) or `none`.",
+          "enum": [
+            "arabic",
+            "roman",
+            "quarters",
+            "none"
+          ]
+        },
+        "readout": {
+          "type": "string",
+          "description": "What is written under each face: `words` (the default: `quarter past three`), `digits` (`3:15`, as written), `both`, or `none` for a worksheet.",
+          "enum": [
+            "words",
+            "digits",
+            "both",
+            "none"
+          ]
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "clocks"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -3130,6 +3213,24 @@
         "column",
         "row"
       ],
+      "additionalProperties": false
+    },
+    "clock-face": {
+      "type": "object",
+      "properties": {
+        "time": {
+          "type": "string",
+          "description": "The time the hands show, `H:MM` or `HH:MM` from `0:00` to `23:59` — `15:40` for twenty to four in the afternoon. No seconds, no date. Leave it out for a face with no hands, to draw them on."
+        },
+        "text": {
+          "type": "string",
+          "description": "A name or a prompt under the face: `Home time`, `Draw half past seven`."
+        },
+        "since": {
+          "type": "string",
+          "description": "An earlier time, `H:MM`, up to 12 hours before `time`: the face shades what has passed since it, and the readout says how long."
+        }
+      },
       "additionalProperties": false
     },
     "composite": {

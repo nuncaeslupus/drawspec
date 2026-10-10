@@ -173,6 +173,7 @@ fields are legal. Thirty-four exist, and they fall into twenty-three families:
 | Family | `familytree` | Who is whose child and partner: people, couples and their children a generation to a row, in the standard symbols — a family tree, or a pedigree in genetics. |
 | Gauge | `meter` | How far one amount is along its scale: a progress bar, a fundraising thermometer, a dial with named bands, a bullet graph — alone or a few to a panel. |
 | Status | `rag` | Things rated red, amber or green: workstreams or risks a row each, the rating a word and a shape (a colour only by the theme), a trend in words and a note — a highlight report, a risk register. |
+| Time | `clock` | A time of day on an analogue face, for teaching it: two hands placed by the time, the numerals the lesson uses, the time in words under it, how long since an earlier time shaded round the face. |
 | Reasoning | `argument` | Things said for and against a claim: reasons, objections, rebuttals and evidence by stance, co-premises under one bracket (an argument map). |
 
 One worked document per kind lives in [`reference/`](reference), and `make
@@ -2054,6 +2055,51 @@ highlight report), [`reference/rag-register.json`](reference/rag-register.json) 
 register), [`reference/rag-confidence.json`](reference/rag-confidence.json) (delivery
 confidence, in the accent theme) and [`reference/rag-school.json`](reference/rag-school.json)
 (a school's priorities, no notes).
+
+## A clock face: teaching the time
+
+Every primary maths scheme teaches the analogue clock — o'clock and half past, then
+quarter past and quarter to, five-minute times, the nearest minute, Roman numerals and
+the 24-hour clock — and every lesson and worksheet draws the same face. That is `clock`:
+
+```json
+{
+  "version": 1,
+  "kind": "clock",
+  "title": "Quarter past and quarter to",
+  "clocks": [{"time": "3:15"}, {"time": "3:45"}]
+}
+```
+
+Each of the 1 to 12 `clocks` is a `time`, `H:MM` or `HH:MM` from `0:00` to `23:59`, and
+optionally a `text` under the face (a name, or a prompt). Faces sit up to four to a row,
+the rows kept even. The hands are placed by the time and told apart by shape — the hour
+hand short and broad, the minute hand long and narrow — and **the hour hand moves on with
+the minutes**: at half past seven it is halfway from the 7 to the 8, the point every
+lesson makes. A face with no `time` has no hands: one for the pupil to draw on.
+
+`numerals` is the sheet's: `arabic` (the default), `roman` (I to XII, with IV as taught),
+`quarters` (12, 3, 6 and 9 only) or `none`. `readout` says what is written under each
+face: `words` (the default: *quarter past three*, *twenty-two minutes to twelve*),
+`digits` (the time as written, so `15:15` stays on the 24-hour clock), `both`, or `none`
+for a worksheet whose answers are the pupil's.
+
+`since` is an earlier time, less than 12 hours before: the face shades what has passed —
+the minute hand's sweep when it is an hour or less, the hour hand's, nearer the hub,
+when it is more, with a dashed line where the hand started — and the readout adds *40
+minutes after 2:35*. Two or three faces in a row, each `since` the one before, is an
+elapsed-time question.
+
+Refused, each at its pointer: a time with seconds (no teaching face has a seconds hand to
+read); `am`/`pm` (write the 24-hour time: `15:15`); a date; any other spelling (`9.30`,
+`9:5`, `24:00`); `since` with no `time`, equal to it, or 12 hours or more before;
+`seconds`, `date`, `hands`, `hour`, `minute`, `angle`, `label` (the `text`), `numerals` or
+`readout` on a face (they are the sheet's); `edges`. Budget: 12 faces. A face too small
+for its numerals is a `FitError`. See [`reference/clock-quarters.json`](reference/clock-quarters.json)
+(o'clock to quarter to), [`reference/clock-worksheet.json`](reference/clock-worksheet.json)
+(read and draw, answers hidden), [`reference/clock-roman.json`](reference/clock-roman.json)
+(Roman numerals to the minute, in words and digits) and
+[`reference/clock-journey.json`](reference/clock-journey.json) (how long between times).
 
 ## Asking for a wide drawing instead of a tall one
 

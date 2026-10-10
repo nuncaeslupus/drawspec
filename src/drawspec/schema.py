@@ -531,6 +531,25 @@ RAG_TRENDS: Final = ("better", "same", "worse")
 #: The most rows to one report: the largest register in the corpus has 13 (R4).
 RAG_ROW_MAX: Final = 15
 
+#: Clock faces: an analogue clock showing a time, for teaching it — alone, a few
+#: in a row, or a worksheet of them. A layout family of its own; each hand is
+#: placed by arithmetic from the time.
+CLOCK_KINDS: Final = ("clock",)
+
+#: The numbers round a face: all twelve, Roman I-XII, only 12, 3, 6 and 9, or none.
+CLOCK_NUMERALS: Final = ("arabic", "roman", "quarters", "none")
+
+#: What is written under each face: the time in words, in digits, both, or
+#: nothing (a worksheet, whose answers are the pupil's).
+CLOCK_READOUTS: Final = ("words", "digits", "both", "none")
+
+#: The most faces to a sheet: a worksheet holds a dozen (corpus C4).
+CLOCK_MAX: Final = 12
+
+#: How long before a face's time its `since` may be, in minutes: past twelve
+#: hours the hour hand has gone all the way round and the sweep says nothing.
+CLOCK_SINCE_MAX: Final = 12 * 60
+
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
 #: into each other at the canvas width.
 NUMBERLINE_TICK_MAX: Final = 30
@@ -605,6 +624,8 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: has no end to be read against, and a `numberline` no fill, target or bands.
 #: `rag` is the twenty-second: rows rated red, amber or green in words and shapes
 #: — a `matrix` scale is a tone with no word on it, and a `board` sorts, not rates.
+#: `clock` is the twenty-third: two hands placed by a time — a `meter` dial reads
+#: one amount on a half-circle, and nothing else places a hand by the hour.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -631,6 +652,7 @@ KINDS: Final = (
     + FAMILYTREE_KINDS
     + METER_KINDS
     + RAG_KINDS
+    + CLOCK_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -760,7 +782,9 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # two to five bands.
     "meter": (("meters", METER_MAX), ("meters/bands", METER_BAND_MAX)),  # [5 meters, 4 bands]
     # Set by the corpus: the largest risk register found rates 13 risks (R4).
-    "rag": (("rows", RAG_ROW_MAX),),  # [12]
+    "rag": (("rows", RAG_ROW_MAX),),  # [10]
+    # Set by the corpus: a worksheet holds a dozen faces (C4).
+    "clock": (("clocks", CLOCK_MAX),),  # [8]
 }
 
 
@@ -2319,6 +2343,30 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "clock-face": (
+        FieldSpec(
+            "time",
+            "string",
+            description=(
+                "The time the hands show, `H:MM` or `HH:MM` from `0:00` to `23:59` — `15:40` "
+                "for twenty to four in the afternoon. No seconds, no date. Leave it out for a "
+                "face with no hands, to draw them on."
+            ),
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description=("A name or a prompt under the face: `Home time`, `Draw half past seven`."),
+        ),
+        FieldSpec(
+            "since",
+            "string",
+            description=(
+                "An earlier time, `H:MM`, up to 12 hours before `time`: the face shades what "
+                "has passed since it, and the readout says how long."
+            ),
+        ),
+    ),
     "rag-row": (
         FieldSpec(
             "text",
@@ -2818,7 +2866,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the thirty-five diagrams this is. It selects the fields that are "
+            "Which of the thirty-six diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -3705,6 +3753,37 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    CLOCK_KINDS: (
+        FieldSpec(
+            "clocks",
+            "array",
+            required=True,
+            item_ref="clock-face",
+            min_items=1,
+            description=(
+                "The faces, 1 to 12, in reading order, up to four to a row: each a `time`, "
+                "and optionally a `text` under it and a `since`."
+            ),
+        ),
+        FieldSpec(
+            "numerals",
+            "string",
+            enum=CLOCK_NUMERALS,
+            description=(
+                "The numbers round every face: `arabic` (the default, 1 to 12), `roman` (I to "
+                "XII), `quarters` (12, 3, 6 and 9 only) or `none`."
+            ),
+        ),
+        FieldSpec(
+            "readout",
+            "string",
+            enum=CLOCK_READOUTS,
+            description=(
+                "What is written under each face: `words` (the default: `quarter past three`), "
+                "`digits` (`3:15`, as written), `both`, or `none` for a worksheet."
+            ),
+        ),
+    ),
     RAG_KINDS: (
         FieldSpec(
             "rows",
@@ -4230,6 +4309,15 @@ class WaterfallBar:
 
 
 @dataclass(frozen=True)
+class ClockFace:
+    """One clock face: the time its hands show, if any, a text, and a time since."""
+
+    time: str = ""
+    text: str = ""
+    since: str = ""
+
+
+@dataclass(frozen=True)
 class RagRow:
     """One row of a RAG report: a name, its rating, and optionally a trend and a note."""
 
@@ -4623,6 +4711,15 @@ class Document:
     rag_rows: tuple[RagRow, ...] = ()
     """A `rag` document's rows, in the order written."""
 
+    clocks: tuple[ClockFace, ...] = ()
+    """A `clock` document's faces, in reading order."""
+
+    clock_numerals: str = "arabic"
+    """The numbers round a `clock` document's faces."""
+
+    clock_readout: str = "words"
+    """What is written under a `clock` document's faces."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -4652,6 +4749,7 @@ class Document:
             ("familytree", FAMILYTREE_KINDS),
             ("meter", METER_KINDS),
             ("rag", RAG_KINDS),
+            ("clock", CLOCK_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -4868,6 +4966,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_meter_refusal(violation) for violation in found]
     if kind in RAG_KINDS:
         found = [_rag_refusal(violation) for violation in found]
+    if kind in CLOCK_KINDS:
+        found = [_clock_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -4936,6 +5036,10 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
     ("meter", "meters"): (
         "Past six meters a panel is a dashboard, read as a table. Keep the ones the page is "
         "about, and put the rest in a table beside it."
+    ),
+    ("clock", "clocks"): (
+        "Past twelve faces a sheet is two sheets: split it by the skill each practises — "
+        "o'clock and half past on one, quarters on the next."
     ),
     ("rag", "rows"): (
         "Past fifteen rows a status report is searched, not read: split it by programme or "
@@ -5198,6 +5302,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _familytree_violations(document)
     if kind in METER_KINDS:
         return _meter_violations(document)
+    if kind in CLOCK_KINDS:
+        return _clock_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -7802,6 +7908,107 @@ def _waterfall_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a clock has no place for a field an author may reach for.
+CLOCK_REFUSED: Final = {
+    "edges": "two faces are related by `since`, which shades the time between them",
+    "seconds": (
+        "a teaching face has two hands, and no lesson asks a pupil to read a seconds hand: "
+        "say the seconds in the `text`"
+    ),
+    "date": "a clock reads a time of day; dates belong on a `timeline`",
+    "hands": "the hands are placed by the `time`; leave it out for a face with none",
+    "hour": 'the hands are placed by the `time`: `"time": "3:15"`',
+    "minute": 'the hands are placed by the `time`: `"time": "3:15"`',
+    "angle": "the hands are placed by the `time`",
+    "numerals": "the numerals are the sheet's, at the top: one face style per sheet",
+    "readout": "the readout is the sheet's, at the top: a worksheet hides every answer",
+    "label": "the words under a face are its `text`",
+}
+
+
+def _clock_refusal(violation: Violation) -> Violation:
+    """A structural refusal on a clock sheet, told what this kind means by it."""
+    name = violation.pointer.split("/")[-1]
+    unknown = "is not" in violation.message and "field" in violation.message
+    if name in CLOCK_REFUSED and unknown:
+        return Violation(violation.pointer, f"{name!r}: {CLOCK_REFUSED[name]}.")
+    return violation
+
+
+#: A clock time: one or two digits of hour, 0-23, then two of minute.
+_CLOCK_TIME: Final = re.compile(r"^([01]?[0-9]|2[0-3]):([0-5][0-9])$")
+
+
+def clock_minutes(text: str) -> int | None:
+    """Minutes past midnight for an `H:MM` time, or None when it is not one."""
+    match = _CLOCK_TIME.match(text)
+    if match is None:
+        return None
+    return int(match.group(1)) * 60 + int(match.group(2))
+
+
+def _clock_time_problem(text: Any) -> str | None:
+    """Why `text` is not a clock time, or None when it is one."""
+    if not isinstance(text, str):
+        return None  # The structural check has already said so.
+    if clock_minutes(text) is not None:
+        return None
+    if re.match(r"^\d{1,2}:\d{2}:\d{2}$", text.strip()):
+        return (
+            f"{text!r} has seconds. A teaching face has an hour hand and a minute hand, and "
+            f"no lesson asks a pupil to read a seconds hand: write `H:MM`."
+        )
+    if re.search(r"(?i)\d\s*[ap]\.?m\.?\s*$", text):
+        return (
+            f"{text!r}: a time is written on the 24-hour clock, `H:MM` — `15:15` for a quarter "
+            f"past three in the afternoon. The face is the same; the readout writes it as given."
+        )
+    if re.search(r"\d{4}-\d{2}|T\d", text):
+        return f"{text!r} carries a date. A clock reads a time of day: `H:MM`."
+    return (
+        f"{text!r} is not a time: write `H:MM` or `HH:MM`, from `0:00` to `23:59` — "
+        f"`9:05`, `15:40`."
+    )
+
+
+def _clock_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Each face's times well formed, and each `since` before its time, within 12 hours."""
+    found: list[Violation] = []
+    for index, face in enumerate(_listed(document, "clocks")):
+        if not isinstance(face, dict):
+            continue
+        here = _pointer("clocks", index)
+        for name in ("time", "since"):
+            problem = _clock_time_problem(face.get(name))
+            if problem is not None:
+                found.append(Violation(f"{here}/{name}", problem))
+        if "since" not in face:
+            continue
+        if "time" not in face:
+            found.append(
+                Violation(
+                    f"{here}/since",
+                    "a face with no hands has nothing to measure from: give it a `time`, or "
+                    "leave `since` out.",
+                )
+            )
+            continue
+        start, end = clock_minutes(str(face["since"])), clock_minutes(str(face["time"]))
+        if start is None or end is None:
+            continue
+        gap = (end - start) % (24 * 60)
+        if gap == 0 or gap >= CLOCK_SINCE_MAX:
+            found.append(
+                Violation(
+                    f"{here}/since",
+                    f"{face['since']!r} must be before {face['time']!r} and less than 12 hours "
+                    f"before it: past that the hour hand has gone all the way round, and the "
+                    f"face cannot show how long. Say a longer time in the `text`.",
+                )
+            )
+    return found
+
+
 #: Why a RAG row has no place for a field an author may reach for.
 RAG_REFUSED: Final = {
     "edges": "a RAG report rates each row on its own; there is nothing to connect",
@@ -9503,6 +9710,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _meter_document(document)
     if kind in RAG_KINDS:
         return _rag_document(document)
+    if kind in CLOCK_KINDS:
+        return _clock_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -10135,6 +10344,30 @@ def _waterfall_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _clock_document(document: Mapping[str, Any]) -> Document:
+    """A clock sheet: its faces, in reading order, and how each is numbered and read."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        clock_numerals=str(document.get("numerals", "arabic")),
+        clock_readout=str(document.get("readout", "words")),
+        clocks=tuple(
+            ClockFace(
+                time=str(face.get("time", "")),
+                text=str(face.get("text", "")),
+                since=str(face.get("since", "")),
+            )
+            for face in document["clocks"]
+        ),
+    )
+
+
 def _rag_document(document: Mapping[str, Any]) -> Document:
     """A RAG report: its rows, in the order written."""
     return Document(
@@ -10552,6 +10785,11 @@ __all__ = [
     "CARDINALITIES",
     "CAUSE_ROLES",
     "CHART_KINDS",
+    "CLOCK_KINDS",
+    "CLOCK_MAX",
+    "CLOCK_NUMERALS",
+    "CLOCK_READOUTS",
+    "CLOCK_SINCE_MAX",
     "COMMON_FIELDS",
     "CONTAINER_KINDS",
     "DOCUMENT_VERSION",
@@ -10653,6 +10891,7 @@ __all__ = [
     "CausalLoop",
     "Cause",
     "Cell",
+    "ClockFace",
     "Curve",
     "Detail",
     "Document",
@@ -10694,6 +10933,7 @@ __all__ = [
     "WaterfallBar",
     "Waypoint",
     "build_schema",
+    "clock_minutes",
     "fields_for",
     "lane_order",
     "load_document",
