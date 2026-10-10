@@ -12,6 +12,18 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **Causal loop diagrams on `flow`** — `polarity` (`+`/`-`) on every causal edge,
+  written as its label and so placed clear of everything; `delay: true`, the double
+  stroke across the shaft; and named `loops`, each its variables in order. A loop's
+  type is derived from the signs (an even number of `-` links reinforces) and drawn
+  as `R1`, `B1`, … in a ring whose arrow turns the way the loop runs, placed inside
+  the loop; a stated `type` the signs contradict is refused with the count. The
+  gap between ranks grows to hold the markers; `groups` work with `loops`. A new
+  theme section, `[flow] polarity = "+-" | "so"`. Refused at their pointers:
+  half-signed diagrams, a sign on a `link`/`aside`/`weak` edge, a delay without a
+  sign, loops without signs, a loop not joined in order (naming the missing edge),
+  a node twice, the same loop twice, these fields on any other kind. Budget: 6
+  loops. `docs/proposals/flow-loops.md` records the design.
 - **`venn` draws four sets** — as four equal ellipses, so all fifteen regions exist
   (four circles cannot draw the two diagonal pairs). A region's words are placed
   as for circles, exactly inside their region; set names go outside, the middle

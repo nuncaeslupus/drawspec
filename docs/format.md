@@ -52,6 +52,12 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `groups` | array of [group](#group-object) | no | Boxes drawn around sets of nodes, each with its own caption. |
 | `bands` | array of [band](#band-object) | no | Named things that run alongside a set of boxes rather than containing them — drawn as a labelled bar beside the boxes they accompany. For the activity that goes on throughout: a source sheet with one continuous concern above its steps and another below says the steps are *surrounded* by them, and two such bands are peers. A `group` cannot say that — a box sits inside one container or none, so two groups over the same members had to be nested, which draws a hierarchy that is not there. |
 
+### `flow`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `loops` | array of [loop](#loop-object) | no | The feedback loops of a causal loop diagram, each named and marked R (reinforcing) or B (balancing) inside the loop it closes — the type derived from the signs, never chosen. Needs `polarity` on the edges. |
+
 ### `cycle`
 
 | Field | Type | Required | What it is |
@@ -284,7 +290,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 
 | Kind | At most |
 |---|---|
-| `flow` | 15 `nodes`, 16 `edges` |
+| `flow` | 15 `nodes`, 16 `edges`, 6 `loops` |
 | `tree` | 15 `nodes` |
 | `cycle` | 8 `nodes` |
 | `stack` | 8 `items` |
@@ -350,6 +356,16 @@ name, so a misspelt key is an error at the point it was written.
 | `label` | string | no | A short label placed along the edge. |
 | `role` | string — one of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
 | `status` | string — one of `added`, `changed`, `removed` | no | What a proposed change does to this connection: the same marks as a node's, written before the label (`+`, `~`, `-`), with a key of the marks under the drawing. A removed edge is drawn in the `aside` treatment — dashed, no head — whatever its role. **Only a `flow`, a `tree` or `lanes`.** |
+| `polarity` | string — one of `+`, `-` | no | A causal link's sign: more of the source means more (`+`) or less (`-`) of the target, written as the edge's label (`s`/`o` under a theme that says so). Every `flow` or `strong` edge of the document has one, or none does. **Only a `flow`.** |
+| `delay` | boolean | no | The effect takes time: drawn as the double stroke across the shaft. Needs `polarity`. **Only a `flow`.** |
+
+### `loop` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `nodes` | array of string, at least 2 | **yes** | The loop's variables in the order it runs: each joined to the next, and the last back to the first, by a signed edge in that direction. |
+| `type` | string — one of `reinforcing`, `balancing` | no | Optional, and checked: an even number of `-` links is `reinforcing`, an odd number `balancing`. Drawn as R or B, numbered in the order written. |
 
 ### `lane-node` object
 

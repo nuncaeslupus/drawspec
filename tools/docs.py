@@ -63,6 +63,7 @@ from drawspec.theme import (
     FILES_ALIGNS,
     FILES_TYPES,
     FILL_PATTERNS,
+    FLOW_POLARITIES,
     FONT_ROLES,
     FUNNEL_DIRECTIONS,
     GANTT_MILESTONES,
@@ -84,6 +85,7 @@ from drawspec.theme import (
     FilesStyle,
     FishboneStyle,
     FitBand,
+    FlowStyle,
     FontStacks,
     FunnelStyle,
     GanttStyle,
@@ -532,6 +534,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "fishbone": FishboneStyle,
     "journey": JourneyStyle,
     "numberline": NumberlineStyle,
+    "flow": FlowStyle,
     "pie": PieStyle,
 }
 
@@ -564,6 +567,7 @@ THEME_VOCABULARIES: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("journey", "guide"): EDGE_ROLES,
     ("journey", "separator"): EDGE_ROLES,
     ("numberline", "ends"): NUMBERLINE_ENDS,
+    ("flow", "polarity"): FLOW_POLARITIES,
     ("pie", "shape"): PIE_SHAPES,
 }
 

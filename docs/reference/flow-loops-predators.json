@@ -1,0 +1,26 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "flow",
+  "title": "Rabbits and foxes",
+  "description": "Course notes in ecology: rabbits breed, foxes eat rabbits after a delay, and foxes die off; three loops, their types derived from the signs.",
+  "nodes": [
+    {"id": "rabbits", "text": "Rabbits"},
+    {"id": "births", "text": "Rabbit births"},
+    {"id": "foxes", "text": "Foxes"},
+    {"id": "deaths", "text": "Fox deaths"}
+  ],
+  "edges": [
+    {"from": "rabbits", "to": "births", "polarity": "+"},
+    {"from": "births", "to": "rabbits", "polarity": "+"},
+    {"from": "rabbits", "to": "foxes", "polarity": "+", "delay": true},
+    {"from": "foxes", "to": "rabbits", "polarity": "-"},
+    {"from": "foxes", "to": "deaths", "polarity": "+"},
+    {"from": "deaths", "to": "foxes", "polarity": "-"}
+  ],
+  "loops": [
+    {"text": "Breeding", "nodes": ["rabbits", "births"]},
+    {"text": "Predation", "nodes": ["rabbits", "foxes"]},
+    {"text": "Fox mortality", "nodes": ["foxes", "deaths"]}
+  ]
+}

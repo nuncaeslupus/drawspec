@@ -420,7 +420,7 @@ def _insets(
     """
     if caption is None:
         return theme.box.padding.top, theme.box.padding.bottom
-    room = spacing.rank_gap if entered else theme.box.padding.top
+    room = (spacing.turn_gap or spacing.rank_gap) if entered else theme.box.padding.top
     return caption.height + room, theme.box.padding.bottom
 
 

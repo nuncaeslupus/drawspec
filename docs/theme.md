@@ -254,6 +254,14 @@ How a number line marks whether a range's end belongs to it.
 |---|---|---|
 | `ends` | `"dots"` | `dots` (filled closed, hollow open) or `brackets` (`[` closed, `(` open). A point is a dot either way. One of `dots`, `brackets`. |
 
+### `[flow]`
+
+How a causal loop diagram's signs are written.
+
+| Key | Default | What it is |
+|---|---|---|
+| `polarity` | `"+-"` | `+-` (a plus and a true minus) or `so` (`s` for same, `o` for opposite). One of `+-`, `so`. |
+
 ### `[pie]`
 
 Whether a pie is a disc or a ring.

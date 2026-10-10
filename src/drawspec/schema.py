@@ -256,6 +256,20 @@ FISHBONE_CAUSE_MAX: Final = 5
 #: family of its own.
 VENN_KINDS: Final = ("venn",)
 
+#: A causal link's sign: more of the source means more (`+`) or less (`-`) of the
+#: target. Only on a `flow`.
+POLARITIES: Final = ("+", "-")
+
+#: The edge roles a sign may go on: a link that says *this drives that*. `link`,
+#: `aside` and `weak` have no causal direction, and the others mean other things.
+POLARITY_EDGE_ROLES: Final = ("flow", "strong")
+
+#: What a loop's type may be written as; it is checked against the signs.
+LOOP_TYPES: Final = ("reinforcing", "balancing")
+
+#: The most loops one causal loop diagram names (its readability budget).
+LOOP_MAX: Final = 6
+
 #: The most sets a `venn` draws: four, as four ellipses — the only arrangement in
 #: common use that shows every one of the fifteen regions.
 VENN_SET_MAX: Final = 4
@@ -504,7 +518,8 @@ KINDS: Final = (
 #: canvas, and a wider canvas does not make twenty boxes easier to take in; the
 #: remedy is the one the refusal names — an overview plus detail diagrams.
 READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
-    "flow": (("nodes", 15), ("edges", 16)),  # [14 nodes, 12 edges]
+    # Loops set by the proposal and the corpus: teaching diagrams name two or three.
+    "flow": (("nodes", 15), ("edges", 16), ("loops", LOOP_MAX)),  # [14 nodes, 12 edges, 3 loops]
     "tree": (("nodes", 15),),  # [11]
     "cycle": (("nodes", 8),),  # [5]
     "stack": (("items", 8),),  # [3]
@@ -815,6 +830,48 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
                 "marks under the drawing. A removed edge is drawn in the `aside` "
                 "treatment — dashed, no head — whatever its role. **Only a `flow`, a "
                 "`tree` or `lanes`.**"
+            ),
+        ),
+        FieldSpec(
+            "polarity",
+            "string",
+            enum=POLARITIES,
+            description=(
+                "A causal link's sign: more of the source means more (`+`) or less (`-`) of "
+                "the target, written as the edge's label (`s`/`o` under a theme that says "
+                "so). Every `flow` or `strong` edge of the document has one, or none does. "
+                "**Only a `flow`.**"
+            ),
+        ),
+        FieldSpec(
+            "delay",
+            "boolean",
+            description=(
+                "The effect takes time: drawn as the double stroke across the shaft. Needs "
+                "`polarity`. **Only a `flow`.**"
+            ),
+        ),
+    ),
+    "loop": (
+        _text(required=True),
+        FieldSpec(
+            "nodes",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=2,
+            description=(
+                "The loop's variables in the order it runs: each joined to the next, and "
+                "the last back to the first, by a signed edge in that direction."
+            ),
+        ),
+        FieldSpec(
+            "type",
+            "string",
+            enum=LOOP_TYPES,
+            description=(
+                "Optional, and checked: an even number of `-` links is `reinforcing`, an "
+                "odd number `balancing`. Drawn as R or B, numbered in the order written."
             ),
         ),
     ),
@@ -2322,6 +2379,18 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    ("flow",): (
+        FieldSpec(
+            "loops",
+            "array",
+            item_ref="loop",
+            description=(
+                "The feedback loops of a causal loop diagram, each named and marked R "
+                "(reinforcing) or B (balancing) inside the loop it closes — the type "
+                "derived from the signs, never chosen. Needs `polarity` on the edges."
+            ),
+        ),
+    ),
     ("cycle",): (
         FieldSpec(
             "hub",
@@ -3192,6 +3261,19 @@ class Edge:
     role: str = "flow"
     status: str = ""
     """What a proposed change does to this connection, or empty."""
+    polarity: str = ""
+    """A causal link's sign, `+` or `-`, or empty: only on a `flow`."""
+    delay: bool = False
+    """Whether the link's effect takes time: only on a `flow`."""
+
+
+@dataclass(frozen=True)
+class CausalLoop:
+    """One named feedback loop of a causal loop diagram: its variables, in order."""
+
+    text: str
+    nodes: tuple[str, ...]
+    type: str = ""
 
 
 @dataclass(frozen=True)
@@ -3669,6 +3751,8 @@ class Document:
 
     groups: tuple[Group, ...] = ()
     bands: tuple[Band, ...] = ()
+    loops: tuple[CausalLoop, ...] = ()
+    """A causal loop diagram's named loops, in the order written."""
     items: tuple[Item, ...] = ()
     levels: tuple[Item, ...] = ()
     rings: tuple[Item, ...] = ()
@@ -4074,6 +4158,10 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
         "Past eight parts the boxes are too thin to write in: merge the parts the question "
         "does not ask about into one, or draw the bar in `units`."
     ),
+    ("flow", "loops"): (
+        "Past six loops the markers crowd the map and none reads as a story. Split it: one "
+        "diagram per subsystem, as research maps do, each naming its own loops."
+    ),
     ("venn", "sets"): (
         "No drawing of five sets shows every region legibly, so a fifth set cannot be drawn "
         "honestly. Use a `matrix`: the sets as columns, the items as rows, a mark where an "
@@ -4470,6 +4558,15 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                         "flow or a tree.",
                     )
                 )
+            for name in ("polarity", "delay"):
+                if name in edge:
+                    found.append(
+                        Violation(
+                            _pointer("edges", index, name),
+                            f"{name!r} marks a causal link, and a causal loop diagram is a "
+                            f"`flow`: draw it as one.",
+                        )
+                    )
             if isinstance(edge.get("from"), str) and edge["from"] == edge.get("to"):
                 found.append(
                     Violation(
@@ -4560,6 +4657,7 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         seen.add(identifier)
 
     found.extend(_status_violations(document, kind))
+    found.extend(_causal_violations(document, kind, seen))
 
     if kind == "cycle":
         found.extend(_hub_violations(document, seen))
@@ -7177,6 +7275,141 @@ def _listed(document: Mapping[str, Any], name: str) -> list[Any]:
     return value if isinstance(value, list) else []
 
 
+def _causal_violations(document: Mapping[str, Any], kind: str, nodes: set[str]) -> list[Violation]:
+    """A causal loop diagram's signs, delays and loops: whole, causal and checked.
+
+    Signs go on every causal edge or none — a half-signed diagram is ambiguous —
+    and only on a `flow`. A loop runs along signed edges in the order written,
+    and a type the author states is checked against the signs: an even number of
+    negative links reinforces, an odd number balances.
+    """
+    found: list[Violation] = []
+    edges = [edge for edge in _listed(document, "edges") if isinstance(edge, dict)]
+    if kind != "flow":
+        for index, edge in enumerate(_listed(document, "edges")):
+            for name in ("polarity", "delay"):
+                if isinstance(edge, dict) and name in edge:
+                    found.append(
+                        Violation(
+                            _pointer("edges", index, name),
+                            f"{name!r} marks a causal link, and a causal loop diagram is a "
+                            f"`flow`: draw it as one.",
+                        )
+                    )
+        return found
+    signed = any("polarity" in edge for edge in edges)
+    for index, edge in enumerate(_listed(document, "edges")):
+        if not isinstance(edge, dict):
+            continue
+        role = edge.get("role", "flow")
+        if "polarity" in edge and role not in POLARITY_EDGE_ROLES:
+            found.append(
+                Violation(
+                    _pointer("edges", index, "polarity"),
+                    f"a {role!r} edge has no causal direction, so it has no sign. Make it a "
+                    f"'flow' edge, or drop the sign.",
+                )
+            )
+        elif signed and "polarity" not in edge and role in POLARITY_EDGE_ROLES:
+            found.append(
+                Violation(
+                    _pointer("edges", index),
+                    "this link has no 'polarity' and others do: a half-signed causal diagram "
+                    "is ambiguous. Give every causal link its sign, '+' or '-'.",
+                )
+            )
+        if edge.get("delay") and "polarity" not in edge:
+            found.append(
+                Violation(
+                    _pointer("edges", index, "delay"),
+                    "a delay belongs to a causal link: give this edge its 'polarity' too.",
+                )
+            )
+    loops = _listed(document, "loops")
+    if loops and not signed:
+        found.append(
+            Violation(
+                "/loops",
+                "a loop's type is counted from its links' signs, and no edge has a "
+                "'polarity'. Give every causal link its sign, '+' or '-'.",
+            )
+        )
+        return found
+    polarity: dict[tuple[str, str], str] = {}
+    for edge in edges:
+        if isinstance(edge.get("from"), str) and isinstance(edge.get("to"), str):
+            polarity.setdefault((edge["from"], edge["to"]), edge.get("polarity", ""))
+    rings: dict[tuple[str, ...], int] = {}
+    for index, loop in enumerate(loops):
+        members = loop.get("nodes") if isinstance(loop, dict) else None
+        if not isinstance(members, list) or not all(isinstance(m, str) for m in members):
+            continue
+        whole = True
+        for position, member in enumerate(members):
+            if member not in nodes:
+                whole = False
+                found.append(
+                    Violation(
+                        _pointer("loops", index, "nodes", position),
+                        f"{member!r} is not the id of any node"
+                        + _closest(member, dict.fromkeys(nodes)),
+                    )
+                )
+            elif member in members[:position]:
+                whole = False
+                found.append(
+                    Violation(
+                        _pointer("loops", index, "nodes", position),
+                        f"{member!r} is named twice: a loop passes each variable once. Two "
+                        f"loops through one variable are two loops.",
+                    )
+                )
+        if not whole or len(members) < 2:
+            continue
+        for position, member in enumerate(members):
+            following = members[(position + 1) % len(members)]
+            if (member, following) not in polarity:
+                whole = False
+                found.append(
+                    Violation(
+                        _pointer("loops", index, "nodes", position),
+                        f"no edge runs {member} \u2192 {following}: a loop's nodes are its "
+                        f"variables in the order it runs, each joined to the next and the "
+                        f"last back to the first.",
+                    )
+                )
+        if not whole:
+            continue
+        start = members.index(min(members))
+        key = tuple(members[start:] + members[:start])
+        if key in rings:
+            found.append(
+                Violation(
+                    _pointer("loops", index, "nodes"),
+                    f"loop {rings[key]} is already this loop: the same variables in the same "
+                    f"order. Name it once.",
+                )
+            )
+            continue
+        rings[key] = index
+        minus = sum(
+            polarity[(member, members[(position + 1) % len(members)])] == "-"
+            for position, member in enumerate(members)
+        )
+        derived = "balancing" if minus % 2 else "reinforcing"
+        stated = loop.get("type")
+        if isinstance(stated, str) and stated in LOOP_TYPES and stated != derived:
+            found.append(
+                Violation(
+                    _pointer("loops", index, "type"),
+                    f"this loop has {minus} negative link{'s' if minus != 1 else ''}, so it is "
+                    f"{derived}: an even number of '-' links reinforces, an odd number "
+                    f"balances. Check the signs, or the type.",
+                )
+            )
+    return found
+
+
 def _status_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
     """Where a change's marks contradict each other, or are on a kind with no change.
 
@@ -7488,8 +7721,18 @@ def parse_document(document: Mapping[str, Any]) -> Document:
                 label=entry.get("label", ""),
                 role=entry.get("role", "flow"),
                 status=entry.get("status", ""),
+                polarity=entry.get("polarity", ""),
+                delay=bool(entry.get("delay", False)),
             )
             for entry in document.get("edges", ())
+        ),
+        loops=tuple(
+            CausalLoop(
+                text=entry["text"],
+                nodes=tuple(entry["nodes"]),
+                type=entry.get("type", ""),
+            )
+            for entry in document.get("loops", ())
         ),
         groups=tuple(
             Group(id=entry["id"], members=tuple(entry["members"]), text=entry.get("text", ""))
@@ -8361,6 +8604,8 @@ __all__ = [
     "KINDS",
     "LANES_KINDS",
     "LANES_MAX",
+    "LOOP_MAX",
+    "LOOP_TYPES",
     "MESSAGE_ROLES",
     "NUMBERLINE_KINDS",
     "NUMBERLINE_POINT_MAX",
@@ -8374,6 +8619,8 @@ __all__ = [
     "PIE_PERCENT_TOLERANCE",
     "PIE_ROLES",
     "PIE_SHARE_MIN",
+    "POLARITIES",
+    "POLARITY_EDGE_ROLES",
     "REGION_ROLES",
     "REJECTED_FIELDS",
     "SANKEY_BAND",
@@ -8403,6 +8650,7 @@ __all__ = [
     "Branch",
     "Card",
     "Category",
+    "CausalLoop",
     "Cause",
     "Cell",
     "Curve",

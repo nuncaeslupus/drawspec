@@ -190,6 +190,12 @@ separator = "link"
 # as most US and college algebra texts do. A point is a dot either way.
 ends = "dots"
 
+[flow]
+# How a causal link's sign is written: "+-" (a plus and a true minus) or "so"
+# (s for same, o for opposite, as some systems-thinking courses write it). The
+# document says which links are negative either way.
+polarity = "+-"
+
 [pie]
 # A pie is a disc, its labels inside a sector when they fit; "donut" draws a ring
 # with a hole of about half the radius and every label outside on a leader. House

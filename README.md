@@ -50,6 +50,8 @@ coordinates to get wrong.
 > subtotal checked against the running sum — the bridge chart of a budget paper.
 > `pie` is the thirtieth: the shares of one known total as labelled sectors — a few
 > proportions stated, as on a `treemap`, with a donut as a theme's choice.
+> A `flow` also draws a causal loop diagram: a sign on every arrow, delay marks,
+> and named loops marked R or B, the type derived from the signs, never written.
 
 ## The problem
 

@@ -1,6 +1,6 @@
 # Proposal: `flow` + `polarity`, `delay` and `loops`: causal loop diagrams
 
-Status: **proposed, not built**. It comes from `docs/research/kinds-survey.md` (rank 3).
+Status: **built**. See *As built* at the end for where it departs from this text. It comes from `docs/research/kinds-survey.md` (rank 3).
 Size **S**: two edge fields drawn as small marks, plus a loop label placed inside a
 cycle the layout already draws. The check on loop type is a parity count.
 
@@ -172,3 +172,46 @@ note type.
 * Half-signed edges are refused, and so is `polarity` on any kind other than `flow`.
 * The `AGENTS.md` row for `flow` gains "a causal loop diagram: `polarity` on every
   edge, `loops` named".
+
+## As built
+
+Built in `kinds/loops.py`, drawn over a laid-out `flow`, with the schema checks in
+`schema.py`. The references are `docs/reference/flow-loops-waiting.json`,
+`flow-loops-predators.json` and `flow-loops-adoption.json` (the three use cases), and
+`flow-loops-town.json` (two subsystems as `groups`, following the round-2 corpus).
+The changes from the text above:
+
+* **No `id` on a loop.** The marker's letter and number are derived. The letter
+  comes from the parity of the signs, and the number counts that letter's loops in
+  the order written: `R1`, `R2`, `B1`. A written id such as `B1` on a reinforcing
+  loop would be one more thing that could disagree with the signs. A loop is
+  `{text, nodes, type?}`, and refusals point at `/loops/i/...`.
+* **The sign is the edge's label.** It is not pinned beside the head. Written as
+  the label (before any `label` of the edge's own), it goes through the label
+  placer, which keeps it clear of every line, box and other label.
+* **Causal edges, not all edges.** "Every edge or none" applies to `flow` and
+  `strong` edges. A `link`, `aside` or `weak` edge has no causal direction, so it
+  cannot carry a sign, and it is not counted.
+* **`groups` with `loops`, as the corpus asked.** Research maps group their
+  variables into subsystems. The guide says to draw one subsystem per diagram.
+* **`s`/`o` as a theme word**, as the corpus asked: `[flow] polarity = "+-" | "so"`.
+  `flow-loops-adoption` uses it through `docs/reference/themes/same-opposite.toml`.
+* **Room is made, then found.** A loop's interior in a layered drawing is mostly
+  the gap between two ranks. A flow with `loops` therefore gets a taller rank gap
+  (4.5 body sizes), which is room for a ring and a two-line name. A frame entered
+  from outside keeps the ordinary gap (`Spacing.turn_gap`). The figure a loop
+  closes is the polygon of its routes, in order. The marker goes at the point of
+  that figure furthest from every box, label, line and earlier marker, with the
+  name under the ring, beside it, or wrapped. A point in no other loop's figure is
+  preferred, so that two loops sharing a side do not share a marker's place. When
+  the figure has no room, the marker goes at the nearest point beside the loop's
+  first link. When that also fails, the document is a `FitError` naming the loop.
+* **The ring** is wide enough that the letters, and the clearance every stroke
+  keeps from words, sit inside it. Its gap is at the top, and the head points the
+  way the loop runs (the sign of the figure's area).
+* **Delay strokes** go at the first point along the edge, from the middle outwards,
+  that is clear of every label and box and away from a bend.
+* **Budget**: 6 loops, in the flow's readability budget.
+
+Review note: in `flow-loops-town` a back edge runs along a frame's side. That comes
+from the existing group routing and is not specific to loops.

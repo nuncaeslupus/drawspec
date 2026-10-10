@@ -1329,6 +1329,36 @@ class NumberlineStyle:
         )
 
 
+#: How a causal link's sign is written: `+` and a true minus, or `s` (same) and `o`
+#: (opposite), as some systems-thinking courses teach it.
+FLOW_POLARITIES: Final = ("+-", "so")
+
+#: The glyph each polarity is written as, by `[flow] polarity`.
+POLARITY_GLYPHS: Final = {"+-": {"+": "+", "-": "\u2212"}, "so": {"+": "s", "-": "o"}}
+
+
+@dataclass(frozen=True)
+class FlowStyle:
+    """How a causal loop diagram's signs are written.
+
+    The author says whether a link is positive or negative; whether that reads
+    `+` and a minus, or `s` and `o`, is house style, set once for a course's diagrams.
+    """
+
+    polarity: str = "+-"
+    """`+-` (a plus and a true minus) or `so` (`s` for same, `o` for opposite)."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> FlowStyle:
+        _reject_unknown(mapping, ("polarity",), "[flow]")
+        defaults = cls()
+        return cls(
+            polarity=_choice(
+                mapping.get("polarity", defaults.polarity), FLOW_POLARITIES, "[flow] polarity"
+            )
+        )
+
+
 #: How a `pie` is drawn: a full disc, or a ring with a hole in the middle.
 PIE_SHAPES: Final = ("pie", "donut")
 
@@ -1605,6 +1635,7 @@ _TOP_LEVEL_KEYS: Final = (
     "journey",
     "numberline",
     "pie",
+    "flow",
     "role",
     "edge_role",
 )
@@ -1637,6 +1668,7 @@ class Theme:
     journey: JourneyStyle = JourneyStyle()
     numberline: NumberlineStyle = NumberlineStyle()
     pie: PieStyle = PieStyle()
+    flow: FlowStyle = FlowStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
 
@@ -1697,6 +1729,7 @@ class Theme:
             journey=JourneyStyle.from_mapping(_section(mapping, "journey")),
             numberline=NumberlineStyle.from_mapping(_section(mapping, "numberline")),
             pie=PieStyle.from_mapping(_section(mapping, "pie")),
+            flow=FlowStyle.from_mapping(_section(mapping, "flow")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
         )

@@ -401,8 +401,10 @@ def test_a_seventh_listed_lane_is_refused_by_the_budget() -> None:
 
 
 def test_the_budget_is_a_flows_plus_the_lanes() -> None:
+    # Less the flow's causal loops, which a lanes document cannot name.
+    flow = {name: limit for name, limit in READABILITY_BUDGET["flow"] if name != "loops"}
     assert dict(READABILITY_BUDGET["lanes"]) == {
-        **dict(READABILITY_BUDGET["flow"]),
+        **flow,
         "lanes": LANES_MAX,
     }
 

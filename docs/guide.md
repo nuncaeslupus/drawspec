@@ -150,7 +150,7 @@ fields are legal. Thirty exist, and they fall into nineteen families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
-| Graph | `flow`, `tree`, `cycle`, `lanes` | Things connected to other things: a process, a hierarchy, a loop that comes round again, a process drawn in one strip per party. |
+| Graph | `flow`, `tree`, `cycle`, `lanes` | Things connected to other things: a process, a hierarchy, a loop that comes round again, a process drawn in one strip per party, a causal loop diagram. |
 | Grid | `stack`, `timeline`, `columns`, `matrix` | Things in an arrangement: layers, events in order, side-by-side comparison, rows against columns. |
 | Shape | `pyramid`, `rings`, `funnel` | Things in a proportion: levels narrowing to an apex, scopes nested inside scopes, stages narrowing to an outcome. |
 | Plot | `chart`, `quadrant`, `scatter`, `curve` | Things with numbers: series against axes, items placed in a plane, points by two measured values, a named shape with labelled waypoints. |
@@ -791,6 +791,66 @@ least three steps around it (two and a middle is a `flow`), and a shortcut whose
 chord would cross the middle is refused rather than drawn through the hub. See
 [`reference/cycle-hub-quality.json`](reference/cycle-hub-quality.json) and
 [`reference/cycle-hub-flywheel.json`](reference/cycle-hub-flywheel.json).
+
+## A causal loop diagram
+
+How a system feeds itself is a causal loop diagram: a few variables, arrows saying
+*more of this means more (`+`) or less (`-`) of that*, and the feedback loops those
+arrows close, each named and marked **R** (reinforcing) or **B** (balancing). It is
+a `flow` with a sign on every arrow:
+
+```json
+{
+  "version": 1,
+  "kind": "flow",
+  "title": "Waiting lists",
+  "nodes": [
+    {"id": "wait", "text": "Time on the waiting list"},
+    {"id": "acute", "text": "Emergency admissions"},
+    {"id": "beds", "text": "Beds free for planned surgery"},
+    {"id": "private", "text": "Patients who go private"}
+  ],
+  "edges": [
+    {"from": "wait", "to": "acute", "polarity": "+", "delay": true},
+    {"from": "acute", "to": "beds", "polarity": "-"},
+    {"from": "beds", "to": "wait", "polarity": "-"},
+    {"from": "wait", "to": "private", "polarity": "+"},
+    {"from": "private", "to": "wait", "polarity": "-"}
+  ],
+  "loops": [
+    {"text": "Deterioration", "nodes": ["wait", "acute", "beds"]},
+    {"text": "Exit to private care", "nodes": ["wait", "private"]}
+  ]
+}
+```
+
+`polarity` is written as the edge's label (before any `label` of its own), so it is
+placed like one, clear of every line and box; a theme's `[flow] polarity = "so"`
+writes `s` and `o` instead of `+` and `−`. `delay: true` draws the double stroke
+across the shaft. Each loop lists its variables in the order it runs, each joined to
+the next — and the last to the first — by a signed edge. **Its type is derived, not
+chosen**: an even number of `-` links reinforces, an odd number balances. The marker
+says `R1`, `B1`, … numbered in the order written, with an arrow turning the way the
+loop runs on the page, inside the loop (in no other loop's figure when there is
+room), its name beside or under it; the gap between ranks is made taller to hold it.
+`type` is optional and checked.
+
+Research maps are an order of magnitude bigger than teaching diagrams and group
+their variables into subsystems: `groups` work with `loops`, but draw one subsystem
+per diagram — the budget is 15 nodes and 6 loops.
+
+Refused, each at its pointer: a sign on some causal edges but not all (a
+half-signed diagram is ambiguous); a sign on a `link`, `aside` or `weak` edge (no
+causal direction); `delay` without a sign; `loops` with no signs; a loop whose nodes
+are not joined in that order (naming the missing `a → b`), that names a node twice,
+or has fewer than 2; the same loop twice; a `type` the signs contradict (naming the
+count); `polarity`, `delay` or `loops` on any other kind. A marker with no room
+inside its loop or beside its first link is a `FitError` naming the loop. See
+[`reference/flow-loops-waiting.json`](reference/flow-loops-waiting.json),
+[`reference/flow-loops-predators.json`](reference/flow-loops-predators.json),
+[`reference/flow-loops-adoption.json`](reference/flow-loops-adoption.json) (signs
+as `s`/`o`) and [`reference/flow-loops-town.json`](reference/flow-loops-town.json)
+(with groups).
 
 ## A state machine
 

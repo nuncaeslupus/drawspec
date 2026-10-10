@@ -48,7 +48,7 @@ the real originals each is checked against; a built one says so in its row.
 |---:|---|---|:-:|---|
 | 17 | [`numberline.md`](numberline.md) | `numberline`: values and ranges on one scale, with open and closed ends (inequalities, tenses, spectra) — **built** | S | `timeline`'s axis; owner decision: kind or `timeline` field (decided: its own kind) |
 | 18 | [`mindmap.md`](mindmap.md) | `mindmap`: a centre topic radiating into nested branches, balanced on two sides | M | `tree`'s tidy placement; owner decision on budget |
-| 19 | [`flow-loops.md`](flow-loops.md) | `flow` + `polarity`, `delay`, `loops`: causal loop diagrams, R/B derived from the signs | S | `venn`'s depth sampling for the loop marker |
+| 19 | [`flow-loops.md`](flow-loops.md) | `flow` + `polarity`, `delay`, `loops`: causal loop diagrams, R/B derived from the signs — **built** | S | `venn`'s depth sampling for the loop marker |
 | 20 | [`argument.md`](argument.md) | `argument`: a claim, reasons and objections by stance, with co-premises under one bracket | M | `tree` layout; a hatch pattern for `against` |
 | 21 | [`pedigree.md`](pedigree.md) | `pedigree`: people, couples and children by generation, standard symbols, derived numbering | L | the layered engine's crossing reduction, with couples as units |
 | 22 | [`barmodel.md`](barmodel.md) | `barmodel`: a word problem as bars of parts in proportion, braced (the tape diagram) — **built** | S | round-2 corpus (B1–B4); owner decision: in |

@@ -83,7 +83,7 @@ from drawspec.scene import Ellipse, Path, Primitive, Scene, TextLine, TextSpan, 
 from drawspec.schema import Band, Document, Edge, Group, Node
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
-from drawspec.theme import Theme
+from drawspec.theme import POLARITY_GLYPHS, Theme
 
 #: The kinds this family draws. `cycle` is a graph kind by the schema and
 #: belongs to `drawspec.kinds.cycle` — see D-1. `states` is not a graph kind to
@@ -266,6 +266,18 @@ def graph_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
         primitives.extend(band_primitives(bar, theme))
 
     width, height = drawing.width, drawing.height
+    # A causal loop diagram's delay marks and loop markers, over everything else.
+    if document.loops or any(edge.delay for edge in document.edges):
+        from drawspec.kinds.loops import causal_drawing  # it imports this module
+
+        causal = causal_drawing(document, drawing, theme, measurer)
+        primitives.extend(causal.primitives)
+        rects = [rect for marker in causal.markers for rect in marker.footprint]
+        top = min((rect[1] for rect in rects), default=0.0)
+        if top < 0:
+            primitives = [moved(primitive, 0.0, -top) for primitive in primitives]
+            height -= top
+        height = max(height, *(rect[3] - min(top, 0.0) for rect in rects), 0.0)
     # The key of a drawing of a change: the tags of every status used, under it.
     # Only when an edge carries one — a box's own tag already says its word, and
     # it is the bare `+` on a line that needs a key to be read.
@@ -316,6 +328,14 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         # one, so it can sit beside its own line clear of everyone else's.
         _, tall, _, _ = label_extents("\n".join(["|"] * STATES_LABEL_LINES), theme, measurer)
         spacing = replace(spacing, rank_gap=spacing.rank_gap + tall)
+    if document.loops:
+        # A causal loop's marker goes inside the loop, and between two ranks is
+        # where a loop has room: a ring and a two-line name under it.
+        spacing = replace(
+            spacing,
+            rank_gap=spacing.rank_gap + LOOP_ROOM * theme.scale["body"],
+            turn_gap=spacing.rank_gap,
+        )
     pairs = [(edge.source, edge.target) for edge in document.edges]
     captions = captions_for(document, nesting, theme, measurer, width * NODE_WIDTH_SHARE)
     looped = _loops(document)
@@ -419,7 +439,7 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         for identifier, place in sorted(layout.placements.items())
     )
     connectors = tuple(
-        Connector(edge.source, edge.target, role=_drawn_role(edge), label=_marked(edge))
+        Connector(edge.source, edge.target, role=_drawn_role(edge), label=_marked(edge, theme))
         for edge in document.edges
     )
     loops = _placed_loops(
@@ -787,16 +807,27 @@ def _sized(
 REMOVED_EDGE_ROLE: Final = "aside"
 
 
+#: How much taller the gap between ranks is in a causal loop diagram, in body
+#: sizes: room for a loop's marker — a ring round its letters, its name under it.
+LOOP_ROOM: Final = 4.5
+
+
 def _drawn_role(edge: Edge) -> str:
     return REMOVED_EDGE_ROLE if edge.status == "removed" else edge.role
 
 
-def _marked(edge: Edge) -> str:
-    """An edge's label with its change's mark written first — or the mark alone."""
-    if not edge.status:
-        return edge.label
-    mark = DRAWN_MARKS[edge.status]
-    return f"{mark} {edge.label}" if edge.label else mark
+def _marked(edge: Edge, theme: Theme) -> str:
+    """An edge's label with its change's mark and its sign written first — or those alone.
+
+    A causal link's sign is its label: placed like one, it keeps clear of every
+    line, box and other label.
+    """
+    marks = []
+    if edge.status:
+        marks.append(DRAWN_MARKS[edge.status])
+    if edge.polarity:
+        marks.append(POLARITY_GLYPHS[theme.flow.polarity][edge.polarity])
+    return " ".join([*marks, edge.label] if edge.label else marks)
 
 
 def _sized_node(
