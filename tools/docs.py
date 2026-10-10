@@ -59,6 +59,7 @@ from drawspec.theme import (
     CYCLE_CONNECTORS,
     EDGE_HEADS,
     EDGE_ROLES,
+    ENTITIES_NOTATIONS,
     FILES_ALIGNS,
     FILES_TYPES,
     FILL_PATTERNS,
@@ -73,6 +74,7 @@ from drawspec.theme import (
     Canvas,
     CycleStyle,
     EdgeStyle,
+    EntitiesStyle,
     FilesStyle,
     FitBand,
     FontStacks,
@@ -105,6 +107,15 @@ BANNER: Final = (
 def _cell(text: str) -> str:
     """One table cell: no newlines, and no pipe that would end the column."""
     return " ".join(text.split()).replace("|", "\\|")
+
+
+def _budgeted(name: str, limit: int) -> str:
+    """One budget entry: `8 entities`, or `12 fields per entity` for a nested one."""
+    if "/" not in name:
+        return f"{limit} `{name}`"
+    outer, inner = name.split("/")
+    each = outer[:-3] + "y" if outer.endswith("ies") else outer[:-1]
+    return f"{limit} `{inner}` per {each}"
 
 
 def _table(headings: Sequence[str], rows: Iterable[Sequence[str]]) -> list[str]:
@@ -265,7 +276,7 @@ def format_markdown() -> str:
             (
                 [
                     f"`{kind}`",
-                    ", ".join(f"{limit} `{name}`" for name, limit in READABILITY_BUDGET[kind]),
+                    ", ".join(_budgeted(name, limit) for name, limit in READABILITY_BUDGET[kind]),
                 ]
                 for kind in KINDS
             ),
@@ -501,6 +512,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "states": StatesStyle,
     "sequence": SequenceStyle,
     "lanes": LanesStyle,
+    "entities": EntitiesStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are
@@ -518,6 +530,7 @@ THEME_VOCABULARIES: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("sequence", "lifeline"): EDGE_ROLES,
     ("lanes", "orientation"): LANES_ORIENTATIONS,
     ("lanes", "separator"): EDGE_ROLES,
+    ("entities", "notation"): ENTITIES_NOTATIONS,
 }
 
 

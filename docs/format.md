@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-18 kinds. The machine-readable form of this page is the published
+19 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes` | **yes** | Which of the eighteen diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities` | **yes** | Which of the nineteen diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -156,6 +156,13 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `edges` | array of [edge](#edge-object) | no | What follows what, as on a `flow`. An edge between two lanes crosses the boundaries between them: that crossing is the hand-off. |
 | `lanes` | array of string, at least 1 | no | The lanes in order — top to bottom when they run across the page, left to right when they run down it; the theme decides which. Each must be some node's `actor`, spelled exactly, and every actor must be listed. Omit it and the lanes come in the order their actors first appear in `nodes`. At most 6. |
 
+### `entities`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `entities` | array of [entity](#entity-object), at least 1 | **yes** | The boxes: each a name (and a stereotype), a rule, its fields, and its operations under a second rule. Placed by their relations: general above specific when there is a hierarchy, side by side otherwise. |
+| `edges` | array of [relation](#relation-object) | no | The relations between entities, each landing on a box — or, with `from_field` / `to_field`, on one row of it — and carrying a cardinality at either end. A hierarchy may not loop. |
+
 ### `scatter`
 
 | Field | Type | Required | What it is |
@@ -206,6 +213,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `states` | 14 `states`, 24 `transitions` |
 | `sequence` | 8 `participants`, 30 `messages` |
 | `lanes` | 15 `nodes`, 16 `edges`, 6 `lanes` |
+| `entities` | 8 `entities`, 12 `edges`, 12 `fields` per entity, 8 `operations` per entity |
 
 ## Emphasis
 
@@ -324,6 +332,39 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `at` | string | **yes** | The id of the first message of this branch. The divider is drawn above it, so it is after the fragment's first message and no later than its last. |
 | `text` | string | no | This branch's condition. Written plainly; drawspec adds the brackets. Omit it for a `par` branch, which runs alongside the others and has none. |
+
+### `entity` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the entities. |
+| `text` | string | **yes** | The entity's name, drawn bold over its fields. One line: may carry `code` and **bold** spans — a table name is usually `code`. |
+| `tag` | string | no | A short stereotype drawn over the name in guillemets — `interface` is drawn «interface». Free text, 16 characters at most. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `fields` | array of [field](#field-object) | no | What the entity holds, one row each under its name: attributes, columns. A last field of `...` stands for those not shown. |
+| `operations` | array of string | no | What a class can do — `area() → float` — drawn in a compartment of their own under the fields. Strings, not objects: an operation is read, never linked to. |
+
+### `field` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | no | Only needed for a relation to land on this row (`from_field`, `to_field`). Unique among the fields of the document. |
+| `text` | string | **yes** | The field's name, one line. `...` as the last field is a row standing for the fields not shown. |
+| `type` | string | no | Its type — `uuid`, `float` — drawn right-aligned in the monospace face. |
+| `key` | string — one of `primary`, `foreign`, `unique` | no | Whether it is a key, drawn as letters before the name — `PK`, `FK`, `UQ`: a word, never a colour. |
+
+### `relation` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | string | **yes** | The id of an entity. For `inherits` and `realizes`, the specific one — the subclass, the implementation. |
+| `to` | string | **yes** | The id of another entity — for `inherits` and `realizes` the general one, which gets the hollow triangle. Not the same as `from`. |
+| `from_field` | string | no | The id of one of the `from` entity's fields: the line leaves that row, at the side facing the other entity, instead of the box. A foreign key drawn from its column. |
+| `to_field` | string | no | As `from_field`, a field of the `to` entity: the line arrives at its row. |
+| `from_end` | string — one of `one`, `zero-or-one`, `many`, `zero-or-many`, `one-or-many` | no | How many of the `from` entity there are per one of the other, drawn at the `from` end — crow's feet or numbers, as the theme's `[entities] notation` says. Not on `inherits` or `realizes`. |
+| `to_end` | string — one of `one`, `zero-or-one`, `many`, `zero-or-many`, `one-or-many` | no | As `from_end`, for the `to` end: how many of it per one of the other. Not on `owns`, whose `to` end is the whole, drawn as the diamond. |
+| `label` | string | no | A short label placed along the line. |
+| `role` | string — one of `link`, `owns`, `weak`, `strong`, `inherits`, `realizes` | no | What the relation is. `link` (the default) an association; `owns` composition — `from` is a part of `to`, diamond at `to`; `weak` a dependency; `strong` the relation that matters; `inherits` and `realizes` a subclass and an implementation, hollow triangle at `to`. An end with a cardinality draws it in place of the role's head. |
 
 ### `group` object
 

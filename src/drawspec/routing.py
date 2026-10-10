@@ -101,6 +101,14 @@ _TOLERANCE: Final = 1e-7
 #: next one settles; three is one more than any reference document has needed.
 SEPARATION_PASSES: Final = 3
 
+#: How far a hollow triangle reaches either side of its shaft, in head lengths:
+#: wider than an arrow head's spread, so the outline encloses a visible space.
+HOLLOW_SPREAD: Final = 0.55
+
+#: How long a hollow triangle is, in head lengths: longer than an arrow head, as
+#: a class diagram draws it — it is the mark the whole relation is read by.
+HOLLOW_LENGTH: Final = 1.3
+
 #: Direction codes for the search: +x, -x, +y, -y.
 _MOVES: Final = ((1, 0), (-1, 0), (0, 1), (0, -1))
 
@@ -247,6 +255,13 @@ class Connector:
     target: str
     role: str = "flow"
     label: str = ""
+    source_port: tuple[str, float] | None = None
+    """A side and a fraction along it this end must leave from, or `None` to let
+    the router choose. Internal, never authored: an `entities` relation that
+    names a field lands on that field's row, at the side facing the other box."""
+
+    target_port: tuple[str, float] | None = None
+    """As `source_port`, for the end the connector arrives at."""
 
 
 @dataclass(frozen=True)
@@ -654,11 +669,20 @@ def route_edges(
     # honestly falls back to the search, which needs the approach to have been
     # prepared with all the others.
     sides = {
-        index: _candidate_sides(boxes[connector.source], boxes[connector.target], direction)
+        index: _pinned_sides(
+            connector,
+            _candidate_sides(boxes[connector.source], boxes[connector.target], direction),
+        )
         for index, connector in enumerate(connectors)
         if connector.source != connector.target
     }
-    fractions = _assign_ports(connectors, boxes, sides)
+    fractions = _clear_pinned_ports(
+        connectors,
+        boxes,
+        sides,
+        _pinned_fractions(connectors, _assign_ports(connectors, boxes, sides)),
+        channel,
+    )
     fractions = _clear_frame_ports(
         connectors, boxes, sides, fractions, {box.id for box in anchors}, channel * 2
     )
@@ -682,7 +706,13 @@ def route_edges(
                 ),
             ),
             _approach(
-                source, target, _fallback_sides(side_pair), (0.5, 0.5), obstacles, lanes, theme
+                source,
+                target,
+                _pinned_sides(connector, _fallback_sides(side_pair)),
+                _pinned_fractions((connector,), {0: (0.5, 0.5)})[0],
+                obstacles,
+                lanes,
+                theme,
             ),
         )
     grid = _build_grid(approaches, obstacles, lanes, theme.edge.clearance)
@@ -694,7 +724,7 @@ def route_edges(
                 _self_loop(connector, boxes[connector.source], obstacles, theme, direction)
             )
             continue
-        if index in straight:
+        if index in straight and connector.source_port is None and connector.target_port is None:
             chord = Route(
                 source=connector.source,
                 target=connector.target,
@@ -720,7 +750,94 @@ def route_edges(
                 label=connector.label,
             )
         )
-    return straighten(separate_lanes(tuple(routes), obstacles, theme), obstacles, theme)
+    pinned = {
+        index: (connector.source_port is not None, connector.target_port is not None)
+        for index, connector in enumerate(connectors)
+        if connector.source_port is not None or connector.target_port is not None
+    }
+    return straighten(
+        separate_lanes(tuple(routes), obstacles, theme), obstacles, theme, pinned=pinned
+    )
+
+
+def _pinned_sides(connector: Connector, sides: tuple[str, str]) -> tuple[str, str]:
+    """`sides`, with any end the connector pins replaced by the side it names."""
+    return (
+        connector.source_port[0] if connector.source_port else sides[0],
+        connector.target_port[0] if connector.target_port else sides[1],
+    )
+
+
+def _pinned_fractions(
+    connectors: Sequence[Connector], fractions: Mapping[int, tuple[float, float]]
+) -> dict[int, tuple[float, float]]:
+    """`fractions`, with any end a connector pins at the fraction it names."""
+    pinned = dict(fractions)
+    for index, (source, target) in fractions.items():
+        connector = connectors[index]
+        pinned[index] = (
+            connector.source_port[1] if connector.source_port else source,
+            connector.target_port[1] if connector.target_port else target,
+        )
+    return pinned
+
+
+def _clear_pinned_ports(
+    connectors: Sequence[Connector],
+    boxes: Mapping[str, Obstacle],
+    sides: Mapping[int, tuple[str, str]],
+    fractions: Mapping[int, tuple[float, float]],
+    spacing: float,
+) -> dict[int, tuple[float, float]]:
+    """Free ends moved off the points pinned ends hold on the same side.
+
+    Ports are spread along a side without knowing that some of them are fixed, so
+    an end that only had to land on the box could be given the very point a
+    field's row holds, and the two lines' ends were drawn one over the other. The
+    free end moves to the nearest place along the side at least `spacing` from
+    every pinned point; one with nowhere to go stays where it was.
+    """
+    adjusted = dict(fractions)
+    held: dict[tuple[str, str], list[float]] = {}
+    for index, connector in enumerate(connectors):
+        if index not in sides:
+            continue
+        for end, (identifier, port) in enumerate(
+            ((connector.source, connector.source_port), (connector.target, connector.target_port))
+        ):
+            if port is not None:
+                held.setdefault((identifier, sides[index][end]), []).append(fractions[index][end])
+    if not held:
+        return adjusted
+    for index, connector in enumerate(connectors):
+        if index not in sides:
+            continue
+        ends = list(adjusted[index])
+        for end, (identifier, port) in enumerate(
+            ((connector.source, connector.source_port), (connector.target, connector.target_port))
+        ):
+            pinned = held.get((identifier, sides[index][end]))
+            if port is not None or not pinned:
+                continue
+            box = boxes[identifier]
+            length = box.width if sides[index][end] in ("top", "bottom") else box.height
+            if length <= 0:
+                continue
+            step = spacing / length
+            clear = [
+                offer
+                for offer in (
+                    ends[end] + sign * k * step
+                    for k in range(int(1 / step) + 1)
+                    for sign in (1, -1)
+                )
+                if 0.1 <= offer <= 0.9
+                and all(abs(offer - other) >= step - _TOLERANCE for other in pinned)
+            ]
+            if clear:
+                ends[end] = clear[0]
+        adjusted[index] = (ends[0], ends[1])
+    return adjusted
 
 
 def _chord_is_drawable(route: Route, obstacles: Sequence[Obstacle], theme: Theme) -> bool:
@@ -1349,7 +1466,11 @@ def _separated(
 
 
 def straighten(
-    routes: Sequence[Route], obstacles: Sequence[Obstacle], theme: Theme
+    routes: Sequence[Route],
+    obstacles: Sequence[Obstacle],
+    theme: Theme,
+    *,
+    pinned: Mapping[int, tuple[bool, bool]] | None = None,
 ) -> tuple[Route, ...]:
     """Every route with its unreadable turns taken out.
 
@@ -1376,15 +1497,21 @@ def straighten(
     The end that moves is whichever one can: the source is tried first because a
     route's head is the end a reader looks at, and moving the tail is the smaller
     change to what the drawing says.
+
+    `pinned` names, per route index, the ends that may not move at all: a port
+    the caller fixed — a field's row — is where the line has to be.
     """
     boxes = {box.id: box for box in obstacles}
+    fixed = pinned or {}
     settled = list(routes)
     for index, route in enumerate(settled):
         # One turn can only be removed by moving a run that another turn owns, so
         # the pass repeats until nothing more comes out; bounded by the number of
         # turns, since each success removes at least one.
         for _ in range(len(route.points)):
-            better = _unjogged(settled[index], boxes, obstacles, theme, settled, index)
+            better = _unjogged(
+                settled[index], boxes, obstacles, theme, settled, index, fixed.get(index)
+            )
             if better is None:
                 break
             settled[index] = better
@@ -1398,8 +1525,10 @@ def _unjogged(
     theme: Theme,
     routes: Sequence[Route],
     index: int,
+    pinned: tuple[bool, bool] | None = None,
 ) -> Route | None:
     """`route` with its shortest unreadable turn removed, or `None` if none can be."""
+    held = pinned or (False, False)
     points = route.points
     for position in range(1, len(points) - 2):
         first, second = points[position], points[position + 1]
@@ -1407,6 +1536,8 @@ def _unjogged(
         if math.hypot(*offset) >= theme.edge.min_shaft_length - _TOLERANCE:
             continue
         for moving_source in (True, False):
+            if held[0 if moving_source else 1]:
+                continue
             candidate = _slid(route, position, offset, boxes, moving_source=moving_source)
             if candidate is None:
                 continue
@@ -1842,6 +1973,12 @@ def _is_clear(route: Route, obstacles: Sequence[Obstacle], theme: Theme) -> bool
         if box.id not in (route.source, route.target)
     ]
     if any(box.crosses(first, second) for first, second in route.segments for box in grown):
+        return False
+    # Its own two boxes are exempt only where it meets them. A run between two
+    # corners moved by lane separation into a crowded gap can land inside the box
+    # the route is about to enter, and then arrives at its border from within.
+    own = [box for box in obstacles if box.id in (route.source, route.target)]
+    if any(box.crosses(first, second) for first, second in route.segments[1:-1] for box in own):
         return False
     try:
         _check_head_room(route, theme)
@@ -2425,14 +2562,45 @@ def edge_primitives(route: Route, theme: Theme) -> tuple[Primitive, ...]:
     rather than two things that have to agree.
     """
     role = theme.role_for(route.role)
-    parts: list[Primitive] = [Path(route.role, points=route.points)]
     head = getattr(role, "head", "none")
     tail = getattr(role, "tail", "none")
+    points = route.points
+    # A hollow head is an outline: the shaft stops at its base rather than
+    # running on to the tip through the middle of it.
+    if head == "triangle" and len(points) >= 2:
+        points = (*points[:-1], hollow_base(points[-2], points[-1], route.role, theme))
+    if tail == "triangle" and len(points) >= 2:
+        points = (hollow_base(points[1], points[0], route.role, theme), *points[1:])
+    parts: list[Primitive] = [Path(route.role, points=points)]
     if head != "none" and len(route.points) >= 2:
-        parts.extend(_marker(head, route.points[-2], route.points[-1], route.role, theme))
+        parts.extend(end_marker(head, route.points[-2], route.points[-1], route.role, theme))
     if tail != "none" and len(route.points) >= 2:
-        parts.extend(_marker(tail, route.points[1], route.points[0], route.role, theme))
+        parts.extend(end_marker(tail, route.points[1], route.points[0], route.role, theme))
     return tuple(parts)
+
+
+def hollow_base(
+    from_point: tuple[float, float], tip: tuple[float, float], role: str, theme: Theme
+) -> tuple[float, float]:
+    """Where a shaft ending in a hollow head stops: one head length back from `tip`."""
+    length = theme.head_length_for(role) * HOLLOW_LENGTH
+    span = math.dist(from_point, tip) or 1.0
+    back = min(length, span)
+    return (
+        tip[0] - (tip[0] - from_point[0]) / span * back,
+        tip[1] - (tip[1] - from_point[1]) / span * back,
+    )
+
+
+def end_marker(
+    kind: str,
+    from_point: tuple[float, float],
+    tip: tuple[float, float],
+    role: str,
+    theme: Theme,
+) -> tuple[Primitive, ...]:
+    """One end treatment of `role`, its tip at `tip`, along the run from `from_point`."""
+    return _marker(kind, from_point, tip, role, theme)
 
 
 def _marker(
@@ -2469,12 +2637,22 @@ def _marker(
         return (Ellipse(role, cx=centre[0], cy=centre[1], rx=length / 2, ry=length / 2),)
     if kind == "bar":
         return (Path(role, points=(at(0.0, length / 2), at(0.0, -length / 2)), marker=True),)
+    if kind == "triangle":
+        # Wider than an arrow head, as a class diagram draws it, and traced as an
+        # open path back to its first corner: an edge role's closed figure is
+        # filled, and this one is an outline.
+        long = length * HOLLOW_LENGTH
+        wide = long * HOLLOW_SPREAD
+        corner = at(long, wide)
+        return (Path(role, points=(corner, tip, at(long, -wide), corner), marker=True),)
     raise LayoutError(f"no geometry for edge end treatment {kind!r}")
 
 
 __all__ = [
     "GRID_PRECISION",
     "HEAD_SPREAD",
+    "HOLLOW_LENGTH",
+    "HOLLOW_SPREAD",
     "LABEL_GAP",
     "LABEL_OFFSETS",
     "LABEL_POSITIONS",
@@ -2492,8 +2670,10 @@ __all__ = [
     "Route",
     "claimed_sides",
     "edge_primitives",
+    "end_marker",
     "goes_round",
     "head_room",
+    "hollow_base",
     "label_extents",
     "label_primitives",
     "loop_label_size",

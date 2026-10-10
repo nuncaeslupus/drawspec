@@ -144,6 +144,12 @@ lifeline = "aside"
 orientation = "auto"
 separator = "link"
 
+[entities]
+# How an entity diagram draws a relation's cardinality — the author says `one`
+# or `zero-or-many`, and this says how: crow's-foot marks across the line's end,
+# or UML's numbers beside it ("numeric": 1, 0..1, *, 0..*, 1..*).
+notation = "crowsfoot"
+
 # ---------------------------------------------------------------------------
 # Node roles. Shape and line treatment per semantic role. The author names the
 # role; every appearance decision below is taken here, once, for all diagrams.
@@ -288,6 +294,24 @@ head = "diamond"
 tail = "none"
 stroke = "currentColor"
 dash = "none"
+stroke_width = 1.5
+
+# A class diagram's two "is a" relations, named only in an `entities` document:
+# a hollow triangle at the general end, solid for a subclass and dashed for an
+# interface it implements — told apart from each other by dash, and from every
+# other role by the head's shape.
+[edge_role.inherits]
+head = "triangle"
+tail = "none"
+stroke = "currentColor"
+dash = "none"
+stroke_width = 1.5
+
+[edge_role.realizes]
+head = "triangle"
+tail = "none"
+stroke = "currentColor"
+dash = "4 3"
 stroke_width = 1.5
 
 # A funnel is a thing you pour into, and a reader already knows what one looks

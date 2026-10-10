@@ -75,6 +75,7 @@ Pick by what the reader must **understand**, not by what it looks like.
 | The conditions something is in, and the events that move it | `states` | `states` + `initial` + `transitions` (`event`/`guard`/`action`; + `final`, `groups`); every state reachable |
 | Who says what to whom, in order, between a fixed set of participants | `sequence` | `participants` + `messages` (+ `fragments` `loop`/`alt`/`opt`/`par`, `groups`, `note`); a `weak` reply to a call draws the activation bar |
 | A process whose hand-offs between parties are the point | `lanes` | a `flow`'s `nodes` + `edges`, `actor` required on each (+ `lanes`, their order); no `groups`, `bands`, `centre` |
+| What a data model, schema or class holds, and how its parts relate | `entities` | `entities` (`fields` with `type`/`key`, `operations`, `tag`) + `edges` (`from_field`/`to_field` land on a row; `from_end`/`to_end`: `one`, `zero-or-many`, …) |
 
 `flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may
 branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring
@@ -96,7 +97,7 @@ name either.
 **Nodes** — `start`, `step` (default), `decision`, `terminal`, `emphasis`,
 `note`, `group`.
 **Edges** — `flow` (default), `link`, `exchange`, `weak`, `owns`, `strong`,
-`aside`.
+`aside`; `inherits` and `realizes` (hollow triangle) in `entities` only.
 
 Use `decision` for a question with branching answers, `note` for an aside that is
 not a step, `link` for a connection with no direction.
@@ -187,8 +188,7 @@ to do:
 - **A refused field** — you wrote a coordinate or a style. Delete it; express the
   intent with `kind` or `role` instead.
 
-Always run `drawspec validate` before claiming a document is done. It exits
-non-zero and prints every problem.
+Always run `drawspec validate` before calling a document done; it prints every problem.
 
 ## Do not
 

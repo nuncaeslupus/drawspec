@@ -150,6 +150,50 @@ LANES_MAX: Final = 6
 #: container, and a box drawn as a frame inside it would claim to be another.
 LANE_NODE_ROLES: Final = tuple(role for role in NODE_ROLES if role != "group")
 
+#: Data models, schemas and class diagrams: named boxes holding lists, and typed
+#: relations between them. A layout family of its own — a box's rows are known
+#: before it is placed, so a relation can land on one row of it.
+ENTITIES_KINDS: Final = ("entities",)
+
+#: The roles an entity may take: the default box, the entity the diagram is
+#: about, and an outside or out-of-scope one, drawn lighter.
+ENTITY_ROLES: Final = ("step", "emphasis", "note")
+
+#: The edge roles only an `entities` diagram may name: a class diagram's "is a",
+#: drawn with a hollow triangle at the general end. Per kind, by the owner's
+#: decision — in a `flow` they would mean nothing, so they are refused there.
+HIERARCHY_ROLES: Final = ("inherits", "realizes")
+
+#: The roles a relation between entities may take. `link` (the default: an
+#: association has no direction), `owns` (composition: this is a part of that),
+#: `weak` (a dependency), `strong` (the relation that matters), and the two
+#: hierarchy roles. Aggregation is not offered — see `AGGREGATION_REFUSED`.
+ENTITY_EDGE_ROLES: Final = ("link", "owns", "weak", "strong", *HIERARCHY_ROLES)
+
+#: The edge roles every other kind with an `edges` array may name.
+GRAPH_EDGE_ROLES: Final = tuple(role for role in EDGE_ROLES if role not in HIERARCHY_ROLES)
+
+#: What a relation's end may say about how many: *how many of this end per one of
+#: the other*. The author states the cardinality; the theme's `[entities]
+#: notation` decides whether it is drawn as crow's feet or as numbers.
+CARDINALITIES: Final = ("one", "zero-or-one", "many", "zero-or-many", "one-or-many")
+
+#: What a field's key mark may say, drawn as letters before its name.
+FIELD_KEYS: Final = ("primary", "foreign", "unique")
+
+#: The longest stereotype an entity's `tag` may be: a word or two in guillemets.
+TAG_MAX: Final = 16
+
+#: The text of a field standing for the ones not shown, as in `files`.
+FIELD_PLACEHOLDERS: Final = ("...", "…")
+
+#: The words of the refusal a role that means aggregation gets.
+AGGREGATION_REFUSED: Final = (
+    "aggregation (the hollow diamond) is not offered: it is the most misread mark in a "
+    "class diagram and has no agreed meaning. Say `owns` if the part cannot outlive the "
+    "whole, `link` if it can."
+)
+
 #: How a `files` tree is drawn. `icons` is the file-browser look; `plain` keeps
 #: the guides and drops the pictures; `unicode` and `ascii` are the tree as text,
 #: set in the monospace face, the way `tree` prints it.
@@ -183,7 +227,10 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: by duplicating its boxes and losing the order to the ranker. `lanes` is the
 #: fifth: not a new picture of a process but a different claim about it — that
 #: the hand-offs between parties are the point, which a lead in each box cannot
-#: show and a strip per party can.
+#: show and a strip per party can. `entities` is the sixth: ER diagrams,
+#: database schemas and class diagrams are one shape — a named box with a list in
+#: it, and typed relations between boxes that may land on one row — which
+#: `tree-compartments` could only imitate with a newline per attribute.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -193,6 +240,7 @@ KINDS: Final = (
     + STATES_KINDS
     + SEQUENCE_KINDS
     + LANES_KINDS
+    + ENTITIES_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -238,6 +286,15 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # omitted the same cap is applied to the distinct actors, at the node that
     # names the one too many.
     "lanes": (("nodes", 15), ("edges", 16), ("lanes", LANES_MAX)),  # [7 nodes, 7 edges, 4 lanes]
+    # Set by the proposal: a schema of thirty tables is a database tool's output.
+    # A name with a slash counts inside each entry of the array before it — the
+    # rows of one box — and its refusal says to show the ones that matter.
+    "entities": (
+        ("entities", 8),
+        ("edges", 12),
+        ("entities/fields", 12),
+        ("entities/operations", 8),
+    ),  # [5 entities, 5 edges, 6 fields, 3 operations]
 }
 
 
@@ -446,7 +503,7 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
         FieldSpec("label", "string", description="A short label placed along the edge."),
-        _role(EDGE_ROLES, "flow"),
+        _role(GRAPH_EDGE_ROLES, "flow"),
         FieldSpec(
             "status",
             "string",
@@ -701,6 +758,150 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             description=(
                 "This branch's condition. Written plainly; drawspec adds the brackets. "
                 "Omit it for a `par` branch, which runs alongside the others and has none."
+            ),
+        ),
+    ),
+    "entity": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the entities.",
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description=(
+                "The entity's name, drawn bold over its fields. One line: may carry "
+                "`code` and **bold** spans — a table name is usually `code`."
+            ),
+        ),
+        FieldSpec(
+            "tag",
+            "string",
+            description=(
+                f"A short stereotype drawn over the name in guillemets — `interface` is "
+                f"drawn «interface». Free text, {TAG_MAX} characters at most."
+            ),
+        ),
+        _role(ENTITY_ROLES, "step"),
+        FieldSpec(
+            "fields",
+            "array",
+            item_ref="field",
+            description=(
+                "What the entity holds, one row each under its name: attributes, columns. "
+                "A last field of `...` stands for those not shown."
+            ),
+        ),
+        FieldSpec(
+            "operations",
+            "array",
+            item_kind="string",
+            description=(
+                "What a class can do — `area() → float` — drawn in a compartment of their "
+                "own under the fields. Strings, not objects: an operation is read, never "
+                "linked to."
+            ),
+        ),
+    ),
+    "field": (
+        FieldSpec(
+            "id",
+            "string",
+            description=(
+                "Only needed for a relation to land on this row (`from_field`, "
+                "`to_field`). Unique among the fields of the document."
+            ),
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description=(
+                "The field's name, one line. `...` as the last field is a row standing "
+                "for the fields not shown."
+            ),
+        ),
+        FieldSpec(
+            "type",
+            "string",
+            description="Its type — `uuid`, `float` — drawn right-aligned in the monospace face.",
+        ),
+        FieldSpec(
+            "key",
+            "string",
+            enum=FIELD_KEYS,
+            description=(
+                "Whether it is a key, drawn as letters before the name — `PK`, `FK`, "
+                "`UQ`: a word, never a colour."
+            ),
+        ),
+    ),
+    "relation": (
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description=(
+                "The id of an entity. For `inherits` and `realizes`, the specific one — "
+                "the subclass, the implementation."
+            ),
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description=(
+                "The id of another entity — for `inherits` and `realizes` the general one, "
+                "which gets the hollow triangle. Not the same as `from`."
+            ),
+        ),
+        FieldSpec(
+            "from_field",
+            "string",
+            description=(
+                "The id of one of the `from` entity's fields: the line leaves that row, "
+                "at the side facing the other entity, instead of the box. A foreign key "
+                "drawn from its column."
+            ),
+        ),
+        FieldSpec(
+            "to_field",
+            "string",
+            description="As `from_field`, a field of the `to` entity: the line arrives at its row.",
+        ),
+        FieldSpec(
+            "from_end",
+            "string",
+            enum=CARDINALITIES,
+            description=(
+                "How many of the `from` entity there are per one of the other, drawn at "
+                "the `from` end — crow's feet or numbers, as the theme's `[entities] "
+                "notation` says. Not on `inherits` or `realizes`."
+            ),
+        ),
+        FieldSpec(
+            "to_end",
+            "string",
+            enum=CARDINALITIES,
+            description=(
+                "As `from_end`, for the `to` end: how many of it per one of the other. Not on "
+                "`owns`, whose `to` end is the whole, drawn as the diamond."
+            ),
+        ),
+        FieldSpec("label", "string", description="A short label placed along the line."),
+        FieldSpec(
+            "role",
+            "string",
+            enum=ENTITY_EDGE_ROLES,
+            description=(
+                "What the relation is. `link` (the default) an association; `owns` "
+                "composition — `from` is a part of `to`, diamond at `to`; `weak` a "
+                "dependency; `strong` the relation that matters; `inherits` and `realizes` "
+                "a subclass and an implementation, hollow triangle at `to`. An end with a "
+                "cardinality draws it in place of the role's head."
             ),
         ),
     ),
@@ -1060,7 +1261,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the eighteen diagrams this is. It selects the fields that are "
+            "Which of the nineteen diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -1506,6 +1707,30 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    ENTITIES_KINDS: (
+        FieldSpec(
+            "entities",
+            "array",
+            required=True,
+            item_ref="entity",
+            min_items=1,
+            description=(
+                "The boxes: each a name (and a stereotype), a rule, its fields, and its "
+                "operations under a second rule. Placed by their relations: general above "
+                "specific when there is a hierarchy, side by side otherwise."
+            ),
+        ),
+        FieldSpec(
+            "edges",
+            "array",
+            item_ref="relation",
+            description=(
+                "The relations between entities, each landing on a box — or, with "
+                "`from_field` / `to_field`, on one row of it — and carrying a cardinality "
+                "at either end. A hierarchy may not loop."
+            ),
+        ),
+    ),
     ("scatter",): (
         FieldSpec(
             "axes",
@@ -1676,6 +1901,47 @@ class Fragment:
     end: str
     text: str = ""
     branches: tuple[Branch, ...] = ()
+
+
+@dataclass(frozen=True)
+class EntityField:
+    """One row of an entity: a name, and optionally a type, a key mark and an id."""
+
+    text: str
+    type: str = ""
+    key: str = ""
+    id: str = ""
+
+    @property
+    def placeholder(self) -> bool:
+        """Whether this row stands for the fields not shown."""
+        return self.text.strip() in FIELD_PLACEHOLDERS
+
+
+@dataclass(frozen=True)
+class Entity:
+    """One box of an `entities` diagram: its name over its fields and operations."""
+
+    id: str
+    text: str
+    role: str = "step"
+    tag: str = ""
+    fields: tuple[EntityField, ...] = ()
+    operations: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Relation:
+    """One relation between two entities, with what is drawn at each end."""
+
+    source: str
+    target: str
+    label: str = ""
+    role: str = "link"
+    source_field: str = ""
+    target_field: str = ""
+    source_end: str = ""
+    target_end: str = ""
 
 
 @dataclass(frozen=True)
@@ -1857,6 +2123,10 @@ class Document:
     lanes: tuple[str, ...] = ()
     """A `lanes` diagram's lanes in order: as listed, or as the actors first appear."""
 
+    entities: tuple[Entity, ...] = ()
+    relations: tuple[Relation, ...] = ()
+    """An `entities` diagram's edges, which carry fields and ends a graph edge has not."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -1869,6 +2139,7 @@ class Document:
             ("states", STATES_KINDS),
             ("sequence", SEQUENCE_KINDS),
             ("lanes", LANES_KINDS),
+            ("entities", ENTITIES_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -2053,10 +2324,39 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
 
     if kind in LANES_KINDS:
         found = [_lanes_refusal(violation) for violation in found]
+    found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
     found.extend(_emphasis_violations(document))
     return tuple(found)
+
+
+def _edge_role_refusal(violation: Violation, document: Mapping[str, Any], kind: str) -> Violation:
+    """An edge role outside the kind's vocabulary, told which kind it belongs to.
+
+    The generic refusal lists the legal roles, which says nothing to an author who
+    wrote `inherits` in a `flow`, or `aggregates` in an entity diagram, on purpose.
+    """
+    parts = violation.pointer.split("/")
+    if len(parts) != 4 or parts[1] != "edges" or parts[3] != "role":
+        return violation
+    edges = document.get("edges")
+    try:
+        role = edges[int(parts[2])]["role"]  # type: ignore[index]
+    except (TypeError, ValueError, IndexError, KeyError):
+        return violation
+    if not isinstance(role, str):
+        return violation
+    if role in HIERARCHY_ROLES and kind not in ENTITIES_KINDS:
+        return Violation(
+            violation.pointer,
+            f"{role!r} is an edge role of the `entities` kind only: it says one class is a "
+            f"kind of another, which a {kind} has no classes to mean. Here, one of "
+            f"{', '.join(GRAPH_EDGE_ROLES)}.",
+        )
+    if kind in ENTITIES_KINDS and role.startswith("aggregat"):
+        return Violation(violation.pointer, f"{role!r}: {AGGREGATION_REFUSED}")
+    return violation
 
 
 def _readability_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
@@ -2067,6 +2367,9 @@ def _readability_violations(document: Mapping[str, Any], kind: str) -> list[Viol
     """
     found: list[Violation] = []
     for name, limit in READABILITY_BUDGET.get(kind, ()):
+        if "/" in name:
+            found.extend(_nested_budget(document, name, limit))
+            continue
         entries = document.get(name)
         if not isinstance(entries, list) or len(entries) <= limit:
             continue
@@ -2078,6 +2381,25 @@ def _readability_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                 f"taking it in. Split it: an overview that names each part once, plus a "
                 f"detail diagram per part, each within the budget. The budget is not a "
                 f"canvas size, so a larger top-level 'width' does not lift it.",
+            )
+        )
+    return found
+
+
+def _nested_budget(document: Mapping[str, Any], name: str, limit: int) -> list[Violation]:
+    """The budget of an array inside each entry of another — the rows of one box."""
+    outer, inner = name.split("/")
+    found: list[Violation] = []
+    for index, entry in enumerate(_listed(document, outer)):
+        rows = entry.get(inner) if isinstance(entry, dict) else None
+        if not isinstance(rows, list) or len(rows) <= limit:
+            continue
+        found.append(
+            Violation(
+                _pointer(outer, index, inner, limit),
+                f"{len(rows)} {inner} is past what one box can be read at — {limit} at "
+                f"most. Show the ones this diagram is about and end the list with a "
+                f"`...` field, which says there are more.",
             )
         )
     return found
@@ -2124,6 +2446,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _states_violations(document)
     if kind in SEQUENCE_KINDS:
         return _sequence_violations(document)
+    if kind in ENTITIES_KINDS:
+        return _entities_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -2981,6 +3305,196 @@ def _sequence_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+def _entities_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """What an entity diagram may not be: ids that do not land, and relations that cannot draw.
+
+    Entity ids once each and field ids once in the document; every relation's
+    ends an entity and every `from_field`/`to_field` a field *of that end's*
+    entity; no relation of an entity to itself; a `...` row only last, and
+    plain; no cardinality on a hierarchy relation, and no hierarchy that loops.
+    """
+    found: list[Violation] = []
+    entities: dict[str, int] = {}
+    owner: dict[str, str] = {}
+    for index, entity in enumerate(_listed(document, "entities")):
+        if not isinstance(entity, dict):
+            continue
+        identifier = entity.get("id")
+        if isinstance(identifier, str):
+            if identifier in entities:
+                found.append(
+                    Violation(
+                        _pointer("entities", index, "id"), f"duplicate entity id {identifier!r}"
+                    )
+                )
+            else:
+                entities[identifier] = index
+        tag = entity.get("tag")
+        if isinstance(tag, str) and len(tag) > TAG_MAX:
+            found.append(
+                Violation(
+                    _pointer("entities", index, "tag"),
+                    f"a tag is a stereotype — a word or two — and this one is {len(tag)} "
+                    f"characters; {TAG_MAX} at most. Put a description in the name or the "
+                    f"surrounding prose.",
+                )
+            )
+        fields = entity.get("fields")
+        rows = fields if isinstance(fields, list) else []
+        for row, field in enumerate(rows):
+            if not isinstance(field, dict):
+                continue
+            where = ("entities", index, "fields", row)
+            text = field.get("text")
+            if isinstance(text, str) and text.strip() in FIELD_PLACEHOLDERS:
+                if row != len(rows) - 1:
+                    found.append(
+                        Violation(
+                            _pointer(*where, "text"),
+                            "a `...` field stands for the fields not shown, so it comes "
+                            "last. Move it to the end of this entity's fields.",
+                        )
+                    )
+                for name in ("id", "type", "key"):
+                    if name in field:
+                        found.append(
+                            Violation(
+                                _pointer(*where, name),
+                                f"a `...` field stands for fields not shown, so it has no "
+                                f"{name} of its own. Delete it.",
+                            )
+                        )
+            if isinstance(text, str) and "\n" in text:
+                found.append(
+                    Violation(
+                        _pointer(*where, "text"),
+                        "a field is one row: write its name on one line, and its type in `type`.",
+                    )
+                )
+            field_id = field.get("id")
+            if isinstance(field_id, str) and isinstance(identifier, str):
+                if field_id in owner:
+                    found.append(
+                        Violation(_pointer(*where, "id"), f"duplicate field id {field_id!r}")
+                    )
+                else:
+                    owner[field_id] = identifier
+        text = entity.get("text")
+        if isinstance(text, str) and "\n" in text:
+            found.append(
+                Violation(
+                    _pointer("entities", index, "text"),
+                    "an entity's name is one line — what it holds goes in `fields`, and a "
+                    "stereotype in `tag`.",
+                )
+            )
+
+    hierarchy: dict[str, list[str]] = {}
+    for index, edge in enumerate(_listed(document, "edges")):
+        if not isinstance(edge, dict):
+            continue
+        ends: dict[str, str] = {}
+        for end in ("from", "to"):
+            target = edge.get(end)
+            if not isinstance(target, str):
+                continue
+            if target not in entities:
+                found.append(
+                    Violation(
+                        _pointer("edges", index, end),
+                        f"{target!r} is not the id of any entity in this document"
+                        + _closest(target, entities),
+                    )
+                )
+                continue
+            ends[end] = target
+        if ends.get("from") is not None and ends.get("from") == ends.get("to"):
+            found.append(
+                Violation(
+                    _pointer("edges", index, "to"),
+                    "a relation from an entity to itself is not drawn: name the field that "
+                    "holds the reference (`manager_id`, key `foreign`) and say what it "
+                    "points at in its text, or draw the two roles as two entities.",
+                )
+            )
+        for end in ("from", "to"):
+            named = edge.get(f"{end}_field")
+            if not isinstance(named, str) or end not in ends:
+                continue
+            if named not in owner:
+                found.append(
+                    Violation(
+                        _pointer("edges", index, f"{end}_field"),
+                        f"{named!r} is not the id of any field in this document"
+                        + _closest(named, owner),
+                    )
+                )
+            elif owner[named] != ends[end]:
+                found.append(
+                    Violation(
+                        _pointer("edges", index, f"{end}_field"),
+                        f"{named!r} is a field of {owner[named]!r}, not of {ends[end]!r}: "
+                        f"the line would leave a box from a row it does not have.",
+                    )
+                )
+        role = edge.get("role", "link")
+        if role == "owns" and "to_end" in edge:
+            found.append(
+                Violation(
+                    _pointer("edges", index, "to_end"),
+                    "the `to` end of `owns` is the whole, drawn as the diamond, and a part "
+                    "belongs to exactly one whole — there is no count to draw there. Delete "
+                    "'to_end'; say how many parts with 'from_end'.",
+                )
+            )
+        if role in HIERARCHY_ROLES:
+            for name in ("from_end", "to_end", "from_field", "to_field"):
+                if name in edge:
+                    what = "cardinality" if name.endswith("_end") else "row to land on"
+                    found.append(
+                        Violation(
+                            _pointer("edges", index, name),
+                            f"{role!r} says one class is a kind of another, which has no "
+                            f"{what}: inheritance is between whole classes, one to one. "
+                            f"Delete {name!r}.",
+                        )
+                    )
+            if "from" in ends and "to" in ends and ends["from"] != ends["to"]:
+                if _reaches(hierarchy, ends["to"], ends["from"]):
+                    found.append(
+                        Violation(
+                            _pointer("edges", index),
+                            f"this {role!r} closes a loop: {ends['to']!r} is already, "
+                            f"through others, a kind of {ends['from']!r}. A hierarchy has "
+                            f"a top; delete the relation that is the wrong way round.",
+                        )
+                    )
+                else:
+                    hierarchy.setdefault(ends["from"], []).append(ends["to"])
+    return found
+
+
+def _reaches(graph: Mapping[str, Sequence[str]], start: str, goal: str) -> bool:
+    """Whether `goal` is reachable from `start` along `graph`'s edges."""
+    seen: set[str] = set()
+    stack = [start]
+    while stack:
+        here = stack.pop()
+        if here == goal:
+            return True
+        if here in seen:
+            continue
+        seen.add(here)
+        stack.extend(graph.get(here, ()))
+    return False
+
+
+def _closest(name: str, known: Mapping[str, Any]) -> str:
+    """`; did you mean 'x'?` when one known id is close to `name`, else nothing."""
+    close = get_close_matches(name, list(known), n=1)
+    return f"; did you mean {close[0]!r}?" if close else ""
+
+
 def _sequence_group_violations(
     document: Mapping[str, Any], participants: Mapping[str, int]
 ) -> list[Violation]:
@@ -3428,6 +3942,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _sequence_document(document)
     if kind in LANES_KINDS:
         return _lanes_document(document)
+    if kind in ENTITIES_KINDS:
+        return _entities_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -3684,6 +4200,52 @@ def _sequence_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _entities_document(document: Mapping[str, Any]) -> Document:
+    """An entity diagram: its boxes with their rows, and relations with their ends."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        entities=tuple(
+            Entity(
+                id=entry["id"],
+                text=entry["text"],
+                role=entry.get("role", "step"),
+                tag=entry.get("tag", ""),
+                fields=tuple(
+                    EntityField(
+                        text=field["text"],
+                        type=field.get("type", ""),
+                        key=field.get("key", ""),
+                        id=field.get("id", ""),
+                    )
+                    for field in entry.get("fields", ())
+                ),
+                operations=tuple(entry.get("operations", ())),
+            )
+            for entry in document["entities"]
+        ),
+        relations=tuple(
+            Relation(
+                source=entry["from"],
+                target=entry["to"],
+                label=entry.get("label", ""),
+                role=entry.get("role", "link"),
+                source_field=entry.get("from_field", ""),
+                target_field=entry.get("to_field", ""),
+                source_end=entry.get("from_end", ""),
+                target_end=entry.get("to_end", ""),
+            )
+            for entry in document.get("edges", ())
+        ),
+    )
+
+
 def _hub(entry: Mapping[str, Any] | None) -> Node | None:
     if entry is None:
         return None
@@ -3894,13 +4456,20 @@ if __name__ == "__main__":
 
 __all__ = [
     "AXIS_ORDER",
+    "CARDINALITIES",
     "CHART_KINDS",
     "COMMON_FIELDS",
     "CONTAINER_KINDS",
     "DOCUMENT_VERSION",
+    "ENTITIES_KINDS",
+    "ENTITY_EDGE_ROLES",
+    "ENTITY_ROLES",
+    "FIELD_KEYS",
     "FRAGMENT_OPERATORS",
+    "GRAPH_EDGE_ROLES",
     "GRAPH_KINDS",
     "GRID_KINDS",
+    "HIERARCHY_ROLES",
     "HUB_EDGE_ROLES",
     "HUB_MINIMUM_NODES",
     "KINDS",
@@ -3924,6 +4493,8 @@ __all__ = [
     "Curve",
     "Document",
     "Edge",
+    "Entity",
+    "EntityField",
     "FieldSpec",
     "Fragment",
     "Group",
@@ -3931,6 +4502,7 @@ __all__ = [
     "Message",
     "Node",
     "Position",
+    "Relation",
     "Series",
     "Violation",
     "Waypoint",

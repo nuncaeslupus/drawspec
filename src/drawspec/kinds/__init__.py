@@ -11,6 +11,7 @@ from drawspec.charts import chart_scene
 from drawspec.errors import DrawspecError
 from drawspec.kinds.common import box_primitives, captioned, outline, text_runs
 from drawspec.kinds.cycle import cycle_scene
+from drawspec.kinds.entities import entities_scene
 from drawspec.kinds.files import files_scene
 from drawspec.kinds.graph import DRAWN_KINDS, graph_scene
 from drawspec.kinds.grid import grid_scene
@@ -19,6 +20,7 @@ from drawspec.kinds.shape import shape_scene
 from drawspec.scene import Scene
 from drawspec.schema import (
     CHART_KINDS,
+    ENTITIES_KINDS,
     FILES_KINDS,
     GRID_KINDS,
     SEQUENCE_KINDS,
@@ -38,6 +40,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *FILES_KINDS,
     *DRAWN_KINDS,
     *SEQUENCE_KINDS,
+    *ENTITIES_KINDS,
     "cycle",
 )
 
@@ -69,6 +72,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return files_scene(document, theme, measurer)
     if document.kind in SEQUENCE_KINDS:
         return sequence_scene(document, theme, measurer)
+    if document.kind in ENTITIES_KINDS:
+        return entities_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -85,6 +90,7 @@ __all__ = [
     "box_primitives",
     "captioned",
     "cycle_scene",
+    "entities_scene",
     "files_scene",
     "graph_scene",
     "outline",

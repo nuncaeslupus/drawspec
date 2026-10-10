@@ -3,9 +3,10 @@
 Declarative diagram spec → clean, themeable SVG. Writable by an LLM with no
 coordinates to get wrong.
 
-> **Status: it draws.** All eighteen kinds render — `flow`, `tree`, `cycle`,
+> **Status: it draws.** All nineteen kinds render — `flow`, `tree`, `cycle`,
 > `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`,
-> `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence` and `lanes` — and each of
+> `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`
+> and `entities` — and each of
 > the eleven failure families below has a test asserting it cannot be expressed.
 > The vocabulary opened from nine to thirteen on evidence: see `docs/kinds-wanted.md`, which
 > sorts all 89 hand-drawn originals by the kind that would have to draw them.
@@ -18,7 +19,10 @@ coordinates to get wrong.
 > `sequence` is the seventeenth: messages between participants, in order,
 > with activation bars inferred from each call and its reply. `lanes` is the
 > eighteenth: a `flow` document whose actors are drawn as swimlanes, so every
-> hand-off between parties is an arrow crossing a lane.
+> hand-off between parties is an arrow crossing a lane. `entities` is the
+> nineteenth: ER models, database schemas and class diagrams as one kind — boxes
+> of fields, relations that can land on one row, crow's feet or multiplicities at
+> the ends, and inheritance with a hollow triangle.
 
 ## The problem
 
@@ -93,7 +97,7 @@ every diagram in your project changes with it.
 
 ### A timeline
 
-The eighteen kinds are the part people do not expect, so here is one that is not
+The nineteen kinds are the part people do not expect, so here is one that is not
 a box-and-arrow diagram at all:
 
 ```json
@@ -197,7 +201,7 @@ for several jobs it might look like it does.
 * **It is not a Graphviz replacement.** Graphviz is a graph-layout engine with
   decades of work behind its layered and force-directed placement, and it will
   lay out a hundred-node graph that drawspec refuses. drawspec's layout exists
-  to serve eighteen named diagram shapes at the sizes a document reads at; past
+  to serve nineteen named diagram shapes at the sizes a document reads at; past
   each kind's readability budget (fifteen boxes on a `flow`) it will tell you to
   split the diagram into an overview and details rather than produce something
   dense and unreadable, which is deliberate but is not what a graph tool does.

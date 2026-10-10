@@ -175,7 +175,7 @@ How a sequence diagram's lifelines and activation bars are drawn.
 | Key | Default | What it is |
 |---|---|---|
 | `activation` | `10.0` | The width of an activation bar. A nested bar is set half this to the right. |
-| `lifeline` | `"aside"` | The edge role a lifeline is drawn in, with no head: dashed and light by default, so the messages across it are what the eye follows. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`. |
+| `lifeline` | `"aside"` | The edge role a lifeline is drawn in, with no head: dashed and light by default, so the messages across it are what the eye follows. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
 
 ### `[lanes]`
 
@@ -184,7 +184,15 @@ How a swimlane diagram lays its lanes out and divides them.
 | Key | Default | What it is |
 |---|---|---|
 | `orientation` | `"auto"` | `rows`, `columns`, or `auto`: rows when they fit the width, else columns. One of `rows`, `columns`, `auto`. |
-| `separator` | `"link"` | The edge role the line between two lanes is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`. |
+| `separator` | `"link"` | The edge role the line between two lanes is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+
+### `[entities]`
+
+How an entity diagram says *how many* at each end of a relation.
+
+| Key | Default | What it is |
+|---|---|---|
+| `notation` | `"crowsfoot"` | `crowsfoot` (marks across the line's end) or `numeric` (text beside it). One of `crowsfoot`, `numeric`. |
 
 ## `[role.*]` — the node roles
 
@@ -207,7 +215,7 @@ vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note
 The same arrangement for connectors, and it is where a connector that is *not*
 an arrow lives: an author says two things are merely associated (`link`) and
 the theme decides that means a line with no head. `head` and `tail` are each
-one of `arrow`, `open`, `diamond`, `circle`, `bar`, `none`.
+one of `arrow`, `open`, `diamond`, `circle`, `bar`, `triangle`, `none`.
 
 | Role | `head` | `tail` | `stroke` | `dash` | `stroke_width` | `routing` |
 |---|---|---|---|---|---|---|
@@ -218,6 +226,8 @@ one of `arrow`, `open`, `diamond`, `circle`, `bar`, `none`.
 | `owns` | `"diamond"` | `"none"` | `"currentColor"` | `"none"` | `1.5` | `"orthogonal"` |
 | `strong` | `"arrow"` | `"none"` | `"currentColor"` | `"none"` | `2.5` | `"orthogonal"` |
 | `aside` | `"none"` | `"none"` | `"currentColor"` | `"4 3"` | `1.0` | `"orthogonal"` |
+| `inherits` | `"triangle"` | `"none"` | `"currentColor"` | `"none"` | `1.5` | `"orthogonal"` |
+| `realizes` | `"triangle"` | `"none"` | `"currentColor"` | `"4 3"` | `1.5` | `"orthogonal"` |
 
 ## The bundled themes
 

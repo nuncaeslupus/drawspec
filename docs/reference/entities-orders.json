@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "kind": "entities",
+  "title": "Orders, as stored",
+  "description": "A physical schema: three tables with their column types and keys. Each foreign key is drawn from its own column to the table it refers to, and deleting an order deletes its lines.",
+  "entities": [
+    {"id": "customers", "text": "`customers`", "fields": [
+      {"id": "c_id", "text": "`id`", "type": "uuid", "key": "primary"},
+      {"text": "`email`", "type": "text", "key": "unique"},
+      {"text": "..."}
+    ]},
+    {"id": "orders", "text": "`orders`", "fields": [
+      {"id": "o_id", "text": "`id`", "type": "uuid", "key": "primary"},
+      {"id": "o_customer", "text": "`customer_id`", "type": "uuid", "key": "foreign"},
+      {"text": "`placed_at`", "type": "timestamptz"},
+      {"text": "`status`", "type": "text"}
+    ]},
+    {"id": "lines", "text": "`order_lines`", "fields": [
+      {"id": "l_order", "text": "`order_id`", "type": "uuid", "key": "foreign"},
+      {"text": "`sku`", "type": "text", "key": "foreign"},
+      {"text": "`quantity`", "type": "integer"},
+      {"text": "`unit_price`", "type": "numeric(10,2)"}
+    ]}
+  ],
+  "edges": [
+    {"from": "orders", "from_field": "o_customer", "to": "customers", "to_field": "c_id", "from_end": "zero-or-many", "to_end": "one"},
+    {"from": "lines", "from_field": "l_order", "to": "orders", "to_field": "o_id", "from_end": "one-or-many", "to_end": "one", "label": "on delete cascade", "role": "strong"}
+  ]
+}

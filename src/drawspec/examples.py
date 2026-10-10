@@ -46,6 +46,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "states": "a state machine — the conditions something is in, and the events that move it",
     "sequence": "who says what to whom, in order — messages between participants, read down",
     "lanes": "a flow whose actors are swimlanes — the hand-offs between parties are the point",
+    "entities": "a data model, schema or class diagram — boxes of fields, relations between them",
 }
 
 #: The smallest document of each kind that renders.
@@ -226,6 +227,15 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"id": "grant", "text": "Grants it", "actor": "Owner"},
         ],
         "edges": [{"from": "ask", "to": "grant"}],
+    },
+    "entities": {
+        "version": 1,
+        "kind": "entities",
+        "entities": [
+            {"id": "author", "text": "Author", "fields": [{"text": "name", "key": "primary"}]},
+            {"id": "book", "text": "Book", "fields": [{"text": "title"}, {"text": "year"}]},
+        ],
+        "edges": [{"from": "author", "to": "book", "from_end": "one", "to_end": "one-or-many"}],
     },
     "scatter": {
         "version": 1,

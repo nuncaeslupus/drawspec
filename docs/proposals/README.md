@@ -24,7 +24,7 @@ regeneration, `AGENTS.md` row, and tests.
 | 4 | [`states.md`](states.md) | `states`: state machines, with initial/final pseudo-states and self-loops — **built** | M | graph layout + containers (exist); self-loop geometry (new; also fixes `flow`'s) |
 | 5 | [`sequence.md`](sequence.md) | `sequence`: messages between participants, in order — **built** | L | none — a new layout family; reuses the group object and the edge roles |
 | 6 | [`lanes.md`](lanes.md) | `lanes`: a `flow` with `actor` drawn as swimlanes — **built** | M | layered ranker gains a fixed cross-axis partition |
-| 7 | [`entities.md`](entities.md) | `entities`: ER, database schema and class diagrams in one kind | L | new edge roles `inherits`/`realizes`; crow's-foot end treatments; row-anchored routing |
+| 7 | [`entities.md`](entities.md) | `entities`: ER, database schema and class diagrams in one kind — **built** | L | new edge roles `inherits`/`realizes`; crow's-foot end treatments; row-anchored routing |
 | 8 | [`gantt.md`](gantt.md) | `gantt`: tasks as intervals, phases, milestones, dependencies | M | chart axis machinery (exists) |
 | 9 | [`board.md`](board.md) | `board`: kanban, story map, retrospective | M | — |
 | 10 | [`fishbone.md`](fishbone.md) | `fishbone`: one effect, causes by category | M | theme `[fishbone] slant` |
@@ -59,7 +59,8 @@ self-loop geometry that `flow` then either adopts or refuses.
    Allowing ISO dates means a calendar.
 3. **Edge roles: global or per kind.** `entities` needs `inherits` and `realizes`;
    `sequence` and `states` give existing roles a kind-specific reading (`weak` = reply).
-   Proposed: keep roles global, refuse the ones a kind has no meaning for.
+   Proposed: keep roles global, refuse the ones a kind has no meaning for. —
+   *Decided: per kind; built with `entities`.*
 4. **`flow` self-loops**: accepted today and drawn through the box's own incoming edge.
    Refuse in `flow`, or adopt the `states` geometry? — *Decided: adopt; built.*
 5. **`lanes` as a kind** (proposed: same payload as `flow`, `actor` required) or as a

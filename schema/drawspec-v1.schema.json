@@ -1290,6 +1290,76 @@
         "nodes"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "entities",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "entities"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "entities": {
+          "type": "array",
+          "description": "The boxes: each a name (and a stereotype), a rule, its fields, and its operations under a second rule. Placed by their relations: general above specific when there is a hierarchy, side by side otherwise.",
+          "items": {
+            "$ref": "#/$defs/entity"
+          },
+          "minItems": 1
+        },
+        "edges": {
+          "type": "array",
+          "description": "The relations between entities, each landing on a box — or, with `from_field` / `to_field`, on one row of it — and carrying a cardinality at either end. A hierarchy may not loop.",
+          "items": {
+            "$ref": "#/$defs/relation"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "entities"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -1586,6 +1656,51 @@
       ],
       "additionalProperties": false
     },
+    "entity": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the entities."
+        },
+        "text": {
+          "type": "string",
+          "description": "The entity's name, drawn bold over its fields. One line: may carry `code` and **bold** spans — a table name is usually `code`."
+        },
+        "tag": {
+          "type": "string",
+          "description": "A short stereotype drawn over the name in guillemets — `interface` is drawn «interface». Free text, 16 characters at most."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        },
+        "fields": {
+          "type": "array",
+          "description": "What the entity holds, one row each under its name: attributes, columns. A last field of `...` stands for those not shown.",
+          "items": {
+            "$ref": "#/$defs/field"
+          }
+        },
+        "operations": {
+          "type": "array",
+          "description": "What a class can do — `area() → float` — drawn in a compartment of their own under the fields. Strings, not objects: an operation is read, never linked to.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
     "entry": {
       "type": "object",
       "properties": {
@@ -1613,6 +1728,36 @@
       },
       "required": [
         "path"
+      ],
+      "additionalProperties": false
+    },
+    "field": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Only needed for a relation to land on this row (`from_field`, `to_field`). Unique among the fields of the document."
+        },
+        "text": {
+          "type": "string",
+          "description": "The field's name, one line. `...` as the last field is a row standing for the fields not shown."
+        },
+        "type": {
+          "type": "string",
+          "description": "Its type — `uuid`, `float` — drawn right-aligned in the monospace face."
+        },
+        "key": {
+          "type": "string",
+          "description": "Whether it is a key, drawn as letters before the name — `PK`, `FK`, `UQ`: a word, never a colour.",
+          "enum": [
+            "primary",
+            "foreign",
+            "unique"
+          ]
+        }
+      },
+      "required": [
+        "text"
       ],
       "additionalProperties": false
     },
@@ -1994,6 +2139,70 @@
         "text",
         "across",
         "up"
+      ],
+      "additionalProperties": false
+    },
+    "relation": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The id of an entity. For `inherits` and `realizes`, the specific one — the subclass, the implementation."
+        },
+        "to": {
+          "type": "string",
+          "description": "The id of another entity — for `inherits` and `realizes` the general one, which gets the hollow triangle. Not the same as `from`."
+        },
+        "from_field": {
+          "type": "string",
+          "description": "The id of one of the `from` entity's fields: the line leaves that row, at the side facing the other entity, instead of the box. A foreign key drawn from its column."
+        },
+        "to_field": {
+          "type": "string",
+          "description": "As `from_field`, a field of the `to` entity: the line arrives at its row."
+        },
+        "from_end": {
+          "type": "string",
+          "description": "How many of the `from` entity there are per one of the other, drawn at the `from` end — crow's feet or numbers, as the theme's `[entities] notation` says. Not on `inherits` or `realizes`.",
+          "enum": [
+            "one",
+            "zero-or-one",
+            "many",
+            "zero-or-many",
+            "one-or-many"
+          ]
+        },
+        "to_end": {
+          "type": "string",
+          "description": "As `from_end`, for the `to` end: how many of it per one of the other. Not on `owns`, whose `to` end is the whole, drawn as the diamond.",
+          "enum": [
+            "one",
+            "zero-or-one",
+            "many",
+            "zero-or-many",
+            "one-or-many"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "description": "A short label placed along the line."
+        },
+        "role": {
+          "type": "string",
+          "description": "What the relation is. `link` (the default) an association; `owns` composition — `from` is a part of `to`, diamond at `to`; `weak` a dependency; `strong` the relation that matters; `inherits` and `realizes` a subclass and an implementation, hollow triangle at `to`. An end with a cardinality draws it in place of the role's head.",
+          "enum": [
+            "link",
+            "owns",
+            "weak",
+            "strong",
+            "inherits",
+            "realizes"
+          ]
+        }
+      },
+      "required": [
+        "from",
+        "to"
       ],
       "additionalProperties": false
     },

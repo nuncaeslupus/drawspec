@@ -47,7 +47,21 @@ NODE_ROLES: Final = ("start", "step", "decision", "terminal", "emphasis", "note"
 #: is a pairing the other six could not make. `link` has no head but is solid,
 #: and `weak` is dashed but carries one, so an author annotating a diagram with a
 #: soft undirected association had to misstate one or the other.
-EDGE_ROLES: Final = ("flow", "link", "exchange", "weak", "owns", "strong", "aside")
+#:
+#: `inherits` and `realizes` are the theme's too — it draws every role — but a
+#: document may name them only in an `entities` diagram: which roles a kind
+#: accepts is the schema's decision, per kind (`schema.GRAPH_EDGE_ROLES`).
+EDGE_ROLES: Final = (
+    "flow",
+    "link",
+    "exchange",
+    "weak",
+    "owns",
+    "strong",
+    "aside",
+    "inherits",
+    "realizes",
+)
 
 #: Shapes a node role may take.
 NODE_SHAPES: Final = ("rect", "pill", "diamond", "ellipse", "none")
@@ -57,7 +71,9 @@ FILL_PATTERNS: Final = ("none", "solid", "hatch", "dots", "cross", "grid")
 
 #: End treatments an edge role may take. Closed, and it lives in the theme, so a
 #: document stays readable when the theme changes.
-EDGE_HEADS: Final = ("arrow", "open", "diamond", "circle", "bar", "none")
+#: `triangle` is hollow: the shaft stops at its base, so it reads as an outline
+#: and not as a filled arrow head — the mark a class diagram draws for "is a".
+EDGE_HEADS: Final = ("arrow", "open", "diamond", "circle", "bar", "triangle", "none")
 
 #: The four type levels. One size per level, and no element names its own.
 TYPE_LEVELS: Final = ("title", "heading", "body", "label")
@@ -995,6 +1011,36 @@ class SequenceStyle:
         )
 
 
+#: How an `entities` relation's cardinality is drawn at its ends: crow's-foot
+#: marks, or UML's numbers (`1`, `0..1`, `*`, `0..*`, `1..*`).
+ENTITIES_NOTATIONS: Final = ("crowsfoot", "numeric")
+
+
+@dataclass(frozen=True)
+class EntitiesStyle:
+    """How an entity diagram says *how many* at each end of a relation.
+
+    The author states the cardinality — `one`, `zero-or-many` — and the theme the
+    notation, so the same document draws for a database chapter in crow's feet
+    and for a UML chapter in numbers.
+    """
+
+    notation: str = "crowsfoot"
+    """`crowsfoot` (marks across the line's end) or `numeric` (text beside it)."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> EntitiesStyle:
+        _reject_unknown(mapping, ("notation",), "[entities]")
+        defaults = cls()
+        return cls(
+            notation=_choice(
+                mapping.get("notation", defaults.notation),
+                ENTITIES_NOTATIONS,
+                "[entities] notation",
+            ),
+        )
+
+
 #: Which way a `lanes` diagram's lanes run: across the page, stacked top to
 #: bottom (`rows`), or down it, side by side (`columns`). `auto` tries rows and
 #: takes columns when rows do not fit the width.
@@ -1240,6 +1286,7 @@ _TOP_LEVEL_KEYS: Final = (
     "states",
     "sequence",
     "lanes",
+    "entities",
     "role",
     "edge_role",
 )
@@ -1265,6 +1312,7 @@ class Theme:
     states: StatesStyle = StatesStyle()
     sequence: SequenceStyle = SequenceStyle()
     lanes: LanesStyle = LanesStyle()
+    entities: EntitiesStyle = EntitiesStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
 
@@ -1318,6 +1366,7 @@ class Theme:
             states=StatesStyle.from_mapping(_section(mapping, "states")),
             sequence=SequenceStyle.from_mapping(_section(mapping, "sequence")),
             lanes=LanesStyle.from_mapping(_section(mapping, "lanes")),
+            entities=EntitiesStyle.from_mapping(_section(mapping, "entities")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
         )

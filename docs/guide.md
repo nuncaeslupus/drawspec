@@ -148,7 +148,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Eighteen exist, and they fall into seven families:
+fields are legal. Nineteen exist, and they fall into eight families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -159,6 +159,7 @@ fields are legal. Eighteen exist, and they fall into seven families:
 | Listing | `files` | Things in folders: a directory tree from its paths, drawn with pictures or as `tree`-style text (`drawspec render --format text`). |
 | Machine | `states` | Things that change state: the conditions something can be in, and the events that move it between them. |
 | Exchange | `sequence` | Things said in order: messages between a fixed set of participants, read down the page. |
+| Model | `entities` | Things with fields, and how they relate: an ER model, a database schema, a class diagram. |
 
 One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see
@@ -226,8 +227,9 @@ Two mistakes worth naming, both made in the corpus and both caught in review:
   typographic instruction in a document that has no field for one.
 
 The same holds for connectors, where the vocabulary answers *what kind of
-relation is this* and the theme answers whether it has a head. Two of the seven
-are worth reading together, because the difference is easy to miss and choosing
+relation is this* and the theme answers whether it has a head. Roles are per
+kind: the last two below belong to `entities`, and a `flow` refuses them by name.
+Two of the others are worth reading together, because the difference is easy to miss and choosing
 wrong misstates the drawing: `weak` is dashed **and** directed, so it says *this
 may lead to that*; `aside` is dashed and **un**directed, so it says *this belongs
 with that* and nothing about which way.
@@ -241,6 +243,8 @@ with that* and nothing about which way.
 | `weak` | A soft or conditional dependency | dashed, with an open head |
 | `owns` | This is a part of that | a diamond at the owning end |
 | `aside` | Loosely associated, and in no direction — a note, a source, a caveat hanging off the thing it is about | dashed, with no head |
+| `inherits` | `entities` only: this class is a kind of that one | a hollow triangle at the general end |
+| `realizes` | `entities` only: this class implements that interface | dashed, with a hollow triangle |
 
 Both sets are drawn, one box per role, in
 [`reference/flow-node-roles.json`](reference/flow-node-roles.json) and
@@ -808,6 +812,74 @@ from the actors when `lanes` is omitted. See
 [`reference/lanes-tender.json`](reference/lanes-tender.json),
 [`reference/lanes-expense.json`](reference/lanes-expense.json) and
 [`reference/lanes-onboarding.json`](reference/lanes-onboarding.json).
+
+## Data models, schemas and class diagrams
+
+An ER model, a database schema and a class diagram are one drawing — a named box
+with a list in it, and typed relations between boxes — so they are one kind,
+`entities`, and a document uses the parts its vocabulary needs:
+
+```json
+{
+  "version": 1,
+  "kind": "entities",
+  "entities": [
+    {"id": "teams", "text": "`teams`", "fields": [
+      {"id": "t_id", "text": "`id`", "type": "uuid", "key": "primary"},
+      {"text": "`name`", "type": "text"}
+    ]},
+    {"id": "people", "text": "`people`", "fields": [
+      {"text": "`id`", "type": "uuid", "key": "primary"},
+      {"id": "p_team", "text": "`team_id`", "type": "uuid", "key": "foreign"},
+      {"text": "..."}
+    ]}
+  ],
+  "edges": [
+    {"from": "people", "from_field": "p_team", "to": "teams", "to_field": "t_id",
+     "from_end": "zero-or-many", "to_end": "one"}
+  ]
+}
+```
+
+Each entity is drawn as its name (bold, with an optional `tag` over it in
+guillemets — `«interface»`), a rule, its `fields` one row each, and its
+`operations` under a second rule. A field may carry a `type`, drawn right-aligned
+in the code face, and a `key` — `primary`, `foreign` or `unique`, drawn as the
+letters `PK`, `FK`, `UQ`. A last field of `...` is a row standing for the fields
+not shown. Rows never wrap: a row too wide for the entity's share of the canvas
+is a `FitError` naming it.
+
+A relation lands on the box — or, when it names `from_field` or `to_field`, on
+that **row**, at the side facing the other entity: a foreign key drawn from its
+own column. `from_end` and `to_end` say *how many of this end per one of the
+other* — `one`, `zero-or-one`, `many`, `zero-or-many`, `one-or-many` — and the
+theme's `[entities] notation` says how that is drawn: crow's-foot marks (the
+default) or UML's numbers (`1`, `0..1`, `*`, `0..*`, `1..*`). An end with a
+cardinality draws it in place of the role's head.
+
+Relation roles: `link` (the default — an association has no direction), `owns`
+(composition: `from` is a part of `to`, diamond at `to`), `weak` (dashed: a
+dependency, or a non-identifying relation), `strong` (the one that matters), and
+`inherits` and `realizes`, which only this kind accepts — a hollow triangle at the
+general end, solid for a subclass and dashed for an implementation. With a
+hierarchy in the diagram, general entities are placed above specific ones and it
+reads down; without one it reads across, the one side of each relation before
+its many side; either way the other direction is taken when the first does not
+fit.
+
+Refused, each at its pointer: a cardinality or a row on `inherits`/`realizes`; a
+hierarchy that loops (at the relation that closes it); a `from_field` that is a
+field of another entity; a relation of an entity to itself; a `to_end` on `owns`
+(the whole is always one); a `...` field that is not last, or that carries a
+type, key or id; a name on two lines; a `tag` over 16 characters; and aggregation
+(`aggregates`), which is not offered — say `owns` or `link`. Visibility is not a
+field: write `- name` in `text`. Entity roles are `step`, `emphasis` and `note` (an
+outside entity, drawn dashed). Budget: 8 entities, 12 edges, 12 fields and 8
+operations per entity. See
+[`reference/entities-library.json`](reference/entities-library.json),
+[`reference/entities-orders.json`](reference/entities-orders.json),
+[`reference/entities-shapes.json`](reference/entities-shapes.json) and
+[`reference/entities-enrolment.json`](reference/entities-enrolment.json).
 
 ## Asking for a wide drawing instead of a tall one
 

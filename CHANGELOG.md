@@ -12,6 +12,30 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`entities`, the nineteenth kind** — ER models, database schemas and class
+  diagrams as one: `entities`, each a name (with an optional `tag`, drawn
+  «in guillemets»), a rule, its `fields` — a row each, with an optional `type`
+  right-aligned in the code face and a `key` drawn as `PK`/`FK`/`UQ` — and its
+  `operations` under a second rule; a last field of `...` stands for the rest.
+  `edges` land on the box, or with `from_field`/`to_field` on one row of it, at
+  the side facing the other entity — an internal port, never authored. `from_end`
+  and `to_end` take a cardinality (`one`, `zero-or-one`, `many`, `zero-or-many`,
+  `one-or-many`), drawn in place of the role's head. Roles `link` (default),
+  `owns`, `weak`, `strong`, `inherits` and `realizes`. Placed by the layered
+  engine: general above specific when there is a hierarchy (reading down), else
+  the one side of each relation before its many side (reading across), with the
+  other direction taken when the first does not fit. New theme section
+  `[entities]`: `notation` (`crowsfoot` or `numeric`). Refused at their pointers:
+  a cardinality or row on `inherits`/`realizes`, a hierarchy that loops, a field
+  of another entity, a relation of an entity to itself, a `to_end` on `owns`, a
+  `...` field that is not last or carries a type/key/id, a two-line name, a tag
+  over 16 characters, and aggregation (with the reason). Budget: 8 entities, 12
+  edges, and — new, a budget counted inside each entry — 12 fields and 8
+  operations per entity.
+- **Edge roles `inherits` and `realizes`, per kind.** Drawn with a new hollow
+  `triangle` end treatment (the shaft stops at its base); `realizes` is dashed.
+  Only `entities` accepts them: any other kind refuses them by name, saying which
+  kind they belong to — edge roles are now a per-kind vocabulary in the schema.
 - **`lanes`, the eighteenth kind** — swimlanes: a `flow` document whose every
   node names its `actor`, drawn with one strip per actor instead of the actor as
   each box's lead, so a hand-off is an arrow crossing a lane. Ranked as a `flow`
