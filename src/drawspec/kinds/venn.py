@@ -1,9 +1,10 @@
-"""The `venn` kind: two or three overlapping sets, each region named by membership.
+"""The `venn` kind: two to four overlapping sets, each region named by membership.
 
-With two or three equal circles every region is fixed by **which sets it is in**,
-so the author writes `"in": ["gdpr", "ens"]` and drawspec knows where that is. It
-is not area-proportional — sizes would be data — and it stops at three sets,
-because no arrangement of four circles shows every region.
+With two or three equal circles, or four equal ellipses, every region is fixed
+by **which sets it is in**, so the author writes `"in": ["gdpr", "ens"]` and
+drawspec knows where that is. It is not area-proportional — sizes would be data.
+Four sets are ellipses, because no arrangement of four circles shows every
+region; it stops at four.
 
 **The circles** are equal: two side by side, their centres a radius apart, or
 three at the corners of an equilateral triangle with a radius for a side. The
@@ -29,8 +30,17 @@ from functools import cache
 from typing import Final
 
 from drawspec.errors import FitError
-from drawspec.scene import Ellipse, Polygon, Primitive, Scene, TextLine, TextSpan, moved
-from drawspec.schema import Document, Region
+from drawspec.scene import (
+    Ellipse,
+    Path,
+    Polygon,
+    Primitive,
+    Scene,
+    TextLine,
+    TextSpan,
+    moved,
+)
+from drawspec.schema import Document, Region, VennSet
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
 from drawspec.theme import Theme
@@ -58,6 +68,9 @@ MARGIN: Final = 6.0
 NAME_GAP: Final = 6.0
 """From a circle to its set's name, and between two names side by side."""
 
+#: How wide a four-set name may wrap, as a share of the semi-major axis.
+NAME_SHARE: Final = 0.8
+
 #: How finely the region's candidate points and outline are sampled, for a
 #: radius of one: the grid step, and the points around each circle.
 GRID_STEP: Final = 0.025
@@ -73,6 +86,29 @@ TEXT_ROLE: Final = "step"
 FILL_ROLE: Final = "step"
 
 type _Rect = tuple[float, float, float, float]
+type _Ellipse = tuple[float, float, float, float, float]
+
+#: Four sets: four congruent ellipses, so that all fifteen regions exist — four
+#: circles cannot draw the two diagonal pairs. For a semi-major axis of one:
+#: centre, semi-axes and the angle of the major axis (radians, clockwise on the
+#: page). The middle two share a centre and cross as an X; the outer two sit
+#: lower and wider. The proportions were chosen by search, to make the smallest
+#: region as roomy as it can be, so no one of the fifteen is a sliver.
+_TILT: Final = math.radians(35)
+_MINOR: Final = 0.55
+ELLIPSES: Final[tuple[_Ellipse, ...]] = (
+    (-0.33, 0.0, 1.0, _MINOR, _TILT),
+    (0.0, -0.28, 1.0, _MINOR, _TILT),
+    (0.0, -0.28, 1.0, _MINOR, -_TILT),
+    (0.33, 0.0, 1.0, _MINOR, -_TILT),
+)
+
+#: Points sampled around each ellipse, for its outline and its region fills.
+ELLIPSE_SAMPLES: Final = 360
+
+#: The grid step for a four-set region's candidate points, for a semi-major axis
+#: of one: the regions are smaller than two or three circles', so finer.
+FOUR_GRID_STEP: Final = 0.0125
 
 
 @dataclass(frozen=True)
@@ -93,6 +129,10 @@ class VennDrawing:
     fills: tuple[tuple[frozenset[str], tuple[tuple[float, float], ...]], ...] = ()
     """Each emphasised region's outline, as filled."""
 
+    ellipses: tuple[_Ellipse, ...] = ()
+    """Four sets' ellipses, `(cx, cy, rx, ry, angle)` in the order the sets are
+    written; empty for two or three, whose circles are `centres` and `radius`."""
+
 
 def venn_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     """Draw `document` as a Venn diagram."""
@@ -110,6 +150,8 @@ def venn_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> Ve
     width = theme.canvas.width
     sets = document.venn_sets
     count = len(sets)
+    if count == len(ELLIPSES):
+        return _four_drawing(document, theme, measurer)
     centres = CENTRES[count]
     order = {item.id: index for index, item in enumerate(sets)}
     spread = max(x for x, _ in centres) - min(x for x, _ in centres) + 2
@@ -464,4 +506,450 @@ def _lines(block: TextBlock, x: float, top: float, role: str) -> list[TextLine]:
     return found
 
 
-__all__ = ["CENTRES", "VennDrawing", "inside", "venn_drawing", "venn_scene"]
+# ---------------------------------------------------------------------------
+# Four sets: ellipses
+# ---------------------------------------------------------------------------
+
+
+def _local(x: float, y: float, ellipse: _Ellipse, scale: float) -> tuple[float, float]:
+    """The point in the ellipse's own frame: its centre the origin, its major axis `u`."""
+    cx, cy, _, _, angle = ellipse
+    dx, dy = x - cx * scale, y - cy * scale
+    c, s = math.cos(angle), math.sin(angle)
+    return dx * c + dy * s, -dx * s + dy * c
+
+
+def ellipse_inside(ellipse: _Ellipse, x: float, y: float, scale: float = 1.0) -> bool:
+    """Whether the point is inside the ellipse drawn at this scale."""
+    u, v = _local(x, y, ellipse, scale)
+    return (u / (ellipse[2] * scale)) ** 2 + (v / (ellipse[3] * scale)) ** 2 < 1
+
+
+def inside_four(mask: tuple[bool, ...], x: float, y: float, scale: float = 1.0) -> bool:
+    """Whether the point is in exactly the ellipses `mask` says, at this scale."""
+    return all(
+        ellipse_inside(ellipse, x, y, scale) == member
+        for ellipse, member in zip(ELLIPSES, mask, strict=True)
+    )
+
+
+def _outline_distance(u: float, v: float, a: float, b: float) -> float:
+    """The distance from a point in an ellipse's frame to its outline.
+
+    By symmetry the nearest point is in the same quadrant, so the parameter is
+    sought in the first: the best of a few samples, then Newton's method on the
+    squared distance's derivative. The answer is a distance to a real point of
+    the outline, so it is never short of the true one by more than the method's
+    tolerance.
+    """
+    u, v = abs(u), abs(v)
+    best, chosen = math.inf, 0.0
+    for step in range(9):
+        t = step * math.pi / 16
+        squared = (a * math.cos(t) - u) ** 2 + (b * math.sin(t) - v) ** 2
+        if squared < best:
+            best, chosen = squared, t
+    spread = b * b - a * a
+    for _ in range(4):
+        c, s = math.cos(chosen), math.sin(chosen)
+        slope = spread * s * c + a * u * s - b * v * c
+        curve = spread * (c * c - s * s) + a * u * c + b * v * s
+        if curve <= 0:
+            break
+        chosen = min(max(chosen - slope / curve, 0.0), math.pi / 2)
+    return math.hypot(a * math.cos(chosen) - u, b * math.sin(chosen) - v)
+
+
+def _signed(ellipse: _Ellipse, x: float, y: float, scale: float) -> float:
+    """How far inside the ellipse's outline the point is; negative outside."""
+    u, v = _local(x, y, ellipse, scale)
+    a, b = ellipse[2] * scale, ellipse[3] * scale
+    distance = _outline_distance(u, v, a, b)
+    return distance if (u / a) ** 2 + (v / b) ** 2 < 1 else -distance
+
+
+def _four_candidates(mask: tuple[bool, ...]) -> tuple[tuple[float, float, float], ...]:
+    """A four-set region's points for a semi-major axis of one, deepest first, with depth."""
+    return _four_grid().get(mask, ())
+
+
+@cache
+def _four_grid() -> dict[tuple[bool, ...], tuple[tuple[float, float, float], ...]]:
+    """Every region's candidate points at once: one pass over the grid, not fifteen."""
+    found: dict[tuple[bool, ...], list[tuple[float, float, float]]] = {}
+    left, top, right, bottom = _four_bounds()
+    steps_x = math.ceil((right - left) / FOUR_GRID_STEP)
+    steps_y = math.ceil((bottom - top) / FOUR_GRID_STEP)
+    for i in range(steps_x + 1):
+        x = left + i * FOUR_GRID_STEP
+        for j in range(steps_y + 1):
+            y = top + j * FOUR_GRID_STEP
+            signed = [_signed(ellipse, x, y, 1.0) for ellipse in ELLIPSES]
+            mask = tuple(value > 0 for value in signed)
+            if not any(mask):
+                continue
+            found.setdefault(mask, []).append((x, y, min(abs(value) for value in signed)))
+    return {
+        mask: tuple(sorted(points, key=lambda entry: -entry[2])[:CANDIDATES])
+        for mask, points in found.items()
+    }
+
+
+@cache
+def _four_bounds() -> _Rect:
+    """The four ellipses' bounds, for a semi-major axis of one."""
+    xs: list[float] = []
+    ys: list[float] = []
+    for ellipse in ELLIPSES:
+        for x, y in _ellipse_points(ellipse, 1.0):
+            xs.append(x)
+            ys.append(y)
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+def _ellipse_point(ellipse: _Ellipse, t: float, scale: float) -> tuple[float, float]:
+    cx, cy, a, b, angle = ellipse
+    c, s = math.cos(angle), math.sin(angle)
+    u, v = a * math.cos(t), b * math.sin(t)
+    return (cx + u * c - v * s) * scale, (cy + u * s + v * c) * scale
+
+
+def _ellipse_points(ellipse: _Ellipse, scale: float) -> tuple[tuple[float, float], ...]:
+    return tuple(
+        _ellipse_point(ellipse, 2 * math.pi * step / ELLIPSE_SAMPLES, scale)
+        for step in range(ELLIPSE_SAMPLES)
+    )
+
+
+def _segment_clearance(
+    ellipse: _Ellipse, start: tuple[float, float], end: tuple[float, float], scale: float
+) -> float:
+    """The least distance from a segment to an ellipse it does not cross.
+
+    The distance to a convex figure is a convex function of the point, so along
+    a segment it has one minimum, found by golden-section search; zero or less
+    means the segment touches the ellipse.
+    """
+    ratio = (math.sqrt(5) - 1) / 2
+
+    def at(t: float) -> float:
+        return -_signed(
+            ellipse, start[0] + (end[0] - start[0]) * t, start[1] + (end[1] - start[1]) * t, scale
+        )
+
+    low, high = 0.0, 1.0
+    first, second = high - ratio * (high - low), low + ratio * (high - low)
+    value_first, value_second = at(first), at(second)
+    for _ in range(14):
+        if value_first < value_second:
+            high, second, value_second = second, first, value_first
+            first = high - ratio * (high - low)
+            value_first = at(first)
+        else:
+            low, first, value_first = first, second, value_second
+            second = low + ratio * (high - low)
+            value_second = at(second)
+    return min(at(0.0), at(1.0), value_first, value_second)
+
+
+def _four_room(
+    x: float,
+    y: float,
+    half_w: float,
+    half_h: float,
+    mask: tuple[bool, ...],
+    radius: float,
+    margin: float,
+) -> float:
+    """As `_room`, for ellipses: how far the block could grow, negative if it does not fit.
+
+    An ellipse is convex, so a block is inside one by the margin when every
+    corner is. Outside one, the block's four sides are each kept the margin
+    clear of it: an ellipse is far larger than a few words, so it cannot sit
+    wholly inside the block without crossing a side.
+    """
+    left, right, top, bottom = x - half_w, x + half_w, y - half_h, y + half_h
+    corners = ((left, top), (right, top), (right, bottom), (left, bottom))
+    room = math.inf
+    for ellipse, member in zip(ELLIPSES, mask, strict=True):
+        if member:
+            for px, py in corners:
+                room = min(room, _signed(ellipse, px, py, radius) - margin)
+                if room < 0:
+                    return room
+    diagonal = math.hypot(half_w, half_h)
+    for ellipse, member in zip(ELLIPSES, mask, strict=True):
+        if member:
+            continue
+        # Far from this ellipse, the block cannot be nearer it than the rest.
+        if -_signed(ellipse, x, y, radius) - diagonal - margin >= room:
+            continue
+        for index, start in enumerate(corners):
+            end = corners[(index + 1) % 4]
+            room = min(room, _segment_clearance(ellipse, start, end, radius) - margin)
+            if room < 0:
+                return room
+    return room
+
+
+def _four_spot(
+    blocks: list[TextBlock],
+    mask: tuple[bool, ...],
+    radius: float,
+    margin: float,
+    *,
+    best: bool = False,
+) -> tuple[TextBlock, float, float] | None:
+    """As `_spot`, for four ellipses.
+
+    A point's depth bounds what can sit there: a block whose half-height and
+    margin are deeper than the point cannot fit, and the points are deepest
+    first, so the search stops at the first such point — and, asked for the
+    best, at the first point whose depth leaves less room than the best found.
+    A block whose half-diagonal fits within the depth fits without the exact
+    test.
+    """
+    candidates = _four_candidates(mask)
+    roomiest: tuple[TextBlock, float, float] | None = None
+    most = -math.inf
+    for block in blocks:
+        half_w, half_h = block.width / 2, block.height / 2
+        diagonal = math.hypot(half_w, half_h)
+        chosen: tuple[TextBlock, float, float] | None = None
+        room_here = -math.inf
+        for ux, uy, depth in candidates:
+            deep = depth * radius
+            # No point after this one has more room than its depth allows.
+            bound = deep - margin - min(half_w, half_h)
+            if bound < 0 or bound <= room_here:
+                break
+            x, y = ux * radius, uy * radius
+            if deep >= margin + diagonal and not best:
+                return block, x, y
+            room = _four_room(x, y, half_w, half_h, mask, radius, margin)
+            if room < 0:
+                continue
+            if not best:
+                return block, x, y
+            if room > room_here + 1e-9:
+                chosen, room_here = (block, x, y), room
+        if chosen is not None and room_here >= margin:
+            return chosen
+        if chosen is not None and room_here > most:
+            roomiest, most = chosen, room_here
+    return roomiest
+
+
+def _four_outline(mask: tuple[bool, ...], radius: float) -> tuple[tuple[float, float], ...]:
+    """As `_outline`, for four ellipses: the arcs that bound the region, chained."""
+    runs: list[list[tuple[float, float]]] = []
+    for index, (ellipse, member) in enumerate(zip(ELLIPSES, mask, strict=True)):
+        points = _ellipse_points(ellipse, 1.0)
+        on = [
+            all(
+                ellipse_inside(other, px, py) == mask[j]
+                for j, other in enumerate(ELLIPSES)
+                if j != index
+            )
+            for px, py in points
+        ]
+        if not any(on):
+            continue
+        start = on.index(False) if not all(on) else 0
+        current: list[tuple[float, float]] = []
+        for offset in range(1, ELLIPSE_SAMPLES + 1):
+            step = (start + offset) % ELLIPSE_SAMPLES
+            if on[step]:
+                current.append(points[step])
+            elif current:
+                runs.append(current if member else current[::-1])
+                current = []
+        if current:
+            runs.append(current if member else current[::-1])
+    if not runs:
+        return ()
+    chain = list(runs.pop(0))
+    while runs:
+        end = chain[-1]
+        nearest = min(
+            range(len(runs)),
+            key=lambda k: math.hypot(runs[k][0][0] - end[0], runs[k][0][1] - end[1]),
+        )
+        chain.extend(runs.pop(nearest))
+    return tuple((x * radius, y * radius) for x, y in chain)
+
+
+def _four_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> VennDrawing:
+    """Four sets: find the size every region's words fit at, and draw the ellipses there.
+
+    The search is the circles': the smallest semi-major axis, between a floor
+    and what the width allows, at which every listed region has a wrap that fits.
+    The names go outside the ellipses without widening the drawing: the outer
+    two under their own ellipse's far lobe, the middle two over their tips.
+    """
+    unit = theme.scale["body"] / 11
+    width = theme.canvas.width
+    sets = document.venn_sets
+    order = {item.id: index for index, item in enumerate(sets)}
+    left, _, right, _ = _four_bounds()
+    ceiling = width / (right - left)
+    floor = min(width * RADIUS_FLOOR, ceiling)
+    margin = MARGIN * unit
+    wraps = [(region, _wraps(region, ceiling, theme, measurer)) for region in document.regions]
+
+    def placed(
+        radius: float, *, best: bool = False
+    ) -> list[tuple[Region, TextBlock, float, float]] | None:
+        found: list[tuple[Region, TextBlock, float, float]] = []
+        for region, blocks in wraps:
+            spot = _four_spot(blocks, _mask(region, order), radius, margin, best=best)
+            if spot is None:
+                return None
+            found.append((region, *spot))
+        return found
+
+    radius = floor
+    if placed(floor) is None:
+        if placed(ceiling) is None:
+            for region, blocks in wraps:
+                if _four_spot(blocks, _mask(region, order), ceiling, margin) is None:
+                    raise FitError(
+                        f"the region {region.text[:40]!r} (in {', '.join(region.members)}) does "
+                        f"not fit its part of the four ellipses at the largest size the width "
+                        f"{width:.0f} allows. With four sets a region holds a number or a word "
+                        f"or two: shorten it, or give the diagram more width."
+                    )
+        low, high = floor, ceiling
+        for _ in range(BISECTIONS):
+            middle = (low + high) / 2
+            if placed(middle) is None:
+                low = middle
+            else:
+                high = middle
+        radius = high
+    layout = placed(radius, best=True)
+    assert layout is not None
+
+    primitives: list[Primitive] = []
+    texts: list[Primitive] = []
+    fills: list[tuple[frozenset[str], tuple[tuple[float, float], ...]]] = []
+    regions: list[tuple[frozenset[str], _Rect]] = []
+    for region, block, cx, cy in layout:
+        membership = frozenset(region.members)
+        if region.role == "emphasis":
+            points = _four_outline(_mask(region, order), radius)
+            fills.append((membership, points))
+            primitives.append(
+                Polygon(
+                    FILL_ROLE,
+                    points=points,
+                    fill=theme.mark.fill_for(0),
+                    fill_colour=theme.mark.colour_for(0),
+                    region=True,
+                )
+            )
+        top = cy - block.height / 2
+        texts.extend(_lines(block, cx, top, region.role))
+        regions.append(
+            (membership, (cx - block.width / 2, top, cx + block.width / 2, top + block.height))
+        )
+    outlines = [_ellipse_points(ellipse, radius) for ellipse in ELLIPSES]
+    for item, outline in zip(sets, outlines, strict=True):
+        primitives.append(Path(item.role, points=outline, closed=True))
+
+    names = _four_names(sets, outlines, radius, unit, theme, measurer)
+    for item in sets:
+        block, x, top = names[item.id]
+        texts.extend(_lines(block, x, top, TEXT_ROLE))
+    name_rects = {
+        key: (x - block.width / 2, top, x + block.width / 2, top + block.height)
+        for key, (block, x, top) in names.items()
+    }
+
+    every = [point for outline in outlines for point in outline]
+    low_x = min(min(x for x, _ in every), *(rect[0] for rect in name_rects.values()))
+    high_x = max(max(x for x, _ in every), *(rect[2] for rect in name_rects.values()))
+    low_y = min(min(y for _, y in every), *(rect[1] for rect in name_rects.values()))
+    high_y = max(max(y for _, y in every), *(rect[3] for rect in name_rects.values()))
+    dx, dy = -low_x, -low_y
+    scene = Scene(
+        width=high_x - low_x,
+        height=high_y - low_y,
+        primitives=tuple(moved(primitive, dx, dy) for primitive in (*primitives, *texts)),
+        title=document.title,
+        description=document.description,
+    )
+
+    def shift(rect: _Rect) -> _Rect:
+        return (rect[0] + dx, rect[1] + dy, rect[2] + dx, rect[3] + dy)
+
+    return VennDrawing(
+        scene=scene,
+        radius=radius,
+        centres=tuple((cx * radius + dx, cy * radius + dy) for cx, cy, *_ in ELLIPSES),
+        regions=tuple((membership, shift(rect)) for membership, rect in regions),
+        names={key: shift(rect) for key, rect in name_rects.items()},
+        fills=tuple(
+            (membership, tuple((x + dx, y + dy) for x, y in points)) for membership, points in fills
+        ),
+        ellipses=tuple(
+            (cx * radius + dx, cy * radius + dy, a * radius, b * radius, angle)
+            for cx, cy, a, b, angle in ELLIPSES
+        ),
+    )
+
+
+def _four_names(
+    sets: tuple[VennSet, ...],
+    outlines: list[tuple[tuple[float, float], ...]],
+    radius: float,
+    unit: float,
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> dict[str, tuple[TextBlock, float, float]]:
+    """Each set's name, its centre x and its top: outside every ellipse.
+
+    The outer two hang under their own ellipse's outer lobe, flush with the
+    drawing's side; the middle two stand over their own ellipse's upper tip. Each
+    is moved off the union of the ellipses over its width, by the name gap, so
+    no name can cross an outline.
+    """
+    gap = NAME_GAP * unit
+    every = [point for outline in outlines for point in outline]
+    left = min(x for x, _ in every)
+    right = max(x for x, _ in every)
+    found: dict[str, tuple[TextBlock, float, float]] = {}
+    for index, (item, outline) in enumerate(zip(sets, outlines, strict=True)):
+        block = _named(item.text, NAME_SHARE * radius, theme, measurer)
+        half = block.width / 2
+        outer = index in (0, len(sets) - 1)
+        if outer:
+            x = left + half if index == 0 else right - half
+        else:
+            tip = min(outline, key=lambda point: point[1])
+            x = min(max(tip[0], left + half), right - half)
+        over = [py for px, py in every if x - half - gap <= px <= x + half + gap]
+        top = max(over) + gap if outer else min(over) - gap - block.height
+        found[item.id] = (block, x, top)
+    # Each pair stands level: the outer two at the lower top, the middle two at
+    # the higher bottom, so neither pair reads as two different rows.
+    ids = [item.id for item in sets]
+    outer_top = max(found[ids[0]][2], found[ids[-1]][2])
+    middle_bottom = min(found[key][2] + found[key][0].height for key in ids[1:-1])
+    for key in ids:
+        block, x, _ = found[key]
+        level = outer_top if key in (ids[0], ids[-1]) else middle_bottom - block.height
+        found[key] = (block, x, level)
+    return found
+
+
+__all__ = [
+    "CENTRES",
+    "ELLIPSES",
+    "VennDrawing",
+    "ellipse_inside",
+    "inside",
+    "inside_four",
+    "venn_drawing",
+    "venn_scene",
+]

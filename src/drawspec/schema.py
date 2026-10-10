@@ -250,10 +250,20 @@ CAUSE_ROLES: Final = ("step", "emphasis", "note")
 FISHBONE_CATEGORY_MAX: Final = 6
 FISHBONE_CAUSE_MAX: Final = 5
 
-#: Venn diagrams: two or three overlapping sets, each region named by which sets
-#: it is in. With two or three circles every region is fixed by its membership,
-#: so nothing about the drawing needs a coordinate. A layout family of its own.
+#: Venn diagrams: two to four overlapping sets, each region named by which sets
+#: it is in. With two or three circles, or four ellipses, every region is fixed
+#: by its membership, so nothing about the drawing needs a coordinate. A layout
+#: family of its own.
 VENN_KINDS: Final = ("venn",)
+
+#: The most sets a `venn` draws: four, as four ellipses — the only arrangement in
+#: common use that shows every one of the fifteen regions.
+VENN_SET_MAX: Final = 4
+
+#: With four sets the smallest regions are small: a region's words are a count or
+#: a word or two, at most this many characters (the corpus's research figures put
+#: a number in each region; the ikigai figure a single word).
+VENN_FOUR_TEXT_MAX: Final = 12
 
 #: The roles a set's circle may take: the default, and the set the diagram is
 #: about, drawn with a heavier outline.
@@ -545,9 +555,9 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
         ("categories", FISHBONE_CATEGORY_MAX),
         ("categories/causes", FISHBONE_CAUSE_MAX),
     ),  # [6 categories, 3 causes]
-    # Set by the proposal: no arrangement of four circles shows every region,
-    # and two or three sets have at most seven regions.
-    "venn": (("sets", 3), ("regions", 7)),  # [3 sets, 6 regions]
+    # Set by the corpus: research figures draw four sets as four ellipses, every
+    # one of the fifteen regions there; past four no drawing shows every region.
+    "venn": (("sets", VENN_SET_MAX), ("regions", 15)),  # [4 sets, 15 regions]
     # Set by the proposal: columns narrow past seven, neighbouring levels blur
     # past five, and past four rows the map is a table with a line on it.
     "journey": (
@@ -2823,9 +2833,9 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             item_ref="venn-set",
             min_items=2,
             description=(
-                "Two or three sets, each a circle of one size with its name outside it. Not "
-                "sizes: the circles are equal, because a Venn diagram says what overlaps, "
-                "not how much."
+                "Two to four sets, each a circle of one size with its name outside it — four "
+                "are four equal ellipses, so all fifteen regions exist. Not sizes: the "
+                "shapes are equal, because a Venn diagram says what overlaps, not how much."
             ),
         ),
         FieldSpec(
@@ -4065,7 +4075,7 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
         "does not ask about into one, or draw the bar in `units`."
     ),
     ("venn", "sets"): (
-        "No arrangement of four circles shows every region, so a fourth set cannot be drawn "
+        "No drawing of five sets shows every region legibly, so a fifth set cannot be drawn "
         "honestly. Use a `matrix`: the sets as columns, the items as rows, a mark where an "
         "item belongs."
     ),
@@ -5749,7 +5759,7 @@ def _venn_refusal(violation: Violation) -> Violation:
     if parts[1:] == ["sets"] and "needs at least" in violation.message:
         return Violation(
             violation.pointer,
-            "a Venn diagram needs 2 or 3 sets: one set overlaps nothing. Say what it holds in "
+            "a Venn diagram needs 2 to 4 sets: one set overlaps nothing. Say what it holds in "
             "a sentence, or as a list.",
         )
     return violation
@@ -5807,6 +5817,22 @@ def _venn_violations(document: Mapping[str, Any]) -> list[Violation]:
             )
             continue
         seen[key] = index
+    if len(sets) == VENN_SET_MAX:
+        for index, region in enumerate(_listed(document, "regions")):
+            text = region.get("text") if isinstance(region, dict) else None
+            if not isinstance(text, str):
+                continue
+            shown = text.replace("**", "").replace("`", "").replace("\n", " ")
+            if len(shown) > VENN_FOUR_TEXT_MAX:
+                found.append(
+                    Violation(
+                        _pointer("regions", index, "text"),
+                        f"{len(shown)} characters is more than a region of four sets holds — "
+                        f"{VENN_FOUR_TEXT_MAX} at most. With four sets the smallest regions "
+                        f"are small: write a count or a word or two, and say the rest in the "
+                        f"caption.",
+                    )
+                )
     return found
 
 
@@ -8364,7 +8390,9 @@ __all__ = [
     "TRANSITION_ROLES",
     "TREEMAP_KINDS",
     "TREEMAP_PART_ROLES",
+    "VENN_FOUR_TEXT_MAX",
     "VENN_KINDS",
+    "VENN_SET_MAX",
     "VENN_SET_ROLES",
     "WATERFALL_BAR_MAX",
     "WATERFALL_KINDS",

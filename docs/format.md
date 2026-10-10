@@ -193,7 +193,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `sets` | array of [venn-set](#venn-set-object), at least 2 | **yes** | Two or three sets, each a circle of one size with its name outside it. Not sizes: the circles are equal, because a Venn diagram says what overlaps, not how much. |
+| `sets` | array of [venn-set](#venn-set-object), at least 2 | **yes** | Two to four sets, each a circle of one size with its name outside it — four are four equal ellipses, so all fifteen regions exist. Not sizes: the shapes are equal, because a Venn diagram says what overlaps, not how much. |
 | `regions` | array of [region](#region-object) | no | What each region holds, named by membership. A region not listed is drawn empty: its set's name says enough. |
 
 ### `journey`
@@ -306,7 +306,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `gantt` | 16 `tasks`, 20 `edges`, 4 `marks` |
 | `board` | 6 `columns`, 4 `rows`, 32 `cards`, 8 `cards` per cell |
 | `fishbone` | 6 `categories`, 5 `causes` per category |
-| `venn` | 3 `sets`, 7 `regions` |
+| `venn` | 4 `sets`, 15 `regions` |
 | `journey` | 7 `stages`, 5 `feelings`, 4 `rows` |
 | `treemap` | 10 `parts`, 4 `groups` |
 | `sankey` | 14 `nodes`, 24 `flows` |

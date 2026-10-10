@@ -161,7 +161,7 @@ fields are legal. Thirty exist, and they fall into nineteen families:
 | Plan | `gantt` | Things that take time: one row per task, each an interval, with phases, milestones and what waits on what. |
 | Board | `board` | Things sorted, not joined: cards in columns — a kanban board, a retrospective, a story map sliced into releases. |
 | Cause | `fishbone` | Things that led to one effect: causes by category on bones slanting into a spine — a root-cause (Ishikawa) diagram. |
-| Overlap | `venn` | Things that share: two or three sets as equal circles, each region named by the sets it is in. |
+| Overlap | `venn` | Things that share: two or three sets as equal circles (four as equal ellipses), each region named by the sets it is in. |
 | Experience | `journey` | How one person feels, stage by stage: a named feeling per stage as a line, over what they do there. |
 | Share | `treemap` | The parts of one known total: each a rectangle by its area, labelled inside itself. |
 | Portion | `pie` | The shares of one known total, a few of them: sectors of a circle, each labelled with its name and amount (a donut by a theme). |
@@ -1190,7 +1190,7 @@ width works, `FitError` names the longest cause. See
 
 ## A Venn diagram
 
-"What do these share" is a Venn diagram, and with two or three sets it needs no
+"What do these share" is a Venn diagram, and with two to four sets it needs no
 coordinates at all: every region is fixed by **which sets it is in**. That is
 `venn`:
 
@@ -1220,8 +1220,38 @@ above the top one and below the other two of three. Roles: a set's `emphasis`
 draws a heavier outline; a region's `emphasis` sets its words bold and fills the
 region with the theme's first mark fill, along its exact outline.
 
-Refused, each at its pointer: one set, or four or more (no arrangement of four
-circles shows every region — use a `matrix`, sets as columns and items as rows);
+**Four sets** are four equal ellipses, not circles: four circles cannot draw the
+two diagonal pairs, and four ellipses show all fifteen regions. The middle two
+cross as an X with their names above; the outer two lie lower, their names under
+their outer lobes. The smallest regions are small, so with four sets a region's
+text is a count or a word or two — at most 12 characters, markup aside — the
+research figure with a number in every region, or the ikigai figure with only the
+pairs and the centre named and the rest left empty:
+
+```json
+{
+  "version": 1,
+  "kind": "venn",
+  "title": "Ikigai: where four questions meet",
+  "sets": [
+    {"id": "love", "text": "What you love"},
+    {"id": "good", "text": "What you are good at"},
+    {"id": "need", "text": "What the world needs"},
+    {"id": "paid", "text": "What you can be paid for"}
+  ],
+  "regions": [
+    {"in": ["love", "good"], "text": "Passion"},
+    {"in": ["love", "need"], "text": "Mission"},
+    {"in": ["need", "paid"], "text": "Vocation"},
+    {"in": ["good", "paid"], "text": "Profession"},
+    {"in": ["love", "good", "need", "paid"], "text": "Ikigai", "role": "emphasis"}
+  ]
+}
+```
+
+Refused, each at its pointer: one set, or five or more (no drawing of five sets
+shows every region legibly — use a `matrix`, sets as columns and items as rows);
+region text past 12 characters with four sets;
 an `in` naming an unknown set, empty, or naming a set twice; the same membership
 twice; `subset_of` (a set inside another is `rings`); `size` or `value` (the
 circles are equal on purpose: a Venn diagram says what overlaps, not how much);
@@ -1229,8 +1259,11 @@ circles are equal on purpose: a Venn diagram says what overlaps, not how much);
 a `FitError` naming the region. See
 [`reference/venn-frameworks.json`](reference/venn-frameworks.json),
 [`reference/venn-data-roles.json`](reference/venn-data-roles.json),
-[`reference/venn-parity.json`](reference/venn-parity.json) and
-[`reference/venn-telemetry.json`](reference/venn-telemetry.json).
+[`reference/venn-parity.json`](reference/venn-parity.json),
+[`reference/venn-telemetry.json`](reference/venn-telemetry.json), and for four sets
+[`reference/venn-four-ikigai.json`](reference/venn-four-ikigai.json),
+[`reference/venn-four-ponds.json`](reference/venn-four-ponds.json) and
+[`reference/venn-four-launch.json`](reference/venn-four-launch.json).
 
 ## A journey map
 

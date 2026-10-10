@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "kind": "venn",
+  "title": "Ikigai: where four questions meet",
+  "sets": [
+    {
+      "id": "love",
+      "text": "What you love"
+    },
+    {
+      "id": "good",
+      "text": "What you are good at"
+    },
+    {
+      "id": "need",
+      "text": "What the world needs"
+    },
+    {
+      "id": "paid",
+      "text": "What you can be paid for"
+    }
+  ],
+  "regions": [
+    {
+      "in": [
+        "love",
+        "good"
+      ],
+      "text": "Passion"
+    },
+    {
+      "in": [
+        "love",
+        "need"
+      ],
+      "text": "Mission"
+    },
+    {
+      "in": [
+        "need",
+        "paid"
+      ],
+      "text": "Vocation"
+    },
+    {
+      "in": [
+        "good",
+        "paid"
+      ],
+      "text": "Profession"
+    },
+    {
+      "in": [
+        "love",
+        "good",
+        "need",
+        "paid"
+      ],
+      "text": "Ikigai",
+      "role": "emphasis"
+    }
+  ],
+  "caption": "Only the four pairs and the centre are named; the other regions are left empty, as the usual figure leaves them."
+}

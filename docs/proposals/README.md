@@ -54,6 +54,7 @@ the real originals each is checked against; a built one says so in its row.
 | 22 | [`barmodel.md`](barmodel.md) | `barmodel`: a word problem as bars of parts in proportion, braced (the tape diagram) — **built** | S | round-2 corpus (B1–B4); owner decision: in |
 | 23 | [`waterfall.md`](waterfall.md) | `waterfall`: from one total to another, step by step, subtotals checked (the bridge chart) — **built** | S | round-2 corpus (W1–W4) lifted the deferral; owner decision: in; its own kind, not a `chart` mark |
 | 24 | [`pie.md`](pie.md) | `pie`: the shares of one known total as labelled sectors, donut as a theme variant — **built** | S | round-2 corpus (P1–P4); owner decision: in, with limits |
+| 25 | [`venn4.md`](venn4.md) | `venn` with four sets, as four ellipses so all fifteen regions exist — **built** | S | round-2 corpus (V1–V4); owner decision: in, as ellipses |
 
 ## Deferred, not proposed
 

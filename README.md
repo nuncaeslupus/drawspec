@@ -34,7 +34,7 @@ coordinates to get wrong.
 > releases are slices across the columns with a heavy cut under the first.
 > `fishbone` is the twenty-second: one effect and the causes investigated,
 > grouped by category on bones slanting into a spine — the root cause drawn heavy.
-> `venn` is the twenty-third: two or three equal circles, each region's words
+> `venn` is the twenty-third: two or three equal circles (four equal ellipses), each region's words
 > named by the sets it is in and placed inside it — no coordinates, no sizes.
 > `journey` is the twenty-fourth: one person's feeling, a named level per stage,
 > drawn as a line through every stage over what they do there — no scores.

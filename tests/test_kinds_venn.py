@@ -28,7 +28,11 @@ from drawspec.theme import load_theme
 THEME = load_theme()
 MEASURER = TextMeasurer(THEME.font.stacks(), search_paths=[])
 REFERENCE = Path(__file__).resolve().parent.parent / "docs" / "reference"
-REFERENCES = sorted(REFERENCE.glob("venn-*.json"))
+#: Two- and three-set references: the circles. Four sets are ellipses, asserted in
+#: `test_venn4.py`.
+REFERENCES = sorted(
+    path for path in REFERENCE.glob("venn-*.json") if len(json.loads(path.read_text())["sets"]) <= 3
+)
 
 
 def two(**extra: Any) -> dict[str, Any]:
@@ -199,13 +203,13 @@ def test_the_examples_are_valid() -> None:
 def test_one_set_is_refused() -> None:
     document = two(sets=[{"id": "a", "text": "Tea"}], regions=[])
     assert pointers(document) == ["/sets"]
-    assert "2 or 3 sets" in messages(document)
+    assert "2 to 4 sets" in messages(document)
 
 
-def test_four_sets_are_refused_suggesting_a_matrix() -> None:
+def test_five_sets_are_refused_suggesting_a_matrix() -> None:
     document = three()
-    document["sets"].append({"id": "d", "text": "Fun"})
-    assert pointers(document) == ["/sets/3"]
+    document["sets"] += [{"id": "d", "text": "Fun"}, {"id": "e", "text": "Safe"}]
+    assert pointers(document) == ["/sets/4"]
     assert "`matrix`" in messages(document)
 
 

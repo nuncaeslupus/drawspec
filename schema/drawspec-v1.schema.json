@@ -1651,7 +1651,7 @@
         },
         "sets": {
           "type": "array",
-          "description": "Two or three sets, each a circle of one size with its name outside it. Not sizes: the circles are equal, because a Venn diagram says what overlaps, not how much.",
+          "description": "Two to four sets, each a circle of one size with its name outside it — four are four equal ellipses, so all fifteen regions exist. Not sizes: the shapes are equal, because a Venn diagram says what overlaps, not how much.",
           "items": {
             "$ref": "#/$defs/venn-set"
           },

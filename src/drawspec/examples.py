@@ -50,7 +50,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "gantt": "a plan — one row per task, each an interval on a numbered axis; no dates",
     "board": "cards sorted into columns — a kanban board, a retrospective, a story map",
     "fishbone": "one effect and its causes by category — a root-cause (Ishikawa) diagram",
-    "venn": "two or three overlapping sets — what each holds alone, and what they share",
+    "venn": "two to four overlapping sets — what each holds alone, and what they share",
     "journey": "one person's feeling across the stages of an experience — a journey map",
     "treemap": "the parts of one known total, each by its area — a few proportions, stated",
     "sankey": "where a known quantity goes — bands as thick as the amounts, a few flows stated",

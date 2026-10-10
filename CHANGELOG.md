@@ -12,6 +12,13 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`venn` draws four sets** — as four equal ellipses, so all fifteen regions exist
+  (four circles cannot draw the two diagonal pairs). A region's words are placed
+  as for circles, exactly inside their region; set names go outside, the middle
+  two above their tips, the outer two under their outer lobes. With four sets a
+  region's text is at most 12 characters: a count, or a word or two. A fifth set is
+  refused, suggesting a `matrix`. Budget: 4 sets, 15 regions.
+  `docs/proposals/venn4.md` records the design.
 - **`pie`, the thirtieth kind** — the shares of one known total as sectors of a
   circle, let in with limits like `treemap`: a few known proportions stated, not
   data to explore. 2 to 8 `parts`, each a `text` and an `amount`; shares are
