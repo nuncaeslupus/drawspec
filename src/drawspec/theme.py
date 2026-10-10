@@ -1329,6 +1329,30 @@ class NumberlineStyle:
         )
 
 
+#: How a `pie` is drawn: a full disc, or a ring with a hole in the middle.
+PIE_SHAPES: Final = ("pie", "donut")
+
+
+@dataclass(frozen=True)
+class PieStyle:
+    """Whether a pie is a disc or a ring.
+
+    The author says what the shares are; a ring instead of a disc is house style —
+    the round-2 corpus found donuts only in template galleries — so it is set once
+    for every pie in a report, never per document.
+    """
+
+    shape: str = "pie"
+    """`pie` (a disc, labels inside a sector when they fit) or `donut` (a ring with
+    a hole of about half the radius, every label outside on a leader)."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> PieStyle:
+        _reject_unknown(mapping, ("shape",), "[pie]")
+        defaults = cls()
+        return cls(shape=_choice(mapping.get("shape", defaults.shape), PIE_SHAPES, "[pie] shape"))
+
+
 #: Which way a `lanes` diagram's lanes run: across the page, stacked top to
 #: bottom (`rows`), or down it, side by side (`columns`). `auto` tries rows and
 #: takes columns when rows do not fit the width.
@@ -1580,6 +1604,7 @@ _TOP_LEVEL_KEYS: Final = (
     "fishbone",
     "journey",
     "numberline",
+    "pie",
     "role",
     "edge_role",
 )
@@ -1611,6 +1636,7 @@ class Theme:
     fishbone: FishboneStyle = FishboneStyle()
     journey: JourneyStyle = JourneyStyle()
     numberline: NumberlineStyle = NumberlineStyle()
+    pie: PieStyle = PieStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
 
@@ -1670,6 +1696,7 @@ class Theme:
             fishbone=FishboneStyle.from_mapping(_section(mapping, "fishbone")),
             journey=JourneyStyle.from_mapping(_section(mapping, "journey")),
             numberline=NumberlineStyle.from_mapping(_section(mapping, "numberline")),
+            pie=PieStyle.from_mapping(_section(mapping, "pie")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
         )

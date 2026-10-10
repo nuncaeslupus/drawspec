@@ -69,6 +69,7 @@ from drawspec.theme import (
     LANES_ORIENTATIONS,
     NODE_SHAPES,
     NUMBERLINE_ENDS,
+    PIE_SHAPES,
     SHEET_BORDERS,
     SHEET_PATTERNS,
     THEME_VERSION,
@@ -91,6 +92,7 @@ from drawspec.theme import (
     MarkStyle,
     NumberlineStyle,
     Padding,
+    PieStyle,
     SequenceStyle,
     StatesStyle,
     TitleStyle,
@@ -530,6 +532,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "fishbone": FishboneStyle,
     "journey": JourneyStyle,
     "numberline": NumberlineStyle,
+    "pie": PieStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are
@@ -561,6 +564,7 @@ THEME_VOCABULARIES: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("journey", "guide"): EDGE_ROLES,
     ("journey", "separator"): EDGE_ROLES,
     ("numberline", "ends"): NUMBERLINE_ENDS,
+    ("pie", "shape"): PIE_SHAPES,
 }
 
 

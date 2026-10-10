@@ -254,6 +254,14 @@ How a number line marks whether a range's end belongs to it.
 |---|---|---|
 | `ends` | `"dots"` | `dots` (filled closed, hollow open) or `brackets` (`[` closed, `(` open). A point is a dot either way. One of `dots`, `brackets`. |
 
+### `[pie]`
+
+Whether a pie is a disc or a ring.
+
+| Key | Default | What it is |
+|---|---|---|
+| `shape` | `"pie"` | `pie` (a disc, labels inside a sector when they fit) or `donut` (a ring with a hole of about half the radius, every label outside on a leader). One of `pie`, `donut`. |
+
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The

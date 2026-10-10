@@ -81,6 +81,7 @@ Pick by what the reader must **understand**, not by what it looks like.
 | Where a known quantity goes, and how much each way: a budget, tickets by outcome | `sankey` | `nodes` (columns derived, ≤ 4) + `flows` (`from`, `to`, `amount`; `strong`); a middle node's in = out, no loops, a `note` node for the remainder |
 | Values and ranges on one scale, each end in or out: an inequality, the pH scale, a spectrum | `numberline` | `axis` (`min`, `max`, `step`; or two named `ends`, no numbers) + `points` (`at`, `open`) and/or ≤ 4 `ranges` (`from`/`to`, `from_open`/`to_open`; a missing end runs on as an arrow) |
 | A word problem as quantities: a whole and its parts, two amounts compared, a ratio or a fraction (bar model, tape diagram) | `barmodel` | 1–3 `bars` of `parts`, each an `amount` (length in proportion) or `units` (equal boxes), `"text": "?"` for the unknown (+ `braces` `over` part or bar ids, their `amount` checked) |
+| The shares of one known total, a few of them, each labelled: a class survey, where the budget goes (a pie; a donut is the theme's `[pie] shape`) | `pie` | 2–8 `parts`, each `text` + `amount` (shares computed; `unit: "%"` must make 100 ± 1), clockwise from twelve; merge the rest into one `note` part, `Everything else` |
 | How one total became another, step by step: a budget gap, a deficit, a forecast to an outturn (bridge chart) | `waterfall` | `axis` (`label`, with the unit) + 3–12 `bars` left to right: each a `total` (stands on zero; first, last, and subtotals checked against the running sum) or a signed `amount` |
 
 `flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may
@@ -106,8 +107,7 @@ name either.
 **Edges** — `flow` (default), `link`, `exchange`, `weak`, `owns`, `strong`,
 `aside`; `inherits` and `realizes` (hollow triangle) in `entities` only.
 
-Use `decision` for a question with branching answers, `note` for an aside that is
-not a step, `link` for a connection with no direction.
+Use `decision` for a question with branching answers, `note` for an aside that is not a step, `link` for a connection with no direction.
 
 **Who performs a step is not a role.** Use `actor` — free text on a node,
 orthogonal to `role`, drawn as the box's lead so the names line up in a column:
@@ -196,5 +196,5 @@ Always run `drawspec validate` before calling a document done; it prints every p
 
 - Do not emit SVG yourself. The whole point is that you do not place anything.
 - Do not add fields hoping they are ignored — unknown fields are errors.
-- Do not use `chart`, `treemap`, `sankey` or `waterfall` for exploring data. No statistics, dates, log scales or second axis. They state a few numbers you already know.
+- Do not use `chart`, `treemap`, `sankey`, `pie` or `waterfall` for exploring data. No statistics, dates, log scales or second axis. They state a few numbers you already know.
 - Do not use drawspec for anything whose point is *where things are* — a floor plan, a map. There is no declarative description of those.

@@ -368,6 +368,27 @@ WATERFALL_ROLES: Final = ("step", "emphasis")
 #: twelve the names under the bars are too narrow to read at the canvas width.
 WATERFALL_BAR_MAX: Final = 12
 
+#: Pie charts: the shares of one known total as sectors of a circle, every
+#: sector labelled. A few proportions stated, as on a treemap — not data to
+#: explore. A layout family of its own.
+PIE_KINDS: Final = ("pie",)
+
+#: The roles a part may take: the default; the part the chart is about, outlined
+#: heavier with its words bold; and the remainder, unfilled and dashed, drawn last.
+PIE_ROLES: Final = ("step", "emphasis", "note")
+
+#: The most parts a pie holds. The corpus's school pies have three to six, its
+#: budget pies eight to fifteen; past eight the smallest are slivers no one
+#: compares, so the rest go into one `note` part.
+PIE_PART_MAX: Final = 8
+
+#: The smallest share of the total a part may be. Under it a sector is a sliver
+#: whose angle cannot be read.
+PIE_SHARE_MIN: Final = 0.02
+
+#: How far percentages may add up to from 100 and still be read as rounding.
+PIE_PERCENT_TOLERANCE: Final = 1.0
+
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
 #: into each other at the canvas width.
 NUMBERLINE_TICK_MAX: Final = 30
@@ -430,6 +451,8 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: braced — a `chart`'s bars stand on an axis, and a `treemap` is unaligned.
 #: `waterfall` is the sixteenth: from one total to another, step by step — a
 #: `chart`'s bars stand on the baseline, and nothing in it checks a total.
+#: `pie` is the seventeenth: the shares of one known total as sectors — a
+#: `treemap` says the same by area, unfamiliar to the readers a pie is taught to.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -450,6 +473,7 @@ KINDS: Final = (
     + NUMBERLINE_KINDS
     + BARMODEL_KINDS
     + WATERFALL_KINDS
+    + PIE_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -559,6 +583,9 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     ),  # [3 bars, 2 parts, 2 braces]
     # Set by the corpus: five to ten bars, start and end totals included.
     "waterfall": (("bars", WATERFALL_BAR_MAX),),  # [9]
+    # Set by the corpus: school pies have three to six sectors, budget pies more,
+    # the rest merged into one `note` part.
+    "pie": (("parts", PIE_PART_MAX),),  # [8]
 }
 
 
@@ -1778,6 +1805,30 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "pie-part": (
+        _text(),
+        FieldSpec(
+            "amount",
+            "number",
+            required=True,
+            exclusive_minimum=0,
+            description=(
+                "How much of the total this part is, more than 0, in the pie's `unit`: a "
+                'count, a sum, or with `unit: "%"` a percentage. Its angle is its share of '
+                "the sum of the amounts, computed — never written."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=PIE_ROLES,
+            description=(
+                "`step` (the default), `emphasis` (the part the chart is about: a heavier "
+                "outline, its words bold) or `note` (the remainder, `Everything else`: "
+                "unfilled and dashed, drawn last). At most one `note`."
+            ),
+        ),
+    ),
     "treemap-group": (
         FieldSpec(
             "id",
@@ -2171,7 +2222,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the twenty-nine diagrams this is. It selects the fields that are "
+            "Which of the thirty diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -2974,6 +3025,33 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    PIE_KINDS: (
+        FieldSpec(
+            "parts",
+            "array",
+            required=True,
+            item_ref="pie-part",
+            min_items=2,
+            description=(
+                "The parts of one total, 2 to 8, clockwise from twelve o'clock in the order "
+                "written (a `note` part last), each labelled with its `text` and amount — "
+                "inside its sector, or beside it on a leader line."
+            ),
+        ),
+        FieldSpec(
+            "unit",
+            "string",
+            description=(
+                "What the amounts are in — `pupils`, `£m`, `%` — written after each one. "
+                "With `%` the amounts must add up to 100, within one point of rounding."
+            ),
+        ),
+        FieldSpec(
+            "values",
+            "boolean",
+            description="`false` leaves the amounts out and writes the names alone.",
+        ),
+    ),
     ("scatter",): (
         FieldSpec(
             "axes",
@@ -3422,6 +3500,15 @@ class WaterfallBar:
 
 
 @dataclass(frozen=True)
+class PiePart:
+    """One part of a `pie`: a sector whose angle is its share of the total."""
+
+    text: str
+    amount: float
+    role: str = "step"
+
+
+@dataclass(frozen=True)
 class TreemapGroup:
     """One group of a `treemap`: a captioned frame around the parts that name it."""
 
@@ -3683,6 +3770,9 @@ class Document:
     waterfall_label: str = ""
     """A `waterfall`'s axis label: what the numbers are, and their unit."""
 
+    pie_parts: tuple[PiePart, ...] = ()
+    """A `pie`'s parts, in the order written: clockwise from twelve o'clock."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -3706,6 +3796,7 @@ class Document:
             ("numberline", NUMBERLINE_KINDS),
             ("barmodel", BARMODEL_KINDS),
             ("waterfall", WATERFALL_KINDS),
+            ("pie", PIE_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -3910,6 +4001,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_barmodel_refusal(violation) for violation in found]
     if kind in WATERFALL_KINDS:
         found = [_waterfall_refusal(violation) for violation in found]
+    if kind in PIE_KINDS:
+        found = [_pie_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -3957,6 +4050,11 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
     ("barmodel", "bars"): (
         "Past three bars a bar model is a table of quantities. Draw the step the problem "
         "turns on, or one model per step of a multi-step problem."
+    ),
+    ("pie", "parts"): (
+        "Past eight sectors the smallest are slivers no one compares: keep the largest seven "
+        'and merge the rest into one `"role": "note"` part — `Everything else` — or draw a '
+        "bar `chart`."
     ),
     ("waterfall", "bars"): (
         "Past twelve bars the names under them are too narrow to read. Split the bridge at "
@@ -4159,6 +4257,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _barmodel_violations(document)
     if kind in WATERFALL_KINDS:
         return _waterfall_violations(document)
+    if kind in PIE_KINDS:
+        return _pie_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -6737,6 +6837,97 @@ def _waterfall_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a pie has no place for a field an author may reach for.
+PIE_REFUSED: Final = {
+    "edges": "a pie's parts are related by being one whole; there is nothing to connect",
+    "series": "a pie is one total split into parts. Values against an axis are a `chart`",
+    "axes": "a pie has no axes. Values against an axis are a `chart`",
+    "value": "a part's size is its `amount`",
+    "percent": (
+        "drawspec takes each share from the `amount`s and their sum, so the angles cannot "
+        'disagree with the numbers. Write the amount; for percentages, set `"unit": "%"`'
+    ),
+    "share": (
+        "drawspec takes each share from the `amount`s and their sum, so the angles cannot "
+        'disagree with the numbers. Write the amount; for percentages, set `"unit": "%"`'
+    ),
+    "angle": "a sector's angle is its share of the total, computed from its `amount`",
+    "total": (
+        "a pie's total is the sum of its amounts, so it cannot disagree with them. Say it "
+        "in the title if the reader needs it"
+    ),
+    "groups": "a pie has one level of parts. Parts in groups are a `treemap`",
+    "group": "a pie has one level of parts. Parts in groups are a `treemap`",
+    "donut": 'a ring instead of a disc is house style: a theme\'s `[pie] shape = "donut"`',
+    "hole": 'a ring instead of a disc is house style: a theme\'s `[pie] shape = "donut"`',
+}
+
+
+def _pie_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a pie, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    unknown = "is not" in violation.message and "field" in violation.message
+    if name in PIE_REFUSED and unknown:
+        return Violation(violation.pointer, f"{name!r}: {PIE_REFUSED[name]}.")
+    if parts[1:] == ["parts"] and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a pie needs at least 2 parts: one part of a total is the total. Say it in a sentence.",
+        )
+    if name == "amount" and parts[1:2] == ["parts"] and "greater than" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a part's amount is its angle, so it must be more than 0. A part of nothing is "
+            "not drawn: leave it out.",
+        )
+    return violation
+
+
+def _pie_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """One remainder at most, no sliver, and percentages that add up to 100."""
+    found: list[Violation] = []
+    parts = [part for part in _listed(document, "parts") if isinstance(part, dict)]
+    notes = [
+        index
+        for index, part in enumerate(_listed(document, "parts"))
+        if isinstance(part, dict) and part.get("role") == "note"
+    ]
+    for index in notes[1:]:
+        found.append(
+            Violation(
+                _pointer("parts", index, "role"),
+                f"part {notes[0]} is already the remainder: a pie has one `note` part, "
+                f"`Everything else`. Merge the two.",
+            )
+        )
+    amounts = [float(part["amount"]) for part in parts if _is_number(part.get("amount"))]
+    if not amounts or len(amounts) != len(parts) or min(amounts) <= 0:
+        return found
+    total = float(sum(amounts))
+    for index, amount in enumerate(amounts):
+        if amount / total < PIE_SHARE_MIN:
+            found.append(
+                Violation(
+                    _pointer("parts", index, "amount"),
+                    f"this part is {100 * amount / total:.1f}% of the total, a sliver whose "
+                    f"angle cannot be read — under {100 * PIE_SHARE_MIN:g}%. Merge it into one "
+                    f'`"role": "note"` part with the others too small to see.',
+                )
+            )
+    if document.get("unit") == "%" and abs(total - 100) > PIE_PERCENT_TOLERANCE:
+        found.append(
+            Violation(
+                "/parts",
+                f"these percentages add up to {_figure(total)}, not 100 — "
+                f"{_figure(abs(total - 100))} {'over' if total > 100 else 'short'}, more "
+                f"than rounding. A pie of percentages is the whole: fix a part, or add the "
+                f"missing share as a `note` part.",
+            )
+        )
+    return found
+
+
 def _figure(value: float) -> str:
     """A number as an author wrote it: no float noise, no trailing zeros."""
     text = f"{round(value, 9):.9f}".rstrip("0").rstrip(".")
@@ -7237,6 +7428,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _barmodel_document(document)
     if kind in WATERFALL_KINDS:
         return _waterfall_document(document)
+    if kind in PIE_KINDS:
+        return _pie_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -7859,6 +8052,30 @@ def _waterfall_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _pie_document(document: Mapping[str, Any]) -> Document:
+    """A pie: its parts in the order written, and the unit they are in."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        values=bool(document.get("values", True)),
+        theme=str(document.get("theme", "")),
+        unit=str(document.get("unit", "")),
+        pie_parts=tuple(
+            PiePart(
+                text=part["text"],
+                amount=float(part["amount"]),
+                role=part.get("role", "step"),
+            )
+            for part in document["parts"]
+        ),
+    )
+
+
 def _hub(entry: Mapping[str, Any] | None) -> Node | None:
     if entry is None:
         return None
@@ -8126,6 +8343,11 @@ __all__ = [
     "NUMBERLINE_TICK_MAX",
     "OBJECTS",
     "PARTICIPANT_ROLES",
+    "PIE_KINDS",
+    "PIE_PART_MAX",
+    "PIE_PERCENT_TOLERANCE",
+    "PIE_ROLES",
+    "PIE_SHARE_MIN",
     "REGION_ROLES",
     "REJECTED_FIELDS",
     "SANKEY_BAND",
@@ -8174,6 +8396,7 @@ __all__ = [
     "NumberAxis",
     "NumberPoint",
     "NumberRange",
+    "PiePart",
     "Position",
     "Region",
     "Relation",

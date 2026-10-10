@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-29 kinds. The machine-readable form of this page is the published
+30 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall` | **yes** | Which of the twenty-nine diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie` | **yes** | Which of the thirty diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -244,6 +244,14 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `axis` | [waterfall-axis object](#waterfall-axis-object) | **yes** | The vertical axis: its `label`, what the numbers are and their unit. |
 | `bars` | array of [waterfall-bar](#waterfall-bar-object), at least 3 | **yes** | The bars, left to right: a `total` first, signed `amount` steps, any subtotals (a `total` mid-way, checked against the running sum), and a `total` last. |
 
+### `pie`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `parts` | array of [pie-part](#pie-part-object), at least 2 | **yes** | The parts of one total, 2 to 8, clockwise from twelve o'clock in the order written (a `note` part last), each labelled with its `text` and amount — inside its sector, or beside it on a leader line. |
+| `unit` | string | no | What the amounts are in — `pupils`, `£m`, `%` — written after each one. With `%` the amounts must add up to 100, within one point of rounding. |
+| `values` | boolean | no | `false` leaves the amounts out and writes the names alone. |
+
 ### `scatter`
 
 | Field | Type | Required | What it is |
@@ -305,6 +313,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `numberline` | 15 `points`, 4 `ranges` |
 | `barmodel` | 3 `bars`, 8 `parts` per bar, 6 `braces` |
 | `waterfall` | 12 `bars` |
+| `pie` | 8 `parts` |
 
 ## Emphasis
 
@@ -657,6 +666,14 @@ name, so a misspelt key is an error at the point it was written.
 | `total` | number | no | A total: the bar stands on zero and runs to it. The first bar is one and so is the last; one in between is a subtotal. Every total after the first is checked: it must be the running sum. Not with `amount`. |
 | `amount` | number | no | A signed step, not 0: the bar floats from the running sum to the running sum plus this, and is written `+6.1` or `−9.4`. Not with `total`. |
 | `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis` (the bar the chart is about: a heavier outline, its number bold). |
+
+### `pie-part` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `amount` | number, greater than 0 | **yes** | How much of the total this part is, more than 0, in the pie's `unit`: a count, a sum, or with `unit: "%"` a percentage. Its angle is its share of the sum of the amounts, computed — never written. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the part the chart is about: a heavier outline, its words bold) or `note` (the remainder, `Everything else`: unfilled and dashed, drawn last). At most one `note`. |
 
 ### `treemap-group` object
 

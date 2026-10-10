@@ -1,0 +1,16 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "pie",
+  "title": "Where the support team's 40-hour week went",
+  "description": "A team's week by activity, drawn as a donut by a report theme: tickets, fixing tooling, meetings, on-call and documentation.",
+  "theme": "docs/reference/themes/donut.toml",
+  "unit": "h",
+  "parts": [
+    {"text": "Answering tickets", "amount": 16},
+    {"text": "Fixing our tooling", "amount": 8, "role": "emphasis"},
+    {"text": "Meetings", "amount": 6},
+    {"text": "On-call", "amount": 5},
+    {"text": "Writing docs", "amount": 5}
+  ]
+}

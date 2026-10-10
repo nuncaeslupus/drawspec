@@ -21,6 +21,7 @@ from drawspec.kinds.graph import DRAWN_KINDS, graph_scene
 from drawspec.kinds.grid import grid_scene
 from drawspec.kinds.journey import journey_scene
 from drawspec.kinds.numberline import numberline_scene
+from drawspec.kinds.pie import pie_scene
 from drawspec.kinds.sankey import sankey_scene
 from drawspec.kinds.sequence import sequence_scene
 from drawspec.kinds.shape import shape_scene
@@ -39,6 +40,7 @@ from drawspec.schema import (
     GRID_KINDS,
     JOURNEY_KINDS,
     NUMBERLINE_KINDS,
+    PIE_KINDS,
     SANKEY_KINDS,
     SEQUENCE_KINDS,
     SHAPE_KINDS,
@@ -71,6 +73,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *NUMBERLINE_KINDS,
     *BARMODEL_KINDS,
     *WATERFALL_KINDS,
+    *PIE_KINDS,
     "cycle",
 )
 
@@ -122,6 +125,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return numberline_scene(document, theme, measurer)
     if document.kind in BARMODEL_KINDS:
         return barmodel_scene(document, theme, measurer)
+    if document.kind in PIE_KINDS:
+        return pie_scene(document, theme, measurer)
     if document.kind in WATERFALL_KINDS:
         return waterfall_scene(document, theme, measurer)
     if document.kind == "cycle":
@@ -150,6 +155,7 @@ __all__ = [
     "journey_scene",
     "numberline_scene",
     "outline",
+    "pie_scene",
     "sankey_scene",
     "scene_for",
     "sequence_scene",

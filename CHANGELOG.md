@@ -12,6 +12,20 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`pie`, the thirtieth kind** — the shares of one known total as sectors of a
+  circle, let in with limits like `treemap`: a few known proportions stated, not
+  data to explore. 2 to 8 `parts`, each a `text` and an `amount`; shares are
+  computed from the amounts (never written), and with `unit: "%"` the amounts must
+  add up to 100 within one point of rounding. Clockwise from twelve in the order
+  written, one `note` part (`Everything else`, unfilled and dashed) last. Every
+  sector labelled with its name and amount, inside it when it fits, else beside the
+  circle on a leader that clears the circle; fills only keep touching sectors apart.
+  A new theme section, `[pie] shape = "pie" | "donut"`: the donut is house style.
+  Refused at their pointers: more than 8 parts, a part under 2%, percentages off
+  100, a second `note`, one part, `value`, `percent`, `share`, `angle`, `total`,
+  `groups` (naming `treemap`), `series`, `axes` (naming `chart`), `donut`, `hole`
+  (naming the theme), `edges`. Budget: 8 parts. `docs/proposals/pie.md` records the
+  design.
 - **`waterfall`, the twenty-ninth kind** — the bridge chart of a budget paper: how
   one total became another, step by step. Its 3 to 12 `bars` are each a `total`
   (standing on zero: the first, the last, and any subtotal between) or a signed

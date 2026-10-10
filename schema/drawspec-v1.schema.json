@@ -2121,6 +2121,77 @@
         "bars"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "pie",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "pie"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "parts": {
+          "type": "array",
+          "description": "The parts of one total, 2 to 8, clockwise from twelve o'clock in the order written (a `note` part last), each labelled with its `text` and amount — inside its sector, or beside it on a leader line.",
+          "items": {
+            "$ref": "#/$defs/pie-part"
+          },
+          "minItems": 2
+        },
+        "unit": {
+          "type": "string",
+          "description": "What the amounts are in — `pupils`, `£m`, `%` — written after each one. With `%` the amounts must add up to 100, within one point of rounding."
+        },
+        "values": {
+          "type": "boolean",
+          "description": "`false` leaves the amounts out and writes the names alone."
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "parts"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -3326,6 +3397,34 @@
       "required": [
         "id",
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "pie-part": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "amount": {
+          "type": "number",
+          "description": "How much of the total this part is, more than 0, in the pie's `unit`: a count, a sum, or with `unit: \"%\"` a percentage. Its angle is its share of the sum of the amounts, computed — never written.",
+          "exclusiveMinimum": 0
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default), `emphasis` (the part the chart is about: a heavier outline, its words bold) or `note` (the remainder, `Everything else`: unfilled and dashed, drawn last). At most one `note`.",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        }
+      },
+      "required": [
+        "text",
+        "amount"
       ],
       "additionalProperties": false
     },

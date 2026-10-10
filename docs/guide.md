@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Twenty-nine exist, and they fall into eighteen families:
+fields are legal. Thirty exist, and they fall into nineteen families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -164,6 +164,7 @@ fields are legal. Twenty-nine exist, and they fall into eighteen families:
 | Overlap | `venn` | Things that share: two or three sets as equal circles, each region named by the sets it is in. |
 | Experience | `journey` | How one person feels, stage by stage: a named feeling per stage as a line, over what they do there. |
 | Share | `treemap` | The parts of one known total: each a rectangle by its area, labelled inside itself. |
+| Portion | `pie` | The shares of one known total, a few of them: sectors of a circle, each labelled with its name and amount (a donut by a theme). |
 | Quantity | `sankey` | Where a known quantity goes: nodes in derived columns, joined by bands as thick as their amounts. |
 | Word problem | `barmodel` | Quantities in a word problem: bars of parts in proportion, braced — a part and a whole, a comparison, a ratio (the bar model, or tape diagram). |
 | Bridge | `waterfall` | How one total became another: a start total, signed steps floating on the running sum, checked subtotals, an end total — the bridge chart. |
@@ -1578,6 +1579,65 @@ a word wider than its bar's band, or a number wider than the band, is a `FitErro
 zero, two subtotals),
 [`reference/waterfall-cash.json`](reference/waterfall-cash.json) and
 [`reference/waterfall-result.json`](reference/waterfall-result.json) (crossing zero).
+
+## A pie
+
+The pie chart is what a class draws from a tally and what a budget-day leaflet prints:
+one total, split into a few shares, each sector labelled. That is `pie`:
+
+```json
+{
+  "version": 1,
+  "kind": "pie",
+  "title": "How the 30 pupils in 6B travel to school",
+  "unit": "pupils",
+  "parts": [
+    {"text": "Walk", "amount": 12},
+    {"text": "Car", "amount": 8},
+    {"text": "Bus", "amount": 6},
+    {"text": "Bike", "amount": 4}
+  ]
+}
+```
+
+**Use it for a few known proportions, not to explore data.** It reads well when one or
+two parts dominate or a share is a nice fraction (½, ¼); for parts of similar size, for
+comparing two totals, or for more than eight parts, a bar `chart` or a `treemap` says
+it better. The limits say so: 2 to 8 `parts`, none under 2% of the total.
+
+Each part is a `text` and an `amount` more than 0, as it is in the source — a count
+from a tally, a sum of money. **Shares are computed, never written**: each angle is the
+part's share of the sum of the amounts, so the drawing cannot disagree with the
+numbers, and `percent`, `share`, `angle` and `total` are refused. Percentages are the
+one case that can disagree — they claim a total of 100 — so with `"unit": "%"` the
+amounts must add up to 100 within one point of rounding. `unit` is written after each
+amount (`12 pupils`, `27%`); `"values": false` writes the names alone.
+
+Sectors run clockwise from twelve o'clock in the order written. Past eight parts, keep
+the largest and merge the rest into one `"role": "note"` part — `Everything else` —
+drawn last, unfilled and dashed; there is at most one. `emphasis` marks the part the
+chart is about (a heavier outline, bold words).
+
+A sector is identified by its **label**, never by its fill: each carries its name and
+amount, inside it when they fit, otherwise beside the circle on a leader from the
+middle of its arc, the outside labels kept in angle order on their side and never
+touching. Fills are the theme's mark patterns in turn, only so that touching sectors
+differ — there is no legend to match them against, so a reader in greyscale loses
+nothing.
+
+**A donut is house style**, not content: a theme with `[pie] shape = "donut"` draws
+every pie in a report as a ring, with every label outside. The documents do not change.
+
+Refused, each at its pointer: more than 8 parts (with the advice above); a part under
+2% (merge it into the `note` part); percentages more than one point off 100; a second
+`note` part; one part; `value` (it is `amount`), `percent`, `share`, `angle`, `total`;
+`groups` (a `treemap`); `series`, `axes` (a `chart`); `donut`, `hole` (the theme);
+`edges`. Labels beside the circle that leave it too small to read are a `FitError`.
+See [`reference/pie-travel.json`](reference/pie-travel.json),
+[`reference/pie-trip.json`](reference/pie-trip.json) (nice fractions),
+[`reference/pie-spending.json`](reference/pie-spending.json) (percentages, with a
+remainder) and [`reference/pie-team-week.json`](reference/pie-team-week.json) (a donut,
+by [`reference/themes/donut.toml`](reference/themes/donut.toml)).
 
 ## Asking for a wide drawing instead of a tall one
 
