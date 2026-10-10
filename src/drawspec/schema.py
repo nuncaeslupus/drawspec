@@ -367,7 +367,9 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             required=True,
             description=(
                 "The id of the target node — or, in a `flow` or a `tree`, of a group. "
-                "The same id space as `from`."
+                "The same id space as `from`. The same id as `from` draws a loop on the "
+                "side of that box, across the reading direction, with its label outside "
+                "it: two per box at most, and never on a group."
             ),
         ),
         FieldSpec("label", "string", description="A short label placed along the edge."),
@@ -2104,6 +2106,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                     )
                 )
         found.extend(_self_containment(edges, groups, endpoints))
+        if kind in CONTAINER_KINDS:
+            found.extend(_loop_violations(edges, frozenset(containers), "edges"))
 
     if isinstance(groups, list):
         # A group id is a name a member may resolve to, and the renderer keys its

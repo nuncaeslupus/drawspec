@@ -248,6 +248,13 @@ gallery` renders them; that page is the fastest answer to "what does `owns`
 look like". The mechanical properties behind each row — shape, dash,
 stroke width — are in [the theme reference](theme.md).
 
+An edge whose `from` and `to` are the same box — a retry, a poll, a timer — is
+drawn as a loop on that box's side, across the reading direction (right or left
+in a drawing that reads down), leaving and returning on the same side so it
+never meets the box's own incoming arrow; its label goes outside it and the
+layout keeps room for both. A box may carry two, one per side; a loop on a
+group is refused. See [`reference/flow-retry.json`](reference/flow-retry.json).
+
 ## Embedding the output
 
 `render --profile` picks how the SVG is written, and the choice is about where

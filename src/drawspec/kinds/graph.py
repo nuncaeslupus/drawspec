@@ -111,10 +111,6 @@ NODE_WIDEN: Final = 2.0
 PREFERRED_DIRECTION: Final = "down"
 
 
-#: The kinds whose self-loops are drawn with room reserved for them beside the
-#: box. Any other kind's loop is left to the router.
-LOOPING_KINDS: Final = ("states",)
-
 #: How many label lines a `states` drawing adds to the gap between ranks.
 STATES_LABEL_LINES: Final = 2
 
@@ -310,7 +306,7 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         spacing = replace(spacing, rank_gap=spacing.rank_gap + tall)
     pairs = [(edge.source, edge.target) for edge in document.edges]
     captions = captions_for(document, nesting, theme, measurer, width * NODE_WIDTH_SHARE)
-    looped = _loops(document) if document.kind in LOOPING_KINDS else {}
+    looped = _loops(document)
     labels_of = {
         identifier: [loop_label_size(edge.label, theme, measurer) for edge in edges]
         for identifier, edges in looped.items()
@@ -408,10 +404,8 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         Connector(edge.source, edge.target, role=_drawn_role(edge), label=_marked(edge))
         for edge in document.edges
     )
-    loops = (
-        _placed_loops(connectors, {box.id: box for box in obstacles}, arrangement, theme, measurer)
-        if document.kind in LOOPING_KINDS
-        else ()
+    loops = _placed_loops(
+        connectors, {box.id: box for box in obstacles}, arrangement, theme, measurer
     )
     # Each loop and its label is somewhere no other route may go, exactly like a
     # box: the room was reserved for it, and a line through it would cross the
@@ -430,11 +424,7 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         for index, loop in enumerate(loops)
         if loop.label is not None
     )
-    plain = tuple(
-        connector
-        for connector in connectors
-        if connector.source != connector.target or document.kind not in LOOPING_KINDS
-    )
+    plain = tuple(connector for connector in connectors if connector.source != connector.target)
     # A state machine is full of return edges, and every one of its transitions
     # is labelled. Routed together, the returns took the lanes beside the boxes
     # and left a forward transition's label no room between them; so a state

@@ -61,7 +61,7 @@ self-loop geometry that `flow` then either adopts or refuses.
    `sequence` and `states` give existing roles a kind-specific reading (`weak` = reply).
    Proposed: keep roles global, refuse the ones a kind has no meaning for.
 4. **`flow` self-loops**: accepted today and drawn through the box's own incoming edge.
-   Refuse in `flow`, or adopt the `states` geometry?
+   Refuse in `flow`, or adopt the `states` geometry? — *Decided: adopt; built.*
 5. **`lanes` as a kind** (proposed: same payload as `flow`, `actor` required) or as a
    `flow` field (`"lanes": [...]`). The kind keeps `flow`'s refusals simple.
 6. **`journey.details`** is the first object keyed by ids in the format. Accept it, or

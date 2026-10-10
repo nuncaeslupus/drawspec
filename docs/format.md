@@ -219,7 +219,7 @@ name, so a misspelt key is an error at the point it was written.
 | Field | Type | Required | What it is |
 |---|---|---|---|
 | `from` | string | **yes** | The id of the source node — or, in a `flow` or a `tree`, of a group: an edge may name a container, for a relation that belongs to the whole of it rather than to any one box inside. It may not join a container to something already within it. A `cycle` draws no containers, so an edge in one names a node — or its `hub`, as a spoke. |
-| `to` | string | **yes** | The id of the target node — or, in a `flow` or a `tree`, of a group. The same id space as `from`. |
+| `to` | string | **yes** | The id of the target node — or, in a `flow` or a `tree`, of a group. The same id space as `from`. The same id as `from` draws a loop on the side of that box, across the reading direction, with its label outside it: two per box at most, and never on a group. |
 | `label` | string | no | A short label placed along the edge. |
 | `role` | string — one of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
 | `status` | string — one of `added`, `changed`, `removed` | no | What a proposed change does to this connection: the same marks as a node's, written before the label (`+`, `~`, `-`), with a key of the marks under the drawing. A removed edge is drawn in the `aside` treatment — dashed, no head — whatever its role. **Only a `flow` or a `tree`.** |

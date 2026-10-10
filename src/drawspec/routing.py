@@ -690,7 +690,9 @@ def route_edges(
     routes: list[Route] = []
     for index, connector in enumerate(connectors):
         if connector.source == connector.target:
-            routes.append(_self_loop(connector, boxes[connector.source], obstacles, theme))
+            routes.append(
+                _self_loop(connector, boxes[connector.source], obstacles, theme, direction)
+            )
             continue
         if index in straight:
             chord = Route(
@@ -1906,30 +1908,30 @@ def _simplify(points: Sequence[tuple[float, float]]) -> tuple[tuple[float, float
 
 
 def _self_loop(
-    connector: Connector, box: Obstacle, obstacles: Sequence[Obstacle], theme: Theme
+    connector: Connector,
+    box: Obstacle,
+    obstacles: Sequence[Obstacle],
+    theme: Theme,
+    direction: str = "down",
 ) -> Route:
-    """A loop back to the same box: out of one side, around, in through another.
+    """A loop back to the same box, on the first side `loop_route` offers that is clear.
 
-    Rectangular like every other route, and sized from the minimum shaft so it is
-    a loop someone can see rather than a nick in the outline.
+    For a caller that has not reserved room for the loop — the graph family
+    routes its own, with room made for them in the layout; see `self_loops`.
+
+    Raises:
+        LayoutError: every side the loop could take crosses another box.
     """
-    reach = max(minimum_rank_gap(theme) / 2, theme.edge.head_length * 2)
-    corners = (("right", "top"), ("left", "top"), ("right", "bottom"), ("left", "bottom"))
-    for out_side, in_side in corners:
-        start = _anchor(box, out_side, 0.5)
-        end = _anchor(box, in_side, 0.5)
-        away = _stub_end(_port(box, out_side, 0.5), out_side, reach)
-        back = _stub_end(_port(box, in_side, 0.5), in_side, reach)
-        points = _simplify((start, away, (away[0], back[1]), back, end))
+    preferred = LOOP_SIDES.get(direction, LOOP_SIDES["down"])
+    for side in (*preferred, *(side for side in SIDES if side not in preferred)):
+        route = loop_route(box, side, connector, theme)
         if all(
             not obstacle.crosses(first, second)
-            for first, second in pairwise(points)
+            for first, second in pairwise(route.points)
             for obstacle in obstacles
             if obstacle.id != box.id
         ):
-            return Route(
-                connector.source, connector.target, connector.role, points, connector.label
-            )
+            return route
     raise LayoutError(
         f"no room for a self-loop on {connector.source!r}: every side of it is boxed in"
     )

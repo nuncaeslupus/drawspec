@@ -83,6 +83,13 @@ against it would stop working. Everything below is about the *package*.
 
 ### Fixed
 
+- **A self-loop in a `flow` or a `tree`** (an edge from a box to itself) left
+  the box's side and re-entered through the middle of its top, where its
+  incoming arrow lands, so the two heads met and the loop read as a branch of
+  the edge above. It now uses the `states` geometry: out and back on the same
+  side, across the reading direction, its label outside it and its room
+  reserved in the layout so no neighbour sits on it. A loop on a group and a
+  third loop on one box are refused at the edge's `to`. Reference: `flow-retry`.
 - An edge from a group's frame no longer starts on the line an edge from a box
   inside it leaves by, which drew the two as one edge from that box; and an
   edge arriving at the far side of a frame, out past every box, is routed
