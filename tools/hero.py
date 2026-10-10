@@ -87,15 +87,25 @@ class Plate:
     figure: str
 
 
-#: The background plates: varied kinds, at varied scale, faint enough to be ground.
+#: The background plates: varied kinds, at varied scale — recognisable drawings,
+#: but a step behind the wordmark, the spec and the drawing it makes.
 PLATES: Final = (
     # A ghost at twice the scale, run off the sheet: there is more drawing than fits.
-    Plate("venn-parity", 640, 110, 760, 0.08, ""),
-    Plate("sankey-energy", 730, 56, 300, 0.34, "sankey"),
-    Plate("sequence-dns", 1062, 56, 168, 0.36, "sequence"),
-    Plate("venn-parity", 1088, 160, 130, 0.36, "venn"),
-    Plate("states-breaker", 942, 300, 130, 0.36, "states"),
-    Plate("journey-first-week", 1095, 330, 135, 0.36, "journey"),
+    Plate("venn-parity", 640, 110, 760, 0.12, ""),
+    Plate("sankey-energy", 730, 56, 300, 0.68, "sankey"),
+    Plate("sequence-dns", 1062, 56, 168, 0.68, "sequence"),
+    Plate("venn-parity", 1088, 160, 130, 0.68, "venn"),
+    Plate("states-breaker", 942, 300, 130, 0.68, "states"),
+    Plate("journey-first-week", 1095, 330, 135, 0.68, "journey"),
+)
+
+#: What drawspec draws, by family rather than by count, so no release dates it.
+GROUPS: Final = (
+    "Flows & processes",
+    "Structures & hierarchies",
+    "Timelines & plans",
+    "Charts & comparisons",
+    "Data & relations",
 )
 
 #: The document the foreground drawing is made from, printed on the sheet as-is.
@@ -296,18 +306,28 @@ def dimension(x1: float, x2: float, y: float, label: str) -> str:
 
 def title_block(x: float, y: float, w: float) -> str:
     """The engineering title block: the project's name largest, then the title, then
-    scale, sheet and revision side by side."""
+    scale and output side by side. Nothing in it is a version or a count, so the
+    banner never needs redrawing for a release."""
     block = sheet.TitleBlock(
         head=sheet.Field("PROJECT", "drawspec"),
         number="DWG 001",
-        rows=(sheet.Field("TITLE", "Diagrams from meaning"),),
+        rows=(sheet.Field("TITLE", "For all your diagram needs"),),
         cells=(
-            (sheet.Field("SCALE", "no coordinates"), w * 0.44),
-            (sheet.Field("SHEET", "1 of 26 kinds"), w * 0.33),
-            (sheet.Field("REV", f"v{drawspec.__version__}"), w * 0.23),
+            (sheet.Field("SCALE", "no coordinates"), w * 0.52),
+            (sheet.Field("OUTPUT", "SVG · PNG"), w * 0.48),
         ),
     )
     return sheet.title_block(x, y, block, PALETTE, family=FAMILIES["mono"], style=BLOCK_STYLE)
+
+
+def kinds_line(x: float, y: float, size: float) -> str:
+    """The kind groups in one line, set apart by accent dots."""
+    dot = f'<tspan fill="{ACCENT}">  ·  </tspan>'
+    words = dot.join(f'<tspan fill="{INK}">{escape(group)}</tspan>' for group in GROUPS)
+    return (
+        f'<text x="{x:.2f}" y="{y:.2f}" font-family="{FAMILIES["sans"]}" '
+        f'font-size="{size:g}" fill-opacity="0.82" xml:space="preserve">{words}</text>'
+    )
 
 
 # --- the JSON snippet --------------------------------------------------------
@@ -380,7 +400,7 @@ def compose() -> str:
             continue
         pad = 6
         parts.append(
-            f'<g opacity="{min(1.0, plate.opacity * 2.2):.2f}">'
+            f'<g opacity="{min(1.0, plate.opacity * 1.4):.2f}">'
             + crop(plate.x - pad, plate.y - pad, plate.width + 2 * pad, height + 2 * pad)
             + text(
                 plate.x - pad,
@@ -418,9 +438,11 @@ def compose() -> str:
         )
     )
 
+    parts.append(kinds_line(mark_x, mark_y + 76, 12.5))
+
     # The JSON on the left, and the drawing it makes in front of the plates.
     lines = snippet_lines(SPEC)
-    code_x, code_y, code_size, lead = 70, 300, 10.5, 15.5
+    code_x, code_y, code_size, lead = 70, 326, 10.5, 15.5
     code_w = max(METRICS.width(item, code_size, "mono") for item in lines) + 28
     code_h = lead * len(lines) + 22
     parts.append(
@@ -434,7 +456,7 @@ def compose() -> str:
         parts.append(highlighted(item, code_x, code_y + i * lead, code_size))
 
     drawn = drawspec.render(SPEC, cropped())
-    draw_x, draw_y, draw_w = 600, 294, 280
+    draw_x, draw_y, draw_w = 606, 318, 262
     group, draw_h = place(drawn, "hero", draw_x, draw_y, draw_w, INK)
     pad = 14
     parts.append(
