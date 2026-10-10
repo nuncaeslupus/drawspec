@@ -404,7 +404,7 @@ def compose() -> str:
 
     # The wordmark, with a dimension line over it that measures nothing.
     tile, tile_gap = 88, 12
-    guide_x, mark_y, mark_size = 70, 196, 118
+    guide_x, mark_y, mark_size = 70, 196, 104
     mark_x = guide_x + tile + tile_gap
     mark_w = METRICS.width("drawspec", mark_size, "sans", "bold") + 7 * -3
     parts.append(dimension(mark_x, mark_x + mark_w, 88, "x = ?   y = ?"))
