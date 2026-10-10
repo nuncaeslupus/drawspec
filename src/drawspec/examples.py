@@ -59,6 +59,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "pie": "the shares of one known total as labelled sectors — a few proportions, stated",
     "waterfall": "from one total to another, step by step, subtotals checked — the bridge chart",
     "mindmap": "a topic in the middle, its branches as peers round it — revision notes, a plan",
+    "argument": "a claim, the reasons for it and the objections, by stance — an argument map",
 }
 
 #: The smallest document of each kind that renders.
@@ -342,6 +343,15 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "branches": [
             {"text": "Before", "branches": [{"text": "Book the van"}]},
             {"text": "After", "branches": [{"text": "Unpack the kitchen"}]},
+        ],
+    },
+    "argument": {
+        "version": 1,
+        "kind": "argument",
+        "claim": "Cycle to work",
+        "points": [
+            {"id": "fit", "on": "claim", "stance": "for", "text": "It keeps me fit"},
+            {"id": "rain", "on": "claim", "stance": "against", "text": "It often rains"},
         ],
     },
     "scatter": {

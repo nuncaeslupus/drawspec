@@ -1428,6 +1428,56 @@ class MindmapStyle:
         return cls(boxes=boxes, taper=taper)
 
 
+#: The fills an `against` box may take: a pattern faint enough to read words over.
+ARGUMENT_FILLS: Final = ("hatch", "dots", "cross", "grid")
+
+
+@dataclass(frozen=True)
+class ArgumentStyle:
+    """How an argument map says which way a point bears: its tag and its fill.
+
+    The author says `for` or `against`; the words a reader reads it aloud by, and
+    the pattern an objection is filled with, are house style. Stance is drawn on
+    both channels, so a map printed in greyscale still says it twice.
+    """
+
+    for_tag: str = "because"
+    """The tag over a `for` point, in its top margin at the left: the word a reader
+    says before it when reading the map aloud."""
+
+    against_tag: str = "but"
+    """The tag over an `against` point: an objection, and a rebuttal of one."""
+
+    against_fill: str = "hatch"
+    """The pattern an `against` box is filled with; a `for` box is plain. The
+    patterns are drawn faint, so the words over them stay readable."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> ArgumentStyle:
+        _reject_unknown(mapping, ("for_tag", "against_tag", "against_fill"), "[argument]")
+        defaults = cls()
+        tags = {}
+        for key in ("for_tag", "against_tag"):
+            value = mapping.get(key, getattr(defaults, key))
+            if not isinstance(value, str) or not value.strip() or "\n" in value:
+                raise ThemeError(f"[argument] {key}: expected a word or two, got {value!r}")
+            tags[key] = value
+        if tags["for_tag"] == tags["against_tag"]:
+            raise ThemeError(
+                f"[argument] for_tag and against_tag are both {tags['for_tag']!r}: the tag is "
+                f"one of the two things that tell a reason from an objection"
+            )
+        return cls(
+            for_tag=tags["for_tag"],
+            against_tag=tags["against_tag"],
+            against_fill=_choice(
+                mapping.get("against_fill", defaults.against_fill),
+                ARGUMENT_FILLS,
+                "[argument] against_fill",
+            ),
+        )
+
+
 #: Which way a `lanes` diagram's lanes run: across the page, stacked top to
 #: bottom (`rows`), or down it, side by side (`columns`). `auto` tries rows and
 #: takes columns when rows do not fit the width.
@@ -1682,6 +1732,7 @@ _TOP_LEVEL_KEYS: Final = (
     "pie",
     "flow",
     "mindmap",
+    "argument",
     "role",
     "edge_role",
 )
@@ -1715,6 +1766,7 @@ class Theme:
     numberline: NumberlineStyle = NumberlineStyle()
     pie: PieStyle = PieStyle()
     mindmap: MindmapStyle = MindmapStyle()
+    argument: ArgumentStyle = ArgumentStyle()
     flow: FlowStyle = FlowStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
@@ -1777,6 +1829,7 @@ class Theme:
             numberline=NumberlineStyle.from_mapping(_section(mapping, "numberline")),
             pie=PieStyle.from_mapping(_section(mapping, "pie")),
             mindmap=MindmapStyle.from_mapping(_section(mapping, "mindmap")),
+            argument=ArgumentStyle.from_mapping(_section(mapping, "argument")),
             flow=FlowStyle.from_mapping(_section(mapping, "flow")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),

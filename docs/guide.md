@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Thirty-one exist, and they fall into twenty families:
+fields are legal. Thirty-two exist, and they fall into twenty-one families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -170,6 +170,7 @@ fields are legal. Thirty-one exist, and they fall into twenty families:
 | Bridge | `waterfall` | How one total became another: a start total, signed steps floating on the running sum, checked subtotals, an end total — the bridge chart. |
 | Scale | `numberline` | Where values sit on one scale: points and ranges, each end in or out — an inequality, the pH scale, a spectrum. |
 | Topic | `mindmap` | Things round one topic, as peers: a centre and its branches nested three levels deep, on both sides — revision notes, a brainstorm, a plan (a mind map). |
+| Reasoning | `argument` | Things said for and against a claim: reasons, objections, rebuttals and evidence by stance, co-premises under one bracket (an argument map). |
 
 One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see
@@ -1792,6 +1793,73 @@ leaves of the branch reaching furthest out wrap narrower first; when no width wo
 notes, three levels), [`reference/mindmap-essay-plan.json`](reference/mindmap-essay-plan.json)
 (an ordered plan), [`reference/mindmap-moving-house.json`](reference/mindmap-moving-house.json)
 and [`reference/mindmap-offsite.json`](reference/mindmap-offsite.json) (eight branches).
+
+## An argument map
+
+Law and critical-thinking courses, debating clubs and policy units draw the same
+figure: one contention at the top, the reasons for it beneath, the objections to those
+reasons, and the replies to the objections. A `tree` holds the hierarchy but cannot say
+the two things that make it an argument — which way each box bears, and that two
+reasons count only together. That is `argument`:
+
+```json
+{
+  "version": 1,
+  "kind": "argument",
+  "title": "Did the email of 3 May form a contract?",
+  "claim": "A binding contract was formed on 3 May",
+  "points": [
+    {"id": "offer", "on": "claim", "stance": "for", "text": "The quote was an offer"},
+    {"id": "accept", "on": "claim", "stance": "for", "with": ["offer"], "text": "The buyer's email accepted it"},
+    {"id": "price", "on": "claim", "stance": "for", "text": "Price was agreed: consideration given"},
+    {"id": "counter", "on": "accept", "stance": "against", "text": "It asked for a later date: a counter-offer"},
+    {"id": "enquiry", "on": "counter", "stance": "against", "role": "emphasis", "text": "It only asked whether the date could move"}
+  ]
+}
+```
+
+`claim` is the contention, drawn at the top in the heavy outline; a qualifier
+(*probably*) is a word in it. Each point names the box it bears on with `on` —
+`"claim"` or another point's `id` — and its `stance`: `for` or `against` that box.
+There is no third stance: a **rebuttal is an `against` on an `against`**, and a
+warrant or its backing (Toulmin's slots) is a `for` on the point it supports. Points
+hang below the box they bear on, siblings in the order written, down to four levels.
+
+**Stance is drawn twice**, so a greyscale print still says it: a tag in each box's
+top margin, `because` or `but` (read aloud, a chain goes *claim, because …, but …,
+but …*), and an `against` box filled with a faint hatch. A theme's `[argument]`
+section changes the words and the pattern.
+
+**Co-premises** are points that support only together — an offer *and* its
+acceptance. Write `with` on any member, naming the others (same `on`, same `stance`;
+at most four in a group); they are drawn side by side under one bracket, with one
+connector to the box they support. Every separate reason has its own connector, so
+the arrows into a box count its independent reasons.
+
+**An objection to how co-premises combine** — the *inference objection* — attacks the
+step from the group to its box, not any one premise. `on` names one box, so it is
+refused with what to write instead, which is what argument-mapping guides advise:
+state the premise that links them (*homework is only worth setting for what it
+adds*) as a point `with` them, and put the objection `on` that point.
+[`reference/argument-homework.json`](reference/argument-homework.json) does exactly
+this.
+
+Roles: `step`; `emphasis` — the decisive point, heavy outline and connector, bold;
+`note` — **evidence or a source**, not a reason (a study guide's *basis* box): words
+without a box, on a dashed connector, still tagged by stance.
+
+Refused, each at its pointer: an `on` that names no point, or names itself, or goes
+round in a circle; a missing `stance` (a remark that is neither belongs in the
+`caption`); `rebuttal` or `objection` as a stance; `with` naming an unknown point, or
+one with a different `on` or `stance`; a group of five; `on` naming a co-premise group
+(a list, or `a+b`); `edges`; a duplicate id, or `claim` as an id; a fifth level;
+empty words; a role with a shape. Budget: 15 points. When the tree is too wide, the
+points wrap narrower; when no width works, `FitError` names the widest row — split the
+map, an overview with the top-level reasons and objections and a map per contested
+reason. See [`reference/argument-contract.json`](reference/argument-contract.json),
+[`reference/argument-congestion.json`](reference/argument-congestion.json) (with
+evidence), [`reference/argument-readmissions.json`](reference/argument-readmissions.json)
+and [`reference/argument-homework.json`](reference/argument-homework.json).
 
 ## Asking for a wide drawing instead of a tall one
 

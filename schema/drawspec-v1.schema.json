@@ -2350,9 +2350,126 @@
         "branches"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "argument",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "argument"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "claim": {
+          "type": "string",
+          "description": "The contention, drawn at the top in the heavy outline. Points name it as `\"on\": \"claim\"`. A qualifier (*probably*, *in most cases*) is a word in it."
+        },
+        "points": {
+          "type": "array",
+          "description": "Every reason, objection, rebuttal and piece of evidence, each `on` the box it bears on, `for` or `against` it. Drawn as a tree down from the claim, siblings in the order written; at most 15, and 4 deep.",
+          "items": {
+            "$ref": "#/$defs/argument-point"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "claim",
+        "points"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
+    "argument-point": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique within the document, and not `claim`: what `on` and `with` name."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "on": {
+          "type": "string",
+          "description": "The box this point bears on: `claim`, or another point's id. The points hang below it, in the order written."
+        },
+        "stance": {
+          "type": "string",
+          "description": "`for` (a reason, drawn plain, tagged *because*) or `against` (an objection, hatched, tagged *but*) the box it is `on`. A rebuttal is an `against` on an `against`.",
+          "enum": [
+            "for",
+            "against"
+          ]
+        },
+        "with": {
+          "type": "array",
+          "description": "Co-premises: the ids of points with the same `on` and `stance` that support it only together. Written once, on any member; the group is every point joined this way, at most 4, drawn side by side under one bracket with one connector.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default), `emphasis` (the decisive point: heavy outline and connector, bold words) or `note` (evidence or a source rather than a reason: the note type, unboxed, on a dashed connector).",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "on",
+        "stance"
+      ],
+      "additionalProperties": false
+    },
     "axes": {
       "type": "object",
       "properties": {

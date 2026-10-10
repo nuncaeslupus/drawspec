@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-31 kinds. The machine-readable form of this page is the published
+32 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap` | **yes** | Which of the thirty-one diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument` | **yes** | Which of the thirty-two diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -250,6 +250,13 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `axis` | [waterfall-axis object](#waterfall-axis-object) | **yes** | The vertical axis: its `label`, what the numbers are and their unit. |
 | `bars` | array of [waterfall-bar](#waterfall-bar-object), at least 3 | **yes** | The bars, left to right: a `total` first, signed `amount` steps, any subtotals (a `total` mid-way, checked against the running sum), and a `total` last. |
 
+### `argument`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `claim` | string | **yes** | The contention, drawn at the top in the heavy outline. Points name it as `"on": "claim"`. A qualifier (*probably*, *in most cases*) is a word in it. |
+| `points` | array of [argument-point](#argument-point-object), at least 1 | **yes** | Every reason, objection, rebuttal and piece of evidence, each `on` the box it bears on, `for` or `against` it. Drawn as a tree down from the claim, siblings in the order written; at most 15, and 4 deep. |
+
 ### `mindmap`
 
 | Field | Type | Required | What it is |
@@ -328,6 +335,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `waterfall` | 12 `bars` |
 | `pie` | 8 `parts` |
 | `mindmap` | 8 `branches`, 30 `branches` in all, at every level |
+| `argument` | 15 `points` |
 
 ## Emphasis
 
@@ -698,6 +706,17 @@ name, so a misspelt key is an error at the point it was written.
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `amount` | number, greater than 0 | **yes** | How much of the total this part is, more than 0, in the pie's `unit`: a count, a sum, or with `unit: "%"` a percentage. Its angle is its share of the sum of the amounts, computed — never written. |
 | `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the part the chart is about: a heavier outline, its words bold) or `note` (the remainder, `Everything else`: unfilled and dashed, drawn last). At most one `note`. |
+
+### `argument-point` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique within the document, and not `claim`: what `on` and `with` name. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `on` | string | **yes** | The box this point bears on: `claim`, or another point's id. The points hang below it, in the order written. |
+| `stance` | string — one of `for`, `against` | **yes** | `for` (a reason, drawn plain, tagged *because*) or `against` (an objection, hatched, tagged *but*) the box it is `on`. A rebuttal is an `against` on an `against`. |
+| `with` | array of string, at least 1 | no | Co-premises: the ids of points with the same `on` and `stance` that support it only together. Written once, on any member; the group is every point joined this way, at most 4, drawn side by side under one bracket with one connector. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the decisive point: heavy outline and connector, bold words) or `note` (evidence or a source rather than a reason: the note type, unboxed, on a dashed connector). |
 
 ### `mindmap-branch` object
 

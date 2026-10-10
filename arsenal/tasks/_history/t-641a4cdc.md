@@ -4,6 +4,7 @@ title: "Argument map kind"
 priority: 5
 deps: [t-4b992703]
 tags: [kinds]
+status: done
 ---
 
 ## Goal

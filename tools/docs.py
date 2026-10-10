@@ -56,6 +56,7 @@ from drawspec.schema import (
     FieldSpec,
 )
 from drawspec.theme import (
+    ARGUMENT_FILLS,
     CYCLE_CONNECTORS,
     EDGE_HEADS,
     EDGE_ROLES,
@@ -76,6 +77,7 @@ from drawspec.theme import (
     THEME_VERSION,
     TYPE_LEVELS,
     WIDTH_MODES,
+    ArgumentStyle,
     BoardStyle,
     BoxStyle,
     Canvas,
@@ -540,6 +542,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "flow": FlowStyle,
     "pie": PieStyle,
     "mindmap": MindmapStyle,
+    "argument": ArgumentStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are
@@ -573,6 +576,7 @@ THEME_VOCABULARIES: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("numberline", "ends"): NUMBERLINE_ENDS,
     ("flow", "polarity"): FLOW_POLARITIES,
     ("pie", "shape"): PIE_SHAPES,
+    ("argument", "against_fill"): ARGUMENT_FILLS,
 }
 
 

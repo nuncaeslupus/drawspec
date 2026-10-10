@@ -12,6 +12,20 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`argument`, the thirty-second kind** — an argument map: a `claim` at the top and
+  up to 15 `points`, each `on` the box it bears on, `for` or `against` it (a rebuttal
+  is an `against` on an `against`; no third stance), down to four levels. Stance is
+  drawn twice, so greyscale holds: a tag in each box's top margin (`because`/`but`)
+  and a hatch on every `against` box. Co-premises (`with`, written on any member) sit
+  side by side under one bracket with one connector, so the arrows into a box count
+  its separate reasons; connectors arrive square from below, each on its own port,
+  crossing on their own lanes. `emphasis` is the decisive point; `note` is evidence,
+  unboxed on a dashed connector. A new theme section, `[argument] for_tag`,
+  `against_tag`, `against_fill`. Refused at their pointers: unknown or circular `on`,
+  a missing or third stance, mismatched or unknown `with`, a group past 4, an
+  objection `on` a co-premise group (with how to write it: state the linking premise
+  and object to that), `edges`, duplicate or reserved ids, a fifth level, empty
+  words. `docs/proposals/argument.md` records the design.
 - **`mindmap`, the thirty-first kind** — one topic in the middle and its branches
   round it as peers, where a `tree` would rank them from a root. `centre` and 2 to 8
   `branches`, nested up to three levels (30 in all); the nesting is the structure, so

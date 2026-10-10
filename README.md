@@ -7,10 +7,10 @@
 Declarative diagram spec → clean, themeable SVG. Writable by an LLM with no
 coordinates to get wrong.
 
-> **Status: it draws.** All thirty-one kinds render — `flow`, `tree`, `cycle`,
+> **Status: it draws.** All thirty-two kinds render — `flow`, `tree`, `cycle`,
 > `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`,
 > `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`,
-> `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie` and `mindmap` — and each of
+> `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap` and `argument` — and each of
 > the eleven failure families below has a test asserting it cannot be expressed.
 > The vocabulary opened from nine to thirteen on evidence: see `docs/kinds-wanted.md`, which
 > sorts all 89 hand-drawn originals by the kind that would have to draw them.
@@ -52,6 +52,9 @@ coordinates to get wrong.
 > proportions stated, as on a `treemap`, with a donut as a theme's choice.
 > `mindmap` is the thirty-first: a topic in the middle and its branches round it as
 > peers, nested three deep and balanced on two sides — where a `tree` would rank them.
+> `argument` is the thirty-second: a claim and the points for and against it, tagged and
+> hatched by stance, co-premises under one bracket — the argument map of a law or
+> critical-thinking course.
 > A `flow` also draws a causal loop diagram: a sign on every arrow, delay marks,
 > and named loops marked R or B, the type derived from the signs, never written.
 
@@ -131,7 +134,7 @@ every diagram in your project changes with it.
 
 ### A timeline
 
-The thirty-one kinds are the part people do not expect, so here is one that is not
+The thirty-two kinds are the part people do not expect, so here is one that is not
 a box-and-arrow diagram at all:
 
 ```json
@@ -238,7 +241,7 @@ for several jobs it might look like it does.
 * **It is not a Graphviz replacement.** Graphviz is a graph-layout engine with
   decades of work behind its layered and force-directed placement, and it will
   lay out a hundred-node graph that drawspec refuses. drawspec's layout exists
-  to serve thirty-one named diagram shapes at the sizes a document reads at; past
+  to serve thirty-two named diagram shapes at the sizes a document reads at; past
   each kind's readability budget (fifteen boxes on a `flow`) it will tell you to
   split the diagram into an overview and details rather than produce something
   dense and unreadable, which is deliberate but is not what a graph tool does.
