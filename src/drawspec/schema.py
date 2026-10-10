@@ -249,6 +249,19 @@ CAUSE_ROLES: Final = ("step", "emphasis", "note")
 FISHBONE_CATEGORY_MAX: Final = 6
 FISHBONE_CAUSE_MAX: Final = 5
 
+#: Venn diagrams: two or three overlapping sets, each region named by which sets
+#: it is in. With two or three circles every region is fixed by its membership,
+#: so nothing about the drawing needs a coordinate. A layout family of its own.
+VENN_KINDS: Final = ("venn",)
+
+#: The roles a set's circle may take: the default, and the set the diagram is
+#: about, drawn with a heavier outline.
+VENN_SET_ROLES: Final = ("step", "emphasis")
+
+#: The roles a region may take: the default, and the region the diagram is
+#: about — its words bold and the region filled with the theme's first mark fill.
+REGION_ROLES: Final = ("step", "emphasis")
+
 #: How a `files` tree is drawn. `icons` is the file-browser look; `plain` keeps
 #: the guides and drops the pictures; `unicode` and `ascii` are the tree as text,
 #: set in the monospace face, the way `tree` prints it.
@@ -292,6 +305,8 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: matrix cell is one box, and a board's cell is a list whose count matters.
 #: `fishbone` is the ninth: one effect and its causes by category — a two-level
 #: `tree` with the effect on top reads as if it owned its causes.
+#: `venn` is the tenth: two or three sets and what they share — a `matrix` can
+#: list memberships but cannot show an overlap.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -305,6 +320,7 @@ KINDS: Final = (
     + GANTT_KINDS
     + BOARD_KINDS
     + FISHBONE_KINDS
+    + VENN_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -376,6 +392,9 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
         ("categories", FISHBONE_CATEGORY_MAX),
         ("categories/causes", FISHBONE_CAUSE_MAX),
     ),  # [6 categories, 3 causes]
+    # Set by the proposal: no arrangement of four circles shows every region,
+    # and two or three sets have at most seven regions.
+    "venn": (("sets", 3), ("regions", 7)),  # [3 sets, 6 regions]
 }
 
 
@@ -1177,6 +1196,48 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             description=("A short aside hung under the card, smaller: `blocked on a decision`."),
         ),
     ),
+    "venn-set": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the sets; what a region's `in` names.",
+        ),
+        _text(),
+        FieldSpec(
+            "role",
+            "string",
+            enum=VENN_SET_ROLES,
+            description=(
+                "`step` (the default) or `emphasis` (the set the diagram is about), drawn as "
+                "a heavier outline."
+            ),
+        ),
+    ),
+    "region": (
+        FieldSpec(
+            "in",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=1,
+            description=(
+                "The ids of exactly the sets this region is in, and no others: "
+                '`["gdpr"]` is what only that set holds, `["gdpr", "ens"]` what the two '
+                "share. drawspec knows where that region is."
+            ),
+        ),
+        _text(),
+        FieldSpec(
+            "role",
+            "string",
+            enum=REGION_ROLES,
+            description=(
+                "`step` (the default) or `emphasis` (the region the diagram is about): its "
+                "words bold and the region filled with the theme's first mark fill."
+            ),
+        ),
+    ),
     "effect": (_text(),),
     "category": (
         _text(),
@@ -1561,7 +1622,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the twenty-two diagrams this is. It selects the fields that are "
+            "Which of the twenty-three diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -2146,6 +2207,29 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    VENN_KINDS: (
+        FieldSpec(
+            "sets",
+            "array",
+            required=True,
+            item_ref="venn-set",
+            min_items=2,
+            description=(
+                "Two or three sets, each a circle of one size with its name outside it. Not "
+                "sizes: the circles are equal, because a Venn diagram says what overlaps, "
+                "not how much."
+            ),
+        ),
+        FieldSpec(
+            "regions",
+            "array",
+            item_ref="region",
+            description=(
+                "What each region holds, named by membership. A region not listed is drawn "
+                "empty: its set's name says enough."
+            ),
+        ),
+    ),
     ("scatter",): (
         FieldSpec(
             "axes",
@@ -2452,6 +2536,24 @@ class Category:
 
 
 @dataclass(frozen=True)
+class VennSet:
+    """One set of a `venn`: a circle, its name drawn outside it."""
+
+    id: str
+    text: str
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class Region:
+    """One region of a `venn`, named by exactly the sets it is in."""
+
+    members: tuple[str, ...]
+    text: str
+    role: str = "step"
+
+
+@dataclass(frozen=True)
 class Band:
     """Something that runs alongside a set of boxes rather than containing them.
 
@@ -2655,6 +2757,11 @@ class Document:
     categories: tuple[Category, ...] = ()
     """A `fishbone`'s bones, nearest the head first."""
 
+    venn_sets: tuple[VennSet, ...] = ()
+    """A `venn`'s sets, in the order written: the circles' order is theirs."""
+
+    regions: tuple[Region, ...] = ()
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -2671,6 +2778,7 @@ class Document:
             ("gantt", GANTT_KINDS),
             ("board", BOARD_KINDS),
             ("fishbone", FISHBONE_KINDS),
+            ("venn", VENN_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -2861,6 +2969,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_board_refusal(violation) for violation in found]
     if kind in FISHBONE_KINDS:
         found = [_fishbone_refusal(violation) for violation in found]
+    if kind in VENN_KINDS:
+        found = [_venn_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -2904,6 +3014,11 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
     ("fishbone", "categories"): (
         "Past six bones a fishbone stops being scannable: merge the categories that overlap, "
         "or draw the biggest category as a fishbone of its own."
+    ),
+    ("venn", "sets"): (
+        "No arrangement of four circles shows every region, so a fourth set cannot be drawn "
+        "honestly. Use a `matrix`: the sets as columns, the items as rows, a mark where an "
+        "item belongs."
     ),
     ("categories", "causes"): (
         "Past five causes a bone is a list: keep the ones the investigation turned on, or "
@@ -3044,6 +3159,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _board_violations(document)
     if kind in FISHBONE_KINDS:
         return []
+    if kind in VENN_KINDS:
+        return _venn_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -4507,6 +4624,94 @@ def _fishbone_refusal(violation: Violation) -> Violation:
     return violation
 
 
+#: Why a venn has no place for a field an author may reach for.
+VENN_REFUSED: Final = {
+    "edges": "a Venn diagram has nothing to connect: what relates the sets is their overlap",
+    "subset_of": (
+        "a set wholly inside another is scopes nested inside scopes, which is `rings`; a "
+        "Venn diagram draws sets that overlap"
+    ),
+    "size": (
+        "the circles are equal on purpose: a Venn diagram says what overlaps, not how much. "
+        "A number belongs in the text, or in a `chart`"
+    ),
+    "value": (
+        "the circles are equal on purpose: a Venn diagram says what overlaps, not how much. "
+        "A number belongs in the text, or in a `chart`"
+    ),
+}
+
+
+def _venn_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a venn, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    if name in VENN_REFUSED and "is not a known field" in violation.message:
+        return Violation(violation.pointer, f"{name!r}: {VENN_REFUSED[name]}.")
+    if parts[1:] == ["sets"] and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a Venn diagram needs 2 or 3 sets: one set overlaps nothing. Say what it holds in "
+            "a sentence, or as a list.",
+        )
+    return violation
+
+
+def _venn_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Set ids that are unique, and regions whose memberships land and differ."""
+    found: list[Violation] = []
+    sets: dict[str, int] = {}
+    for index, entry in enumerate(_listed(document, "sets")):
+        identifier = entry.get("id") if isinstance(entry, dict) else None
+        if not isinstance(identifier, str):
+            continue
+        if identifier in sets:
+            found.append(
+                Violation(_pointer("sets", index, "id"), f"duplicate set id {identifier!r}")
+            )
+            continue
+        sets[identifier] = index
+    seen: dict[frozenset[str], int] = {}
+    for index, region in enumerate(_listed(document, "regions")):
+        members = region.get("in") if isinstance(region, dict) else None
+        if not isinstance(members, list) or not all(isinstance(m, str) for m in members):
+            continue
+        named: set[str] = set()
+        landed = True
+        for position, member in enumerate(members):
+            if member not in sets:
+                landed = False
+                found.append(
+                    Violation(
+                        _pointer("regions", index, "in", position),
+                        f"{member!r} is not the id of any set" + _closest(member, sets),
+                    )
+                )
+            elif member in named:
+                landed = False
+                found.append(
+                    Violation(
+                        _pointer("regions", index, "in", position),
+                        f"{member!r} is named twice: `in` lists each set the region is in once.",
+                    )
+                )
+            named.add(member)
+        if not landed or not named:
+            continue
+        key = frozenset(named)
+        if key in seen:
+            found.append(
+                Violation(
+                    _pointer("regions", index, "in"),
+                    f"region {seen[key]} is already the region in exactly these sets. A region "
+                    f"is drawn once: put both texts in one.",
+                )
+            )
+            continue
+        seen[key] = index
+    return found
+
+
 def _is_number(value: object) -> bool:
     return isinstance(value, int | float) and not isinstance(value, bool)
 
@@ -4987,6 +5192,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _board_document(document)
     if kind in FISHBONE_KINDS:
         return _fishbone_document(document)
+    if kind in VENN_KINDS:
+        return _venn_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -5390,6 +5597,32 @@ def _fishbone_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _venn_document(document: Mapping[str, Any]) -> Document:
+    """A venn: its sets in order, and its regions by membership."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        venn_sets=tuple(
+            VennSet(id=entry["id"], text=entry["text"], role=entry.get("role", "step"))
+            for entry in document["sets"]
+        ),
+        regions=tuple(
+            Region(
+                members=tuple(entry["in"]),
+                text=entry["text"],
+                role=entry.get("role", "step"),
+            )
+            for entry in document.get("regions", ())
+        ),
+    )
+
+
 def _hub(entry: Mapping[str, Any] | None) -> Node | None:
     if entry is None:
         return None
@@ -5628,6 +5861,7 @@ __all__ = [
     "MESSAGE_ROLES",
     "OBJECTS",
     "PARTICIPANT_ROLES",
+    "REGION_ROLES",
     "REJECTED_FIELDS",
     "SCHEMA_FILENAME",
     "SCHEMA_ID",
@@ -5636,6 +5870,8 @@ __all__ = [
     "STATES_KINDS",
     "STATE_ROLES",
     "TRANSITION_ROLES",
+    "VENN_KINDS",
+    "VENN_SET_ROLES",
     "Axis",
     "Band",
     "BoardColumn",
@@ -5656,9 +5892,11 @@ __all__ = [
     "Message",
     "Node",
     "Position",
+    "Region",
     "Relation",
     "Series",
     "Slice",
+    "VennSet",
     "Violation",
     "Waypoint",
     "build_schema",

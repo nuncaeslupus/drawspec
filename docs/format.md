@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-22 kinds. The machine-readable form of this page is the published
+23 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone` | **yes** | Which of the twenty-two diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn` | **yes** | Which of the twenty-three diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -189,6 +189,13 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `effect` | [effect object](#effect-object) | **yes** | The observed problem, stated as a fact: drawn in the head box at the end of the spine, always as the diagram's emphasis. |
 | `categories` | array of [category](#category-object), at least 2 | **yes** | The bones, drawn alternately above and below the spine, nearest the head first: the written order is the reading order from the head outwards. |
 
+### `venn`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `sets` | array of [venn-set](#venn-set-object), at least 2 | **yes** | Two or three sets, each a circle of one size with its name outside it. Not sizes: the circles are equal, because a Venn diagram says what overlaps, not how much. |
+| `regions` | array of [region](#region-object) | no | What each region holds, named by membership. A region not listed is drawn empty: its set's name says enough. |
+
 ### `scatter`
 
 | Field | Type | Required | What it is |
@@ -243,6 +250,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `gantt` | 16 `tasks`, 20 `edges`, 4 `marks` |
 | `board` | 6 `columns`, 4 `rows`, 32 `cards`, 8 `cards` per cell |
 | `fishbone` | 6 `categories`, 5 `causes` per category |
+| `venn` | 3 `sets`, 7 `regions` |
 
 ## Emphasis
 
@@ -458,6 +466,22 @@ name, so a misspelt key is an error at the point it was written.
 | `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (blocked, at risk, the one that matters) or `note` (a placeholder or a summary such as `+ 6 more`, drawn lighter and not counted against a limit). |
 | `actor` | string | no | Who holds it — free text, drawn as the card's lead, as in a `flow` box. A card with an actor may not put a newline in `text`. |
 | `note` | string | no | A short aside hung under the card, smaller: `blocked on a decision`. |
+
+### `venn-set` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the sets; what a region's `in` names. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis` (the set the diagram is about), drawn as a heavier outline. |
+
+### `region` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `in` | array of string, at least 1 | **yes** | The ids of exactly the sets this region is in, and no others: `["gdpr"]` is what only that set holds, `["gdpr", "ens"]` what the two share. drawspec knows where that region is. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis` (the region the diagram is about): its words bold and the region filled with the theme's first mark fill. |
 
 ### `effect` object
 

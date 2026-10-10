@@ -148,7 +148,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Twenty-two exist, and they fall into eleven families:
+fields are legal. Twenty-three exist, and they fall into twelve families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -163,6 +163,7 @@ fields are legal. Twenty-two exist, and they fall into eleven families:
 | Plan | `gantt` | Things that take time: one row per task, each an interval, with phases, milestones and what waits on what. |
 | Board | `board` | Things sorted, not joined: cards in columns — a kanban board, a retrospective, a story map sliced into releases. |
 | Cause | `fishbone` | Things that led to one effect: causes by category on bones slanting into a spine — a root-cause (Ishikawa) diagram. |
+| Overlap | `venn` | Things that share: two or three sets as equal circles, each region named by the sets it is in. |
 
 One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see
@@ -1047,6 +1048,50 @@ width works, `FitError` names the longest cause. See
 [`reference/fishbone-late-orders.json`](reference/fishbone-late-orders.json),
 [`reference/fishbone-flaky-ci.json`](reference/fishbone-flaky-ci.json) and
 [`reference/fishbone-signups.json`](reference/fishbone-signups.json).
+
+## A Venn diagram
+
+"What do these share" is a Venn diagram, and with two or three sets it needs no
+coordinates at all: every region is fixed by **which sets it is in**. That is
+`venn`:
+
+```json
+{
+  "version": 1,
+  "kind": "venn",
+  "title": "Two frameworks, one breach",
+  "sets": [
+    {"id": "gdpr", "text": "Data protection regulation"},
+    {"id": "ens", "text": "National security framework"}
+  ],
+  "regions": [
+    {"in": ["gdpr"], "text": "Notify the supervisory authority within 72 h"},
+    {"in": ["ens"], "text": "Report to the national CERT"},
+    {"in": ["gdpr", "ens"], "text": "Keep an incident record", "role": "emphasis"}
+  ]
+}
+```
+
+`in` is the exact list of set ids a region belongs to, and no others: `["gdpr"]`
+is what only that set holds. The circles are equal — two side by side, or three
+in a triangle, their centres a radius apart — and as small as they can be while
+every region's words fit inside their region, clear of every outline. A region
+not listed is drawn empty. Set names are drawn outside, above two circles, or
+above the top one and below the other two of three. Roles: a set's `emphasis`
+draws a heavier outline; a region's `emphasis` sets its words bold and fills the
+region with the theme's first mark fill, along its exact outline.
+
+Refused, each at its pointer: one set, or four or more (no arrangement of four
+circles shows every region — use a `matrix`, sets as columns and items as rows);
+an `in` naming an unknown set, empty, or naming a set twice; the same membership
+twice; `subset_of` (a set inside another is `rings`); `size` or `value` (the
+circles are equal on purpose: a Venn diagram says what overlaps, not how much);
+`edges`. Words too long for their region at the largest size the width allows are
+a `FitError` naming the region. See
+[`reference/venn-frameworks.json`](reference/venn-frameworks.json),
+[`reference/venn-data-roles.json`](reference/venn-data-roles.json),
+[`reference/venn-parity.json`](reference/venn-parity.json) and
+[`reference/venn-telemetry.json`](reference/venn-telemetry.json).
 
 ## Asking for a wide drawing instead of a tall one
 

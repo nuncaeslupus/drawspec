@@ -50,6 +50,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "gantt": "a plan — one row per task, each an interval on a numbered axis; no dates",
     "board": "cards sorted into columns — a kanban board, a retrospective, a story map",
     "fishbone": "one effect and its causes by category — a root-cause (Ishikawa) diagram",
+    "venn": "two or three overlapping sets — what each holds alone, and what they share",
 }
 
 #: The smallest document of each kind that renders.
@@ -271,6 +272,12 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"text": "Code", "causes": [{"text": "No incremental compile"}]},
             {"text": "Machines", "causes": [{"text": "Runners share one disk"}]},
         ],
+    },
+    "venn": {
+        "version": 1,
+        "kind": "venn",
+        "sets": [{"id": "a", "text": "Cats"}, {"id": "b", "text": "Dogs"}],
+        "regions": [{"in": ["a", "b"], "text": "Pets"}],
     },
     "scatter": {
         "version": 1,

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "kind": "venn",
+  "title": "Two frameworks, one breach",
+  "sets": [
+    {"id": "gdpr", "text": "Data protection regulation"},
+    {"id": "ens", "text": "National security framework"}
+  ],
+  "regions": [
+    {"in": ["gdpr"], "text": "Notify the supervisory authority within 72 h"},
+    {"in": ["ens"], "text": "Report to the national CERT"},
+    {"in": ["gdpr", "ens"], "text": "Keep an incident record", "role": "emphasis"}
+  ]
+}

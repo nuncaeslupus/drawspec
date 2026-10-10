@@ -28,7 +28,7 @@ regeneration, `AGENTS.md` row, and tests.
 | 8 | [`gantt.md`](gantt.md) | `gantt`: tasks as intervals, phases, milestones, dependencies — **built** | M | chart axis machinery (exists) |
 | 9 | [`board.md`](board.md) | `board`: kanban, story map, retrospective — **built** | M | — |
 | 10 | [`fishbone.md`](fishbone.md) | `fishbone`: one effect, causes by category — **built** | M | theme `[fishbone] slant` |
-| 11 | [`venn.md`](venn.md) | `venn`: two or three sets, regions named by membership | S | — |
+| 11 | [`venn.md`](venn.md) | `venn`: two or three sets, regions named by membership — **built** | S | — |
 | 12 | [`journey.md`](journey.md) | `journey`: stages, a named-feeling line, detail rows | M | `curve`'s through-every-point spline (exists) |
 | 13 | [`treemap.md`](treemap.md) | `treemap`: one total by area | M | owner decision on scope |
 | 14 | [`sankey.md`](sankey.md) | `sankey`: where a known quantity goes | L | owner decision on scope; crossing reduction from the layered engine |

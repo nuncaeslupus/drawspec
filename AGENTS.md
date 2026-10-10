@@ -21,8 +21,7 @@ No `x`, `y`, `width` on a box, `font_size`, `color`, `stroke`, `points`, `dx`,
 you wrote it. That is not a restriction to work around; it is the whole design.
 If you find yourself wanting a coordinate, the answer is another `kind` or `role`.
 
-You *may* set `width` and `height` at the **top level** — a budget for the whole
-canvas, not for one box.
+You *may* set `width` and `height` at the **top level** — a budget for the whole canvas, not for one box.
 
 ## Every document
 
@@ -78,6 +77,7 @@ Pick by what the reader must **understand**, not by what it looks like.
 | What runs when in a plan, one row per task: overlap, phases, what waits on what | `gantt` | `axis` (numbers in a named unit, or `categories`; no dates) + `tasks` (`start`/`end`, or `at` for a milestone; `strong` on the critical path) (+ `groups` of consecutive tasks, `edges` finish-to-start, `marks`) |
 | Work sorted into columns, not joined: a kanban board, a retrospective, a story map | `board` | `columns` (a `limit` is counted for you) + `cards`, stacked in the order written (+ `rows` as slices, `cut` under the first release); no `edges` |
 | One observed problem and the causes investigated, by category: a root-cause review | `fishbone` | `effect` + 2–6 `categories`, each with 1–5 `causes` (leaves: no third level; `emphasis` = confirmed root cause, `note` = ruled out); no `edges` |
+| What two or three sets share, and what each holds alone | `venn` | `sets` (2 or 3, equal circles; no sizes) + `regions`, each named by `in`: exactly the set ids it is in; a region not listed is empty |
 
 `flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may
 branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring

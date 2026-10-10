@@ -1601,6 +1601,76 @@
         "categories"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "venn",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "venn"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "sets": {
+          "type": "array",
+          "description": "Two or three sets, each a circle of one size with its name outside it. Not sizes: the circles are equal, because a Venn diagram says what overlaps, not how much.",
+          "items": {
+            "$ref": "#/$defs/venn-set"
+          },
+          "minItems": 2
+        },
+        "regions": {
+          "type": "array",
+          "description": "What each region holds, named by membership. A region not listed is drawn empty: its set's name says enough.",
+          "items": {
+            "$ref": "#/$defs/region"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "sets"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -2588,6 +2658,36 @@
       ],
       "additionalProperties": false
     },
+    "region": {
+      "type": "object",
+      "properties": {
+        "in": {
+          "type": "array",
+          "description": "The ids of exactly the sets this region is in, and no others: `[\"gdpr\"]` is what only that set holds, `[\"gdpr\", \"ens\"]` what the two share. drawspec knows where that region is.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default) or `emphasis` (the region the diagram is about): its words bold and the region filled with the theme's first mark fill.",
+          "enum": [
+            "step",
+            "emphasis"
+          ]
+        }
+      },
+      "required": [
+        "in",
+        "text"
+      ],
+      "additionalProperties": false
+    },
     "relation": {
       "type": "object",
       "properties": {
@@ -2913,6 +3013,32 @@
       "required": [
         "from",
         "to"
+      ],
+      "additionalProperties": false
+    },
+    "venn-set": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the sets; what a region's `in` names."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default) or `emphasis` (the set the diagram is about), drawn as a heavier outline.",
+          "enum": [
+            "step",
+            "emphasis"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "text"
       ],
       "additionalProperties": false
     },

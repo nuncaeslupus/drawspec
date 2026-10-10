@@ -12,6 +12,20 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`venn`, the twenty-third kind** — two or three overlapping sets as equal
+  circles (centres a radius apart: side by side, or a triangle), and `regions`
+  named by membership: `in` is exactly the set ids a region is in, so no
+  coordinate is ever written. The circles are as small as they can be, between a
+  floor and what the width allows, while every region's words fit inside their
+  region, clear of every outline; each block is placed where it has the most
+  room, on as few lines as sit comfortably. A region not listed is drawn empty.
+  Set names are outside the circles. Set roles `step` and `emphasis` (a heavier
+  outline); region roles `step` and `emphasis` (bold words, the region filled
+  with the theme's first mark fill along its exact outline). Refused at their
+  pointers: one set or four or more (suggesting a `matrix`), an unknown, empty
+  or repeated `in`, the same membership twice, duplicate set ids, `subset_of`
+  (naming `rings`), `size`/`value`, and `edges`; words that fit no size are a
+  `FitError` naming the region. Budget: 3 sets, 7 regions.
 - **`fishbone`, the twenty-second kind** — a root-cause (Ishikawa) diagram: one
   `effect` in a box at the head of a spine, and 2 to 6 `categories` drawn as bones
   slanting into the spine, alternately above and below, nearest the head first.

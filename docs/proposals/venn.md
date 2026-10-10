@@ -1,7 +1,7 @@
 # Proposal: `venn` — two or three overlapping sets, regions named
 
-Status: **proposed**. Size **S** (two fixed geometries; the work is fitting text into
-regions).
+Status: **implemented** — see *As built* at the end for where it departs from this
+text. Size **S** (two fixed geometries; the work is fitting text into regions).
 
 ## Why
 
@@ -119,3 +119,35 @@ theme's first mark fill, clipped to the intersection — a pattern, so greyscale
   box's corners against each circle, in or out as `in` says).
 * No set name crosses a circle outline.
 * 4 sets → refused with the `matrix` suggestion.
+
+## As built
+
+Built in `kinds/venn.py`, a layout family of its own; the three use cases are
+`docs/reference/venn-frameworks.json`, `venn-data-roles.json` and
+`venn-parity.json`, and `venn-telemetry.json` adds an emphasised set, a code span
+and a caption. Where it departs from the text above:
+
+* **No theme ratio for the overlap.** Both geometries are fixed: centres a radius
+  apart, side by side or at the corners of an equilateral triangle. Each region's
+  capacity follows from the geometry, so a theme that moved the circles would
+  change which documents fit — the same document valid under one theme and a
+  `FitError` under another. Fixed, the overlap is part of the kind.
+* **Placement by room, not precomputed label points.** Each region's points are
+  sampled once per geometry and sorted by depth (distance to the nearest
+  outline). The words are wrapped at every line count; each wrap, fewest lines
+  first, is placed where it has the most room, and the first with a second
+  margin's worth of room to spare wins. The radius is the smallest — between a
+  fifth of the canvas and what its width allows — at which every region has a
+  wrap that fits at all. Fit is checked exactly: every corner inside each circle
+  the region is in, and the block's nearest point outside each circle it is not.
+* **Set names above and below, not at the far side.** For two sets the far side is
+  left and right, which spends the width the circles need; the names go above
+  each circle instead (wrapped to the room beside the other), and for three, above
+  the top circle and below the other two. No name can cross an outline there.
+* **The emphasised region's fill is its exact outline**, traced along the arcs
+  that bound it, rather than a clip: a region polygon filled with the theme's
+  first mark fill and not stroked, so greyscale holds.
+* **Refused by name**: `size` and `value` on a set, beside `subset_of` and
+  `edges`. Region roles are `step` and `emphasis`; set roles the same. The counts
+  live in the readability budget — 3 sets (refused at the fourth with the `matrix`
+  suggestion) and 7 regions.
