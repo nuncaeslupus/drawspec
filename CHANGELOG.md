@@ -27,6 +27,13 @@ against it would stop working. Everything below is about the *package*.
 
 ### Changed
 
+- **`AGENTS.md` routes by purpose.** It opens with *should this be a diagram at
+  all?* (a list is bullets, attributes are a table, one shape is a sentence),
+  chooses the kind from what the reader must understand — including `rise` for
+  a ranking or ascent — and states the readability budget, the emphasis cap and
+  the overview-plus-detail split. The timeline worked example moved out to keep
+  the page under its 200-line limit; the README still carries it.
+
 - `docs/reference/scatter-pareto.json` emphasises two initiatives, not three:
   *Add SSO* had the same impact as *Cache the slow query* at four times the
   cost, so it was not a pick.

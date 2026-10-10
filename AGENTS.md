@@ -44,34 +44,44 @@ completion.
 `text` anywhere carries `**bold**` and `` `code` `` spans, and nothing else. A
 newline in `text` means *this is a lead and a detail*, not one sentence.
 
+## Should this be a diagram at all?
+
+Draw only what a picture says better than prose. Things with no relation
+between them are a bullet list; things with attributes are a table; one shape
+or one step is a sentence. Ask whether a reader learns more from the picture
+than from the paragraph you would otherwise write. If not, write the paragraph.
+
 ## Choosing a kind
 
-Pick by what the diagram **claims**, not by what it looks like.
+Pick by what the reader must **understand**, not by what it looks like.
 
-| Kind | For | Payload |
+| The reader must understand… | Kind | Payload |
 |---|---|---|
-| `flow` | Steps with branching; a process | `nodes` + `edges` |
-| `tree` | A hierarchy; one parent per child | `nodes` + `edges` |
-| `cycle` | A loop that returns where it started | `nodes` + `edges` closing the ring |
-| `stack` | Ordered layers, read down | `items` |
-| `timeline` | Events along time | `items` (+ `spans`) |
-| `columns` | Side-by-side comparison | `items` |
-| `matrix` | Rows against columns | `cells` (+ `rows`, `columns`, `edges`, `key`) |
-| `pyramid` | Levels where size means quantity or rank | `levels` |
-| `rings` | Nested scopes, concentric | `rings` |
-| `funnel` | Narrowing stages, with thresholds between | `stages` |
-| `chart` | A small number you already know | `axes` + `series` |
-| `quadrant` | Items placed against two named axes | `axes` + `positions` |
-| `scatter` | Points placed by two measured values | `axes` + `positions` |
-| `files` | A directory listing, drawn from paths | `entries` (+ `root`, `sort`, `style`) |
-| `curve` | A named shape with labelled waypoints | `axes` + `curves` |
+| How work moves, branches, merges or loops back | `flow` | `nodes` + `edges` |
+| A hierarchy: what belongs to or reports to what | `tree` | `nodes` + `edges` |
+| A loop that returns to where it started | `cycle` | `nodes` + `edges` closing the ring |
+| Layers, each resting on the one below | `stack` | `items` |
+| What happened when | `timeline` | `items` (+ `spans`) |
+| How a few options differ, side by side | `columns` | `items` |
+| A ranking or an ascent, where order is the point | `columns` or `timeline` + `"rise": true` | `items` |
+| How rows relate to columns | `matrix` | `cells` (+ `rows`, `columns`, `edges`, `key`) |
+| Levels where size means quantity or rank | `pyramid` | `levels` |
+| Scopes nested inside scopes | `rings` | `rings` |
+| What is lost between narrowing stages | `funnel` | `stages` |
+| A small number you already know | `chart` | `axes` + `series` |
+| Where items fall against two named judgements | `quadrant` | `axes` + `positions` |
+| Where items fall by two measured values | `scatter` | `axes` + `positions` |
+| The shape of a change: a hype cycle, a burndown | `curve` | `axes` + `curves` |
+| What is in a directory | `files` | `entries` (+ `root`, `sort`, `style`) |
 
 `flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may
 branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring
 through **every** node, and is refused if it does not.
 
-Past its kind's readability budget (a `flow`: 15 nodes, 16 edges) a document is
-refused even though it would fit. Split it into an overview plus detail diagrams.
+**Keep it readable.** Each kind has a budget ([`docs/format.md`](docs/format.md#the-readability-budget);
+a `flow`: 15 nodes, 16 edges). Past it a document is refused even though it
+would fit: split it into an **overview** naming each part once, plus a
+**detail** diagram per part. At most two elements may be `emphasis`.
 
 ## Roles
 
@@ -83,7 +93,6 @@ name either.
 **Edges** — `flow` (default), `link`, `exchange`, `weak`, `owns`, `strong`,
 `aside`.
 
-At most two elements per document may be `emphasis`; a third is refused.
 Use `decision` for a question with branching answers, `note` for an aside that is
 not a step, `link` for a connection with no direction.
 
@@ -113,21 +122,6 @@ A flow — `role` is the only appearance decision in the file:
     {"from": "arrive", "to": "repro"},
     {"from": "repro", "to": "fix", "label": "yes"},
     {"from": "repro", "to": "ask", "label": "no"}
-  ]
-}
-```
-
-A timeline — above the line is what happened, below it is when:
-
-```json
-{
-  "version": 1,
-  "kind": "timeline",
-  "title": "How the work went",
-  "items": [
-    {"text": "Brief", "note": "March"},
-    {"text": "Specification", "note": "April"},
-    {"text": "Plan", "note": "May"}
   ]
 }
 ```
@@ -180,7 +174,9 @@ to do:
 
 - **`DocumentError`** — a field is wrong or an id does not resolve. The message
   carries a JSON pointer (`/edges/2/to`). Fix that path. All violations are
-  reported at once, so read them all before editing.
+  reported at once, so read them all before editing. A budget refusal
+  (`… is past what one flow can be read at`) means split, not trim; an emphasis
+  refusal means give all but one or two their ordinary role.
 - **`FitError`** — the diagram does not fit its width in either direction. Shorten
   the longest label, split the diagram, or raise the top-level `width`. Do **not**
   try to shrink a gap; you cannot, and that is deliberate.

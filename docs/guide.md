@@ -162,7 +162,12 @@ One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see
 what a kind actually looks like before committing a document to it.
 
-Two notes worth having before you pick:
+Two notes worth having before you pick — and one question before both: **should
+this be a diagram at all?** Things with no relation between them are a bullet
+list, things with attributes are a table, and one shape or one step is a
+sentence. A diagram earns its place when a reader learns more from it than from
+the paragraph it replaces. [`AGENTS.md`](../AGENTS.md) carries the same question
+and a table that routes from *what the reader must understand* to the kind.
 
 * **Read what the original is saying, not what it looks like.** A
   shared-responsibility diagram that looks like a grid is usually *how much of

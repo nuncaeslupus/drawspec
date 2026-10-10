@@ -231,9 +231,9 @@ has.
 
 ### If you are an agent, or pointing one here
 
-[**`AGENTS.md`**](AGENTS.md) is the whole format on one page — the rule, the
-fifteen kinds, the roles, worked examples, and what each refusal is telling you
-to do. It is written to be read in a single pass rather than navigated, which is
+[**`AGENTS.md`**](AGENTS.md) is the whole format on one page — whether to draw
+at all, which kind fits what the reader must understand, the readability budget,
+the roles, worked examples, and what each refusal is telling you to do. It is written to be read in a single pass rather than navigated, which is
 what the guide and the references are for. [`llms.txt`](llms.txt) is the index
 that points at it.
 
