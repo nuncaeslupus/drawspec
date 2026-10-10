@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Thirty-two exist, and they fall into twenty-one families:
+fields are legal. Thirty-three exist, and they fall into twenty-two families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -170,6 +170,7 @@ fields are legal. Thirty-two exist, and they fall into twenty-one families:
 | Bridge | `waterfall` | How one total became another: a start total, signed steps floating on the running sum, checked subtotals, an end total — the bridge chart. |
 | Scale | `numberline` | Where values sit on one scale: points and ranges, each end in or out — an inequality, the pH scale, a spectrum. |
 | Topic | `mindmap` | Things round one topic, as peers: a centre and its branches nested three levels deep, on both sides — revision notes, a brainstorm, a plan (a mind map). |
+| Family | `familytree` | Who is whose child and partner: people, couples and their children a generation to a row, in the standard symbols — a family tree, or a pedigree in genetics. |
 | Reasoning | `argument` | Things said for and against a claim: reasons, objections, rebuttals and evidence by stance, co-premises under one bracket (an argument map). |
 
 One worked document per kind lives in [`reference/`](reference), and `make
@@ -1860,6 +1861,80 @@ reason. See [`reference/argument-contract.json`](reference/argument-contract.jso
 [`reference/argument-congestion.json`](reference/argument-congestion.json) (with
 evidence), [`reference/argument-readmissions.json`](reference/argument-readmissions.json)
 and [`reference/argument-homework.json`](reference/argument-homework.json).
+
+## A family tree, or a pedigree
+
+A biology lesson on inheritance, a genetics clinic's letter and a history lesson on a
+dynasty draw the same figure: people, who partnered whom, and the children of each
+couple, a generation to a row. Genetics and medicine call it a **pedigree**; everyone
+else a family tree. A `tree` cannot draw it — a child there has one parent, and a
+partner who married in has none — so it is `familytree`:
+
+```json
+{
+  "version": 1,
+  "kind": "familytree",
+  "title": "A recessive condition skips a generation",
+  "people": [
+    {"id": "gf", "sex": "male"},
+    {"id": "gm", "sex": "female", "status": "carrier"},
+    {"id": "dad", "sex": "male", "status": "carrier"},
+    {"id": "aunt", "sex": "female"},
+    {"id": "mum", "sex": "female", "status": "carrier"},
+    {"id": "c1", "sex": "female"},
+    {"id": "c2", "sex": "male", "status": "affected", "proband": true}
+  ],
+  "couples": [
+    {"between": ["gf", "gm"], "children": ["dad", "aunt"]},
+    {"between": ["dad", "mum"], "children": ["c1", "c2"]}
+  ]
+}
+```
+
+Every person has an `id` and a `sex`, which is the symbol: a square (`male`), a circle
+(`female`) or a diamond (`unknown`). Each couple names its two partners in `between`
+and its `children` in birth order. **Nothing else places anyone**: a child is one row
+below its parents, a partner who married in takes their partner's row, the rows are
+numbered I, II, III at the left and people 1, 2, 3 left to right in each, under the
+symbol — so "II-3" in a letter is a number drawspec keeps right when someone is
+added. `generation` and `number` are refused by name. `text` goes under the number:
+a name, an age, a test result.
+
+**The standard's marks.** `status` is the one trait the tree tracks: `affected` fills
+the symbol, `carrier` draws the theme's carrier mark (`[familytree] carrier`: a dot in
+the middle, the standard's, or `half`, the exam pedigree's half-shaded symbol), and a
+key under the drawing names the ones used — no colour, so greyscale holds. `deceased`
+strokes through the symbol; `proband` (one per tree) is an arrow at the lower left with
+a `P`, `consultand` the arrow alone; `adopted` puts brackets round the symbol and a
+dashed line down to it, from the couple that raised them; `pregnancy: ongoing` writes
+a `P` in it, and `pregnancy: loss` draws a small triangle instead. Under the 2022
+revision of the standard the symbol shows **gender**: write `gender` (`man`, `woman`,
+`nonbinary`) and the shape follows it, with the sex assigned at birth noted under it
+(`AMAB`, `AFAB`) when the two differ.
+
+**Couples.** A couple's line joins the two partners; `consanguineous` doubles it and
+`separated` puts two strokes across it. Children hang from a sibship line under it;
+`twins` (`of` two or three children written together, `zygosity` `monozygotic`,
+`dizygotic` or `unknown`) leave it from one point. A person's couples are their
+partners in marriage order, at most six: two sit one on each side, and past two the
+first is on the left and the rest on the right, the line to each later one running
+over the row on its own level, so none cross.
+
+Refused, each at its pointer: an id that names no one; a couple that is not two
+different people, or a pair written twice; a child of two couples (an adopted child is
+listed once, `adopted`, in the couple that raised them); someone their own ancestor;
+partners whose descent puts them in different rows; a person in no couple, or a second
+family with no couple joining it; past 6 partners, 4 generations or 30 people; past two
+partners, a later one with parents in the tree; two partners who both have other
+partners; twins not written together; a second proband; a pregnancy with partners. **An
+ancestor chart** — one person, their two parents, four grandparents, every couple with
+one child — is a genealogist's *pedigree chart* and a binary tree: it is refused with a
+pointer to `tree`. See [`reference/familytree-cousins.json`](reference/familytree-cousins.json)
+(an exam pedigree, four generations, a consanguineous couple),
+[`reference/familytree-clinic.json`](reference/familytree-clinic.json) (a clinic letter),
+[`reference/familytree-tudors.json`](reference/familytree-tudors.json) (six marriages)
+and [`reference/familytree-reunion.json`](reference/familytree-reunion.json) (remarriage,
+twins, adoption, gender).
 
 ## Asking for a wide drawing instead of a tall one
 

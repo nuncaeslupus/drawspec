@@ -106,7 +106,7 @@ let `on` name a co-premise group (`on: "offer+accept"`, or an `id` on the group)
 refuse it with a message saying to state the hidden premise as a point and object to
 that, which is what A5 itself recommends.
 
-## 5. Family tree / pedigree ([`pedigree.md`](../proposals/pedigree.md))
+## 5. Family tree / pedigree ([`familytree.md`](../proposals/familytree.md))
 
 | # | Source | Term used | What it shows | Size | Proposal |
 |---|---|---|---|---|---|

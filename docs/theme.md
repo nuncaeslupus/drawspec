@@ -289,6 +289,14 @@ How an argument map says which way a point bears: its tag and its fill.
 | `against_tag` | `"but"` | The tag over an `against` point: an objection, and a rebuttal of one. |
 | `against_fill` | `"hatch"` | The pattern an `against` box is filled with; a `for` box is plain. The patterns are drawn faint, so the words over them stay readable. One of `hatch`, `dots`, `cross`, `grid`. |
 
+### `[familytree]`
+
+How a family tree draws its one non-default mark of house style: a carrier.
+
+| Key | Default | What it is |
+|---|---|---|
+| `carrier` | `"dot"` | `dot`, a filled dot in the middle of the symbol (the standard nomenclature's carrier), or `half`, the left half filled (the textbook heterozygote). One of `dot`, `half`. |
+
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The

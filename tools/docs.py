@@ -61,6 +61,7 @@ from drawspec.theme import (
     EDGE_HEADS,
     EDGE_ROLES,
     ENTITIES_NOTATIONS,
+    FAMILYTREE_CARRIERS,
     FILES_ALIGNS,
     FILES_TYPES,
     FILL_PATTERNS,
@@ -84,6 +85,7 @@ from drawspec.theme import (
     CycleStyle,
     EdgeStyle,
     EntitiesStyle,
+    FamilytreeStyle,
     FilesStyle,
     FishboneStyle,
     FitBand,
@@ -543,6 +545,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "pie": PieStyle,
     "mindmap": MindmapStyle,
     "argument": ArgumentStyle,
+    "familytree": FamilytreeStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are
@@ -577,6 +580,7 @@ THEME_VOCABULARIES: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("flow", "polarity"): FLOW_POLARITIES,
     ("pie", "shape"): PIE_SHAPES,
     ("argument", "against_fill"): ARGUMENT_FILLS,
+    ("familytree", "carrier"): FAMILYTREE_CARRIERS,
 }
 
 

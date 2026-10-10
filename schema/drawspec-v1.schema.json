@@ -2418,6 +2418,78 @@
         "points"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "familytree",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "familytree"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "people": {
+          "type": "array",
+          "description": "Everyone in the tree. Generations and numbers are derived: a child is one row below its parents, a partner shares their partner's row, and people are numbered left to right in each row (II-3). At most 30, in 4 generations.",
+          "items": {
+            "$ref": "#/$defs/familytree-person"
+          },
+          "minItems": 2
+        },
+        "couples": {
+          "type": "array",
+          "description": "Who partnered whom, and their children. Everyone is in at least one couple, as a partner or a child.",
+          "items": {
+            "$ref": "#/$defs/familytree-couple"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "people",
+        "couples"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -3175,6 +3247,149 @@
       },
       "required": [
         "path"
+      ],
+      "additionalProperties": false
+    },
+    "familytree-couple": {
+      "type": "object",
+      "properties": {
+        "between": {
+          "type": "array",
+          "description": "The two partners' ids, in either order: drawspec puts them side by side, joined by the partner line. A person's couples are their partners in the order written — marriage order — at most 6.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2
+        },
+        "children": {
+          "type": "array",
+          "description": "Their children's ids, in birth order: left to right under the sibship line. Leave it out for a couple with none.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "twins": {
+          "type": "array",
+          "description": "Children of one birth, each set written next to each other in `children`.",
+          "items": {
+            "$ref": "#/$defs/familytree-twins"
+          }
+        },
+        "separated": {
+          "type": "boolean",
+          "description": "The relationship has ended: two short strokes across the partner line."
+        },
+        "consanguineous": {
+          "type": "boolean",
+          "description": "The partners are related by blood: a double partner line."
+        }
+      },
+      "required": [
+        "between"
+      ],
+      "additionalProperties": false
+    },
+    "familytree-person": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique within the document: what `couples` name."
+        },
+        "sex": {
+          "type": "string",
+          "description": "The symbol: a square (`male`), a circle (`female`) or a diamond (`unknown`), as the standard nomenclature draws them. With `gender`, the symbol shows the gender instead and this is noted under it (`AMAB`, `AFAB`) when the two differ.",
+          "enum": [
+            "male",
+            "female",
+            "unknown"
+          ]
+        },
+        "gender": {
+          "type": "string",
+          "description": "Gender identity, per the 2022 revision of the standard: the symbol becomes a square (`man`), a circle (`woman`) or a diamond (`nonbinary`), and `sex` is the sex assigned at birth, written under it when it differs. Leave it out and the symbol follows `sex`.",
+          "enum": [
+            "man",
+            "woman",
+            "nonbinary"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "description": "The name, or an age or a test result, under the symbol and its number. A newline makes it a lead and a detail, as anywhere: a name over the years."
+        },
+        "status": {
+          "type": "string",
+          "description": "The one trait the tree tracks: `affected` (the symbol filled), `carrier` (the theme's carrier mark: a dot in the middle, or the left half filled) or `unaffected` (the default: empty). Told apart without colour; a key under the drawing names the ones used.",
+          "enum": [
+            "affected",
+            "carrier",
+            "unaffected"
+          ]
+        },
+        "deceased": {
+          "type": "boolean",
+          "description": "A diagonal stroke through the symbol. An age or year goes in `text`."
+        },
+        "proband": {
+          "type": "boolean",
+          "description": "The affected person through whom the family came to attention: an arrow at the lower left with a `P`. One per tree."
+        },
+        "consultand": {
+          "type": "boolean",
+          "description": "The person asking for advice or testing: the arrow without the `P`. May be the proband too."
+        },
+        "adopted": {
+          "type": "boolean",
+          "description": "Adopted into the couple whose `children` list them: brackets round the symbol and a dashed line down from the sibship line. A child is listed once, in the couple that raised them."
+        },
+        "pregnancy": {
+          "type": "string",
+          "description": "`ongoing`: a `P` in the symbol (the weeks go in `text`); `loss`: a small triangle in place of the symbol, shaded when `affected`. Either is a child only: no partners.",
+          "enum": [
+            "ongoing",
+            "loss"
+          ]
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default) or `emphasis`: the person the figure is about when there is no proband — a heavier symbol and a bold name.",
+          "enum": [
+            "step",
+            "emphasis"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "sex"
+      ],
+      "additionalProperties": false
+    },
+    "familytree-twins": {
+      "type": "object",
+      "properties": {
+        "of": {
+          "type": "array",
+          "description": "Two or three of the couple's children, next to each other in `children`: drawn from one point on the sibship line.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2
+        },
+        "zygosity": {
+          "type": "string",
+          "description": "`monozygotic` (identical: a bar joins their lines), `dizygotic` (fraternal) or `unknown` (a `?` between them).",
+          "enum": [
+            "monozygotic",
+            "dizygotic",
+            "unknown"
+          ]
+        }
+      },
+      "required": [
+        "of",
+        "zygosity"
       ],
       "additionalProperties": false
     },

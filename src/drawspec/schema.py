@@ -452,6 +452,40 @@ ARGUMENT_POINT_MAX: Final = 15
 ARGUMENT_DEPTH_MAX: Final = 4
 ARGUMENT_GROUP_MAX: Final = 4
 
+#: Family trees (pedigrees, in genetics and medicine): people, the couples they
+#: form and the children of each couple, a generation to a row. A layout family
+#: of its own: a child hangs from a couple, not a person, and partners share a row.
+FAMILYTREE_KINDS: Final = ("familytree",)
+
+#: What a person's symbol is: square, circle or diamond. Under the 2022 revision
+#: of the standard nomenclature the shape shows gender when `gender` is written,
+#: and `sex` becomes the note under it; without `gender` it is the shape.
+FAMILYTREE_SEXES: Final = ("male", "female", "unknown")
+FAMILYTREE_GENDERS: Final = ("man", "woman", "nonbinary")
+
+#: The one trait a family tree tracks: shaded in full, the theme's carrier mark,
+#: or empty. A tree of two conditions is two trees.
+FAMILYTREE_STATUSES: Final = ("affected", "carrier", "unaffected")
+
+#: A pregnancy, drawn in the symbol (`P`), or a pregnancy loss: a small triangle.
+FAMILYTREE_PREGNANCIES: Final = ("ongoing", "loss")
+
+#: Twins come from one point on the sibship line; identical twins have a bar
+#: between their two lines, and twins of unknown zygosity a `?`.
+FAMILYTREE_ZYGOSITIES: Final = ("monozygotic", "dizygotic", "unknown")
+
+#: The roles a person may take: the default, and the person the figure is about.
+FAMILYTREE_ROLES: Final = ("step", "emphasis")
+
+#: The most people; the most generations; the most partners one person may have
+#: (Henry VIII's six, the corpus's F1); and the most children of one birth. The
+#: clinical and exam pedigrees of the corpus (F5, F7) hold ten to twenty people in
+#: three generations; a royal tree (F4) about thirty in four.
+FAMILYTREE_PEOPLE_MAX: Final = 30
+FAMILYTREE_GENERATION_MAX: Final = 4
+FAMILYTREE_PARTNER_MAX: Final = 6
+FAMILYTREE_TWIN_MAX: Final = 3
+
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
 #: into each other at the canvas width.
 NUMBERLINE_TICK_MAX: Final = 30
@@ -520,6 +554,8 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: round it — a `tree` is ranked from a root at one edge, which says *first*.
 #: `argument` is the nineteenth: a claim and the points for and against it — a
 #: `tree` cannot say which way a box bears, or that two reasons count only together.
+#: `familytree` is the twentieth: people, couples and children by generation — a
+#: `tree` gives a child one parent, and a married-in partner none.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -543,6 +579,7 @@ KINDS: Final = (
     + PIE_KINDS
     + MINDMAP_KINDS
     + ARGUMENT_KINDS
+    + FAMILYTREE_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -665,6 +702,9 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # Set by the corpus: argument maps in study guides hold about a dozen boxes.
     # The depth (4) and a co-premise group's size (4) are checked with the points.
     "argument": (("points", ARGUMENT_POINT_MAX),),  # [7]
+    # Set by the corpus: clinical pedigrees hold ten to twenty people, a royal tree
+    # about thirty. Generations (4) and partners (6) are checked with the couples.
+    "familytree": (("people", FAMILYTREE_PEOPLE_MAX),),  # [16]
 }
 
 
@@ -2005,6 +2045,176 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "familytree-person": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique within the document: what `couples` name.",
+        ),
+        FieldSpec(
+            "sex",
+            "string",
+            required=True,
+            enum=FAMILYTREE_SEXES,
+            missing=(
+                "'sex' is required: it is the symbol, a square (`male`), a circle (`female`) "
+                "or a diamond (`unknown`). Write `unknown` when it is not known or not said."
+            ),
+            description=(
+                "The symbol: a square (`male`), a circle (`female`) or a diamond (`unknown`), "
+                "as the standard nomenclature draws them. With `gender`, the symbol shows the "
+                "gender instead and this is noted under it (`AMAB`, `AFAB`) when the two differ."
+            ),
+        ),
+        FieldSpec(
+            "gender",
+            "string",
+            enum=FAMILYTREE_GENDERS,
+            description=(
+                "Gender identity, per the 2022 revision of the standard: the symbol becomes "
+                "a square (`man`), a circle (`woman`) or a diamond (`nonbinary`), and `sex` is "
+                "the sex assigned at birth, written under it when it differs. Leave it out "
+                "and the symbol follows `sex`."
+            ),
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description=(
+                "The name, or an age or a test result, under the symbol and its number. A "
+                "newline makes it a lead and a detail, as anywhere: a name over the years."
+            ),
+        ),
+        FieldSpec(
+            "status",
+            "string",
+            enum=FAMILYTREE_STATUSES,
+            description=(
+                "The one trait the tree tracks: `affected` (the symbol filled), `carrier` (the "
+                "theme's carrier mark: a dot in the middle, or the left half filled) or "
+                "`unaffected` (the default: empty). Told apart without colour; a key under "
+                "the drawing names the ones used."
+            ),
+        ),
+        FieldSpec(
+            "deceased",
+            "boolean",
+            description="A diagonal stroke through the symbol. An age or year goes in `text`.",
+        ),
+        FieldSpec(
+            "proband",
+            "boolean",
+            description=(
+                "The affected person through whom the family came to attention: an arrow at "
+                "the lower left with a `P`. One per tree."
+            ),
+        ),
+        FieldSpec(
+            "consultand",
+            "boolean",
+            description=(
+                "The person asking for advice or testing: the arrow without the `P`. May be "
+                "the proband too."
+            ),
+        ),
+        FieldSpec(
+            "adopted",
+            "boolean",
+            description=(
+                "Adopted into the couple whose `children` list them: brackets round the "
+                "symbol and a dashed line down from the sibship line. A child is listed "
+                "once, in the couple that raised them."
+            ),
+        ),
+        FieldSpec(
+            "pregnancy",
+            "string",
+            enum=FAMILYTREE_PREGNANCIES,
+            description=(
+                "`ongoing`: a `P` in the symbol (the weeks go in `text`); `loss`: a small "
+                "triangle in place of the symbol, shaded when `affected`. Either is a child "
+                "only: no partners."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=FAMILYTREE_ROLES,
+            description=(
+                "`step` (the default) or `emphasis`: the person the figure is about when "
+                "there is no proband — a heavier symbol and a bold name."
+            ),
+        ),
+    ),
+    "familytree-couple": (
+        FieldSpec(
+            "between",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=2,
+            description=(
+                "The two partners' ids, in either order: drawspec puts them side by side, "
+                "joined by the partner line. A person's couples are their partners in the "
+                "order written — marriage order — at most 6."
+            ),
+        ),
+        FieldSpec(
+            "children",
+            "array",
+            item_kind="string",
+            description=(
+                "Their children's ids, in birth order: left to right under the sibship line. "
+                "Leave it out for a couple with none."
+            ),
+        ),
+        FieldSpec(
+            "twins",
+            "array",
+            item_ref="familytree-twins",
+            description=(
+                "Children of one birth, each set written next to each other in `children`."
+            ),
+        ),
+        FieldSpec(
+            "separated",
+            "boolean",
+            description="The relationship has ended: two short strokes across the partner line.",
+        ),
+        FieldSpec(
+            "consanguineous",
+            "boolean",
+            description="The partners are related by blood: a double partner line.",
+        ),
+    ),
+    "familytree-twins": (
+        FieldSpec(
+            "of",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=2,
+            description=(
+                "Two or three of the couple's children, next to each other in `children`: "
+                "drawn from one point on the sibship line."
+            ),
+        ),
+        FieldSpec(
+            "zygosity",
+            "string",
+            required=True,
+            enum=FAMILYTREE_ZYGOSITIES,
+            missing=(
+                "'zygosity' is required: `monozygotic` (identical: a bar joins their lines), "
+                "`dizygotic` (fraternal) or `unknown` (a `?` between them)."
+            ),
+            description=(
+                "`monozygotic` (identical: a bar joins their lines), `dizygotic` (fraternal) "
+                "or `unknown` (a `?` between them)."
+            ),
+        ),
+    ),
     "mindmap-branch": (
         _text(),
         FieldSpec(
@@ -2421,7 +2631,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the thirty-two diagrams this is. It selects the fields that are "
+            "Which of the thirty-three diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -3259,6 +3469,31 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    FAMILYTREE_KINDS: (
+        FieldSpec(
+            "people",
+            "array",
+            required=True,
+            item_ref="familytree-person",
+            min_items=2,
+            description=(
+                "Everyone in the tree. Generations and numbers are derived: a child is one "
+                "row below its parents, a partner shares their partner's row, and people "
+                "are numbered left to right in each row (II-3). At most 30, in 4 generations."
+            ),
+        ),
+        FieldSpec(
+            "couples",
+            "array",
+            required=True,
+            item_ref="familytree-couple",
+            min_items=1,
+            description=(
+                "Who partnered whom, and their children. Everyone is in at least one couple, "
+                "as a partner or a child."
+            ),
+        ),
+    ),
     MINDMAP_KINDS: (
         FieldSpec(
             "centre",
@@ -3771,6 +4006,42 @@ class WaterfallBar:
 
 
 @dataclass(frozen=True)
+class FamilyPerson:
+    """One person in a `familytree`."""
+
+    id: str
+    sex: str
+    gender: str = ""
+    text: str = ""
+    status: str = "unaffected"
+    deceased: bool = False
+    proband: bool = False
+    consultand: bool = False
+    adopted: bool = False
+    pregnancy: str = ""
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class FamilyTwins:
+    """Children of one birth, in birth order."""
+
+    of: tuple[str, ...]
+    zygosity: str
+
+
+@dataclass(frozen=True)
+class FamilyCouple:
+    """Two partners and their children, in birth order."""
+
+    between: tuple[str, str]
+    children: tuple[str, ...] = ()
+    twins: tuple[FamilyTwins, ...] = ()
+    separated: bool = False
+    consanguineous: bool = False
+
+
+@dataclass(frozen=True)
 class ArgumentPoint:
     """One point of an `argument`: a box bearing for or against another."""
 
@@ -4081,6 +4352,12 @@ class Document:
     points: tuple[ArgumentPoint, ...] = ()
     """An `argument`'s points, in the order written."""
 
+    people: tuple[FamilyPerson, ...] = ()
+    """A `familytree`'s people, in the order written."""
+
+    couples: tuple[FamilyCouple, ...] = ()
+    """A `familytree`'s couples, in the order written: each person's in marriage order."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -4107,6 +4384,7 @@ class Document:
             ("pie", PIE_KINDS),
             ("mindmap", MINDMAP_KINDS),
             ("argument", ARGUMENT_KINDS),
+            ("familytree", FAMILYTREE_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -4317,6 +4595,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_mindmap_refusal(violation) for violation in found]
     if kind in ARGUMENT_KINDS:
         found = [_argument_refusal(violation, document) for violation in found]
+    if kind in FAMILYTREE_KINDS:
+        found = [_familytree_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -4369,6 +4649,10 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
         "Past fifteen points an argument map is searched, not read. Split it: an overview "
         "with the claim and the top-level reasons and objections, and a map per contested "
         "reason, with that reason as its claim."
+    ),
+    ("familytree", "people"): (
+        "Past thirty people a family tree is searched, not read. Split it by branch: one "
+        "tree per side of the family, each naming where it joins the other in a `caption`."
     ),
     ("mindmap", "branches"): (
         "Past eight main branches they stop reading as peers round one centre. Group the "
@@ -4627,6 +4911,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _mindmap_violations(document)
     if kind in ARGUMENT_KINDS:
         return _argument_violations(document)
+    if kind in FAMILYTREE_KINDS:
+        return _familytree_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -7546,6 +7832,461 @@ def _argument_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a family tree has no place for a field an author may reach for.
+FAMILYTREE_REFUSED: Final = {
+    "edges": "a family tree's lines are its `couples`: partners, and the children of each",
+    "nodes": "a family tree's symbols are its `people`",
+    "groups": "a family's branches are drawn from its `couples`; split a tree by branch instead",
+    "generation": (
+        "generations are derived: a child is one row below its parents' couple, a partner "
+        "shares their partner's row"
+    ),
+    "number": "people are numbered for you, left to right in each generation (II-3)",
+    "parents": "a person's parents are the couple whose `children` list them",
+    "children": "a person's children are listed on the couple they had them with, in `couples`",
+    "partner": "partners are a couple: `couples: [{between: [a, b]}]`, in marriage order",
+    "partners": "partners are couples: one `{between: [a, b]}` per partner, in marriage order",
+    "spouse": "partners are a couple: `couples: [{between: [a, b]}]`",
+    "twin": "twins are written on their parents' couple: `twins: [{of: [a, b], zygosity}]`",
+    "ancestors": (
+        "a family tree draws couples and all their children; a chart of one person's "
+        "ancestors only is a binary tree — draw it as a `tree`"
+    ),
+}
+
+
+def _familytree_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a family tree, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    if "is not a known field" in violation.message and name in FAMILYTREE_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {FAMILYTREE_REFUSED[name]}.")
+    if name == "role" and "is not one of" in violation.message:
+        return Violation(
+            violation.pointer,
+            violation.message.split(".")[0]
+            + ". A person's shape is their `sex` and their shading their `status`; `role` is "
+            "`step`, or `emphasis` for the person the figure is about.",
+        )
+    if name == "status" and "is not one of" in violation.message:
+        return Violation(
+            violation.pointer,
+            violation.message.split(".")[0]
+            + ". A family tree tracks one trait; a second condition is a second tree. A "
+            "pregnancy loss is `pregnancy: loss`, and death is `deceased`.",
+        )
+    return violation
+
+
+def _familytree_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Ids that resolve, one set of parents each, rows that agree, and one family."""
+    found: list[Violation] = []
+    people = [
+        (index, entry)
+        for index, entry in enumerate(_listed(document, "people"))
+        if isinstance(entry, dict)
+    ]
+    ids: dict[str, int] = {}
+    for index, entry in people:
+        name = entry.get("id")
+        text = entry.get("text")
+        if isinstance(text, str) and not text.strip():
+            found.append(
+                Violation(
+                    _pointer("people", index, "text"),
+                    "an empty name: leave `text` out for a person drawn by number only.",
+                )
+            )
+        if not isinstance(name, str):
+            continue
+        if name in ids:
+            found.append(
+                Violation(
+                    _pointer("people", index, "id"),
+                    f"{name!r} is already the id of person {ids[name]}: ids are unique.",
+                )
+            )
+        else:
+            ids[name] = index
+    person = {name: dict(people)[index] for name, index in ids.items()}
+
+    probands = [index for index, entry in people if entry.get("proband") is True]
+    for index in probands[1:]:
+        found.append(
+            Violation(
+                _pointer("people", index, "proband"),
+                f"a family tree has one proband, and person {probands[0]} is already it. "
+                f"Anyone else who asked for advice or testing is a `consultand`.",
+            )
+        )
+    for index, entry in people:
+        pregnancy = entry.get("pregnancy")
+        if pregnancy == "loss" and entry.get("deceased") is True:
+            found.append(
+                Violation(
+                    _pointer("people", index, "deceased"),
+                    "a pregnancy loss is its own symbol, a small triangle; `deceased` is for "
+                    "someone who was born.",
+                )
+            )
+        if pregnancy == "ongoing" and entry.get("status") in ("affected", "carrier"):
+            found.append(
+                Violation(
+                    _pointer("people", index, "status"),
+                    "an ongoing pregnancy carries a `P` in its symbol, so it is not shaded: "
+                    "write a prenatal result in `text`.",
+                )
+            )
+
+    # Couples: two known, distinct partners; known children, each with one set of
+    # parents; twins next to each other among them.
+    couples = [
+        (index, entry)
+        for index, entry in enumerate(_listed(document, "couples"))
+        if isinstance(entry, dict)
+    ]
+    pairs: dict[frozenset[str], int] = {}
+    partners: dict[str, list[tuple[int, str]]] = {name: [] for name in ids}
+    parents_of: dict[str, int] = {}
+    valid: list[tuple[int, tuple[str, str], list[str]]] = []
+    # Everyone a couple names, valid or not: a refused couple is reported once, not
+    # again as people in no couple.
+    mentioned: set[object] = set()
+    for _, entry in couples:
+        for field_name in ("between", "children"):
+            listed = entry.get(field_name)
+            if isinstance(listed, list):
+                mentioned.update(each for each in listed if isinstance(each, str))
+    for index, entry in couples:
+        between = entry.get("between")
+        where = _pointer("couples", index, "between")
+        if not isinstance(between, list):
+            continue
+        if len(between) != 2:
+            if len(between) > 2:
+                found.append(
+                    Violation(
+                        where,
+                        f"a couple is two people, and this names {len(between)}. A person with "
+                        f"several partners is in one couple per partner, in marriage order.",
+                    )
+                )
+            continue
+        names = [name for name in between if isinstance(name, str)]
+        if len(names) != 2:
+            continue
+        bad = False
+        for position, name in enumerate(names):
+            if name not in ids:
+                found.append(
+                    Violation(
+                        _pointer("couples", index, "between", position),
+                        f"{name!r} is not the id of a person. Known ids: "
+                        f"{', '.join(sorted(ids)) or 'none'}.",
+                    )
+                )
+                bad = True
+        if bad:
+            continue
+        if names[0] == names[1]:
+            found.append(
+                Violation(where, f"a couple is two people; this names {names[0]!r} twice.")
+            )
+            continue
+        key = frozenset(names)
+        if key in pairs:
+            found.append(
+                Violation(
+                    where,
+                    f"{names[0]!r} and {names[1]!r} are already couple {pairs[key]}: list all "
+                    f"their children there.",
+                )
+            )
+            continue
+        pairs[key] = index
+        for name in names:
+            if person[name].get("pregnancy") in FAMILYTREE_PREGNANCIES:
+                found.append(
+                    Violation(
+                        where,
+                        f"{name!r} is a pregnancy, which is drawn as a child only: it has no "
+                        f"partners.",
+                    )
+                )
+                bad = True
+        if bad:
+            continue
+        for name in names:
+            partners[name].append((index, names[1] if name == names[0] else names[0]))
+        kids: list[str] = []
+        children = entry.get("children")
+        for position, child in enumerate(children if isinstance(children, list) else []):
+            if not isinstance(child, str):
+                continue
+            here = _pointer("couples", index, "children", position)
+            if child not in ids:
+                found.append(
+                    Violation(
+                        here,
+                        f"{child!r} is not the id of a person. Known ids: "
+                        f"{', '.join(sorted(ids)) or 'none'}.",
+                    )
+                )
+            elif child in names:
+                found.append(
+                    Violation(here, f"{child!r} is a partner in this couple, not a child.")
+                )
+            elif child in kids:
+                found.append(Violation(here, f"{child!r} is already a child of this couple."))
+            elif child in parents_of:
+                found.append(
+                    Violation(
+                        here,
+                        f"{child!r} is already a child of couple {parents_of[child]}: a person "
+                        f"has one set of parents. An adopted child is listed once, in the couple "
+                        f"that raised them, with `adopted: true`.",
+                    )
+                )
+            else:
+                parents_of[child] = index
+                kids.append(child)
+        twinned: set[str] = set()
+        twins = entry.get("twins")
+        for position, birth in enumerate(twins if isinstance(twins, list) else []):
+            members = birth.get("of") if isinstance(birth, dict) else None
+            if not isinstance(members, list):
+                continue
+            here = _pointer("couples", index, "twins", position, "of")
+            named = [member for member in members if isinstance(member, str)]
+            if len(named) > FAMILYTREE_TWIN_MAX:
+                found.append(
+                    Violation(
+                        here,
+                        f"{len(named)} children of one birth, and a tree draws "
+                        f"{FAMILYTREE_TWIN_MAX} at most from one point. Write the number in a "
+                        f"`caption`, and the children as ordinary siblings.",
+                    )
+                )
+                continue
+            strays = [member for member in named if member not in kids]
+            if strays:
+                found.append(
+                    Violation(
+                        here,
+                        f"{strays[0]!r} is not one of this couple's `children`: twins are "
+                        f"children of the couple they are written on.",
+                    )
+                )
+                continue
+            if len(set(named)) != len(named) or twinned & set(named):
+                found.append(
+                    Violation(here, "a child is in one set of twins, and named once in it.")
+                )
+                continue
+            places = sorted(kids.index(member) for member in named)
+            if places != list(range(places[0], places[0] + len(places))):
+                found.append(
+                    Violation(
+                        here,
+                        f"twins {', '.join(repr(member) for member in named)} are not next to "
+                        f"each other in `children`: children of one birth are drawn from one "
+                        f"point, so write them together.",
+                    )
+                )
+                continue
+            twinned.update(named)
+        valid.append((index, (names[0], names[1]), kids))
+
+    for name, mine in partners.items():
+        for index, _ in mine[FAMILYTREE_PARTNER_MAX:]:
+            found.append(
+                Violation(
+                    _pointer("couples", index, "between"),
+                    f"{name!r} is in {len(mine)} couples, past what one row can draw — "
+                    f"{FAMILYTREE_PARTNER_MAX} partners at most. Draw the later partners' "
+                    f"families as a tree of their own.",
+                )
+            )
+    for name, index in ids.items():
+        entry = person[name]
+        if entry.get("adopted") is True and name not in parents_of:
+            found.append(
+                Violation(
+                    _pointer("people", index, "adopted"),
+                    f"{name!r} is adopted, but no couple lists them among its `children`: "
+                    f"list them in the couple that raised them.",
+                )
+            )
+        if name not in mentioned:
+            found.append(
+                Violation(
+                    _pointer("people", index),
+                    f"{name!r} is in no couple, as a partner or a child, so nothing places "
+                    f"them in the tree.",
+                )
+            )
+    if found:
+        return found
+
+    # Descent goes one way: nobody is their own ancestor.
+    below: dict[str, list[str]] = {name: [] for name in ids}
+    for _, pair, kids in valid:
+        for parent in pair:
+            below[parent].extend(kids)
+    state: dict[str, int] = {}
+
+    def cycle(name: str, trail: list[str]) -> list[str] | None:
+        state[name] = 1
+        for child in below[name]:
+            if state.get(child) == 1:
+                return [*trail, name, child]
+            if child not in state:
+                looped = cycle(child, [*trail, name])
+                if looped:
+                    return looped
+        state[name] = 2
+        return None
+
+    for name in ids:
+        if name not in state:
+            looped = cycle(name, [])
+            if looped:
+                begin = looped.index(looped[-1])
+                return [
+                    Violation(
+                        _pointer("couples", parents_of[looped[-1]], "children"),
+                        f"descent goes round in a circle ({' -> '.join(looped[begin:])}): "
+                        f"nobody is their own ancestor.",
+                    )
+                ]
+
+    # Generations: partners share a row, a child is one row below its couple.
+    generation: dict[str, int] = {}
+    links: dict[str, list[tuple[str, int, int]]] = {name: [] for name in ids}
+    for index, pair, kids in valid:
+        links[pair[0]].append((pair[1], 0, index))
+        links[pair[1]].append((pair[0], 0, index))
+        for child in kids:
+            for parent in pair:
+                links[parent].append((child, 1, index))
+                links[child].append((parent, -1, index))
+    families = 0
+    for start in ids:
+        if start in generation:
+            continue
+        families += 1
+        if families > 1:
+            return [
+                Violation(
+                    _pointer("people", ids[start]),
+                    f"{start!r} is not related to {next(iter(ids))!r} through any couple: one "
+                    f"family tree is one family. Draw the other family as a tree of its own.",
+                )
+            ]
+        generation[start] = 0
+        # Parents and children first, partners only when nothing else is left: so
+        # a contradiction surfaces at the couple whose partners cannot share a row.
+        queue = [start]
+        later: list[tuple[str, str, int]] = []
+        while queue or later:
+            if not queue:
+                current, other, index = later.pop(0)
+                if other not in generation:
+                    generation[other] = generation[current]
+                    queue.append(other)
+                elif generation[other] != generation[current]:
+                    return [
+                        Violation(
+                            _pointer("couples", index, "between"),
+                            f"{current!r} and {other!r} are partners, but their descent puts "
+                            f"them {abs(generation[other] - generation[current])} generation(s) "
+                            f"apart, and partners share a row. A family where they cannot is "
+                            f"drawn as two trees.",
+                        )
+                    ]
+                continue
+            current = queue.pop(0)
+            for other, step, index in links[current]:
+                if step == 0:
+                    later.append((current, other, index))
+                    continue
+                expected = generation[current] + step
+                if other not in generation:
+                    generation[other] = expected
+                    queue.append(other)
+                elif generation[other] != expected:
+                    return [
+                        Violation(
+                            _pointer("couples", index, "children"),
+                            f"the generations of couple {index} disagree with the rest of the "
+                            f"tree: partners share a row and a child is one row below its "
+                            f"parents, and no rows satisfy both here.",
+                        )
+                    ]
+    low = min(generation.values())
+    rows = max(generation.values()) - low + 1
+    if rows > FAMILYTREE_GENERATION_MAX:
+        deepest = next(name for name in ids if generation[name] - low == FAMILYTREE_GENERATION_MAX)
+        found.append(
+            Violation(
+                _pointer("people", ids[deepest]),
+                f"the tree spans {rows} generations, past what one family tree can be read at "
+                f"— {FAMILYTREE_GENERATION_MAX} at most. Split it: the older generations as one "
+                f"tree, and each branch below as a tree of its own.",
+            )
+        )
+
+    # A row draws one person's partners beside them; a partner of theirs with
+    # partners of their own would need a second row.
+    for name, mine in partners.items():
+        if len(mine) < 2:
+            continue
+        for index, other in mine:
+            if len(partners[other]) > 1:
+                found.append(
+                    Violation(
+                        _pointer("couples", index, "between"),
+                        f"{name!r} and {other!r} both have other partners, and a row draws one "
+                        f"person's partners beside them. Leave one of the earlier couples out, "
+                        f"or draw it as a tree of its own.",
+                    )
+                )
+                return found
+        if len(mine) > 2:
+            for index, other in mine[1:]:
+                if other in parents_of:
+                    found.append(
+                        Violation(
+                            _pointer("couples", index, "between"),
+                            f"{other!r} is {name!r}'s partner number "
+                            f"{mine.index((index, other)) + 1}, "
+                            f"and has parents in the tree. Past two partners, the line to each "
+                            f"later one runs over the row, so only the first partner's family "
+                            f"can be drawn above. Draw {other!r}'s family as a tree of its own.",
+                        )
+                    )
+
+    # An ancestor chart — a person, their parents, their four grandparents — is a
+    # binary tree, not a family: every couple has one child, and couples marry
+    # into each other from both sides.
+    if (
+        rows >= 3
+        and len(valid) >= 3
+        and all(len(kids) == 1 for _, _, kids in valid)
+        and any(all(parent in parents_of for parent in pair) for _, pair, _ in valid)
+    ):
+        found.append(
+            Violation(
+                "/couples",
+                "every couple here has one child, and partners come from both sides: this is "
+                "an ancestor chart (a genealogist's pedigree chart), one person and their "
+                "forebears. That is a binary tree, so draw it as a `tree`. A family tree draws "
+                "couples and all their children.",
+            )
+        )
+    return found
+
+
 #: Why a mind map has no place for a field an author may reach for.
 MINDMAP_REFUSED: Final = {
     "edges": (
@@ -8282,6 +9023,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _mindmap_document(document)
     if kind in ARGUMENT_KINDS:
         return _argument_document(document)
+    if kind in FAMILYTREE_KINDS:
+        return _familytree_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -8914,6 +9657,52 @@ def _waterfall_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _familytree_document(document: Mapping[str, Any]) -> Document:
+    """A family tree: its people and its couples, in the order written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        people=tuple(
+            FamilyPerson(
+                id=str(person["id"]),
+                sex=str(person["sex"]),
+                gender=str(person.get("gender", "")),
+                text=str(person.get("text", "")),
+                status=str(person.get("status", "unaffected")),
+                deceased=bool(person.get("deceased", False)),
+                proband=bool(person.get("proband", False)),
+                consultand=bool(person.get("consultand", False)),
+                adopted=bool(person.get("adopted", False)),
+                pregnancy=str(person.get("pregnancy", "")),
+                role=str(person.get("role", "step")),
+            )
+            for person in document["people"]
+        ),
+        couples=tuple(
+            FamilyCouple(
+                between=(str(couple["between"][0]), str(couple["between"][1])),
+                children=tuple(str(child) for child in couple.get("children", ())),
+                twins=tuple(
+                    FamilyTwins(
+                        of=tuple(str(each) for each in twins["of"]),
+                        zygosity=str(twins["zygosity"]),
+                    )
+                    for twins in couple.get("twins", ())
+                ),
+                separated=bool(couple.get("separated", False)),
+                consanguineous=bool(couple.get("consanguineous", False)),
+            )
+            for couple in document["couples"]
+        ),
+    )
+
+
 def _argument_document(document: Mapping[str, Any]) -> Document:
     """An argument map: its claim and its points, in the order written."""
     return Document(
@@ -9237,6 +10026,17 @@ __all__ = [
     "ENTITIES_KINDS",
     "ENTITY_EDGE_ROLES",
     "ENTITY_ROLES",
+    "FAMILYTREE_GENDERS",
+    "FAMILYTREE_GENERATION_MAX",
+    "FAMILYTREE_KINDS",
+    "FAMILYTREE_PARTNER_MAX",
+    "FAMILYTREE_PEOPLE_MAX",
+    "FAMILYTREE_PREGNANCIES",
+    "FAMILYTREE_ROLES",
+    "FAMILYTREE_SEXES",
+    "FAMILYTREE_STATUSES",
+    "FAMILYTREE_TWIN_MAX",
+    "FAMILYTREE_ZYGOSITIES",
     "FIELD_KEYS",
     "FISHBONE_CATEGORY_MAX",
     "FISHBONE_CAUSE_MAX",
@@ -9314,6 +10114,9 @@ __all__ = [
     "Edge",
     "Entity",
     "EntityField",
+    "FamilyCouple",
+    "FamilyPerson",
+    "FamilyTwins",
     "FieldSpec",
     "Fragment",
     "Group",

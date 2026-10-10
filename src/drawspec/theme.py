@@ -1478,6 +1478,33 @@ class ArgumentStyle:
         )
 
 
+#: How a family tree marks a carrier: the standard's dot in the middle of the
+#: symbol, or the left half filled, as exam pedigrees draw a heterozygote.
+FAMILYTREE_CARRIERS: Final = ("dot", "half")
+
+
+@dataclass(frozen=True)
+class FamilytreeStyle:
+    """How a family tree draws its one non-default mark of house style: a carrier.
+
+    Affected is filled and unaffected is empty in every convention; a carrier is
+    the one status two conventions draw differently, and both survive greyscale.
+    """
+
+    carrier: str = "dot"
+    """`dot`, a filled dot in the middle of the symbol (the standard nomenclature's
+    carrier), or `half`, the left half filled (the textbook heterozygote)."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> FamilytreeStyle:
+        _reject_unknown(mapping, ("carrier",), "[familytree]")
+        return cls(
+            carrier=_choice(
+                mapping.get("carrier", cls().carrier), FAMILYTREE_CARRIERS, "[familytree] carrier"
+            )
+        )
+
+
 #: Which way a `lanes` diagram's lanes run: across the page, stacked top to
 #: bottom (`rows`), or down it, side by side (`columns`). `auto` tries rows and
 #: takes columns when rows do not fit the width.
@@ -1733,6 +1760,7 @@ _TOP_LEVEL_KEYS: Final = (
     "flow",
     "mindmap",
     "argument",
+    "familytree",
     "role",
     "edge_role",
 )
@@ -1767,6 +1795,7 @@ class Theme:
     pie: PieStyle = PieStyle()
     mindmap: MindmapStyle = MindmapStyle()
     argument: ArgumentStyle = ArgumentStyle()
+    familytree: FamilytreeStyle = FamilytreeStyle()
     flow: FlowStyle = FlowStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
@@ -1830,6 +1859,7 @@ class Theme:
             pie=PieStyle.from_mapping(_section(mapping, "pie")),
             mindmap=MindmapStyle.from_mapping(_section(mapping, "mindmap")),
             argument=ArgumentStyle.from_mapping(_section(mapping, "argument")),
+            familytree=FamilytreeStyle.from_mapping(_section(mapping, "familytree")),
             flow=FlowStyle.from_mapping(_section(mapping, "flow")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),

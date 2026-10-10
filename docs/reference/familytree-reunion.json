@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "kind": "familytree",
+  "title": "The Okonkwo family, for the reunion",
+  "description": "A family tree drawn for a reunion programme: a grandfather's two marriages, half-siblings, identical twins and an adopted grandchild.",
+  "people": [
+    {"id": "ada", "sex": "female", "deceased": true, "text": "Ada"},
+    {"id": "emeka", "sex": "male", "text": "Emeka", "role": "emphasis"},
+    {"id": "grace", "sex": "female", "text": "Grace"},
+    {"id": "ngozi", "sex": "female", "text": "Ngozi"},
+    {"id": "tom", "sex": "male", "text": "Tom"},
+    {"id": "chidi", "sex": "male", "text": "Chidi"},
+    {"id": "funmi", "sex": "female", "text": "Funmi"},
+    {"id": "ike", "sex": "male", "text": "Ike"},
+    {"id": "ruth", "sex": "female", "text": "Ruth"},
+    {"id": "amara", "sex": "female", "text": "Amara"},
+    {"id": "kelechi", "sex": "female", "text": "Kelechi"},
+    {"id": "jo", "sex": "female", "gender": "nonbinary", "text": "Jo"},
+    {"id": "sam", "sex": "male", "text": "Sam", "adopted": true},
+    {"id": "obi", "sex": "male", "text": "Obi"},
+    {"id": "dayo", "sex": "female", "text": "Dayo"}
+  ],
+  "couples": [
+    {"between": ["ada", "emeka"], "children": ["ngozi", "chidi"]},
+    {"between": ["emeka", "grace"], "children": ["ike"]},
+    {"between": ["ngozi", "tom"], "children": ["amara", "kelechi", "jo"], "twins": [{"of": ["amara", "kelechi"], "zygosity": "monozygotic"}]},
+    {"between": ["chidi", "funmi"], "children": ["sam", "obi"]},
+    {"between": ["ike", "ruth"], "children": ["dayo"]}
+  ]
+}

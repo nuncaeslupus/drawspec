@@ -15,6 +15,7 @@ from drawspec.kinds.board import board_scene
 from drawspec.kinds.common import box_primitives, captioned, outline, text_runs
 from drawspec.kinds.cycle import cycle_scene
 from drawspec.kinds.entities import entities_scene
+from drawspec.kinds.familytree import familytree_scene
 from drawspec.kinds.files import files_scene
 from drawspec.kinds.fishbone import fishbone_scene
 from drawspec.kinds.gantt import gantt_scene
@@ -37,6 +38,7 @@ from drawspec.schema import (
     BOARD_KINDS,
     CHART_KINDS,
     ENTITIES_KINDS,
+    FAMILYTREE_KINDS,
     FILES_KINDS,
     FISHBONE_KINDS,
     GANTT_KINDS,
@@ -80,6 +82,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *PIE_KINDS,
     *MINDMAP_KINDS,
     *ARGUMENT_KINDS,
+    *FAMILYTREE_KINDS,
     "cycle",
 )
 
@@ -139,6 +142,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return mindmap_scene(document, theme, measurer)
     if document.kind in ARGUMENT_KINDS:
         return argument_scene(document, theme, measurer)
+    if document.kind in FAMILYTREE_KINDS:
+        return familytree_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -159,6 +164,7 @@ __all__ = [
     "captioned",
     "cycle_scene",
     "entities_scene",
+    "familytree_scene",
     "files_scene",
     "fishbone_scene",
     "gantt_scene",

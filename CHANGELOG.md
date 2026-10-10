@@ -12,6 +12,20 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`familytree`, the thirty-third kind** — a family tree, or a pedigree in genetics
+  and medicine: `people` and the `couples` they form, each couple's `children` in
+  birth order. Generations are rows (I, II, III) and people are numbered left to right
+  in each (II-3), all derived. The standard's symbols: `sex` picks square, circle or
+  diamond (`gender`, per the 2022 revision, picks it instead, with `AMAB`/`AFAB`
+  under it when they differ); `status` affected (filled) or carrier (the new theme
+  key `[familytree] carrier`: `dot` or `half`), keyed under the drawing; `deceased`,
+  `proband`, `consultand`, `adopted`, `pregnancy` (`ongoing`, `loss`). Couples may be
+  `consanguineous` or `separated` and have `twins` (`monozygotic`, `dizygotic`,
+  `unknown`). Up to 6 partners each, the later ones over the row on levels of their
+  own so no lines cross; 30 people, 4 generations. Refused at their pointers: a child
+  of two couples, a cycle, partners in different rows, a person in no couple, two
+  unrelated families, an ancestor-only chart (a `tree`), `generation` and `number`.
+  `docs/proposals/familytree.md` (was `pedigree.md`) records the design.
 - **`argument`, the thirty-second kind** — an argument map: a `claim` at the top and
   up to 15 `points`, each `on` the box it bears on, `for` or `against` it (a rebuttal
   is an `against` on an `against`; no third stance), down to four levels. Stance is
