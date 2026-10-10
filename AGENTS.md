@@ -83,6 +83,7 @@ name either.
 **Edges** — `flow` (default), `link`, `exchange`, `weak`, `owns`, `strong`,
 `aside`.
 
+At most two elements per document may be `emphasis`; a third is refused.
 Use `decision` for a question with branching answers, `note` for an aside that is
 not a step, `link` for a connection with no direction.
 

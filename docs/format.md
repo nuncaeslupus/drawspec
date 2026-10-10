@@ -170,6 +170,15 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `curve` | 4 `curves` |
 | `files` | 30 `entries` |
 
+## Emphasis
+
+At most 2 elements in a document may take the `emphasis` role —
+nodes, items, levels, cells, positions, series and curves counted together.
+Emphasis says *look here first*, and when three things say it none of them is
+first. The third and every later one is refused at its `role`, with a message
+saying to keep the one or two the diagram is about. The `strong` edge role is
+not counted: it marks a path, which is several edges and reads as one line.
+
 ## The objects
 
 What the arrays above hold. Every one of them refuses a field it does not

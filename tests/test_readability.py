@@ -5,6 +5,9 @@ twenty boxes. Well before that a diagram stops being read and starts being
 searched — and nothing said so. The budget is that earlier point, per kind, and
 its refusal names the remedy: an overview plus detail diagrams.
 
+The emphasis cap is the same kind of rule for one role: `emphasis` means *look
+here first*, and a document that says it of three things has said it of none.
+
 The numbers were set by measurement: every one sits above the largest document
 of its kind in `docs/reference/`, which is what the test below holds them to. A
 limit that refuses a reference document is a limit set too low.
@@ -19,7 +22,13 @@ from typing import Any
 import pytest
 
 from drawspec.errors import DocumentError
-from drawspec.schema import KINDS, READABILITY_BUDGET, parse_document, validate_document
+from drawspec.schema import (
+    EMPHASIS_CAP,
+    KINDS,
+    READABILITY_BUDGET,
+    parse_document,
+    validate_document,
+)
 
 REFERENCE = Path(__file__).resolve().parents[1] / "docs" / "reference"
 
@@ -95,3 +104,57 @@ def test_items_kinds_are_budgeted_by_their_own_array() -> None:
         "items": [{"text": f"Option {index}"} for index in range(count + 1)],
     }
     assert [violation.pointer for violation in validate_document(document)] == [f"/{name}/{count}"]
+
+
+# --------------------------------------------------------------------------
+# The emphasis cap
+# --------------------------------------------------------------------------
+
+
+def emphasised(count: int) -> dict[str, Any]:
+    """A five-step chain with the first `count` steps emphasised."""
+    document = chain(5)
+    for node in document["nodes"][:count]:
+        node["role"] = "emphasis"
+    return document
+
+
+@pytest.mark.parametrize("path", sorted(REFERENCE.glob("*.json")), ids=lambda path: path.stem)
+def test_no_reference_document_emphasises_more_than_the_cap(path: Path) -> None:
+    text = path.read_text(encoding="utf-8")
+    assert text.count('"emphasis"') <= EMPHASIS_CAP, path.stem
+
+
+def test_the_cap_is_accepted_exactly() -> None:
+    assert validate_document(emphasised(EMPHASIS_CAP)) == ()
+
+
+def test_one_past_the_cap_is_refused_at_its_role_with_the_fix() -> None:
+    with pytest.raises(DocumentError) as error:
+        parse_document(emphasised(EMPHASIS_CAP + 1))
+    pointers = [violation.pointer for violation in error.value.violations]
+    assert pointers == [f"/nodes/{EMPHASIS_CAP}/role"]
+    message = str(error.value)
+    assert "look here first" in message
+    assert "ordinary role" in message
+
+
+def test_emphasis_is_counted_across_arrays() -> None:
+    """A chart series and a curve are as heavy as a box; the cap is per document."""
+    document = {
+        "version": 1,
+        "kind": "chart",
+        "axes": {"horizontal": {"label": "Week"}, "vertical": {"label": "Requests"}},
+        "series": [
+            {"name": name, "role": "emphasis", "data": [[1, 1], [2, 2]]} for name in ("A", "B", "C")
+        ],
+    }
+    assert [violation.pointer for violation in validate_document(document)] == ["/series/2/role"]
+
+
+def test_strong_edges_are_not_counted() -> None:
+    """A critical path is several `strong` edges and one line to the eye."""
+    document = emphasised(EMPHASIS_CAP)
+    for edge in document["edges"]:
+        edge["role"] = "strong"
+    assert validate_document(document) == ()

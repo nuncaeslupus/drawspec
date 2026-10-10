@@ -147,6 +147,17 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
 }
 
 
+#: The role that marks a focal element, and how many a diagram may carry. A
+#: reader's eye goes to the heaviest thing first; three heaviest things is no
+#: heaviest thing. Two, not one, because the reference documents mark a pair
+#: — the two milestones on `flow-critical-path` and `flow-accent`; no other
+#: reference or test document needed more, and the one that had three
+#: (`scatter-pareto`) emphasised a point another dominated. The `strong`
+#: edge role is not counted: it marks a *path*, which is several edges by
+#: nature and reads as one line.
+EMPHASIS_ROLE: Final = "emphasis"
+EMPHASIS_CAP: Final = 2
+
 #: Fields an author might reach for that drawspec refuses, and why. Not used for
 #: validation — `additionalProperties: false` already rejects them — but for the
 #: message, which is the teaching surface for an author working blind.
@@ -1421,6 +1432,7 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
 
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
+    found.extend(_emphasis_violations(document))
     return tuple(found)
 
 
@@ -1443,6 +1455,40 @@ def _readability_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                 f"taking it in. Split it: an overview that names each part once, plus a "
                 f"detail diagram per part, each within the budget. The budget is not a "
                 f"canvas size, so a larger top-level 'width' does not lift it.",
+            )
+        )
+    return found
+
+
+def _emphasis_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Every focal element past the cap, wherever in the document it was written.
+
+    Counted across the whole document — nodes, items, positions, series, curves
+    — because the reader's eye does not care which array a heavy mark came from.
+    """
+    found: list[Violation] = []
+    focal: list[str] = []
+
+    def collect(value: object, pointer: str) -> None:
+        if isinstance(value, dict):
+            if value.get("role") == EMPHASIS_ROLE:
+                focal.append(pointer)
+            for key, child in value.items():
+                collect(child, f"{pointer}/{_escape(key)}")
+        elif isinstance(value, list):
+            for index, child in enumerate(value):
+                collect(child, f"{pointer}/{index}")
+
+    collect(document, "")
+    for pointer in focal[EMPHASIS_CAP:]:
+        found.append(
+            Violation(
+                f"{pointer}/role",
+                f"{len(focal)} elements say {EMPHASIS_ROLE!r}, and a diagram may have "
+                f"{EMPHASIS_CAP}. Emphasis means *look here first*; when three things "
+                f"say it, none of them is first. Keep the one or two the diagram is "
+                f"about and give the rest their ordinary role — or, if they really are "
+                f"equal, emphasise none.",
             )
         )
     return found
@@ -2155,8 +2201,9 @@ def build_schema() -> dict[str, Any]:
             "decision that requires seeing the output — coordinates, type size, colour, "
             "arrow-head geometry, z-order — is taken by drawspec and has no field here. "
             "Referential rules (node ids are unique; an edge names nodes that exist) are "
-            "beyond JSON Schema and are enforced by `drawspec validate`, as is the "
-            "readability budget: the most entries each kind may hold (docs/format.md)."
+            "beyond JSON Schema and are enforced by `drawspec validate`, as are the "
+            "readability budget (the most entries each kind may hold) and the cap of "
+            f"{EMPHASIS_CAP} elements with the 'emphasis' role (docs/format.md)."
         ),
         "oneOf": variants,
         "$defs": {name: _object_schema(specs) for name, specs in sorted(OBJECTS.items())},

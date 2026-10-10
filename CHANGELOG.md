@@ -20,6 +20,16 @@ against it would stop working. Everything below is about the *package*.
   comes before the physical fit limit (around twenty boxes), and the top-level
   `width` does not lift it. Every limit sits above the largest reference
   document of its kind; the table is generated into `docs/format.md`.
+- **An emphasis cap.** At most two elements per document may take the
+  `emphasis` role (nodes, items, positions, series, curves counted together);
+  the third is refused at its `role` with the fix. `strong` edges are not
+  counted — a path is several edges and reads as one line.
+
+### Changed
+
+- `docs/reference/scatter-pareto.json` emphasises two initiatives, not three:
+  *Add SSO* had the same impact as *Cache the slow query* at four times the
+  cost, so it was not a pick.
 
 - **`files`, the fifteenth kind** — a directory listing drawn from flat paths
   (`src/app/main.py`); the folders a path passes through are inferred, so there

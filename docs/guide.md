@@ -204,7 +204,7 @@ bundled theme:
 | `start` | Where the diagram begins — the trigger, the arrival, the input | a pill |
 | `terminal` | Where it ends. Not "the last box": the box after which nothing happens | a pill, heavier |
 | `decision` | A question, with named ways out. If the edges leaving it are not labelled, it is probably a `step` | a diamond |
-| `emphasis` | The one box the diagram is about. One per drawing, or it stops meaning anything | a rectangle, heavier |
+| `emphasis` | The one box the diagram is about. One per drawing, two at most — a third is refused, because when three things say *look here first* none of them is first | a rectangle, heavier |
 | `note` | An aside — a caveat, a source, a reminder. Not part of the argument | no outline at all |
 | `group` | A container drawn around other boxes. Set by naming `members`; rarely written by hand | a dashed rectangle |
 
@@ -548,6 +548,7 @@ ones you will meet:
 | A violation with a JSON pointer | A field is misspelt, missing, or not legal for this kind | Fix the field the pointer names. `additionalProperties` is closed everywhere, so a key that looks ignored is always an error instead. |
 | `… is the tool's output, never its input` | The document tried to place, size or colour something | Say what you mean instead — a `role` rather than a `stroke`, a `kind` rather than an arrangement. |
 | `… is past what one flow can be read at` | The document holds more than its kind's [readability budget](format.md#the-readability-budget) | Split it into an overview plus a detail diagram per part. A larger `width` does not lift it. |
+| `… elements say 'emphasis', and a diagram may have 2` | More than two elements are marked as the focus | Keep the one or two the diagram is about and give the rest their ordinary role. |
 | A fit refusal | The content cannot be drawn above the legibility floor at this width | Shorten the text, split the diagram, or raise `width` — in that order. A smaller type size is not offered, on purpose. |
 
 ## What it is not
