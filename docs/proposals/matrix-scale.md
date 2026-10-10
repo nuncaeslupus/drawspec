@@ -1,6 +1,7 @@
 # Proposal: `matrix` + `scale` — an ordered fill, for heatmaps
 
-Status: **proposed**. Size **S** (one field, one validation, one theme ramp).
+Status: **implemented** — see *As built* at the end for where it departs from this text.
+Size **S** (one field, one validation, one theme ramp).
 
 ## Why a feature and not a kind
 
@@ -134,3 +135,32 @@ test that consecutive ramp entries differ in greyscale by a minimum contrast ste
 * Key order equals scale order.
 * Each refusal at its pointer.
 * Theme check fails a ramp whose two neighbours are indistinguishable in greyscale.
+
+## As built
+
+Implemented as proposed, with these changes:
+
+* **The ramp is tone, not pattern density.** The proposal asked for fills that
+  differ "by pattern density as well as by tone". Rendered, the existing patterns
+  could not carry an order: dots, hatch and a grid are three *things*, not three
+  *amounts*, and at cell size the eye does not rank them. So `[mark] ramp` is a
+  list of ink strengths, lightest first (`[0.08, 0.18, 0.28, 0.38, 0.48]` by
+  default): each step is the page's own ink laid down at that strength, which is
+  greyscale lightness by construction — the channel a printed heatmap is read
+  in — and follows `currentColor` into dark mode like everything else.
+* **The theme check is on that lightness.** At load, a ramp needs at least five
+  steps (one per step of the longest scale), each at least 0.08 darker than the
+  last — the first measured from a blank cell, so the lightest bucket never
+  reads as *not assessed* — and none darker than 0.5, so a label on the
+  heaviest cell keeps better than 5:1 contrast.
+* **Steps are spread, not taken by index.** A three-step scale takes the ramp's
+  first, middle and last tones rather than its first three, so the ends of any
+  scale are the ends of the ramp and a two-step scale is light against dark.
+* **The key lists every step**, including one no cell uses: the key of a
+  heatmap is its scale, and a reader looking for *often* should see that nothing
+  was. A `key` line may therefore name an unused step, but not a name off the
+  scale.
+* **Two more refusals**: a step named twice, and (by the schema) a scale of one.
+  A cell `value` is refused by `additionalProperties` like any unknown field, and
+  `value` now has its own message in the refused-field table pointing at
+  bucketing.

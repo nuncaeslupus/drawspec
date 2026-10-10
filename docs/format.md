@@ -84,6 +84,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `columns` | array of string | no | Column headings, left to right. Omit for a matrix with none. |
 | `rows` | array of string | no | Row headings, top to bottom. |
 | `edges` | array of [edge](#edge-object) | no | What connects to what, between cells that carry an `id`. The cells of a grid are not always only cells: one may produce another, or come before it. The grid places them; the relations are a separate thing, and without them a reader sees a table where the source drew a process. |
+| `scale` | array of string, at least 2 | no | Says the groups are **ordered**, and in what order: 2 to 5 group names, **weakest first** — `["rare", "sometimes", "often"]`. For a heatmap, a risk matrix, a skills matrix: a grid whose cells say *how much*. The cells are then filled by tone, light to dark, from the theme's `[mark] ramp` instead of with unrelated patterns, and the key lists every step in this order (with `key` texts where given). Every cell `group` must be one of these; a cell with no `group` stays blank, for *not assessed*. Names, not numbers: the author buckets the values. |
 | `key` | array of [key](#key-object) | no | What each group of cells is called, for the key drawn under the grid. Without one, a group is announced to the reader under the name the cells use for it — which is fine when that name is a name, and is how an id-shaped key like `carrega` ends up as visible text. |
 
 ### `pyramid`
@@ -410,6 +411,7 @@ drawing, and are exactly the wrong thing to say about one box in it.
 | `port` | Everywhere | edge geometry comes from the edge's semantic role |
 | `stroke` | Everywhere | appearance is a property of the role, not of the element |
 | `stroke_width` | Everywhere | appearance is a property of the role, not of the element |
+| `value` | Everywhere | a cell is filled by the `scale` step its `group` names, not by a number — bucket the values and name the buckets; the number can stay in the text |
 | `viewBox` | Everywhere | derived from width and the content |
 | `width` | On any object — legal at the document root | box geometry is derived from measured text plus theme padding |
 | `x` | Everywhere | coordinates are the tool's output, never its input |

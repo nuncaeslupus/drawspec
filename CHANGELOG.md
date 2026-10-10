@@ -12,6 +12,17 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`scale` on `matrix`** — the groups as an order, weakest first (2 to 5
+  steps), for heatmaps, risk matrices and skills matrices. Cells are filled by
+  tone from the theme's new `[mark] ramp` (the page's ink at increasing
+  strength; a short scale is spread across the whole ramp) and the key lists
+  every step in order. Every cell `group` must be a step; an ungrouped cell
+  stays blank for *not assessed*. A `key` line off the scale, a repeated step,
+  and more than five steps are refused at their pointers, and a cell `value`
+  is refused with the advice to bucket and name. The theme loader refuses a
+  ramp of fewer than five steps, neighbours closer than 0.08, or a step darker
+  than 0.5. References: `matrix-scale-risk`, `matrix-scale-ci`,
+  `matrix-scale-skills`.
 - **`hub` on `cycle`** — what the loop turns around (the management system a
   quality cycle improves, the log a flywheel learns from), drawn centred inside
   the ring, which grows to make room. It is not a step: the ring check ignores

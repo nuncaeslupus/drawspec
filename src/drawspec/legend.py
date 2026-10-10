@@ -77,6 +77,10 @@ class Entry:
     fill means what, disagreeing with the first.
     """
 
+    opacity: float = 1.0
+    """How much of a `solid` fill shows — a `scale` step's tone, so the swatch is
+    the same grey as the cells it names."""
+
 
 def entries_for(items: Sequence[tuple[str, str, bool]], theme: Theme) -> tuple[Entry, ...]:
     """The legend for a sequence of `(name, role, filled)`, in the order given.
@@ -181,6 +185,7 @@ def primitives_for(
                         points=((x, low), (x + sample, low), (x + sample, high), (x, high)),
                         fill=entry.fill,
                         fill_colour=entry.colour,
+                        fill_opacity=entry.opacity,
                     )
                 )
             else:

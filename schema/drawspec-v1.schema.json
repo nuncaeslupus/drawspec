@@ -457,6 +457,14 @@
             "$ref": "#/$defs/edge"
           }
         },
+        "scale": {
+          "type": "array",
+          "description": "Says the groups are **ordered**, and in what order: 2 to 5 group names, **weakest first** — `[\"rare\", \"sometimes\", \"often\"]`. For a heatmap, a risk matrix, a skills matrix: a grid whose cells say *how much*. The cells are then filled by tone, light to dark, from the theme's `[mark] ramp` instead of with unrelated patterns, and the key lists every step in this order (with `key` texts where given). Every cell `group` must be one of these; a cell with no `group` stays blank, for *not assessed*. Names, not numbers: the author buckets the values.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2
+        },
         "key": {
           "type": "array",
           "description": "What each group of cells is called, for the key drawn under the grid. Without one, a group is announced to the reader under the name the cells use for it — which is fine when that name is a name, and is how an id-shaped key like `carrega` ends up as visible text.",

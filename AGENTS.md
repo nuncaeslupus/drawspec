@@ -65,6 +65,7 @@ Pick by what the reader must **understand**, not by what it looks like.
 | How a few options differ, side by side | `columns` | `items` |
 | A ranking or an ascent, where order is the point | `columns` or `timeline` + `"rise": true` | `items` |
 | How rows relate to columns | `matrix` | `cells` (+ `rows`, `columns`, `edges`, `key`) |
+| How much, cell by cell: a heatmap, a risk or skills matrix | `matrix` + `scale` | `cells` whose `group` is a `scale` step, weakest first |
 | Levels where size means quantity or rank | `pyramid` | `levels` |
 | Scopes nested inside scopes | `rings` | `rings` |
 | What is lost between narrowing stages | `funnel` | `stages` |

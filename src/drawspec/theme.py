@@ -71,6 +71,20 @@ COLOUR_KEYWORDS: Final = ("currentColor", "none")
 #: Minimum relative-luminance difference for two colours to survive greyscale.
 LUMINANCE_DELTA: Final = 0.25
 
+#: How many steps `[mark] ramp` must hold: one per step of the longest `scale` a
+#: `matrix` may declare, so every document draws under every theme.
+RAMP_STEPS: Final = 5
+
+#: The least two neighbouring ramp steps may differ by, in ink coverage — which
+#: is greyscale lightness, since a step is the page's ink laid down at that
+#: strength. Below it, two buckets side by side read as one tone. The first step
+#: is held to it as well, measured from the blank of an unfilled cell.
+RAMP_CONTRAST: Final = 0.08
+
+#: The heaviest a ramp step may be. Text sits on these cells, and past half the
+#: ink a black label on its own heaviest bucket drops under a 5:1 contrast.
+RAMP_CEILING: Final = 0.5
+
 _THEMES_DIR: Final = Path(__file__).resolve().parent / "themes"
 
 #: The theme used when none is named.
@@ -707,6 +721,26 @@ class MarkStyle:
     """How much of a category's band is left empty around its bars, as a
     fraction. Zero draws bars that touch, which reads as one wide bar."""
 
+    ramp: tuple[float, ...] = (0.08, 0.18, 0.28, 0.38, 0.48)
+    """The tones an ordered `scale` is filled with, lightest first: how much of
+    the page's ink each step lays down, from 0 (blank) to 1.
+
+    An order, where `fills` is a set. Patterns cannot carry one — dots, hatch
+    and a grid are three different things, not three amounts of one thing — so
+    a heatmap's buckets are told apart the way a printed one is, by how dark they
+    are. That is lightness, the channel greyscale keeps, and the loader holds it
+    to that: at least five steps, each darker than the last by at least 0.08
+    (the first measured from a blank cell, which stays "not assessed"), none
+    darker than 0.5 so the cell's text stays readable. A shorter `scale` takes
+    steps spread across the whole ramp, so two buckets are its two ends.
+    """
+
+    def tone_for(self, index: int, count: int) -> float:
+        """The tone for step `index` of a `count`-step scale, spread across the ramp."""
+        if count <= 1:
+            return self.ramp[-1]
+        return self.ramp[round(index * (len(self.ramp) - 1) / (count - 1))]
+
     def fill_for(self, index: int) -> str:
         """The fill for the `index`-th filled mark, cycling if there are more."""
         return self.fills[index % len(self.fills)]
@@ -719,7 +753,7 @@ class MarkStyle:
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> MarkStyle:
-        _reject_unknown(mapping, ("fills", "colours", "gap"), "[mark]")
+        _reject_unknown(mapping, ("fills", "colours", "gap", "ramp"), "[mark]")
         defaults = cls()
         fills = mapping.get("fills", list(defaults.fills))
         if not isinstance(fills, list) or not fills:
@@ -755,7 +789,44 @@ class MarkStyle:
         gap = _number(mapping.get("gap", defaults.gap), "[mark] gap", positive=False)
         if not 0.0 <= gap < 1.0:
             raise ThemeError(f"[mark] gap: expected a fraction below 1, got {gap!r}")
-        return cls(fills=tuple(fills), colours=painted, gap=gap)
+        return cls(
+            fills=tuple(fills),
+            colours=painted,
+            gap=gap,
+            ramp=_ramp(mapping.get("ramp", list(defaults.ramp))),
+        )
+
+
+def _ramp(value: object) -> tuple[float, ...]:
+    """`[mark] ramp`, held to the one property it exists for: an order you can see.
+
+    Checked here, at load, like the greyscale role pairing — a ramp whose two
+    neighbours are the same grey is a heatmap whose buckets merge, and nobody
+    finds out until a reader cannot tell *sometimes* from *often*.
+    """
+    if not isinstance(value, list) or len(value) < RAMP_STEPS:
+        raise ThemeError(
+            f"[mark] ramp: expected an array of at least {RAMP_STEPS} tones, one per step "
+            f"of the longest scale a matrix may declare; got {value!r}"
+        )
+    tones = tuple(_number(entry, "[mark] ramp") for entry in value)
+    previous = 0.0
+    for index, tone in enumerate(tones):
+        if tone - previous < RAMP_CONTRAST - 1e-9:
+            after = "a blank cell" if index == 0 else f"step {index - 1} ({previous:g})"
+            raise ThemeError(
+                f"[mark] ramp: step {index} ({tone:g}) is not at least {RAMP_CONTRAST:g} "
+                f"darker than {after}. Neighbouring steps that close are one grey in "
+                f"print, so two buckets of the scale would read as one."
+            )
+        previous = tone
+    if tones[-1] > RAMP_CEILING:
+        raise ThemeError(
+            f"[mark] ramp: {tones[-1]:g} is darker than {RAMP_CEILING:g}. A cell's text "
+            f"is drawn on its tone, and past that a label on the heaviest step stops "
+            f"being easy to read."
+        )
+    return tones
 
 
 @dataclass(frozen=True)
@@ -1386,6 +1457,9 @@ __all__ = [
     "LUMINANCE_DELTA",
     "NODE_ROLES",
     "NODE_SHAPES",
+    "RAMP_CEILING",
+    "RAMP_CONTRAST",
+    "RAMP_STEPS",
     "THEME_VERSION",
     "TYPE_LEVELS",
     "WIDTH_MODES",

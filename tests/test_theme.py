@@ -9,6 +9,7 @@ luminance delta of 0.25 or more.
 from __future__ import annotations
 
 import tomllib
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
@@ -636,3 +637,55 @@ def test_a_solid_mark_is_painted_in_its_own_colour() -> None:
         ),
     )
     assert f'fill="{painted}"' in emit(scene, theme)
+
+
+# --------------------------------------------------------------------------
+# [mark] ramp — the tones an ordered matrix scale is filled with
+# --------------------------------------------------------------------------
+
+
+def test_the_default_ramp_is_an_order_greyscale_keeps() -> None:
+    ramp = load_theme().mark.ramp
+    assert len(ramp) >= 5
+    assert all(later > earlier for earlier, later in pairwise(ramp))
+
+
+def test_a_ramp_whose_neighbours_are_one_grey_is_refused() -> None:
+    """Two buckets of a heatmap printed as the same grey are one bucket."""
+    with pytest.raises(ThemeError, match="step 2"):
+        MarkStyle.from_mapping({"ramp": [0.1, 0.2, 0.22, 0.35, 0.45]})
+
+
+def test_a_ramp_whose_first_step_is_almost_blank_is_refused() -> None:
+    """The lightest step must stay apart from a cell left blank as *not assessed*."""
+    with pytest.raises(ThemeError, match="blank cell"):
+        MarkStyle.from_mapping({"ramp": [0.02, 0.12, 0.22, 0.32, 0.42]})
+
+
+def test_a_ramp_too_dark_for_its_text_is_refused() -> None:
+    with pytest.raises(ThemeError, match=r"darker than 0\.5"):
+        MarkStyle.from_mapping({"ramp": [0.2, 0.35, 0.5, 0.65, 0.8]})
+
+
+def test_a_ramp_shorter_than_the_longest_scale_is_refused() -> None:
+    with pytest.raises(ThemeError, match="at least 5"):
+        MarkStyle.from_mapping({"ramp": [0.1, 0.3, 0.5]})
+
+
+def test_a_ramp_that_is_not_numbers_is_refused() -> None:
+    with pytest.raises(ThemeError):
+        MarkStyle.from_mapping({"ramp": ["light", "dark", "x", "y", "z"]})
+
+
+@pytest.mark.parametrize(
+    ("count", "expected"),
+    [(2, (0, 4)), (3, (0, 2, 4)), (4, (0, 1, 3, 4)), (5, (0, 1, 2, 3, 4))],
+)
+def test_a_short_scale_takes_steps_spread_across_the_whole_ramp(
+    count: int, expected: tuple[int, ...]
+) -> None:
+    """A two-step scale is the lightest tone against the darkest, not two neighbours."""
+    style = load_theme().mark
+    assert tuple(style.tone_for(index, count) for index in range(count)) == tuple(
+        style.ramp[index] for index in expected
+    )

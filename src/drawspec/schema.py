@@ -39,7 +39,7 @@ from typing import Any, Final
 
 from drawspec.errors import DocumentError
 from drawspec.filetree import ORDERS, STATUSES, Entry, problems
-from drawspec.theme import EDGE_ROLES, NODE_ROLES
+from drawspec.theme import EDGE_ROLES, NODE_ROLES, RAMP_STEPS
 
 #: The document format version this module reads.
 DOCUMENT_VERSION: Final = 1
@@ -195,6 +195,10 @@ REJECTED_FIELDS: Final = {
     "z": "overlap is resolved by the layout, not declared",
     "order": "overlap is resolved by the layout, not declared",
     "layer": "overlap is resolved by the layout, not declared",
+    "value": (
+        "a cell is filled by the `scale` step its `group` names, not by a number — "
+        "bucket the values and name the buckets; the number can stay in the text"
+    ),
     "viewBox": "derived from width and the content",
     "canvas": "derived from width and the content",
 }
@@ -872,6 +876,22 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
         FieldSpec(
+            "scale",
+            "array",
+            item_kind="string",
+            min_items=2,
+            description=(
+                f"Says the groups are **ordered**, and in what order: 2 to {RAMP_STEPS} "
+                'group names, **weakest first** — `["rare", "sometimes", "often"]`. '
+                "For a heatmap, a risk matrix, a skills matrix: a grid whose cells say "
+                "*how much*. The cells are then filled by tone, light to dark, from the "
+                "theme's `[mark] ramp` instead of with unrelated patterns, and the key "
+                "lists every step in this order (with `key` texts where given). Every "
+                "cell `group` must be one of these; a cell with no `group` stays blank, "
+                "for *not assessed*. Names, not numbers: the author buckets the values."
+            ),
+        ),
+        FieldSpec(
             "key",
             "array",
             item_ref="key",
@@ -1266,6 +1286,9 @@ class Document:
     cells: tuple[Cell, ...] = ()
     columns: tuple[str, ...] = ()
     rows: tuple[str, ...] = ()
+    scale: tuple[str, ...] = ()
+    """A `matrix`'s ordered groups, weakest first. Empty when the groups are a set."""
+
     key: tuple[Key, ...] = ()
     spans: tuple[Span, ...] = ()
     positions: tuple[Position, ...] = ()
@@ -1737,6 +1760,11 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                         f"nowhere to draw that: the two ends are the same square.",
                     )
                 )
+        scale = document.get("scale")
+        steps: set[str] | None = None
+        if isinstance(scale, list) and all(isinstance(step, str) for step in scale):
+            steps = set(scale)
+            found.extend(_scale_violations(scale, cells))
         entries = document.get("key")
         if not isinstance(entries, list):
             return found
@@ -1752,7 +1780,16 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
             group = entry.get("group")
             if not isinstance(group, str):
                 continue
-            if group not in cell_groups:
+            if steps is not None and group not in steps:
+                found.append(
+                    Violation(
+                        f"/key/{index}/group",
+                        f"{group!r} is not a step of this matrix's scale, so a key line for "
+                        f"it would describe nothing in the drawing. Steps: "
+                        f"{', '.join(str(step) for step in scale or ())}.",
+                    )
+                )
+            elif steps is None and group not in cell_groups:
                 found.append(
                     Violation(
                         f"/key/{index}/group",
@@ -1911,6 +1948,52 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
                             f"{member!r} is not the id of any node in this document",
                         )
                     )
+    return found
+
+
+def _scale_violations(scale: Sequence[str], cells: Sequence[Any]) -> list[Violation]:
+    """What an ordered fill may not be: too long, repeated, or missing a cell's group.
+
+    A `scale` turns a matrix's groups from a set into an order, so every filled
+    cell has to be *on* it — a cell in a group the scale does not name would take
+    a fill that means nothing on a drawing whose fills are amounts.
+    """
+    found: list[Violation] = []
+    if len(scale) > RAMP_STEPS:
+        found.append(
+            Violation(
+                _pointer("scale", RAMP_STEPS),
+                f"a scale of {len(scale)} steps is past what tone can carry — {RAMP_STEPS} "
+                f"at most. Beyond that, neighbouring steps are one grey in print and the "
+                f"order stops being visible. Merge buckets until there are {RAMP_STEPS} "
+                f"or fewer.",
+            )
+        )
+    seen: set[str] = set()
+    for index, step in enumerate(scale):
+        if not step.strip():
+            found.append(Violation(_pointer("scale", index), "a scale step needs a name"))
+        elif step in seen:
+            found.append(
+                Violation(
+                    _pointer("scale", index),
+                    f"{step!r} is already a step of this scale. An order names each step once.",
+                )
+            )
+        seen.add(step)
+    for index, cell in enumerate(cells):
+        if not isinstance(cell, dict):
+            continue
+        group = cell.get("group")
+        if isinstance(group, str) and group and group not in seen:
+            found.append(
+                Violation(
+                    _pointer("cells", index, "group"),
+                    f"{group!r} is not a step of this matrix's scale ({', '.join(scale)}). "
+                    f"When the groups are an order every filled cell is on it; leave "
+                    f"'group' out for a cell that was not assessed.",
+                )
+            )
     return found
 
 
@@ -2108,6 +2191,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         ),
         columns=tuple(document.get("columns", ())),
         rows=tuple(document.get("rows", ())),
+        scale=tuple(document.get("scale", ())),
         key=tuple(
             Key(group=entry["group"], text=entry["text"]) for entry in document.get("key", ())
         ),

@@ -23,7 +23,7 @@ from itertools import pairwise
 from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
 from drawspec.kinds.common import box_primitives, text_runs
-from drawspec.legend import entries_for, height_of, primitives_for
+from drawspec.legend import Entry, entries_for, height_of, primitives_for
 from drawspec.scene import (
     Path,
     Polygon,
@@ -478,6 +478,12 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         raise DrawspecError("a matrix needs at least one cell")
     fills = _group_fills(cells, theme)
     inks = _group_colours(cells, theme)
+    tones = _scale_tones(document.scale, theme)
+    if tones:
+        # An ordered scale fills by tone — the page's ink, laid down at the
+        # step's strength — rather than with a pattern from the set.
+        fills = {"": "", **dict.fromkeys(document.scale, "solid")}
+        inks = {"": "", **dict.fromkeys(document.scale, "currentColor")}
 
     _check_cells(cells)
     across = max(max(cell.column + cell.across for cell in cells), len(document.columns))
@@ -573,6 +579,7 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
                 points=((left, top), (right, top), (right, bottom), (left, bottom)),
                 fill=fills[cell.group],
                 fill_colour=inks[cell.group],
+                fill_opacity=tones.get(cell.group, 1.0),
             )
         )
         placed = (
@@ -593,11 +600,31 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     # `capcalera` — was being read out to the reader as though it were prose. A
     # `key` entry gives the group a name meant for reading.
     named = {entry.group: entry.text for entry in document.key}
-    key = entries_for(
-        [(named.get(group, group), "step", True) for group in _named_groups(cells)], theme
+    key = (
+        # Every step of an ordered scale, in its order and whether or not a cell
+        # uses it: the key of a heatmap is the scale, and a reader looking for
+        # *often* should learn that nothing was, not that the word is missing.
+        tuple(
+            Entry(named.get(step, step), "step", "solid", "currentColor", opacity=tones[step])
+            for step in document.scale
+        )
+        if tones
+        else entries_for(
+            [(named.get(group, group), "step", True) for group in _named_groups(cells)], theme
+        )
     )
     primitives.extend(primitives_for(key, theme, measurer, 0.0, tops[-1], width))
     return _scene(document, primitives, width, tops[-1] + height_of(key, theme, measurer, width))
+
+
+def _scale_tones(scale: tuple[str, ...], theme: Theme) -> dict[str, float]:
+    """Each step of an ordered scale's tone, spread across the theme's ramp.
+
+    Spread rather than taken from the front, so the ends of any scale are the
+    ends of the ramp: a two-step scale is the lightest tone against the darkest,
+    not two neighbouring greys.
+    """
+    return {step: theme.mark.tone_for(index, len(scale)) for index, step in enumerate(scale)}
 
 
 def _named_groups(cells: tuple[Cell, ...]) -> list[str]:

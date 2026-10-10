@@ -524,6 +524,41 @@ band has not got — so a long name beside a short bar comes back as two or thre
 lines rather than one long one. A single word longer than the bar is refused, and
 the message names the band rather than the diagram.
 
+## A grid whose cells say how much
+
+A `matrix` fills cells that share a `group` alike, and by default the groups are a
+set: *data*, *copy* and *parity* get three unrelated patterns. A heatmap, a risk
+matrix or a skills matrix needs the opposite — the groups are an **order**, and
+the eye should find the heavy cells without reading a word. Say so with `scale`,
+the group names weakest first:
+
+```json
+{
+  "version": 1,
+  "kind": "matrix",
+  "columns": ["Minor", "Severe"],
+  "rows": ["Likely", "Rare"],
+  "scale": ["low", "medium", "high"],
+  "cells": [
+    {"text": "Ledger totals disagree", "column": 1, "row": 0, "group": "high"},
+    {"text": "Dashboards lag", "column": 0, "row": 0, "group": "medium"},
+    {"text": "Symbols misplaced", "column": 0, "row": 1, "group": "low"},
+    {"text": "Not assessed", "column": 1, "row": 1}
+  ]
+}
+```
+
+The cells are then filled by **tone**, light to dark, from the theme's
+`[mark] ramp` — lightness is what survives greyscale, and patterns cannot carry
+an order. The key lists every step in scale order, with `key` texts where you
+give them. A cell with no `group` stays blank, for *not assessed*. Every cell
+`group` must be a step, a scale has 2 to 5 steps (past five, neighbouring greys
+merge in print), and there is no numeric `value` to colour by: bucket the
+numbers, name the buckets, and keep the number in the cell's text if it
+matters. See [`reference/matrix-scale-risk.json`](reference/matrix-scale-risk.json),
+[`reference/matrix-scale-ci.json`](reference/matrix-scale-ci.json) and
+[`reference/matrix-scale-skills.json`](reference/matrix-scale-skills.json).
+
 ## A loop with something in its middle
 
 Many loops turn around something that is not a step: a quality cycle around the

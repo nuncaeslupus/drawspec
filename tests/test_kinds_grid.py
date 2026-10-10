@@ -973,3 +973,144 @@ def test_two_cells_sharing_an_id_are_refused() -> None:
     cells = [*PROCESS["cells"], {"id": "plan", "text": "Again", "column": 0, "row": 2}]  # type: ignore[misc]
     with pytest.raises(DocumentError, match="duplicate cell id"):
         parse_document({**PROCESS, "cells": cells})
+
+
+# --------------------------------------------------------------------------
+# scale — a matrix whose groups are an order, filled by tone
+# --------------------------------------------------------------------------
+
+RISK: dict[str, object] = {
+    "version": 1,
+    "kind": "matrix",
+    "title": "Risk",
+    "columns": ["Minor", "Severe"],
+    "rows": ["Likely", "Rare"],
+    "scale": ["low", "medium", "high"],
+    "cells": [
+        # `high` is mentioned first: the fill must follow the scale, not the order of mention.
+        {"text": "High", "column": 1, "row": 0, "group": "high"},
+        {"text": "Medium", "column": 0, "row": 0, "group": "medium"},
+        {"text": "Low", "column": 0, "row": 1, "group": "low"},
+        {"text": "Not assessed", "column": 1, "row": 1},
+    ],
+}
+
+
+def risk(**changes: object) -> dict[str, object]:
+    built = {key: value for key, value in RISK.items()}
+    built.update(changes)
+    return built
+
+
+def cell_figures(built: Scene) -> dict[str, Polygon]:
+    """Each cell's figure, keyed by the text drawn in it."""
+    figures = [item for item in built.primitives if isinstance(item, Polygon)]
+    texts = [item for item in built.primitives if isinstance(item, TextLine)]
+    found: dict[str, Polygon] = {}
+    for figure in figures:
+        xs = [x for x, _ in figure.points]
+        ys = [y for _, y in figure.points]
+        for line in texts:
+            if min(xs) < line.x < max(xs) and min(ys) < line.y < max(ys):
+                found[line.text] = figure
+    return found
+
+
+def test_a_scale_fills_by_its_own_order_not_by_first_mention() -> None:
+    built = grid_scene(parse_document(risk()), THEME, MEASURER)
+    figures = cell_figures(built)
+    ramp = THEME.mark.ramp
+    assert figures["Low"].fill_opacity == ramp[0]
+    assert figures["Medium"].fill_opacity == ramp[2]
+    assert figures["High"].fill_opacity == ramp[-1]
+    assert {figures[name].fill for name in ("Low", "Medium", "High")} == {"solid"}
+
+
+def test_a_cell_with_no_group_stays_blank_on_a_scale() -> None:
+    """Blank says *not assessed*, which is why the ramp's first step is never blank."""
+    figures = cell_figures(grid_scene(parse_document(risk()), THEME, MEASURER))
+    assert figures["Not assessed"].fill == ""
+
+
+def test_the_key_lists_every_step_in_scale_order() -> None:
+    """Including a step no cell uses: the key of a heatmap is its scale."""
+    document = risk(cells=[{"text": "High", "column": 0, "row": 0, "group": "high"}])
+    built = grid_scene(parse_document(document), THEME, MEASURER)
+    words = [item.text for item in built.primitives if isinstance(item, TextRun)]
+    assert words[-3:] == ["low", "medium", "high"]
+    swatches = [item for item in built.primitives if isinstance(item, Polygon)]
+    assert [swatch.fill_opacity for swatch in swatches[-3:]] == [
+        THEME.mark.tone_for(index, 3) for index in range(3)
+    ]
+
+
+def test_the_key_uses_key_texts_where_given() -> None:
+    document = risk(key=[{"group": "high", "text": "Mitigate now"}])
+    built = grid_scene(parse_document(document), THEME, MEASURER)
+    words = [item.text for item in built.primitives if isinstance(item, TextRun)]
+    assert words[-3:] == ["low", "medium", "Mitigate now"]
+
+
+def test_a_scale_renders_to_safe_svg() -> None:
+    svg = render(risk())
+    assert 'fill-opacity="0.48"' in svg
+    assert check_embedding_safety(svg, THEME) == ()
+
+
+def pointers(document: Mapping[str, object]) -> dict[str, str]:
+    from drawspec.schema import validate_document
+
+    return {violation.pointer: violation.message for violation in validate_document(document)}
+
+
+def test_a_cell_group_off_the_scale_is_refused_at_the_cell() -> None:
+    document = risk(cells=[{"text": "?", "column": 0, "row": 0, "group": "severe"}])
+    assert "/cells/0/group" in pointers(document)
+
+
+def test_a_scale_past_five_steps_is_refused() -> None:
+    document = risk(
+        scale=["a", "b", "c", "d", "e", "f"], cells=[{"text": "x", "column": 0, "row": 0}]
+    )
+    found = pointers(document)
+    assert "/scale/5" in found
+    assert "grey" in found["/scale/5"]
+
+
+def test_a_scale_of_one_step_is_refused() -> None:
+    document = risk(scale=["only"], cells=[{"text": "x", "column": 0, "row": 0, "group": "only"}])
+    assert "/scale" in pointers(document)
+
+
+def test_a_step_named_twice_is_refused() -> None:
+    document = risk(scale=["low", "high", "low"])
+    assert "/scale/2" in pointers(document)
+
+
+def test_a_key_line_for_a_name_off_the_scale_is_refused() -> None:
+    document = risk(key=[{"group": "critical", "text": "Critical"}])
+    assert "/key/0/group" in pointers(document)
+
+
+def test_a_key_line_for_an_unused_step_is_accepted_on_a_scale() -> None:
+    document = risk(
+        cells=[{"text": "High", "column": 0, "row": 0, "group": "high"}],
+        key=[{"group": "low", "text": "Accept"}],
+    )
+    assert pointers(document) == {}
+
+
+def test_a_numeric_value_on_a_cell_is_refused_with_the_bucketing_advice() -> None:
+    document = risk(cells=[{"text": "14 %", "column": 0, "row": 0, "value": 14}])
+    found = pointers(document)
+    assert "scale" in found["/cells/0/value"]
+
+
+def test_scale_is_a_matrix_field_only() -> None:
+    document = {
+        "version": 1,
+        "kind": "columns",
+        "items": [{"text": "a"}],
+        "scale": ["low", "high"],
+    }
+    assert "/scale" in pointers(document)

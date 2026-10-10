@@ -119,6 +119,7 @@ How a chart tells one mark from another, and how much room bars get.
 | `fills` | `["dots", "hatch", "grid", "cross", "none"]` | The fills a chart's marks take, in order, one per filled mark. Each one of `none`, `solid`, `hatch`, `dots`, `cross`, `grid`. |
 | `colours` | `[]` | A colour per fill, in the same order, or empty for ink alone. |
 | `gap` | `0.3` | How much of a category's band is left empty around its bars, as a fraction. Zero draws bars that touch, which reads as one wide bar. |
+| `ramp` | `[0.08, 0.18, 0.28, 0.38, 0.48]` | The tones an ordered `scale` is filled with, lightest first: how much of the page's ink each step lays down, from 0 (blank) to 1. |
 
 ### `[title]`
 
