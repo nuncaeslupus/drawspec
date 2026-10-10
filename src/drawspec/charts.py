@@ -38,6 +38,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
+from decimal import Decimal
 from itertools import pairwise
 from typing import Final
 
@@ -873,26 +874,32 @@ def _band(across: Scale, values: list[float], plot_left: float, plot_right: floa
 
 
 def _point_decimals(series: tuple[Series, ...]) -> int:
-    """The fewest decimals that still tell the chart's own values apart.
+    """The decimals the author wrote, the most any of these values carries.
 
-    A point label is there to say *which* value this point is, and rounding it to
-    the axis's step defeats that exactly when the points are close together —
-    which is when a reader most wants the number. The reference chart is the
-    case: four points at 7.2, 6.8, 7.4 and 6.9 all rounded to `7`, so the drawing
-    showed four labels reading `7` at four visibly different heights, and the
-    obvious reading is that the chart is broken.
+    A point or bar label says *which* value this is, so it prints the value as
+    written: `8.4` prints `8.4`, never `8`. It used to be the fewest decimals that
+    kept the chart's values apart, which is right for 7.2 against 6.8 and wrong
+    for 8.4 beside 12: no other value was near it, so it lost its decimal and the
+    label claimed a number the data does not hold. Rounding the axis step was the
+    rule before that, and failed the other way (four points near 7 all read `7`).
 
-    So the precision is a property of the data rather than of the axis: the
-    fewest decimals at which no two different values print the same. Capped,
-    because past three the label is longer than the gap it has to sit in and the
-    points were never that far apart to begin with.
+    Uniform across the drawing: every label in the set takes the most decimals
+    any one value was written with, so `12.0` sits beside `8.4` and a column of
+    numbers lines up the way a table's does. Capped, because past three the label
+    is longer than the gap it has to sit in.
     """
-    values = sorted({value for item in series for _, value in item.data})
-    for decimals in range(MAXIMUM_DECIMALS + 1):
-        printed = {f"{value:.{decimals}f}" for value in values}
-        if len(printed) == len(values):
-            return decimals
-    return MAXIMUM_DECIMALS
+    written = (_written_decimals(value) for item in series for _, value in item.data)
+    return min(max(written, default=0), MAXIMUM_DECIMALS)
+
+
+def _written_decimals(value: float) -> int:
+    """How many decimals `value` was written with: `8.4` one, `12` and `12.0` none.
+
+    Read from the shortest text that round-trips the float, which is what the
+    JSON said, less any trailing zeros JSON could not have kept anyway.
+    """
+    exponent = Decimal(repr(float(value))).normalize().as_tuple().exponent
+    return max(0, -exponent) if isinstance(exponent, int) else 0
 
 
 def _point_labels(

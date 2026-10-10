@@ -1661,3 +1661,44 @@ def test_wrong_counts_of_names_and_ends_are_refused(
 def test_a_quadrant_without_names_or_ends_draws_as_before() -> None:
     plain = quadrant(*CORNERS)
     assert not [run for run in texts(plain) if run.opacity < 1]
+
+
+# --------------------------------------------------------------------------
+# A bar's number is printed as written
+# --------------------------------------------------------------------------
+
+
+def test_a_horizontal_bar_prints_8_4_as_8_4_and_its_neighbours_alike() -> None:
+    """Regression: 8.4 beside 12 and 5 was printed `8`, because the old rule kept
+    only the decimals needed to tell the values apart. The author wrote one
+    decimal, so every bar's number carries one: `12.0`, `8.4`, `5.0`."""
+    built = chart_scene(
+        parse_document(
+            {
+                "version": 1,
+                "kind": "chart",
+                "axes": {
+                    "horizontal": {"label": "Calls"},
+                    "vertical": {"label": "Reason", "categories": ["Bins", "Tax", "Parking"]},
+                },
+                "series": [{"name": "Calls", "mark": "bar", "data": [[12, 1], [8.4, 2], [5, 3]]}],
+            }
+        ),
+        THEME,
+        MEASURER,
+    )
+    printed = {text.text for text in labels(built)}
+    assert {"12.0", "8.4", "5.0"} <= printed
+    assert "8" not in printed
+
+
+def test_a_vertical_bar_prints_its_value_at_the_precision_written() -> None:
+    built = marked({"name": "Count", "mark": "bar", "data": [[1, 12], [2, 8.4], [3, 5]]})
+    printed = {text.text for text in labels(built)}
+    assert {"12.0", "8.4", "5.0"} <= printed
+
+
+def test_whole_values_still_print_whole() -> None:
+    built = marked({"name": "Count", "mark": "bar", "data": [[1, 12], [2, 8], [3, 5.0]]})
+    printed = {text.text for text in labels(built)}
+    assert {"12", "8", "5"} <= printed

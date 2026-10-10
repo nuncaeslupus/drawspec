@@ -238,6 +238,11 @@ against it would stop working. Everything below is about the *package*.
 
 ### Fixed
 
+- **A chart's numbers print at the precision written.** Bar and point labels used
+  the fewest decimals that kept the chart's values apart, so `8.4` among whole
+  numbers printed `8`, a value the data does not hold. Every label in the set now
+  carries the most decimals any of its values was written with (`12.0`, `8.4`),
+  capped at three.
 - **A `chart` with `categories` on its vertical axis** was accepted and drawn wrongly:
   upright bars standing at the amounts, each as tall as its category's number. It now
   draws **horizontal bars** — each category a row, the first at the top, its name on

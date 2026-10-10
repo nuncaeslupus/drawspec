@@ -1187,7 +1187,10 @@ bar grows right from zero.
 
 Each point is turned round: `[amount, position]`, the position naming the category,
 1 for the first. Names wrap to about a third of the width; the numbers are written
-past the bars' ends (inside each segment, when series share a `stack`). Every series
+past the bars' ends (inside each segment, when series share a `stack`), at the
+precision you wrote them: the most decimals any value carries, for every bar, so
+`8.4` beside `12` prints `8.4` and `12.0` (at most three; upright bars and line
+points follow the same rule). Every series
 must be a `bar`, amounts start at zero, and the category axis takes no `min`/`max`:
 each is refused at its pointer. See
 [`reference/chart-across.json`](reference/chart-across.json).
