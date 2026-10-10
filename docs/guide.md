@@ -148,7 +148,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Nineteen exist, and they fall into eight families:
+fields are legal. Twenty exist, and they fall into nine families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -160,6 +160,7 @@ fields are legal. Nineteen exist, and they fall into eight families:
 | Machine | `states` | Things that change state: the conditions something can be in, and the events that move it between them. |
 | Exchange | `sequence` | Things said in order: messages between a fixed set of participants, read down the page. |
 | Model | `entities` | Things with fields, and how they relate: an ER model, a database schema, a class diagram. |
+| Plan | `gantt` | Things that take time: one row per task, each an interval, with phases, milestones and what waits on what. |
 
 One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see
@@ -880,6 +881,73 @@ operations per entity. See
 [`reference/entities-orders.json`](reference/entities-orders.json),
 [`reference/entities-shapes.json`](reference/entities-shapes.json) and
 [`reference/entities-enrolment.json`](reference/entities-enrolment.json).
+
+## A plan
+
+A `timeline` is one axis of instants: *when things happened*. A plan is one row
+per piece of work, each an interval, and what the reader looks for is overlap —
+what runs in parallel, what waits on what, what the plan looks like in week six.
+That is `gantt`:
+
+```json
+{
+  "version": 1,
+  "kind": "gantt",
+  "axis": {"label": "Week", "min": 0, "max": 10},
+  "tasks": [
+    {"id": "provision", "text": "Provision the cluster", "start": 0, "end": 2},
+    {"id": "backfill", "text": "Backfill history", "start": 2, "end": 6, "role": "emphasis"},
+    {"id": "cutover", "text": "Cut reads over", "at": 6},
+    {"id": "retire", "text": "Retire the old cluster", "start": 6, "end": 10}
+  ],
+  "edges": [
+    {"from": "provision", "to": "backfill"},
+    {"from": "backfill", "to": "cutover"},
+    {"from": "cutover", "to": "retire"}
+  ],
+  "marks": [{"text": "today", "at": 3}]
+}
+```
+
+**There are no dates.** A task's `start` and `end` are numbers in a unit the
+axis names — week 3, day 12, minute 45 — and a real calendar, with its weekends
+and month lengths, is a project tool's job. For a plan by month, sprint or term,
+name the periods in `axis.categories`: the first runs from 1 to 2, the second
+from 2 to 3, and each name is written in the middle of its period, so a task
+over the first three months is `"start": 1, "end": 4`. Categories set the range,
+so they take no `min` or `max`. Otherwise an end the author does not pin is taken
+out to the next tick.
+
+Rows are in the order written, labels in a column at the left (as wide as the
+widest, up to about a third of the canvas, then wrapped). A task with `at`
+instead of `start` and `end` is a **milestone**, drawn as a filled diamond (the
+theme's `[gantt] milestone` may make it a dot). An `actor` is the label's lead,
+as in a `flow` box. Task roles: `step` (the default bar), `strong` (on the
+critical path — heavier, the same word its dependencies take, and not counted by
+the emphasis cap), `emphasis` (the task the diagram is about — heavier and
+differently filled) and `note` (outside the plan — a light dashed outline).
+
+`edges` are finish-to-start: each is drawn from the end of one bar into the start
+of the other, and the line goes round the bars it can rather than through them.
+Roles `flow`, `strong` (the critical path) and `weak` (a soft dependency).
+`groups` are phases: each a run of consecutive tasks, drawn as a bold heading row
+with a bracket over the phase's span, its tasks indented under it. `marks` are
+named points — today, a deadline, a freeze — each a line across every row (in the
+theme's `[gantt] marks` edge role) with its name beside the top.
+
+Refused, each at its pointer: a string where a number belongs (a date, almost
+always — the message suggests a unit and `categories`); a task with both `at` and
+`start`/`end`, or neither, or only one end; an `end` not after its `start`; any
+value or mark off the axis; a dependency whose `to` starts before its `from` ends
+(either the plan or the dependency is wrong, and only the author knows which); a
+dependency on an unknown task or on itself; a phase whose tasks are not
+consecutive, a task in two phases, and — with phases — a task in none; a phase
+with no `text`; `progress`, which is status rather than plan; and a newline in a
+task's `text` when it has an actor. Budget: 16 tasks, 20 edges and 4 marks. See
+[`reference/gantt-migration.json`](reference/gantt-migration.json),
+[`reference/gantt-critical-path.json`](reference/gantt-critical-path.json),
+[`reference/gantt-upgrade.json`](reference/gantt-upgrade.json) and
+[`reference/gantt-semester.json`](reference/gantt-semester.json).
 
 ## Asking for a wide drawing instead of a tall one
 

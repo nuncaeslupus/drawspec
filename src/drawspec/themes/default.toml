@@ -150,6 +150,14 @@ separator = "link"
 # or UML's numbers beside it ("numeric": 1, 0..1, *, 0..*, 1..*).
 notation = "crowsfoot"
 
+[gantt]
+# A plan's milestone — a task with `at` rather than `start` and `end` — is drawn
+# as a filled diamond, the way most plans draw one ("circle" for a dot). A mark
+# (today, a deadline) is a line across every row in an edge role with no head:
+# dashed, so it reads as a reference and not as a task.
+milestone = "diamond"
+marks = "weak"
+
 # ---------------------------------------------------------------------------
 # Node roles. Shape and line treatment per semantic role. The author names the
 # role; every appearance decision below is taken here, once, for all diagrams.

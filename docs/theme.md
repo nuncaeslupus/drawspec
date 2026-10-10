@@ -194,6 +194,15 @@ How an entity diagram says *how many* at each end of a relation.
 |---|---|---|
 | `notation` | `"crowsfoot"` | `crowsfoot` (marks across the line's end) or `numeric` (text beside it). One of `crowsfoot`, `numeric`. |
 
+### `[gantt]`
+
+How a plan draws the two marks that are not bars.
+
+| Key | Default | What it is |
+|---|---|---|
+| `milestone` | `"diamond"` | `diamond` or `circle`: the mark a task with `at` is drawn as, filled. One of `diamond`, `circle`. |
+| `marks` | `"weak"` | The edge role a mark's line across the rows is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The

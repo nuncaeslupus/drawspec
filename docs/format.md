@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-19 kinds. The machine-readable form of this page is the published
+20 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities` | **yes** | Which of the nineteen diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt` | **yes** | Which of the twenty diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -163,6 +163,16 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `entities` | array of [entity](#entity-object), at least 1 | **yes** | The boxes: each a name (and a stereotype), a rule, its fields, and its operations under a second rule. Placed by their relations: general above specific when there is a hierarchy, side by side otherwise. |
 | `edges` | array of [relation](#relation-object) | no | The relations between entities, each landing on a box — or, with `from_field` / `to_field`, on one row of it — and carrying a cardinality at either end. A hierarchy may not loop. |
 
+### `gantt`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `axis` | [axis-gantt object](#axis-gantt-object) | **yes** | The one axis the plan runs along: what its numbers count, in a unit you name. There are no dates. |
+| `tasks` | array of [task](#task-object), at least 1 | **yes** | One row each, in the order written — that order is the reading order. `start` and `end` make a bar; `at` makes a milestone. |
+| `groups` | array of [group](#group-object) | no | Phases, each a run of consecutive tasks, drawn as a heading row with a bracket over the phase's span. With groups, every task is in one. |
+| `edges` | array of [dependency](#dependency-object) | no | Finish-to-start dependencies between tasks: drawn from the end of `from` into the start of `to`. |
+| `marks` | array of [mark](#mark-object) | no | Named points in time — today, a deadline, a freeze — each a line across every row with its name above. |
+
 ### `scatter`
 
 | Field | Type | Required | What it is |
@@ -214,6 +224,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `sequence` | 8 `participants`, 30 `messages` |
 | `lanes` | 15 `nodes`, 16 `edges`, 6 `lanes` |
 | `entities` | 8 `entities`, 12 `edges`, 12 `fields` per entity, 8 `operations` per entity |
+| `gantt` | 16 `tasks`, 20 `edges`, 4 `marks` |
 
 ## Emphasis
 
@@ -365,6 +376,43 @@ name, so a misspelt key is an error at the point it was written.
 | `to_end` | string — one of `one`, `zero-or-one`, `many`, `zero-or-many`, `one-or-many` | no | As `from_end`, for the `to` end: how many of it per one of the other. Not on `owns`, whose `to` end is the whole, drawn as the diamond. |
 | `label` | string | no | A short label placed along the line. |
 | `role` | string — one of `link`, `owns`, `weak`, `strong`, `inherits`, `realizes` | no | What the relation is. `link` (the default) an association; `owns` composition — `from` is a part of `to`, diamond at `to`; `weak` a dependency; `strong` the relation that matters; `inherits` and `realizes` a subclass and an implementation, hollow triangle at `to`. An end with a cardinality draws it in place of the role's head. |
+
+### `task` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique within the document. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `start` | number | no | Where the task starts on the axis, with `end`. A number in the axis's unit (week 3, day 12, minute 45) — data, not a coordinate. Never a date. |
+| `end` | number | no | Where it ends, after `start`. With categories, 4 is where the fourth period begins. |
+| `at` | number | no | Instead of `start` and `end`: makes the task a milestone, drawn as a mark at this point with no length. |
+| `actor` | string | no | Who does it — free text, drawn as the row label's lead, so the names line up in a column. A task with an actor may not put a newline in `text`. |
+| `role` | string — one of `step`, `strong`, `emphasis`, `note` | no | `step` (the default bar), `strong` (on the critical path: drawn heavier, the word its dependencies take), `emphasis` (the task the diagram is about) or `note` (outside the plan, drawn lighter). |
+
+### `dependency` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | string | **yes** | The id of the task that has to finish first. |
+| `to` | string | **yes** | The id of the task that waits for it, which may not start before `from` ends. Drawn from the end of one bar into the start of the other. |
+| `role` | string — one of `flow`, `strong`, `weak` | no | `flow` (the default), `strong` (the critical path) or `weak` (a soft dependency, dashed). |
+
+### `mark` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `at` | number | **yes** | Where on the axis: a line is drawn across every row there. |
+
+### `axis-gantt` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `label` | string | **yes** | Required, and the unit's name: `Week`, `Day`, `Minutes after 02:00`. |
+| `unit` | string | no | What the numbers are in, written after the label. |
+| `min` | number | no | Where the plan starts. Omit to take it from the tasks. |
+| `max` | number | no | Where the plan ends. Omit to take it from the tasks. |
+| `categories` | array of string, at least 1 | no | Names for the periods, in order, instead of numbers — months, sprints, quarters. The first period runs from 1 to 2, the second from 2 to 3, so a task over the first three is `start` 1, `end` 4. Sets the range itself, so not with `min` or `max`. |
 
 ### `group` object
 

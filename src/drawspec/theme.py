@@ -1041,6 +1041,37 @@ class EntitiesStyle:
         )
 
 
+#: How a `gantt` milestone is drawn: a diamond, as most plans draw one, or a dot.
+GANTT_MILESTONES: Final = ("diamond", "circle")
+
+
+@dataclass(frozen=True)
+class GanttStyle:
+    """How a plan draws the two marks that are not bars.
+
+    The author says a task is a milestone and that a deadline falls at week 6;
+    whether the milestone is a diamond or a dot, and which line the deadline is
+    drawn in, are house style.
+    """
+
+    milestone: str = "diamond"
+    """`diamond` or `circle`: the mark a task with `at` is drawn as, filled."""
+
+    marks: str = "weak"
+    """The edge role a mark's line across the rows is drawn in, with no head."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> GanttStyle:
+        _reject_unknown(mapping, ("milestone", "marks"), "[gantt]")
+        defaults = cls()
+        return cls(
+            milestone=_choice(
+                mapping.get("milestone", defaults.milestone), GANTT_MILESTONES, "[gantt] milestone"
+            ),
+            marks=_choice(mapping.get("marks", defaults.marks), EDGE_ROLES, "[gantt] marks"),
+        )
+
+
 #: Which way a `lanes` diagram's lanes run: across the page, stacked top to
 #: bottom (`rows`), or down it, side by side (`columns`). `auto` tries rows and
 #: takes columns when rows do not fit the width.
@@ -1287,6 +1318,7 @@ _TOP_LEVEL_KEYS: Final = (
     "sequence",
     "lanes",
     "entities",
+    "gantt",
     "role",
     "edge_role",
 )
@@ -1313,6 +1345,7 @@ class Theme:
     sequence: SequenceStyle = SequenceStyle()
     lanes: LanesStyle = LanesStyle()
     entities: EntitiesStyle = EntitiesStyle()
+    gantt: GanttStyle = GanttStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
 
@@ -1367,6 +1400,7 @@ class Theme:
             sequence=SequenceStyle.from_mapping(_section(mapping, "sequence")),
             lanes=LanesStyle.from_mapping(_section(mapping, "lanes")),
             entities=EntitiesStyle.from_mapping(_section(mapping, "entities")),
+            gantt=GanttStyle.from_mapping(_section(mapping, "gantt")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
         )

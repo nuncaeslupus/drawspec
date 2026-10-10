@@ -65,6 +65,7 @@ from drawspec.theme import (
     FILL_PATTERNS,
     FONT_ROLES,
     FUNNEL_DIRECTIONS,
+    GANTT_MILESTONES,
     LANES_ORIENTATIONS,
     NODE_SHAPES,
     THEME_VERSION,
@@ -79,6 +80,7 @@ from drawspec.theme import (
     FitBand,
     FontStacks,
     FunnelStyle,
+    GanttStyle,
     LanesStyle,
     MarkStyle,
     Padding,
@@ -513,6 +515,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "sequence": SequenceStyle,
     "lanes": LanesStyle,
     "entities": EntitiesStyle,
+    "gantt": GanttStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are
@@ -531,6 +534,8 @@ THEME_VOCABULARIES: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("lanes", "orientation"): LANES_ORIENTATIONS,
     ("lanes", "separator"): EDGE_ROLES,
     ("entities", "notation"): ENTITIES_NOTATIONS,
+    ("gantt", "milestone"): GANTT_MILESTONES,
+    ("gantt", "marks"): EDGE_ROLES,
 }
 
 

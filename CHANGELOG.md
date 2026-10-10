@@ -12,6 +12,24 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`gantt`, the twentieth kind** — a plan: one row per task in the order
+  written, each a bar from `start` to `end` on a numbered `axis`, or a milestone
+  (`at`) drawn as a filled diamond. **No dates**, by the owner's decision: the
+  axis counts in a unit its `label` names, or names its periods with
+  `categories` (the first period runs from 1 to 2). An `actor` is the row
+  label's lead. `groups` are phases of consecutive tasks, drawn as a bold heading
+  row with a bracket over the phase's span; `edges` are finish-to-start
+  dependencies, drawn from the end of one bar into the start of the other and
+  round the bars they can avoid; `marks` (today, a deadline) are lines across
+  every row. Task roles `step`, `strong` (the critical path — not counted by the
+  emphasis cap), `emphasis` and `note`; dependency roles `flow`, `strong` and
+  `weak`. New theme section `[gantt]`: `milestone` (`diamond` or `circle`) and
+  `marks` (an edge role). Refused at their pointers: a string date (suggesting a
+  unit and `categories`), a task that is both or neither a milestone and an
+  interval, an `end` not after its `start`, a value off the axis, `min`/`max`
+  with categories, a dependency whose task starts before the one it waits for
+  ends, a phase that is not consecutive or has no name, a task in no phase when
+  there are phases, and `progress`. Budget: 16 tasks, 20 edges, 4 marks.
 - **`entities`, the nineteenth kind** — ER models, database schemas and class
   diagrams as one: `entities`, each a name (with an optional `tag`, drawn
   «in guillemets»), a rule, its `fields` — a row each, with an optional `type`

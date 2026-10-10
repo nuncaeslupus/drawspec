@@ -1360,6 +1360,95 @@
         "entities"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "gantt",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "gantt"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file."
+        },
+        "axis": {
+          "$ref": "#/$defs/axis-gantt",
+          "description": "The one axis the plan runs along: what its numbers count, in a unit you name. There are no dates."
+        },
+        "tasks": {
+          "type": "array",
+          "description": "One row each, in the order written — that order is the reading order. `start` and `end` make a bar; `at` makes a milestone.",
+          "items": {
+            "$ref": "#/$defs/task"
+          },
+          "minItems": 1
+        },
+        "groups": {
+          "type": "array",
+          "description": "Phases, each a run of consecutive tasks, drawn as a heading row with a bracket over the phase's span. With groups, every task is in one.",
+          "items": {
+            "$ref": "#/$defs/group"
+          }
+        },
+        "edges": {
+          "type": "array",
+          "description": "Finish-to-start dependencies between tasks: drawn from the end of `from` into the start of `to`.",
+          "items": {
+            "$ref": "#/$defs/dependency"
+          }
+        },
+        "marks": {
+          "type": "array",
+          "description": "Named points in time — today, a deadline, a freeze — each a line across every row with its name above.",
+          "items": {
+            "$ref": "#/$defs/mark"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "axis",
+        "tasks"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -1449,6 +1538,39 @@
         "max": {
           "type": "number",
           "description": "Where the axis ends. Omit to take it from the data."
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    "axis-gantt": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Required, and the unit's name: `Week`, `Day`, `Minutes after 02:00`."
+        },
+        "unit": {
+          "type": "string",
+          "description": "What the numbers are in, written after the label."
+        },
+        "min": {
+          "type": "number",
+          "description": "Where the plan starts. Omit to take it from the tasks."
+        },
+        "max": {
+          "type": "number",
+          "description": "Where the plan ends. Omit to take it from the tasks."
+        },
+        "categories": {
+          "type": "array",
+          "description": "Names for the periods, in order, instead of numbers — months, sprints, quarters. The first period runs from 1 to 2, the second from 2 to 3, so a task over the first three is `start` 1, `end` 4. Sets the range itself, so not with `min` or `max`.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
         }
       },
       "required": [
@@ -1609,6 +1731,33 @@
       },
       "required": [
         "waypoints"
+      ],
+      "additionalProperties": false
+    },
+    "dependency": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The id of the task that has to finish first."
+        },
+        "to": {
+          "type": "string",
+          "description": "The id of the task that waits for it, which may not start before `from` ends. Drawn from the end of one bar into the start of the other."
+        },
+        "role": {
+          "type": "string",
+          "description": "`flow` (the default), `strong` (the critical path) or `weak` (a soft dependency, dashed).",
+          "enum": [
+            "flow",
+            "strong",
+            "weak"
+          ]
+        }
+      },
+      "required": [
+        "from",
+        "to"
       ],
       "additionalProperties": false
     },
@@ -1988,6 +2137,24 @@
       ],
       "additionalProperties": false
     },
+    "mark": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "at": {
+          "type": "number",
+          "description": "Where on the axis: a line is drawn across every row there."
+        }
+      },
+      "required": [
+        "text",
+        "at"
+      ],
+      "additionalProperties": false
+    },
     "message": {
       "type": "object",
       "properties": {
@@ -2360,6 +2527,50 @@
             "step",
             "emphasis",
             "terminal"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "task": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique within the document."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "start": {
+          "type": "number",
+          "description": "Where the task starts on the axis, with `end`. A number in the axis's unit (week 3, day 12, minute 45) — data, not a coordinate. Never a date."
+        },
+        "end": {
+          "type": "number",
+          "description": "Where it ends, after `start`. With categories, 4 is where the fourth period begins."
+        },
+        "at": {
+          "type": "number",
+          "description": "Instead of `start` and `end`: makes the task a milestone, drawn as a mark at this point with no length."
+        },
+        "actor": {
+          "type": "string",
+          "description": "Who does it — free text, drawn as the row label's lead, so the names line up in a column. A task with an actor may not put a newline in `text`."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default bar), `strong` (on the critical path: drawn heavier, the word its dependencies take), `emphasis` (the task the diagram is about) or `note` (outside the plan, drawn lighter).",
+          "enum": [
+            "step",
+            "strong",
+            "emphasis",
+            "note"
           ]
         }
       },

@@ -194,6 +194,27 @@ AGGREGATION_REFUSED: Final = (
     "whole, `link` if it can."
 )
 
+#: Plans: one row per piece of work, each an interval on a numbered axis. A
+#: layout family of its own — rows in the order written, bars placed by value —
+#: drawing on the chart's ticks for the axis. No dates: a task starts and ends at
+#: numbers in a unit the axis names, which is the owner's decision.
+GANTT_KINDS: Final = ("gantt",)
+
+#: The roles a task may take: the default bar, a task on the critical path
+#: (`strong`, the same word its dependencies take, drawn heavier), the task the
+#: diagram is about (`emphasis`, heavier and differently filled), and an outside
+#: task drawn lighter (`note`). `strong` is not counted by the emphasis cap, for
+#: the reason the `strong` edge is not: a path is several things by nature.
+TASK_ROLES: Final = ("step", "strong", "emphasis", "note")
+
+#: The roles a dependency may take: the default, the critical path drawn heavier,
+#: and a soft or assumed dependency drawn dashed. Each has a head, because a
+#: finish-to-start dependency has a direction.
+DEPENDENCY_ROLES: Final = ("flow", "strong", "weak")
+
+#: The fields of a task that hold a position on the axis.
+TASK_VALUES: Final = ("start", "end", "at")
+
 #: How a `files` tree is drawn. `icons` is the file-browser look; `plain` keeps
 #: the guides and drops the pictures; `unicode` and `ascii` are the tree as text,
 #: set in the monospace face, the way `tree` prints it.
@@ -230,7 +251,9 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: show and a strip per party can. `entities` is the sixth: ER diagrams,
 #: database schemas and class diagrams are one shape — a named box with a list in
 #: it, and typed relations between boxes that may land on one row — which
-#: `tree-compartments` could only imitate with a newline per attribute.
+#: `tree-compartments` could only imitate with a newline per attribute. `gantt`
+#: is the seventh: a plan, one row per task, each an interval — overlap is what
+#: the reader looks for, and a `timeline`'s one axis of instants cannot show it.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -241,6 +264,7 @@ KINDS: Final = (
     + SEQUENCE_KINDS
     + LANES_KINDS
     + ENTITIES_KINDS
+    + GANTT_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -295,6 +319,8 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
         ("entities/fields", 12),
         ("entities/operations", 8),
     ),  # [5 entities, 5 edges, 6 fields, 3 operations]
+    # Set by the proposal: a two-hundred-line plan is a project tool's export.
+    "gantt": (("tasks", 16), ("edges", 20), ("marks", 4)),  # [11 tasks, 9 edges, 2 marks]
 }
 
 
@@ -905,6 +931,120 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "task": (
+        FieldSpec("id", "string", required=True, description="Unique within the document."),
+        _text(),
+        FieldSpec(
+            "start",
+            "number",
+            description=(
+                "Where the task starts on the axis, with `end`. A number in the axis's unit "
+                "(week 3, day 12, minute 45) — data, not a coordinate. Never a date."
+            ),
+        ),
+        FieldSpec(
+            "end",
+            "number",
+            description=(
+                "Where it ends, after `start`. With categories, 4 is where the fourth "
+                "period begins."
+            ),
+        ),
+        FieldSpec(
+            "at",
+            "number",
+            description=(
+                "Instead of `start` and `end`: makes the task a milestone, drawn as a mark "
+                "at this point with no length."
+            ),
+        ),
+        FieldSpec(
+            "actor",
+            "string",
+            description=(
+                "Who does it — free text, drawn as the row label's lead, so the names line "
+                "up in a column. A task with an actor may not put a newline in `text`."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=TASK_ROLES,
+            description=(
+                "`step` (the default bar), `strong` (on the critical path: drawn heavier, the "
+                "word its dependencies take), `emphasis` (the task the diagram is about) or "
+                "`note` (outside the plan, drawn lighter)."
+            ),
+        ),
+    ),
+    "dependency": (
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description="The id of the task that has to finish first.",
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description=(
+                "The id of the task that waits for it, which may not start before `from` "
+                "ends. Drawn from the end of one bar into the start of the other."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=DEPENDENCY_ROLES,
+            description=(
+                "`flow` (the default), `strong` (the critical path) or `weak` (a soft "
+                "dependency, dashed)."
+            ),
+        ),
+    ),
+    "mark": (
+        _text(),
+        FieldSpec(
+            "at",
+            "number",
+            required=True,
+            description="Where on the axis: a line is drawn across every row there.",
+        ),
+    ),
+    "axis-gantt": (
+        FieldSpec(
+            "label",
+            "string",
+            required=True,
+            description="Required, and the unit's name: `Week`, `Day`, `Minutes after 02:00`.",
+        ),
+        FieldSpec(
+            "unit", "string", description="What the numbers are in, written after the label."
+        ),
+        FieldSpec(
+            "min",
+            "number",
+            description="Where the plan starts. Omit to take it from the tasks.",
+        ),
+        FieldSpec(
+            "max",
+            "number",
+            description="Where the plan ends. Omit to take it from the tasks.",
+        ),
+        FieldSpec(
+            "categories",
+            "array",
+            item_kind="string",
+            min_items=1,
+            description=(
+                "Names for the periods, in order, instead of numbers — months, sprints, "
+                "quarters. The first period runs from 1 to 2, the second from 2 to 3, so a "
+                "task over the first three is `start` 1, `end` 4. Sets the range itself, "
+                "so not with `min` or `max`."
+            ),
+        ),
+    ),
     "group": (
         FieldSpec("id", "string", required=True, description="Unique within the document."),
         _text(required=False),
@@ -1261,7 +1401,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the nineteen diagrams this is. It selects the fields that are "
+            "Which of the twenty diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -1731,6 +1871,56 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    GANTT_KINDS: (
+        FieldSpec(
+            "axis",
+            "object",
+            required=True,
+            ref="axis-gantt",
+            description=(
+                "The one axis the plan runs along: what its numbers count, in a unit you "
+                "name. There are no dates."
+            ),
+        ),
+        FieldSpec(
+            "tasks",
+            "array",
+            required=True,
+            item_ref="task",
+            min_items=1,
+            description=(
+                "One row each, in the order written — that order is the reading order. "
+                "`start` and `end` make a bar; `at` makes a milestone."
+            ),
+        ),
+        FieldSpec(
+            "groups",
+            "array",
+            item_ref="group",
+            description=(
+                "Phases, each a run of consecutive tasks, drawn as a heading row with a "
+                "bracket over the phase's span. With groups, every task is in one."
+            ),
+        ),
+        FieldSpec(
+            "edges",
+            "array",
+            item_ref="dependency",
+            description=(
+                "Finish-to-start dependencies between tasks: drawn from the end of `from` "
+                "into the start of `to`."
+            ),
+        ),
+        FieldSpec(
+            "marks",
+            "array",
+            item_ref="mark",
+            description=(
+                "Named points in time — today, a deadline, a freeze — each a line across "
+                "every row with its name above."
+            ),
+        ),
+    ),
     ("scatter",): (
         FieldSpec(
             "axes",
@@ -1945,6 +2135,47 @@ class Relation:
 
 
 @dataclass(frozen=True)
+class Task:
+    """One row of a `gantt`: an interval from `start` to `end`, or a milestone `at`."""
+
+    id: str
+    text: str
+    start: float = 0.0
+    end: float = 0.0
+    at: float | None = None
+    role: str = "step"
+    actor: str = ""
+
+    @property
+    def milestone(self) -> bool:
+        """Whether this task is a point rather than an interval."""
+        return self.at is not None
+
+    @property
+    def begins(self) -> float:
+        """Where it starts on the axis: `start`, or `at` for a milestone."""
+        return self.at if self.at is not None else self.start
+
+    @property
+    def finishes(self) -> float:
+        """Where it ends on the axis: `end`, or `at` for a milestone."""
+        return self.at if self.at is not None else self.end
+
+    @property
+    def label(self) -> str:
+        """The words of its row label: the actor as the lead, as in a `flow` box."""
+        return f"{self.actor}\n{self.text}" if self.actor else self.text
+
+
+@dataclass(frozen=True)
+class Mark:
+    """A named point on a `gantt`'s axis, drawn as a line across every row."""
+
+    text: str
+    at: float
+
+
+@dataclass(frozen=True)
 class Band:
     """Something that runs alongside a set of boxes rather than containing them.
 
@@ -2127,6 +2358,11 @@ class Document:
     relations: tuple[Relation, ...] = ()
     """An `entities` diagram's edges, which carry fields and ends a graph edge has not."""
 
+    tasks: tuple[Task, ...] = ()
+    """A `gantt`'s rows, top to bottom. Its axis is the one entry of `axes`."""
+
+    marks: tuple[Mark, ...] = ()
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -2140,6 +2376,7 @@ class Document:
             ("sequence", SEQUENCE_KINDS),
             ("lanes", LANES_KINDS),
             ("entities", ENTITIES_KINDS),
+            ("gantt", GANTT_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -2324,6 +2561,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
 
     if kind in LANES_KINDS:
         found = [_lanes_refusal(violation) for violation in found]
+    if kind in GANTT_KINDS:
+        found = [_gantt_refusal(violation, document) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -2348,11 +2587,12 @@ def _edge_role_refusal(violation: Violation, document: Mapping[str, Any], kind: 
     if not isinstance(role, str):
         return violation
     if role in HIERARCHY_ROLES and kind not in ENTITIES_KINDS:
+        legal = DEPENDENCY_ROLES if kind in GANTT_KINDS else GRAPH_EDGE_ROLES
         return Violation(
             violation.pointer,
             f"{role!r} is an edge role of the `entities` kind only: it says one class is a "
             f"kind of another, which a {kind} has no classes to mean. Here, one of "
-            f"{', '.join(GRAPH_EDGE_ROLES)}.",
+            f"{', '.join(legal)}.",
         )
     if kind in ENTITIES_KINDS and role.startswith("aggregat"):
         return Violation(violation.pointer, f"{role!r}: {AGGREGATION_REFUSED}")
@@ -2448,6 +2688,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _sequence_violations(document)
     if kind in ENTITIES_KINDS:
         return _entities_violations(document)
+    if kind in GANTT_KINDS:
+        return _gantt_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -3474,6 +3716,274 @@ def _entities_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: What a gantt says to a date: the owner's decision, and the two ways round it.
+GANTT_NO_DATES: Final = (
+    "a gantt draws no calendar, so a place on its axis is a number in a unit the axis names — "
+    'with `"axis": {"label": "Week"}`, week 3 is 3. For a plan by month or sprint, name '
+    "the periods in `axis.categories` and count them: the first runs from 1 to 2."
+)
+
+
+def _gantt_refusal(violation: Violation, document: Mapping[str, Any]) -> Violation:
+    """A structural refusal in a gantt, told what this kind means by it.
+
+    A string where a task's place belongs is almost always a date, and the generic
+    "expected number" says nothing about why one is not accepted. `progress` is
+    refused by name for the reason the proposal gives.
+    """
+    parts = violation.pointer.split("/")
+    if len(parts) == 4 and parts[1] in ("tasks", "marks"):
+        name = parts[3]
+        try:
+            value = document[parts[1]][int(parts[2])][name]
+        except (TypeError, ValueError, IndexError, KeyError):
+            value = None
+        if name in TASK_VALUES and isinstance(value, str):
+            return Violation(violation.pointer, f"{value!r} is not a number: {GANTT_NO_DATES}")
+        if parts[1] == "tasks" and name in ("progress", "complete", "percent"):
+            return Violation(
+                violation.pointer,
+                f"{name!r} is not drawn: how far a task has got is status, not plan, and it "
+                f"is out of date the day the drawing is made. Say it in the text, or draw "
+                f"what is done as tasks that have ended before a `today` mark.",
+            )
+    return violation
+
+
+def _gantt_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """What a plan may not be: tasks that are not one thing, and claims that cannot hold.
+
+    Each task is a milestone or an interval, ends after it starts, and sits on the
+    axis; ids land; a dependency's task does not start before the one it waits
+    for ends; a phase is a run of consecutive tasks, and with phases every task
+    is in one.
+    """
+    found: list[Violation] = []
+    axis = document.get("axis")
+    axis = axis if isinstance(axis, dict) else {}
+    low, high = axis.get("min"), axis.get("max")
+    low = low if _is_number(low) else None
+    high = high if _is_number(high) else None
+    categories = axis.get("categories")
+    if isinstance(categories, list) and categories:
+        for name in ("min", "max"):
+            if name in axis:
+                found.append(
+                    Violation(
+                        _pointer("axis", name),
+                        f"with categories the axis runs from 1 to {len(categories) + 1}, one "
+                        f"period each, so it takes no {name!r}. Drop it, or drop the categories "
+                        f"and number the axis.",
+                    )
+                )
+        low, high = 1, len(categories) + 1
+    elif low is not None and high is not None and high <= low:
+        found.append(
+            Violation(
+                _pointer("axis", "max"), f"the axis ends at {high}, not after its start {low}"
+            )
+        )
+        low = high = None
+
+    remedy = "add periods to the categories" if categories else "widen the axis"
+
+    def outside(value: float, pointer: str) -> None:
+        if (low is not None and value < low) or (high is not None and value > high):
+            span = f"{'…' if low is None else low} to {'…' if high is None else high}"
+            found.append(
+                Violation(
+                    pointer,
+                    f"{value} is off the axis, which runs {span}: it would be drawn off the "
+                    f"plot. Fix the value or {remedy}.",
+                )
+            )
+
+    tasks: dict[str, tuple[float, float] | None] = {}
+    order: dict[str, int] = {}
+    for index, task in enumerate(_listed(document, "tasks")):
+        if not isinstance(task, dict):
+            continue
+        identifier = task.get("id")
+        here = _pointer("tasks", index)
+        values = {name: task[name] for name in TASK_VALUES if _is_number(task.get(name))}
+        given = {name for name in TASK_VALUES if name in task}
+        span: tuple[float, float] | None = None
+        if "at" in given and given & {"start", "end"}:
+            found.append(
+                Violation(
+                    _pointer("tasks", index, "at"),
+                    "a task is a milestone (`at`) or an interval (`start` and `end`), not both. "
+                    "For a step that ends in a milestone, write the two as two tasks.",
+                )
+            )
+        elif "at" in given:
+            if "at" in values:
+                span = (values["at"], values["at"])
+        elif not given:
+            found.append(
+                Violation(
+                    here,
+                    "a task needs `start` and `end` (an interval) or `at` (a milestone); it has "
+                    "no place on the axis.",
+                )
+            )
+        elif given != {"start", "end"}:
+            missing = ({"start", "end"} - given).pop()
+            found.append(
+                Violation(
+                    _pointer("tasks", index, missing),
+                    f"{missing!r} is required with {({'start', 'end'} - {missing}).pop()!r}: "
+                    f"an interval has two ends. For a point in time, write `at` alone.",
+                )
+            )
+        elif "start" in values and "end" in values:
+            if values["end"] <= values["start"]:
+                found.append(
+                    Violation(
+                        _pointer("tasks", index, "end"),
+                        f"this task ends at {values['end']}, which is not after it starts at "
+                        f"{values['start']}. For a point in time, write `at` instead.",
+                    )
+                )
+            else:
+                span = (values["start"], values["end"])
+        for name, value in values.items():
+            outside(value, _pointer("tasks", index, name))
+        text = task.get("text")
+        if isinstance(task.get("actor"), str) and isinstance(text, str) and "\n" in text:
+            found.append(
+                Violation(
+                    _pointer("tasks", index, "text"),
+                    "a task with an actor has the actor as its label's lead, so its text may "
+                    "not start a second paragraph. Put it on one line.",
+                )
+            )
+        if not isinstance(identifier, str):
+            continue
+        if identifier in tasks:
+            found.append(
+                Violation(_pointer("tasks", index, "id"), f"duplicate task id {identifier!r}")
+            )
+            continue
+        tasks[identifier] = span
+        order[identifier] = index
+
+    for index, mark in enumerate(_listed(document, "marks")):
+        if isinstance(mark, dict) and _is_number(mark.get("at")):
+            outside(mark["at"], _pointer("marks", index, "at"))
+
+    for index, edge in enumerate(_listed(document, "edges")):
+        if not isinstance(edge, dict):
+            continue
+        ends = {name: edge.get(name) for name in ("from", "to")}
+        sound = True
+        for name, target in ends.items():
+            if isinstance(target, str) and target not in tasks:
+                found.append(
+                    Violation(
+                        _pointer("edges", index, name),
+                        f"{target!r} is not the id of any task in this document"
+                        + _closest(target, tasks),
+                    )
+                )
+                sound = False
+        source, target = ends["from"], ends["to"]
+        if not (sound and isinstance(source, str) and isinstance(target, str)):
+            continue
+        if source == target:
+            found.append(Violation(_pointer("edges", index, "to"), "a task cannot wait for itself"))
+            continue
+        before, after = tasks[source], tasks[target]
+        if before is not None and after is not None and after[0] < before[1]:
+            found.append(
+                Violation(
+                    _pointer("edges", index, "to"),
+                    f"{target!r} starts at {after[0]}, before {source!r} ends at {before[1]}, "
+                    f"and a dependency says it cannot start until then. Either the plan or "
+                    f"the dependency is wrong; only you know which.",
+                )
+            )
+
+    groups = _listed(document, "groups")
+    owner: dict[str, str] = {}
+    group_ids: set[str] = set()
+    for index, group in enumerate(groups):
+        if not isinstance(group, dict):
+            continue
+        identifier = group.get("id")
+        if isinstance(identifier, str):
+            if identifier in tasks:
+                found.append(
+                    Violation(
+                        _pointer("groups", index, "id"), f"{identifier!r} is already a task's id"
+                    )
+                )
+            elif identifier in group_ids:
+                found.append(
+                    Violation(_pointer("groups", index, "id"), f"duplicate group id {identifier!r}")
+                )
+            group_ids.add(identifier)
+        if "text" not in group:
+            found.append(
+                Violation(
+                    _pointer("groups", index, "text"),
+                    "a phase is drawn as its name over its tasks, so it needs `text`",
+                )
+            )
+        members = group.get("members")
+        if not isinstance(members, list):
+            continue
+        rows: list[int] = []
+        sound = True
+        for position, member in enumerate(members):
+            if not isinstance(member, str):
+                sound = False
+                continue
+            pointer = _pointer("groups", index, "members", position)
+            if member not in tasks:
+                found.append(Violation(pointer, f"{member!r} is not the id of any task"))
+                sound = False
+            elif member in owner:
+                found.append(
+                    Violation(
+                        pointer,
+                        f"{member!r} is already in {owner[member]!r}. A task is in one phase.",
+                    )
+                )
+                sound = False
+            else:
+                owner[member] = str(identifier)
+                rows.append(order[member])
+        if not sound or not rows:
+            continue
+        names = {row: name for name, row in order.items()}
+        between = [names[row] for row in range(min(rows), max(rows) + 1) if row not in rows]
+        if between:
+            found.append(
+                Violation(
+                    _pointer("groups", index, "members"),
+                    f"{between[0]!r} stands between members of {identifier!r} in 'tasks', so "
+                    f"the phase would take in a row that is not in it. Reorder 'tasks' so a "
+                    f"phase's tasks are next to each other.",
+                )
+            )
+    if groups:
+        for identifier, index in order.items():
+            if identifier not in owner:
+                found.append(
+                    Violation(
+                        _pointer("tasks", index),
+                        f"{identifier!r} is in no phase, and with phases its row would read as "
+                        f"part of the one above it. Put it in a group, or drop 'groups'.",
+                    )
+                )
+    return found
+
+
+def _is_number(value: object) -> bool:
+    return isinstance(value, int | float) and not isinstance(value, bool)
+
+
 def _reaches(graph: Mapping[str, Sequence[str]], start: str, goal: str) -> bool:
     """Whether `goal` is reachable from `start` along `graph`'s edges."""
     seen: set[str] = set()
@@ -3944,6 +4454,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _lanes_document(document)
     if kind in ENTITIES_KINDS:
         return _entities_document(document)
+    if kind in GANTT_KINDS:
+        return _gantt_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -4242,6 +4754,44 @@ def _entities_document(document: Mapping[str, Any]) -> Document:
                 target_end=entry.get("to_end", ""),
             )
             for entry in document.get("edges", ())
+        ),
+    )
+
+
+def _gantt_document(document: Mapping[str, Any]) -> Document:
+    """A plan: its axis, its tasks in order, phases, dependencies and marks."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        axes=(_axis(document["axis"]),),
+        tasks=tuple(
+            Task(
+                id=entry["id"],
+                text=entry["text"],
+                start=float(entry.get("start", 0.0)),
+                end=float(entry.get("end", 0.0)),
+                at=_optional_number(entry.get("at")),
+                role=entry.get("role", "step"),
+                actor=entry.get("actor", ""),
+            )
+            for entry in document["tasks"]
+        ),
+        groups=tuple(
+            Group(id=entry["id"], members=tuple(entry["members"]), text=entry.get("text", ""))
+            for entry in document.get("groups", ())
+        ),
+        edges=tuple(
+            Edge(source=entry["from"], target=entry["to"], role=entry.get("role", "flow"))
+            for entry in document.get("edges", ())
+        ),
+        marks=tuple(
+            Mark(text=entry["text"], at=float(entry["at"])) for entry in document.get("marks", ())
         ),
     )
 

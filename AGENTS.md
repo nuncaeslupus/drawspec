@@ -10,9 +10,8 @@ drawspec validate diagram.json                # every violation, with a JSON poi
 drawspec schema --out schema.json             # the full JSON Schema
 ```
 
-**If your client speaks MCP**, `drawspec-mcp` serves `validate`, `render` and
-`kinds` as tools, with each violation as `{"pointer": "/edges/0/to", "message": …}`
-rather than text. Install `pip install 'drawspec[mcp]'`; see [`docs/guide.md`](docs/guide.md).
+**If your client speaks MCP**, `drawspec-mcp` serves `validate`, `render` and `kinds` as tools,
+each violation a `{"pointer": "/edges/0/to", "message": …}` object: `pip install 'drawspec[mcp]'`, [`docs/guide.md`](docs/guide.md).
 
 ## The one rule
 
@@ -76,6 +75,7 @@ Pick by what the reader must **understand**, not by what it looks like.
 | Who says what to whom, in order, between a fixed set of participants | `sequence` | `participants` + `messages` (+ `fragments` `loop`/`alt`/`opt`/`par`, `groups`, `note`); a `weak` reply to a call draws the activation bar |
 | A process whose hand-offs between parties are the point | `lanes` | a `flow`'s `nodes` + `edges`, `actor` required on each (+ `lanes`, their order); no `groups`, `bands`, `centre` |
 | What a data model, schema or class holds, and how its parts relate | `entities` | `entities` (`fields` with `type`/`key`, `operations`, `tag`) + `edges` (`from_field`/`to_field` land on a row; `from_end`/`to_end`: `one`, `zero-or-many`, …) |
+| What runs when in a plan, one row per task: overlap, phases, what waits on what | `gantt` | `axis` (numbers in a named unit, or `categories`; no dates) + `tasks` (`start`/`end`, or `at` for a milestone; `strong` on the critical path) (+ `groups` of consecutive tasks, `edges` finish-to-start, `marks`) |
 
 `flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may
 branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring

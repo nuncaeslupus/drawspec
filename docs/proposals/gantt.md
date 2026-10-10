@@ -1,6 +1,7 @@
 # Proposal: `gantt` — tasks as intervals, one row each
 
-Status: **proposed**. Size **M** (reuses the chart axis; rows and bars are new).
+Status: **implemented** — see *As built* at the end for where it departs from this
+text. Size **M** (reuses the chart axis; rows and bars are new).
 
 ## Why not `timeline`
 
@@ -164,3 +165,51 @@ Bars are drawn with the theme's mark fills, so `emphasis` survives greyscale by 
 * **Dates.** Keep "no dates" (proposed), or allow ISO dates in `gantt` only? Allowing them
   means a calendar, and the README's charting promise changes.
 * `strong` on a task as well as an edge, so "critical" is one word in both places?
+
+## As built
+
+Built as a layout family of its own, `kinds/gantt.py`, on the chart's scale and
+tick machinery. The owner decided the first open question: **no dates** — numbers
+in a unit the axis names, plus `categories`. Rows are in the order written; the
+label column is as wide as the widest label, up to a third of the canvas, then
+wraps.
+
+* **`strong` is a task role.** The second open question, answered yes, and forced
+  by the emphasis cap: use case 2 marked four tasks `emphasis`, and a document may
+  have two. A critical path is several bars by nature, as it is several edges, so
+  `strong` on a task (heavier outline, the ordinary fill) is not counted by the
+  cap, and "critical" is one word for bars and lines. `emphasis` stays the task
+  the diagram is about: heavier, and filled with the second mark fill. Use case 2
+  is written with `strong`, and its tasks reordered so its lines cross no bar.
+* **Categories name periods, not points.** In a plan by month a name belongs to
+  the month, so the ticks are the boundaries and each name is centred between
+  two; period *k* runs from *k* to *k* + 1, so the first three months are `start`
+  1, `end` 4. Categories set the range, and `min`/`max` beside them are refused.
+  The axis is its own object (`axis-gantt`) so its descriptions can say so.
+* **An unpinned end is taken out to the next tick**, so a plan starts at week 0
+  rather than at its first task's 0.5. A pinned end off the step gets its own
+  tick, so a plan pinned to 90 minutes says 90.
+* **Phases are a heading row and a bracket, not a frame.** A bold name over its
+  indented tasks, and a bracket over the phase's span from first start to last
+  end — the summary bar plans draw. A frame round the full width of each phase,
+  on top of the bars and dependency lines, was a third layer of outline for what
+  the heading already says. So that a task after a phase does not read as part
+  of it, with phases every task must be in one; and a phase must have `text`.
+* **Dependencies take the simplest route that crosses no other task.** Into the
+  target's start from the left when there is room for a run longer than the head;
+  else down (or up) onto the target's near edge just inside its start, or onto a
+  milestone's vertex; else out and back along the gap beside a row. Of those, the
+  first that runs through no other bar and along no other dependency's line.
+  Turning back every time, as first sketched, drew an S-bend for every task that
+  starts where its predecessor ends — the commonest case in a plan.
+* **Marks' names hang beside the top of their own line**, not centred above it:
+  two marks close together stack their names, and a centred name was crossed by
+  its neighbour's line, so which name went with which line was a guess.
+* **No `note` field on a task.** No kind but `timeline` draws one; a field that
+  draws nothing is a setting the author believes they made.
+* **Theme `[gantt]`**: `milestone` (`diamond` or `circle`) and `marks` (the edge
+  role a mark's line is drawn in, `weak` by default). Bars take the chart's
+  `[mark] fills`, so a theme with mark colours colours them too.
+* **Budget**: 16 tasks, 20 edges, 4 marks. Also refused, beyond the table above: a
+  start with no end, a dependency on itself or on a phase, and a newline in a
+  task's text when it has an actor (as in a `flow` box).

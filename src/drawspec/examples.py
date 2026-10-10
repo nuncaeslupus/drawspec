@@ -47,6 +47,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "sequence": "who says what to whom, in order — messages between participants, read down",
     "lanes": "a flow whose actors are swimlanes — the hand-offs between parties are the point",
     "entities": "a data model, schema or class diagram — boxes of fields, relations between them",
+    "gantt": "a plan — one row per task, each an interval on a numbered axis; no dates",
 }
 
 #: The smallest document of each kind that renders.
@@ -236,6 +237,16 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"id": "book", "text": "Book", "fields": [{"text": "title"}, {"text": "year"}]},
         ],
         "edges": [{"from": "author", "to": "book", "from_end": "one", "to_end": "one-or-many"}],
+    },
+    "gantt": {
+        "version": 1,
+        "kind": "gantt",
+        "axis": {"label": "Week"},
+        "tasks": [
+            {"id": "build", "text": "Build it", "start": 0, "end": 3},
+            {"id": "ship", "text": "Ship it", "at": 3},
+        ],
+        "edges": [{"from": "build", "to": "ship"}],
     },
     "scatter": {
         "version": 1,
