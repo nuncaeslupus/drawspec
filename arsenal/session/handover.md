@@ -14,8 +14,13 @@ Waterfall and wardley were deferred until a real diagram needs them.
 **drawspec 0.1.0 is on PyPI**; Pages serves the gallery and schema.
 A release is now: bump the version, date `## [x.y.z] — YYYY-MM-DD` in CHANGELOG, merge. The workflow tags and publishes.
 
-**Open tasks:** #77 (research more diagram kinds), #65 (C1 repo topics/description; owner pastes the values in the task),
-#68 (C4: sweep `nuncaeslupus/opos` documents; needs a session with that repo attached).
+**Round 2 (same day):** #99 merged (numberline, barmodel, waterfall, pie, four-set venn, causal loops, mindmap, argument); #101 adds familytree, meter, rag, clock.
+Evidence for each kind is in `docs/research/corpus-round2.md`; rows marked "(check)" came from search summaries only.
+
+**Open tasks:** #68 (C4: sweep `nuncaeslupus/opos`; needs a session with that repo).
+**Remind the owner:** #65 still needs the GitHub repo **topics** (About ⚙️, one per Enter):
+`diagrams svg diagram-generator llm llm-tools documentation json-schema python dataviz declarative`.
+Re-upload `docs/hero.png` as the social preview after #101.
 
 ---
 
