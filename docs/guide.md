@@ -23,15 +23,13 @@ so none of them can quietly go out of date:
 drawspec is a pure-Python package. It needs Python 3.12 or newer and pulls in
 one dependency, `fonttools`.
 
-It is **not on PyPI yet**, so install it from the repository:
-
 ```bash
-pip install git+https://github.com/nuncaeslupus/drawspec
+pip install drawspec
 # or, with uv:
-uv add git+https://github.com/nuncaeslupus/drawspec
+uv add drawspec
 ```
 
-Once it is published, `pip install drawspec` will be the whole of it.
+Extras: `drawspec[png]` for PNG export, `drawspec[mcp]` for the MCP server.
 
 There is **no system dependency** — no Graphviz, no Cairo, no headless browser,
 nothing to apt-get in a CI image. That is a deliberate acceptance criterion
