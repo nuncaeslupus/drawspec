@@ -1478,6 +1478,119 @@ class ArgumentStyle:
         )
 
 
+#: The shapes a RAG mark may take. Three of them at once, all different, so a
+#: rating is told by its outline in greyscale as well as by its word.
+RAG_SHAPES: Final = ("circle", "triangle", "square", "diamond")
+
+#: The ratings and trends a `[rag]` table names, in the order its keys are read.
+_RAG_RATINGS: Final = ("red", "amber", "green")
+_RAG_TRENDS: Final = ("better", "same", "worse")
+
+
+@dataclass(frozen=True)
+class RagStyle:
+    """How a RAG report draws a rating: a word, a shape and, optionally, a colour.
+
+    The author says `red`, `amber` or `green`; what the reader sees is decided
+    here, once, for every report. Each rating is said at least twice without
+    colour, by its word and by its shape, and the loader holds both to that: the
+    three words differ, and so do the three shapes. A colour is added on top only
+    when a theme declares one, so removing it removes nothing the reader needs.
+    """
+
+    red: str = "Red"
+    """The word written beside a `red` mark. A house that says *Off track* sets it here."""
+
+    amber: str = "Amber"
+    """The word beside an `amber` mark: *Amber*, or *At risk*."""
+
+    green: str = "Green"
+    """The word beside a `green` mark: *Green*, or *On track*."""
+
+    red_shape: str = "square"
+    """The shape of a `red` mark: `circle`, `triangle`, `square` or `diamond`, each
+    different from the other two ratings' shapes."""
+
+    amber_shape: str = "triangle"
+    """The shape of an `amber` mark, the warning triangle by default."""
+
+    green_shape: str = "circle"
+    """The shape of a `green` mark."""
+
+    red_colour: str = ""
+    """The colour a `red` mark is filled with. Empty is the page's ink, as in the
+    default theme; the `accent` theme sets the three."""
+
+    amber_colour: str = ""
+    """The colour an `amber` mark is filled with, or empty for the page's ink."""
+
+    green_colour: str = ""
+    """The colour a `green` mark is filled with, or empty for the page's ink."""
+
+    better: str = "improving"
+    """The word beside a `better` trend's arrow, which points up."""
+
+    same: str = "no change"
+    """The word beside a `same` trend's arrow, which points across."""
+
+    worse: str = "worsening"
+    """The word beside a `worse` trend's arrow, which points down."""
+
+    def word(self, rating: str) -> str:
+        return str(getattr(self, rating))
+
+    def shape(self, rating: str) -> str:
+        return str(getattr(self, f"{rating}_shape"))
+
+    def colour(self, rating: str) -> str:
+        return str(getattr(self, f"{rating}_colour"))
+
+    @property
+    def colours(self) -> tuple[str, ...]:
+        return tuple(self.colour(rating) for rating in _RAG_RATINGS if self.colour(rating))
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> RagStyle:
+        keys = (
+            *_RAG_RATINGS,
+            *(f"{rating}_shape" for rating in _RAG_RATINGS),
+            *(f"{rating}_colour" for rating in _RAG_RATINGS),
+            *_RAG_TRENDS,
+        )
+        _reject_unknown(mapping, keys, "[rag]")
+        defaults = cls()
+        values: dict[str, str] = {}
+        for key in (*_RAG_RATINGS, *_RAG_TRENDS):
+            value = mapping.get(key, getattr(defaults, key))
+            if not isinstance(value, str) or not value.strip() or "\n" in value:
+                raise ThemeError(f"[rag] {key}: expected a word or two, got {value!r}")
+            values[key] = value
+        for group in (_RAG_RATINGS, _RAG_TRENDS):
+            words = [values[key] for key in group]
+            if len(set(words)) != len(words):
+                raise ThemeError(
+                    f"[rag] {', '.join(group)}: {words!r} repeat a word. The word is how a "
+                    f"reader who cannot see colour tells them apart, so each must differ."
+                )
+        for rating in _RAG_RATINGS:
+            key = f"{rating}_shape"
+            values[key] = _choice(
+                mapping.get(key, getattr(defaults, key)), RAG_SHAPES, f"[rag] {key}"
+            )
+            key = f"{rating}_colour"
+            raw = mapping.get(key, "")
+            values[key] = _colour(raw, f"[rag] {key}") if raw else ""
+            if values[key] == "none":
+                raise ThemeError(f"[rag] {key}: a mark must be visible; use `currentColor`")
+        shapes = [values[f"{rating}_shape"] for rating in _RAG_RATINGS]
+        if len(set(shapes)) != len(shapes):
+            raise ThemeError(
+                f"[rag] red_shape, amber_shape, green_shape: {shapes!r} repeat a shape. The "
+                f"shape is what a greyscale print keeps, so the three must differ."
+            )
+        return cls(**values)
+
+
 #: How a family tree marks a carrier: the standard's dot in the middle of the
 #: symbol, or the left half filled, as exam pedigrees draw a heterozygote.
 FAMILYTREE_CARRIERS: Final = ("dot", "half")
@@ -1761,6 +1874,7 @@ _TOP_LEVEL_KEYS: Final = (
     "mindmap",
     "argument",
     "familytree",
+    "rag",
     "role",
     "edge_role",
 )
@@ -1796,6 +1910,7 @@ class Theme:
     mindmap: MindmapStyle = MindmapStyle()
     argument: ArgumentStyle = ArgumentStyle()
     familytree: FamilytreeStyle = FamilytreeStyle()
+    rag: RagStyle = RagStyle()
     flow: FlowStyle = FlowStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
@@ -1860,6 +1975,7 @@ class Theme:
             mindmap=MindmapStyle.from_mapping(_section(mapping, "mindmap")),
             argument=ArgumentStyle.from_mapping(_section(mapping, "argument")),
             familytree=FamilytreeStyle.from_mapping(_section(mapping, "familytree")),
+            rag=RagStyle.from_mapping(_section(mapping, "rag")),
             flow=FlowStyle.from_mapping(_section(mapping, "flow")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
@@ -1907,6 +2023,7 @@ class Theme:
             self.canvas.ink,
             *self.mark.colours,
             *self.files.colours.values(),
+            *self.rag.colours,
             *self.canvas.sheet_colours,
         }
         if self.files.label_ink:

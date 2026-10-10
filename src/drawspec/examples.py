@@ -62,6 +62,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "argument": "a claim, the reasons for it and the objections, by stance — an argument map",
     "familytree": "people, couples and their children by generation — a family tree or pedigree",
     "meter": "one amount against its scale — a progress bar, a thermometer, a dial, a bullet",
+    "rag": "workstreams or risks rated red, amber or green, in words and shapes — a status report",
 }
 
 #: The smallest document of each kind that renders.
@@ -370,6 +371,11 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "version": 1,
         "kind": "meter",
         "meters": [{"text": "Chapters drafted", "amount": 7, "max": 12, "unit": "chapters"}],
+    },
+    "rag": {
+        "version": 1,
+        "kind": "rag",
+        "rows": [{"text": "Data migration", "rag": "amber", "trend": "worse"}],
     },
     "scatter": {
         "version": 1,

@@ -2563,6 +2563,69 @@
         "meters"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "rag",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "rag"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "rows": {
+          "type": "array",
+          "description": "The workstreams or risks, 1 to 15, in the order written: each a name, its `rag`, and optionally a `trend` and a `note`.",
+          "items": {
+            "$ref": "#/$defs/rag-row"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "rows"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -4165,6 +4228,42 @@
         "text",
         "across",
         "up"
+      ],
+      "additionalProperties": false
+    },
+    "rag-row": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The workstream or risk. A second line after a newline is a caption under it, at the label size: an owner, a reference."
+        },
+        "rag": {
+          "type": "string",
+          "description": "The rating: `red`, `amber` or `green`. Drawn as the theme's word and shape for it (and its colour, when the theme has one), so it is never told by colour alone.",
+          "enum": [
+            "red",
+            "amber",
+            "green"
+          ]
+        },
+        "trend": {
+          "type": "string",
+          "description": "The direction of travel since the last report: `better`, `same` or `worse`. Drawn as an arrow (up, across, down) with the theme's word beside it.",
+          "enum": [
+            "better",
+            "same",
+            "worse"
+          ]
+        },
+        "note": {
+          "type": "string",
+          "description": "Why: a sentence or two of commentary, wrapped in the last column. `**bold**` for a decision asked for."
+        }
+      },
+      "required": [
+        "text",
+        "rag"
       ],
       "additionalProperties": false
     },

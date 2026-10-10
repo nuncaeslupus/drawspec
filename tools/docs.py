@@ -73,6 +73,7 @@ from drawspec.theme import (
     NODE_SHAPES,
     NUMBERLINE_ENDS,
     PIE_SHAPES,
+    RAG_SHAPES,
     SHEET_BORDERS,
     SHEET_PATTERNS,
     THEME_VERSION,
@@ -100,6 +101,7 @@ from drawspec.theme import (
     NumberlineStyle,
     Padding,
     PieStyle,
+    RagStyle,
     SequenceStyle,
     StatesStyle,
     TitleStyle,
@@ -546,6 +548,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "mindmap": MindmapStyle,
     "argument": ArgumentStyle,
     "familytree": FamilytreeStyle,
+    "rag": RagStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are
@@ -581,6 +584,9 @@ THEME_VOCABULARIES: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("pie", "shape"): PIE_SHAPES,
     ("argument", "against_fill"): ARGUMENT_FILLS,
     ("familytree", "carrier"): FAMILYTREE_CARRIERS,
+    ("rag", "red_shape"): RAG_SHAPES,
+    ("rag", "amber_shape"): RAG_SHAPES,
+    ("rag", "green_shape"): RAG_SHAPES,
 }
 
 

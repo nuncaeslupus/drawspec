@@ -249,6 +249,35 @@ meters to a panel, five bands.
 
 ---
 
+## 11. RAG status marks: highlight reports, risk registers, board papers ([`rag.md`](../proposals/rag.md))
+
+Added for arsenal task `t-875d4d3f` (issue #97). The same limits as section 10: found
+by web search and **read from the search engine's summary of each page only**; a direct
+fetch of R1 failed (the host did not resolve), so no page was opened and every row is
+**(check)**. Counts are what the summaries say, not what was measured.
+
+| # | Source | What it shows | Size | Needs |
+|---|---|---|---|---|
+| R1 | [Epping Forest DC, *Transformation Programme highlight report, Oct–Nov 2016*](https://rds.eppingforestdc.gov.uk/documents/s72981/Transformation%20Programme%20Oct-Nov%202016%20Highlight%20Report%20Post%20APG.pdf) and [*Transformation monitoring, Sep 2016*](https://rds.eppingforestdc.gov.uk/documents/s72494/C-034%20Transformation%20Monitoring%20Sep-16%20Rpt.pdf) (local authority) | Projects and workstreams each rated red, amber or green, red defined as significant issues needing corrective action; a second paper rates cost, delivery and benefits separately, with a sentence of reason (amber: a few of ~200 actions overdue). **(check)** | ~10–20 rows; 1 or 3 marks per row | One mark per row **with a short note saying why**; the rating's meaning stated once (a key). Per-dimension marks are a minority. |
+| R2 | [Southampton City Council, *Highlight report template*](https://southampton.gov.uk/modernGov/documents/s39109/Highlight%20Report%20TEMPLATE%20ONLY.pdf) and [West Norfolk, *Project highlight report template for the Member Major Projects Board*](https://democracy.west-norfolk.gov.uk/modgov/documents/s58725/Draft%20Project%20Highlight%20Report%20template%20for%20MMPB%20BLANK_v6.1.pdf) (local authorities; templates, kept because a board uses them) | Each workstream's RAG beside a **trend**, worsening, static or improving, and a mitigation or decision field; West Norfolk ties each colour to thresholds (budget variance, weeks of slippage). **(check)** | ~5–10 workstreams | Mark, **trend in three steps**, note. |
+| R3 | [West Norfolk, *OMPB meeting notes, Oct 2025*](https://democracy.west-norfolk.gov.uk/documents/s82186/OMPB%20Meeting%20Notes%20-%202025.10.16.pdf) (local authority) | The board records moving from five ratings to "just red, amber and green". **(check)** | — | **Three values** are what a board settles on; five is a known, abandoned variant. |
+| R4 | [Rother DC, *decision details: corporate risk register*](https://rother.moderngov.co.uk/ieDecisionDetails.aspx?AIId=8955), [Vale of Glamorgan, *Q3 corporate risk register*](https://www.valeofglamorgan.gov.uk/Documents/_Committee%20Reports/Governance-and-Audit/2023/23-02-27/Q3-Corporate-Risk-Register.pdf) (local authorities) | A risk register: each key risk rated by RAG with the **direction of travel** since the last report; Rother's has 13 risks, two red, nine amber, two green. **(check)** | ~13 risks | A list of ~10–15 rows, mark + direction; the colours alone are the rating, which the arrow then qualifies. |
+| R5 | [Shrewsbury and Telford Hospital NHS Trust, *Board Assurance Framework*, Mar 2018](https://www.sath.nhs.uk/wp-content/uploads/2018/03/22-Board-Assurance-Framework-Mar-18.pdf) (NHS trust board paper) | The board is asked to agree each risk's RAG rating and direction of travel; risks coloured by the risk matrix, arrows for increasing, decreasing or unchanged **risk**. **(check)** | ~8–12 risks | **An arrow up means the risk rose**, i.e. got worse: the opposite reading of R2's "improving". The trend must be said in words, not by arrow alone. |
+| R6 | [Institute for Government, *How are government projects faring?*](https://www.instituteforgovernment.org.uk/article/comment/how-are-government-projects-faring) and [Wikipedia, *Government Major Projects Portfolio*](https://en.wikipedia.org/wiki/Government_Major_Projects_Portfolio) (think tank; reference) | The IPA's delivery confidence assessment: red (appears unachievable), amber (feasible, significant issues), green (highly likely); counts by rating across ~240 projects. Earlier years used five (amber/green, amber/red). **(check)** | 3 (or 5) ratings | Each rating has a **published definition** a key can state; the portfolio as a whole is a table, not a picture. |
+
+**What the corpus says.** Every original is **a list**: workstreams or risks, one row
+each, with its rating, often a direction of travel and almost always a sentence saying
+why (R1, R2, R4, R5). The ratings are three (R3 dropped five; R6's five are older); a
+blue "complete" appears in some delivery panels (corpus G5) but not in these reports. In
+print the colour is the only carrier in most of them, which is the failure the kind
+exists to fix: the word goes on the mark and the shape differs. The direction of travel
+is ambiguous by arrow alone, since a rising arrow means *improving* in R2 and *risk
+increasing* in R5, so the document says `better`/`same`/`worse` and the drawing writes
+the word. Per-dimension ratings (R1's cost, delivery, benefits) are the minority and are
+left out; one mark per row covers every original. Budget: 15 rows (R4: 13).
+
+---
+
 ## Summary for the builders
 
 | Kind | Corpus says | Change to the proposal |
@@ -263,3 +292,4 @@ meters to a panel, five bands.
 | pie | School 3–6, public finance 8–15; donut only in templates | ≤ 8 sectors, labelled, sum checked; donut as a theme variant |
 | four-set Venn | Research Venns use 4 ellipses, 15 regions, counts | Four-ellipse layout; short region text |
 | meter | One amount against one scale; panels of one style; dials read by named bands | `style` per document; ≤ 6 meters, ≤ 5 bands with words; bullet bands in tones |
+| rag | Lists of workstreams or risks; three ratings; trend ambiguous by arrow | New kind `rag`: rows with mark, `trend` in words, note; ≤ 15 rows; no per-dimension marks |

@@ -87,16 +87,15 @@ Pick by what the reader must **understand**, not by what it looks like.
 | Who is whose child and partner, generation by generation: a family tree, or a pedigree in genetics | `familytree` | ≤ 30 `people` (`id`, `sex` → square/circle/diamond; `status` `affected`/`carrier`, `deceased`, `proband`, `consultand`, `adopted`, `pregnancy`, `gender`) + `couples` (`between` two, `children` in birth order, `twins`, `separated`, `consanguineous`); rows and numbers derived; ≤ 6 partners, 4 generations |
 | How one total became another, step by step: a budget gap, a deficit, a forecast to an outturn (bridge chart) | `waterfall` | `axis` (`label`, with the unit) + 3–12 `bars` left to right: each a `total` (stands on zero; first, last, and subtotals checked against the running sum) or a signed `amount` |
 | How far one amount is along its scale: a progress bar, a fundraising thermometer, a KPI dial, a bullet graph | `meter` | `style` (`bar`, `thermometer`, `dial`, `bullet`; one per document) + 1–6 `meters`, each `text`, `amount`, `max` (+ `unit`, `target`; `min` on a dial; 2–5 named `bands`, `{text, to}`, rising to `max`: required on a bullet) |
+| Workstreams or risks rated red, amber or green: a highlight report, a risk register, a board paper's status list | `rag` | 1–15 `rows`, each `text` (a newline adds a caption: an owner), `rag` (`red`/`amber`/`green`; the theme draws a word and a shape, never colour alone) (+ `trend` `better`/`same`/`worse`, written in words; `note`) |
 
 `flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring through **every** node, and is refused if it does not.
 `flow` vs `states`: a box something *is in*, re-entered, labelled by events, is a state. `flow` vs `sequence`: the same few participants talking in turn, in order, is a sequence. `flow` vs `lanes`: same document; when *who hands off to whom* matters, say `lanes`.
 `tree` vs `mindmap`: a tree ranks from a root (*this first*); a mind map's main branches are peers round a centre. Links across branches make a concept map: a `flow`. `tree` vs `argument`: when each box is *for* or *against* the one above, it is an argument. `tree` vs `familytree`: a child of two parents is a family tree; one person's ancestors only is a `tree`.
 `timeline` vs `numberline`: *when* things happened, in order, is a timeline; where values sit on one measured or named scale, and whether a range's ends are in it, is a number line; one amount read against its scale, with a target or named bands, is a `meter`.
 
-**Keep it readable.** Each kind has a budget ([`docs/format.md`](docs/format.md#the-readability-budget);
-a `flow`: 15 nodes, 16 edges). Past it a document is refused even though it
-would fit: split it into an **overview** naming each part once, plus a
-**detail** diagram per part. At most two elements may be `emphasis`.
+**Keep it readable.** Each kind has a budget ([`docs/format.md`](docs/format.md#the-readability-budget); a `flow`: 15 nodes, 16 edges).
+Past it a document is refused even though it would fit: split it into an **overview** naming each part once, plus a **detail** diagram per part. At most two elements may be `emphasis`.
 
 ## Roles
 

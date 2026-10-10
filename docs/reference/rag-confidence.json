@@ -1,0 +1,19 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "rag",
+  "theme": "accent",
+  "title": "Delivery confidence: the department's major projects",
+  "description": "Four projects, each with a delivery confidence rating and the reason for it, drawn in the accent theme so the marks are coloured as well as shaped and named.",
+  "caption": "Green: delivery highly likely. Amber: feasible, with significant issues to manage. Red: unachievable without major change.",
+  "rows": [
+    {"text": "New case management system", "rag": "amber",
+     "note": "Supplier testing is three months behind; the go-live window is still held."},
+    {"text": "Regional offices consolidation", "rag": "green",
+     "note": "Two of three sites closed, on budget."},
+    {"text": "Apprenticeship levy portal", "rag": "red",
+     "note": "Scope doubled after the policy change; a reset is going to the board in March."},
+    {"text": "Grants payment service", "rag": "green",
+     "note": "Live since June; benefits are being tracked."}
+  ]
+}

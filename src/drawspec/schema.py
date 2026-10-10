@@ -515,6 +515,22 @@ METER_BAND_MAX: Final = 5
 #: The units written before the number rather than after it.
 METER_CURRENCIES: Final = ("£", "$", "€", "¥")
 
+#: RAG status reports: workstreams or risks, one row each, rated red, amber or
+#: green, with a direction of travel and a note. A layout family of its own: rows
+#: set one under another, every column lined up.
+RAG_KINDS: Final = ("rag",)
+
+#: The three ratings, worst first. Boards settle on three (corpus R3); the theme
+#: says the word, the shape and the colour each is drawn with.
+RAG_VALUES: Final = ("red", "amber", "green")
+
+#: The direction of travel since the last report, said as what it means: an arrow
+#: up means *improving* in one report and *risk rising* in another (R2, R5).
+RAG_TRENDS: Final = ("better", "same", "worse")
+
+#: The most rows to one report: the largest register in the corpus has 13 (R4).
+RAG_ROW_MAX: Final = 15
+
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
 #: into each other at the canvas width.
 NUMBERLINE_TICK_MAX: Final = 30
@@ -587,6 +603,8 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: `tree` gives a child one parent, and a married-in partner none.
 #: `meter` is the twenty-first: one amount against its scale — a `chart`'s bar
 #: has no end to be read against, and a `numberline` no fill, target or bands.
+#: `rag` is the twenty-second: rows rated red, amber or green in words and shapes
+#: — a `matrix` scale is a tone with no word on it, and a `board` sorts, not rates.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -612,6 +630,7 @@ KINDS: Final = (
     + ARGUMENT_KINDS
     + FAMILYTREE_KINDS
     + METER_KINDS
+    + RAG_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -740,6 +759,8 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # Set by the corpus: a panel stacks a handful of meters, and a bullet graph
     # two to five bands.
     "meter": (("meters", METER_MAX), ("meters/bands", METER_BAND_MAX)),  # [5 meters, 4 bands]
+    # Set by the corpus: the largest risk register found rates 13 risks (R4).
+    "rag": (("rows", RAG_ROW_MAX),),  # [12]
 }
 
 
@@ -2298,6 +2319,45 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "rag-row": (
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description=(
+                "The workstream or risk. A second line after a newline is a caption under it, "
+                "at the label size: an owner, a reference."
+            ),
+        ),
+        FieldSpec(
+            "rag",
+            "string",
+            required=True,
+            enum=RAG_VALUES,
+            description=(
+                "The rating: `red`, `amber` or `green`. Drawn as the theme's word and shape for "
+                "it (and its colour, when the theme has one), so it is never told by colour "
+                "alone."
+            ),
+        ),
+        FieldSpec(
+            "trend",
+            "string",
+            enum=RAG_TRENDS,
+            description=(
+                "The direction of travel since the last report: `better`, `same` or `worse`. "
+                "Drawn as an arrow (up, across, down) with the theme's word beside it."
+            ),
+        ),
+        FieldSpec(
+            "note",
+            "string",
+            description=(
+                "Why: a sentence or two of commentary, wrapped in the last column. "
+                "`**bold**` for a decision asked for."
+            ),
+        ),
+    ),
     "meter-band": (
         FieldSpec(
             "text",
@@ -2758,7 +2818,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the thirty-four diagrams this is. It selects the fields that are "
+            "Which of the thirty-five diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -3645,6 +3705,19 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    RAG_KINDS: (
+        FieldSpec(
+            "rows",
+            "array",
+            required=True,
+            item_ref="rag-row",
+            min_items=1,
+            description=(
+                "The workstreams or risks, 1 to 15, in the order written: each a name, its "
+                "`rag`, and optionally a `trend` and a `note`."
+            ),
+        ),
+    ),
     MINDMAP_KINDS: (
         FieldSpec(
             "centre",
@@ -4157,6 +4230,16 @@ class WaterfallBar:
 
 
 @dataclass(frozen=True)
+class RagRow:
+    """One row of a RAG report: a name, its rating, and optionally a trend and a note."""
+
+    text: str
+    rag: str
+    trend: str = ""
+    note: str = ""
+
+
+@dataclass(frozen=True)
 class MeterBand:
     """One named stretch of a meter's scale, from the band before it to `to`."""
 
@@ -4537,6 +4620,9 @@ class Document:
     meters: tuple[Meter, ...] = ()
     """A `meter` document's meters, in reading order."""
 
+    rag_rows: tuple[RagRow, ...] = ()
+    """A `rag` document's rows, in the order written."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -4565,6 +4651,7 @@ class Document:
             ("argument", ARGUMENT_KINDS),
             ("familytree", FAMILYTREE_KINDS),
             ("meter", METER_KINDS),
+            ("rag", RAG_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -4779,6 +4866,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_familytree_refusal(violation) for violation in found]
     if kind in METER_KINDS:
         found = [_meter_refusal(violation) for violation in found]
+    if kind in RAG_KINDS:
+        found = [_rag_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -4847,6 +4936,10 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
     ("meter", "meters"): (
         "Past six meters a panel is a dashboard, read as a table. Keep the ones the page is "
         "about, and put the rest in a table beside it."
+    ),
+    ("rag", "rows"): (
+        "Past fifteen rows a status report is searched, not read: split it by programme or "
+        "directorate, one report each, or put the green rows in a table beside it."
     ),
     ("meters", "bands"): (
         "Past five bands neighbouring tones blur: merge the bands the reader need not tell "
@@ -7709,6 +7802,55 @@ def _waterfall_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a RAG row has no place for a field an author may reach for.
+RAG_REFUSED: Final = {
+    "edges": "a RAG report rates each row on its own; there is nothing to connect",
+    "columns": (
+        "one rating per row. Cost, time and scope rated separately are a table, or one "
+        "report per dimension"
+    ),
+    "status": (
+        "a rating is `rag` (`red`, `amber`, `green`); `status` marks a change on `flow` and `tree`"
+    ),
+    "colour": (
+        "the rating is `rag`, and the theme draws it as a word, a shape and a colour. Write "
+        '`"rag": "green"`'
+    ),
+    "score": (
+        "a risk score is a number on a likelihood-by-impact grid: a `matrix` with a `scale`. "
+        "Here the row carries its `rag`"
+    ),
+    "likelihood": "a likelihood-by-impact grid is a `matrix` with a `scale`",
+    "impact": "a likelihood-by-impact grid is a `matrix` with a `scale`",
+    "owner": "an owner is a caption: a second line in `text`, after a newline",
+    "comment": "the commentary is `note`",
+    "commentary": "the commentary is `note`",
+}
+
+#: What an author may mean by a rating or a trend outside the vocabulary.
+RAG_VALUE_ADVICE: Final = (
+    "Three ratings, as boards settle on: choose the nearer of the two in a split rating "
+    "(`amber/green`) and say why in the `note`; a finished workstream is `green` with "
+    "*Complete* in its note."
+)
+RAG_TREND_ADVICE: Final = (
+    "Say what the change means — `better`, `same` or `worse` — not which way an arrow "
+    "points: an arrow up means *improving* in one report and *risk rising* in another."
+)
+
+
+def _rag_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a RAG report, told what this kind means by it."""
+    name = violation.pointer.split("/")[-1]
+    unknown = "is not" in violation.message and "field" in violation.message
+    if name in RAG_REFUSED and unknown:
+        return Violation(violation.pointer, f"{name!r}: {RAG_REFUSED[name]}.")
+    if "is not one of" in violation.message and name in ("rag", "trend"):
+        advice = RAG_VALUE_ADVICE if name == "rag" else RAG_TREND_ADVICE
+        return Violation(violation.pointer, violation.message.split(".")[0] + ". " + advice)
+    return violation
+
+
 #: Why a meter has no place for a field an author may reach for.
 METER_REFUSED: Final = {
     "edges": "a meter has nothing to connect: each one is read against its own scale",
@@ -9359,6 +9501,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _familytree_document(document)
     if kind in METER_KINDS:
         return _meter_document(document)
+    if kind in RAG_KINDS:
+        return _rag_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -9991,6 +10135,29 @@ def _waterfall_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _rag_document(document: Mapping[str, Any]) -> Document:
+    """A RAG report: its rows, in the order written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        rag_rows=tuple(
+            RagRow(
+                text=str(row["text"]),
+                rag=str(row["rag"]),
+                trend=str(row.get("trend", "")),
+                note=str(row.get("note", "")),
+            )
+            for row in document["rows"]
+        ),
+    )
+
+
 def _meter_document(document: Mapping[str, Any]) -> Document:
     """A meter panel: its style and its meters, in reading order."""
     return Document(
@@ -10449,6 +10616,10 @@ __all__ = [
     "PIE_SHARE_MIN",
     "POLARITIES",
     "POLARITY_EDGE_ROLES",
+    "RAG_KINDS",
+    "RAG_ROW_MAX",
+    "RAG_TRENDS",
+    "RAG_VALUES",
     "REGION_ROLES",
     "REJECTED_FIELDS",
     "SANKEY_BAND",
@@ -10509,6 +10680,7 @@ __all__ = [
     "NumberRange",
     "PiePart",
     "Position",
+    "RagRow",
     "Region",
     "Relation",
     "SankeyFlow",

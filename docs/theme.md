@@ -297,6 +297,25 @@ How a family tree draws its one non-default mark of house style: a carrier.
 |---|---|---|
 | `carrier` | `"dot"` | `dot`, a filled dot in the middle of the symbol (the standard nomenclature's carrier), or `half`, the left half filled (the textbook heterozygote). One of `dot`, `half`. |
 
+### `[rag]`
+
+How a RAG report draws a rating: a word, a shape and, optionally, a colour.
+
+| Key | Default | What it is |
+|---|---|---|
+| `red` | `"Red"` | The word written beside a `red` mark. A house that says *Off track* sets it here. |
+| `amber` | `"Amber"` | The word beside an `amber` mark: *Amber*, or *At risk*. |
+| `green` | `"Green"` | The word beside a `green` mark: *Green*, or *On track*. |
+| `red_shape` | `"square"` | The shape of a `red` mark: `circle`, `triangle`, `square` or `diamond`, each different from the other two ratings' shapes. One of `circle`, `triangle`, `square`, `diamond`. |
+| `amber_shape` | `"triangle"` | The shape of an `amber` mark, the warning triangle by default. One of `circle`, `triangle`, `square`, `diamond`. |
+| `green_shape` | `"circle"` | The shape of a `green` mark. One of `circle`, `triangle`, `square`, `diamond`. |
+| `red_colour` | `""` | The colour a `red` mark is filled with. Empty is the page's ink, as in the default theme; the `accent` theme sets the three. |
+| `amber_colour` | `""` | The colour an `amber` mark is filled with, or empty for the page's ink. |
+| `green_colour` | `""` | The colour a `green` mark is filled with, or empty for the page's ink. |
+| `better` | `"improving"` | The word beside a `better` trend's arrow, which points up. |
+| `same` | `"no change"` | The word beside a `same` trend's arrow, which points across. |
+| `worse` | `"worsening"` | The word beside a `worse` trend's arrow, which points down. |
+
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The

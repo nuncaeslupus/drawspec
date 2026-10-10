@@ -172,6 +172,7 @@ fields are legal. Thirty-four exist, and they fall into twenty-three families:
 | Topic | `mindmap` | Things round one topic, as peers: a centre and its branches nested three levels deep, on both sides — revision notes, a brainstorm, a plan (a mind map). |
 | Family | `familytree` | Who is whose child and partner: people, couples and their children a generation to a row, in the standard symbols — a family tree, or a pedigree in genetics. |
 | Gauge | `meter` | How far one amount is along its scale: a progress bar, a fundraising thermometer, a dial with named bands, a bullet graph — alone or a few to a panel. |
+| Status | `rag` | Things rated red, amber or green: workstreams or risks a row each, the rating a word and a shape (a colour only by the theme), a trend in words and a note — a highlight report, a risk register. |
 | Reasoning | `argument` | Things said for and against a claim: reasons, objections, rebuttals and evidence by stance, co-premises under one bracket (an argument map). |
 
 One worked document per kind lives in [`reference/`](reference), and `make
@@ -2001,6 +2002,58 @@ fundraising thermometer with a stage target),
 panel), [`reference/meter-ward.json`](reference/meter-ward.json) (KPI dials, one rated
 red, amber or green in words) and
 [`reference/meter-library.json`](reference/meter-library.json) (a bullet-graph set).
+
+## A RAG status report: highlight reports and risk registers
+
+A programme board's highlight report, a council's risk register and a trust's board
+assurance framework print the same figure: a list of workstreams or risks, each rated
+red, amber or green, often with a direction of travel since the last report and a
+sentence saying why. In most of them the colour is the only thing that says the rating,
+so a greyscale print loses the page's whole point. That is `rag`:
+
+```json
+{
+  "version": 1,
+  "kind": "rag",
+  "title": "Library refit: highlight report, period 7",
+  "rows": [
+    {"text": "Building works\nLead: estates", "rag": "amber", "trend": "worse",
+     "note": "The asbestos survey added two weeks."},
+    {"text": "Staff training", "rag": "red", "trend": "same",
+     "note": "**Decision needed:** approve the trainer's quote."}
+  ]
+}
+```
+
+Each of the 1 to 15 `rows` is a `text` (a newline adds a caption under it: an owner, a
+reference), a `rag` of `red`, `amber` or `green`, and optionally a `trend` and a `note`.
+The rows are drawn in the order written, ruled apart, every column lined up: the name in
+bold, the mark, the trend, and the note wrapped in the rest of the width. A report with
+no notes is centred.
+
+**A rating is never told by colour alone.** The theme's `[rag]` table gives each rating
+a word (`Red`, `Amber`, `Green`; a house that says *On track* sets it there) and a shape
+(a square, a triangle and a circle by default); the loader refuses a theme whose three
+words or three shapes repeat. A colour is added only when a theme declares one — the
+default theme draws the marks in the page's ink, and `accent` colours them.
+
+`trend` is `better`, `same` or `worse`, not a direction: an arrow up means *improving* in
+one report and *the risk rose* in another. The arrow points up, across or down, and the
+theme's word for it (`improving`, `no change`, `worsening`) is written beside it.
+
+Why `rag` and not `status`: on `flow` and `tree`, `status` already marks a change as
+`added`, `changed` or `removed`.
+
+Refused, each at its pointer: a rating other than the three (`amber/green`: pick one and
+say why in the note; `blue`: a finished workstream is `green`, *Complete*); a trend of
+`up`, `down` or `improving`; `status`, `colour`, `score`, `likelihood`, `impact`
+(a scored risk grid is a `matrix` with a `scale`), `owner` (a caption), `commentary` (a
+`note`); `columns` (one rating per row: cost, time and scope rated apart are a table);
+`edges`. Budget: 15 rows. See [`reference/rag-refit.json`](reference/rag-refit.json) (a
+highlight report), [`reference/rag-register.json`](reference/rag-register.json) (a risk
+register), [`reference/rag-confidence.json`](reference/rag-confidence.json) (delivery
+confidence, in the accent theme) and [`reference/rag-school.json`](reference/rag-school.json)
+(a school's priorities, no notes).
 
 ## Asking for a wide drawing instead of a tall one
 

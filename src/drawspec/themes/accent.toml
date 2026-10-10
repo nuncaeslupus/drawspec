@@ -93,3 +93,10 @@ text = "#7C8794"
 image = "#8A4FB0"
 archive = "#7C8794"
 pdf = "#C0452A"
+
+# A RAG report's marks in the colours the reader is taught. Only ever on top of
+# the word and the shape each mark already carries, so greyscale keeps them.
+[rag]
+red_colour = "#C0452A"
+amber_colour = "#D9A21B"
+green_colour = "#3E7A4A"

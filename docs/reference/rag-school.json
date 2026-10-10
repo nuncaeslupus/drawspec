@@ -1,0 +1,15 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "rag",
+  "title": "School improvement plan: spring review",
+  "description": "Six priorities of a primary school's improvement plan, each rated for the governors' spring meeting with the change since autumn.",
+  "rows": [
+    {"text": "Reading fluency in Year 2", "rag": "green", "trend": "better"},
+    {"text": "Attendance of disadvantaged pupils", "rag": "red", "trend": "same"},
+    {"text": "Maths: times tables by Year 4", "rag": "amber", "trend": "better"},
+    {"text": "Behaviour at lunchtimes", "rag": "green", "trend": "same"},
+    {"text": "Writing at greater depth", "rag": "amber", "trend": "worse"},
+    {"text": "Early years outdoor learning", "rag": "green", "trend": "better"}
+  ]
+}

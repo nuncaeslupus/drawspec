@@ -12,6 +12,18 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`rag`, the thirty-fifth kind** — a RAG status report: 1–15 `rows`, each a `text` (a
+  newline adds a caption: an owner), a `rag` of `red`, `amber` or `green`, and optionally
+  a `trend` (`better`, `same`, `worse`) and a `note`, ruled apart with every column lined
+  up. A rating is never told by colour alone: the new theme table `[rag]` gives each a
+  word and a shape (square, triangle, circle by default; the loader refuses repeats) and,
+  optionally, a colour, which `accent` sets. A trend is an arrow with its word beside it,
+  because an arrow up means *improving* in one report and *risk rising* in another. The
+  field is `rag` because `status` already marks a change on `flow` and `tree`. Refused at
+  their pointers: any other rating (`amber/green`, `blue`), a trend of `up`/`down`,
+  `status`, `colour`, `score`, `likelihood`, `impact`, `owner`, `commentary`, `columns`,
+  `edges`. Budget: 15 rows. `docs/proposals/rag.md` records the design, and section 11 of
+  `docs/research/corpus-round2.md` the originals.
 - **`meter`, the thirty-fourth kind** — one amount against its scale, alone or up to
   six to a panel, in one `style` per document: `bar` (a progress bar; the default),
   `thermometer` (a goal filling up), `dial` (a needle on a half-circle, the only style
