@@ -12,6 +12,17 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`lanes` take `phases`**, the second axis of a cross-functional flowchart:
+  `[{text, members}]` in the order the process runs, every step in exactly one.
+  Drawn as a band of phase names along the lanes' outer edge (over the strips in
+  rows, beside them in columns) and a light line across every lane between phases,
+  in the new theme key `[lanes] phase` (edge role, `aside` by default). Each phase's
+  steps are ranked after all of the phases before it, so phases never interleave;
+  an arrow back into an earlier phase is drawn as a return. Refused at their
+  pointers: an unknown step, a step in two phases or in none, fewer than 2 or more
+  than 6 phases (budget), and a backward arrow that is not a loop (phases out of
+  order). See `reference/lanes-phases-purchase.json`, `lanes-phases-release.json`
+  and `lanes-phases-loan.json`.
 - **Washed frames and striped lanes**, theme only. A group's frame, a composite
   state and a sequence group are filled with `[frames] tone` of the page's ink (0.05
   in the default theme), drawn as `currentColor` at part opacity so dark mode and

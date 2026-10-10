@@ -156,6 +156,9 @@ separator = "link"
 # Every second lane is washed with this much of the page's ink, so a row of five
 # or six lanes reads as bands rather than as lines to count. 0 for none.
 stripe = 0.04
+# The line between two phases runs across every lane, so it is the lighter
+# dashed role: the lanes stay the grid's first axis, the phases its second.
+phase = "aside"
 
 [entities]
 # How an entity diagram draws a relation's cardinality — the author says `one`

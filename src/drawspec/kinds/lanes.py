@@ -17,12 +17,20 @@ self-loops, routing and label placement are `kinds.graph`'s, unchanged.
 lanes run across the page (`rows`, ranks reading left to right) or down it
 (`columns`, ranks reading down); `auto` takes rows when they fit the width and
 columns when they do not. The author never chooses, as with direction anywhere.
+
+**Phases are the grid's other axis.** A document's `phases` partition its steps
+into stages the process runs through; each phase's steps are ranked after every
+step of the phases before it, so the phases are contiguous runs of ranks by
+construction. They are named in a band along the lanes' outer edge — over the
+strips in rows, beside them in columns — and divided by a light line across
+every lane, in the gap between one phase's last rank and the next one's first.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
+from heapq import heapify, heappop, heappush
 from itertools import pairwise
 from types import MappingProxyType
 from typing import Final
@@ -102,11 +110,25 @@ class Swimlanes:
     head: float
     """Where the heading cells end along the reading direction: the divider."""
 
+    phases: tuple[Box, ...] = ()
+    """Each phase's name, sized; placed in its cell of the band when drawn."""
+
+    boundaries: tuple[float, ...] = ()
+    """Where one phase ends and the next begins, along the reading direction."""
+
+    members: tuple[frozenset[str], ...] = ()
+    """Each phase's steps, so a boundary can be settled between them."""
+
+    band: float = 0.0
+    """How thick the phase band is, across the reading direction; 0 with no phases."""
+
     def moved(self, dx: float, dy: float) -> Swimlanes:
+        shift = dx if self.orientation == "rows" else dy
         return replace(
             self,
             lanes=tuple(lane.moved(dx, dy) for lane in self.lanes),
-            head=self.head + (dx if self.orientation == "rows" else dy),
+            head=self.head + shift,
+            boundaries=tuple(at + shift for at in self.boundaries),
         )
 
     def settled(
@@ -164,43 +186,124 @@ class Swimlanes:
             else:
                 lanes[index - 1] = before.resized(before.x, span_before, rows)
                 lanes[index] = after.resized(moved, span_after, rows)
-        return replace(self, lanes=tuple(lanes))
+        return replace(
+            self, lanes=tuple(lanes), boundaries=self._phases_settled(routes, places, clear)
+        )
 
-    def covering(self, left: float, top: float, right: float, bottom: float) -> Swimlanes:
+    def _phases_settled(
+        self, routes: Sequence[Route], places: Mapping[str, Placement], clear: float
+    ) -> tuple[float, ...]:
+        """Each phase boundary moved off any route running along it, as a lane's is.
+
+        A phase line crosses every lane, in the gap between the last rank of one
+        phase and the first of the next — the very gap a route turns in. Only a
+        boundary with a route closer than `clear` moves, to the middle of the
+        widest stretch between the routes there, and never past a box.
+        """
+        rows = self.orientation == "rows"
+        runs = [
+            (first[0] if rows else first[1])
+            for route in routes
+            for first, second in pairwise(route.points)
+            if (first[0] == second[0]) == rows and first != second
+        ]
+        settled: list[float] = []
+        for index, here in enumerate(self.boundaries):
+            low = max((places[i].right if rows else places[i].bottom) for i in self.members[index])
+            high = min((places[i].x if rows else places[i].y) for i in self.members[index + 1])
+            near = sorted(run for run in runs if low < run < high)
+            if not any(abs(run - here) < clear for run in near):
+                settled.append(here)
+                continue
+            start, end = max(pairwise([low, *near, high]), key=lambda gap: gap[1] - gap[0])
+            settled.append((start + end) / 2)
+        return tuple(settled)
+
+    def covering(
+        self, left: float, top: float, right: float, bottom: float, margin: float = 0.0
+    ) -> Swimlanes:
         """The lanes stretched to take in everything drawn between these bounds.
 
         A route that goes round the drawing, or a label beside one, is outside
         the boxes' extent; the strips are stretched along the reading direction to
         reach it, and the outermost two across it, so nothing drawn sits outside
-        every lane.
+        every lane. With phases the first strip's outer edge is the phase band's
+        line, so a route stretched to there is given `margin` more: it would
+        otherwise run along that line.
         """
         if not self.lanes:
             return self
         rows = self.orientation == "rows"
+        margin = margin if self.phases else 0.0
         first, last = self.lanes[0], self.lanes[-1]
         stretched: list[Lane] = []
         for lane in self.lanes:
             if rows:
-                near = min(lane.y, top) if lane is first else lane.y
+                near = min(lane.y, top - margin) if lane is first and top < lane.y else lane.y
                 far = max(lane.bottom, bottom) if lane is last else lane.bottom
                 end = max(lane.right, right)
                 stretched.append(replace(lane, y=near, height=far - near, width=end - lane.x))
             else:
-                near = min(lane.x, left) if lane is first else lane.x
+                near = min(lane.x, left - margin) if lane is first and left < lane.x else lane.x
                 far = max(lane.right, right) if lane is last else lane.right
                 end = max(lane.bottom, bottom)
                 stretched.append(replace(lane, x=near, width=far - near, height=end - lane.y))
         return replace(self, lanes=tuple(stretched))
 
     @property
-    def bounds(self) -> tuple[float, float, float, float]:
-        """Left, top, right, bottom of every lane together."""
+    def strips(self) -> tuple[float, float, float, float]:
+        """Left, top, right, bottom of every lane together, without the phase band."""
         return (
             min(lane.x for lane in self.lanes),
             min(lane.y for lane in self.lanes),
             max(lane.right for lane in self.lanes),
             max(lane.bottom for lane in self.lanes),
         )
+
+    @property
+    def bounds(self) -> tuple[float, float, float, float]:
+        """Left, top, right, bottom of everything the lanes draw: strips and phase band.
+
+        The band is not placed anywhere of its own: it is always flush with the
+        strips' outer edge — above them in rows, left of them in columns — so it
+        follows the strips wherever `covering` stretches them.
+        """
+        left, top, right, bottom = self.strips
+        if self.orientation == "rows":
+            return left, top - self.band, right, bottom
+        return left - self.band, top, right, bottom
+
+    def phase_cells(self) -> tuple[tuple[float, float], ...]:
+        """Each phase's extent along the reading direction: head, boundaries, far end."""
+        if not self.phases:
+            return ()
+        _, _, right, bottom = self.strips
+        far = right if self.orientation == "rows" else bottom
+        stops = (self.head, *self.boundaries, far)
+        return tuple(pairwise(stops))
+
+    def phase_names(self) -> tuple[Box, ...]:
+        """Each phase's name, centred in its cell of the band."""
+        left, top, _, _ = self.bounds
+        placed: list[Box] = []
+        for name, (start, end) in zip(self.phases, self.phase_cells(), strict=True):
+            if self.orientation == "rows":
+                spot = name.moved_to(
+                    (start + end - name.width) / 2, top + (self.band - name.height) / 2
+                )
+            else:
+                spot = name.moved_to(
+                    left + (self.band - name.width) / 2, (start + end - name.height) / 2
+                )
+            placed.append(spot)
+        return tuple(placed)
+
+    def phase_lines(self) -> tuple[tuple[tuple[float, float], tuple[float, float]], ...]:
+        """One line per phase boundary, across the band and every lane."""
+        left, top, right, bottom = self.bounds
+        if self.orientation == "rows":
+            return tuple(((at, top), (at, bottom)) for at in self.boundaries)
+        return tuple(((left, at), (right, at)) for at in self.boundaries)
 
     def markers(self) -> tuple[Obstacle, ...]:
         """A sliver of each boundary inside the heading band, for routing only.
@@ -261,13 +364,19 @@ class Swimlanes:
         if not self.lanes:
             return ()
         left, top, right, bottom = self.bounds
+        inner_left, inner_top, _, _ = self.strips
         lines: list[tuple[tuple[float, float], tuple[float, float]]] = []
         if self.orientation == "rows":
             lines.append(((self.head, top), (self.head, bottom)))
             lines.extend(((left, lane.y), (right, lane.y)) for lane in self.lanes[1:])
+            if self.phases:
+                # The band's edge: under the phase names, from the heading divider on.
+                lines.append(((self.head, inner_top), (right, inner_top)))
         else:
             lines.append(((left, self.head), (right, self.head)))
             lines.extend(((lane.x, top), (lane.x, bottom)) for lane in self.lanes[1:])
+            if self.phases:
+                lines.append(((inner_left, self.head), (inner_left, bottom)))
         return tuple(lines)
 
 
@@ -299,13 +408,20 @@ def lanes_arrangement(
     orientations = ("rows", "columns") if choice == "auto" else (choice,)
     pad = lane_padding(theme)
     share = max_width * NODE_SHARE
+    # Down a column of lanes the phase band is a column of its own, beside them.
+    band = max(
+        (
+            _heading(phase.text, max_width * HEADING_SHARE, theme, measurer).width
+            for phase in document.phases
+        ),
+        default=0.0,
+    )
     lanes_wide = max_width / max(len(document.lanes), 1) - pad * 2
-    identifiers = [node.id for node in document.nodes]
-    ranked, _ = acyclic(identifiers, [LayoutEdge(e.source, e.target) for e in document.edges])
-    depth = max(rank_nodes([LayoutNode(i, 1.0, 1.0) for i in identifiers], ranked).values()) + 1
+    _, _, ranks = ranked(document)
+    depth = max(ranks.values()) + 1
     attempts: list[tuple[Arrangement, Swimlanes, dict[str, Box]]] = []
     for orientation in orientations:
-        limit = min(share, lanes_wide)
+        limit = min(share, lanes_wide - band / max(len(document.lanes), 1))
         if orientation == "rows":
             head = max(
                 _heading(name, max_width * HEADING_SHARE, theme, measurer).width
@@ -376,12 +492,10 @@ def _laid_out(
     def across(box: Box) -> float:
         return box.height if rows else box.width
 
-    # 1. Rank as a flow ranks: cycles broken, longest path in.
+    # 1. Rank as a flow ranks: cycles broken, longest path in — each phase after
+    # the phases before it.
     identifiers = [node.id for node in document.nodes]
-    nodes = [LayoutNode(i, boxes[i].width, boxes[i].height) for i in identifiers]
-    pairs = [LayoutEdge(edge.source, edge.target) for edge in document.edges]
-    ranked, reversed_edges = acyclic(identifiers, pairs)
-    rank = rank_nodes(nodes, ranked)
+    edges, reversed_edges, rank = ranked(document)
     depth = max(rank.values(), default=0) + 1
 
     # 2. The boxes of each lane at each rank, in the order written, then sorted
@@ -422,12 +536,48 @@ def _laid_out(
         max((along(boxes[i]) for i in identifiers if rank[i] == r), default=0.0)
         for r in range(depth)
     ]
+    # A phase's name is wrapped to its cell along the band in rows, and to a
+    # share of the canvas beside the strips in columns; a cell shorter than its
+    # name gets the difference, half before its first rank and half after its last.
+    spans = [
+        (min(rank[i] for i in phase.members), max(rank[i] for i in phase.members))
+        for phase in document.phases
+    ]
+    natural = [
+        sum(bands[first : last + 1]) + spacing.rank_gap * (last - first) for first, last in spans
+    ]
+    titles = tuple(
+        _heading(
+            phase.text,
+            max(run, max_width * HEADING_SHARE) if rows else max_width * HEADING_SHARE,
+            theme,
+            measurer,
+        )
+        for phase, run in zip(document.phases, natural, strict=True)
+    )
+    room_before = [0.0] * depth
+    room_after = [0.0] * depth
+    for (first, last), run, title in zip(spans, natural, titles, strict=True):
+        short = max((title.width if rows else title.height) - run, 0.0)
+        room_before[first] += short / 2
+        room_after[last] += short / 2
+    # A phase line sits in the gap between two phases, where the arrows crossing
+    # it turn: that gap is given a node gap more, so the line has room of its own.
+    for (_, last), (first, _) in pairwise(spans):
+        room_after[last] += spacing.node_gap / 2
+        room_before[first] += spacing.node_gap / 2
     starts: list[float] = []
     cursor = head + spacing.node_gap
-    for band in bands:
+    for r, band in enumerate(bands):
+        cursor += room_before[r]
         starts.append(cursor)
-        cursor += band + spacing.rank_gap
+        cursor += band + room_after[r] + spacing.rank_gap
     length = cursor - spacing.rank_gap
+    boundaries = tuple(
+        (starts[last] + bands[last] + room_after[last] + starts[first] - room_before[first]) / 2
+        for (_, last), (first, _) in pairwise(spans)
+    )
+    thick = max((title.height if rows else title.width for title in titles), default=0.0)
 
     # 5. Across: each lane's strip in order, each cell's stack centred in it.
     offsets: dict[str, float] = {}
@@ -444,7 +594,7 @@ def _laid_out(
         for identifier in members:
             centre_of[identifier] = at + across(boxes[identifier]) / 2
             at += across(boxes[identifier]) + spacing.node_gap
-    centre_of = _untangled(cells, centre_of, ranked, boxes, across, spacing.node_gap)
+    centre_of = _untangled(cells, centre_of, edges, boxes, across, spacing.node_gap)
 
     places: dict[str, Placement] = {}
     for identifier in identifiers:
@@ -466,7 +616,7 @@ def _laid_out(
             spot = heading.moved_to(start + (size - heading.width) / 2, (head - heading.height) / 2)
             lanes.append(Lane(name, start, 0.0, size, length, spot))
 
-    width, height = (length, breadth) if rows else (breadth, length)
+    width, height = (length, breadth + thick) if rows else (breadth + thick, length)
     ranks = tuple(
         tuple(i for name in names for i in cells.get((name, r), ())) for r in range(depth)
     )
@@ -485,7 +635,67 @@ def _laid_out(
         frames=(),
         directions=MappingProxyType(dict.fromkeys(places, direction)),
     )
-    return arrangement, Swimlanes(tuple(lanes), orientation, head)
+    swimlanes = Swimlanes(
+        tuple(lanes),
+        orientation,
+        head,
+        phases=titles,
+        boundaries=boundaries,
+        members=tuple(frozenset(phase.members) for phase in document.phases),
+        band=thick,
+    )
+    return arrangement, swimlanes
+
+
+def ranked(
+    document: Document,
+) -> tuple[tuple[LayoutEdge, ...], frozenset[tuple[str, str]], dict[str, int]]:
+    """The ranking edges, the edges reversed for it, and each step's rank.
+
+    With no phases, a flow's ranking: `acyclic`, then longest path in. With
+    phases, an arrow from a later phase into an earlier one is a return — it is
+    reversed for ranking, as a cycle's closing edge is, so it never pulls the
+    earlier step forward — and each phase's steps are ranked no earlier than one
+    past the last rank of the phases before it. Every phase is then a contiguous
+    run of ranks, which is what lets one line divide it from the next.
+    """
+    identifiers = [node.id for node in document.nodes]
+    pairs = [LayoutEdge(edge.source, edge.target) for edge in document.edges]
+    if not document.phases:
+        edges, back = acyclic(identifiers, pairs)
+        return edges, back, rank_nodes([LayoutNode(i, 1.0, 1.0) for i in identifiers], edges)
+    phase_of = {
+        member: index for index, phase in enumerate(document.phases) for member in phase.members
+    }
+    returns = [edge for edge in pairs if phase_of[edge.source] > phase_of[edge.target]]
+    forward, back = acyclic(
+        identifiers, [edge for edge in pairs if phase_of[edge.source] <= phase_of[edge.target]]
+    )
+    edges = (*forward, *(LayoutEdge(edge.target, edge.source) for edge in returns))
+    back = back | {(edge.source, edge.target) for edge in returns}
+    incoming: dict[str, list[str]] = {identifier: [] for identifier in identifiers}
+    for edge in edges:
+        incoming[edge.target].append(edge.source)
+    written = {identifier: index for index, identifier in enumerate(identifiers)}
+    waiting = {identifier: len(sources) for identifier, sources in incoming.items()}
+    outgoing: dict[str, list[str]] = {identifier: [] for identifier in identifiers}
+    for edge in edges:
+        outgoing[edge.source].append(edge.target)
+    ready = [(phase_of[i], written[i], i) for i in identifiers if not waiting[i]]
+    heapify(ready)
+    rank: dict[str, int] = {}
+    floor, phase, deepest = 0, 0, -1
+    while ready:
+        here_phase, _, identifier = heappop(ready)
+        if here_phase != phase:
+            phase, floor = here_phase, deepest + 1
+        rank[identifier] = max([floor, *(rank[source] + 1 for source in incoming[identifier])])
+        deepest = max(deepest, rank[identifier])
+        for target in outgoing[identifier]:
+            waiting[target] -= 1
+            if not waiting[target]:
+                heappush(ready, (phase_of[target], written[target], target))
+    return edges, frozenset(back), rank
 
 
 def acyclic(
@@ -613,8 +823,11 @@ def lanes_primitives(
             for lane in lanes.lanes[1::2]
         )
     lines.extend(Path(theme.lanes.separator, points=points) for points in lanes.separators())
+    lines.extend(Path(theme.lanes.phase, points=points) for points in lanes.phase_lines())
     for lane in lanes.lanes:
         lines.extend(text_runs(lane.heading, theme, measurer))
+    for name in lanes.phase_names():
+        lines.extend(text_runs(name, theme, measurer))
     return tuple(lines)
 
 
@@ -627,4 +840,5 @@ __all__ = [
     "lane_padding",
     "lanes_arrangement",
     "lanes_primitives",
+    "ranked",
 ]

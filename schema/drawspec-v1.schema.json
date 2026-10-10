@@ -1387,6 +1387,14 @@
             "type": "string"
           },
           "minItems": 1
+        },
+        "phases": {
+          "type": "array",
+          "description": "The stages the process passes through, in the order it runs — named in a band along the lanes' edge and divided by faint lines across every lane (a cross-functional flowchart's phases). Each phase lists its steps, and with `phases` given every step is in exactly one. A phase's steps are drawn after every step of the phases before it, so the phases never interleave. 2 to 6.",
+          "items": {
+            "$ref": "#/$defs/phase"
+          },
+          "minItems": 2
         }
       },
       "required": [
@@ -4337,6 +4345,28 @@
       "required": [
         "id",
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "phase": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "members": {
+          "type": "array",
+          "description": "The ids of the steps in this phase, in any order and in any lane. Every step is in one phase, so a step left out or listed twice is refused.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "text",
+        "members"
       ],
       "additionalProperties": false
     },

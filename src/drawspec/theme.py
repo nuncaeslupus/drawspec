@@ -1680,9 +1680,13 @@ class LanesStyle:
     stripes) to `TONE_CEILING`. A tint, not a colour, so dark mode and greyscale
     keep it."""
 
+    phase: str = "aside"
+    """The edge role the line between two phases is drawn in, across every lane:
+    lighter than a lane's own separator, since a phase is crossed by every lane."""
+
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> LanesStyle:
-        _reject_unknown(mapping, ("orientation", "separator", "stripe"), "[lanes]")
+        _reject_unknown(mapping, ("orientation", "separator", "stripe", "phase"), "[lanes]")
         defaults = cls()
         return cls(
             stripe=_tone(mapping.get("stripe", defaults.stripe), "[lanes] stripe"),
@@ -1694,6 +1698,7 @@ class LanesStyle:
             separator=_choice(
                 mapping.get("separator", defaults.separator), EDGE_ROLES, "[lanes] separator"
             ),
+            phase=_choice(mapping.get("phase", defaults.phase), EDGE_ROLES, "[lanes] phase"),
         )
 
 

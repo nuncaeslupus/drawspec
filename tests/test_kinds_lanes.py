@@ -25,6 +25,7 @@ from drawspec.layout import LayoutEdge
 from drawspec.scene import Polygon, TextLine, TextRun
 from drawspec.schema import (
     LANES_MAX,
+    LANES_PHASES_MAX,
     READABILITY_BUDGET,
     parse_document,
     validate_document,
@@ -142,6 +143,7 @@ def test_a_lanes_document_is_a_flow_document_with_another_kind(path: Path) -> No
     document = json.loads(path.read_text(encoding="utf-8"))
     document["kind"] = "flow"
     document.pop("lanes", None)
+    document.pop("phases", None)
     assert validate_document(document) == ()
 
 
@@ -406,6 +408,7 @@ def test_the_budget_is_a_flows_plus_the_lanes() -> None:
     assert dict(READABILITY_BUDGET["lanes"]) == {
         **flow,
         "lanes": LANES_MAX,
+        "phases": LANES_PHASES_MAX,
     }
 
 
@@ -430,3 +433,157 @@ def test_every_second_lane_is_striped_with_a_faint_wash_of_the_ink() -> None:
         assert stripe.fill_opacity == pytest.approx(THEME.lanes.stripe)
         assert stripe.fill_colour == "currentColor"
         assert min(x for x, _ in stripe.points) == pytest.approx(lane.x)
+
+
+# ---------------------------------------------------------------------------
+# Phases
+# ---------------------------------------------------------------------------
+
+
+def phased(**extra: Any) -> dict[str, Any]:
+    """The expense claim in two phases, the refusal loop inside the first."""
+    return claim(
+        phases=[
+            {"text": "Claim", "members": ["submit", "approve", "fix"]},
+            {"text": "Payment", "members": ["pay"]},
+        ],
+        **extra,
+    )
+
+
+def short() -> dict[str, Any]:
+    """Four short steps in two phases: short enough to run across the page too."""
+    document = chain(4, ("Pupil", "Librarian"))
+    for node in document["nodes"]:
+        node["text"] = f"Step {node['id'][1:]}"
+    document["phases"] = [
+        {"text": "Borrow", "members": ["s0", "s1"]},
+        {"text": "Return", "members": ["s2", "s3"]},
+    ]
+    return document
+
+
+ORIENTED = [
+    load_theme({"version": 1, "lanes": {"orientation": orientation}})
+    for orientation in ("rows", "columns")
+]
+
+
+@pytest.mark.parametrize("theme", ORIENTED, ids=["rows", "columns"])
+def test_each_phase_holds_its_steps_and_the_line_falls_between_phases(theme: Any) -> None:
+    document = short()
+    drawing = drawn(document, theme)
+    lanes = lanes_of(drawing)
+    rows = lanes.orientation == "rows"
+    cells = lanes.phase_cells()
+    assert len(cells) == 2
+    assert len(lanes.phase_lines()) == 1
+    for phase, (start, end) in zip(document["phases"], cells, strict=True):
+        for member in phase["members"]:
+            box = drawing.boxes[member]
+            near, far = (box.x, box.x + box.width) if rows else (box.y, box.y + box.height)
+            assert start - EPSILON <= near and far <= end + EPSILON, member
+
+
+@pytest.mark.parametrize("theme", ORIENTED, ids=["rows", "columns"])
+def test_the_phase_band_lies_outside_the_lanes_and_names_each_phase(theme: Any) -> None:
+    lanes = lanes_of(drawn(short(), theme))
+    assert len(lanes.phase_names()) == 2
+    left, top, _, _ = lanes.strips
+    for name in lanes.phase_names():
+        if lanes.orientation == "rows":
+            assert name.y + name.height <= top + EPSILON
+        else:
+            assert name.x + name.width <= left + EPSILON
+    found = words(phased())
+    assert "Claim" in found
+    assert "Payment" in found
+
+
+def test_a_later_phase_starts_after_every_step_of_the_earlier_one() -> None:
+    """A short branch of phase two would rank beside phase one; the phase pushes it on."""
+    document = chain(4, ("Requester", "Approver"))
+    document["nodes"].append({"id": "early", "text": "Files it", "actor": "Requester"})
+    document["edges"].append({"from": "s0", "to": "early"})
+    document["phases"] = [
+        {"text": "Prepare", "members": ["s0", "s1", "s2"]},
+        {"text": "Finish", "members": ["s3", "early"]},
+    ]
+    drawing = drawn(document)
+    rank = {i: place.rank for i, place in drawing.layout.placements.items()}
+    assert rank["early"] > max(rank["s0"], rank["s1"], rank["s2"])
+
+
+def test_an_arrow_back_into_an_earlier_phase_that_loops_is_drawn_as_a_return() -> None:
+    document = phased()
+    document["edges"].append({"from": "pay", "to": "submit", "label": "next month"})
+    assert validate_document(document) == ()
+    drawing = drawn(document)
+    assert ("pay", "submit") in drawing.layout.reversed_edges
+    rank = {i: place.rank for i, place in drawing.layout.placements.items()}
+    assert rank["pay"] > rank["fix"]
+
+
+def test_no_route_runs_along_a_phase_line() -> None:
+    for path in REFERENCES:
+        drawing = drawn(json.loads(path.read_text(encoding="utf-8")))
+        lanes = lanes_of(drawing)
+        rows = lanes.orientation == "rows"
+        for route in drawing.routes:
+            for first, second in pairwise(route.points):
+                if (first[0] == second[0]) != rows:
+                    continue
+                at = first[0] if rows else first[1]
+                for line in lanes.boundaries:
+                    assert abs(at - line) >= THEME.edge.clearance, (path.stem, route)
+
+
+def test_a_phase_member_that_is_no_step_is_refused_naming_the_closest() -> None:
+    document = phased()
+    document["phases"][0]["members"][1] = "aprove"
+    assert "did you mean 'approve'" in message_at(document, "/phases/0/members/1")
+
+
+def test_a_step_in_two_phases_is_refused_as_overlapping() -> None:
+    document = phased()
+    document["phases"][1]["members"].append("fix")
+    assert "already in the phase 'Claim'" in message_at(document, "/phases/1/members/1")
+
+
+def test_a_step_in_no_phase_is_refused_at_the_step() -> None:
+    document = phased()
+    document["phases"][0]["members"].remove("fix")
+    assert "in no phase" in message_at(document, "/nodes/2")
+
+
+def test_phases_out_of_order_are_refused_at_the_arrow_that_runs_backwards() -> None:
+    document = phased()
+    document["phases"].reverse()
+    assert "out of order" in message_at(document, "/edges/3")
+
+
+def test_one_phase_is_refused_and_seven_are_past_the_budget() -> None:
+    one = phased()
+    one["phases"] = [{"text": "All", "members": ["submit", "approve", "fix", "pay"]}]
+    assert "/phases" in pointers(one)
+    many = chain(LANES_PHASES_MAX + 1, ("Requester", "Approver"))
+    many["phases"] = [
+        {"text": f"Phase {index}", "members": [f"s{index}"]}
+        for index in range(LANES_PHASES_MAX + 1)
+    ]
+    assert f"/phases/{LANES_PHASES_MAX}" in pointers(many)
+
+
+def test_phases_belong_to_lanes_only() -> None:
+    document = phased()
+    document["kind"] = "flow"
+    for node in document["nodes"]:
+        node.pop("actor")
+    del document["lanes"]
+    assert "/phases" in pointers(document)
+
+
+def test_the_phase_line_role_is_a_checked_theme_key() -> None:
+    assert THEME.lanes.phase == "aside"
+    with pytest.raises(ThemeError, match="phase"):
+        load_theme({"version": 1, "lanes": {"phase": "dotted"}})

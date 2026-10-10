@@ -161,6 +161,10 @@ LANES_MAX: Final = 6
 #: container, and a box drawn as a frame inside it would claim to be another.
 LANE_NODE_ROLES: Final = tuple(role for role in NODE_ROLES if role != "group")
 
+#: The most phases one swimlane diagram names across its lanes: past six the
+#: header band is a table of contents, and the cells too narrow for their names.
+LANES_PHASES_MAX: Final = 6
+
 #: Data models, schemas and class diagrams: named boxes holding lists, and typed
 #: relations between them. A layout family of its own — a box's rows are known
 #: before it is placed, so a relation can land on one row of it.
@@ -707,7 +711,13 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # A flow's budget, and a cap on the strips: see `LANES_MAX`. When `lanes` is
     # omitted the same cap is applied to the distinct actors, at the node that
     # names the one too many.
-    "lanes": (("nodes", 15), ("edges", 16), ("lanes", LANES_MAX)),  # [7 nodes, 7 edges, 4 lanes]
+    # `phases` is the proposal's (kind audit rank 8), not the references'.
+    "lanes": (
+        ("nodes", 15),
+        ("edges", 16),
+        ("lanes", LANES_MAX),
+        ("phases", LANES_PHASES_MAX),
+    ),  # [7 nodes, 7 edges, 4 lanes, 3 phases]
     # Set by the proposal: a schema of thirty tables is a database tool's output.
     # A name with a slash counts inside each entry of the array before it — the
     # rows of one box — and its refusal says to show the ones that matter.
@@ -2558,6 +2568,20 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "phase": (
+        _text(required=True),
+        FieldSpec(
+            "members",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=1,
+            description=(
+                "The ids of the steps in this phase, in any order and in any lane. Every "
+                "step is in one phase, so a step left out or listed twice is refused."
+            ),
+        ),
+    ),
     "item": (
         FieldSpec("id", "string", description="Optional; generated from position when absent."),
         _text(),
@@ -3431,6 +3455,20 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
                 "some node's `actor`, spelled exactly, and every actor must be listed. "
                 "Omit it and the lanes come in the order their actors first appear in "
                 f"`nodes`. At most {LANES_MAX}."
+            ),
+        ),
+        FieldSpec(
+            "phases",
+            "array",
+            item_ref="phase",
+            min_items=2,
+            description=(
+                "The stages the process passes through, in the order it runs — named in a "
+                "band along the lanes' edge and divided by faint lines across every lane "
+                "(a cross-functional flowchart's phases). Each phase lists its steps, and "
+                "with `phases` given every step is in exactly one. A phase's steps are "
+                "drawn after every step of the phases before it, so the phases never "
+                f"interleave. 2 to {LANES_PHASES_MAX}."
             ),
         ),
     ),
@@ -4546,6 +4584,20 @@ class Band:
 
 
 @dataclass(frozen=True)
+class Phase:
+    """A named run of a `lanes` diagram's steps, across every lane.
+
+    Not a `Group`: a group is a frame round its members inside one drawing's
+    flow, and a phase is the other axis of a swimlane grid — a stretch of the
+    process every lane passes through, drawn as a cell of a header band and a
+    line across all the lanes.
+    """
+
+    text: str
+    members: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class Item:
     text: str
     id: str = ""
@@ -4715,6 +4767,9 @@ class Document:
     fragments: tuple[Fragment, ...] = ()
     lanes: tuple[str, ...] = ()
     """A `lanes` diagram's lanes in order: as listed, or as the actors first appear."""
+
+    phases: tuple[Phase, ...] = ()
+    """A `lanes` diagram's phases, in the order the process runs."""
 
     entities: tuple[Entity, ...] = ()
     relations: tuple[Relation, ...] = ()
@@ -5118,6 +5173,10 @@ def _edge_role_refusal(violation: Violation, document: Mapping[str, Any], kind: 
 #: overview and details") is not the remedy. Keyed by (kind, array) for a
 #: top-level budget and by (outer, inner) for a nested one.
 BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
+    ("lanes", "phases"): (
+        f"Past {LANES_PHASES_MAX} phases the header band is a table of contents. Merge "
+        "neighbouring phases, or split the process at a phase boundary into two diagrams."
+    ),
     ("fishbone", "categories"): (
         "Past six bones a fishbone stops being scannable: merge the categories that overlap, "
         "or draw the biggest category as a fishbone of its own."
@@ -6060,6 +6119,94 @@ def _lanes_violations(document: Mapping[str, Any]) -> list[Violation]:
                             f"together, or split the process at a hand-off.",
                         )
                     )
+    found.extend(_phase_violations(document))
+    return found
+
+
+def _phase_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """A swimlane diagram's phases: known steps, each in one phase, in the order run.
+
+    The phases partition the steps, as a gantt's groups partition its tasks, so
+    every step's column (or row) of the grid is the author's and never the
+    layout's guess. Order is checked on the arrows: one that runs from a later
+    phase into an earlier one is a loop back only if the earlier step leads on to
+    the later one again; otherwise the phases are written out of order, or the
+    step is in the wrong one.
+    """
+    phases = document.get("phases")
+    if not isinstance(phases, list):
+        return []
+    ids = [
+        node["id"]
+        for node in _listed(document, "nodes")
+        if isinstance(node, dict) and isinstance(node.get("id"), str)
+    ]
+    known = set(ids)
+    found: list[Violation] = []
+    phase_of: dict[str, int] = {}
+    for index, phase in enumerate(phases):
+        if not isinstance(phase, dict):
+            continue
+        for position, member in enumerate(_listed(phase, "members")):
+            if not isinstance(member, str):
+                continue
+            pointer = _pointer("phases", index, "members", position)
+            if member not in known:
+                close = get_close_matches(member, ids, n=1)
+                found.append(
+                    Violation(
+                        pointer,
+                        f"{member!r} is not the id of any step"
+                        + (f" — did you mean {close[0]!r}?" if close else "."),
+                    )
+                )
+            elif member in phase_of:
+                earlier = phases[phase_of[member]].get("text")
+                found.append(
+                    Violation(
+                        pointer,
+                        f"{member!r} is already in the phase {earlier!r}. Phases do not "
+                        f"overlap: a step happens in one phase, so name it once.",
+                    )
+                )
+            else:
+                phase_of[member] = index
+    for index, identifier in enumerate(ids):
+        if identifier not in phase_of and phase_of:
+            found.append(
+                Violation(
+                    _pointer("nodes", index),
+                    f"{identifier!r} is in no phase. With 'phases' given every step is in "
+                    f"exactly one: add it to the 'members' of the phase it happens in.",
+                )
+            )
+    if found:
+        return found
+    following: dict[str, list[str]] = {identifier: [] for identifier in ids}
+    edges = _listed(document, "edges")
+    for edge in edges:
+        if isinstance(edge, dict) and edge.get("from") in known and edge.get("to") in known:
+            following[edge["from"]].append(edge["to"])
+    for index, edge in enumerate(edges):
+        if not isinstance(edge, dict):
+            continue
+        source, target = edge.get("from"), edge.get("to")
+        if source not in phase_of or target not in phase_of:
+            continue
+        if phase_of[source] <= phase_of[target] or _reaches(following, target, source):
+            continue
+        later = phases[phase_of[source]].get("text")
+        earlier = phases[phase_of[target]].get("text")
+        found.append(
+            Violation(
+                _pointer("edges", index),
+                f"this arrow runs from {source!r} in the phase {later!r} back to {target!r} "
+                f"in the earlier phase {earlier!r}, and nothing leads from {target!r} on to "
+                f"{source!r}, so it is not a loop back. The phases are out of order, or one "
+                f"of the two steps is in the wrong phase: list the phases in the order the "
+                f"process runs.",
+            )
+        )
     return found
 
 
@@ -10158,6 +10305,10 @@ def _lanes_document(document: Mapping[str, Any]) -> Document:
             for entry in document.get("edges", ())
         ),
         lanes=lane_order(document),
+        phases=tuple(
+            Phase(text=entry["text"], members=tuple(entry["members"]))
+            for entry in document.get("phases", ())
+        ),
     )
 
 
@@ -11207,6 +11358,7 @@ __all__ = [
     "NumberAxis",
     "NumberPoint",
     "NumberRange",
+    "Phase",
     "PiePart",
     "Position",
     "RagRow",

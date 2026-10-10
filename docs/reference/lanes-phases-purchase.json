@@ -1,0 +1,33 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "lanes",
+  "title": "Purchase to pay, by phase",
+  "description": "A purchasing handbook's view of a small purchase: four parties across, three phases along. Each phase lists its steps, so the requisition, the order and the payment each sit in their own stretch of every lane.",
+  "lanes": ["Requester", "Budget holder", "Purchasing", "Accounts payable"],
+  "phases": [
+    { "text": "Request", "members": ["need", "raise", "approve"] },
+    { "text": "Order", "members": ["quote", "order", "receive"] },
+    { "text": "Pay", "members": ["match", "pay"] }
+  ],
+  "nodes": [
+    { "id": "need", "text": "Needs an item", "actor": "Requester", "role": "start" },
+    { "id": "raise", "text": "Raises a requisition", "actor": "Requester" },
+    { "id": "approve", "text": "Within budget?", "actor": "Budget holder", "role": "decision" },
+    { "id": "quote", "text": "Gets three quotes", "actor": "Purchasing" },
+    { "id": "order", "text": "Places the order", "actor": "Purchasing" },
+    { "id": "receive", "text": "Confirms delivery", "actor": "Requester" },
+    { "id": "match", "text": "Matches order, receipt and invoice", "actor": "Accounts payable" },
+    { "id": "pay", "text": "Pays the supplier", "actor": "Accounts payable", "role": "terminal" }
+  ],
+  "edges": [
+    { "from": "need", "to": "raise" },
+    { "from": "raise", "to": "approve" },
+    { "from": "approve", "to": "raise", "label": "no", "role": "weak" },
+    { "from": "approve", "to": "quote", "label": "yes" },
+    { "from": "quote", "to": "order" },
+    { "from": "order", "to": "receive" },
+    { "from": "receive", "to": "match" },
+    { "from": "match", "to": "pay" }
+  ]
+}

@@ -1030,12 +1030,48 @@ is the edge role the line between two lanes is drawn in, and `[lanes] stripe`
 (0.04 by default, 0 for none) washes every second lane with that share of the
 page's ink, so five or six lanes read as bands.
 
+### Phases
+
+A cross-functional flowchart's second axis is its **phases**: stretches of the
+process every lane passes through — *Request*, *Order*, *Pay*. `phases` names them
+in the order the process runs, and each lists its steps:
+
+```json
+"phases": [
+  {"text": "Request", "members": ["submit", "approve", "fix"]},
+  {"text": "Payment", "members": ["pay"]}
+]
+```
+
+They are drawn as a band along the lanes' outer edge — over the strips when they
+run across the page, beside them when they run down it — with each phase's name in
+its cell, and a light dashed line (`[lanes] phase`, `aside` by default) across
+every lane between one phase and the next. Both orientations draw them.
+
+Why the steps, not the first step of each phase: the steps are what you know when
+you write the document, and what the drawing shows is decided by them. Each phase's
+steps are placed after every step of the phases before it, so the phases never
+interleave and you never have to predict where the layout puts a step. A returning
+arrow into an earlier phase — *changes requested* sending work back to *Build* — is
+fine: it is drawn as a return. With `phases`, **every step is in exactly one**.
+
+Refused, each at its pointer: a member that is not a step (naming the closest id);
+a step in two phases (phases do not overlap); a step in no phase; fewer than 2
+phases, or more than 6; and an arrow from a later phase back into an earlier one
+that is not a loop — nothing leads back from where it lands — because then the
+phases are out of order or the step is in the wrong one. See
+[`reference/lanes-phases-purchase.json`](reference/lanes-phases-purchase.json),
+[`reference/lanes-phases-release.json`](reference/lanes-phases-release.json) and
+[`reference/lanes-phases-loan.json`](reference/lanes-phases-loan.json) (rows).
+
+### Refusals
+
 Refused, each at its pointer: a node with no `actor` (the message points you back
 to `flow`); an actor not in `lanes`, naming the closest lane; a lane in `lanes`
 that no node names, or one listed twice; `groups`, `bands` and `centre`, because
 a lane is already the container and a frame or band would cross it; and the
-`group` node role. Budget: a flow's 15 nodes and 16 edges, and 6 lanes, counted
-from the actors when `lanes` is omitted. See
+`group` node role. Budget: a flow's 15 nodes and 16 edges, 6 lanes, counted
+from the actors when `lanes` is omitted, and 6 phases. See
 [`reference/lanes-disclosure.json`](reference/lanes-disclosure.json),
 [`reference/lanes-tender.json`](reference/lanes-tender.json),
 [`reference/lanes-expense.json`](reference/lanes-expense.json),

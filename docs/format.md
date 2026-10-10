@@ -164,6 +164,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `nodes` | array of [lane-node](#lane-node-object), at least 1 | **yes** | The steps, each in the lane its `actor` names. Ranked along the lanes as a `flow` is; within one lane, order is the order siblings are drawn in. |
 | `edges` | array of [edge](#edge-object) | no | What follows what, as on a `flow`. An edge between two lanes crosses the boundaries between them: that crossing is the hand-off. |
 | `lanes` | array of string, at least 1 | no | The lanes in order — top to bottom when they run across the page, left to right when they run down it; the theme decides which. Each must be some node's `actor`, spelled exactly, and every actor must be listed. Omit it and the lanes come in the order their actors first appear in `nodes`. At most 6. |
+| `phases` | array of [phase](#phase-object), at least 2 | no | The stages the process passes through, in the order it runs — named in a band along the lanes' edge and divided by faint lines across every lane (a cross-functional flowchart's phases). Each phase lists its steps, and with `phases` given every step is in exactly one. A phase's steps are drawn after every step of the phases before it, so the phases never interleave. 2 to 6. |
 
 ### `entities`
 
@@ -352,7 +353,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `files` | 30 `entries` |
 | `states` | 14 `states`, 24 `transitions` |
 | `sequence` | 8 `participants`, 30 `messages` |
-| `lanes` | 15 `nodes`, 16 `edges`, 6 `lanes` |
+| `lanes` | 15 `nodes`, 16 `edges`, 6 `lanes`, 6 `phases` |
 | `entities` | 8 `entities`, 12 `edges`, 12 `fields` per entity, 8 `operations` per entity |
 | `gantt` | 16 `tasks`, 20 `edges`, 4 `marks` |
 | `board` | 6 `columns`, 4 `rows`, 32 `cards`, 8 `cards` per cell |
@@ -873,6 +874,13 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `members` | array of string, at least 1 | **yes** | The ids of the nodes this band accompanies. Unlike a group's, they are a set rather than a container: a band names something that runs alongside those boxes, and the same box may be under any number of bands. |
+
+### `phase` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `members` | array of string, at least 1 | **yes** | The ids of the steps in this phase, in any order and in any lane. Every step is in one phase, so a step left out or listed twice is refused. |
 
 ### `item` object
 

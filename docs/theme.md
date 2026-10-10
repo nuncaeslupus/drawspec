@@ -208,6 +208,7 @@ How a swimlane diagram lays its lanes out and divides them.
 | `orientation` | `"auto"` | `rows`, `columns`, or `auto`: rows when they fit the width, else columns. One of `rows`, `columns`, `auto`. |
 | `separator` | `"link"` | The edge role the line between two lanes is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
 | `stripe` | `0.04` | How much of the page's ink every second lane is washed with, from 0 (no stripes) to `TONE_CEILING`. A tint, not a colour, so dark mode and greyscale keep it. |
+| `phase` | `"aside"` | The edge role the line between two phases is drawn in, across every lane: lighter than a lane's own separator, since a phase is crossed by every lane. |
 
 ### `[entities]`
 

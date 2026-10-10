@@ -1,0 +1,22 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "lanes",
+  "title": "A library loan",
+  "description": "A school library's notice of how a loan works, in two phases. Short enough that the lanes run across the page, so the phase band is drawn over them and each phase line runs down through every lane.",
+  "phases": [
+    { "text": "Borrow", "members": ["ask", "issue"] },
+    { "text": "Return", "members": ["bring", "check"] }
+  ],
+  "nodes": [
+    { "id": "ask", "text": "Brings the book to the desk", "actor": "Pupil", "role": "start" },
+    { "id": "issue", "text": "Stamps the due date", "actor": "Librarian" },
+    { "id": "bring", "text": "Returns it", "actor": "Pupil" },
+    { "id": "check", "text": "Checks it in", "actor": "Librarian", "role": "terminal" }
+  ],
+  "edges": [
+    { "from": "ask", "to": "issue" },
+    { "from": "issue", "to": "bring", "label": "within 3 weeks" },
+    { "from": "bring", "to": "check" }
+  ]
+}

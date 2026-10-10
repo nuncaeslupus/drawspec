@@ -243,3 +243,19 @@ boolean. A nested frame lays its wash over its parent's rather than taking a dar
 ramp step, which gives the same one-step-per-level result with one number. Treemap
 groups and entities headers are untouched.
 
+**Rank 8, `lanes` `phases`** — built as `[{text, members}]`, the proposal's shape,
+with the steps listed rather than only each phase's first step: the steps are what
+an author knows when writing, a missing or doubled one is caught at its pointer, and
+no step's phase depends on where the layout happens to rank it. Two changes. First,
+**every step is in exactly one phase** (as a gantt's `groups` partition its tasks),
+so the band names every stretch of the grid. Second, contiguity is **made, not
+checked**: each phase's steps are ranked no earlier than one past the last rank of
+the phases before it, and an arrow from a later phase into an earlier one is
+reversed for ranking like a cycle's closing edge. "Members not contiguous in rank
+order" therefore cannot happen; what an author can still get wrong is the order, so
+an arrow back into an earlier phase is refused when nothing leads back from where it
+lands (not a loop: the phases are out of order or the step is misplaced). Drawn in
+both orientations: a band over the strips in rows, a column beside them in columns,
+names in each cell, and a light `aside` line (`[lanes] phase`) across band and lanes
+in the gap between phases, which is widened by a node gap and settled off any route
+running along it, as lane boundaries are. Budget 2–6 phases.
