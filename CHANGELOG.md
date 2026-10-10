@@ -8,7 +8,9 @@ The **document format** is versioned separately and independently: a document
 declares `"version": 1`, and that number changes only when a document written
 against it would stop working. Everything below is about the *package*.
 
-## Unreleased
+## [Unreleased]
+
+## [0.1.0] — 2026-10-10
 
 ### Added
 
@@ -421,3 +423,6 @@ renderer, and a CLI.
 <!-- Compare links are added by the release, once there is a tag to compare
      against. `main...HEAD` compares the default branch with itself, and a
      link to an unpushed tag is a 404: both show a reader nothing. -->
+
+[Unreleased]: https://github.com/nuncaeslupus/drawspec/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/nuncaeslupus/drawspec/releases/tag/v0.1.0
