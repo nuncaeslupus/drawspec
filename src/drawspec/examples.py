@@ -54,6 +54,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "journey": "one person's feeling across the stages of an experience — a journey map",
     "treemap": "the parts of one known total, each by its area — a few proportions, stated",
     "sankey": "where a known quantity goes — bands as thick as the amounts, a few flows stated",
+    "numberline": "values and ranges on one scale, each end in or out — an inequality, a spectrum",
 }
 
 #: The smallest document of each kind that renders.
@@ -301,6 +302,12 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "kind": "sankey",
         "nodes": [{"id": "pay", "text": "Pay"}, {"id": "rent", "text": "Rent"}],
         "flows": [{"from": "pay", "to": "rent", "amount": 60}],
+    },
+    "numberline": {
+        "version": 1,
+        "kind": "numberline",
+        "axis": {"min": -5, "max": 5},
+        "ranges": [{"from": -2, "to": 3, "to_open": True, "text": "\N{MINUS SIGN}2 ≤ x < 3"}],
     },
     "scatter": {
         "version": 1,

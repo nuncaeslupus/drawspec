@@ -1300,6 +1300,35 @@ class JourneyStyle:
         )
 
 
+#: How a `numberline` marks a range's end: a filled or hollow dot, as school
+#: texts in the UK and elsewhere draw it, or a bracket or parenthesis, as most US
+#: and college texts do. The same fact — the end is in, or it is out — so it is
+#: house style, not content.
+NUMBERLINE_ENDS: Final = ("dots", "brackets")
+
+
+@dataclass(frozen=True)
+class NumberlineStyle:
+    """How a number line marks whether a range's end belongs to it.
+
+    The author says an end is open or closed; whether that is drawn as a hollow
+    and a filled dot or as `(` and `[` is the convention of the course the drawing
+    is for, set once for every number line in it.
+    """
+
+    ends: str = "dots"
+    """`dots` (filled closed, hollow open) or `brackets` (`[` closed, `(` open). A
+    point is a dot either way."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> NumberlineStyle:
+        _reject_unknown(mapping, ("ends",), "[numberline]")
+        defaults = cls()
+        return cls(
+            ends=_choice(mapping.get("ends", defaults.ends), NUMBERLINE_ENDS, "[numberline] ends"),
+        )
+
+
 #: Which way a `lanes` diagram's lanes run: across the page, stacked top to
 #: bottom (`rows`), or down it, side by side (`columns`). `auto` tries rows and
 #: takes columns when rows do not fit the width.
@@ -1550,6 +1579,7 @@ _TOP_LEVEL_KEYS: Final = (
     "board",
     "fishbone",
     "journey",
+    "numberline",
     "role",
     "edge_role",
 )
@@ -1580,6 +1610,7 @@ class Theme:
     board: BoardStyle = BoardStyle()
     fishbone: FishboneStyle = FishboneStyle()
     journey: JourneyStyle = JourneyStyle()
+    numberline: NumberlineStyle = NumberlineStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
 
@@ -1638,6 +1669,7 @@ class Theme:
             board=BoardStyle.from_mapping(_section(mapping, "board")),
             fishbone=FishboneStyle.from_mapping(_section(mapping, "fishbone")),
             journey=JourneyStyle.from_mapping(_section(mapping, "journey")),
+            numberline=NumberlineStyle.from_mapping(_section(mapping, "numberline")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
         )

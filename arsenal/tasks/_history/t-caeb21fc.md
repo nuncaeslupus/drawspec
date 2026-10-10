@@ -4,6 +4,7 @@ title: "Number line kind (or clearly routed timeline feature)"
 priority: 5
 deps: [t-4b992703]
 tags: [kinds]
+status: done
 ---
 
 ## Goal

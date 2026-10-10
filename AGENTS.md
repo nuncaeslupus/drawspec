@@ -80,6 +80,7 @@ Pick by what the reader must **understand**, not by what it looks like.
 | One person's feeling, stage by stage, against what they do: a user or citizen journey | `journey` | `feelings` (named levels, worst first; no scores) + 2–7 `stages`, each with a `feeling` (+ `rows`, filled by each stage's `details`: `{row, text}`); one person, no `edges` |
 | The parts of one known total by area — what dominates, and by how much | `treemap` | 2–10 `parts`, each an `amount` (+ `unit`, one level of `groups`); every label inside its cell, or merge the smallest into one `note` part |
 | Where a known quantity goes, and how much each way: a budget, tickets by outcome | `sankey` | `nodes` (columns derived, ≤ 4) + `flows` (`from`, `to`, `amount`; `strong`); a middle node's in = out, no loops, a `note` node for the remainder |
+| Values and ranges on one scale, each end in or out: an inequality, the pH scale, a spectrum | `numberline` | `axis` (`min`, `max`, `step`; or two named `ends`, no numbers) + `points` (`at`, `open`) and/or ≤ 4 `ranges` (`from`/`to`, `from_open`/`to_open`; a missing end runs on as an arrow) |
 
 `flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may
 branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring
@@ -87,6 +88,7 @@ through **every** node, and is refused if it does not. `flow` vs `states`: a
 box something *is in*, re-entered, labelled by events, is a state. `flow` vs
 `sequence`: the same few participants talking in turn, in order, is a sequence.
 `flow` vs `lanes`: same document; when *who hands off to whom* matters, say `lanes`.
+`timeline` vs `numberline`: *when* things happened, in order, is a timeline; where values sit on one measured or named scale, and whether a range's ends are in it, is a number line.
 
 **Keep it readable.** Each kind has a budget ([`docs/format.md`](docs/format.md#the-readability-budget);
 a `flow`: 15 nodes, 16 edges). Past it a document is refused even though it
@@ -179,11 +181,9 @@ something already inside it.
 
 A refusal is information, not an obstacle. Three kinds, and each tells you what to do:
 
-- **`DocumentError`** — a field is wrong or an id does not resolve. The message
-  carries a JSON pointer (`/edges/2/to`). Fix that path. All violations are
-  reported at once, so read them all before editing. A budget refusal
-  (`… is past what one flow can be read at`) means split, not trim; an emphasis
-  refusal means give all but one or two their ordinary role.
+- **`DocumentError`** — a field is wrong or an id does not resolve. The message carries a JSON pointer (`/edges/2/to`). Fix that path.
+  All violations are reported at once, so read them all before editing. A budget refusal (`… is past what one flow can be read at`)
+  means split, not trim; an emphasis refusal means give all but one or two their ordinary role.
 - **`FitError`** — the diagram does not fit its width in either direction. Shorten
   the longest label, split the diagram, or raise the top-level `width`. Do **not**
   try to shrink a gap; you cannot, and that is deliberate.

@@ -246,6 +246,14 @@ How a journey draws the lines that are not words: the feeling line and its rules
 | `guide` | `"aside"` | The edge role each feeling level's guide is drawn in, across every stage: light, so the line and not the grid is what is read. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
 | `separator` | `"link"` | The edge role the rule above each detail row is drawn in, across the whole map. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
 
+### `[numberline]`
+
+How a number line marks whether a range's end belongs to it.
+
+| Key | Default | What it is |
+|---|---|---|
+| `ends` | `"dots"` | `dots` (filled closed, hollow open) or `brackets` (`[` closed, `(` open). A point is a dot either way. One of `dots`, `brackets`. |
+
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The

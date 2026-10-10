@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Twenty-six exist, and they fall into fifteen families:
+fields are legal. Twenty-seven exist, and they fall into sixteen families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -165,6 +165,7 @@ fields are legal. Twenty-six exist, and they fall into fifteen families:
 | Experience | `journey` | How one person feels, stage by stage: a named feeling per stage as a line, over what they do there. |
 | Share | `treemap` | The parts of one known total: each a rectangle by its area, labelled inside itself. |
 | Quantity | `sankey` | Where a known quantity goes: nodes in derived columns, joined by bands as thick as their amounts. |
+| Scale | `numberline` | Where values sit on one scale: points and ranges, each end in or out — an inequality, the pH scale, a spectrum. |
 
 One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see
@@ -1390,6 +1391,77 @@ room at every width tried is a `FitError` naming the node. See
 [`reference/sankey-tickets.json`](reference/sankey-tickets.json),
 [`reference/sankey-cores.json`](reference/sankey-cores.json) and
 [`reference/sankey-energy.json`](reference/sankey-energy.json).
+
+## A number line
+
+"Which values of x satisfy both" is a question about one scale — where each end
+of a range is, whether the end belongs to it, and which way it runs on — and a
+number line says it in the form every maths textbook uses. That is `numberline`:
+
+```json
+{
+  "version": 1,
+  "kind": "numberline",
+  "title": "Where x > −1 and x ≤ 4 both hold",
+  "axis": {"min": -4, "max": 7, "step": 1},
+  "ranges": [
+    {"from": -1, "from_open": true, "text": "x > −1"},
+    {"to": 4, "text": "x ≤ 4"},
+    {"from": -1, "to": 4, "from_open": true, "text": "both: −1 < x ≤ 4", "role": "emphasis"}
+  ]
+}
+```
+
+**`numberline` or `timeline`?** A `timeline` is events in order — *when* things
+happened — each a box with its date under the line, and `at` only spaces them out.
+A number line is *where values sit* on a measured or named scale, and what it can
+say that a timeline cannot is whether a range's end is in it (`x ≤ 4`) or out of it
+(`x < 4`), and that a range runs on for ever. Inequalities, interval notation, the
+pH scale, a temperature band, positions on a policy spectrum, a tense relative to
+*now* in a language class: a number line. A project's history, a release
+schedule, a sequence of events: a timeline (or a `gantt`, for work that overlaps).
+
+The `axis` runs from `min` to `max` (numbers, `min` < `max`) across the canvas with
+an arrowhead at each end, ticked every `step` with the numbers under the ticks; with
+no `step`, one a reader can count in is chosen. `label` and `unit` are written under
+the numbers. For a scale that is named rather than measured, give `ends` — the low
+and the high end's words, written under the arrowheads — and no numbers are drawn;
+points and ranges are still placed by number between `min` and `max`, so only the
+order and the gaps count.
+
+`points` are dots on the line: filled, or hollow with `"open": true` (the value
+itself is excluded — a hole). Their words go directly above the dot when they fit,
+otherwise directly under the numbers, then in rows further out joined to the dot by
+a thin leader — so fifteen substances on the pH scale settle into alternating rows,
+as the textbook draws them. `ranges` are stacked in tracks above the line in the
+order written, the last nearest it — write the answer last. Each is a heavy line
+with its words centred over it. `from_open` / `to_open` exclude an end; an end left
+out runs on past the axis, drawn as an arrow. Roles for both: `emphasis` (the
+solution set, the point that matters: a thicker bar or a larger dot, bold words) and
+`note` (context: a dashed range, a smaller dot).
+
+How an excluded end looks is house style, not content: the theme's
+`[numberline] ends` draws `"dots"` (filled in, hollow out — the default, and the
+school convention in most of the world) or `"brackets"` (`[` in, `(` out, as US and
+college algebra texts do). Set it once in a course's theme; the documents do not
+change. A single point is a dot either way.
+
+Refused, each at its pointer: a value outside `min`–`max` (widen the axis, or leave
+the end out so it is drawn as an arrow); a range with neither `from` nor `to` (the
+whole line — say it in the title); `to` not after `from` (a single value is a
+point); `from_open` without `from`, `to_open` without `to`; two points at one value;
+`ends` with `step` or `unit`, or more than two ends; a step that makes more than 30
+ticks; a string where a number belongs (a date is a `timeline`); `value` (it is
+`at`), `edges`, `series`, `axes` (two values per item is a `scatter`). Budget: 15
+points, 4 ranges. Tick numbers that touch, two dots too close to tell apart, or a
+point's words with no row within five of the line that keeps clear of the others
+are a `FitError`. See
+[`reference/numberline-inequality.json`](reference/numberline-inequality.json),
+[`reference/numberline-interval-us.json`](reference/numberline-interval-us.json)
+(drawn with brackets by a course theme),
+[`reference/numberline-ph.json`](reference/numberline-ph.json),
+[`reference/numberline-tense.json`](reference/numberline-tense.json) and
+[`reference/numberline-spectrum.json`](reference/numberline-spectrum.json).
 
 ## Asking for a wide drawing instead of a tall one
 

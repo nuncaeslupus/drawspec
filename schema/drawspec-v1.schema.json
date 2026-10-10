@@ -1910,6 +1910,79 @@
         "flows"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "numberline",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "numberline"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "axis": {
+          "$ref": "#/$defs/axis-numberline",
+          "description": "The one scale, drawn across the canvas with an arrowhead at each end: numbered ticks, or two named `ends`."
+        },
+        "points": {
+          "type": "array",
+          "description": "Values marked on the axis, each a dot with its words above it — or below the numbers, with a leader, when the words above would touch.",
+          "items": {
+            "$ref": "#/$defs/numberline-point"
+          }
+        },
+        "ranges": {
+          "type": "array",
+          "description": "Stretches of the scale, each a line in its own track above the axis, in the order written — the last nearest the axis. Each end is closed, open, or missing: a range with no `to` runs on past `max`.",
+          "items": {
+            "$ref": "#/$defs/numberline-range"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "axis"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -2036,6 +2109,45 @@
       },
       "required": [
         "label"
+      ],
+      "additionalProperties": false
+    },
+    "axis-numberline": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "number",
+          "description": "Where the scale starts, at the left arrowhead's side."
+        },
+        "max": {
+          "type": "number",
+          "description": "Where the scale ends: more than `min`."
+        },
+        "step": {
+          "type": "number",
+          "description": "The distance between two ticks, each labelled with its number. Omit it for a step a reader can count in, chosen from the range.",
+          "exclusiveMinimum": 0
+        },
+        "label": {
+          "type": "string",
+          "description": "What the numbers measure, centred under them: `pH`, `Temperature`."
+        },
+        "unit": {
+          "type": "string",
+          "description": "What the numbers are in, written after the label: `°C`, `cm`."
+        },
+        "ends": {
+          "type": "array",
+          "description": "Two words for the low and the high end — `past` and `future`, `fully remote` and `fully on site` — written under the arrowheads, for a scale that is named rather than measured. No numbers are drawn: only the order and the gaps count, so not with `step` or `unit`.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2
+        }
+      },
+      "required": [
+        "min",
+        "max"
       ],
       "additionalProperties": false
     },
@@ -2901,6 +3013,71 @@
         "id",
         "text"
       ],
+      "additionalProperties": false
+    },
+    "numberline-point": {
+      "type": "object",
+      "properties": {
+        "at": {
+          "type": "number",
+          "description": "Where the dot sits on the axis: a number between `min` and `max`."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "open": {
+          "type": "boolean",
+          "description": "Whether the dot is hollow: the value itself is excluded — `x ≠ 3`, a hole. Defaults to false, a filled dot."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default), `emphasis` (the point the line is about: a larger dot, its words bold) or `note` (context: a smaller dot).",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        }
+      },
+      "required": [
+        "at"
+      ],
+      "additionalProperties": false
+    },
+    "numberline-range": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "number",
+          "description": "Where the range starts. Omit it for a range that runs on below `min`, drawn as an arrow off the left end."
+        },
+        "to": {
+          "type": "number",
+          "description": "Where the range ends: more than `from`. Omit it for a range that runs on above `max`, drawn as an arrow off the right end."
+        },
+        "from_open": {
+          "type": "boolean",
+          "description": "Whether `from` is excluded — `x > 1` rather than `x ≥ 1`. Defaults to false. The theme's `[numberline] ends` draws it as a hollow dot or a parenthesis."
+        },
+        "to_open": {
+          "type": "boolean",
+          "description": "Whether `to` is excluded — `x < 4` rather than `x ≤ 4`. Defaults to false."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default, a heavy line), `emphasis` (the range the line is about — the solution set: a heavier bar, its words bold) or `note` (context: dashed).",
+          "enum": [
+            "step",
+            "emphasis",
+            "note"
+          ]
+        }
+      },
       "additionalProperties": false
     },
     "participant": {

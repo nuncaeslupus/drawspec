@@ -68,6 +68,7 @@ from drawspec.theme import (
     GANTT_MILESTONES,
     LANES_ORIENTATIONS,
     NODE_SHAPES,
+    NUMBERLINE_ENDS,
     SHEET_BORDERS,
     SHEET_PATTERNS,
     THEME_VERSION,
@@ -88,6 +89,7 @@ from drawspec.theme import (
     JourneyStyle,
     LanesStyle,
     MarkStyle,
+    NumberlineStyle,
     Padding,
     SequenceStyle,
     StatesStyle,
@@ -527,6 +529,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "board": BoardStyle,
     "fishbone": FishboneStyle,
     "journey": JourneyStyle,
+    "numberline": NumberlineStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are
@@ -557,6 +560,7 @@ THEME_VOCABULARIES: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("journey", "line"): EDGE_ROLES,
     ("journey", "guide"): EDGE_ROLES,
     ("journey", "separator"): EDGE_ROLES,
+    ("numberline", "ends"): NUMBERLINE_ENDS,
 }
 
 

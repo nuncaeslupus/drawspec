@@ -184,6 +184,12 @@ line = "strong"
 guide = "aside"
 separator = "link"
 
+[numberline]
+# Whether a range's end belongs to it is drawn as a filled (in) or hollow (out)
+# dot, the school convention in most of the world; "brackets" draws "[" and "(",
+# as most US and college algebra texts do. A point is a dot either way.
+ends = "dots"
+
 # ---------------------------------------------------------------------------
 # Node roles. Shape and line treatment per semantic role. The author names the
 # role; every appearance decision below is taken here, once, for all diagrams.

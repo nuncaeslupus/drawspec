@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-26 kinds. The machine-readable form of this page is the published
+27 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey` | **yes** | Which of the twenty-six diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline` | **yes** | Which of the twenty-seven diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -222,6 +222,14 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `unit` | string | no | What the amounts are in — `tickets`, `cores`, `€ million` — written after each total. |
 | `values` | boolean | no | Whether to write each node's total under its name. Defaults to true. |
 
+### `numberline`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `axis` | [axis-numberline object](#axis-numberline-object) | **yes** | The one scale, drawn across the canvas with an arrowhead at each end: numbered ticks, or two named `ends`. |
+| `points` | array of [numberline-point](#numberline-point-object) | no | Values marked on the axis, each a dot with its words above it — or below the numbers, with a leader, when the words above would touch. |
+| `ranges` | array of [numberline-range](#numberline-range-object) | no | Stretches of the scale, each a line in its own track above the axis, in the order written — the last nearest the axis. Each end is closed, open, or missing: a range with no `to` runs on past `max`. |
+
 ### `scatter`
 
 | Field | Type | Required | What it is |
@@ -280,6 +288,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `journey` | 7 `stages`, 5 `feelings`, 4 `rows` |
 | `treemap` | 10 `parts`, 4 `groups` |
 | `sankey` | 14 `nodes`, 24 `flows` |
+| `numberline` | 15 `points`, 4 `ranges` |
 
 ## Emphasis
 
@@ -560,6 +569,37 @@ name, so a misspelt key is an error at the point it was written.
 | `to` | string | **yes** | The id of the node the amount reaches. |
 | `amount` | number, greater than 0 | **yes** | How much flows, in the sankey's `unit`: the band's thickness is in proportion. A number you already know, more than 0. |
 | `role` | string — one of `flow`, `strong` | no | `flow` (the default band) or `strong` (the path the diagram is about, drawn darker). |
+
+### `axis-numberline` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `min` | number | **yes** | Where the scale starts, at the left arrowhead's side. |
+| `max` | number | **yes** | Where the scale ends: more than `min`. |
+| `step` | number, greater than 0 | no | The distance between two ticks, each labelled with its number. Omit it for a step a reader can count in, chosen from the range. |
+| `label` | string | no | What the numbers measure, centred under them: `pH`, `Temperature`. |
+| `unit` | string | no | What the numbers are in, written after the label: `°C`, `cm`. |
+| `ends` | array of string, at least 2 | no | Two words for the low and the high end — `past` and `future`, `fully remote` and `fully on site` — written under the arrowheads, for a scale that is named rather than measured. No numbers are drawn: only the order and the gaps count, so not with `step` or `unit`. |
+
+### `numberline-point` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `at` | number | **yes** | Where the dot sits on the axis: a number between `min` and `max`. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `open` | boolean | no | Whether the dot is hollow: the value itself is excluded — `x ≠ 3`, a hole. Defaults to false, a filled dot. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the point the line is about: a larger dot, its words bold) or `note` (context: a smaller dot). |
+
+### `numberline-range` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | number | no | Where the range starts. Omit it for a range that runs on below `min`, drawn as an arrow off the left end. |
+| `to` | number | no | Where the range ends: more than `from`. Omit it for a range that runs on above `max`, drawn as an arrow off the right end. |
+| `from_open` | boolean | no | Whether `from` is excluded — `x > 1` rather than `x ≥ 1`. Defaults to false. The theme's `[numberline] ends` draws it as a hollow dot or a parenthesis. |
+| `to_open` | boolean | no | Whether `to` is excluded — `x < 4` rather than `x ≤ 4`. Defaults to false. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default, a heavy line), `emphasis` (the range the line is about — the solution set: a heavier bar, its words bold) or `note` (context: dashed). |
 
 ### `treemap-group` object
 

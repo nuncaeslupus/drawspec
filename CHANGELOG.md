@@ -12,6 +12,28 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`numberline`, the twenty-seventh kind** — values and ranges on one scale:
+  an inequality and its solution set, interval notation, the pH scale, a tense
+  relative to *now*, options on a spectrum. The `axis` runs from `min` to `max`
+  with an arrowhead at each end, ticked every `step` (or a step chosen from the
+  range) with its numbers under the ticks and negative numbers in a true minus
+  sign; `ends` names the two ends instead, for a scale with no numbers. `points`
+  are dots on the line, hollow when `open`; their words go directly above, then
+  directly under the numbers, then in rows further out with a thin leader, a slot
+  taken only if the words touch no other words and the leader crosses none.
+  `ranges` stack in tracks above the line in the order written, the last nearest
+  it; `from_open`/`to_open` exclude an end, and a missing end runs on as an arrow.
+  Roles `step`, `emphasis` (a thicker bar or a larger dot, bold words) and `note`
+  (a dashed range, a smaller dot). New theme section `[numberline]`: `ends =
+  "dots"` (filled in, hollow out) or `"brackets"` (`[` in, `(` out, the US and
+  college convention) — house style, so one course theme switches every drawing.
+  Refused at their pointers: a value off the scale, a range with no end, `to` not
+  after `from`, an open end that is not there, two points at one value, `ends`
+  with `step` or `unit`, more than 30 ticks, a string where a number belongs
+  (naming `timeline`), `value` (naming `at`), `edges`, `series`, `axes` (naming
+  `scatter`). Budget: 15 points (the pH scale with a substance at every whole
+  value), 4 ranges. The guide and `AGENTS.md` say when to use it rather than
+  `timeline`.
 - **A drafting sheet for any diagram, and the bundled `blueprint` theme.** New
   `[canvas]` keys — `ground`, `pattern = "grid"`, `border = "zoned"`,
   `title_block`, `rule` and `accent` — draw a ground, a fine grid, a double
