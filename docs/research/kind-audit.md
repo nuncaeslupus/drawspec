@@ -203,3 +203,10 @@ end (inside a stacked segment). Points are `[amount, position]`. Narrowed to wha
 draws well: every series a `bar` (a line down a list of names is refused), no negative
 amounts (a diverging bar chart is out of scope), no `min`/`max` on the category axis,
 not both axes categorical — each refused at its pointer.
+
+**Rank 2, `quadrant` names and ends** — built as proposed, with two changes. Names are
+drawn in each quarter's **outer corner** at part opacity of the page ink (a new
+`opacity` on text runs, never a colour), and `""` leaves a quarter unnamed. `ends` with
+`min`/`max` is **allowed**, not refused: a quadrant draws no numbers either way, and
+`min`/`max` only frame where the scores fall. A quadrant axis got its own schema type,
+so `categories` there — previously accepted and ignored — is now refused.

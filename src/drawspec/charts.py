@@ -1072,8 +1072,11 @@ def _quadrant(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
     across = _quadrant_scale(horizontal, [item.across for item in positions])
     up = _quadrant_scale(vertical, [item.up for item in positions])
 
-    left = line.height + gap
-    bottom = _caption_band(line, gap)
+    # An axis's two end words take a row of their own between the axis and its
+    # caption: under the horizontal axis, and — turned like the caption — beside
+    # the vertical one.
+    left = line.height + gap + (line.height + gap if vertical.ends else 0.0)
+    bottom = _caption_band(line, gap) + (line.height + gap if horizontal.ends else 0.0)
     top = line.height + gap
     right = line.height + gap
     plot_left, plot_right = left, width - right
@@ -1083,6 +1086,8 @@ def _quadrant(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
             f"a quadrant {width:.0f} x {height:.0f} has no room for its plot once the "
             f"axis labels are measured. Give it more width or height."
         )
+    _refuse_crowded_ends(horizontal, plot_right - plot_left, theme, measurer)
+    _refuse_crowded_ends(vertical, plot_bottom - plot_top, theme, measurer)
 
     across = Scale(across.low, across.high, plot_left, plot_right)
     up = Scale(up.low, up.high, plot_bottom, plot_top)
@@ -1107,14 +1112,35 @@ def _quadrant(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
         ),
     ]
 
+    primitives.extend(
+        _axis_ends(
+            horizontal, vertical, plot_left, plot_right, plot_top, plot_bottom, theme, measurer
+        )
+    )
+
     dividers: list[tuple[tuple[float, float], ...]] = [
         ((plot_left, middle_y), (plot_right, middle_y)),
         ((middle_x, plot_top), (middle_x, plot_bottom)),
     ]
     radius = theme.edge.head_length * MARKER_FRACTION
-    placed: list[tuple[float, float, float, float]] = []
+    names = _quadrant_names(
+        document.quadrants,
+        (plot_left, plot_top, plot_right, plot_bottom),
+        theme,
+        measurer,
+    )
+    placed: list[tuple[float, float, float, float]] = [box for box, _ in names]
+    primitives.extend(run for _, run in names)
     for item in positions:
         x, y = across.to_pixels(item.across), up.to_pixels(item.up)
+        dot = (x - radius, y - radius, x + radius, y + radius)
+        for box, run in names:
+            if _overlaps(_grown(box, LABEL_DAYLIGHT), dot):
+                raise FitError(
+                    f"the point {item.text[:32]!r} lands on the quarter name "
+                    f"{run.text!r}, written in that quarter's outer corner. Leave the "
+                    f"corner its room — widen the axis's `min`/`max` — or shorten the name."
+                )
         primitives.append(Ellipse(item.role, cx=x, cy=y, rx=radius, ry=radius))
         label = _place_label(
             item,
@@ -1146,6 +1172,142 @@ def _quadrant(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
         title=document.title,
         description=document.description,
     )
+
+
+#: How much of the ink a quadrant's quarter names take. They name the ground the
+#: points stand on, so they sit behind them: legible, and plainly not a label.
+QUARTER_NAME_OPACITY: Final = 0.55
+
+
+def _quadrant_names(
+    names: Sequence[str],
+    plot: tuple[float, float, float, float],
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> list[tuple[tuple[float, float, float, float], TextRun]]:
+    """Each quarter's name, faint, in the quarter's outer corner.
+
+    Top right first and counter-clockwise, as Mermaid numbers them: so the
+    first name is anchored to the plot's top-right corner, the second to its
+    top-left, the third bottom-left, the fourth bottom-right. The outer corner
+    is the one furthest from the midlines, where the points are least likely
+    to be — and it keeps each name flush with an edge a reader's eye is already on.
+
+    A name wider than half its quarter would reach across the midline into the
+    next one, which is refused rather than wrapped: these are two or three words.
+    """
+    left, top, right, bottom = plot
+    gap = theme.box.padding.top
+    size = theme.scale["body"]
+    extents = measurer.measure("0", theme.font.default, size)
+    room = (right - left) / 2 - 2 * gap
+    corners = (
+        (right - gap, top + gap + extents.ascent, "end"),
+        (left + gap, top + gap + extents.ascent, "start"),
+        (left + gap, bottom - gap - extents.descent, "start"),
+        (right - gap, bottom - gap - extents.descent, "end"),
+    )
+    placed: list[tuple[tuple[float, float, float, float], TextRun]] = []
+    for name, (x, y, anchor) in zip(names, corners, strict=False):
+        if not name:
+            continue
+        measured = measurer.measure(name, theme.font.default, size)
+        if measured.width > room:
+            raise FitError(
+                f"the quarter name {name!r} is wider than half the plot, so it would "
+                f"run into the next quarter. Shorten it, or give the diagram more width."
+            )
+        start = x if anchor == "start" else x - measured.width
+        box = (start, y - extents.ascent, start + measured.width, y + extents.descent)
+        placed.append(
+            (
+                box,
+                TextRun(
+                    FURNITURE_ROLE,
+                    x=x,
+                    y=y,
+                    text=name,
+                    level="body",
+                    font=theme.font.default,
+                    anchor=anchor,
+                    opacity=QUARTER_NAME_OPACITY,
+                ),
+            )
+        )
+    return placed
+
+
+def _axis_ends(
+    horizontal: Axis,
+    vertical: Axis,
+    left: float,
+    right: float,
+    top: float,
+    bottom: float,
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> tuple[Primitive, ...]:
+    """The two end words of each axis, at its two ends.
+
+    Under the horizontal axis the low word starts at the left end and the high
+    one finishes at the right. Beside the vertical axis they are turned like its
+    caption, reading upwards: the low word starting at the bottom, the high one
+    finishing at the top. Both sit in the row the gutters reserved for them,
+    between the axis and its caption.
+    """
+    size = theme.scale["label"]
+    gap = theme.box.padding.top
+    line = measurer.measure("0", theme.font.default, size)
+    runs: list[Primitive] = []
+    if len(horizontal.ends) == 2:
+        y = bottom + gap + line.ascent
+        for text, x, anchor in (
+            (horizontal.ends[0], left, "start"),
+            (horizontal.ends[1], right, "end"),
+        ):
+            runs.append(
+                TextRun(
+                    FURNITURE_ROLE,
+                    x=x,
+                    y=y,
+                    text=text,
+                    level="label",
+                    font=theme.font.default,
+                    anchor=anchor,
+                )
+            )
+    if len(vertical.ends) == 2:
+        x = left - gap - line.descent
+        for text, y, anchor in (
+            (vertical.ends[0], bottom, "start"),
+            (vertical.ends[1], top, "end"),
+        ):
+            runs.append(
+                TextRun(
+                    FURNITURE_ROLE,
+                    x=x,
+                    y=y,
+                    text=text,
+                    level="label",
+                    font=theme.font.default,
+                    anchor=anchor,
+                    rotate=-90.0,
+                )
+            )
+    return tuple(runs)
+
+
+def _refuse_crowded_ends(axis: Axis, length: float, theme: Theme, measurer: TextMeasurer) -> None:
+    """Two end words that would meet in the middle of their axis are refused."""
+    if len(axis.ends) != 2:
+        return
+    size = theme.scale["label"]
+    total = sum(measurer.measure(text, theme.font.default, size).width for text in axis.ends)
+    if total + theme.box.padding.top * 2 > length:
+        raise FitError(
+            f"the ends {list(axis.ends)!r} of the axis {axis.label!r} are wider together "
+            f"than the axis is long. Shorten them, or give the diagram more room."
+        )
 
 
 def _quadrant_scale(axis: Axis, values: list[float]) -> Scale:

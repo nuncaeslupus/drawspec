@@ -879,8 +879,15 @@
           "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
         },
         "axes": {
-          "$ref": "#/$defs/axes",
+          "$ref": "#/$defs/axes-quadrant",
           "description": "The two named axes whose crossing makes the four quadrants."
+        },
+        "quadrants": {
+          "type": "array",
+          "description": "Exactly four names, one per quarter, written faint in its outer corner: top right first, then counter-clockwise — top left, bottom left, bottom right (Mermaid's order). An empty string leaves that quarter unnamed.",
+          "items": {
+            "type": "string"
+          }
         },
         "positions": {
           "type": "array",
@@ -2797,6 +2804,24 @@
       ],
       "additionalProperties": false
     },
+    "axes-quadrant": {
+      "type": "object",
+      "properties": {
+        "horizontal": {
+          "$ref": "#/$defs/axis-quadrant",
+          "description": "The judgement across."
+        },
+        "vertical": {
+          "$ref": "#/$defs/axis-quadrant",
+          "description": "The judgement up."
+        }
+      },
+      "required": [
+        "horizontal",
+        "vertical"
+      ],
+      "additionalProperties": false
+    },
     "axis": {
       "type": "object",
       "properties": {
@@ -2923,6 +2948,39 @@
       "required": [
         "min",
         "max"
+      ],
+      "additionalProperties": false
+    },
+    "axis-quadrant": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Required: an unlabelled axis cannot be read."
+        },
+        "unit": {
+          "type": "string",
+          "description": "What the scores are in, written after the label."
+        },
+        "min": {
+          "type": "number",
+          "description": "Where the axis starts. Omit to take it from the positions."
+        },
+        "max": {
+          "type": "number",
+          "description": "Where the axis ends. Omit to take it from the positions."
+        },
+        "ends": {
+          "type": "array",
+          "description": "Two words for the low and the high end — `Low` and `High`, `Rarely` and `Often` — written at the two ends of the axis, as on a `numberline`.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2
+        }
+      },
+      "required": [
+        "label"
       ],
       "additionalProperties": false
     },

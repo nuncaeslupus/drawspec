@@ -1570,3 +1570,94 @@ def test_horizontal_bars_refuse_two_category_axes_and_bounds_on_the_rows() -> No
         parse_document(document(axes=axes, series=series))
     assert "/axes/horizontal/categories" in str(error.value)
     assert "/axes/vertical/min" in str(error.value)
+
+
+# ---------------------------------------------------------------------------
+# quadrant: quarter names and axis ends
+# ---------------------------------------------------------------------------
+
+NAMED: dict[str, object] = {
+    "version": 1,
+    "kind": "quadrant",
+    "axes": {
+        "horizontal": {"label": "How urgent", "ends": ["Can wait", "Today"]},
+        "vertical": {"label": "How important", "ends": ["Minor", "Matters"]},
+    },
+    "quadrants": ["Do now", "Plan it", "Drop it", "Hand it on"],
+    "positions": list(CORNERS),
+}
+
+
+def _named(**change: object) -> dict[str, object]:
+    return {**NAMED, **change}
+
+
+def test_quarter_names_go_top_right_first_then_counter_clockwise() -> None:
+    """Mermaid's order: quadrant-1 is top right, then top left, bottom left, bottom right."""
+    built = chart_scene(parse_document(NAMED), THEME, MEASURER)
+    runs = {run.text: run for run in texts(built)}
+    middle_x = built.width / 2
+    do, plan, drop, hand = (runs[name] for name in ("Do now", "Plan it", "Drop it", "Hand it on"))
+    assert do.x > middle_x and do.anchor == "end"
+    assert plan.x < middle_x and plan.anchor == "start"
+    assert drop.x < middle_x and hand.x > middle_x
+    assert do.y == plan.y < drop.y == hand.y
+    for run in (do, plan, drop, hand):
+        assert 0 < run.opacity < 1, "a quarter name is ground, drawn faint"
+
+
+def test_axis_ends_are_written_at_the_two_ends_of_each_axis() -> None:
+    built = chart_scene(parse_document(NAMED), THEME, MEASURER)
+    runs = {run.text: run for run in texts(built)}
+    assert runs["Can wait"].x < runs["Today"].x
+    assert runs["Can wait"].anchor == "start" and runs["Today"].anchor == "end"
+    assert runs["Minor"].rotate == runs["Matters"].rotate == -90.0
+    assert runs["Minor"].y > runs["Matters"].y, "the low end is at the bottom"
+    # each end row sits between the axis and its caption
+    assert runs["Today"].y < runs["How urgent"].y
+    assert runs["How important"].x < runs["Minor"].x
+
+
+def test_no_quadrant_label_overlaps_a_quarter_name() -> None:
+    corner = {"text": "Right in the corner", "across": 1.0, "up": 0.97}
+    built = chart_scene(parse_document(_named(positions=[*CORNERS, corner])), THEME, MEASURER)
+    runs = {run.text: run for run in texts(built)}
+    name, label = runs["Do now"], runs["Right in the corner"]
+    assert label.y - name.y > THEME.scale["label"] or label.x < name.x - 40
+
+
+@pytest.mark.parametrize(
+    ("change", "pointer"),
+    [
+        ({"quadrants": ["a", "b", "c"]}, "/quadrants"),
+        ({"quadrants": ["a", "b", "c", "d", "e"]}, "/quadrants"),
+        (
+            {
+                "axes": {
+                    "horizontal": {"label": "x", "ends": ["low", "mid", "high"]},
+                    "vertical": {"label": "y"},
+                }
+            },
+            "/axes/horizontal/ends",
+        ),
+        (
+            {
+                "axes": {
+                    "horizontal": {"label": "x", "categories": ["a", "b"]},
+                    "vertical": {"label": "y"},
+                }
+            },
+            "/axes/horizontal/categories",
+        ),
+    ],
+)
+def test_wrong_counts_of_names_and_ends_are_refused(
+    change: dict[str, object], pointer: str
+) -> None:
+    with pytest.raises(DocumentError, match=pointer):
+        parse_document(_named(**change))
+
+
+def test_a_quadrant_without_names_or_ends_draws_as_before() -> None:
+    plain = quadrant(*CORNERS)
+    assert not [run for run in texts(plain) if run.opacity < 1]

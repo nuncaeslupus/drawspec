@@ -158,6 +158,8 @@ def namespace_for(scene: Scene, theme: Theme, profile: str, sheet: Sheet | None 
         digest.update(repr(primitive).encode())
         if getattr(primitive, "strike", False):
             digest.update(b"|strike")
+        if isinstance(primitive, TextRun) and primitive.opacity < 1:
+            digest.update(f"|opacity {primitive.opacity}".encode())
         if isinstance(primitive, Ellipse) and primitive.fill:
             digest.update(f"|{primitive.fill}|{primitive.fill_colour}".encode())
     digest.update(f"{theme.name}|{profile}".encode())
@@ -361,6 +363,8 @@ def _text_element(run: TextRun, theme: Theme, profile: str) -> str:
         ("font-size", format_number(run.size or theme.scale[run.level])),
         ("fill", _resolve(run.paint or "currentColor", theme, profile)),
     ]
+    if run.opacity < 1:
+        attributes.append(("fill-opacity", format_number(run.opacity)))
     if run.weight != "normal":
         attributes.append(("font-weight", run.weight))
     if run.anchor != "start":

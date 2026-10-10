@@ -12,6 +12,16 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`quadrant` names its quarters and the ends of its axes.** `quadrants`: exactly four
+  names, top right first and then counter-clockwise (Mermaid's order), each written
+  faint (the page's ink at part opacity, so dark mode keeps it) in its quarter's outer
+  corner; an empty string leaves a quarter unnamed. Each axis takes `ends`, the
+  `numberline` field: two words for its low and high end, written at the two ends of the
+  axis between it and its caption (turned, on the vertical axis). Refused at their
+  pointers: `quadrants` not four, `ends` past two, and — since a quadrant axis now has
+  its own type — `categories`, which was accepted and ignored. A point landing on a
+  quarter name, or a name wider than half the plot, is a fit refusal. See
+  `reference/quadrant-priorities.json`.
 - **`clock`, the thirty-sixth kind** — analogue clock faces showing a time, for teaching
   it: 1–12 `clocks`, up to four to a row, each a `time` (`H:MM` or `HH:MM`, 0:00 to
   23:59; leave it out for a face with no hands, to draw on), an optional `text` under it,

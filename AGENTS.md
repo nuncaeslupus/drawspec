@@ -64,7 +64,7 @@ Pick by what the reader must **understand**, not by what it looks like.
 | Scopes nested inside scopes | `rings` | `rings` |
 | What is lost between narrowing stages | `funnel` | `stages` |
 | A small number you already know | `chart` | `axes` + `series` (`categories` on the vertical axis: horizontal bars, each point `[amount, position]`) |
-| Where items fall against two named judgements | `quadrant` | `axes` + `positions` |
+| Where items fall against two named judgements | `quadrant` | `axes` (+ `ends`: low and high words) + `positions` (+ 4 `quadrants`, top right first, counter-clockwise) |
 | Where items fall by two measured values | `scatter` | `axes` + `positions` |
 | The shape of a change: a hype cycle, a burndown | `curve` | `axes` + `curves` |
 | What is in a directory | `files` | `entries` (+ `root`, `sort`, `style`) |

@@ -1090,6 +1090,33 @@ operations per entity. See
 [`reference/entities-shapes.json`](reference/entities-shapes.json) and
 [`reference/entities-enrolment.json`](reference/entities-enrolment.json).
 
+## Naming a quadrant's quarters
+
+A quadrant's most recognisable part is often the names of its four quarters — *Do
+now*, *Plan it*, *Drop it*, *Hand it on* — and of the two ends of each axis. Both are
+words in the document, not drawing:
+
+```json
+{
+  "version": 1,
+  "kind": "quadrant",
+  "axes": {
+    "horizontal": {"label": "How urgent", "ends": ["Can wait", "Today"]},
+    "vertical": {"label": "How important", "ends": ["Minor", "Matters"]}
+  },
+  "quadrants": ["Do now", "Plan it", "Drop it", "Hand it on"],
+  "positions": [{"text": "Payroll file rejected", "across": 0.9, "up": 0.85}]
+}
+```
+
+`quadrants` is exactly four names, **top right first, then counter-clockwise** — top
+left, bottom left, bottom right — the order Mermaid numbers them in. Each is written
+faint in its quarter's outer corner, behind the points; `""` leaves a quarter unnamed.
+An axis's `ends` are its low and high words, as on a `numberline`, written at the two
+ends of the axis. Refused: `quadrants` not four, more than two `ends`, and
+`categories` on a quadrant axis. See
+[`reference/quadrant-priorities.json`](reference/quadrant-priorities.json).
+
 ## Bars on their side
 
 A bar chart whose categories are sentences — *Report a pothole or broken street

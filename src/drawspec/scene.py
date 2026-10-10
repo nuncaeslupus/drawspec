@@ -181,6 +181,11 @@ class TextRun(Primitive):
     """The colour the letters are drawn in, when the theme chose one for this run —
     a `files` label's letters on its coloured tag. Empty is the page's ink."""
 
+    opacity: float = field(default=1.0, repr=False)
+    """How much of the ink the letters take, below 1 for words that are ground
+    rather than content — a quadrant's quarter names. Still the page's ink, so a
+    dark page keeps them legible; never a colour."""
+
     size: float = 0.0
     """A size of its own, for lettering that is part of a picture rather than text
     — a `files` tag's `PDF`. Zero, for every run that is text, means *the level's*

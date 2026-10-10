@@ -2773,6 +2773,53 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         ),
         FieldSpec("vertical", "object", required=True, ref="axis", description="The axis up."),
     ),
+    # `quadrant`'s own axis type: no `categories` (a quadrant's directions are
+    # judgements, not a list), and two named `ends` — the field `numberline` uses.
+    "axis-quadrant": (
+        FieldSpec(
+            "label",
+            "string",
+            required=True,
+            description="Required: an unlabelled axis cannot be read.",
+        ),
+        FieldSpec("unit", "string", description="What the scores are in, written after the label."),
+        FieldSpec(
+            "min",
+            "number",
+            description="Where the axis starts. Omit to take it from the positions.",
+        ),
+        FieldSpec(
+            "max",
+            "number",
+            description="Where the axis ends. Omit to take it from the positions.",
+        ),
+        FieldSpec(
+            "ends",
+            "array",
+            item_kind="string",
+            min_items=2,
+            description=(
+                "Two words for the low and the high end — `Low` and `High`, `Rarely` and "
+                "`Often` — written at the two ends of the axis, as on a `numberline`."
+            ),
+        ),
+    ),
+    "axes-quadrant": (
+        FieldSpec(
+            "horizontal",
+            "object",
+            required=True,
+            ref="axis-quadrant",
+            description="The judgement across.",
+        ),
+        FieldSpec(
+            "vertical",
+            "object",
+            required=True,
+            ref="axis-quadrant",
+            description="The judgement up.",
+        ),
+    ),
     # `scatter`'s own axis type, not `axis` above: it has no `categories`, so a
     # document that sets one fails the published schema directly rather than
     # passing it and only failing `drawspec validate` — the same
@@ -3148,8 +3195,18 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             "axes",
             "object",
             required=True,
-            ref="axes",
+            ref="axes-quadrant",
             description="The two named axes whose crossing makes the four quadrants.",
+        ),
+        FieldSpec(
+            "quadrants",
+            "array",
+            item_kind="string",
+            description=(
+                "Exactly four names, one per quarter, written faint in its outer corner: "
+                "top right first, then counter-clockwise — top left, bottom left, bottom "
+                "right (Mermaid's order). An empty string leaves that quarter unnamed."
+            ),
         ),
         FieldSpec(
             "positions",
@@ -4521,6 +4578,8 @@ class Axis:
     maximum: float | None = None
     categories: tuple[str, ...] = ()
     """Names for the positions 1, 2, 3 … Empty for an axis that carries numbers."""
+    ends: tuple[str, ...] = ()
+    """A quadrant axis's words for its low and high end, or empty."""
 
 
 @dataclass(frozen=True)
@@ -4585,6 +4644,8 @@ class Document:
     key: tuple[Key, ...] = ()
     spans: tuple[Span, ...] = ()
     positions: tuple[Position, ...] = ()
+    quadrants: tuple[str, ...] = ()
+    """A quadrant's four quarter names, top right first, counter-clockwise."""
     curves: tuple[Curve, ...] = ()
     axes: tuple[Axis, ...] = ()
     """The horizontal axis then the vertical one, for `chart`. Empty otherwise."""
@@ -5308,6 +5369,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _clock_violations(document)
     if kind == "chart":
         return _chart_violations(document)
+    if kind == "quadrant":
+        return _quadrant_violations(document)
     if kind in LANES_KINDS:
         found.extend(_lanes_violations(document))
     if kind in FILES_KINDS:
@@ -5807,6 +5870,32 @@ def _chart_violations(document: Mapping[str, Any]) -> list[Violation]:
                         f"the categories on the horizontal axis, or use a `waterfall`.",
                     )
                 )
+    return found
+
+
+def _quadrant_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Four quarter names exactly, and two ends to an axis."""
+    found: list[Violation] = []
+    quadrants = document.get("quadrants")
+    if isinstance(quadrants, list) and len(quadrants) != 4:
+        found.append(
+            Violation(
+                "/quadrants",
+                f"{len(quadrants)} names: a quadrant has four quarters, named top right "
+                f"first, then counter-clockwise. Leave a quarter unnamed with an empty string.",
+            )
+        )
+    axes = document.get("axes")
+    for name in AXIS_ORDER:
+        axis = axes.get(name) if isinstance(axes, dict) else None
+        ends = axis.get("ends") if isinstance(axis, dict) else None
+        if isinstance(ends, list) and len(ends) > 2:
+            found.append(
+                Violation(
+                    _pointer("axes", name, "ends"),
+                    f"{len(ends)} ends: an axis has two, the low end's word then the high end's.",
+                )
+            )
     return found
 
 
@@ -9875,6 +9964,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
             )
             for entry in document.get("positions", ())
         ),
+        quadrants=tuple(str(name) for name in document.get("quadrants", ())),
         curves=tuple(
             Curve(
                 name=entry.get("name", ""),
@@ -10662,6 +10752,7 @@ def _axis(entry: Mapping[str, Any]) -> Axis:
         minimum=_optional_number(entry.get("min")),
         maximum=_optional_number(entry.get("max")),
         categories=tuple(str(name) for name in entry.get("categories", ())),
+        ends=tuple(str(name) for name in entry.get("ends", ())),
     )
 
 

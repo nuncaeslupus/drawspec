@@ -123,7 +123,8 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `axes` | [axes object](#axes-object) | **yes** | The two named axes whose crossing makes the four quadrants. |
+| `axes` | [axes-quadrant object](#axes-quadrant-object) | **yes** | The two named axes whose crossing makes the four quadrants. |
+| `quadrants` | array of string | no | Exactly four names, one per quarter, written faint in its outer corner: top right first, then counter-clockwise — top left, bottom left, bottom right (Mermaid's order). An empty string leaves that quarter unnamed. |
 | `positions` | array of [position](#position-object), at least 1 | **yes** | The items placed in the plane, each by what it scores, not by where it goes. |
 
 ### `files`
@@ -983,6 +984,23 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `horizontal` | [axis object](#axis-object) | **yes** | The axis across. |
 | `vertical` | [axis object](#axis-object) | **yes** | The axis up. |
+
+### `axis-quadrant` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `label` | string | **yes** | Required: an unlabelled axis cannot be read. |
+| `unit` | string | no | What the scores are in, written after the label. |
+| `min` | number | no | Where the axis starts. Omit to take it from the positions. |
+| `max` | number | no | Where the axis ends. Omit to take it from the positions. |
+| `ends` | array of string, at least 2 | no | Two words for the low and the high end — `Low` and `High`, `Rarely` and `Often` — written at the two ends of the axis, as on a `numberline`. |
+
+### `axes-quadrant` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `horizontal` | [axis-quadrant object](#axis-quadrant-object) | **yes** | The judgement across. |
+| `vertical` | [axis-quadrant object](#axis-quadrant-object) | **yes** | The judgement up. |
 
 ### `axis-continuous` object
 
