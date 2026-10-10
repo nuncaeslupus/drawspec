@@ -12,6 +12,18 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **PNG export, behind the optional `drawspec[png]` extra** — `drawspec render
+  doc.json -o doc.png` (or `--format png`; the format is inferred from a `.png`,
+  `.svg` or `.txt` output name) writes the standalone drawing as a PNG, with
+  `--background light|dark|transparent` (theme ink on white, `#e8e8e8` on
+  `#121212`, or no page) and `--scale` (pixels per unit, default 2, at most 8).
+  The renderer is `resvg-py`, one self-contained wheel with no system libraries;
+  it is handed the fonts the layout was measured with and ignores the host's, so
+  the PNG is byte-identical everywhere with the bundled fonts. Also
+  `drawspec.render_png()` in Python and `format: "png"` on the MCP `render` tool
+  (a base64 image block). Without the extra a PNG is refused (exit 1,
+  `ExportError`) with the install line. No PDF or JPEG; no WebP, which would need
+  a second dependency. See `docs/proposals/exports.md`.
 - **`drawspec theme from`, a theme derived from a brand** — reads CSS custom
   properties (`.css`) and W3C design tokens (`.json`/`.tokens`: groups, inherited
   `$type`, `{aliases}`, colour and dimension objects), local files only, and

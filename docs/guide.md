@@ -298,6 +298,46 @@ In both profiles, no information is carried by colour alone. A diagram that
 still reads on a black-and-white printer is the same diagram that still reads in
 dark mode, and neither is caught by looking at the screen it was made on.
 
+## Exporting an image
+
+An SVG is the best form for a page you control. For everywhere else — a chat
+message, a slide, an issue, a document editor that only takes pictures — render a
+PNG:
+
+```bash
+pip install 'drawspec[png]'
+drawspec render diagram.json -o diagram.png                  # inferred from .png
+drawspec render diagram.json --format png --background dark -o diagram-dark.png
+```
+
+It is an **optional extra** because the core stays one dependency. The extra is
+[`resvg-py`](https://pypi.org/project/resvg-py/), a single self-contained wheel
+for Linux, macOS and Windows — still no Cairo and nothing to apt-get. Without it,
+asking for a PNG is refused with exit 1 and the install line above.
+
+* **It is the standalone drawing.** The inline profile draws in `currentColor`,
+  which means nothing in a picture file, so the PNG is always made from the
+  standalone SVG; `--profile` does not apply.
+* **`--background`** picks the page: `light` (the default) is the theme's ink on
+  white; `dark` is a light ink on near-black `#121212`, what the inline SVG does
+  by itself on a dark page; `transparent` is the theme's ink on nothing — for a
+  light page you do not control.
+* **`--scale`** is pixels per SVG unit, `2` by default, so a 640-wide drawing is
+  about 1,330 pixels across and stays crisp on a high-density screen. `1` is the
+  smallest file; the most is `8`.
+* **The text is set in the fonts it was measured with.** The renderer ignores
+  the machine's fonts and loads the files drawspec measured against — the bundled
+  ones unless your theme names a family you have installed — so a label that
+  fitted in the SVG fits in the PNG, and with the bundled fonts the file is
+  byte-identical on every machine.
+
+There is no JPEG (it smears line art), no PDF (print the standalone SVG, above),
+and no WebP: the renderer encodes PNG only, and WebP would mean a second
+dependency for a format every PNG viewer already covers.
+
+From Python, `render_png(document, theme, scale=2.0, background="light")` returns
+the bytes; it raises `ExportError` when the extra is missing.
+
 ## Validating in a build
 
 ```bash
@@ -474,6 +514,9 @@ else:
     Path("diagram.svg").write_text(svg, encoding="utf-8")
 ```
 
+`drawspec.render_png(document)` returns the same drawing as PNG bytes — see
+[Exporting an image](#exporting-an-image).
+
 ## Saying who performs a step
 
 `role` says what kind of step a box is. `actor` says whose it is, and the two are
@@ -521,7 +564,7 @@ tools over stdio:
 | Tool | Answers |
 |---|---|
 | `validate` | would `render` refuse this, and **where** — every violation as `{"pointer", "message"}` |
-| `render` | the SVG, with the same optional `theme`, `width` and `height` |
+| `render` | the SVG, with the same optional `theme`, `width` and `height` — or, with `"format": "png"` (and optional `scale`, `background`), a base64 PNG image block, when the server has `drawspec[png]` |
 | `kinds` | every kind and what it is for, so a model chooses one instead of guessing |
 
 ```bash

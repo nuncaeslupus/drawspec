@@ -38,12 +38,13 @@ Legal before the command name.
 
 ### `drawspec render`
 
-Read a document, draw it, and write the SVG to stdout or to a file.
+Read a document, draw it, and write the SVG to stdout or to a file. With --format png, or an -o ending in .png, write a PNG instead (needs pip install 'drawspec[png]').
 
 ```
 usage: drawspec render [-h] [-o OUT] [--theme THEME] [--width WIDTH]
                        [--height HEIGHT] [--profile {inline,standalone}]
-                       [--format {svg,text}]
+                       [--format {svg,png,text}] [--scale SCALE]
+                       [--background {light,dark,transparent}]
                        document
 ```
 
@@ -55,7 +56,9 @@ usage: drawspec render [-h] [-o OUT] [--theme THEME] [--width WIDTH]
 | `--width` | Override the document's width. |
 | `--height` | Override the document's height. |
 | `--profile` | The embedding profile. One of `inline`, `standalone`. Default `inline`. |
-| `--format` | Svg, or text for a `files` tree as plain text, for a code block. One of `svg`, `text`. Default `svg`. |
+| `--format` | What to write: svg; png, a raster image of the standalone drawing; or text, a `files` tree as plain text for a code block. Default: from the -o extension, else svg. One of `svg`, `png`, `text`. |
+| `--scale` | For png: pixels per SVG unit, at most 8 (default 2). |
+| `--background` | For png: theme ink on white, light ink on near-black, or no page (default light). One of `light`, `dark`, `transparent`. |
 
 ### `drawspec validate`
 

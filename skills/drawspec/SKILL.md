@@ -22,7 +22,9 @@ rather than guess at.
    name. Meaning goes in `kind` and `role`.
 5. **Check.** `drawspec validate diagram.json` prints every violation with its
    JSON pointer. Fix each one at that pointer, then validate again until clean.
-6. **Render.** `drawspec render diagram.json -o diagram.svg`.
+6. **Render.** `drawspec render diagram.json -o diagram.svg`. Where an SVG
+   cannot go (a chat, a slide, an attachment), `-o diagram.png` writes a PNG —
+   `--background dark` for a dark page; it needs `pip install 'drawspec[png]'`.
 
 A refusal is the tool working: a readability-budget refusal means split into an
 overview plus detail diagrams; an emphasis refusal means mark at most two things

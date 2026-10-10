@@ -76,6 +76,15 @@ spike = [
 mcp = [
     "mcp>=2.0",
 ]
+# PNG export. resvg-py is one self-contained wheel (resvg compiled in, no Cairo,
+# no system libraries) published for every platform the core runs on. An extra
+# because a raster file is a delivery format, not part of drawing: the SVG path
+# never imports it. The floor is 0.5 because that is the release whose
+# `svg_to_bytes` returns `bytes` and takes `font_files` and `skip_system_fonts`,
+# which is what lets the PNG be set in the fonts the layout was measured with.
+png = [
+    "resvg-py>=0.5",
+]
 
 [build-system]
 requires = ["hatchling"]

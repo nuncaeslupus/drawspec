@@ -13,7 +13,7 @@ Three tools and deliberately not more:
 
 ======================  ====================================================
 :func:`_validate`       would `render` refuse this, and where
-:func:`_render`         the SVG
+:func:`_render`         the SVG, or a PNG as an image block
 :func:`_kinds`          the thirteen kinds and what each is for
 ======================  ====================================================
 
@@ -30,6 +30,7 @@ nothing has asked for one.
 
 from __future__ import annotations
 
+import base64
 import json
 from dataclasses import replace
 from typing import Any, Final
@@ -51,6 +52,7 @@ except ImportError as error:  # pragma: no cover - the extra is installed in CI
 from drawspec import __version__
 from drawspec.errors import DrawspecError
 from drawspec.examples import PURPOSE
+from drawspec.export import BACKGROUNDS, DEFAULT_SCALE, MAX_SCALE, render_png
 from drawspec.render import render_document
 from drawspec.schema import KINDS, SCHEMA_ID, Document, parse_document
 
@@ -87,11 +89,13 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
     ),
     types.Tool(
         name="render",
-        title="Render a drawspec document to SVG",
+        title="Render a drawspec document to SVG or PNG",
         description=(
             "Draw the document and return the SVG. The output is safe to paste inline into "
             "a Markdown page: no global styles, no colliding ids, and no meaning carried by "
-            "colour alone. Refuses with located violations exactly as `validate` does."
+            "colour alone. With format `png` it returns a PNG image instead, for a chat, a "
+            "slide or an attachment (needs the server's `drawspec[png]` extra). Refuses "
+            "with located violations exactly as `validate` does."
         ),
         input_schema={
             "type": "object",
@@ -100,6 +104,22 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
                 "theme": _THEME,
                 "width": {"type": "number", "description": "Override the document's width."},
                 "height": {"type": "number", "description": "Override the document's height."},
+                "format": {
+                    "type": "string",
+                    "enum": ["svg", "png"],
+                    "description": "svg (default) or png.",
+                },
+                "scale": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": MAX_SCALE,
+                    "description": f"png only: pixels per SVG unit (default {DEFAULT_SCALE:g}).",
+                },
+                "background": {
+                    "type": "string",
+                    "enum": list(BACKGROUNDS),
+                    "description": "png only: the page the drawing is on (default light).",
+                },
             },
             "required": ["document"],
         },
@@ -163,8 +183,8 @@ def _validate(arguments: dict[str, Any]) -> dict[str, Any]:
     return {"ok": True, "kind": document.kind, "message": f"a valid {document.kind} document"}
 
 
-def _render(arguments: dict[str, Any]) -> str:
-    """The SVG.
+def _render(arguments: dict[str, Any]) -> str | bytes:
+    """The SVG, or the PNG when `format` asks for one.
 
     The overrides are applied to the *document*, before anything is drawn: width
     is an input to wrapping, to sizing and to the direction choice, so applying
@@ -175,6 +195,13 @@ def _render(arguments: dict[str, Any]) -> str:
         document = replace(document, width=float(arguments["width"]))
     if arguments.get("height") is not None:
         document = replace(document, height=float(arguments["height"]))
+    if arguments.get("format", "svg") == "png":
+        return render_png(
+            document,
+            arguments.get("theme") or None,
+            scale=float(arguments.get("scale", DEFAULT_SCALE)),
+            background=str(arguments.get("background", "light")),
+        )
     return render_document(document, arguments.get("theme") or None)
 
 
@@ -185,6 +212,13 @@ def _kinds() -> dict[str, Any]:
     choosing between `flow` and `tree` is helped by their being adjacent.
     """
     return {"kinds": [{"kind": kind, "purpose": PURPOSE[kind]} for kind in KINDS]}
+
+
+def _image(png: bytes) -> types.CallToolResult:
+    data = base64.b64encode(png).decode("ascii")
+    return types.CallToolResult(
+        content=[types.ImageContent(type="image", data=data, mime_type="image/png")]
+    )
 
 
 def _text(payload: object) -> types.CallToolResult:
@@ -214,12 +248,34 @@ async def _on_call_tool(
         if params.name == "validate":
             return _text(_validate(arguments))
         if params.name == "render":
-            return _text(_render(arguments))
+            rendered = _render(arguments)
+            return _image(rendered) if isinstance(rendered, bytes) else _text(rendered)
         if params.name == "kinds":
             return _text(_kinds())
     except DrawspecError as error:
         return types.CallToolResult(
             content=[types.TextContent(type="text", text=json.dumps(_refusal(error), indent=2))],
+            is_error=True,
+        )
+    except ValueError as error:
+        # An out-of-range `scale` or an unknown `background`: the arguments,
+        # not the document, so there is nothing to locate.
+        message = str(error)
+        return types.CallToolResult(
+            content=[
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "ok": False,
+                            "error": "InvalidArgument",
+                            "message": message,
+                            "violations": [{"pointer": "", "message": message}],
+                        },
+                        indent=2,
+                    ),
+                )
+            ],
             is_error=True,
         )
     except KeyError as error:

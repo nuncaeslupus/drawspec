@@ -33,6 +33,7 @@ regeneration, `AGENTS.md` row, and tests.
 | 13 | [`treemap.md`](treemap.md) | `treemap`: one total by area — **built** | M | owner decision on scope (decided) |
 | 14 | [`sankey.md`](sankey.md) | `sankey`: where a known quantity goes — **built** | L | owner decision on scope (decided); crossing reduction from the layered engine |
 | 15 | [`theme-from.md`](theme-from.md) | `drawspec theme from`: a theme derived from a brand's CSS or design tokens — **built** | S | — |
+| 16 | [`exports.md`](exports.md) | PNG export next to SVG, behind the `drawspec[png]` extra — **built** | S | — |
 
 ## Deferred, not proposed
 
