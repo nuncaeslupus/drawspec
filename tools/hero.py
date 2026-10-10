@@ -403,8 +403,10 @@ def compose() -> str:
     parts.append(border())
 
     # The wordmark, with a dimension line over it that measures nothing.
-    tile, tile_gap = 88, 12
-    guide_x, mark_y, mark_size = 70, 196, 104
+    # One rule in every hero: the logo tile is 0.95 x the wordmark's font size, centred on
+    # its capital band (baseline to cap height), with a quarter-em gap before it.
+    guide_x, mark_y, mark_size = 70, 196, 100
+    tile, tile_gap = round(0.95 * mark_size), round(0.25 * mark_size)
     mark_x = guide_x + tile + tile_gap
     mark_w = METRICS.width("drawspec", mark_size, "sans", "bold") + 7 * -3
     parts.append(dimension(mark_x, mark_x + mark_w, 88, "x = ?   y = ?"))
@@ -418,8 +420,8 @@ def compose() -> str:
         parts.append(
             text(guide_x - 14, y + 2.3, name, 6.5, SOFT, role="mono", anchor="end", spacing=0.5)
         )
-    # The logo, centred on the wordmark's x-height band.
-    band_mid = mark_y - 0.547 * mark_size / 2
+    # The logo, centred on the wordmark's capital band.
+    band_mid = mark_y - 0.727 * mark_size / 2
     tile_y = band_mid - tile / 2
     parts.append(
         f'<svg x="{guide_x}" y="{tile_y:.1f}" width="{tile}" height="{tile}" '
