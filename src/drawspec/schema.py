@@ -118,6 +118,11 @@ STATES_KINDS: Final = ("states",)
 #: and `group` because neither is a condition the machine can be in.
 STATE_ROLES: Final = ("step", "emphasis", "terminal")
 
+#: The most orthogonal regions one composite state may hold (owner, kind audit
+#: question 4). UML textbooks draw two or three; past four, side by side or
+#: stacked, each region is too small to hold a machine of its own.
+STATES_REGION_MAX: Final = 4
+
 #: The roles a transition may take: the default, the happy path drawn heavier,
 #: and a rare or error path drawn dashed. `owns`, `link`, `exchange` and `aside`
 #: are not transitions — a transition has one direction and goes somewhere.
@@ -720,7 +725,13 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     "files": (("entries", 30),),  # [10]
     # Set by the proposal rather than by the references: past fourteen states the
     # back edges a machine is full of cross in the layered layout.
-    "states": (("states", 14), ("transitions", 24)),  # [6 states, 8 transitions]
+    # `groups/regions` is the owner's (kind audit question 4): past four regions
+    # side by side a composite outgrows its share of the canvas.
+    "states": (
+        ("states", 14),
+        ("transitions", 24),
+        ("groups/regions", STATES_REGION_MAX),
+    ),  # [6 states, 8 transitions, 3 regions]
     # Set by the proposal: past eight lifelines and thirty messages a sequence
     # diagram is a trace, not an explanation — split it into phases.
     "sequence": (("participants", 8), ("messages", 30)),  # [5 participants, 13 messages]
@@ -1218,10 +1229,12 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         FieldSpec(
             "members",
             "array",
-            required=True,
             item_kind="string",
             min_items=1,
-            description="The states (or groups) inside this composite state.",
+            description=(
+                "The states (or groups) inside this composite state. A composite lists "
+                "its `members` or its `regions`, not both."
+            ),
         ),
         FieldSpec(
             "initial",
@@ -1229,7 +1242,42 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             description=(
                 "The member this composite is entered at, drawn as a dot inside the "
                 "frame. Required when a transition, or the machine's own `initial`, "
-                "names the group."
+                "names the group. With `regions`, each region names its own instead."
+            ),
+        ),
+        FieldSpec(
+            "regions",
+            "array",
+            item_ref="state_region",
+            min_items=2,
+            description=(
+                "Orthogonal regions: parts of this composite that are all current at "
+                "once, drawn side by side (or stacked) and divided by dashed lines. Each "
+                "region lists its own members and its own `initial`, and entering the "
+                "composite enters every region there. A transition may not run between "
+                "two regions of one composite. In place of `members`."
+            ),
+        ),
+    ),
+    "state_region": (
+        FieldSpec(
+            "members",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=1,
+            description=(
+                "The states (or groups) in this region. A state is in one region; each "
+                "region is a machine of its own, running alongside the others."
+            ),
+        ),
+        FieldSpec(
+            "initial",
+            "string",
+            required=True,
+            description=(
+                "The member this region starts in when its composite is entered, drawn "
+                "as a dot inside the region. Required: every region runs at once."
             ),
         ),
     ),
@@ -3434,7 +3482,9 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             description=(
                 "Composite states: a frame around the states inside it, named at its "
                 "corner. Groups may nest. A transition from a group leaves it from any "
-                "state inside; one to a group enters it at the group's `initial`."
+                "state inside; one to a group enters it at the group's `initial`. A "
+                "composite with `regions` is drawn divided by dashed lines, every region "
+                "current at once."
             ),
         ),
     ),
@@ -4220,6 +4270,11 @@ class Group:
     text: str = ""
     initial: str = ""
     """For a composite state: the member it is entered at, or empty."""
+
+    region: bool = False
+    """For a composite state's orthogonal region: drawn with no frame of its own,
+    divided from its sibling regions by a dashed line. Its composite's members
+    are its regions, and nothing else."""
 
 
 @dataclass(frozen=True)
@@ -5370,6 +5425,10 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
         "Past four groups the frames crowd out the parts they hold. Draw one treemap of the "
         "groups' totals, then one per group that matters."
     ),
+    ("groups", "regions"): (
+        "Past four regions each is too small to hold a machine. Draw the composite as one "
+        "state here and give each region a state machine of its own."
+    ),
     ("categories", "causes"): (
         "Past five causes a bone is a list: keep the ones the investigation turned on, or "
         "make this category its own fishbone with these causes as its categories."
@@ -6376,52 +6435,67 @@ def _states_violations(document: Mapping[str, Any]) -> list[Violation]:
     known = state_ids | set(groups)
 
     parent: dict[str, str] = {}
+    # Member → its region's place in its composite, for a composite with regions.
+    region_of: dict[str, int] = {}
     for index, group in enumerate(groups_raw):
         if not isinstance(group, dict) or not isinstance(group.get("id"), str):
             continue
-        members = group.get("members")
-        members = members if isinstance(members, list) else []
-        for position, member in enumerate(members):
-            if not isinstance(member, str):
-                continue
-            if member not in known:
-                found.append(
-                    Violation(
-                        _pointer("groups", index, "members", position),
-                        f"{member!r} is not the id of any state or group in this document",
+        found.extend(_composite_shape(group, index))
+        for members, prefix, region in _composite_parts(group):
+            for position, member in enumerate(members):
+                if not isinstance(member, str):
+                    continue
+                pointer = _pointer("groups", index, *prefix, "members", position)
+                if member not in known:
+                    found.append(
+                        Violation(
+                            pointer,
+                            f"{member!r} is not the id of any state or group in this document",
+                        )
                     )
-                )
-            elif member == group["id"]:
-                found.append(
-                    Violation(
-                        _pointer("groups", index, "members", position),
-                        "a group cannot contain itself",
+                elif member == group["id"]:
+                    found.append(Violation(pointer, "a group cannot contain itself"))
+                elif member in parent:
+                    where = (
+                        f"another region of {parent[member]!r}"
+                        if parent[member] == group["id"] and region_of.get(member) != region
+                        else repr(parent[member])
                     )
-                )
-            elif member in parent:
-                found.append(
-                    Violation(
-                        _pointer("groups", index, "members", position),
-                        f"{member!r} is already inside {parent[member]!r}. A state is in one "
-                        f"composite or none; nest the groups instead.",
+                    found.append(
+                        Violation(
+                            pointer,
+                            f"{member!r} is already inside {where}. A state is in one "
+                            f"composite or none, and in one of its regions; nest the groups "
+                            f"instead.",
+                        )
                     )
-                )
-            else:
-                parent[member] = group["id"]
-        entry = group.get("initial")
-        if isinstance(entry, str) and entry not in members:
-            found.append(
-                Violation(
-                    _pointer("groups", index, "initial"),
-                    f"{entry!r} is not a member of {group['id']!r}. A composite is entered "
-                    f"at one of its own states.",
-                )
+                else:
+                    parent[member] = group["id"]
+                    if region is not None:
+                        region_of[member] = region
+            entry = (
+                group.get("initial")
+                if region is None
+                else _listed(group, "regions")[region].get("initial")
             )
+            if isinstance(entry, str) and entry not in members:
+                found.append(
+                    Violation(
+                        _pointer("groups", index, *prefix, "initial"),
+                        f"{entry!r} is not a member of "
+                        + (
+                            f"{group['id']!r}. A composite is entered "
+                            if region is None
+                            else f"this region of {group['id']!r}. A region starts "
+                        )
+                        + "at one of its own states.",
+                    )
+                )
 
     def entered(identifier: str, pointer: str) -> bool:
         """Whether naming `identifier` as a target lands on a state; reported if not."""
         group = groups.get(identifier)
-        if group is None or isinstance(group.get("initial"), str):
+        if group is None or isinstance(group.get("initial"), str) or "regions" in group:
             return True
         found.append(
             Violation(
@@ -6489,8 +6563,14 @@ def _states_violations(document: Mapping[str, Any]) -> list[Violation]:
                     f"has ended there. Drop this transition, or take {source!r} out of 'final'.",
                 )
             )
-    found.extend(_self_containment(transitions, groups_raw, frozenset(groups)))
+    flattened = [
+        {**group, "members": [m for members, _, _ in _composite_parts(group) for m in members]}
+        for group in groups_raw
+        if isinstance(group, dict)
+    ]
+    found.extend(_self_containment(transitions, flattened, frozenset(groups)))
     found.extend(_loop_violations(transitions, frozenset(groups), "transitions"))
+    found.extend(_crossing_regions(transitions, parent, region_of))
 
     # Two ways out of one state on the same event and guard: which one is taken?
     seen: dict[tuple[str, str, str], tuple[int, str]] = {}
@@ -6543,11 +6623,14 @@ def _states_violations(document: Mapping[str, Any]) -> list[Violation]:
         reached.add(current)
         group = groups.get(current)
         if group is not None:
-            queue.append(str(group["initial"]))
+            queue.extend(_composite_entries(group))
             continue
         for scope in (current, *ancestors(current)):
             reached.add(scope)
             queue.extend(leaving.get(scope, ()))
+            # Entering any state of a composite with regions enters the others at theirs.
+            if scope in groups and "regions" in groups[scope]:
+                queue.extend(_composite_entries(groups[scope]))
 
     for index, state in enumerate(_listed(document, "states")):
         identifier = state.get("id") if isinstance(state, dict) else None
@@ -6560,6 +6643,109 @@ def _states_violations(document: Mapping[str, Any]) -> list[Violation]:
                     f"delete the state.",
                 )
             )
+    return found
+
+
+def _composite_parts(
+    group: Mapping[str, Any],
+) -> list[tuple[list[Any], tuple[str | int, ...], int | None]]:
+    """A composite's member lists: its `members`, or each region's, with where each sits."""
+    regions = group.get("regions")
+    if isinstance(regions, list):
+        return [
+            (
+                region["members"] if isinstance(region.get("members"), list) else [],
+                ("regions", number),
+                number,
+            )
+            for number, region in enumerate(regions)
+            if isinstance(region, dict)
+        ]
+    members = group.get("members")
+    return [(members if isinstance(members, list) else [], (), None)]
+
+
+def _composite_shape(group: Mapping[str, Any], index: int) -> list[Violation]:
+    """A composite lists its `members` or its `regions` — one, not both, not neither."""
+    if "regions" not in group:
+        if "members" in group:
+            return []
+        return [
+            Violation(
+                _pointer("groups", index),
+                f"composite {group['id']!r} has no 'members'. List the states inside it, "
+                f"or its 'regions' when parts of it run at once.",
+            )
+        ]
+    if "members" in group:
+        return [
+            Violation(
+                _pointer("groups", index, "members"),
+                f"composite {group['id']!r} has both 'members' and 'regions'. With regions "
+                f"every member belongs to one of them: move these into the regions.",
+            )
+        ]
+    if "initial" in group:
+        return [
+            Violation(
+                _pointer("groups", index, "initial"),
+                f"composite {group['id']!r} has regions, and entering it enters every region "
+                f"at its own 'initial'. Drop this; each region names where it starts.",
+            )
+        ]
+    return []
+
+
+def _composite_entries(group: Mapping[str, Any]) -> list[str]:
+    """Where entering a composite lands: its `initial`, or every region's."""
+    if "regions" in group:
+        return [
+            region["initial"]
+            for region in _listed(group, "regions")
+            if isinstance(region, dict) and isinstance(region.get("initial"), str)
+        ]
+    return [str(group["initial"])]
+
+
+def _crossing_regions(
+    transitions: Sequence[Any], parent: Mapping[str, str], region_of: Mapping[str, int]
+) -> list[Violation]:
+    """Transitions from one region of a composite into another region of the same one.
+
+    Regions are all current at once, so a state of one cannot hand the machine to
+    a state of another: both are already running. UML forbids it, and there is no
+    line to draw that would not claim the impossible.
+    """
+
+    def regions_above(identifier: str) -> dict[str, int]:
+        found: dict[str, int] = {}
+        current = identifier
+        while current in parent and parent[current] not in found:
+            if current in region_of:
+                found[parent[current]] = region_of[current]
+            current = parent[current]
+        return found
+
+    found: list[Violation] = []
+    for index, transition in enumerate(transitions):
+        if not isinstance(transition, dict):
+            continue
+        source, target = transition.get("from"), transition.get("to")
+        if not isinstance(source, str) or not isinstance(target, str):
+            continue
+        here, there = regions_above(source), regions_above(target)
+        for composite, region in here.items():
+            if composite in there and there[composite] != region:
+                found.append(
+                    Violation(
+                        _pointer("transitions", index, "to"),
+                        f"{source!r} and {target!r} are in different regions of "
+                        f"{composite!r}, which run at once: neither can hand the machine to "
+                        f"the other. Join them through a state outside {composite!r}, or "
+                        f"put both in one region.",
+                    )
+                )
+                break
     return found
 
 
@@ -10576,13 +10762,39 @@ def _states_document(document: Mapping[str, Any]) -> Document:
             for entry in document.get("transitions", ())
         ),
         groups=tuple(
+            group for entry in document.get("groups", ()) for group in _composite_groups(entry)
+        ),
+    )
+
+
+def region_id(composite: str, number: int) -> str:
+    """The id a composite's region is drawn under: never one an author can write."""
+    return f"({composite} region {number + 1})"
+
+
+def _composite_groups(entry: Mapping[str, Any]) -> tuple[Group, ...]:
+    """A composite as groups: itself, and for one with regions a frameless group per region."""
+    regions = entry.get("regions")
+    if not regions:
+        return (
             Group(
                 id=entry["id"],
                 members=tuple(entry["members"]),
                 text=entry["text"],
                 initial=entry.get("initial", ""),
+            ),
+        )
+    names = tuple(region_id(entry["id"], number) for number in range(len(regions)))
+    return (
+        Group(id=entry["id"], members=names, text=entry["text"]),
+        *(
+            Group(
+                id=name,
+                members=tuple(region["members"]),
+                initial=region["initial"],
+                region=True,
             )
-            for entry in document.get("groups", ())
+            for name, region in zip(names, regions, strict=True)
         ),
     )
 

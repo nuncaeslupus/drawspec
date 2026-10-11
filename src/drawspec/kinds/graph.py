@@ -46,6 +46,7 @@ from drawspec.kinds.common import (
     status_words,
 )
 from drawspec.kinds.containers import (
+    GROUP_ROLE,
     Arrangement,
     Frame,
     Nesting,
@@ -57,6 +58,9 @@ from drawspec.kinds.containers import (
     frame_anchors,
     frame_primitives,
     nesting_of,
+    region_dividers,
+    region_separators,
+    separator_obstacles,
 )
 from drawspec.kinds.lanes import Swimlanes, lanes_arrangement, lanes_primitives
 from drawspec.layout import Layout, Placement, Spacing
@@ -82,7 +86,7 @@ from drawspec.routing import (
     route_edges,
 )
 from drawspec.scene import Ellipse, Path, Primitive, Scene, TextLine, TextSpan, moved
-from drawspec.schema import Band, Document, Edge, Group, Node
+from drawspec.schema import Band, Document, Edge, Node
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
 from drawspec.theme import POLARITY_GLYPHS, Theme
@@ -246,6 +250,8 @@ def graph_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     # dashed border must never sit on top of a box or a route.
     for frame in drawing.frames:
         primitives.extend(frame_primitives(frame, theme, measurer))
+    # A composite state's regions are divided by dashed lines, in the frame's role.
+    primitives.extend(Path(GROUP_ROLE, points=line) for line in region_separators(drawing.frames))
     # Lines next, then boxes over them, then labels over everything: a route
     # arrives at a border, so whichever is drawn second owns the join, and it
     # should be the box.
@@ -432,6 +438,7 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
                 # rather than down: see `layout.base.best_layout`. An advisory height is
                 # not passed, because it is advisory.
                 max_height=(document.height or 0.0) if document.height_binding else 0.0,
+                room=_region_room(document, nesting, inflated, theme, measurer),
             )
         missing = {
             identifier
@@ -502,6 +509,7 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
     captions_blocked = tuple(
         blocked for frame in arrangement.frames for blocked in caption_obstacle(frame)
     )
+    separators = separator_obstacles(region_separators(arrangement.frames), theme)
     loop_words = tuple(
         _label_obstacle(loop.label, f"\x00loop label {index}")
         for index, loop in enumerate(loops)
@@ -536,7 +544,7 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         # beside the words rather than through them.
         fresh = route_edges(
             phase,
-            (*obstacles, *zones, *captions_blocked, *earlier, *headings),
+            (*obstacles, *zones, *captions_blocked, *separators, *earlier, *headings),
             theme,
             direction=layout.direction,
             # …and yet an edge may *end* on one. A frame is a box with an extent
@@ -544,6 +552,7 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
             # not be is something to route around. `anchors` is that
             # distinction — R5-2.
             anchors=anchors,
+            dividers=region_dividers(arrangement.frames),
         )
         if swimlanes is not None:
             # A route running along a lane boundary moves the boundary, not the
@@ -575,9 +584,11 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
                     *(
                         border
                         for frame in arrangement.frames
+                        if not frame.region_of
                         for border in border_obstacles(frame, theme)
                     ),
                     *captions_blocked,
+                    *separators,
                     *loop_words,
                     *earlier,
                     *headings,
@@ -1001,6 +1012,58 @@ def _placed_loops(
     return tuple(loops)
 
 
+def _region_room(
+    document: Document,
+    nesting: Nesting,
+    boxes: Mapping[str, Box],
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> dict[str, float]:
+    """Room on each side of a composite state's region for its return transitions.
+
+    A plain frame lets a transition that goes back up run outside it, label and
+    all; a region is closed in by the dashed line to its neighbour, so a region
+    whose own transitions go round in a cycle keeps its widest label's width
+    clear beside its states, where that line and its words can go.
+    """
+    room: dict[str, float] = {}
+    for region in nesting.regions:
+        inside = set(nesting.descendants(region))
+        edges = [e for e in document.edges if e.source in inside and e.target in inside]
+        leads: dict[str, set[str]] = {}
+        for edge in edges:
+            leads.setdefault(edge.source, set()).add(edge.target)
+
+        def reaches(start: str, goal: str, leads: Mapping[str, set[str]] = leads) -> bool:
+            seen: set[str] = set()
+            stack = [start]
+            while stack:
+                current = stack.pop()
+                if current == goal:
+                    return True
+                if current not in seen:
+                    seen.add(current)
+                    stack.extend(leads.get(current, ()))
+            return False
+
+        gap = theme.edge.clearance * 2
+        needs = [0.0]
+        for edge in edges:
+            if edge.source == edge.target or not edge.label:
+                continue
+            wide = label_extents(edge.label, theme, measurer)[0] + gap
+            if reaches(edge.target, edge.source):
+                needs.append(wide)
+            else:
+                # A forward label sits beside its line, which leaves the middle of
+                # its box: half the box and the padding are already room for it.
+                narrowest = min(boxes[end].width for end in (edge.source, edge.target))
+                needs.append(wide - narrowest / 2 - theme.box.padding.horizontal / 2)
+        if max(needs) > 0:
+            room[region] = max(needs)
+    return room
+
+
 # ---------------------------------------------------------------------------
 # Pseudo-states
 # ---------------------------------------------------------------------------
@@ -1058,12 +1121,7 @@ def _with_pseudo_states(document: Document) -> tuple[Document, dict[str, str]]:
             nodes=(*document.nodes, *(Node(id=marker, text=" ") for marker in markers)),
             edges=(*first, *document.edges, *last),
             groups=tuple(
-                Group(
-                    id=group.id,
-                    members=(*group.members, *added.get(group.id, ())),
-                    text=group.text,
-                    initial=group.initial,
-                )
+                replace(group, members=(*group.members, *added.get(group.id, ())))
                 for group in document.groups
             ),
         ),

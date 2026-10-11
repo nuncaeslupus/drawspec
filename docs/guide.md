@@ -1002,12 +1002,39 @@ leaves it from whichever state inside is current; one **to** a group enters it a
 the group's own `initial`, which is drawn as a dot inside the frame — and is
 required when anything enters the group.
 
+**Orthogonal regions.** When parts of one composite are current at the same time
+— an order paid for while it is packed, caps lock and num lock — give the
+composite `regions` in place of `members`: a list of `{members, initial}`, two
+to four of them. The regions are drawn side by side (stacked when they do not fit
+across) and divided by dashed lines, each with its own initial dot; entering the
+composite enters every region at its `initial`, and a transition from it leaves
+all of them. A transition from the composite with no `event` is the completion
+transition, taken once every region is done:
+
+```json
+{"id": "processing", "text": "Processing", "regions": [
+  {"members": ["authorising", "captured"], "initial": "authorising"},
+  {"members": ["picking", "packed"], "initial": "picking"}
+]}
+```
+
+Refused at their pointers: a state in two regions, a region with no `initial` or
+one outside it, `members` beside `regions`, an `initial` on the composite itself
+(each region names its own), one region alone, more than four (budget), and a
+transition from one region of a composite into another (they run at once, so
+neither can hand the machine to the other). Fork and join bars are not drawn:
+enter the composite, or a state inside one region, and the others start at their
+own `initial`. See
+[`reference/states-regions-order.json`](reference/states-regions-order.json),
+[`reference/states-regions-player.json`](reference/states-regions-player.json) and
+[`reference/states-regions-keyboard.json`](reference/states-regions-keyboard.json)
+(three regions, stacked).
+
 Refused, each at its pointer: a state no transition reaches from `initial` (a
 bug in the machine — add the transition or delete the state); a `final` state
 with an outgoing transition; `final` naming a group; two transitions leaving one
 state on the same event and guard for different states (give them guards); a
-loop on a group, or a third loop on one state. A machine with parallel regions
-is two machines: draw two. See
+loop on a group, or a third loop on one state. See
 [`reference/states-breaker.json`](reference/states-breaker.json),
 [`reference/states-invoice.json`](reference/states-invoice.json) and
 [`reference/states-ticket.json`](reference/states-ticket.json).

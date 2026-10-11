@@ -1242,7 +1242,7 @@
         },
         "groups": {
           "type": "array",
-          "description": "Composite states: a frame around the states inside it, named at its corner. Groups may nest. A transition from a group leaves it from any state inside; one to a group enters it at the group's `initial`.",
+          "description": "Composite states: a frame around the states inside it, named at its corner. Groups may nest. A transition from a group leaves it from any state inside; one to a group enters it at the group's `initial`. A composite with `regions` is drawn divided by dashed lines, every region current at once.",
           "items": {
             "$ref": "#/$defs/composite"
           }
@@ -3370,7 +3370,7 @@
         },
         "members": {
           "type": "array",
-          "description": "The states (or groups) inside this composite state.",
+          "description": "The states (or groups) inside this composite state. A composite lists its `members` or its `regions`, not both.",
           "items": {
             "type": "string"
           },
@@ -3378,13 +3378,20 @@
         },
         "initial": {
           "type": "string",
-          "description": "The member this composite is entered at, drawn as a dot inside the frame. Required when a transition, or the machine's own `initial`, names the group."
+          "description": "The member this composite is entered at, drawn as a dot inside the frame. Required when a transition, or the machine's own `initial`, names the group. With `regions`, each region names its own instead."
+        },
+        "regions": {
+          "type": "array",
+          "description": "Orthogonal regions: parts of this composite that are all current at once, drawn side by side (or stacked) and divided by dashed lines. Each region lists its own members and its own `initial`, and entering the composite enters every region there. A transition may not run between two regions of one composite. In place of `members`.",
+          "items": {
+            "$ref": "#/$defs/state_region"
+          },
+          "minItems": 2
         }
       },
       "required": [
         "id",
-        "text",
-        "members"
+        "text"
       ],
       "additionalProperties": false
     },
@@ -4866,6 +4873,28 @@
       "required": [
         "id",
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "state_region": {
+      "type": "object",
+      "properties": {
+        "members": {
+          "type": "array",
+          "description": "The states (or groups) in this region. A state is in one region; each region is a machine of its own, running alongside the others.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "initial": {
+          "type": "string",
+          "description": "The member this region starts in when its composite is entered, drawn as a dot inside the region. Required: every region runs at once."
+        }
+      },
+      "required": [
+        "members",
+        "initial"
       ],
       "additionalProperties": false
     },

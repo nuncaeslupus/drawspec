@@ -12,6 +12,17 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **Orthogonal regions in `states`**: a composite takes `regions` (2–4, each
+  `{members, initial}`) in place of `members`, drawn side by side or stacked and divided
+  by dashed lines in the frame's role, each region with its own initial dot. Entering the
+  composite enters every region; entering one state inside a region starts the others.
+  Refused at their pointers: a state in two regions, a region without an `initial` (or
+  with one outside it), `members` beside `regions`, an `initial` on the composite, a
+  single region, more than 4 (budget `groups/regions`), and a transition between two
+  regions of one composite. No arrow to or from the composite lands on a divider. Fork
+  and join bars are not drawn. See `reference/states-regions-order.json`,
+  `states-regions-player.json` and `states-regions-keyboard.json`.
+
 - **`person` node role**, on `flow`, `tree` and `lanes` nodes: the C4 person, a body
   with rounded shoulders under a round head, drawn as one outline (new theme shape
   `person`), the name written in the body. Arrows land on the visible outline: on the

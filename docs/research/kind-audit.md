@@ -294,3 +294,18 @@ for a name and would put it under the figure, outside the box arrows land on. Th
 Lengths, not ratios, as for the flowchart symbols, so a body grown to match its peers
 keeps its head. The text is in the body; arrows land on the head from above, on the
 shoulders beside it, and on the body or the head from the side.
+
+**`states` orthogonal regions** (owner question 4) — built as `regions` on a composite,
+a list of `{members, initial}` in place of `members`, rather than a `region` field on
+each state: a region has no id (so no transition can name one), its members are written
+together where they are read, and a state in two regions is caught at its pointer. Every
+region names its `initial` (entering the composite enters them all); the composite's own
+`initial` is refused beside `regions`. Regions sit side by side when they fit across and
+stack otherwise, never as a grid, so each divider runs from frame side to frame side; a
+divider is a dashed line in the frame's role, kept clear of labels, routes and arrow
+ends. A region is closed in by its divider, so it keeps room beside its states for its
+own transitions' labels (a plain frame lets them run outside). Budget 2–4. A transition
+between two regions of one composite is refused. **Fork and join bars are not built**:
+they need a pseudo-state of their own (text rules, many arrows landing on one bar, their
+own refusals), and entering a composite or one state in a region already starts the
+other regions at their initials.

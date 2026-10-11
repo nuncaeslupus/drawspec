@@ -147,7 +147,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `initial` | string | **yes** | The state the machine starts in, drawn as a filled dot with an arrow to it. Required: reachability is measured from here. May name a group, which must then say its own `initial`. |
 | `final` | array of string | no | The states the machine ends in, each drawn with an arrow to a ringed dot. A final state has no outgoing transition. |
 | `transitions` | array of [transition](#transition-object) | no | What moves the machine from one state to another, each labelled `event [guard] / action` from its own fields. |
-| `groups` | array of [composite](#composite-object) | no | Composite states: a frame around the states inside it, named at its corner. Groups may nest. A transition from a group leaves it from any state inside; one to a group enters it at the group's `initial`. |
+| `groups` | array of [composite](#composite-object) | no | Composite states: a frame around the states inside it, named at its corner. Groups may nest. A transition from a group leaves it from any state inside; one to a group enters it at the group's `initial`. A composite with `regions` is drawn divided by dashed lines, every region current at once. |
 
 ### `sequence`
 
@@ -353,7 +353,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `scatter` | 20 `positions` |
 | `curve` | 4 `curves` |
 | `files` | 30 `entries` |
-| `states` | 14 `states`, 24 `transitions` |
+| `states` | 14 `states`, 24 `transitions`, 4 `regions` per group |
 | `sequence` | 8 `participants`, 30 `messages` |
 | `lanes` | 15 `nodes`, 16 `edges`, 6 `lanes`, 6 `phases`, 4 `classes` |
 | `entities` | 8 `entities`, 12 `edges`, 12 `fields` per entity, 8 `operations` per entity |
@@ -466,8 +466,16 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `id` | string | **yes** | Unique within the document, among the states and the groups. |
 | `text` | string | **yes** | The composite state's name, drawn at its frame's corner. |
-| `members` | array of string, at least 1 | **yes** | The states (or groups) inside this composite state. |
-| `initial` | string | no | The member this composite is entered at, drawn as a dot inside the frame. Required when a transition, or the machine's own `initial`, names the group. |
+| `members` | array of string, at least 1 | no | The states (or groups) inside this composite state. A composite lists its `members` or its `regions`, not both. |
+| `initial` | string | no | The member this composite is entered at, drawn as a dot inside the frame. Required when a transition, or the machine's own `initial`, names the group. With `regions`, each region names its own instead. |
+| `regions` | array of [state_region](#state_region-object), at least 2 | no | Orthogonal regions: parts of this composite that are all current at once, drawn side by side (or stacked) and divided by dashed lines. Each region lists its own members and its own `initial`, and entering the composite enters every region there. A transition may not run between two regions of one composite. In place of `members`. |
+
+### `state_region` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `members` | array of string, at least 1 | **yes** | The states (or groups) in this region. A state is in one region; each region is a machine of its own, running alongside the others. |
+| `initial` | string | **yes** | The member this region starts in when its composite is entered, drawn as a dot inside the region. Required: every region runs at once. |
 
 ### `participant` object
 

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "kind": "states",
+  "title": "Payment and packing run at once",
+  "description": "An order is paid for and packed at the same time, in two regions of one composite state; it ships as soon as both are done (a completion transition, with no event), and can be cancelled from anywhere inside.",
+  "initial": "placed",
+  "final": ["shipped", "cancelled", "captured", "packed"],
+  "states": [
+    {"id": "placed", "text": "Placed"},
+    {"id": "authorising", "text": "Authorising\nthe card"},
+    {"id": "captured", "text": "Captured"},
+    {"id": "picking", "text": "Picking"},
+    {"id": "packed", "text": "Packed"},
+    {"id": "shipped", "text": "Shipped", "role": "emphasis"},
+    {"id": "cancelled", "text": "Cancelled"}
+  ],
+  "groups": [
+    {"id": "processing", "text": "Processing", "regions": [
+      {"members": ["authorising", "captured"], "initial": "authorising"},
+      {"members": ["picking", "packed"], "initial": "picking"}
+    ]}
+  ],
+  "transitions": [
+    {"from": "placed", "to": "processing", "event": "confirmed"},
+    {"from": "authorising", "to": "captured", "event": "bank approves"},
+    {"from": "picking", "to": "packed", "event": "last item scanned"},
+    {"from": "processing", "to": "shipped", "role": "strong"},
+    {"from": "processing", "to": "cancelled", "event": "customer cancels", "role": "weak"}
+  ]
+}

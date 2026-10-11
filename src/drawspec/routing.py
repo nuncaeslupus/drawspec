@@ -43,6 +43,7 @@ from bisect import bisect_left, bisect_right
 from collections.abc import Iterator, Mapping, Sequence, Set
 from dataclasses import dataclass, field, replace
 from itertools import pairwise
+from types import MappingProxyType
 from typing import Final
 
 from drawspec.errors import FitError, LayoutError
@@ -688,6 +689,7 @@ def route_edges(
     *,
     direction: str = "down",
     anchors: Sequence[Obstacle] = (),
+    dividers: Mapping[str, tuple[tuple[str, float], ...]] = MappingProxyType({}),
 ) -> tuple[Route, ...]:
     """Route every connector around every obstacle, in the order given.
 
@@ -754,7 +756,7 @@ def route_edges(
         channel,
     )
     fractions = _clear_frame_ports(
-        connectors, boxes, sides, fractions, {box.id for box in anchors}, channel * 2
+        connectors, boxes, sides, fractions, {box.id for box in anchors}, channel * 2, dividers
     )
     reaches = _shared_reaches(connectors, boxes, sides, fractions, obstacles, lanes, theme)
     approaches: dict[int, tuple[_Approach, _Approach]] = {}
@@ -1133,8 +1135,12 @@ def _clear_frame_ports(
     fractions: Mapping[int, tuple[float, float]],
     frames: Set[str],
     spacing: float,
+    dividers: Mapping[str, tuple[tuple[str, float], ...]] = MappingProxyType({}),
 ) -> dict[int, tuple[float, float]]:
     """Frame ends moved off the line a box inside the frame already leaves on.
+
+    And off a composite state's dividers (`dividers`: per frame, `x` or `y` and
+    where), the dashed lines between its regions, which meet its border too.
 
     A group's contents are centred in its frame, so an edge leaving the middle
     of the frame's bottom and an edge leaving the middle of the bottom box inside
@@ -1183,6 +1189,9 @@ def _clear_frame_ports(
                 if member_side == side
                 and _inside(boxes[member], frame)
                 and not _inside(boxes[beyond], frame)
+            ]
+            lines += [
+                where for axis, where in dividers.get(node, ()) if (axis == "x") == (along == 0)
             ]
             if not lines:
                 continue
