@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "kind": "sequence",
+  "title": "Signing in with a one-time code",
+  "description": "A person signs in; the code goes out by text message without the server waiting for it, and the audit log is told without anyone waiting either.",
+  "participants": [
+    {"id": "user", "text": "Account holder", "role": "actor"},
+    {"id": "app", "text": "Web app"},
+    {"id": "auth", "text": "Sign-in service", "role": "emphasis"},
+    {"id": "sms", "text": "Text gateway", "role": "note"},
+    {"id": "audit", "text": "Audit log"}
+  ],
+  "messages": [
+    {"from": "user", "to": "app", "text": "email and password"},
+    {"from": "app", "to": "auth", "text": "check password"},
+    {"from": "auth", "to": "sms", "text": "send code 482 913", "role": "async"},
+    {"from": "auth", "to": "app", "text": "code required", "role": "weak"},
+    {"from": "app", "to": "user", "text": "enter the code", "role": "weak"},
+    {"from": "sms", "to": "user", "text": "text message", "role": "async"},
+    {"from": "user", "to": "app", "text": "482 913"},
+    {"from": "app", "to": "auth", "text": "verify code"},
+    {"from": "auth", "to": "audit", "text": "signed in", "role": "async"},
+    {"from": "auth", "to": "app", "text": "session token", "role": "weak"},
+    {"from": "app", "to": "user", "text": "home page", "role": "weak"}
+  ]
+}

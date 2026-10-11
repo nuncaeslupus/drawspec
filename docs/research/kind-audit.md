@@ -309,3 +309,14 @@ between two regions of one composite is refused. **Fork and join bars are not bu
 they need a pseudo-state of their own (text rules, many arrows landing on one bar, their
 own refusals), and entering a composite or one state in a region already starts the
 other regions at their initials.
+
+**`sequence` async messages and actors** (owner question 4) — built as roles, matching
+the kind's own conventions rather than new fields: a message's role already says call
+(`flow`), reply (`weak`) or the exchange that matters (`strong`), so `async` is a fourth
+role (new theme edge role: `flow`'s solid line, `weak`'s open head), and a participant's
+role already says box, emphasis or words-only, so `actor` is a fourth role. `actor`, not
+`person`: it is UML's and Mermaid's word for exactly this figure, and in a sequence the
+C4 person box would be a head like any other; `person` on a participant is refused,
+naming `actor`. The figure (lengths in body units) stands over the name; all names sit
+on one line so the lifelines start level. Refused: a `weak` reply to an `async` message
+when no call between the two came before it — an async message awaits no reply.

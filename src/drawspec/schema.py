@@ -133,17 +133,20 @@ TRANSITION_ROLES: Final = ("flow", "strong", "weak")
 #: written, and nothing is ranked — the order *is* the diagram.
 SEQUENCE_KINDS: Final = ("sequence",)
 
-#: The roles a participant may take: a box, the box the diagram is about, and an
-#: outside system drawn as words with no box. `decision`, `start`, `terminal` and
+#: The roles a participant may take: a box, the box the diagram is about, an
+#: outside system drawn as words with no box, and `actor`, a person drawn as the
+#: UML stick figure with the name under it. `decision`, `start`, `terminal` and
 #: `group` promise a shape a lifeline's head does not have.
-PARTICIPANT_ROLES: Final = ("step", "emphasis", "note")
+PARTICIPANT_ROLES: Final = ("step", "emphasis", "note", "actor")
 
 #: The roles a message may take: a call (`flow`), a reply (`weak`, dashed with an
 #: open head, which is what UML draws for one), and the exchange that matters
 #: (`strong`). Every one has a head, because a message has a direction: `aside`,
 #: `link`, `exchange` and `owns` are refused. A signal nobody answers is a `flow`
-#: with no reply, and is drawn with no activation bar.
-MESSAGE_ROLES: Final = ("flow", "weak", "strong")
+#: with no reply, and is drawn with no activation bar; `async` says so outright,
+#: a solid line with an open head (UML's asynchronous message), and awaits no
+#: reply, so a `weak` message answering one is refused.
+MESSAGE_ROLES: Final = ("flow", "weak", "strong", "async")
 
 #: What a fragment's frame says about the messages inside it, written in its tab.
 #: `alt` and `par` may be divided by `else`; `loop` and `opt` have one branch.
@@ -3498,7 +3501,9 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             description=(
                 "Who takes part, drawn left to right in the order written, each a head "
                 "with a dashed lifeline under it. The order is the reading order, not a "
-                "coordinate. Every participant must send or receive a message."
+                "coordinate. Every participant must send or receive a message. A "
+                'person taking part is `role: "actor"`, drawn as the UML stick figure '
+                "with the name under it."
             ),
         ),
         FieldSpec(
@@ -3511,7 +3516,8 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
                 "What is said, drawn top to bottom in the order written: the order is "
                 "the diagram. A call (`flow`) answered later by a `weak` reply opens an "
                 "activation bar on the receiver from the call's row to the reply's; "
-                "nobody writes how tall it is."
+                "nobody writes how tall it is. An `async` message (solid line, open "
+                "head) is sent without waiting, opens no bar and takes no reply."
             ),
         ),
         FieldSpec(
@@ -5243,6 +5249,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
             )
         )
 
+    if kind in SEQUENCE_KINDS:
+        found = [_sequence_refusal(violation, document) for violation in found]
     if kind in LANES_KINDS:
         found = [_lanes_refusal(violation) for violation in found]
     if kind in GANTT_KINDS:
@@ -6855,9 +6863,72 @@ def _sequence_violations(document: Mapping[str, Any]) -> list[Violation]:
                 )
             )
 
+    found.extend(_async_reply_violations(document))
     found.extend(_sequence_group_violations(document, participants))
     found.extend(_fragment_violations(document, message_ids))
     return found
+
+
+def _async_reply_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """A `weak` reply whose only question was an `async` message, which awaits none.
+
+    An asynchronous message is sent and the sender carries on: there is no call
+    for a dashed reply to return from. An answer that comes later is a message of
+    its own, sent back the other way.
+    """
+    found: list[Violation] = []
+    calls: set[tuple[str, str]] = set()
+    sent: set[tuple[str, str]] = set()
+    for index, message in enumerate(_listed(document, "messages")):
+        if not isinstance(message, dict):
+            continue
+        source, target, role = message.get("from"), message.get("to"), message.get("role", "flow")
+        if not isinstance(source, str) or not isinstance(target, str) or source == target:
+            continue
+        if role in ("flow", "strong"):
+            calls.add((source, target))
+        elif role == "async":
+            sent.add((source, target))
+        elif role == "weak" and (target, source) in sent and (target, source) not in calls:
+            found.append(
+                Violation(
+                    _pointer("messages", index, "role"),
+                    f"this reply answers {target!r}'s async message to {source!r}, and an "
+                    f"async message awaits no reply. Send the answer as a message of its own "
+                    f"(role 'async' or 'flow'), or make the question a call ('flow').",
+                )
+            )
+    return found
+
+
+def _sequence_refusal(violation: Violation, document: Mapping[str, Any]) -> Violation:
+    """A structural refusal in a sequence diagram, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    if len(parts) == 4 and parts[1] == "participants" and parts[3] == "role":
+        entries = document.get("participants")
+        try:
+            role = entries[int(parts[2])]["role"]  # type: ignore[index]
+        except (TypeError, ValueError, IndexError, KeyError):
+            return violation
+        if role in ("person", "user", "human"):
+            return Violation(
+                violation.pointer,
+                f"{role!r} is not a participant role here: a person taking part is "
+                f"'actor', drawn as a stick figure over the lifeline.",
+            )
+    if len(parts) == 4 and parts[1] == "messages" and parts[3] == "role":
+        entries = document.get("messages")
+        try:
+            role = entries[int(parts[2])]["role"]  # type: ignore[index]
+        except (TypeError, ValueError, IndexError, KeyError):
+            return violation
+        if role in ("asynchronous", "signal", "event", "sync", "call", "reply", "return"):
+            return Violation(
+                violation.pointer,
+                f"{role!r} is not a message role: a call is 'flow', its reply 'weak', a "
+                f"message nobody waits on 'async', and the exchange that matters 'strong'.",
+            )
+    return violation
 
 
 def _entities_violations(document: Mapping[str, Any]) -> list[Violation]:

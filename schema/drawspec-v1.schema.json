@@ -1305,7 +1305,7 @@
         },
         "participants": {
           "type": "array",
-          "description": "Who takes part, drawn left to right in the order written, each a head with a dashed lifeline under it. The order is the reading order, not a coordinate. Every participant must send or receive a message.",
+          "description": "Who takes part, drawn left to right in the order written, each a head with a dashed lifeline under it. The order is the reading order, not a coordinate. Every participant must send or receive a message. A person taking part is `role: \"actor\"`, drawn as the UML stick figure with the name under it.",
           "items": {
             "$ref": "#/$defs/participant"
           },
@@ -1313,7 +1313,7 @@
         },
         "messages": {
           "type": "array",
-          "description": "What is said, drawn top to bottom in the order written: the order is the diagram. A call (`flow`) answered later by a `weak` reply opens an activation bar on the receiver from the call's row to the reply's; nobody writes how tall it is.",
+          "description": "What is said, drawn top to bottom in the order written: the order is the diagram. A call (`flow`) answered later by a `weak` reply opens an activation bar on the receiver from the call's row to the reply's; nobody writes how tall it is. An `async` message (solid line, open head) is sent without waiting, opens no bar and takes no reply.",
           "items": {
             "$ref": "#/$defs/message"
           },
@@ -3499,7 +3499,8 @@
             "weak",
             "owns",
             "strong",
-            "aside"
+            "aside",
+            "async"
           ]
         },
         "status": {
@@ -4150,7 +4151,8 @@
           "enum": [
             "flow",
             "weak",
-            "strong"
+            "strong",
+            "async"
           ]
         },
         "note": {
@@ -4405,7 +4407,8 @@
           "enum": [
             "step",
             "emphasis",
-            "note"
+            "note",
+            "actor"
           ]
         }
       },

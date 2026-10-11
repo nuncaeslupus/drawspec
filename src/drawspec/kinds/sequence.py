@@ -39,7 +39,7 @@ from drawspec.errors import FitError
 from drawspec.geometry import Box, size_box
 from drawspec.kinds.common import box_primitives
 from drawspec.routing import Route, edge_primitives
-from drawspec.scene import Path, Polygon, Primitive, Scene, TextLine, TextSpan, moved
+from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextLine, TextSpan, moved
 from drawspec.schema import Document, Fragment, Message
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
@@ -58,8 +58,25 @@ BAR: Final = "flow"
 #: The role a group of lifelines is framed in, as a `flow` frames its groups.
 GROUP: Final = "group"
 
+#: The role the stick figure's head is outlined in: the default box's line, as a
+#: state machine's dot borrows it.
+FIGURE_HEAD_ROLE: Final = "step"
+
 #: The role a message's note is set in.
 NOTE: Final = "note"
+
+#: The participant role drawn as a person: the UML stick figure, its name under it.
+ACTOR: Final = "actor"
+
+#: The stick figure's parts, in units, and the role its strokes are drawn in —
+#: the weight of a call's arrow, as an activation bar is.
+FIGURE: Final = "flow"
+FIGURE_HEAD: Final = 6.0
+FIGURE_BODY: Final = 13.0
+FIGURE_LEGS: Final = 12.0
+FIGURE_WIDTH: Final = 20.0
+FIGURE_HEIGHT: Final = FIGURE_HEAD * 2 + FIGURE_BODY + FIGURE_LEGS
+FIGURE_GAP: Final = 4.0
 
 #: The message roles that open an activation bar on their receiver.
 CALLS: Final = ("flow", "strong")
@@ -239,19 +256,37 @@ class _Layout:
         }
         self.bars = activations(document)
 
+        self.actors = {
+            position
+            for position, participant in enumerate(document.participants)
+            if participant.role == ACTOR
+        }
+        # An actor's name is words with no box under the figure, as a `note` head is.
         boxes = [
             size_box(
                 participant.text,
                 theme=theme,
                 measurer=measurer,
-                role=participant.role,
+                role=NOTE if position in self.actors else participant.role,
                 level="body",
                 max_width=canvas * head_share,
             )
-            for participant in document.participants
+            for position, participant in enumerate(document.participants)
         ]
-        tallest = max(box.height for box in boxes)
-        self.boxes = [box.resized(height=tallest) for box in boxes]
+        self.figure = (FIGURE_HEIGHT + FIGURE_GAP) * self.unit if self.actors else 0.0
+        boxed = [box.height for position, box in enumerate(boxes) if position not in self.actors]
+        tallest = max(boxed or [box.height for box in boxes])
+        self.boxes = [
+            box.resized(width=max(box.width, FIGURE_WIDTH * self.unit))
+            if position in self.actors
+            else box.resized(height=tallest)
+            for position, box in enumerate(boxes)
+        ]
+        # Every head stands on one line, where the lifelines start: an actor's
+        # figure rises above its name, past the top of the boxes beside it.
+        self.heads_height = max(
+            [tallest, *(self.boxes[position].height + self.figure for position in self.actors)]
+        )
         self.label_width = canvas * label_share
         self.blocks = [self._wrap(message.text, self.label_width) for message in document.messages]
         self.note_blocks = [
@@ -451,11 +486,12 @@ class _Layout:
         if document.groups:
             heads_top = (label_height + TAB_PAD * unit if label_height else 0.0) + GROUP_PAD * unit
 
-        tallest = self.boxes[0].height
-        heads_bottom = heads_top + tallest
+        heads_bottom = heads_top + self.heads_height
         for position, box in enumerate(self.boxes):
-            placed: Box = box.moved_to(xs[position] - box.width / 2, heads_top)
+            placed: Box = box.moved_to(xs[position] - box.width / 2, heads_bottom - box.height)
             primitives.extend(box_primitives(placed, theme, self.measurer))
+            if position in self.actors:
+                primitives.extend(_stick_figure(xs[position], placed.y - FIGURE_GAP * unit, unit))
 
         # Rows, top to bottom.
         fragments = list(enumerate(document.fragments))
@@ -717,6 +753,25 @@ class _Layout:
         size = self.theme.scale["label"]
         text = self.measurer.measure(operator, self.theme.font.default, size, "bold").width
         return text + 2 * TAB_PAD * self.unit + TAB_CUT * self.unit
+
+
+def _stick_figure(x: float, bottom: float, unit: float) -> list[Primitive]:
+    """UML's actor, standing on `bottom` and centred on `x`: a round head, a body,
+    arms out level a little below the neck, and two legs from the hip."""
+    head = FIGURE_HEAD * unit
+    feet = bottom
+    hip = feet - FIGURE_LEGS * unit
+    neck = hip - FIGURE_BODY * unit
+    centre = neck - head
+    arms = neck + FIGURE_BODY * unit * 0.3
+    half = FIGURE_WIDTH * unit / 2
+    stride = FIGURE_LEGS * unit * 0.6
+    return [
+        Ellipse(FIGURE_HEAD_ROLE, cx=x, cy=centre, rx=head, ry=head),
+        Path(FIGURE, points=((x, neck), (x, hip))),
+        Path(FIGURE, points=((x - half, arms), (x + half, arms))),
+        Path(FIGURE, points=((x - stride, feet), (x, hip), (x + stride, feet))),
+    ]
 
 
 def _outline(

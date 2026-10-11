@@ -12,6 +12,15 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`sequence` async messages and actors**: message role `async`, UML's asynchronous
+  message — a solid line with an open head (new theme edge role `async`) — which opens
+  no activation bar; a `weak` reply answering one is refused. Participant role `actor`
+  draws a person as the UML stick figure over the name, every head's name on one line
+  and the lifeline under it. `person`/`user` on a participant and `asynchronous`,
+  `signal`, `reply` and the like on a message are refused with the right role named.
+  See `reference/sequence-actor-signin.json`, `sequence-async-export.json` and
+  `sequence-actor-handover.json`; no existing drawing changes.
+
 - **Orthogonal regions in `states`**: a composite takes `regions` (2–4, each
   `{members, initial}`) in place of `members`, drawn side by side or stacked and divided
   by dashed lines in the frame's role, each region with its own initial dot. Entering the

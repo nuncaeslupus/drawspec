@@ -153,8 +153,8 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `participants` | array of [participant](#participant-object), at least 2 | **yes** | Who takes part, drawn left to right in the order written, each a head with a dashed lifeline under it. The order is the reading order, not a coordinate. Every participant must send or receive a message. |
-| `messages` | array of [message](#message-object), at least 1 | **yes** | What is said, drawn top to bottom in the order written: the order is the diagram. A call (`flow`) answered later by a `weak` reply opens an activation bar on the receiver from the call's row to the reply's; nobody writes how tall it is. |
+| `participants` | array of [participant](#participant-object), at least 2 | **yes** | Who takes part, drawn left to right in the order written, each a head with a dashed lifeline under it. The order is the reading order, not a coordinate. Every participant must send or receive a message. A person taking part is `role: "actor"`, drawn as the UML stick figure with the name under it. |
+| `messages` | array of [message](#message-object), at least 1 | **yes** | What is said, drawn top to bottom in the order written: the order is the diagram. A call (`flow`) answered later by a `weak` reply opens an activation bar on the receiver from the call's row to the reply's; nobody writes how tall it is. An `async` message (solid line, open head) is sent without waiting, opens no bar and takes no reply. |
 | `fragments` | array of [fragment](#fragment-object) | no | Frames round a run of messages, `from` to `to`, and every participant they touch. Fragments nest or are apart; one that starts inside another and ends outside it is refused. |
 | `groups` | array of [group](#group-object) | no | A frame round a run of neighbouring lifelines, named at its top — *inside our account*. Members must be next to each other in `participants`, and a participant is in one group or none. |
 
@@ -409,7 +409,7 @@ name, so a misspelt key is an error at the point it was written.
 | `from` | string | **yes** | The id of the source node — or, in a `flow` or a `tree`, of a group: an edge may name a container, for a relation that belongs to the whole of it rather than to any one box inside. It may not join a container to something already within it. A `cycle` draws no containers, so an edge in one names a node — or its `hub`, as a spoke. |
 | `to` | string | **yes** | The id of the target node — or, in a `flow` or a `tree`, of a group. The same id space as `from`. The same id as `from` draws a loop on the side of that box, across the reading direction, with its label outside it: two per box at most, and never on a group. |
 | `label` | string | no | A short label placed along the edge. |
-| `role` | string — one of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
+| `role` | string — one of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `async` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
 | `status` | string — one of `added`, `changed`, `removed` | no | What a proposed change does to this connection: the same marks as a node's, written before the label (`+`, `~`, `-`), with a key of the marks under the drawing. A removed edge is drawn in the `aside` treatment — dashed, no head — whatever its role. **Only a `flow`, a `tree` or `lanes`.** |
 | `polarity` | string — one of `+`, `-` | no | A causal link's sign: more of the source means more (`+`) or less (`-`) of the target, written as the edge's label (`s`/`o` under a theme that says so). Every `flow` or `strong` edge of the document has one, or none does. **Only a `flow`.** |
 | `delay` | boolean | no | The effect takes time: drawn as the double stroke across the shaft. Needs `polarity`. **Only a `flow`.** |
@@ -483,7 +483,7 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `id` | string | **yes** | Unique within the document, among the participants and the groups. |
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
-| `role` | string — one of `step`, `emphasis`, `note` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `role` | string — one of `step`, `emphasis`, `note`, `actor` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 
 ### `message` object
 
@@ -493,7 +493,7 @@ name, so a misspelt key is an error at the point it was written.
 | `from` | string | **yes** | The participant that sends it. |
 | `to` | string | **yes** | The participant that receives it. The same id as `from` is a message to itself, drawn as a hook on the right of its lifeline. |
 | `text` | string | no | What is said, written above the arrow. May carry inline spans. Omit for a bare arrow. |
-| `role` | string — one of `flow`, `weak`, `strong` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
+| `role` | string — one of `flow`, `weak`, `strong`, `async` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
 | `note` | string | no | A short aside about this message, drawn on its row in one column to the right of the last lifeline, so the notes read down as one margin. |
 
 ### `fragment` object

@@ -67,7 +67,8 @@ NODE_ROLES: Final = (
 #:
 #: `inherits` and `realizes` are the theme's too — it draws every role — but a
 #: document may name them only in an `entities` diagram: which roles a kind
-#: accepts is the schema's decision, per kind (`schema.GRAPH_EDGE_ROLES`).
+#: accepts is the schema's decision, per kind (`schema.GRAPH_EDGE_ROLES`). So is
+#: `async`, a `sequence` message nobody waits on: solid, with an open head.
 EDGE_ROLES: Final = (
     "flow",
     "link",
@@ -78,6 +79,7 @@ EDGE_ROLES: Final = (
     "aside",
     "inherits",
     "realizes",
+    "async",
 )
 
 #: Shapes a node role may take.

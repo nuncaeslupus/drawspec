@@ -277,6 +277,7 @@ with that* and nothing about which way.
 | `aside` | Loosely associated, and in no direction — a note, a source, a caveat hanging off the thing it is about | dashed, with no head |
 | `inherits` | `entities` only: this class is a kind of that one | a hollow triangle at the general end |
 | `realizes` | `entities` only: this class implements that interface | dashed, with a hollow triangle |
+| `async` | `sequence` messages only: sent without waiting for an answer | solid, with an open head |
 
 Both sets are drawn, one box per role, in
 [`reference/flow-node-roles.json`](reference/flow-node-roles.json) and
@@ -1071,8 +1072,11 @@ A message's `role` says what it is: `flow` (the default) is a call, `weak` a
 reply — dashed with an open head — and `strong` the exchange that matters. A call
 answered later by a `weak` reply from the participant it called gives that
 participant an **activation bar** from the call's row to the reply's, nested when
-calls nest; you never write one. A call nobody answers has no bar, which is how
-an asynchronous message is drawn. A message `from` and `to` the same participant
+calls nest; you never write one. A call nobody answers has no bar. To say a
+message is sent without waiting — a queue, an event, a text message — give it
+`role: "async"`: UML's solid line with an open, stick head. It opens no bar, and a
+`weak` reply answering it is refused (an answer that comes later is a message of
+its own). A message `from` and `to` the same participant
 is a hook on the right of its lifeline, and a `note` is set on its message's row
 in one column right of the last lifeline.
 
@@ -1082,8 +1086,10 @@ beside it. An `alt` or `par` may be divided by `else` — `[{"at": "<id>", "text
 …}]`, a dashed line above that message. If a reply inside one branch of an `alt`
 answers a call made before the frame, the bar runs on to the last answer in the
 frame. `groups` frame a run of neighbouring lifelines, named at the top.
-Participant roles are `step`, `emphasis`, or `note` for an outside system drawn
-as words with no box; the theme's `[sequence]` sets the bar's width and the role
+Participant roles are `step`, `emphasis`, `note` for an outside system drawn
+as words with no box, or `actor` for a person — the UML stick figure over the
+name, the names of all heads on one line and the lifeline under them (`person`
+is refused, pointing here); the theme's `[sequence]` sets the bar's width and the role
 a lifeline is drawn in.
 
 Refused, each at its pointer: a message naming an unknown participant; a
@@ -1097,7 +1103,11 @@ past that it is a trace; split it into phases. See
 [`reference/sequence-dns.json`](reference/sequence-dns.json),
 [`reference/sequence-upload.json`](reference/sequence-upload.json),
 [`reference/sequence-drain.json`](reference/sequence-drain.json) and
-[`reference/sequence-checkout.json`](reference/sequence-checkout.json).
+[`reference/sequence-checkout.json`](reference/sequence-checkout.json); for
+actors and async messages,
+[`reference/sequence-actor-signin.json`](reference/sequence-actor-signin.json),
+[`reference/sequence-async-export.json`](reference/sequence-async-export.json) and
+[`reference/sequence-actor-handover.json`](reference/sequence-actor-handover.json).
 
 ## Swimlanes
 

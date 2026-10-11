@@ -474,6 +474,17 @@ stroke = "currentColor"
 dash = "4 3"
 stroke_width = 1.5
 
+# A sequence diagram's asynchronous message, named only in a `sequence`: sent,
+# and the sender carries on. UML draws it as a solid line with an open (stick)
+# head — `flow`'s line with `weak`'s head, so it is told from a call by the head
+# and from a reply by the solid line.
+[edge_role.async]
+head = "open"
+tail = "none"
+stroke = "currentColor"
+dash = "none"
+stroke_width = 1.5
+
 # A funnel is a thing you pour into, and a reader already knows what one looks
 # like: full width at the mouth, narrowing downward. `right` draws the same
 # stages as a pipeline losing volume across the page, which suits long labels —

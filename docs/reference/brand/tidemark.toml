@@ -89,3 +89,6 @@ stroke_width = 1.25  # --border-width, scaled
 
 [edge_role.realizes]
 stroke_width = 1.25  # --border-width, scaled
+
+[edge_role.async]
+stroke_width = 1.25  # --border-width, scaled
