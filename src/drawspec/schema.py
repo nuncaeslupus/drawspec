@@ -3142,20 +3142,6 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             description="Boxes drawn around sets of nodes, each with its own caption.",
         ),
         FieldSpec(
-            "classes",
-            "array",
-            item_ref="class",
-            min_items=1,
-            description=(
-                "The classes the boxes are sorted into, each `{id, text}`: 1 to "
-                f"{CLASSES_MAX}, every one used by some node. Each is drawn as a faint fill "
-                "from the theme's fixed sequence (`[classes] fills`: a grey wash, then "
-                "patterns), in the order declared, and the key under the drawing names "
-                "each by its `text`. For a grouping the reader must see across the whole "
-                "drawing — external systems greyed in a C4 context, steps by owning team."
-            ),
-        ),
-        FieldSpec(
             "bands",
             "array",
             item_ref="band",
@@ -3168,6 +3154,23 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
                 "A `group` cannot say that — a box sits inside one container or none, "
                 "so two groups over the same members had to be nested, which draws a "
                 "hierarchy that is not there."
+            ),
+        ),
+    ),
+    # A `cycle` is a ring of peers: it takes no classes.
+    ("flow", "tree"): (
+        FieldSpec(
+            "classes",
+            "array",
+            item_ref="class",
+            min_items=1,
+            description=(
+                "The classes the boxes are sorted into, each `{id, text}`: 1 to "
+                f"{CLASSES_MAX}, every one used by some node. Each is drawn as a faint fill "
+                "from the theme's fixed sequence (`[classes] fills`: a grey wash, then "
+                "patterns), in the order declared, and the key under the drawing names "
+                "each by its `text`. For a grouping the reader must see across the whole "
+                "drawing — external systems greyed in a C4 context, steps by owning team."
             ),
         ),
     ),

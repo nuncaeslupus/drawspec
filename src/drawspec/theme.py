@@ -1695,7 +1695,7 @@ class LanesStyle:
     stripe: float = 0.0
     """How much of the page's ink every second lane is washed with, from 0 (no
     stripes) to `TONE_CEILING`. A tint, not a colour, so dark mode and greyscale
-    keep it."""
+    keep it. Off unless a theme sets it; the bundled default theme does."""
 
     phase: str = "aside"
     """The edge role the line between two phases is drawn in, across every lane:
@@ -1756,7 +1756,7 @@ class FramesStyle:
 
     tone: float = 0.0
     """The share of the ink one frame lays down, from 0 (outlines only) to
-    `TONE_CEILING`."""
+    `TONE_CEILING`. Off unless a theme sets it; the bundled default theme does."""
 
     levels: int = 3
     """How many levels of nesting deepen the wash; a frame deeper than this is
@@ -1792,7 +1792,8 @@ class LevelsStyle:
     """
 
     shade: bool = False
-    """Whether levels are graded from the ramp; `false` draws outlines only."""
+    """Whether levels are graded from the ramp; `false` draws outlines only. Off unless
+    a theme sets it; the bundled default theme does."""
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> LevelsStyle:

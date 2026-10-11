@@ -1046,6 +1046,14 @@ def _region_room(
                     stack.extend(leads.get(current, ()))
             return False
 
+        def width_of(end: str) -> float:
+            # A nested composite has no box of its own yet: its frame is at least
+            # as wide as the widest box inside it, which is a safe lower bound.
+            if end in boxes:
+                return boxes[end].width
+            inner = [boxes[member].width for member in nesting.descendants(end) if member in boxes]
+            return max(inner, default=0.0)
+
         gap = theme.edge.clearance * 2
         needs = [0.0]
         for edge in edges:
@@ -1057,7 +1065,7 @@ def _region_room(
             else:
                 # A forward label sits beside its line, which leaves the middle of
                 # its box: half the box and the padding are already room for it.
-                narrowest = min(boxes[end].width for end in (edge.source, edge.target))
+                narrowest = min(width_of(end) for end in (edge.source, edge.target))
                 needs.append(wide - narrowest / 2 - theme.box.padding.horizontal / 2)
         if max(needs) > 0:
             room[region] = max(needs)

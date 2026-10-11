@@ -23,6 +23,7 @@ from drawspec.geometry import (
     FIT_STEP,
     MIN_ASPECT,
     PARALLELOGRAM_SLANT,
+    PERSON_HEAD,
     SUBROUTINE_INSET,
     Box,
     candidate_factors,
@@ -34,7 +35,7 @@ from drawspec.geometry import (
     usable_span,
 )
 from drawspec.text import TextMeasurer
-from drawspec.theme import TYPE_LEVELS, Theme, load_theme
+from drawspec.theme import TYPE_LEVELS, Padding, Theme, load_theme
 
 THEME = load_theme()
 MEASURER = TextMeasurer(THEME.font.stacks(), search_paths=[])
@@ -197,6 +198,11 @@ def test_outer_size_and_usable_span_are_inverses(shape: str) -> None:
     usable = usable_span(shape, width, height, 30.0)
     assert usable[0] >= 120.0 + THEME.box.padding.horizontal - 1e-6
     assert usable[1] >= 30.0 + THEME.box.padding.vertical - 1e-6
+
+
+def test_a_person_is_never_narrower_than_its_head() -> None:
+    width, _ = outer_size("person", 0.0, 10.0, Padding(0.0, 0.0, 0.0, 0.0))
+    assert width >= 2 * PERSON_HEAD
 
 
 @pytest.mark.parametrize("shape", ALL_SHAPES)

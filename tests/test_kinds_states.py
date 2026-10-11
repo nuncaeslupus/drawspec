@@ -635,6 +635,24 @@ def test_no_arrow_lands_on_a_divider() -> None:
             assert abs(end[0] - divider) > THEME.edge.lane_spacing
 
 
+def test_a_labelled_transition_into_a_composite_nested_in_a_region_is_drawn() -> None:
+    # Reserving a region's label room once looked the composite's box up, and a
+    # composite has a frame, not a box: the drawing failed with a KeyError.
+    document = player()
+    document["states"] += [{"id": "ahead", "text": "Ahead"}, {"id": "back", "text": "Back"}]
+    document["groups"].append(
+        {"id": "seek", "text": "Seeking", "members": ["ahead", "back"], "initial": "ahead"}
+    )
+    document["groups"][0]["regions"][0]["members"].append("seek")
+    document["transitions"] += [
+        {"from": "paused", "to": "seek", "event": "seek"},
+        {"from": "ahead", "to": "back", "event": "rewind"},
+    ]
+    assert not validate_document(document)
+    drawing = drawn(document)
+    assert any(frame.id == "seek" for frame in drawing.frames)
+
+
 def test_a_transition_between_regions_is_refused() -> None:
     document = player()
     document["transitions"].append({"from": "paused", "to": "muted", "event": "quiet"})

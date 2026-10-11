@@ -149,7 +149,7 @@ How a container is told from the page: washed with a little of the ink.
 
 | Key | Default | What it is |
 |---|---|---|
-| `tone` | `0.05` | The share of the ink one frame lays down, from 0 (outlines only) to `TONE_CEILING`. |
+| `tone` | `0.05` | The share of the ink one frame lays down, from 0 (outlines only) to `TONE_CEILING`. Off unless a theme sets it; the bundled default theme does. |
 | `levels` | `3` | How many levels of nesting deepen the wash; a frame deeper than this is outlined only. |
 
 ### `[levels]`
@@ -158,7 +158,7 @@ Whether the levels of a `pyramid`, `funnel`, `rings` and `stack` are graded.
 
 | Key | Default | What it is |
 |---|---|---|
-| `shade` | `true` | Whether levels are graded from the ramp; `false` draws outlines only. |
+| `shade` | `true` | Whether levels are graded from the ramp; `false` draws outlines only. Off unless a theme sets it; the bundled default theme does. |
 
 ### `[classes]`
 
@@ -224,7 +224,7 @@ How a swimlane diagram lays its lanes out and divides them.
 |---|---|---|
 | `orientation` | `"auto"` | `rows`, `columns`, or `auto`: rows when they fit the width, else columns. One of `rows`, `columns`, `auto`. |
 | `separator` | `"link"` | The edge role the line between two lanes is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
-| `stripe` | `0.04` | How much of the page's ink every second lane is washed with, from 0 (no stripes) to `TONE_CEILING`. A tint, not a colour, so dark mode and greyscale keep it. |
+| `stripe` | `0.04` | How much of the page's ink every second lane is washed with, from 0 (no stripes) to `TONE_CEILING`. A tint, not a colour, so dark mode and greyscale keep it. Off unless a theme sets it; the bundled default theme does. |
 | `phase` | `"aside"` | The edge role the line between two phases is drawn in, across every lane: lighter than a lane's own separator, since a phase is crossed by every lane. |
 
 ### `[entities]`

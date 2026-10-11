@@ -249,7 +249,9 @@ def outer_size(
     if shape == "cylinder":
         return width, height + 3 * CYLINDER_CAP
     if shape == "person":
-        return width, height + PERSON_TOP
+        # Never narrower than the head: a one-letter name would otherwise leave
+        # the head overhanging its own shoulders.
+        return max(width, 2 * PERSON_HEAD), height + PERSON_TOP
     if shape == "pill":
         # The inverse of `usable_span`'s pill case, solved for the bounding width.
         # The caps cost their own diameter less how far the text reaches into them.

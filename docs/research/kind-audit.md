@@ -274,7 +274,7 @@ outline. A `note` level, and a level whose role the theme already fills, stay un
 saying how to turn each of the three off.
 
 **Rank 5, node classes** — built as proposed (owner: field name `class`). Top-level
-`classes`, each `{id, text}` like a group, 2–4 of them (the cap in the readability
+`classes`, each `{id, text}` like a group, 1–4 of them (the cap in the readability
 budget), on `flow`, `tree` and `lanes`; a `cycle` refuses them. Not `[mark] fills`
 but a sequence of their own, `[classes] fills` (`solid`, `dots`, `hatch`, `grid`),
 so the first class is a **grey wash** (`[classes] tone`, 0.14 of the ink) — the C4

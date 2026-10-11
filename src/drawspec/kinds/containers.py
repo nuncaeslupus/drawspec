@@ -592,8 +592,15 @@ def region_separators(
     side, which starts under the caption if the caption reaches that far, and a
     horizontal one between regions stacked.
     """
+    return tuple(line for _, line in _composite_separators(frames))
+
+
+def _composite_separators(
+    frames: Sequence[Frame],
+) -> tuple[tuple[str, tuple[tuple[float, float], tuple[float, float]]], ...]:
+    """Each of `region_separators`' lines with the composite it divides."""
     by_id = {frame.id: frame for frame in frames}
-    lines: list[tuple[tuple[float, float], tuple[float, float]]] = []
+    lines: list[tuple[str, tuple[tuple[float, float], tuple[float, float]]]] = []
     composites = sorted({frame.region_of for frame in frames if frame.region_of})
     for composite in composites:
         outer = by_id[composite]
@@ -613,10 +620,10 @@ def region_separators(
                     if caption is not None and caption.x + caption.width > x
                     else outer.y
                 )
-                lines.append(((x, top), (x, outer.bottom)))
+                lines.append((composite, ((x, top), (x, outer.bottom))))
             else:
                 y = (first.bottom + second.y) / 2
-                lines.append(((outer.x, y), (outer.right, y)))
+                lines.append((composite, ((outer.x, y), (outer.right, y))))
     return tuple(lines)
 
 
@@ -625,16 +632,8 @@ def region_dividers(frames: Sequence[Frame]) -> dict[str, tuple[tuple[str, float
 
     For routing, so no arrow to or from the composite lands where a divider does.
     """
-    by_id = {frame.id: frame for frame in frames}
     found: dict[str, list[tuple[str, float]]] = {}
-    for start, end in region_separators(frames):
-        composite = next(
-            frame.region_of
-            for frame in frames
-            if frame.region_of
-            and by_id[frame.region_of].x <= start[0] <= by_id[frame.region_of].right
-            and by_id[frame.region_of].y <= start[1] <= by_id[frame.region_of].bottom
-        )
+    for composite, (start, end) in _composite_separators(frames):
         found.setdefault(composite, []).append(
             ("x", start[0]) if start[0] == end[0] else ("y", start[1])
         )

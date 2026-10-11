@@ -20,7 +20,8 @@ Evidence for each kind is in `docs/research/corpus-round2.md`; rows marked "(che
 **Kind audit (same day):** #103 merged (closes #102). `docs/research/kind-audit.md` has the per-kind verdicts.
 Built: horizontal bars, quadrant names and axis ends, funnel amounts, gantt `done`, the io/subroutine/store roles,
 tinted frames and lane stripes (on by default), lanes `phases`, and chart values printed at the precision written.
-Owner questions still open (audit "Questions"): node `class` with a key, a `person` role, tint default vs `accent` only, states regions and async sequence messages.
+Owner questions answered and built in #106 (t-29944b23): level shading, node classes (1–4, with a key), the `person` role, states orthogonal regions, sequence async messages and actor participants.
+Still open: fork/join bars, and transitions from outside to outside routed through a composite frame.
 
 **Open tasks:** #68 (C4: sweep `nuncaeslupus/opos`; needs a session with that repo).
 **Remind the owner:** #65 still needs the GitHub repo **topics** (About ⚙️, one per Enter):

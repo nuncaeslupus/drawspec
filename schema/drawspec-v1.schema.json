@@ -73,6 +73,13 @@
             "$ref": "#/$defs/group"
           }
         },
+        "bands": {
+          "type": "array",
+          "description": "Named things that run alongside a set of boxes rather than containing them — drawn as a labelled bar beside the boxes they accompany. For the activity that goes on throughout: a source sheet with one continuous concern above its steps and another below says the steps are *surrounded* by them, and two such bands are peers. A `group` cannot say that — a box sits inside one container or none, so two groups over the same members had to be nested, which draws a hierarchy that is not there.",
+          "items": {
+            "$ref": "#/$defs/band"
+          }
+        },
         "classes": {
           "type": "array",
           "description": "The classes the boxes are sorted into, each `{id, text}`: 1 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
@@ -80,13 +87,6 @@
             "$ref": "#/$defs/class"
           },
           "minItems": 1
-        },
-        "bands": {
-          "type": "array",
-          "description": "Named things that run alongside a set of boxes rather than containing them — drawn as a labelled bar beside the boxes they accompany. For the activity that goes on throughout: a source sheet with one continuous concern above its steps and another below says the steps are *surrounded* by them, and two such bands are peers. A `group` cannot say that — a box sits inside one container or none, so two groups over the same members had to be nested, which draws a hierarchy that is not there.",
-          "items": {
-            "$ref": "#/$defs/band"
-          }
         },
         "loops": {
           "type": "array",
@@ -172,6 +172,13 @@
             "$ref": "#/$defs/group"
           }
         },
+        "bands": {
+          "type": "array",
+          "description": "Named things that run alongside a set of boxes rather than containing them — drawn as a labelled bar beside the boxes they accompany. For the activity that goes on throughout: a source sheet with one continuous concern above its steps and another below says the steps are *surrounded* by them, and two such bands are peers. A `group` cannot say that — a box sits inside one container or none, so two groups over the same members had to be nested, which draws a hierarchy that is not there.",
+          "items": {
+            "$ref": "#/$defs/band"
+          }
+        },
         "classes": {
           "type": "array",
           "description": "The classes the boxes are sorted into, each `{id, text}`: 1 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
@@ -179,13 +186,6 @@
             "$ref": "#/$defs/class"
           },
           "minItems": 1
-        },
-        "bands": {
-          "type": "array",
-          "description": "Named things that run alongside a set of boxes rather than containing them — drawn as a labelled bar beside the boxes they accompany. For the activity that goes on throughout: a source sheet with one continuous concern above its steps and another below says the steps are *surrounded* by them, and two such bands are peers. A `group` cannot say that — a box sits inside one container or none, so two groups over the same members had to be nested, which draws a hierarchy that is not there.",
-          "items": {
-            "$ref": "#/$defs/band"
-          }
         }
       },
       "required": [
@@ -263,14 +263,6 @@
           "items": {
             "$ref": "#/$defs/group"
           }
-        },
-        "classes": {
-          "type": "array",
-          "description": "The classes the boxes are sorted into, each `{id, text}`: 1 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
-          "items": {
-            "$ref": "#/$defs/class"
-          },
-          "minItems": 1
         },
         "bands": {
           "type": "array",
