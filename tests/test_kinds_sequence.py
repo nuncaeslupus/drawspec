@@ -497,3 +497,88 @@ def test_a_document_is_parsed_into_the_sequence_model() -> None:
 def test_an_invalid_document_raises() -> None:
     with pytest.raises(DocumentError):
         parse_document(exchange(participants=[{"id": "only", "text": "Only"}]))
+
+
+# ---------------------------------------------------------------------------
+# Async messages and actors
+# ---------------------------------------------------------------------------
+
+
+def test_an_async_message_is_solid_with_an_open_head_and_opens_no_bar() -> None:
+    document = exchange()
+    document["messages"].insert(
+        0, {"from": "client", "to": "store", "text": "warm the cache", "role": "async"}
+    )
+    assert not validate_document(document)
+    role = THEME.edge_roles["async"]
+    assert role.head == "open" and role.dash == "none"
+    bars = activations(parse_document(document))
+    assert all(bar.start != 0 for bar in bars)
+    drawing = drawn(document)
+    store = drawing.lifelines["store"]
+    assert abs(drawing.arrows[0][-1][0] - store) < EPSILON
+
+
+def test_a_reply_to_an_async_message_is_refused() -> None:
+    document = exchange()
+    document["messages"] = [
+        {"from": "client", "to": "service", "text": "ping", "role": "async"},
+        {"from": "service", "to": "client", "text": "pong", "role": "weak"},
+    ]
+    document["participants"] = document["participants"][:2]
+    assert "/messages/1/role" in pointers(document)
+    assert "awaits no reply" in messages(document)
+
+
+def test_a_reply_to_a_call_after_an_async_message_is_fine() -> None:
+    document = exchange()
+    document["messages"].insert(
+        0, {"from": "client", "to": "service", "text": "heads up", "role": "async"}
+    )
+    assert not validate_document(document)
+
+
+def test_an_actor_is_a_stick_figure_over_its_name_with_the_lifeline_under_it() -> None:
+    from drawspec.scene import Ellipse
+
+    document = exchange()
+    document["participants"][0]["role"] = "actor"
+    drawing = drawn(document)
+    x = drawing.lifelines["client"]
+    heads = [p for p in drawing.scene.primitives if isinstance(p, Ellipse)]
+    assert len(heads) == 1 and abs(heads[0].cx - x) < EPSILON
+    name = next(
+        p
+        for p in drawing.scene.primitives
+        if isinstance(p, TextLine) and "".join(s.text for s in p.spans) == "Client"
+    )
+    service = next(
+        p
+        for p in drawing.scene.primitives
+        if isinstance(p, TextLine) and "".join(s.text for s in p.spans) == "Service"
+    )
+    # Names stand on one line; the figure rises above the name.
+    assert abs(name.y - service.y) < EPSILON
+    assert heads[0].cy < name.y
+    lifeline = next(
+        p
+        for p in drawing.scene.primitives
+        if isinstance(p, Stroke)
+        and p.role == THEME.sequence.lifeline
+        and abs(p.points[0][0] - x) < EPSILON
+    )
+    assert lifeline.points[0][1] > name.y
+
+
+@pytest.mark.parametrize("role", ["person", "user"])
+def test_a_person_role_on_a_participant_points_at_actor(role: str) -> None:
+    document = exchange()
+    document["participants"][0]["role"] = role
+    assert "/participants/0/role" in pointers(document)
+    assert "'actor'" in messages(document)
+
+
+def test_a_message_role_from_another_notation_is_named() -> None:
+    document = exchange()
+    document["messages"][0]["role"] = "asynchronous"
+    assert "'async'" in messages(document)

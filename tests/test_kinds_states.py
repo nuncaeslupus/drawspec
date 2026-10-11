@@ -23,6 +23,7 @@ from drawspec.errors import DocumentError, ThemeError
 from drawspec.kinds.graph import GraphDrawing, graph_drawing, graph_scene
 from drawspec.routing import LOOP_SIDES, loop_reach
 from drawspec.scene import Ellipse, TextLine, TextRun
+from drawspec.scene import Path as ScenePath
 from drawspec.schema import (
     READABILITY_BUDGET,
     parse_document,
@@ -541,3 +542,185 @@ def test_every_reference_machine_renders_with_its_labels_as_text(name: str) -> N
     for transition in document.get("transitions", ()):
         if transition.get("event"):
             assert transition["event"].replace("`", "") in words.replace("`", "")
+
+
+# ---------------------------------------------------------------------------
+# Orthogonal regions
+# ---------------------------------------------------------------------------
+
+
+def player(**extra: Any) -> dict[str, Any]:
+    """A player whose `on` composite runs playback and sound at once."""
+    document: dict[str, Any] = {
+        "version": 1,
+        "kind": "states",
+        "initial": "stopped",
+        "states": [
+            {"id": "stopped", "text": "Stopped"},
+            {"id": "playing", "text": "Playing"},
+            {"id": "paused", "text": "Paused"},
+            {"id": "loud", "text": "Sound on"},
+            {"id": "muted", "text": "Muted"},
+        ],
+        "groups": [
+            {
+                "id": "on",
+                "text": "Powered",
+                "regions": [
+                    {"members": ["playing", "paused"], "initial": "playing"},
+                    {"members": ["loud", "muted"], "initial": "loud"},
+                ],
+            }
+        ],
+        "transitions": [
+            {"from": "stopped", "to": "on", "event": "play"},
+            {"from": "playing", "to": "paused", "event": "pause"},
+            {"from": "paused", "to": "playing", "event": "resume"},
+            {"from": "loud", "to": "muted", "event": "mute"},
+            {"from": "muted", "to": "loud", "event": "unmute"},
+            {"from": "on", "to": "stopped", "event": "stop"},
+        ],
+    }
+    document.update(extra)
+    return document
+
+
+def test_regions_validate_and_every_region_is_entered() -> None:
+    # Muted is reached only through its region's own initial, never named by an arrow
+    # from outside: entering the composite enters every region.
+    assert not validate_document(player())
+
+
+def test_each_region_is_drawn_side_by_side_and_divided_by_a_dashed_line() -> None:
+    drawing = drawn(player())
+    regions = [frame for frame in drawing.frames if frame.region_of == "on"]
+    assert len(regions) == 2
+    first, second = sorted(regions, key=lambda frame: frame.x)
+    boxes = drawing.boxes
+    assert (
+        first.x <= boxes["playing"].x and boxes["playing"].x + boxes["playing"].width <= first.right
+    )
+    assert second.x <= boxes["loud"].x and boxes["loud"].x + boxes["loud"].width <= second.right
+    # Each region has its own initial dot, inside it.
+    dots = [identifier for identifier in marker(drawing, "initial") if identifier != "(initial)"]
+    assert len(dots) == 2
+    scene = graph_scene(parse_document(player()), THEME, MEASURER)
+    dividers = [
+        primitive
+        for primitive in scene.primitives
+        if isinstance(primitive, ScenePath) and primitive.role == "group"
+    ]
+    assert len(dividers) == 1
+    (x1, _), (x2, _) = dividers[0].points
+    assert x1 == x2 and first.right <= x1 <= second.x
+
+
+def test_a_region_draws_no_frame_of_its_own() -> None:
+    scene = graph_scene(parse_document(player()), THEME, MEASURER)
+    from drawspec.scene import Rect
+
+    frames = [p for p in scene.primitives if isinstance(p, Rect) and p.role == "group"]
+    assert len(frames) == 1
+
+
+def test_no_arrow_lands_on_a_divider() -> None:
+    drawing = drawn(player())
+    regions = sorted(
+        (frame for frame in drawing.frames if frame.region_of == "on"), key=lambda f: f.x
+    )
+    divider = (regions[0].right + regions[1].x) / 2
+    for route in drawing.routes:
+        if "on" in (route.source, route.target):
+            end = route.points[-1] if route.target == "on" else route.points[0]
+            assert abs(end[0] - divider) > THEME.edge.lane_spacing
+
+
+def test_a_labelled_transition_into_a_composite_nested_in_a_region_is_drawn() -> None:
+    # Reserving a region's label room once looked the composite's box up, and a
+    # composite has a frame, not a box: the drawing failed with a KeyError.
+    document = player()
+    document["states"] += [{"id": "ahead", "text": "Ahead"}, {"id": "back", "text": "Back"}]
+    document["groups"].append(
+        {"id": "seek", "text": "Seeking", "members": ["ahead", "back"], "initial": "ahead"}
+    )
+    document["groups"][0]["regions"][0]["members"].append("seek")
+    document["transitions"] += [
+        {"from": "paused", "to": "seek", "event": "seek"},
+        {"from": "ahead", "to": "back", "event": "rewind"},
+    ]
+    assert not validate_document(document)
+    drawing = drawn(document)
+    assert any(frame.id == "seek" for frame in drawing.frames)
+
+
+def test_a_transition_between_regions_is_refused() -> None:
+    document = player()
+    document["transitions"].append({"from": "paused", "to": "muted", "event": "quiet"})
+    assert "/transitions/6/to" in pointers(document)
+    assert "different regions of 'on'" in messages(document)
+
+
+def test_a_state_in_two_regions_is_refused() -> None:
+    document = player()
+    document["groups"][0]["regions"][1]["members"].append("paused")
+    assert "/groups/0/regions/1/members/2" in pointers(document)
+    assert "another region of 'on'" in messages(document)
+
+
+def test_a_region_must_name_its_initial() -> None:
+    document = player()
+    del document["groups"][0]["regions"][1]["initial"]
+    assert "/groups/0/regions/1/initial" in pointers(document)
+
+
+def test_a_region_initial_must_be_one_of_its_own_states() -> None:
+    document = player()
+    document["groups"][0]["regions"][1]["initial"] = "playing"
+    assert "/groups/0/regions/1/initial" in pointers(document)
+
+
+def test_members_and_regions_together_are_refused() -> None:
+    document = player()
+    document["groups"][0]["members"] = ["playing"]
+    assert "/groups/0/members" in pointers(document)
+
+
+def test_a_composite_with_regions_takes_no_initial_of_its_own() -> None:
+    document = player()
+    document["groups"][0]["initial"] = "playing"
+    assert "/groups/0/initial" in pointers(document)
+
+
+def test_a_composite_with_neither_members_nor_regions_is_refused() -> None:
+    document = machine(groups=[{"id": "g", "text": "G"}])
+    assert "/groups/0" in pointers(document)
+
+
+def test_one_region_is_not_regions() -> None:
+    document = player()
+    document["groups"][0]["regions"] = document["groups"][0]["regions"][:1]
+    assert "/groups/0/regions" in pointers(document)
+
+
+def test_the_budget_refuses_a_fifth_region() -> None:
+    limit = dict(READABILITY_BUDGET["states"])["groups/regions"]
+    states = [{"id": f"s{n}", "text": f"S{n}"} for n in range(limit + 1)]
+    document = player(
+        states=[{"id": "stopped", "text": "Stopped"}, *states],
+        groups=[
+            {
+                "id": "on",
+                "text": "On",
+                "regions": [{"members": [s["id"]], "initial": s["id"]} for s in states],
+            }
+        ],
+        transitions=[{"from": "stopped", "to": "on", "event": "go"}],
+    )
+    assert f"/groups/0/regions/{limit}" in pointers(document)
+
+
+def test_entering_one_region_directly_still_enters_the_others() -> None:
+    document = player()
+    document["transitions"][0] = {"from": "stopped", "to": "paused", "event": "resume later"}
+    # playing is still reached, through its region's initial
+    assert not validate_document(document)

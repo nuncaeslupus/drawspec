@@ -259,3 +259,69 @@ both orientations: a band over the strips in rows, a column beside them in colum
 names in each cell, and a light `aside` line (`[lanes] phase`) across band and lanes
 in the gap between phases, which is widened by a node gap and settled off any route
 running along it, as lane boundaries are. Budget 2–6 phases.
+
+**Rank 9, graded levels** — built, theme only, and **on by default** (owner: "default,
+but optional", as for frames and stripes). One switch, `[levels] shade` (`true`/`false`),
+for all four kinds rather than a key per kind: the meaning is the same everywhere (the
+order written) and a theme turning it off wants it off everywhere. Tones come from
+`[mark] ramp`, **first written lightest** (owner: light to dark in level order), one ramp
+step per level and spread across the ramp only past five levels, so a three-level
+pyramid stays light; the ramp's ceiling (already checked for text contrast on light and
+dark pages) bounds the darkest level. Rings composite each circle over the ones around
+it so every band shows exactly its tone; funnel stages are regions behind the one
+outline. A `note` level, and a level whose role the theme already fills, stay unfilled.
+`[frames] tone` and `[lanes] stripe` now also accept `false`; the guide has one table
+saying how to turn each of the three off.
+
+**Rank 5, node classes** — built as proposed (owner: field name `class`). Top-level
+`classes`, each `{id, text}` like a group, 1–4 of them (the cap in the readability
+budget), on `flow`, `tree` and `lanes`; a `cycle` refuses them. Not `[mark] fills`
+but a sequence of their own, `[classes] fills` (`solid`, `dots`, `hatch`, `grid`),
+so the first class is a **grey wash** (`[classes] tone`, 0.14 of the ink) — the C4
+convention of greying external systems is then simply "declare it first" — and the
+rest faint patterns. The key is drawn under the drawing as matrix `key` is, centred,
+laid out across the canvas so a narrow drawing keeps it on one row. Refused: an
+undeclared class (closest named), an unused class, a duplicate id, a class on a `note`
+(no outline) or a `group`, and a class beside `status` on one box. Emphasis needs no
+rule: it is the outline and the bold, a class is the fill, and both read together.
+
+**`person` role** (owner question 2: a fourth shape role) — built on `flow`, `tree` and
+`lanes` nodes, refused by `cycle` with a pointer to `actor`. Of the two shapes offered,
+the **C4 rounded person box with a head** fits labels best: a stick figure has no room
+for a name and would put it under the figure, outside the box arrows land on. The head
+(radius 16) is centred over the body and overlaps its top, so head and shoulders
+(radius 22) are **one outline**, filled and stroked once — a class's fill covers both.
+Lengths, not ratios, as for the flowchart symbols, so a body grown to match its peers
+keeps its head. The text is in the body; arrows land on the head from above, on the
+shoulders beside it, and on the body or the head from the side.
+
+**`states` orthogonal regions** (owner question 4) — built as `regions` on a composite,
+a list of `{members, initial}` in place of `members`, rather than a `region` field on
+each state: a region has no id (so no transition can name one), its members are written
+together where they are read, and a state in two regions is caught at its pointer. Every
+region names its `initial` (entering the composite enters them all); the composite's own
+`initial` is refused beside `regions`. Regions sit side by side when they fit across and
+stack otherwise, never as a grid, so each divider runs from frame side to frame side; a
+divider is a dashed line in the frame's role, kept clear of labels, routes and arrow
+ends. A region is closed in by its divider, so it keeps room beside its states for its
+own transitions' labels (a plain frame lets them run outside). Budget 2–4. A transition
+between two regions of one composite is refused. **Fork and join bars are not built**:
+they need a pseudo-state of their own (text rules, many arrows landing on one bar, their
+own refusals), and entering a composite or one state in a region already starts the
+other regions at their initials.
+
+**`sequence` async messages and actors** (owner question 4) — built as roles, matching
+the kind's own conventions rather than new fields: a message's role already says call
+(`flow`), reply (`weak`) or the exchange that matters (`strong`), so `async` is a fourth
+role (new theme edge role: `flow`'s solid line, `weak`'s open head), and a participant's
+role already says box, emphasis or words-only, so `actor` is a fourth role. `actor`, not
+`person`: it is UML's and Mermaid's word for exactly this figure, and in a sequence the
+C4 person box would be a head like any other; `person` on a participant is refused,
+naming `actor`. The figure (lengths in body units) stands over the name; all names sit
+on one line so the lifelines start level. Refused: a `weak` reply to an `async` message
+when no call between the two came before it — an async message awaits no reply.
+
+**Node classes, one is enough** (owner) — `classes` now takes 1–4, not 2–4: a C4 context
+greys only its external systems, and a second class for "ours" only added a pattern the
+reader had to decode. The key stays, since the grey still needs naming.
+`flow-classes-context` now declares just the external class.

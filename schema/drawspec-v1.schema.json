@@ -80,6 +80,14 @@
             "$ref": "#/$defs/band"
           }
         },
+        "classes": {
+          "type": "array",
+          "description": "The classes the boxes are sorted into, each `{id, text}`: 1 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
+          "items": {
+            "$ref": "#/$defs/class"
+          },
+          "minItems": 1
+        },
         "loops": {
           "type": "array",
           "description": "The feedback loops of a causal loop diagram, each named and marked R (reinforcing) or B (balancing) inside the loop it closes — the type derived from the signs, never chosen. Needs `polarity` on the edges.",
@@ -170,6 +178,14 @@
           "items": {
             "$ref": "#/$defs/band"
           }
+        },
+        "classes": {
+          "type": "array",
+          "description": "The classes the boxes are sorted into, each `{id, text}`: 1 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
+          "items": {
+            "$ref": "#/$defs/class"
+          },
+          "minItems": 1
         }
       },
       "required": [
@@ -1218,7 +1234,7 @@
         },
         "groups": {
           "type": "array",
-          "description": "Composite states: a frame around the states inside it, named at its corner. Groups may nest. A transition from a group leaves it from any state inside; one to a group enters it at the group's `initial`.",
+          "description": "Composite states: a frame around the states inside it, named at its corner. Groups may nest. A transition from a group leaves it from any state inside; one to a group enters it at the group's `initial`. A composite with `regions` is drawn divided by dashed lines, every region current at once.",
           "items": {
             "$ref": "#/$defs/composite"
           }
@@ -1281,7 +1297,7 @@
         },
         "participants": {
           "type": "array",
-          "description": "Who takes part, drawn left to right in the order written, each a head with a dashed lifeline under it. The order is the reading order, not a coordinate. Every participant must send or receive a message.",
+          "description": "Who takes part, drawn left to right in the order written, each a head with a dashed lifeline under it. The order is the reading order, not a coordinate. Every participant must send or receive a message. A person taking part is `role: \"actor\"`, drawn as the UML stick figure with the name under it.",
           "items": {
             "$ref": "#/$defs/participant"
           },
@@ -1289,7 +1305,7 @@
         },
         "messages": {
           "type": "array",
-          "description": "What is said, drawn top to bottom in the order written: the order is the diagram. A call (`flow`) answered later by a `weak` reply opens an activation bar on the receiver from the call's row to the reply's; nobody writes how tall it is.",
+          "description": "What is said, drawn top to bottom in the order written: the order is the diagram. A call (`flow`) answered later by a `weak` reply opens an activation bar on the receiver from the call's row to the reply's; nobody writes how tall it is. An `async` message (solid line, open head) is sent without waiting, opens no bar and takes no reply.",
           "items": {
             "$ref": "#/$defs/message"
           },
@@ -1395,6 +1411,14 @@
             "$ref": "#/$defs/phase"
           },
           "minItems": 2
+        },
+        "classes": {
+          "type": "array",
+          "description": "The classes the boxes are sorted into, each `{id, text}`: 1 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
+          "items": {
+            "$ref": "#/$defs/class"
+          },
+          "minItems": 1
         }
       },
       "required": [
@@ -3289,6 +3313,24 @@
       ],
       "additionalProperties": false
     },
+    "class": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "What a node's `class` names. Unique among the classes."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
     "clock-face": {
       "type": "object",
       "properties": {
@@ -3320,7 +3362,7 @@
         },
         "members": {
           "type": "array",
-          "description": "The states (or groups) inside this composite state.",
+          "description": "The states (or groups) inside this composite state. A composite lists its `members` or its `regions`, not both.",
           "items": {
             "type": "string"
           },
@@ -3328,13 +3370,20 @@
         },
         "initial": {
           "type": "string",
-          "description": "The member this composite is entered at, drawn as a dot inside the frame. Required when a transition, or the machine's own `initial`, names the group."
+          "description": "The member this composite is entered at, drawn as a dot inside the frame. Required when a transition, or the machine's own `initial`, names the group. With `regions`, each region names its own instead."
+        },
+        "regions": {
+          "type": "array",
+          "description": "Orthogonal regions: parts of this composite that are all current at once, drawn side by side (or stacked) and divided by dashed lines. Each region lists its own members and its own `initial`, and entering the composite enters every region there. A transition may not run between two regions of one composite. In place of `members`.",
+          "items": {
+            "$ref": "#/$defs/state_region"
+          },
+          "minItems": 2
         }
       },
       "required": [
         "id",
-        "text",
-        "members"
+        "text"
       ],
       "additionalProperties": false
     },
@@ -3442,7 +3491,8 @@
             "weak",
             "owns",
             "strong",
-            "aside"
+            "aside",
+            "async"
           ]
         },
         "status": {
@@ -3961,7 +4011,8 @@
             "note",
             "io",
             "subroutine",
-            "store"
+            "store",
+            "person"
           ]
         },
         "actor": {
@@ -3976,6 +4027,10 @@
             "changed",
             "removed"
           ]
+        },
+        "class": {
+          "type": "string",
+          "description": "Which of the document's `classes` this box belongs to — an author-chosen grouping such as *external system* or *owned by the payments team*, drawn as that class's faint fill and named in a key under the drawing. Must be the `id` of a declared class. Not on a `note` or a `group`, and not with `status` (both would mark the box). **Only a `flow`, a `tree` or `lanes`.**"
         }
       },
       "required": [
@@ -4088,7 +4143,8 @@
           "enum": [
             "flow",
             "weak",
-            "strong"
+            "strong",
+            "async"
           ]
         },
         "note": {
@@ -4229,7 +4285,8 @@
             "group",
             "io",
             "subroutine",
-            "store"
+            "store",
+            "person"
           ]
         },
         "actor": {
@@ -4239,6 +4296,10 @@
         "note": {
           "type": "string",
           "description": "A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead."
+        },
+        "class": {
+          "type": "string",
+          "description": "Which of the document's `classes` this box belongs to — an author-chosen grouping such as *external system* or *owned by the payments team*, drawn as that class's faint fill and named in a key under the drawing. Must be the `id` of a declared class. Not on a `note` or a `group`, and not with `status` (both would mark the box). **Only a `flow`, a `tree` or `lanes`.**"
         },
         "status": {
           "type": "string",
@@ -4338,7 +4399,8 @@
           "enum": [
             "step",
             "emphasis",
-            "note"
+            "note",
+            "actor"
           ]
         }
       },
@@ -4806,6 +4868,28 @@
       "required": [
         "id",
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "state_region": {
+      "type": "object",
+      "properties": {
+        "members": {
+          "type": "array",
+          "description": "The states (or groups) in this region. A state is in one region; each region is a machine of its own, running alongside the others.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "initial": {
+          "type": "string",
+          "description": "The member this region starts in when its composite is entered, drawn as a dot inside the region. Required: every region runs at once."
+        }
+      },
+      "required": [
+        "members",
+        "initial"
       ],
       "additionalProperties": false
     },

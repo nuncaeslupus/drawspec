@@ -72,9 +72,10 @@ GRAPH_KINDS: Final = ("flow", "tree", "cycle")
 
 #: The node roles that draw a flowchart symbol — a parallelogram for data in or
 #: out, a doubled-sided box for a process defined elsewhere, a drum for where data
-#: rests. Named only where a box is a step of a process: a `flow`, a `tree` and a
-#: `lanes` node. Every other kind's roles are fixed by what it draws.
-SHAPED_ROLES: Final = ("io", "subroutine", "store")
+#: rests — and the C4 `person`, a human as against a system. Named only where a box
+#: is a step of a process: a `flow`, a `tree` and a `lanes` node. Every other kind's
+#: roles are fixed by what it draws.
+SHAPED_ROLES: Final = ("io", "subroutine", "store", "person")
 
 #: The node roles everywhere else a kind takes the general vocabulary.
 PLAIN_NODE_ROLES: Final = tuple(role for role in NODE_ROLES if role not in SHAPED_ROLES)
@@ -117,6 +118,11 @@ STATES_KINDS: Final = ("states",)
 #: and `group` because neither is a condition the machine can be in.
 STATE_ROLES: Final = ("step", "emphasis", "terminal")
 
+#: The most orthogonal regions one composite state may hold (owner, kind audit
+#: question 4). UML textbooks draw two or three; past four, side by side or
+#: stacked, each region is too small to hold a machine of its own.
+STATES_REGION_MAX: Final = 4
+
 #: The roles a transition may take: the default, the happy path drawn heavier,
 #: and a rare or error path drawn dashed. `owns`, `link`, `exchange` and `aside`
 #: are not transitions — a transition has one direction and goes somewhere.
@@ -127,17 +133,20 @@ TRANSITION_ROLES: Final = ("flow", "strong", "weak")
 #: written, and nothing is ranked — the order *is* the diagram.
 SEQUENCE_KINDS: Final = ("sequence",)
 
-#: The roles a participant may take: a box, the box the diagram is about, and an
-#: outside system drawn as words with no box. `decision`, `start`, `terminal` and
+#: The roles a participant may take: a box, the box the diagram is about, an
+#: outside system drawn as words with no box, and `actor`, a person drawn as the
+#: UML stick figure with the name under it. `decision`, `start`, `terminal` and
 #: `group` promise a shape a lifeline's head does not have.
-PARTICIPANT_ROLES: Final = ("step", "emphasis", "note")
+PARTICIPANT_ROLES: Final = ("step", "emphasis", "note", "actor")
 
 #: The roles a message may take: a call (`flow`), a reply (`weak`, dashed with an
 #: open head, which is what UML draws for one), and the exchange that matters
 #: (`strong`). Every one has a head, because a message has a direction: `aside`,
 #: `link`, `exchange` and `owns` are refused. A signal nobody answers is a `flow`
-#: with no reply, and is drawn with no activation bar.
-MESSAGE_ROLES: Final = ("flow", "weak", "strong")
+#: with no reply, and is drawn with no activation bar; `async` says so outright,
+#: a solid line with an open head (UML's asynchronous message), and awaits no
+#: reply, so a `weak` message answering one is refused.
+MESSAGE_ROLES: Final = ("flow", "weak", "strong", "async")
 
 #: What a fragment's frame says about the messages inside it, written in its tab.
 #: `alt` and `par` may be divided by `else`; `loop` and `opt` have one branch.
@@ -160,6 +169,17 @@ LANES_MAX: Final = 6
 #: The roles a lane's step may take: a flow's, but not `group` — the lane is the
 #: container, and a box drawn as a frame inside it would claim to be another.
 LANE_NODE_ROLES: Final = tuple(role for role in NODE_ROLES if role != "group")
+
+#: The most node classes one `flow`, `tree` or `lanes` drawing may declare. Each
+#: class is a faint fill a reader matches against a key under the drawing; past
+#: four the fills stop being told apart at a glance, and the key is a table. One
+#: is enough (owner): a C4 context greys only its external systems, and the key
+#: still names what the grey means.
+CLASSES_MAX: Final = 4
+
+#: The roles a classed node may not take: a `note` has no outline to fill (it is
+#: "not the content"), and a `group` is a container, not a box of a class.
+UNCLASSED_ROLES: Final = ("note", "group")
 
 #: The most phases one swimlane diagram names across its lanes: past six the
 #: header band is a table of contents, and the cells too narrow for their names.
@@ -687,8 +707,14 @@ KINDS: Final = (
 #: remedy is the one the refusal names — an overview plus detail diagrams.
 READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # Loops set by the proposal and the corpus: teaching diagrams name two or three.
-    "flow": (("nodes", 15), ("edges", 16), ("loops", LOOP_MAX)),  # [14 nodes, 12 edges, 3 loops]
-    "tree": (("nodes", 15),),  # [11]
+    # `classes` is the owner's cap (kind audit rank 5): see `CLASSES_MAX`.
+    "flow": (
+        ("nodes", 15),
+        ("edges", 16),
+        ("loops", LOOP_MAX),
+        ("classes", CLASSES_MAX),
+    ),  # [14 nodes, 12 edges, 3 loops, 3 classes]
+    "tree": (("nodes", 15), ("classes", CLASSES_MAX)),  # [11 nodes, 3 classes]
     "cycle": (("nodes", 8),),  # [5]
     "stack": (("items", 8),),  # [3]
     "timeline": (("items", 10),),  # [5]
@@ -704,7 +730,13 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     "files": (("entries", 30),),  # [10]
     # Set by the proposal rather than by the references: past fourteen states the
     # back edges a machine is full of cross in the layered layout.
-    "states": (("states", 14), ("transitions", 24)),  # [6 states, 8 transitions]
+    # `groups/regions` is the owner's (kind audit question 4): past four regions
+    # side by side a composite outgrows its share of the canvas.
+    "states": (
+        ("states", 14),
+        ("transitions", 24),
+        ("groups/regions", STATES_REGION_MAX),
+    ),  # [6 states, 8 transitions, 3 regions]
     # Set by the proposal: past eight lifelines and thirty messages a sequence
     # diagram is a trace, not an explanation — split it into phases.
     "sequence": (("participants", 8), ("messages", 30)),  # [5 participants, 13 messages]
@@ -717,7 +749,8 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
         ("edges", 16),
         ("lanes", LANES_MAX),
         ("phases", LANES_PHASES_MAX),
-    ),  # [7 nodes, 7 edges, 4 lanes, 3 phases]
+        ("classes", CLASSES_MAX),
+    ),  # [7 nodes, 7 edges, 4 lanes, 3 phases, 2 classes]
     # Set by the proposal: a schema of thirty tables is a database tool's output.
     # A name with a slash counts inside each entry of the array before it — the
     # rows of one box — and its refusal says to show the ones that matter.
@@ -972,6 +1005,17 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         FieldSpec("actor", "string", description=_ACTOR_DESCRIPTION),
         FieldSpec("note", "string", description=_NOTE_DESCRIPTION),
         FieldSpec(
+            "class",
+            "string",
+            description=(
+                "Which of the document's `classes` this box belongs to — an author-chosen "
+                "grouping such as *external system* or *owned by the payments team*, drawn "
+                "as that class's faint fill and named in a key under the drawing. Must be "
+                "the `id` of a declared class. Not on a `note` or a `group`, and not with "
+                "`status` (both would mark the box). **Only a `flow`, a `tree` or `lanes`.**"
+            ),
+        ),
+        FieldSpec(
             "status",
             "string",
             enum=STATUSES,
@@ -1094,6 +1138,17 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
                 "labelled mark inside the box, never a colour."
             ),
         ),
+        FieldSpec(
+            "class",
+            "string",
+            description=(
+                "Which of the document's `classes` this box belongs to — an author-chosen "
+                "grouping such as *external system* or *owned by the payments team*, drawn "
+                "as that class's faint fill and named in a key under the drawing. Must be "
+                "the `id` of a declared class. Not on a `note` or a `group`, and not with "
+                "`status` (both would mark the box). **Only a `flow`, a `tree` or `lanes`.**"
+            ),
+        ),
     ),
     "hub": (
         FieldSpec(
@@ -1179,10 +1234,12 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         FieldSpec(
             "members",
             "array",
-            required=True,
             item_kind="string",
             min_items=1,
-            description="The states (or groups) inside this composite state.",
+            description=(
+                "The states (or groups) inside this composite state. A composite lists "
+                "its `members` or its `regions`, not both."
+            ),
         ),
         FieldSpec(
             "initial",
@@ -1190,7 +1247,42 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             description=(
                 "The member this composite is entered at, drawn as a dot inside the "
                 "frame. Required when a transition, or the machine's own `initial`, "
-                "names the group."
+                "names the group. With `regions`, each region names its own instead."
+            ),
+        ),
+        FieldSpec(
+            "regions",
+            "array",
+            item_ref="state_region",
+            min_items=2,
+            description=(
+                "Orthogonal regions: parts of this composite that are all current at "
+                "once, drawn side by side (or stacked) and divided by dashed lines. Each "
+                "region lists its own members and its own `initial`, and entering the "
+                "composite enters every region there. A transition may not run between "
+                "two regions of one composite. In place of `members`."
+            ),
+        ),
+    ),
+    "state_region": (
+        FieldSpec(
+            "members",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=1,
+            description=(
+                "The states (or groups) in this region. A state is in one region; each "
+                "region is a machine of its own, running alongside the others."
+            ),
+        ),
+        FieldSpec(
+            "initial",
+            "string",
+            required=True,
+            description=(
+                "The member this region starts in when its composite is entered, drawn "
+                "as a dot inside the region. Required: every region runs at once."
             ),
         ),
     ),
@@ -2568,6 +2660,15 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "class": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="What a node's `class` names. Unique among the classes.",
+        ),
+        _text(required=True),
+    ),
     "phase": (
         _text(required=True),
         FieldSpec(
@@ -3056,6 +3157,23 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    # A `cycle` is a ring of peers: it takes no classes.
+    ("flow", "tree"): (
+        FieldSpec(
+            "classes",
+            "array",
+            item_ref="class",
+            min_items=1,
+            description=(
+                "The classes the boxes are sorted into, each `{id, text}`: 1 to "
+                f"{CLASSES_MAX}, every one used by some node. Each is drawn as a faint fill "
+                "from the theme's fixed sequence (`[classes] fills`: a grey wash, then "
+                "patterns), in the order declared, and the key under the drawing names "
+                "each by its `text`. For a grouping the reader must see across the whole "
+                "drawing — external systems greyed in a C4 context, steps by owning team."
+            ),
+        ),
+    ),
     ("flow",): (
         FieldSpec(
             "loops",
@@ -3372,7 +3490,9 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             description=(
                 "Composite states: a frame around the states inside it, named at its "
                 "corner. Groups may nest. A transition from a group leaves it from any "
-                "state inside; one to a group enters it at the group's `initial`."
+                "state inside; one to a group enters it at the group's `initial`. A "
+                "composite with `regions` is drawn divided by dashed lines, every region "
+                "current at once."
             ),
         ),
     ),
@@ -3386,7 +3506,9 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             description=(
                 "Who takes part, drawn left to right in the order written, each a head "
                 "with a dashed lifeline under it. The order is the reading order, not a "
-                "coordinate. Every participant must send or receive a message."
+                "coordinate. Every participant must send or receive a message. A "
+                'person taking part is `role: "actor"`, drawn as the UML stick figure '
+                "with the name under it."
             ),
         ),
         FieldSpec(
@@ -3399,7 +3521,8 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
                 "What is said, drawn top to bottom in the order written: the order is "
                 "the diagram. A call (`flow`) answered later by a `weak` reply opens an "
                 "activation bar on the receiver from the call's row to the reply's; "
-                "nobody writes how tall it is."
+                "nobody writes how tall it is. An `async` message (solid line, open "
+                "head) is sent without waiting, opens no bar and takes no reply."
             ),
         ),
         FieldSpec(
@@ -3469,6 +3592,20 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
                 "with `phases` given every step is in exactly one. A phase's steps are "
                 "drawn after every step of the phases before it, so the phases never "
                 f"interleave. 2 to {LANES_PHASES_MAX}."
+            ),
+        ),
+        FieldSpec(
+            "classes",
+            "array",
+            item_ref="class",
+            min_items=1,
+            description=(
+                "The classes the boxes are sorted into, each `{id, text}`: 1 to "
+                f"{CLASSES_MAX}, every one used by some node. Each is drawn as a faint fill "
+                "from the theme's fixed sequence (`[classes] fills`: a grey wash, then "
+                "patterns), in the order declared, and the key under the drawing names "
+                "each by its `text`. For a grouping the reader must see across the whole "
+                "drawing — external systems greyed in a C4 context, steps by owning team."
             ),
         ),
     ),
@@ -4084,6 +4221,10 @@ class Node:
     status: str = ""
     """What a proposed change does to this box: `added`, `changed`, `removed`, or empty."""
 
+    klass: str = ""
+    """The `id` of the class this box belongs to (the document's `class` field;
+    `class` is a Python keyword), or empty."""
+
     lane: str = ""
     """The lane a `lanes` node is drawn in — its author's `actor`, which there is
     a strip of the drawing rather than the box's lead, so `actor` stays empty."""
@@ -4140,6 +4281,11 @@ class Group:
     text: str = ""
     initial: str = ""
     """For a composite state: the member it is entered at, or empty."""
+
+    region: bool = False
+    """For a composite state's orthogonal region: drawn with no frame of its own,
+    divided from its sibling regions by a dashed line. Its composite's members
+    are its regions, and nothing else."""
 
 
 @dataclass(frozen=True)
@@ -4584,6 +4730,14 @@ class Band:
 
 
 @dataclass(frozen=True)
+class NodeClass:
+    """One of a `flow`, `tree` or `lanes` drawing's classes: a fill and a key entry."""
+
+    id: str
+    text: str
+
+
+@dataclass(frozen=True)
 class Phase:
     """A named run of a `lanes` diagram's steps, across every lane.
 
@@ -4770,6 +4924,9 @@ class Document:
 
     phases: tuple[Phase, ...] = ()
     """A `lanes` diagram's phases, in the order the process runs."""
+
+    classes: tuple[NodeClass, ...] = ()
+    """A `flow`, `tree` or `lanes` drawing's node classes, in the order declared."""
 
     entities: tuple[Entity, ...] = ()
     relations: tuple[Relation, ...] = ()
@@ -5097,6 +5254,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
             )
         )
 
+    if kind in SEQUENCE_KINDS:
+        found = [_sequence_refusal(violation, document) for violation in found]
     if kind in LANES_KINDS:
         found = [_lanes_refusal(violation) for violation in found]
     if kind in GANTT_KINDS:
@@ -5169,10 +5328,19 @@ def _edge_role_refusal(violation: Violation, document: Mapping[str, Any], kind: 
     return violation
 
 
+_CLASSES_ADVICE: Final = (
+    f"Past {CLASSES_MAX} classes the fills stop being told apart and the key is a table. "
+    "Merge the classes a reader need not tell apart, or draw one diagram per class that "
+    "matters."
+)
+
 #: What to do instead, for a budget whose generic advice ("split it into an
 #: overview and details") is not the remedy. Keyed by (kind, array) for a
 #: top-level budget and by (outer, inner) for a nested one.
 BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
+    ("flow", "classes"): _CLASSES_ADVICE,
+    ("tree", "classes"): _CLASSES_ADVICE,
+    ("lanes", "classes"): _CLASSES_ADVICE,
     ("lanes", "phases"): (
         f"Past {LANES_PHASES_MAX} phases the header band is a table of contents. Merge "
         "neighbouring phases, or split the process at a phase boundary into two diagrams."
@@ -5269,6 +5437,10 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
     ("treemap", "groups"): (
         "Past four groups the frames crowd out the parts they hold. Draw one treemap of the "
         "groups' totals, then one per group that matters."
+    ),
+    ("groups", "regions"): (
+        "Past four regions each is too small to hold a machine. Draw the composite as one "
+        "state here and give each region a state machine of its own."
     ),
     ("categories", "causes"): (
         "Past five causes a bone is a list: keep the ones the investigation turned on, or "
@@ -5778,6 +5950,7 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         seen.add(identifier)
 
     found.extend(_status_violations(document, kind))
+    found.extend(_class_violations(document, kind))
     found.extend(_causal_violations(document, kind, seen))
 
     if kind == "cycle":
@@ -6275,52 +6448,67 @@ def _states_violations(document: Mapping[str, Any]) -> list[Violation]:
     known = state_ids | set(groups)
 
     parent: dict[str, str] = {}
+    # Member → its region's place in its composite, for a composite with regions.
+    region_of: dict[str, int] = {}
     for index, group in enumerate(groups_raw):
         if not isinstance(group, dict) or not isinstance(group.get("id"), str):
             continue
-        members = group.get("members")
-        members = members if isinstance(members, list) else []
-        for position, member in enumerate(members):
-            if not isinstance(member, str):
-                continue
-            if member not in known:
-                found.append(
-                    Violation(
-                        _pointer("groups", index, "members", position),
-                        f"{member!r} is not the id of any state or group in this document",
+        found.extend(_composite_shape(group, index))
+        for members, prefix, region in _composite_parts(group):
+            for position, member in enumerate(members):
+                if not isinstance(member, str):
+                    continue
+                pointer = _pointer("groups", index, *prefix, "members", position)
+                if member not in known:
+                    found.append(
+                        Violation(
+                            pointer,
+                            f"{member!r} is not the id of any state or group in this document",
+                        )
                     )
-                )
-            elif member == group["id"]:
-                found.append(
-                    Violation(
-                        _pointer("groups", index, "members", position),
-                        "a group cannot contain itself",
+                elif member == group["id"]:
+                    found.append(Violation(pointer, "a group cannot contain itself"))
+                elif member in parent:
+                    where = (
+                        f"another region of {parent[member]!r}"
+                        if parent[member] == group["id"] and region_of.get(member) != region
+                        else repr(parent[member])
                     )
-                )
-            elif member in parent:
-                found.append(
-                    Violation(
-                        _pointer("groups", index, "members", position),
-                        f"{member!r} is already inside {parent[member]!r}. A state is in one "
-                        f"composite or none; nest the groups instead.",
+                    found.append(
+                        Violation(
+                            pointer,
+                            f"{member!r} is already inside {where}. A state is in one "
+                            f"composite or none, and in one of its regions; nest the groups "
+                            f"instead.",
+                        )
                     )
-                )
-            else:
-                parent[member] = group["id"]
-        entry = group.get("initial")
-        if isinstance(entry, str) and entry not in members:
-            found.append(
-                Violation(
-                    _pointer("groups", index, "initial"),
-                    f"{entry!r} is not a member of {group['id']!r}. A composite is entered "
-                    f"at one of its own states.",
-                )
+                else:
+                    parent[member] = group["id"]
+                    if region is not None:
+                        region_of[member] = region
+            entry = (
+                group.get("initial")
+                if region is None
+                else _listed(group, "regions")[region].get("initial")
             )
+            if isinstance(entry, str) and entry not in members:
+                found.append(
+                    Violation(
+                        _pointer("groups", index, *prefix, "initial"),
+                        f"{entry!r} is not a member of "
+                        + (
+                            f"{group['id']!r}. A composite is entered "
+                            if region is None
+                            else f"this region of {group['id']!r}. A region starts "
+                        )
+                        + "at one of its own states.",
+                    )
+                )
 
     def entered(identifier: str, pointer: str) -> bool:
         """Whether naming `identifier` as a target lands on a state; reported if not."""
         group = groups.get(identifier)
-        if group is None or isinstance(group.get("initial"), str):
+        if group is None or isinstance(group.get("initial"), str) or "regions" in group:
             return True
         found.append(
             Violation(
@@ -6388,8 +6576,14 @@ def _states_violations(document: Mapping[str, Any]) -> list[Violation]:
                     f"has ended there. Drop this transition, or take {source!r} out of 'final'.",
                 )
             )
-    found.extend(_self_containment(transitions, groups_raw, frozenset(groups)))
+    flattened = [
+        {**group, "members": [m for members, _, _ in _composite_parts(group) for m in members]}
+        for group in groups_raw
+        if isinstance(group, dict)
+    ]
+    found.extend(_self_containment(transitions, flattened, frozenset(groups)))
     found.extend(_loop_violations(transitions, frozenset(groups), "transitions"))
+    found.extend(_crossing_regions(transitions, parent, region_of))
 
     # Two ways out of one state on the same event and guard: which one is taken?
     seen: dict[tuple[str, str, str], tuple[int, str]] = {}
@@ -6442,11 +6636,14 @@ def _states_violations(document: Mapping[str, Any]) -> list[Violation]:
         reached.add(current)
         group = groups.get(current)
         if group is not None:
-            queue.append(str(group["initial"]))
+            queue.extend(_composite_entries(group))
             continue
         for scope in (current, *ancestors(current)):
             reached.add(scope)
             queue.extend(leaving.get(scope, ()))
+            # Entering any state of a composite with regions enters the others at theirs.
+            if scope in groups and "regions" in groups[scope]:
+                queue.extend(_composite_entries(groups[scope]))
 
     for index, state in enumerate(_listed(document, "states")):
         identifier = state.get("id") if isinstance(state, dict) else None
@@ -6459,6 +6656,109 @@ def _states_violations(document: Mapping[str, Any]) -> list[Violation]:
                     f"delete the state.",
                 )
             )
+    return found
+
+
+def _composite_parts(
+    group: Mapping[str, Any],
+) -> list[tuple[list[Any], tuple[str | int, ...], int | None]]:
+    """A composite's member lists: its `members`, or each region's, with where each sits."""
+    regions = group.get("regions")
+    if isinstance(regions, list):
+        return [
+            (
+                region["members"] if isinstance(region.get("members"), list) else [],
+                ("regions", number),
+                number,
+            )
+            for number, region in enumerate(regions)
+            if isinstance(region, dict)
+        ]
+    members = group.get("members")
+    return [(members if isinstance(members, list) else [], (), None)]
+
+
+def _composite_shape(group: Mapping[str, Any], index: int) -> list[Violation]:
+    """A composite lists its `members` or its `regions` — one, not both, not neither."""
+    if "regions" not in group:
+        if "members" in group:
+            return []
+        return [
+            Violation(
+                _pointer("groups", index),
+                f"composite {group['id']!r} has no 'members'. List the states inside it, "
+                f"or its 'regions' when parts of it run at once.",
+            )
+        ]
+    if "members" in group:
+        return [
+            Violation(
+                _pointer("groups", index, "members"),
+                f"composite {group['id']!r} has both 'members' and 'regions'. With regions "
+                f"every member belongs to one of them: move these into the regions.",
+            )
+        ]
+    if "initial" in group:
+        return [
+            Violation(
+                _pointer("groups", index, "initial"),
+                f"composite {group['id']!r} has regions, and entering it enters every region "
+                f"at its own 'initial'. Drop this; each region names where it starts.",
+            )
+        ]
+    return []
+
+
+def _composite_entries(group: Mapping[str, Any]) -> list[str]:
+    """Where entering a composite lands: its `initial`, or every region's."""
+    if "regions" in group:
+        return [
+            region["initial"]
+            for region in _listed(group, "regions")
+            if isinstance(region, dict) and isinstance(region.get("initial"), str)
+        ]
+    return [str(group["initial"])]
+
+
+def _crossing_regions(
+    transitions: Sequence[Any], parent: Mapping[str, str], region_of: Mapping[str, int]
+) -> list[Violation]:
+    """Transitions from one region of a composite into another region of the same one.
+
+    Regions are all current at once, so a state of one cannot hand the machine to
+    a state of another: both are already running. UML forbids it, and there is no
+    line to draw that would not claim the impossible.
+    """
+
+    def regions_above(identifier: str) -> dict[str, int]:
+        found: dict[str, int] = {}
+        current = identifier
+        while current in parent and parent[current] not in found:
+            if current in region_of:
+                found[parent[current]] = region_of[current]
+            current = parent[current]
+        return found
+
+    found: list[Violation] = []
+    for index, transition in enumerate(transitions):
+        if not isinstance(transition, dict):
+            continue
+        source, target = transition.get("from"), transition.get("to")
+        if not isinstance(source, str) or not isinstance(target, str):
+            continue
+        here, there = regions_above(source), regions_above(target)
+        for composite, region in here.items():
+            if composite in there and there[composite] != region:
+                found.append(
+                    Violation(
+                        _pointer("transitions", index, "to"),
+                        f"{source!r} and {target!r} are in different regions of "
+                        f"{composite!r}, which run at once: neither can hand the machine to "
+                        f"the other. Join them through a state outside {composite!r}, or "
+                        f"put both in one region.",
+                    )
+                )
+                break
     return found
 
 
@@ -6568,9 +6868,72 @@ def _sequence_violations(document: Mapping[str, Any]) -> list[Violation]:
                 )
             )
 
+    found.extend(_async_reply_violations(document))
     found.extend(_sequence_group_violations(document, participants))
     found.extend(_fragment_violations(document, message_ids))
     return found
+
+
+def _async_reply_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """A `weak` reply whose only question was an `async` message, which awaits none.
+
+    An asynchronous message is sent and the sender carries on: there is no call
+    for a dashed reply to return from. An answer that comes later is a message of
+    its own, sent back the other way.
+    """
+    found: list[Violation] = []
+    calls: set[tuple[str, str]] = set()
+    sent: set[tuple[str, str]] = set()
+    for index, message in enumerate(_listed(document, "messages")):
+        if not isinstance(message, dict):
+            continue
+        source, target, role = message.get("from"), message.get("to"), message.get("role", "flow")
+        if not isinstance(source, str) or not isinstance(target, str) or source == target:
+            continue
+        if role in ("flow", "strong"):
+            calls.add((source, target))
+        elif role == "async":
+            sent.add((source, target))
+        elif role == "weak" and (target, source) in sent and (target, source) not in calls:
+            found.append(
+                Violation(
+                    _pointer("messages", index, "role"),
+                    f"this reply answers {target!r}'s async message to {source!r}, and an "
+                    f"async message awaits no reply. Send the answer as a message of its own "
+                    f"(role 'async' or 'flow'), or make the question a call ('flow').",
+                )
+            )
+    return found
+
+
+def _sequence_refusal(violation: Violation, document: Mapping[str, Any]) -> Violation:
+    """A structural refusal in a sequence diagram, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    if len(parts) == 4 and parts[1] == "participants" and parts[3] == "role":
+        entries = document.get("participants")
+        try:
+            role = entries[int(parts[2])]["role"]  # type: ignore[index]
+        except (TypeError, ValueError, IndexError, KeyError):
+            return violation
+        if role in ("person", "user", "human"):
+            return Violation(
+                violation.pointer,
+                f"{role!r} is not a participant role here: a person taking part is "
+                f"'actor', drawn as a stick figure over the lifeline.",
+            )
+    if len(parts) == 4 and parts[1] == "messages" and parts[3] == "role":
+        entries = document.get("messages")
+        try:
+            role = entries[int(parts[2])]["role"]  # type: ignore[index]
+        except (TypeError, ValueError, IndexError, KeyError):
+            return violation
+        if role in ("asynchronous", "signal", "event", "sync", "call", "reply", "return"):
+            return Violation(
+                violation.pointer,
+                f"{role!r} is not a message role: a call is 'flow', its reply 'weak', a "
+                f"message nobody waits on 'async', and the exchange that matters 'strong'.",
+            )
+    return violation
 
 
 def _entities_violations(document: Mapping[str, Any]) -> list[Violation]:
@@ -9844,13 +10207,119 @@ def _shaped_in_cycle(nodes: Any) -> list[Violation]:
     return [
         Violation(
             _pointer("nodes", index, "role"),
-            f"{node['role']!r} draws a flowchart symbol, and a cycle is a ring of steps "
+            (
+                "'person' draws a person, and a cycle is a ring of steps that each lead to "
+                "the next, not the people taking them. Name who does a step with `actor`, "
+                "or draw the people and the system as a `flow`."
+            )
+            if node["role"] == "person"
+            else f"{node['role']!r} draws a flowchart symbol, and a cycle is a ring of steps "
             f"that each lead to the next: there is no input, store or sub-process on it. "
             f"Draw the process as a `flow` if those matter.",
         )
         for index, node in enumerate(nodes if isinstance(nodes, list) else ())
         if isinstance(node, dict) and node.get("role") in SHAPED_ROLES
     ]
+
+
+def _class_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
+    """Node classes: declared, each used, unique, and never on a box they cannot mark.
+
+    A class is a fill a reader matches against the key, so a class nobody uses
+    is a key entry pointing at nothing, and a `class` with no declaration has no
+    name to show in the key. A `note` has no outline to fill and a `group` is a
+    container; a box with a `status` is already marked, and two marks on one box
+    say neither clearly. A `cycle` is a ring of peers: it takes no classes.
+    """
+    nodes = _listed(document, "nodes")
+    classes = document.get("classes")
+    found: list[Violation] = []
+    if kind == "cycle":
+        if "classes" in document:
+            found.append(
+                Violation(
+                    "/classes",
+                    "a cycle is a ring of steps that each lead to the next, so it has no "
+                    "classes to sort them into. Draw the process as a `flow` to class its "
+                    "boxes.",
+                )
+            )
+        found.extend(
+            Violation(
+                _pointer("nodes", index, "class"),
+                "a cycle takes no node classes: draw the process as a `flow` to class its boxes.",
+            )
+            for index, node in enumerate(nodes)
+            if isinstance(node, dict) and "class" in node
+        )
+        return found
+    declared: list[str] = []
+    for index, entry in enumerate(classes if isinstance(classes, list) else ()):
+        if not isinstance(entry, dict) or not isinstance(entry.get("id"), str):
+            continue
+        if entry["id"] in declared:
+            found.append(
+                Violation(
+                    _pointer("classes", index, "id"),
+                    f"duplicate class id {entry['id']!r}: each class is one fill and one "
+                    f"line of the key.",
+                )
+            )
+        declared.append(entry["id"])
+    used: set[str] = set()
+    for index, node in enumerate(nodes):
+        if not isinstance(node, dict) or not isinstance(node.get("class"), str):
+            continue
+        name = node["class"]
+        pointer = _pointer("nodes", index, "class")
+        if name not in declared:
+            close = get_close_matches(name, declared, n=1)
+            found.append(
+                Violation(
+                    pointer,
+                    f"{name!r} is not one of the document's classes"
+                    + (
+                        f" — did you mean {close[0]!r}?"
+                        if close
+                        else ": declare it in the top-level 'classes' as {id, text}, "
+                        "so the key can name it."
+                    ),
+                )
+            )
+            continue
+        used.add(name)
+        role = node.get("role", "step")
+        if role in UNCLASSED_ROLES:
+            found.append(
+                Violation(
+                    pointer,
+                    f"a {role!r} box takes no class: "
+                    + (
+                        "a note has no outline to fill, and is not the content."
+                        if role == "note"
+                        else "a group is a container, not a box of a class."
+                    ),
+                )
+            )
+        if node.get("status"):
+            found.append(
+                Violation(
+                    pointer,
+                    "a box with a 'status' is already marked by the change; a class's fill "
+                    "on it as well says neither clearly. Drop one: a drawing of a change "
+                    "is about the change.",
+                )
+            )
+    for index, name in enumerate(declared):
+        if name not in used:
+            found.append(
+                Violation(
+                    _pointer("classes", index),
+                    f"no node is in the class {name!r}: a key entry that matches nothing in "
+                    f"the drawing. Give it to the boxes it names, or remove it.",
+                )
+            )
+    return found
 
 
 def _status_violations(document: Mapping[str, Any], kind: str) -> list[Violation]:
@@ -10165,9 +10634,11 @@ def parse_document(document: Mapping[str, Any]) -> Document:
                 note=entry.get("note", ""),
                 actor=entry.get("actor", ""),
                 status=entry.get("status", ""),
+                klass=entry.get("class", ""),
             )
             for entry in document.get("nodes", ())
         ),
+        classes=_classes(document),
         hub=_hub(document.get("hub")),
         edges=tuple(
             Edge(
@@ -10269,6 +10740,12 @@ def parse_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _classes(document: Mapping[str, Any]) -> tuple[NodeClass, ...]:
+    return tuple(
+        NodeClass(id=entry["id"], text=entry["text"]) for entry in document.get("classes", ())
+    )
+
+
 def _lanes_document(document: Mapping[str, Any]) -> Document:
     """A swimlane diagram as the graph family reads it: a flow whose actors are lanes.
 
@@ -10281,6 +10758,7 @@ def _lanes_document(document: Mapping[str, Any]) -> Document:
             text=entry["text"],
             role=entry.get("role", "step"),
             status=entry.get("status", ""),
+            klass=entry.get("class", ""),
             lane=entry["actor"],
         )
         for entry in document["nodes"]
@@ -10311,6 +10789,7 @@ def _lanes_document(document: Mapping[str, Any]) -> Document:
             Phase(text=entry["text"], members=tuple(entry["members"]))
             for entry in document.get("phases", ())
         ),
+        classes=_classes(document),
     )
 
 
@@ -10359,13 +10838,39 @@ def _states_document(document: Mapping[str, Any]) -> Document:
             for entry in document.get("transitions", ())
         ),
         groups=tuple(
+            group for entry in document.get("groups", ()) for group in _composite_groups(entry)
+        ),
+    )
+
+
+def region_id(composite: str, number: int) -> str:
+    """The id a composite's region is drawn under: never one an author can write."""
+    return f"({composite} region {number + 1})"
+
+
+def _composite_groups(entry: Mapping[str, Any]) -> tuple[Group, ...]:
+    """A composite as groups: itself, and for one with regions a frameless group per region."""
+    regions = entry.get("regions")
+    if not regions:
+        return (
             Group(
                 id=entry["id"],
                 members=tuple(entry["members"]),
                 text=entry["text"],
                 initial=entry.get("initial", ""),
+            ),
+        )
+    names = tuple(region_id(entry["id"], number) for number in range(len(regions)))
+    return (
+        Group(id=entry["id"], members=names, text=entry["text"]),
+        *(
+            Group(
+                id=name,
+                members=tuple(region["members"]),
+                initial=region["initial"],
+                region=True,
             )
-            for entry in document.get("groups", ())
+            for name, region in zip(names, regions, strict=True)
         ),
     )
 
@@ -11226,6 +11731,7 @@ __all__ = [
     "CARDINALITIES",
     "CAUSE_ROLES",
     "CHART_KINDS",
+    "CLASSES_MAX",
     "CLOCK_KINDS",
     "CLOCK_MAX",
     "CLOCK_NUMERALS",
@@ -11357,6 +11863,7 @@ __all__ = [
     "ModelBrace",
     "ModelPart",
     "Node",
+    "NodeClass",
     "NumberAxis",
     "NumberPoint",
     "NumberRange",

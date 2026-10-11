@@ -42,8 +42,9 @@ THEME_VERSION: Final = 1
 #: from — see specification §5.1.
 #: `io`, `subroutine` and `store` are the flowchart symbols that carry meaning
 #: across standards (ISO 5807, DFDs, Mermaid): data in or out, a process defined
-#: elsewhere, and where data rests. The theme draws every role, but a document may
-#: name those three only where a box is a step of a process (`schema.SHAPED_ROLES`).
+#: elsewhere, and where data rests; `person` is C4's and the use-case actor's: a
+#: human, as against a system. The theme draws every role, but a document may name
+#: those four only where a box is a step of a process (`schema.SHAPED_ROLES`).
 NODE_ROLES: Final = (
     "start",
     "step",
@@ -55,6 +56,7 @@ NODE_ROLES: Final = (
     "io",
     "subroutine",
     "store",
+    "person",
 )
 
 #: Semantic edge roles. `link` is how "merely associated" is said, and `aside`
@@ -65,7 +67,8 @@ NODE_ROLES: Final = (
 #:
 #: `inherits` and `realizes` are the theme's too — it draws every role — but a
 #: document may name them only in an `entities` diagram: which roles a kind
-#: accepts is the schema's decision, per kind (`schema.GRAPH_EDGE_ROLES`).
+#: accepts is the schema's decision, per kind (`schema.GRAPH_EDGE_ROLES`). So is
+#: `async`, a `sequence` message nobody waits on: solid, with an open head.
 EDGE_ROLES: Final = (
     "flow",
     "link",
@@ -76,11 +79,13 @@ EDGE_ROLES: Final = (
     "aside",
     "inherits",
     "realizes",
+    "async",
 )
 
 #: Shapes a node role may take.
 #: `parallelogram` slants its sides, `subroutine` is a box with doubled vertical
-#: sides, and `cylinder` is a drum with an elliptical lid.
+#: sides, `cylinder` is a drum with an elliptical lid, and `person` is a body with
+#: rounded shoulders under a round head (the C4 person).
 NODE_SHAPES: Final = (
     "rect",
     "pill",
@@ -89,6 +94,7 @@ NODE_SHAPES: Final = (
     "parallelogram",
     "subroutine",
     "cylinder",
+    "person",
     "none",
 )
 
@@ -898,6 +904,17 @@ class MarkStyle:
             return self.ramp[-1]
         return self.ramp[round(index * (len(self.ramp) - 1) / (count - 1))]
 
+    def level_tone(self, index: int, count: int) -> float:
+        """The tone for level `index` of `count` graded levels, lightest first.
+
+        One ramp step per level from the lightest, so three levels stay light,
+        and spread across the whole ramp only when there are more levels than
+        steps — a graded shape is mostly area, where a heatmap is mostly cells.
+        """
+        if count <= len(self.ramp):
+            return self.ramp[index]
+        return self.tone_for(index, count)
+
     def fill_for(self, index: int) -> str:
         """The fill for the `index`-th filled mark, cycling if there are more."""
         return self.fills[index % len(self.fills)]
@@ -1678,7 +1695,7 @@ class LanesStyle:
     stripe: float = 0.0
     """How much of the page's ink every second lane is washed with, from 0 (no
     stripes) to `TONE_CEILING`. A tint, not a colour, so dark mode and greyscale
-    keep it."""
+    keep it. Off unless a theme sets it; the bundled default theme does."""
 
     phase: str = "aside"
     """The edge role the line between two phases is drawn in, across every lane:
@@ -1708,7 +1725,17 @@ TONE_CEILING: Final = 0.1
 
 
 def _tone(value: Any, where: str) -> float:
-    """A wash strength: a fraction of the ink from 0 to `TONE_CEILING`."""
+    """A wash strength: a fraction of the ink from 0 to `TONE_CEILING`.
+
+    `false` is read as 0, so a theme can say "off" in the words it would use for
+    a switch; `true` is refused, since it names no strength.
+    """
+    if value is False:
+        return 0.0
+    if value is True:
+        raise ThemeError(
+            f"{where}: expected a fraction from 0 to {TONE_CEILING} (or false), got true"
+        )
     tone = _number(value, where, positive=False)
     if not 0.0 <= tone <= TONE_CEILING:
         raise ThemeError(f"{where}: expected a fraction from 0 to {TONE_CEILING}, got {tone!r}")
@@ -1729,7 +1756,7 @@ class FramesStyle:
 
     tone: float = 0.0
     """The share of the ink one frame lays down, from 0 (outlines only) to
-    `TONE_CEILING`."""
+    `TONE_CEILING`. Off unless a theme sets it; the bundled default theme does."""
 
     levels: int = 3
     """How many levels of nesting deepen the wash; a frame deeper than this is
@@ -1749,6 +1776,92 @@ class FramesStyle:
     def tone_at(self, depth: int) -> float:
         """The wash a frame `depth` levels inside others lays down, or 0."""
         return self.tone if depth < self.levels else 0.0
+
+
+@dataclass(frozen=True)
+class LevelsStyle:
+    """Whether the levels of a `pyramid`, `funnel`, `rings` and `stack` are graded.
+
+    Each level, stage, ring or layer is filled from `[mark] ramp`, the tones a
+    matrix `scale` uses: the first written lightest, one ramp step darker per
+    level after it (spread across the ramp when there are more levels than
+    steps). The page's ink at part opacity, never a colour, so it follows a dark
+    page and prints as greys, and the ramp's own ceiling keeps text legible on
+    the darkest step. A `note` level stays unfilled, and so does a level whose
+    role the theme already fills.
+    """
+
+    shade: bool = False
+    """Whether levels are graded from the ramp; `false` draws outlines only. Off unless
+    a theme sets it; the bundled default theme does."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> LevelsStyle:
+        _reject_unknown(mapping, ("shade",), "[levels]")
+        shade = mapping.get("shade", cls().shade)
+        if shade in (0, 1) and not isinstance(shade, float):
+            shade = bool(shade)
+        if not isinstance(shade, bool):
+            raise ThemeError(f"[levels] shade: expected true or false, got {shade!r}")
+        return cls(shade=shade)
+
+
+#: How many fills `[classes] fills` must hold: one per class a document may declare
+#: (`schema.CLASSES_MAX`, kept equal by a test rather than an import).
+CLASS_FILLS: Final = 4
+
+
+@dataclass(frozen=True)
+class ClassesStyle:
+    """How a `flow`, `tree` or `lanes` drawing's node classes are told apart.
+
+    A class takes the entry at its own position in `fills`, in the order the
+    document declares its classes, and the key under the drawing shows the same
+    fill beside the class's name. `solid` is a grey wash — the page's ink at
+    `tone` — and every other entry is one of the faint patterns a chart's marks
+    use, drawn in the ink: never a colour, so greyscale and dark mode keep it.
+    """
+
+    fills: tuple[str, ...] = ("solid", "dots", "hatch", "grid")
+    """The fill each class takes, in declaration order; distinct, none `none`."""
+
+    tone: float = 0.14
+    """How much of the ink a `solid` class's wash lays down: light enough that
+    its text reads on a white page and on a dark one."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> ClassesStyle:
+        _reject_unknown(mapping, ("fills", "tone"), "[classes]")
+        defaults = cls()
+        fills = mapping.get("fills", list(defaults.fills))
+        allowed = tuple(pattern for pattern in FILL_PATTERNS if pattern != "none")
+        if not isinstance(fills, list) or len(fills) < CLASS_FILLS:
+            raise ThemeError(
+                f"[classes] fills: expected an array of at least {CLASS_FILLS} fills, one "
+                f"per class a document may declare, got {fills!r}"
+            )
+        for entry in fills:
+            if entry not in allowed:
+                raise ThemeError(f"[classes] fills: {entry!r} is not one of {', '.join(allowed)}")
+        if len(set(fills)) != len(fills):
+            raise ThemeError(
+                "[classes] fills: the entries must be distinct — two classes sharing a fill "
+                "cannot be told apart."
+            )
+        tone = _number(mapping.get("tone", defaults.tone), "[classes] tone")
+        if not 0.0 < tone <= RAMP_CEILING:
+            raise ThemeError(
+                f"[classes] tone: expected a fraction above 0 and at most {RAMP_CEILING:g}, "
+                f"so text on the wash stays readable; got {tone!r}"
+            )
+        return cls(fills=tuple(fills), tone=tone)
+
+    def fill_for(self, index: int) -> tuple[str, str, float]:
+        """The `index`-th class's fill pattern, its ink and how much of it shows."""
+        fill = self.fills[index]
+        if fill == "solid":
+            return fill, "currentColor", self.tone
+        return fill, "", 1.0
 
 
 #: What a `files` page says about its file's type.
@@ -1954,6 +2067,8 @@ _TOP_LEVEL_KEYS: Final = (
     "mark",
     "title",
     "frames",
+    "levels",
+    "classes",
     "cycle",
     "funnel",
     "files",
@@ -1998,6 +2113,8 @@ class Theme:
     sequence: SequenceStyle = SequenceStyle()
     lanes: LanesStyle = LanesStyle()
     frames: FramesStyle = FramesStyle()
+    levels: LevelsStyle = LevelsStyle()
+    classes: ClassesStyle = ClassesStyle()
     entities: EntitiesStyle = EntitiesStyle()
     gantt: GanttStyle = GanttStyle()
     board: BoardStyle = BoardStyle()
@@ -2064,6 +2181,8 @@ class Theme:
             sequence=SequenceStyle.from_mapping(_section(mapping, "sequence")),
             lanes=LanesStyle.from_mapping(_section(mapping, "lanes")),
             frames=FramesStyle.from_mapping(_section(mapping, "frames")),
+            levels=LevelsStyle.from_mapping(_section(mapping, "levels")),
+            classes=ClassesStyle.from_mapping(_section(mapping, "classes")),
             entities=EntitiesStyle.from_mapping(_section(mapping, "entities")),
             gantt=GanttStyle.from_mapping(_section(mapping, "gantt")),
             board=BoardStyle.from_mapping(_section(mapping, "board")),

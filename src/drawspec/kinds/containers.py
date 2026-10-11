@@ -43,6 +43,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
+from itertools import pairwise
 from types import MappingProxyType
 from typing import Final
 
@@ -88,6 +89,10 @@ class Frame:
     depth: int
     """How many frames enclose this one. Zero for a top-level group."""
 
+    region_of: str = ""
+    """For an orthogonal region: its composite's id. A region draws no frame; its
+    composite draws the dashed line between it and the next."""
+
     @property
     def right(self) -> float:
         return self.x + self.width
@@ -109,6 +114,7 @@ class Frame:
                 else self.caption.moved_to(self.caption.x + dx, self.caption.y + dy)
             ),
             depth=self.depth,
+            region_of=self.region_of,
         )
 
 
@@ -123,6 +129,9 @@ class Nesting:
     """The group each id sits directly inside. Absent for a top-level id."""
 
     groups: frozenset[str] = field(default_factory=frozenset)
+
+    regions: frozenset[str] = field(default_factory=frozenset)
+    """The groups that are a composite state's orthogonal regions."""
 
     @property
     def roots(self) -> tuple[str, ...]:
@@ -224,6 +233,7 @@ def nesting_of(document: Document) -> Nesting:
         members=members,
         parent=parent,
         groups=frozenset(groups),
+        regions=frozenset(group.id for group in document.groups if group.region),
         _nodes=tuple(node.id for node in document.nodes),
     )
 
@@ -274,11 +284,16 @@ def arrange(
     depth: int = 0,
     centre: str = "",
     max_height: float = 0.0,
+    room: Mapping[str, float] = MappingProxyType({}),
 ) -> Arrangement:
     """Lay out one level, laying out any group in it first.
 
     The recursion is the whole design: a group is sized by arranging its own
     members, and is then just a node of that size to the level above.
+
+    `room` is extra width kept clear on each side of a group's contents — a
+    composite state's region holds its return transitions and their labels
+    inside its own dividers, where a plain frame lets them run outside.
 
     `max_height` is a ceiling on the whole drawing, passed to the direction
     choice — see `layout.base.best_layout`. It is *not* divided among nested
@@ -302,15 +317,18 @@ def arrange(
                 max_width - pad.horizontal * 2,
                 prefer,
                 entered,
-                depth + 1,
+                # A region is part of its composite, not a frame inside it: what
+                # it holds is washed as one step in from the composite.
+                depth if identifier in nesting.regions else depth + 1,
                 centre,
+                room=room,
             )
             inner[identifier] = sub
             caption = captions.get(identifier)
             top, bottom = _insets(caption, theme, spacing, identifier in entered)
             sizes[identifier] = (
                 max(
-                    sub.width + pad.horizontal,
+                    sub.width + pad.horizontal + room.get(identifier, 0.0) * 2,
                     (caption.width + pad.horizontal) if caption else 0.0,
                 ),
                 sub.height + top + bottom,
@@ -327,15 +345,18 @@ def arrange(
         if up_source is not None and up_target is not None and up_source != up_target:
             lifted.add((up_source, up_target))
 
-    layout = best_layout(
-        LayeredEngine(spacing=spacing),
-        [LayoutNode(id=i, width=sizes[i][0], height=sizes[i][1]) for i in level],
-        [LayoutEdge(source=s, target=t) for s, t in sorted(lifted)],
-        max_width=max_width,
-        prefer=prefer,
-        centre=centre,
-        max_height=max_height,
-    )
+    if level and all(identifier in nesting.regions for identifier in level):
+        layout = _regions_layout(level, sizes, spacing, max_width)
+    else:
+        layout = best_layout(
+            LayeredEngine(spacing=spacing),
+            [LayoutNode(id=i, width=sizes[i][0], height=sizes[i][1]) for i in level],
+            [LayoutEdge(source=s, target=t) for s, t in sorted(lifted)],
+            max_width=max_width,
+            prefer=prefer,
+            centre=centre,
+            max_height=max_height,
+        )
 
     places: dict[str, Placement] = {}
     frames: list[Frame] = []
@@ -371,6 +392,9 @@ def arrange(
                 # an arrow arriving from above never wants.
                 caption=(None if caption is None else caption.moved_to(place.x, place.y)),
                 depth=depth,
+                region_of=nesting.parent.get(identifier, "")
+                if identifier in nesting.regions
+                else "",
             )
         )
 
@@ -379,6 +403,39 @@ def arrange(
         places=places,
         frames=tuple(frames),
         directions=MappingProxyType(directions),
+    )
+
+
+def _regions_layout(
+    level: Sequence[str],
+    sizes: Mapping[str, tuple[float, float]],
+    spacing: Spacing,
+    max_width: float,
+) -> Layout:
+    """A composite state's regions: side by side when they fit across, else stacked.
+
+    Never a grid, which is what a layered engine makes of unconnected boxes too
+    wide for one row: a divider has to run from one side of the composite to the
+    other. Each region is stretched to the full height of the row, or the full
+    width of the column, so it is bounded by the dividers and the frame alone.
+    """
+    gap = spacing.node_gap
+    across = sum(sizes[i][0] for i in level) + gap * (len(level) - 1)
+    places: dict[str, Placement] = {}
+    if across <= max_width:
+        tall = max(sizes[i][1] for i in level)
+        x = 0.0
+        for identifier in level:
+            places[identifier] = Placement(x, 0.0, sizes[identifier][0], tall, 0)
+            x += sizes[identifier][0] + gap
+        return Layout(placements=places, width=across, height=tall, direction="right")
+    wide = max(sizes[i][0] for i in level)
+    y = 0.0
+    for rank, identifier in enumerate(level):
+        places[identifier] = Placement(0.0, y, wide, sizes[identifier][1], rank)
+        y += sizes[identifier][1] + gap
+    return Layout(
+        placements=places, width=wide, height=y - gap, direction="down", fits=wide <= max_width
     )
 
 
@@ -525,8 +582,89 @@ def border_obstacles(frame: Frame, theme: Theme) -> tuple[Obstacle, ...]:
     )
 
 
+def region_separators(
+    frames: Sequence[Frame],
+) -> tuple[tuple[tuple[float, float], tuple[float, float]], ...]:
+    """The dashed lines between a composite state's orthogonal regions.
+
+    Midway across the gap between one region and the next, from one side of the
+    composite's frame to the other: a vertical line between regions laid side by
+    side, which starts under the caption if the caption reaches that far, and a
+    horizontal one between regions stacked.
+    """
+    return tuple(line for _, line in _composite_separators(frames))
+
+
+def _composite_separators(
+    frames: Sequence[Frame],
+) -> tuple[tuple[str, tuple[tuple[float, float], tuple[float, float]]], ...]:
+    """Each of `region_separators`' lines with the composite it divides."""
+    by_id = {frame.id: frame for frame in frames}
+    lines: list[tuple[str, tuple[tuple[float, float], tuple[float, float]]]] = []
+    composites = sorted({frame.region_of for frame in frames if frame.region_of})
+    for composite in composites:
+        outer = by_id[composite]
+        regions = sorted(
+            (frame for frame in frames if frame.region_of == composite),
+            key=lambda frame: (frame.x, frame.y),
+        )
+        across = all(first.right <= second.x + 0.01 for first, second in pairwise(regions))
+        if not across:
+            regions.sort(key=lambda frame: (frame.y, frame.x))
+        for first, second in pairwise(regions):
+            if across:
+                x = (first.right + second.x) / 2
+                caption = outer.caption
+                top = (
+                    caption.y + caption.height
+                    if caption is not None and caption.x + caption.width > x
+                    else outer.y
+                )
+                lines.append((composite, ((x, top), (x, outer.bottom))))
+            else:
+                y = (first.bottom + second.y) / 2
+                lines.append((composite, ((outer.x, y), (outer.right, y))))
+    return tuple(lines)
+
+
+def region_dividers(frames: Sequence[Frame]) -> dict[str, tuple[tuple[str, float], ...]]:
+    """Per composite with regions, where its dividers meet its border: `x` or `y`, and where.
+
+    For routing, so no arrow to or from the composite lands where a divider does.
+    """
+    found: dict[str, list[tuple[str, float]]] = {}
+    for composite, (start, end) in _composite_separators(frames):
+        found.setdefault(composite, []).append(
+            ("x", start[0]) if start[0] == end[0] else ("y", start[1])
+        )
+    return {composite: tuple(lines) for composite, lines in found.items()}
+
+
+def separator_obstacles(
+    lines: Sequence[tuple[tuple[float, float], tuple[float, float]]], theme: Theme
+) -> tuple[Obstacle, ...]:
+    """Each region separator as a thin obstacle, so no label sits on it."""
+    half = theme.edge.clearance
+    return tuple(
+        Obstacle(
+            f"\x00separator {index}",
+            x=min(x1, x2) - half,
+            y=min(y1, y2) - half,
+            width=abs(x2 - x1) + half * 2,
+            height=abs(y2 - y1) + half * 2,
+        )
+        for index, ((x1, y1), (x2, y2)) in enumerate(lines)
+    )
+
+
 def frame_primitives(frame: Frame, theme: Theme, measurer: TextMeasurer) -> tuple[Primitive, ...]:
-    """The frame's outline, then its caption across the top of it."""
+    """The frame's outline, then its caption across the top of it.
+
+    A composite state's region draws nothing: it is part of its composite's
+    frame, and `region_separators` draws what divides it from the next.
+    """
+    if frame.region_of:
+        return ()
     tone = theme.frames.tone_at(frame.depth)
     rect = Rect(GROUP_ROLE, x=frame.x, y=frame.y, width=frame.width, height=frame.height)
     if tone:
@@ -552,4 +690,7 @@ __all__ = [
     "frame_anchors",
     "frame_primitives",
     "nesting_of",
+    "region_dividers",
+    "region_separators",
+    "separator_obstacles",
 ]

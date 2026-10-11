@@ -43,10 +43,17 @@ from bisect import bisect_left, bisect_right
 from collections.abc import Iterator, Mapping, Sequence, Set
 from dataclasses import dataclass, field, replace
 from itertools import pairwise
+from types import MappingProxyType
 from typing import Final
 
 from drawspec.errors import FitError, LayoutError
-from drawspec.geometry import CYLINDER_CAP, PARALLELOGRAM_SLANT
+from drawspec.geometry import (
+    CYLINDER_CAP,
+    PARALLELOGRAM_SLANT,
+    PERSON_HEAD,
+    PERSON_SHOULDER,
+    PERSON_TOP,
+)
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, TextRun
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme
@@ -389,6 +396,8 @@ def _anchor(box: Obstacle, side: str, fraction: float) -> tuple[float, float]:
     half_width, half_height = box.width / 2, box.height / 2
     if box.shape in ("parallelogram", "cylinder") and half_width and half_height:
         return _round_point(_on_slanted_or_drum(box, side, x, y))
+    if box.shape == "person" and half_width and half_height:
+        return _round_point(_on_person(box, side, x, y))
     if box.shape not in ("diamond", "ellipse", "pill") or not half_width or not half_height:
         return x, y
 
@@ -443,6 +452,35 @@ def _on_slanted_or_drum(box: Obstacle, side: str, x: float, y: float) -> tuple[f
     across = (x - box.centre[0]) / (box.width / 2)
     rise = cap * (1 - math.sqrt(max(1 - across**2, 0.0)))
     return (x, box.y + rise) if side == "top" else (x, box.bottom - rise)
+
+
+def _on_person(box: Obstacle, side: str, x: float, y: float) -> tuple[float, float]:
+    """Where a port on `box`'s rectangle meets a `person`'s outline.
+
+    From above, an arrow lands on the head where the head is over it, and on the
+    shoulders beside it; from the side, on the body, its rounded shoulder, or the
+    head at that height. The base is flat between its two small corners. Each is
+    the shape `kinds.common.person_silhouette` draws, so the arrow stops on a line.
+    """
+    centre_x = box.centre[0]
+    centre_y = box.y + PERSON_HEAD
+    shoulders = box.y + PERSON_TOP
+    shoulder = min(PERSON_SHOULDER, box.width / 2, (box.bottom - shoulders) / 2)
+    if side == "top":
+        away = abs(x - centre_x)
+        if away <= PERSON_HEAD:
+            return x, centre_y - math.sqrt(max(PERSON_HEAD**2 - away**2, 0.0))
+        corner = max(box.x + shoulder - x, x - (box.right - shoulder), 0.0)
+        return x, shoulders + shoulder - math.sqrt(max(shoulder**2 - corner**2, 0.0))
+    if side == "bottom":
+        return x, y
+    step = -1.0 if side == "left" else 1.0
+    if y < shoulders:
+        reach = math.sqrt(max(PERSON_HEAD**2 - (y - centre_y) ** 2, 0.0))
+        return centre_x + step * reach, y
+    rise = max(shoulders + shoulder - y, 0.0)
+    inset = shoulder - math.sqrt(max(shoulder**2 - rise**2, 0.0))
+    return (box.x + inset, y) if side == "left" else (box.right - inset, y)
 
 
 def _spread(index: int, count: int) -> float:
@@ -651,6 +689,7 @@ def route_edges(
     *,
     direction: str = "down",
     anchors: Sequence[Obstacle] = (),
+    dividers: Mapping[str, tuple[tuple[str, float], ...]] = MappingProxyType({}),
 ) -> tuple[Route, ...]:
     """Route every connector around every obstacle, in the order given.
 
@@ -717,7 +756,7 @@ def route_edges(
         channel,
     )
     fractions = _clear_frame_ports(
-        connectors, boxes, sides, fractions, {box.id for box in anchors}, channel * 2
+        connectors, boxes, sides, fractions, {box.id for box in anchors}, channel * 2, dividers
     )
     reaches = _shared_reaches(connectors, boxes, sides, fractions, obstacles, lanes, theme)
     approaches: dict[int, tuple[_Approach, _Approach]] = {}
@@ -1096,8 +1135,12 @@ def _clear_frame_ports(
     fractions: Mapping[int, tuple[float, float]],
     frames: Set[str],
     spacing: float,
+    dividers: Mapping[str, tuple[tuple[str, float], ...]] = MappingProxyType({}),
 ) -> dict[int, tuple[float, float]]:
     """Frame ends moved off the line a box inside the frame already leaves on.
+
+    And off a composite state's dividers (`dividers`: per frame, `x` or `y` and
+    where), the dashed lines between its regions, which meet its border too.
 
     A group's contents are centred in its frame, so an edge leaving the middle
     of the frame's bottom and an edge leaving the middle of the bottom box inside
@@ -1146,6 +1189,9 @@ def _clear_frame_ports(
                 if member_side == side
                 and _inside(boxes[member], frame)
                 and not _inside(boxes[beyond], frame)
+            ]
+            lines += [
+                where for axis, where in dividers.get(node, ()) if (axis == "x") == (along == 0)
             ]
             if not lines:
                 continue

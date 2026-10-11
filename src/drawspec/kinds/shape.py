@@ -40,7 +40,7 @@ from typing import Final
 
 from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, size_box
-from drawspec.kinds.common import text_runs
+from drawspec.kinds.common import level_tones, text_runs, toned
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextRun
 from drawspec.schema import Document, Item, sankey_amount
 from drawspec.text.measure import TextMeasurer
@@ -289,20 +289,24 @@ def _pyramid(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     height = level_height * count
 
     primitives: list[Primitive] = []
+    tones = level_tones([item.role for item in levels], theme)
     for index, (item, box) in enumerate(zip(levels, boxes, strict=True)):
         top = index * level_height
         top_width = width * (index + 1) / steps
         bottom_width = width * (index + 2) / steps
         middle = width / 2
         primitives.append(
-            Polygon(
-                item.role,
-                points=(
-                    (middle - top_width / 2, top),
-                    (middle + top_width / 2, top),
-                    (middle + bottom_width / 2, top + level_height),
-                    (middle - bottom_width / 2, top + level_height),
+            toned(
+                Polygon(
+                    item.role,
+                    points=(
+                        (middle - top_width / 2, top),
+                        (middle + top_width / 2, top),
+                        (middle + bottom_width / 2, top + level_height),
+                        (middle - bottom_width / 2, top + level_height),
+                    ),
                 ),
+                tones[index],
             )
         )
         placed = box.resized(width=top_width, height=level_height).moved_to(
@@ -476,7 +480,25 @@ def _funnel_down(document: Document, theme: Theme, measurer: TextMeasurer) -> Sc
     height = stage_height * count
     middle = width / 2
 
+    # Each stage's grade is a region behind the one outline, so the funnel
+    # still reads as one band the stages are gated off in.
     primitives: list[Primitive] = [
+        _stage_region(
+            stage.role,
+            (
+                (middle - span(index) / 2, index * stage_height),
+                (middle + span(index) / 2, index * stage_height),
+                (middle + span(index + 1) / 2, (index + 1) * stage_height),
+                (middle - span(index + 1) / 2, (index + 1) * stage_height),
+            ),
+            tone,
+        )
+        for index, (stage, tone) in enumerate(
+            zip(stages, level_tones([stage.role for stage in stages], theme), strict=True)
+        )
+        if tone
+    ]
+    primitives.append(
         Polygon(
             stages[0].role,
             points=(
@@ -486,7 +508,7 @@ def _funnel_down(document: Document, theme: Theme, measurer: TextMeasurer) -> Sc
                 (middle - span(count) / 2, height),
             ),
         )
-    ]
+    )
     for index in range(1, count):
         gate = index * stage_height
         primitives.extend(
@@ -552,7 +574,26 @@ def _funnel_right(document: Document, theme: Theme, measurer: TextMeasurer) -> S
         return height * (1 - (1 - FUNNEL_TAPER) * share) / 2
 
     middle = height / 2
-    primitives: list[Primitive] = [
+    primitives: list[Primitive] = []
+    for index, (stage, tone) in enumerate(
+        zip(stages, level_tones([stage.role for stage in stages], theme), strict=True)
+    ):
+        if not tone:
+            continue
+        near, far = index * slice_width, (index + 1) * slice_width
+        primitives.append(
+            _stage_region(
+                stage.role,
+                (
+                    (near, middle - edge(near)),
+                    (far, middle - edge(far)),
+                    (far, middle + edge(far)),
+                    (near, middle + edge(near)),
+                ),
+                tone,
+            )
+        )
+    primitives.append(
         Polygon(
             stages[0].role,
             points=(
@@ -562,7 +603,7 @@ def _funnel_right(document: Document, theme: Theme, measurer: TextMeasurer) -> S
                 (0.0, middle + edge(0.0)),
             ),
         )
-    ]
+    )
     for index in range(1, count):
         gate = index * slice_width
         primitives.extend(
@@ -599,6 +640,18 @@ def _funnel_right(document: Document, theme: Theme, measurer: TextMeasurer) -> S
     )
 
 
+def _stage_region(role: str, points: tuple[tuple[float, float], ...], tone: float) -> Polygon:
+    """One funnel stage's grade: an unoutlined region, the ink at part opacity."""
+    return Polygon(
+        role,
+        points=points,
+        fill="solid",
+        fill_colour="currentColor",
+        fill_opacity=tone,
+        region=True,
+    )
+
+
 def _funnel_height(boxes: list[Box], count: int, width: float, theme: Theme) -> float:
     """The shallowest band every stage's text still fits in where it ends.
 
@@ -631,8 +684,8 @@ def _rings(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     radii = _ring_radii(extent, count)
 
     primitives: list[Primitive] = [
-        Ellipse(item.role, cx=centre, cy=centre, rx=ring, ry=ring)
-        for item, ring in zip(rings, radii, strict=True)
+        toned(Ellipse(item.role, cx=centre, cy=centre, rx=ring, ry=ring), alpha)
+        for item, ring, alpha in zip(rings, radii, _ring_alphas(rings, theme), strict=True)
     ]
 
     for index, (item, ring) in enumerate(zip(rings, radii, strict=True)):
@@ -686,6 +739,26 @@ def _rings(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         title=document.title,
         description=document.description,
     )
+
+
+def _ring_alphas(rings: tuple[Item, ...], theme: Theme) -> list[float]:
+    """Each circle's own opacity, so the band it adds shows its level's tone.
+
+    The circles are drawn outermost first and each lies over the ones around
+    it, so a circle's paint is composited over its parents': it lays down only
+    what takes the band from the tone already there to its own. A ring left
+    unfilled (a `note`) adds nothing, and the next one in starts from what is
+    under it.
+    """
+    alphas: list[float] = []
+    under = 0.0
+    for tone in level_tones([item.role for item in rings], theme):
+        if tone <= under:
+            alphas.append(0.0)
+            continue
+        alphas.append(1 - (1 - tone) / (1 - under))
+        under = tone
+    return alphas
 
 
 def _ring_radii(extent: float, count: int) -> list[float]:

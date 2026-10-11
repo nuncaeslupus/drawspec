@@ -12,6 +12,54 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`sequence` async messages and actors**: message role `async`, UML's asynchronous
+  message — a solid line with an open head (new theme edge role `async`) — which opens
+  no activation bar; a `weak` reply answering one is refused. Participant role `actor`
+  draws a person as the UML stick figure over the name, every head's name on one line
+  and the lifeline under it. `person`/`user` on a participant and `asynchronous`,
+  `signal`, `reply` and the like on a message are refused with the right role named.
+  See `reference/sequence-actor-signin.json`, `sequence-async-export.json` and
+  `sequence-actor-handover.json`; no existing drawing changes.
+
+- **Orthogonal regions in `states`**: a composite takes `regions` (2–4, each
+  `{members, initial}`) in place of `members`, drawn side by side or stacked and divided
+  by dashed lines in the frame's role, each region with its own initial dot. Entering the
+  composite enters every region; entering one state inside a region starts the others.
+  Refused at their pointers: a state in two regions, a region without an `initial` (or
+  with one outside it), `members` beside `regions`, an `initial` on the composite, a
+  single region, more than 4 (budget `groups/regions`), and a transition between two
+  regions of one composite. No arrow to or from the composite lands on a divider. Fork
+  and join bars are not drawn. See `reference/states-regions-order.json`,
+  `states-regions-player.json` and `states-regions-keyboard.json`.
+
+- **`person` node role**, on `flow`, `tree` and `lanes` nodes: the C4 person, a body
+  with rounded shoulders under a round head, drawn as one outline (new theme shape
+  `person`), the name written in the body. Arrows land on the visible outline: on the
+  head from above, on the shoulders beside it, on the body or head from the side. A
+  `cycle` refuses it (use `actor`). See `reference/flow-person-helpdesk.json`,
+  `tree-person-escalation.json` and `flow-classes-context.json`; `flow-node-roles`
+  draws all eleven roles.
+
+- **Node classes with a key**, on `flow`, `tree` and `lanes`: a node's `class` names
+  one of 1–4 top-level `classes` (`{id, text}`); each class is drawn as the next fill
+  of the theme's new `[classes] fills` sequence (a grey wash at `[classes] tone`, then
+  dots, hatch, grid — ink only), and a key under the drawing names each. Refused at
+  their pointers: an undeclared class (closest named), an unused class, more than 4
+  (budget), a duplicate id, a class on a `note` or `group`, a class with `status` on
+  the same box, and classes on a `cycle`. See `reference/flow-classes-context.json`
+  (a C4-style context, external systems greyed), `flow-classes-teams.json`,
+  `tree-classes-board.json` and `lanes-classes-claim.json`. One class alone is
+  allowed, so a C4 context can grey only its external systems and keep the key.
+
+- **Graded levels**, theme only: a `pyramid`'s levels, a `funnel`'s stages, `rings`
+  and a `stack`'s layers are filled from `[mark] ramp`, lightest first in the order
+  written, one ramp step per level (spread across the ramp past five). The page's ink
+  at part opacity, so dark mode and greyscale keep it, and the ramp's ceiling keeps
+  text legible. On by default; the new key `[levels] shade = false` turns it off. A
+  `note` level stays unfilled. `[frames] tone` and `[lanes] stripe` now also take
+  `false` for off, and the guide lists all three greys and how to turn each off.
+  Changes every pyramid, funnel, rings and stack drawing in the gallery.
+
 - **`lanes` take `phases`**, the second axis of a cross-functional flowchart:
   `[{text, members}]` in the order the process runs, every step in exactly one.
   Drawn as a band of phase names along the lanes' outer edge (over the strips in

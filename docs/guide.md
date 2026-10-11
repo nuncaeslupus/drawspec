@@ -218,7 +218,7 @@ written down. Here it is.
 
 **A role says what a box is; the theme decides what that looks like.** So the
 question to ask is never "should this be a diamond" — it is "is this a
-question?". These are the ten, and the shape each one currently gets from the
+question?". These are the eleven, and the shape each one currently gets from the
 bundled theme:
 
 | Role | Use it for | Drawn as |
@@ -233,10 +233,18 @@ bundled theme:
 | `io` | Data coming in or going out: a file read, a form filled in, a report sent | a parallelogram |
 | `subroutine` | A process defined elsewhere — a routine with its own chart, a job run by name | a box with doubled sides |
 | `store` | Where data rests: a database, a queue, a file kept | a drum (cylinder) |
+| `person` | A human — a user, a customer, a member of staff — as against a system: C4's person, a use case's actor | a body with rounded shoulders under a round head, the name in the body |
 
-The last three are the flowchart symbols (ISO 5807, a data-flow diagram's store)
-and are named only on a `flow`, `tree` or `lanes` node; every other kind's boxes
-have a fixed vocabulary of their own, and a `cycle` refuses them. Reach for one
+`io`, `subroutine` and `store` are the flowchart symbols (ISO 5807, a data-flow
+diagram's store) and `person` is the C4 person; all four are named only on a
+`flow`, `tree` or `lanes` node — every other kind's boxes have a fixed vocabulary
+of their own, and a `cycle` refuses them. A person's head sits above its body and
+an arrow from above lands on the head, so leave room for it rather than for a
+taller box: the words go in the body. `person` says *a human is here*; who
+performs a step is still `actor` (see
+[`reference/flow-person-helpdesk.json`](reference/flow-person-helpdesk.json),
+[`reference/tree-person-escalation.json`](reference/tree-person-escalation.json)
+and the C4-style [`reference/flow-classes-context.json`](reference/flow-classes-context.json)). Reach for one
 only when the distinction is the point — a chart whose every box is `io` has
 said nothing.
 
@@ -269,6 +277,7 @@ with that* and nothing about which way.
 | `aside` | Loosely associated, and in no direction — a note, a source, a caveat hanging off the thing it is about | dashed, with no head |
 | `inherits` | `entities` only: this class is a kind of that one | a hollow triangle at the general end |
 | `realizes` | `entities` only: this class implements that interface | dashed, with a hollow triangle |
+| `async` | `sequence` messages only: sent without waiting for an answer | solid, with an open head |
 
 Both sets are drawn, one box per role, in
 [`reference/flow-node-roles.json`](reference/flow-node-roles.json) and
@@ -448,6 +457,40 @@ understanding before you change anything else:
   so a tight diagram never gains a type size its neighbours do not have. Below
   `[canvas] min_legible_size` nothing is drawn at all: it is a refusal, with a
   message, rather than text nobody can read.
+
+### The greys the default theme adds, and how to turn each off
+
+The default theme is ink only, with three faint greys that carry order or
+grouping the document already states. Each is the page's ink at part opacity
+(`currentColor` with a `fill-opacity`), never a colour, so it follows a dark page
+and prints as grey. **All three are on by default and each is optional**: one line
+in your theme turns it off.
+
+| What is grey | Key and default | Turn it off |
+|---|---|---|
+| A group's frame, a composite state, a sequence group (deeper nesting darker) | `[frames] tone = 0.05` | `[frames]` `tone = 0` (or `false`) |
+| Every second lane of a swimlane diagram | `[lanes] stripe = 0.04` | `[lanes]` `stripe = 0` (or `false`) |
+| The levels of a `pyramid`, the stages of a `funnel`, `rings` and a `stack`'s layers, lightest first in the order written | `[levels] shade = true` | `[levels]` `shade = false` |
+
+```toml
+version = 1
+name = "outlines"
+
+[frames]
+tone = 0
+
+[lanes]
+stripe = 0
+
+[levels]
+shade = false
+```
+
+Graded levels take their tones from `[mark] ramp`, the same steps a matrix
+`scale` is filled with: one step per level from the lightest, spread across the
+ramp only when there are more levels than steps. The ramp's ceiling is what keeps
+a label legible on the darkest level, on a white page and a dark one. A `note`
+level stays unfilled, and so does a level whose role your theme already fills.
 
 ### A drafting sheet: the `blueprint` theme
 
@@ -701,7 +744,53 @@ sequence diagram's group — is filled with a little of the page's ink
 follows a dark page and prints as a light grey, never a colour. A frame inside a
 frame lays its wash over its parent's, so each level of nesting reads one step
 darker, for `[frames] levels` levels (3); deeper frames are outlined only. A theme
-that wants outlines only sets `tone = 0`.
+that wants outlines only sets `[frames] tone = 0` (or `false`); see
+[the greys the default theme adds](#the-greys-the-default-theme-adds-and-how-to-turn-each-off).
+
+## Classes: boxes of a kind, with a key
+
+A group says *these are inside this*; a **class** says *these are of one kind*,
+wherever they sit. On a `flow`, a `tree` or `lanes`, declare 1 to 4 `classes`,
+each `{id, text}`, and give a node `class` naming one:
+
+```json
+{
+  "version": 1,
+  "kind": "flow",
+  "nodes": [
+    {"id": "lending", "text": "Lending system", "class": "ours"},
+    {"id": "payments", "text": "Card payments", "class": "external"}
+  ],
+  "edges": [{"from": "lending", "to": "payments", "label": "fines"}],
+  "classes": [
+    {"id": "external", "text": "Run by another organisation"},
+    {"id": "ours", "text": "Built and run by the library"}
+  ]
+}
+```
+
+Each class takes the next fill of the theme's fixed sequence, in the order
+declared — `[classes] fills`: a grey wash first (the ink at `[classes] tone`),
+then dots, hatch and a grid, all faint and all ink, so greyscale and dark mode
+keep them — and the key under the drawing shows each fill beside the class's
+`text`. Declare first the class the reader should notice least: in a C4-style
+context diagram that is the external systems, greyed by convention. A node with
+no `class` stays plain, so a class is for the boxes that stand apart, not a
+label every box must carry — and one class is enough: a context diagram that
+greys only its external systems declares just that class, and the key still says
+what the grey means.
+
+Use a class for a grouping the reader must see across the whole drawing — who
+runs a system, which team owns a service, which steps are automated — and a
+`group` when the members belong *together* in one place. Refused, each at its
+pointer: a `class` no class declares (naming the closest), a class no node uses
+(a key entry pointing at nothing), more than 4 classes, a duplicate id, a class on
+a `note` (no outline to fill) or a `group`, a class together with `status` on one
+box (both mark it; a drawing of a change is about the change), and classes on a
+`cycle`. See [`reference/flow-classes-context.json`](reference/flow-classes-context.json),
+[`reference/flow-classes-teams.json`](reference/flow-classes-teams.json),
+[`reference/tree-classes-board.json`](reference/tree-classes-board.json) and
+[`reference/lanes-classes-claim.json`](reference/lanes-classes-claim.json).
 
 ## Drawing a change
 
@@ -916,12 +1005,39 @@ leaves it from whichever state inside is current; one **to** a group enters it a
 the group's own `initial`, which is drawn as a dot inside the frame — and is
 required when anything enters the group.
 
+**Orthogonal regions.** When parts of one composite are current at the same time
+— an order paid for while it is packed, caps lock and num lock — give the
+composite `regions` in place of `members`: a list of `{members, initial}`, two
+to four of them. The regions are drawn side by side (stacked when they do not fit
+across) and divided by dashed lines, each with its own initial dot; entering the
+composite enters every region at its `initial`, and a transition from it leaves
+all of them. A transition from the composite with no `event` is the completion
+transition, taken once every region is done:
+
+```json
+{"id": "processing", "text": "Processing", "regions": [
+  {"members": ["authorising", "captured"], "initial": "authorising"},
+  {"members": ["picking", "packed"], "initial": "picking"}
+]}
+```
+
+Refused at their pointers: a state in two regions, a region with no `initial` or
+one outside it, `members` beside `regions`, an `initial` on the composite itself
+(each region names its own), one region alone, more than four (budget), and a
+transition from one region of a composite into another (they run at once, so
+neither can hand the machine to the other). Fork and join bars are not drawn:
+enter the composite, or a state inside one region, and the others start at their
+own `initial`. See
+[`reference/states-regions-order.json`](reference/states-regions-order.json),
+[`reference/states-regions-player.json`](reference/states-regions-player.json) and
+[`reference/states-regions-keyboard.json`](reference/states-regions-keyboard.json)
+(three regions, stacked).
+
 Refused, each at its pointer: a state no transition reaches from `initial` (a
 bug in the machine — add the transition or delete the state); a `final` state
 with an outgoing transition; `final` naming a group; two transitions leaving one
 state on the same event and guard for different states (give them guards); a
-loop on a group, or a third loop on one state. A machine with parallel regions
-is two machines: draw two. See
+loop on a group, or a third loop on one state. See
 [`reference/states-breaker.json`](reference/states-breaker.json),
 [`reference/states-invoice.json`](reference/states-invoice.json) and
 [`reference/states-ticket.json`](reference/states-ticket.json).
@@ -958,8 +1074,11 @@ A message's `role` says what it is: `flow` (the default) is a call, `weak` a
 reply — dashed with an open head — and `strong` the exchange that matters. A call
 answered later by a `weak` reply from the participant it called gives that
 participant an **activation bar** from the call's row to the reply's, nested when
-calls nest; you never write one. A call nobody answers has no bar, which is how
-an asynchronous message is drawn. A message `from` and `to` the same participant
+calls nest; you never write one. A call nobody answers has no bar. To say a
+message is sent without waiting — a queue, an event, a text message — give it
+`role: "async"`: UML's solid line with an open, stick head. It opens no bar, and a
+`weak` reply answering it is refused (an answer that comes later is a message of
+its own). A message `from` and `to` the same participant
 is a hook on the right of its lifeline, and a `note` is set on its message's row
 in one column right of the last lifeline.
 
@@ -969,8 +1088,10 @@ beside it. An `alt` or `par` may be divided by `else` — `[{"at": "<id>", "text
 …}]`, a dashed line above that message. If a reply inside one branch of an `alt`
 answers a call made before the frame, the bar runs on to the last answer in the
 frame. `groups` frame a run of neighbouring lifelines, named at the top.
-Participant roles are `step`, `emphasis`, or `note` for an outside system drawn
-as words with no box; the theme's `[sequence]` sets the bar's width and the role
+Participant roles are `step`, `emphasis`, `note` for an outside system drawn
+as words with no box, or `actor` for a person — the UML stick figure over the
+name, the names of all heads on one line and the lifeline under them (`person`
+is refused, pointing here); the theme's `[sequence]` sets the bar's width and the role
 a lifeline is drawn in.
 
 Refused, each at its pointer: a message naming an unknown participant; a
@@ -984,7 +1105,11 @@ past that it is a trace; split it into phases. See
 [`reference/sequence-dns.json`](reference/sequence-dns.json),
 [`reference/sequence-upload.json`](reference/sequence-upload.json),
 [`reference/sequence-drain.json`](reference/sequence-drain.json) and
-[`reference/sequence-checkout.json`](reference/sequence-checkout.json).
+[`reference/sequence-checkout.json`](reference/sequence-checkout.json); for
+actors and async messages,
+[`reference/sequence-actor-signin.json`](reference/sequence-actor-signin.json),
+[`reference/sequence-async-export.json`](reference/sequence-async-export.json) and
+[`reference/sequence-actor-handover.json`](reference/sequence-actor-handover.json).
 
 ## Swimlanes
 
@@ -1027,7 +1152,7 @@ over each) is the theme's `[lanes] orientation`: `auto`, the default, takes rows
 when they fit the width and columns when they do not. At the default width, a
 process of more than four or five steps in a row reads down. `[lanes] separator`
 is the edge role the line between two lanes is drawn in, and `[lanes] stripe`
-(0.04 by default, 0 for none) washes every second lane with that share of the
+(0.04 by default; `stripe = 0` or `false` in a theme for none) washes every second lane with that share of the
 page's ink, so five or six lanes read as bands.
 
 ### Phases

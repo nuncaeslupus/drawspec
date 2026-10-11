@@ -1,0 +1,29 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "lanes",
+  "title": "A home insurance claim, by who does each step and how",
+  "description": "A claim passed between the customer, the claims system and a handler: each step is classed as automated or done by hand, so the manual work the insurer wants to cut stands out across the lanes.",
+  "nodes": [
+    { "id": "report", "text": "Report the damage online", "actor": "Customer", "class": "manual" },
+    { "id": "photos", "text": "Upload photos", "actor": "Customer", "class": "manual" },
+    { "id": "check", "text": "Check the policy covers it", "actor": "Claims system", "class": "auto" },
+    { "id": "small", "text": "Under the excess limit?", "actor": "Claims system", "role": "decision", "class": "auto" },
+    { "id": "pay", "text": "Pay the claim", "actor": "Claims system", "class": "auto" },
+    { "id": "assess", "text": "Assess the photos", "actor": "Claims handler", "class": "manual" },
+    { "id": "visit", "text": "Book a loss adjuster's visit", "actor": "Claims handler", "class": "manual" }
+  ],
+  "edges": [
+    { "from": "report", "to": "photos" },
+    { "from": "photos", "to": "check" },
+    { "from": "check", "to": "small" },
+    { "from": "small", "to": "pay", "label": "yes" },
+    { "from": "small", "to": "assess", "label": "no" },
+    { "from": "assess", "to": "pay", "label": "approved" },
+    { "from": "assess", "to": "visit", "label": "unclear" }
+  ],
+  "classes": [
+    { "id": "manual", "text": "Done by hand" },
+    { "id": "auto", "text": "Automated" }
+  ]
+}

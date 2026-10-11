@@ -456,7 +456,7 @@ STAGES = ("Many ideas", "Assessed and chosen", "Validated", "Deployed")
 
 
 def band_of(built: Scene) -> Polygon:
-    (band,) = [item for item in built.primitives if isinstance(item, Polygon)]
+    (band,) = [item for item in built.primitives if isinstance(item, Polygon) and not item.region]
     return band
 
 
@@ -792,7 +792,9 @@ def test_a_funnel_writes_each_amount_and_the_share_kept_from_the_stage_before() 
 def test_amounts_leave_the_taper_uniform() -> None:
     """A diagram, not a bar chart: the outline is the same whatever the counts."""
     with_counts = shape_scene(parse_document(counted_funnel(1000, 10, 1)), THEME, MEASURER)
-    outline = next(item for item in with_counts.primitives if isinstance(item, Polygon))
+    outline = next(
+        item for item in with_counts.primitives if isinstance(item, Polygon) and not item.region
+    )
     (left, _), (right, _), (low_right, _), (low_left, _) = outline.points
     assert (low_right - low_left) / (right - left) == pytest.approx(FUNNEL_TAPER)
 
@@ -816,3 +818,71 @@ def test_funnel_amounts_that_cannot_be_drawn_are_refused(
 ) -> None:
     with pytest.raises(DocumentError, match=pointer):
         parse_document(document)
+
+
+# --------------------------------------------------------------------------
+# Graded levels: `[levels] shade`
+# --------------------------------------------------------------------------
+
+
+PLAIN = replace(THEME, levels=replace(THEME.levels, shade=False))
+
+
+def test_pyramid_levels_are_graded_lightest_first_from_the_ramp() -> None:
+    built = pyramid(*LEVELS)
+    tones = [level.fill_opacity for level in levels_of(built)]
+    assert tones == list(THEME.mark.ramp[: len(LEVELS)])
+    assert all(
+        level.fill == "solid" and level.fill_colour == "currentColor" for level in levels_of(built)
+    )
+
+
+def test_a_theme_can_turn_grading_off() -> None:
+    document = {"version": 1, "kind": "pyramid", "levels": [{"text": t} for t in LEVELS]}
+    built = shape_scene(parse_document(document), PLAIN, MEASURER)
+    assert all(level.fill == "" for level in levels_of(built))
+
+
+def test_a_note_level_stays_unfilled() -> None:
+    document = {
+        "version": 1,
+        "kind": "pyramid",
+        "levels": [{"text": "Top"}, {"text": "Context", "role": "note"}, {"text": "Base"}],
+    }
+    built = shape_scene(parse_document(document), THEME, MEASURER)
+    assert [level.fill_opacity for level in levels_of(built)] == [
+        THEME.mark.ramp[0],
+        1.0,
+        THEME.mark.ramp[2],
+    ]
+
+
+def test_more_levels_than_ramp_steps_spread_across_the_ramp() -> None:
+    count = len(THEME.mark.ramp) + 2
+    tones = [THEME.mark.level_tone(index, count) for index in range(count)]
+    assert tones[0] == THEME.mark.ramp[0] and tones[-1] == THEME.mark.ramp[-1]
+    assert tones == sorted(tones)
+
+
+def test_funnel_stages_are_graded_behind_one_outline() -> None:
+    for theme in (THEME, replace(SIDEWAYS, levels=THEME.levels)):
+        built = funnel(*STAGES, theme=theme)
+        regions = [p for p in built.primitives if isinstance(p, Polygon) and p.region]
+        assert [region.fill_opacity for region in regions] == list(THEME.mark.ramp[: len(STAGES)])
+        assert band_of(built).fill == ""
+
+
+def test_rings_composite_to_each_rings_own_tone() -> None:
+    """The circles lie over each other, so each lays down only what takes its
+    band from the tone under it to its own."""
+    circles = [p for p in rings(*RINGS).primitives if isinstance(p, Ellipse)]
+    under = 0.0
+    for circle, tone in zip(circles, THEME.mark.ramp, strict=False):
+        under = under + (1 - under) * circle.fill_opacity
+        assert under == pytest.approx(tone)
+
+
+def test_a_graded_level_is_emitted_as_the_ink_at_part_opacity() -> None:
+    document = {"version": 1, "kind": "rings", "rings": [{"text": t} for t in RINGS]}
+    svg = render(document, theme=THEME)
+    assert 'fill="currentColor"' in svg and "fill-opacity" in svg

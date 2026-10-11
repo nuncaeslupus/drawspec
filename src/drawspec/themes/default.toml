@@ -132,6 +132,20 @@ ramp = [0.08, 0.16, 0.24, 0.32, 0.4]
 tone = 0.05
 levels = 3
 
+[levels]
+# A pyramid's levels, a funnel's stages, rings and a stack's layers are graded
+# from the ramp above: the first written lightest, one step darker per level, so
+# the order the author wrote reads at a glance and in greyscale. The ink at part
+# opacity, as a frame's wash is; false for outlines only.
+shade = true
+
+[classes]
+# A flow's, tree's or swimlane's node classes, in the order the document declares
+# them: the first a grey wash (the ink at `tone`), the rest faint patterns in the
+# ink. The key under the drawing shows each beside its name.
+fills = ["solid", "dots", "hatch", "grid"]
+tone = 0.14
+
 [states]
 # A state machine's pseudo-states: the filled dot it starts from, and the ringed
 # dot each final state leads to. Marks with no words, so sized here: the dot
@@ -334,6 +348,17 @@ fill_pattern = "none"
 dash = "none"
 stroke_width = 1.5
 
+# A person — a user, a customer, a member of staff, as against a system — is a
+# body with rounded shoulders under a round head, the C4 person shape; the name
+# is written in the body, under the head.
+[role.person]
+shape = "person"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "none"
+stroke_width = 1.5
+
 # An aside is set beside the argument, not boxed off from it: a note is words on
 # the page, and the box drawspec used to draw round them was a border with
 # nothing on the other side of it. A grouping that *does* want a line round it is
@@ -447,6 +472,17 @@ head = "triangle"
 tail = "none"
 stroke = "currentColor"
 dash = "4 3"
+stroke_width = 1.5
+
+# A sequence diagram's asynchronous message, named only in a `sequence`: sent,
+# and the sender carries on. UML draws it as a solid line with an open (stick)
+# head — `flow`'s line with `weak`'s head, so it is told from a call by the head
+# and from a reply by the solid line.
+[edge_role.async]
+head = "open"
+tail = "none"
+stroke = "currentColor"
+dash = "none"
 stroke_width = 1.5
 
 # A funnel is a thing you pour into, and a reader already knows what one looks

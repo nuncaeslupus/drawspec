@@ -1,0 +1,74 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "flow",
+  "title": "How a question reaches the help desk",
+  "description": "The people in a support process drawn as people and the systems as boxes: a customer asks, the assistant answers what it can, and a person on the desk takes the rest, with a specialist behind them.",
+  "nodes": [
+    {
+      "id": "customer",
+      "text": "Customer",
+      "role": "person"
+    },
+    {
+      "id": "assistant",
+      "text": "Answering assistant"
+    },
+    {
+      "id": "known",
+      "text": "A known question?",
+      "role": "decision"
+    },
+    {
+      "id": "answer",
+      "text": "Answer from the help pages",
+      "role": "terminal"
+    },
+    {
+      "id": "agent",
+      "text": "Help desk agent",
+      "role": "person"
+    },
+    {
+      "id": "tickets",
+      "text": "Ticket queue",
+      "role": "store"
+    },
+    {
+      "id": "specialist",
+      "text": "Product specialist",
+      "role": "person"
+    }
+  ],
+  "edges": [
+    {
+      "from": "customer",
+      "to": "assistant",
+      "label": "asks"
+    },
+    {
+      "from": "assistant",
+      "to": "known"
+    },
+    {
+      "from": "known",
+      "to": "answer",
+      "label": "yes"
+    },
+    {
+      "from": "known",
+      "to": "tickets",
+      "label": "no"
+    },
+    {
+      "from": "tickets",
+      "to": "agent",
+      "label": "picks up"
+    },
+    {
+      "from": "agent",
+      "to": "specialist",
+      "label": "escalates"
+    }
+  ]
+}

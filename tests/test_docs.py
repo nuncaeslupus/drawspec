@@ -134,6 +134,8 @@ def test_every_role_is_drawn_somewhere_in_the_reference_set() -> None:
         drawn.update(node.get("role", "step") for node in document.get("nodes", ()))
         drawn.update("group" for _ in document.get("groups", ()))
         linking.update(edge.get("role", "flow") for edge in document.get("edges", ()))
+        # A sequence's messages are drawn in edge roles too; `async` is named only there.
+        linking.update(message.get("role", "flow") for message in document.get("messages", ()))
     assert set(NODE_ROLES) <= drawn, set(NODE_ROLES) - drawn
     assert set(EDGE_ROLES) <= linking, set(EDGE_ROLES) - linking
 

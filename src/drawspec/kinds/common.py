@@ -19,12 +19,22 @@ width to place its first span — which is exactly what `TextBlock` carries.
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import replace
 from typing import Final
 
 from drawspec.errors import FitError
 from drawspec.filetree import STATUSES
-from drawspec.geometry import CYLINDER_CAP, PARALLELOGRAM_SLANT, SUBROUTINE_INSET, Box, span_at
+from drawspec.geometry import (
+    CYLINDER_CAP,
+    PARALLELOGRAM_SLANT,
+    PERSON_HEAD,
+    PERSON_SHOULDER,
+    PERSON_TOP,
+    SUBROUTINE_INSET,
+    Box,
+    span_at,
+)
 from drawspec.scene import (
     Ellipse,
     Path,
@@ -45,6 +55,59 @@ from drawspec.theme import Theme
 def box_primitives(box: Box, theme: Theme, measurer: TextMeasurer) -> tuple[Primitive, ...]:
     """The outline of `box`, its lead rule if it has one, then its text."""
     return (*outline(box, theme), *lead_rule(box), *text_runs(box, theme, measurer))
+
+
+def level_tones(roles: Sequence[str], theme: Theme) -> list[float]:
+    """Each level's share of the ink when the theme grades levels, else 0.
+
+    `[levels] shade` grades a pyramid's levels, a funnel's stages, rings and a
+    stack's layers from `[mark] ramp`, lightest first in the order written. A
+    `note` level — "not the content, the rest" — stays unfilled, and so does one
+    whose role the theme already fills or draws without an outline: the grade
+    never paints over a choice the theme made.
+    """
+    count = len(roles)
+    if not theme.levels.shade:
+        return [0.0] * count
+    return [
+        theme.mark.level_tone(index, count) if _gradable(role, theme) else 0.0
+        for index, role in enumerate(roles)
+    ]
+
+
+def _gradable(role: str, theme: Theme) -> bool:
+    drawn = theme.roles.get(role)
+    return (
+        role != "note"
+        and drawn is not None
+        and drawn.shape != "none"
+        and drawn.fill == "none"
+        and drawn.fill_pattern == "none"
+    )
+
+
+def toned[P: Primitive](primitive: P, tone: float) -> P:
+    """`primitive` filled with `tone` of the page's ink, or as it was for 0.
+
+    The ink at part opacity rather than a colour, so a graded level follows the
+    page into dark mode and prints as a grey.
+    """
+    if not tone:
+        return primitive
+    return painted(primitive, "solid", "currentColor", tone)
+
+
+def painted[P: Primitive](primitive: P, fill: str, colour: str, opacity: float = 1.0) -> P:
+    """`primitive` filled with a theme fill, when it is a closed figure.
+
+    Lines and text pass through untouched, so a box's whole primitive run can
+    be handed over: its outline is filled, its inner lines and words are not.
+    """
+    if not isinstance(primitive, Rect | Polygon | Ellipse) or (
+        isinstance(primitive, Polygon) and primitive.region
+    ):
+        return primitive
+    return replace(primitive, fill=fill, fill_colour=colour, fill_opacity=opacity)
 
 
 def lead_rule(box: Box) -> tuple[Primitive, ...]:
@@ -93,6 +156,8 @@ def outline(box: Box, theme: Theme) -> tuple[Primitive, ...]:
         return (Polygon(box.role, points=_parallelogram(box)),)
     if shape == "cylinder":
         return _cylinder(box)
+    if shape == "person":
+        return (Polygon(box.role, points=tuple(person_silhouette(box, theme.box.corner_radius))),)
     if shape == "ellipse":
         return (
             Ellipse(
@@ -161,6 +226,34 @@ def _cylinder_silhouette(box: Box) -> list[tuple[float, float]]:
     return [
         *_arc(cx, top, half, cap, math.pi, 2 * math.pi),
         *_arc(cx, bottom, half, cap, 0.0, math.pi),
+    ]
+
+
+def person_silhouette(box: Box, corner: float) -> list[tuple[float, float]]:
+    """A `person`'s one outline, clockwise: shoulders, sides, base, then the head.
+
+    The head is a circle centred over the body and overlapping its top, so the
+    outline runs along the shoulders to where they meet the circle and over the
+    top of the head between — one figure, filled and stroked once, with no line
+    of the body crossing the head.
+    """
+    left, right = box.x, box.x + box.width
+    bottom = box.y + box.height
+    shoulders = box.y + PERSON_TOP
+    centre_x, centre_y = box.x + box.width / 2, box.y + PERSON_HEAD
+    shoulder = min(PERSON_SHOULDER, box.width / 2, (bottom - shoulders) / 2)
+    base = min(corner, shoulder)
+    neck = math.sqrt(max(PERSON_HEAD**2 - (shoulders - centre_y) ** 2, 0.0))
+    meets = math.atan2(shoulders - centre_y, neck)
+    half = math.pi / 2
+    return [
+        (centre_x + neck, shoulders),
+        *_arc(right - shoulder, shoulders + shoulder, shoulder, shoulder, -half, 0.0),
+        *_arc(right - base, bottom - base, base, base, 0.0, half),
+        *_arc(left + base, bottom - base, base, base, half, math.pi),
+        *_arc(left + shoulder, shoulders + shoulder, shoulder, shoulder, math.pi, 3 * half),
+        (centre_x - neck, shoulders),
+        *_arc(centre_x, centre_y, PERSON_HEAD, PERSON_HEAD, math.pi - meets, 2 * math.pi + meets),
     ]
 
 
@@ -442,6 +535,8 @@ def removed_outline(box: Box, theme: Theme) -> tuple[Primitive, ...]:
         corners = [(middle_x, top), (right, middle_y), (middle_x, bottom), (left, middle_y)]
     elif shape == "parallelogram":
         corners = list(_parallelogram(box))
+    elif shape == "person":
+        corners = person_silhouette(box, theme.box.corner_radius)
     elif shape == "cylinder":
         corners = _cylinder_silhouette(box)
         cap = min(CYLINDER_CAP, height / 4)
@@ -506,8 +601,11 @@ __all__ = [
     "STATUS_ROLE",
     "box_primitives",
     "captioned",
+    "level_tones",
     "line_bounds",
     "outline",
+    "painted",
+    "person_silhouette",
     "removed_outline",
     "status_box_primitives",
     "status_key",
@@ -515,4 +613,5 @@ __all__ = [
     "status_tag",
     "status_words",
     "text_runs",
+    "toned",
 ]

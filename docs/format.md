@@ -52,6 +52,12 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `groups` | array of [group](#group-object) | no | Boxes drawn around sets of nodes, each with its own caption. |
 | `bands` | array of [band](#band-object) | no | Named things that run alongside a set of boxes rather than containing them — drawn as a labelled bar beside the boxes they accompany. For the activity that goes on throughout: a source sheet with one continuous concern above its steps and another below says the steps are *surrounded* by them, and two such bands are peers. A `group` cannot say that — a box sits inside one container or none, so two groups over the same members had to be nested, which draws a hierarchy that is not there. |
 
+### `flow`, `tree`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `classes` | array of [class](#class-object), at least 1 | no | The classes the boxes are sorted into, each `{id, text}`: 1 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team. |
+
 ### `flow`
 
 | Field | Type | Required | What it is |
@@ -146,14 +152,14 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `initial` | string | **yes** | The state the machine starts in, drawn as a filled dot with an arrow to it. Required: reachability is measured from here. May name a group, which must then say its own `initial`. |
 | `final` | array of string | no | The states the machine ends in, each drawn with an arrow to a ringed dot. A final state has no outgoing transition. |
 | `transitions` | array of [transition](#transition-object) | no | What moves the machine from one state to another, each labelled `event [guard] / action` from its own fields. |
-| `groups` | array of [composite](#composite-object) | no | Composite states: a frame around the states inside it, named at its corner. Groups may nest. A transition from a group leaves it from any state inside; one to a group enters it at the group's `initial`. |
+| `groups` | array of [composite](#composite-object) | no | Composite states: a frame around the states inside it, named at its corner. Groups may nest. A transition from a group leaves it from any state inside; one to a group enters it at the group's `initial`. A composite with `regions` is drawn divided by dashed lines, every region current at once. |
 
 ### `sequence`
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `participants` | array of [participant](#participant-object), at least 2 | **yes** | Who takes part, drawn left to right in the order written, each a head with a dashed lifeline under it. The order is the reading order, not a coordinate. Every participant must send or receive a message. |
-| `messages` | array of [message](#message-object), at least 1 | **yes** | What is said, drawn top to bottom in the order written: the order is the diagram. A call (`flow`) answered later by a `weak` reply opens an activation bar on the receiver from the call's row to the reply's; nobody writes how tall it is. |
+| `participants` | array of [participant](#participant-object), at least 2 | **yes** | Who takes part, drawn left to right in the order written, each a head with a dashed lifeline under it. The order is the reading order, not a coordinate. Every participant must send or receive a message. A person taking part is `role: "actor"`, drawn as the UML stick figure with the name under it. |
+| `messages` | array of [message](#message-object), at least 1 | **yes** | What is said, drawn top to bottom in the order written: the order is the diagram. A call (`flow`) answered later by a `weak` reply opens an activation bar on the receiver from the call's row to the reply's; nobody writes how tall it is. An `async` message (solid line, open head) is sent without waiting, opens no bar and takes no reply. |
 | `fragments` | array of [fragment](#fragment-object) | no | Frames round a run of messages, `from` to `to`, and every participant they touch. Fragments nest or are apart; one that starts inside another and ends outside it is refused. |
 | `groups` | array of [group](#group-object) | no | A frame round a run of neighbouring lifelines, named at its top — *inside our account*. Members must be next to each other in `participants`, and a participant is in one group or none. |
 
@@ -165,6 +171,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `edges` | array of [edge](#edge-object) | no | What follows what, as on a `flow`. An edge between two lanes crosses the boundaries between them: that crossing is the hand-off. |
 | `lanes` | array of string, at least 1 | no | The lanes in order — top to bottom when they run across the page, left to right when they run down it; the theme decides which. Each must be some node's `actor`, spelled exactly, and every actor must be listed. Omit it and the lanes come in the order their actors first appear in `nodes`. At most 6. |
 | `phases` | array of [phase](#phase-object), at least 2 | no | The stages the process passes through, in the order it runs — named in a band along the lanes' edge and divided by faint lines across every lane (a cross-functional flowchart's phases). Each phase lists its steps, and with `phases` given every step is in exactly one. A phase's steps are drawn after every step of the phases before it, so the phases never interleave. 2 to 6. |
+| `classes` | array of [class](#class-object), at least 1 | no | The classes the boxes are sorted into, each `{id, text}`: 1 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team. |
 
 ### `entities`
 
@@ -336,8 +343,8 @@ largest reference document of its kind, so nothing in the gallery is refused.
 
 | Kind | At most |
 |---|---|
-| `flow` | 15 `nodes`, 16 `edges`, 6 `loops` |
-| `tree` | 15 `nodes` |
+| `flow` | 15 `nodes`, 16 `edges`, 6 `loops`, 4 `classes` |
+| `tree` | 15 `nodes`, 4 `classes` |
 | `cycle` | 8 `nodes` |
 | `stack` | 8 `items` |
 | `timeline` | 10 `items` |
@@ -351,9 +358,9 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `scatter` | 20 `positions` |
 | `curve` | 4 `curves` |
 | `files` | 30 `entries` |
-| `states` | 14 `states`, 24 `transitions` |
+| `states` | 14 `states`, 24 `transitions`, 4 `regions` per group |
 | `sequence` | 8 `participants`, 30 `messages` |
-| `lanes` | 15 `nodes`, 16 `edges`, 6 `lanes`, 6 `phases` |
+| `lanes` | 15 `nodes`, 16 `edges`, 6 `lanes`, 6 `phases`, 4 `classes` |
 | `entities` | 8 `entities`, 12 `edges`, 12 `fields` per entity, 8 `operations` per entity |
 | `gantt` | 16 `tasks`, 20 `edges`, 4 `marks` |
 | `board` | 6 `columns`, 4 `rows`, 32 `cards`, 8 `cards` per cell |
@@ -394,9 +401,10 @@ name, so a misspelt key is an error at the point it was written.
 | `id` | string | **yes** | Unique within the document. |
 | `centre` | boolean | no | Whether this node is the subject the rest are arranged around. One node per document may say so, and only a `flow`. For the diagram that starts in the middle rather than at the top: a thing with named relations on every side, where the relations are peers and there is no sequence between them. Ranked instead, the middle object becomes just another row. |
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
-| `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group`, `io`, `subroutine`, `store` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group`, `io`, `subroutine`, `store`, `person` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 | `actor` | string | no | Who performs this step — free text, and orthogonal to `role`. `role` says what kind of step it is; this says whose it is, and the two are independent: a human step can be routine and an automated one can be the critical path. Drawn as the box's **lead**, the name over what belongs to it, so the same words sit in the same place in every box and a reader can scan a column of them. Free text rather than an enum on purpose: an actor is told apart by its **name**, which is legible in greyscale and in any medium, so it costs none of the four non-colour channels the roles are told apart by. **Only a `flow`, a `tree` or a `cycle` draws one**, and a node that names an actor may not also write its own lead — the box has one lead and this is it. |
 | `note` | string | no | A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead. |
+| `class` | string | no | Which of the document's `classes` this box belongs to — an author-chosen grouping such as *external system* or *owned by the payments team*, drawn as that class's faint fill and named in a key under the drawing. Must be the `id` of a declared class. Not on a `note` or a `group`, and not with `status` (both would mark the box). **Only a `flow`, a `tree` or `lanes`.** |
 | `status` | string — one of `added`, `changed`, `removed` | no | What a proposed change does to this box, as a diff would say it — for one drawing of the target state with the change marked on it, instead of a before and an after to compare by eye. Drawn as the labelled mark `files` uses (`+ added`, `~ changed`, `- removed`) inside the box, never as a colour; a removed box is also dashed and its text struck through. **Only a `flow` or a `tree`**: a loop that changes is a different loop. An edge touching a removed box must be `removed`, and one touching an added box must be `added`. |
 
 ### `edge` object
@@ -406,7 +414,7 @@ name, so a misspelt key is an error at the point it was written.
 | `from` | string | **yes** | The id of the source node — or, in a `flow` or a `tree`, of a group: an edge may name a container, for a relation that belongs to the whole of it rather than to any one box inside. It may not join a container to something already within it. A `cycle` draws no containers, so an edge in one names a node — or its `hub`, as a spoke. |
 | `to` | string | **yes** | The id of the target node — or, in a `flow` or a `tree`, of a group. The same id space as `from`. The same id as `from` draws a loop on the side of that box, across the reading direction, with its label outside it: two per box at most, and never on a group. |
 | `label` | string | no | A short label placed along the edge. |
-| `role` | string — one of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
+| `role` | string — one of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `async` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
 | `status` | string — one of `added`, `changed`, `removed` | no | What a proposed change does to this connection: the same marks as a node's, written before the label (`+`, `~`, `-`), with a key of the marks under the drawing. A removed edge is drawn in the `aside` treatment — dashed, no head — whatever its role. **Only a `flow`, a `tree` or `lanes`.** |
 | `polarity` | string — one of `+`, `-` | no | A causal link's sign: more of the source means more (`+`) or less (`-`) of the target, written as the edge's label (`s`/`o` under a theme that says so). Every `flow` or `strong` edge of the document has one, or none does. **Only a `flow`.** |
 | `delay` | boolean | no | The effect takes time: drawn as the double stroke across the shaft. Needs `polarity`. **Only a `flow`.** |
@@ -425,9 +433,10 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `id` | string | **yes** | Unique within the document. |
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
-| `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `io`, `subroutine`, `store` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `io`, `subroutine`, `store`, `person` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 | `actor` | string | **yes** | Who performs this step, and so which lane it is drawn in. Required: every box in a swimlane diagram is in a lane. Drawn once, as the lane's heading, and not repeated in the box — so `text` may again use a newline for its own lead and detail. Free text, matched exactly against `lanes` when that is given. |
 | `status` | string — one of `added`, `changed`, `removed` | no | What a proposed change does to this box, drawn as on a `flow`: the labelled mark inside the box, never a colour. |
+| `class` | string | no | Which of the document's `classes` this box belongs to — an author-chosen grouping such as *external system* or *owned by the payments team*, drawn as that class's faint fill and named in a key under the drawing. Must be the `id` of a declared class. Not on a `note` or a `group`, and not with `status` (both would mark the box). **Only a `flow`, a `tree` or `lanes`.** |
 
 ### `hub` object
 
@@ -462,8 +471,16 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `id` | string | **yes** | Unique within the document, among the states and the groups. |
 | `text` | string | **yes** | The composite state's name, drawn at its frame's corner. |
-| `members` | array of string, at least 1 | **yes** | The states (or groups) inside this composite state. |
-| `initial` | string | no | The member this composite is entered at, drawn as a dot inside the frame. Required when a transition, or the machine's own `initial`, names the group. |
+| `members` | array of string, at least 1 | no | The states (or groups) inside this composite state. A composite lists its `members` or its `regions`, not both. |
+| `initial` | string | no | The member this composite is entered at, drawn as a dot inside the frame. Required when a transition, or the machine's own `initial`, names the group. With `regions`, each region names its own instead. |
+| `regions` | array of [state_region](#state_region-object), at least 2 | no | Orthogonal regions: parts of this composite that are all current at once, drawn side by side (or stacked) and divided by dashed lines. Each region lists its own members and its own `initial`, and entering the composite enters every region there. A transition may not run between two regions of one composite. In place of `members`. |
+
+### `state_region` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `members` | array of string, at least 1 | **yes** | The states (or groups) in this region. A state is in one region; each region is a machine of its own, running alongside the others. |
+| `initial` | string | **yes** | The member this region starts in when its composite is entered, drawn as a dot inside the region. Required: every region runs at once. |
 
 ### `participant` object
 
@@ -471,7 +488,7 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `id` | string | **yes** | Unique within the document, among the participants and the groups. |
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
-| `role` | string — one of `step`, `emphasis`, `note` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `role` | string — one of `step`, `emphasis`, `note`, `actor` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 
 ### `message` object
 
@@ -481,7 +498,7 @@ name, so a misspelt key is an error at the point it was written.
 | `from` | string | **yes** | The participant that sends it. |
 | `to` | string | **yes** | The participant that receives it. The same id as `from` is a message to itself, drawn as a hook on the right of its lifeline. |
 | `text` | string | no | What is said, written above the arrow. May carry inline spans. Omit for a bare arrow. |
-| `role` | string — one of `flow`, `weak`, `strong` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
+| `role` | string — one of `flow`, `weak`, `strong`, `async` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
 | `note` | string | no | A short aside about this message, drawn on its row in one column to the right of the last lifeline, so the notes read down as one margin. |
 
 ### `fragment` object
@@ -874,6 +891,13 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `members` | array of string, at least 1 | **yes** | The ids of the nodes this band accompanies. Unlike a group's, they are a set rather than a container: a band names something that runs alongside those boxes, and the same box may be under any number of bands. |
+
+### `class` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | What a node's `class` names. Unique among the classes. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 
 ### `phase` object
 

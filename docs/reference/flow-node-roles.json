@@ -2,7 +2,7 @@
   "version": 1,
   "kind": "flow",
   "title": "Every node role, drawn",
-  "description": "The ten roles a node may take, each drawn as the bundled default theme draws it: start and terminal are pills, with the terminal in a heavier line; a step is a plain rectangle; a decision is a diamond; emphasis is a rectangle at the heavier weight; a note has no outline at all; a group is a dashed rectangle; and the three flowchart symbols are a parallelogram for data in or out, a box with doubled sides for a process defined elsewhere, and a drum for where data rests. An author names the role and the theme decides the shape, so a different theme draws this same document differently.",
+  "description": "The eleven roles a node may take, each drawn as the bundled default theme draws it: start and terminal are pills, with the terminal in a heavier line; a step is a plain rectangle; a decision is a diamond; emphasis is a rectangle at the heavier weight; a note has no outline at all; a group is a dashed rectangle; and the three flowchart symbols are a parallelogram for data in or out, a box with doubled sides for a process defined elsewhere, and a drum for where data rests; a person — a body under a round head — is a human, as against a system. An author names the role and the theme decides the shape, so a different theme draws this same document differently.",
   "caption": "Say what the box is, not what it looks like — the shape follows.",
   "nodes": [
     { "id": "start", "text": "start\nwhere the diagram begins", "role": "start" },
@@ -14,6 +14,7 @@
     { "id": "group", "text": "group\na container, drawn around others", "role": "group" },
     { "id": "io", "text": "io\ndata in or out", "role": "io" },
     { "id": "subroutine", "text": "subroutine\na process defined elsewhere", "role": "subroutine" },
-    { "id": "store", "text": "store\nwhere data rests", "role": "store" }
+    { "id": "store", "text": "store\nwhere data rests", "role": "store" },
+    { "id": "person", "text": "person\na human, not a system", "role": "person" }
   ]
 }

@@ -35,7 +35,7 @@ from drawspec.kinds.graph import (
     graph_scene,
 )
 from drawspec.scene import Path, Polygon, Rect, Scene, TextRun
-from drawspec.schema import load_document, parse_document
+from drawspec.schema import load_document, parse_document, validate_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
 
@@ -542,3 +542,183 @@ def test_an_arrow_into_a_drum_lands_on_its_lid_not_on_its_box() -> None:
     lid = drawing.boxes["store"]
     _, y = into_store.points[-1]
     assert lid.y - 1e-6 <= y <= lid.y + 6.0 + 1e-6
+
+
+# --------------------------------------------------------------------------
+# Node classes: `class` on a node, `classes` at the top, a key under the drawing
+# --------------------------------------------------------------------------
+
+
+def _classed(kind: str = "flow", **extra: object) -> dict[str, object]:
+    nodes: list[dict[str, object]] = [
+        {"id": "a", "text": "Ours", "class": "ours"},
+        {"id": "b", "text": "Theirs", "class": "theirs"},
+        {"id": "c", "text": "Unclassed"},
+    ]
+    if kind == "lanes":
+        for node in nodes:
+            node["actor"] = "Clerk"
+    document: dict[str, object] = {
+        "version": 1,
+        "kind": kind,
+        "nodes": nodes,
+        "edges": [{"from": "a", "to": "b"}, {"from": "a", "to": "c"}],
+        "classes": [{"id": "theirs", "text": "Run by others"}, {"id": "ours", "text": "Ours"}],
+    }
+    document.update(extra)
+    return document
+
+
+def _refusal(document: dict[str, object]) -> str:
+    with pytest.raises(DocumentError) as caught:
+        render(document, theme=THEME)
+    return str(caught.value)
+
+
+@pytest.mark.parametrize("kind", ["flow", "tree", "lanes"])
+def test_classed_nodes_are_filled_in_declaration_order_with_a_key(kind: str) -> None:
+    scene = scene_for(parse_document(_classed(kind)), THEME, MEASURER)
+    rects = {
+        (p.fill, p.fill_colour, p.fill_opacity) for p in scene.primitives if isinstance(p, Rect)
+    }
+    assert ("solid", "currentColor", THEME.classes.tone) in rects  # theirs: first declared
+    assert ("dots", "", 1.0) in rects  # ours: second
+    assert ("", "", 1.0) in rects  # unclassed
+    names = {p.text for p in scene.primitives if isinstance(p, TextRun)}
+    assert {"Run by others", "Ours"} <= names
+
+
+def test_the_key_sits_under_the_drawing() -> None:
+    scene = scene_for(parse_document(_classed()), THEME, MEASURER)
+    key = next(p for p in scene.primitives if isinstance(p, TextRun) and p.text == "Run by others")
+    boxes = [p for p in scene.primitives if isinstance(p, Rect)]
+    assert key.y > max(box.y + box.height for box in boxes)
+
+
+@pytest.mark.parametrize(
+    ("change", "pointer", "words"),
+    [
+        (lambda d: d["nodes"][2].update({"class": "mine"}), "/nodes/2/class", "not one of"),
+        (lambda d: d["nodes"][0].update({"class": "their"}), "/nodes/0/class", "did you mean"),
+        (lambda d: d["nodes"][1].pop("class"), "/classes/0", "no node is in"),
+        (lambda d: d["nodes"][0].update({"role": "note"}), "/nodes/0/class", "note"),
+        (lambda d: d["nodes"][0].update({"status": "added"}), "/nodes/0/class", "status"),
+        (
+            lambda d: d["classes"].append({"id": "ours", "text": "Again"}),
+            "/classes/2/id",
+            "duplicate",
+        ),
+    ],
+)
+def test_a_class_problem_is_refused_at_its_pointer(change, pointer: str, words: str) -> None:  # type: ignore[no-untyped-def]
+    document = json.loads(json.dumps(_classed()))
+    change(document)
+    message = _refusal(document)
+    assert pointer in message and words in message
+
+
+def test_more_than_four_classes_are_refused_by_the_budget() -> None:
+    document = _classed()
+    nodes = [{"id": f"n{i}", "text": f"Box {i}", "class": f"k{i}"} for i in range(5)]
+    document.update(
+        nodes=nodes,
+        edges=[],
+        classes=[{"id": f"k{i}", "text": f"Class {i}"} for i in range(5)],
+    )
+    assert "/classes" in _refusal(document)
+
+
+@pytest.mark.parametrize("kind", ["flow", "tree", "lanes"])
+def test_one_class_alone_greys_its_boxes_and_keeps_its_key(kind: str) -> None:
+    # A C4 context that greys only its external systems: one class, still keyed.
+    document = _classed(kind)
+    document["classes"] = [{"id": "theirs", "text": "Run by others"}]
+    document["nodes"][0].pop("class")  # type: ignore[index]
+    assert not validate_document(document)
+    scene = scene_for(parse_document(document), THEME, MEASURER)
+    rects = {
+        (p.fill, p.fill_colour, p.fill_opacity) for p in scene.primitives if isinstance(p, Rect)
+    }
+    assert ("solid", "currentColor", THEME.classes.tone) in rects
+    assert ("dots", "", 1.0) not in rects
+    names = {p.text for p in scene.primitives if isinstance(p, TextRun)}
+    assert "Run by others" in names
+
+
+def test_an_empty_classes_list_is_refused_by_the_schema() -> None:
+    document = _classed()
+    document["classes"] = []
+    for node in document["nodes"]:  # type: ignore[attr-defined]
+        node.pop("class", None)
+    assert "/classes" in _refusal(document)
+
+
+def test_a_cycle_takes_no_classes() -> None:
+    document = json.loads(json.dumps(raw("cycle-review")))
+    document["nodes"][0]["class"] = "x"
+    document["classes"] = [{"id": "x", "text": "X"}, {"id": "y", "text": "Y"}]
+    message = _refusal(document)
+    assert "/classes" in message and "/nodes/0/class" in message
+
+
+# --------------------------------------------------------------------------
+# The `person` role: a body with rounded shoulders under a round head
+# --------------------------------------------------------------------------
+
+
+def _people(kind: str = "flow") -> dict[str, object]:
+    nodes: list[dict[str, object]] = [
+        {"id": "user", "text": "A customer", "role": "person"},
+        {"id": "app", "text": "The shop"},
+        {"id": "clerk", "text": "A clerk", "role": "person"},
+    ]
+    if kind == "lanes":
+        for node in nodes:
+            node["actor"] = "Shop"
+    edges = [{"from": "user", "to": "app"}, {"from": "app", "to": "clerk"}]
+    return {"version": 1, "kind": kind, "nodes": nodes, "edges": edges}
+
+
+@pytest.mark.parametrize("kind", ["flow", "tree", "lanes"])
+def test_a_person_is_accepted_where_a_box_is_a_step(kind: str) -> None:
+    assert render(_people(kind), theme=THEME).startswith("<svg")
+
+
+def test_a_cycle_refuses_a_person_and_says_to_use_actor() -> None:
+    document = json.loads(json.dumps(raw("cycle-review")))
+    document["nodes"][0]["role"] = "person"
+    message = _refusal(document)
+    assert "/nodes/0/role" in message and "actor" in message
+
+
+def test_a_person_is_one_outline_with_its_head_above_the_body() -> None:
+    drawing = graph_drawing(parse_document(_people()), STRICT, MEASURER)
+    scene = graph_scene(parse_document(_people()), STRICT, MEASURER)
+    outlines = [p for p in scene.primitives if isinstance(p, Polygon) and p.role == "person"]
+    assert len(outlines) == 2
+    box = drawing.boxes["clerk"]
+    outline = min(outlines, key=lambda p: abs(min(y for _, y in p.points) - box.y))
+    assert min(y for _, y in outline.points) == pytest.approx(box.y, abs=1e-6)
+
+
+def test_an_arrow_into_a_person_from_above_lands_on_the_head() -> None:
+    from drawspec.geometry import PERSON_HEAD
+
+    drawing = graph_drawing(parse_document(_people()), STRICT, MEASURER)
+    into = next(route for route in drawing.routes if route.target == "clerk")
+    box = drawing.boxes["clerk"]
+    x, y = into.points[-1]
+    centre = box.x + box.width / 2
+    assert abs(x - centre) <= PERSON_HEAD + 1e-6
+    head = box.y + PERSON_HEAD - (PERSON_HEAD**2 - (x - centre) ** 2) ** 0.5
+    assert y == pytest.approx(head, abs=0.01)
+
+
+def test_a_classed_person_fills_its_whole_outline() -> None:
+    document = _people()
+    document["nodes"][0]["class"] = "a"  # type: ignore[index]
+    document["nodes"][2]["class"] = "b"  # type: ignore[index]
+    document["classes"] = [{"id": "a", "text": "A"}, {"id": "b", "text": "B"}]
+    scene = scene_for(parse_document(document), THEME, MEASURER)
+    filled = [p.fill for p in scene.primitives if isinstance(p, Polygon) and p.role == "person"]
+    assert sorted(filled) == ["dots", "solid"]

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "flow",
+  "title": "Placing an order, by the team that owns each service",
+  "description": "The services an order passes through, each classed by the team that runs it, so the hand-offs between teams are visible without drawing a frame round each team's services.",
+  "nodes": [
+    { "id": "web", "text": "Shop front", "role": "start", "class": "storefront" },
+    { "id": "basket", "text": "Basket service", "class": "storefront" },
+    { "id": "stock", "text": "Stock service", "class": "warehouse" },
+    { "id": "pay", "text": "Payment service", "class": "payments" },
+    { "id": "ledger", "text": "Payments ledger", "role": "store", "class": "payments" },
+    { "id": "pick", "text": "Picking queue", "role": "store", "class": "warehouse" },
+    { "id": "done", "text": "Order confirmed", "role": "terminal" }
+  ],
+  "edges": [
+    { "from": "web", "to": "basket" },
+    { "from": "basket", "to": "stock", "label": "reserve" },
+    { "from": "stock", "to": "pay" },
+    { "from": "pay", "to": "ledger", "label": "record" },
+    { "from": "pay", "to": "pick" },
+    { "from": "pick", "to": "done" }
+  ],
+  "classes": [
+    { "id": "storefront", "text": "Storefront team" },
+    { "id": "payments", "text": "Payments team" },
+    { "id": "warehouse", "text": "Warehouse team" }
+  ]
+}

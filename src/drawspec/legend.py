@@ -147,6 +147,23 @@ def height_of(
     return gap + len(_rows(entries, theme, measurer, width)) * (line.height + gap / 2)
 
 
+def width_of(
+    entries: tuple[Entry, ...], theme: Theme, measurer: TextMeasurer, width: float
+) -> float:
+    """How wide the widest row of this legend is, laid out across `width`.
+
+    For a caller that centres its key under a drawing narrower than the canvas,
+    as the class key of a graph does: `left = (width - width_of(...)) / 2`.
+    """
+    if not entries:
+        return 0.0
+    gap = theme.box.padding.top
+    return max(
+        sum(span for _, span in row) + gap * (len(row) - 1)
+        for row in _rows(entries, theme, measurer, width)
+    )
+
+
 def primitives_for(
     entries: tuple[Entry, ...],
     theme: Theme,
@@ -223,4 +240,5 @@ __all__ = [
     "entries_for",
     "height_of",
     "primitives_for",
+    "width_of",
 ]

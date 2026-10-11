@@ -149,8 +149,25 @@ How a container is told from the page: washed with a little of the ink.
 
 | Key | Default | What it is |
 |---|---|---|
-| `tone` | `0.05` | The share of the ink one frame lays down, from 0 (outlines only) to `TONE_CEILING`. |
+| `tone` | `0.05` | The share of the ink one frame lays down, from 0 (outlines only) to `TONE_CEILING`. Off unless a theme sets it; the bundled default theme does. |
 | `levels` | `3` | How many levels of nesting deepen the wash; a frame deeper than this is outlined only. |
+
+### `[levels]`
+
+Whether the levels of a `pyramid`, `funnel`, `rings` and `stack` are graded.
+
+| Key | Default | What it is |
+|---|---|---|
+| `shade` | `true` | Whether levels are graded from the ramp; `false` draws outlines only. Off unless a theme sets it; the bundled default theme does. |
+
+### `[classes]`
+
+How a `flow`, `tree` or `lanes` drawing's node classes are told apart.
+
+| Key | Default | What it is |
+|---|---|---|
+| `fills` | `["solid", "dots", "hatch", "grid"]` | The fill each class takes, in declaration order; distinct, none `none`. |
+| `tone` | `0.14` | How much of the ink a `solid` class's wash lays down: light enough that its text reads on a white page and on a dark one. |
 
 ### `[cycle]`
 
@@ -197,7 +214,7 @@ How a sequence diagram's lifelines and activation bars are drawn.
 | Key | Default | What it is |
 |---|---|---|
 | `activation` | `10.0` | The width of an activation bar. A nested bar is set half this to the right. |
-| `lifeline` | `"aside"` | The edge role a lifeline is drawn in, with no head: dashed and light by default, so the messages across it are what the eye follows. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `lifeline` | `"aside"` | The edge role a lifeline is drawn in, with no head: dashed and light by default, so the messages across it are what the eye follows. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
 
 ### `[lanes]`
 
@@ -206,8 +223,8 @@ How a swimlane diagram lays its lanes out and divides them.
 | Key | Default | What it is |
 |---|---|---|
 | `orientation` | `"auto"` | `rows`, `columns`, or `auto`: rows when they fit the width, else columns. One of `rows`, `columns`, `auto`. |
-| `separator` | `"link"` | The edge role the line between two lanes is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
-| `stripe` | `0.04` | How much of the page's ink every second lane is washed with, from 0 (no stripes) to `TONE_CEILING`. A tint, not a colour, so dark mode and greyscale keep it. |
+| `separator` | `"link"` | The edge role the line between two lanes is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
+| `stripe` | `0.04` | How much of the page's ink every second lane is washed with, from 0 (no stripes) to `TONE_CEILING`. A tint, not a colour, so dark mode and greyscale keep it. Off unless a theme sets it; the bundled default theme does. |
 | `phase` | `"aside"` | The edge role the line between two phases is drawn in, across every lane: lighter than a lane's own separator, since a phase is crossed by every lane. |
 
 ### `[entities]`
@@ -225,7 +242,7 @@ How a plan draws the two marks that are not bars.
 | Key | Default | What it is |
 |---|---|---|
 | `milestone` | `"diamond"` | `diamond` or `circle`: the mark a task with `at` is drawn as, filled. One of `diamond`, `circle`. |
-| `marks` | `"weak"` | The edge role a mark's line across the rows is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `marks` | `"weak"` | The edge role a mark's line across the rows is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
 | `done` | `0.7` | How much of the ink a task's `done` band takes, above 0 and at most 1. The page's own ink at that strength, so a dark page draws it light. |
 
 ### `[board]`
@@ -234,8 +251,8 @@ How a board draws the two lines that are not card borders.
 
 | Key | Default | What it is |
 |---|---|---|
-| `separator` | `"weak"` | The edge role the line between two rows (slices) is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
-| `cut` | `"strong"` | The edge role the cut under a row is drawn in, with no head: the board's one heavy line. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `separator` | `"weak"` | The edge role the line between two rows (slices) is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
+| `cut` | `"strong"` | The edge role the cut under a row is drawn in, with no head: the board's one heavy line. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
 
 ### `[fishbone]`
 
@@ -244,9 +261,9 @@ How a fishbone draws its spine, its bones and the ticks its causes sit on.
 | Key | Default | What it is |
 |---|---|---|
 | `slant` | `60.0` | The angle, in degrees from the spine, each bone meets it at: 30 to 90. A fishbone's bones slant by convention — the one place drawspec draws a diagonal on purpose, because the slant *is* the shape. `90` draws a comb of upright bones for a theme that keeps right angles throughout. |
-| `spine` | `"strong"` | The edge role the spine is drawn in, with no head: from the far end of the last bone into the effect's box. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
-| `bone` | `"flow"` | The edge role a category's bone is drawn in, with no head. The bone of a confirmed root cause (`emphasis`) is drawn in the spine's role from that cause to the spine, so the path from cause to effect is one weight. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
-| `cause` | `"link"` | The edge role the tick a cause's words sit on is drawn in, with no head. A ruled-out cause (`note`) is drawn in `aside` instead: light and dashed. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `spine` | `"strong"` | The edge role the spine is drawn in, with no head: from the far end of the last bone into the effect's box. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
+| `bone` | `"flow"` | The edge role a category's bone is drawn in, with no head. The bone of a confirmed root cause (`emphasis`) is drawn in the spine's role from that cause to the spine, so the path from cause to effect is one weight. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
+| `cause` | `"link"` | The edge role the tick a cause's words sit on is drawn in, with no head. A ruled-out cause (`note`) is drawn in `aside` instead: light and dashed. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
 
 ### `[journey]`
 
@@ -254,9 +271,9 @@ How a journey draws the lines that are not words: the feeling line and its rules
 
 | Key | Default | What it is |
 |---|---|---|
-| `line` | `"strong"` | The edge role the feeling line is drawn in, with no head: the one heavy line, through every stage's point. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
-| `guide` | `"aside"` | The edge role each feeling level's guide is drawn in, across every stage: light, so the line and not the grid is what is read. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
-| `separator` | `"link"` | The edge role the rule above each detail row is drawn in, across the whole map. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`. |
+| `line` | `"strong"` | The edge role the feeling line is drawn in, with no head: the one heavy line, through every stage's point. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
+| `guide` | `"aside"` | The edge role each feeling level's guide is drawn in, across every stage: light, so the line and not the grid is what is read. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
+| `separator` | `"link"` | The edge role the rule above each detail row is drawn in, across the whole map. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
 
 ### `[numberline]`
 
@@ -331,8 +348,8 @@ How a RAG report draws a rating: a word, a shape and, optionally, a colour.
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The
-vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group`, `io`, `subroutine`, `store`. `shape` is one of
-`rect`, `pill`, `diamond`, `ellipse`, `parallelogram`, `subroutine`, `cylinder`, `none` and `fill_pattern` one of `none`, `solid`, `hatch`, `dots`, `cross`, `grid`.
+vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group`, `io`, `subroutine`, `store`, `person`. `shape` is one of
+`rect`, `pill`, `diamond`, `ellipse`, `parallelogram`, `subroutine`, `cylinder`, `person`, `none` and `fill_pattern` one of `none`, `solid`, `hatch`, `dots`, `cross`, `grid`.
 
 | Role | `shape` | `stroke` | `fill` | `fill_pattern` | `dash` | `stroke_width` |
 |---|---|---|---|---|---|---|
@@ -346,6 +363,7 @@ vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note
 | `io` | `"parallelogram"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
 | `subroutine` | `"subroutine"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
 | `store` | `"cylinder"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
+| `person` | `"person"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
 
 ## `[edge_role.*]` — the edge roles
 
@@ -365,6 +383,7 @@ one of `arrow`, `open`, `diamond`, `circle`, `bar`, `triangle`, `none`.
 | `aside` | `"none"` | `"none"` | `"currentColor"` | `"4 3"` | `1.0` | `"orthogonal"` |
 | `inherits` | `"triangle"` | `"none"` | `"currentColor"` | `"none"` | `1.5` | `"orthogonal"` |
 | `realizes` | `"triangle"` | `"none"` | `"currentColor"` | `"4 3"` | `1.5` | `"orthogonal"` |
+| `async` | `"open"` | `"none"` | `"currentColor"` | `"none"` | `1.5` | `"orthogonal"` |
 
 ## The bundled themes
 

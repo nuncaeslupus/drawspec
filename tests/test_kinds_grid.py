@@ -1114,3 +1114,18 @@ def test_scale_is_a_matrix_field_only() -> None:
         "scale": ["low", "high"],
     }
     assert "/scale" in pointers(document)
+
+
+def test_stack_layers_are_graded_lightest_first_unless_the_theme_says_not() -> None:
+    document = parse_document(
+        {
+            "version": 1,
+            "kind": "stack",
+            "items": [{"text": "Top"}, {"text": "Middle"}, {"text": "Base"}],
+        }
+    )
+    layers = [p for p in grid_scene(document, THEME, MEASURER).primitives if isinstance(p, Rect)]
+    assert [layer.fill_opacity for layer in layers] == list(THEME.mark.ramp[:3])
+    plain = replace(THEME, levels=replace(THEME.levels, shade=False))
+    layers = [p for p in grid_scene(document, plain, MEASURER).primitives if isinstance(p, Rect)]
+    assert all(layer.fill == "" for layer in layers)

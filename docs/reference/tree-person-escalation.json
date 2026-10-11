@@ -1,0 +1,24 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "tree",
+  "title": "Who is called when the night alarm goes off",
+  "description": "An out-of-hours escalation chain for a small water utility: the alarm, the people paged in turn, and the systems each of them reaches for.",
+  "nodes": [
+    { "id": "alarm", "text": "Pumping station alarm", "role": "start" },
+    { "id": "oncall", "text": "On-call technician", "role": "person" },
+    { "id": "scada", "text": "Telemetry console" },
+    { "id": "lead", "text": "Duty manager", "role": "person" },
+    { "id": "runbook", "text": "Incident runbook", "role": "subroutine" },
+    { "id": "contractor", "text": "Emergency contractor", "role": "person" },
+    { "id": "regulator", "text": "Regulator's hotline", "role": "io" }
+  ],
+  "edges": [
+    { "from": "alarm", "to": "oncall" },
+    { "from": "oncall", "to": "scada" },
+    { "from": "oncall", "to": "lead" },
+    { "from": "lead", "to": "runbook" },
+    { "from": "lead", "to": "contractor" },
+    { "from": "lead", "to": "regulator" }
+  ]
+}
