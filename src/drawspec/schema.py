@@ -172,7 +172,9 @@ LANE_NODE_ROLES: Final = tuple(role for role in NODE_ROLES if role != "group")
 
 #: The most node classes one `flow`, `tree` or `lanes` drawing may declare. Each
 #: class is a faint fill a reader matches against a key under the drawing; past
-#: four the fills stop being told apart at a glance, and the key is a table.
+#: four the fills stop being told apart at a glance, and the key is a table. One
+#: is enough (owner): a C4 context greys only its external systems, and the key
+#: still names what the grey means.
 CLASSES_MAX: Final = 4
 
 #: The roles a classed node may not take: a `note` has no outline to fill (it is
@@ -3143,9 +3145,9 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             "classes",
             "array",
             item_ref="class",
-            min_items=2,
+            min_items=1,
             description=(
-                "The classes the boxes are sorted into, each `{id, text}`: 2 to "
+                "The classes the boxes are sorted into, each `{id, text}`: 1 to "
                 f"{CLASSES_MAX}, every one used by some node. Each is drawn as a faint fill "
                 "from the theme's fixed sequence (`[classes] fills`: a grey wash, then "
                 "patterns), in the order declared, and the key under the drawing names "
@@ -3593,9 +3595,9 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             "classes",
             "array",
             item_ref="class",
-            min_items=2,
+            min_items=1,
             description=(
-                "The classes the boxes are sorted into, each `{id, text}`: 2 to "
+                "The classes the boxes are sorted into, each `{id, text}`: 1 to "
                 f"{CLASSES_MAX}, every one used by some node. Each is drawn as a faint fill "
                 "from the theme's fixed sequence (`[classes] fills`: a grey wash, then "
                 "patterns), in the order declared, and the key under the drawing names "

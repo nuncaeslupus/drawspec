@@ -750,7 +750,7 @@ that wants outlines only sets `[frames] tone = 0` (or `false`); see
 ## Classes: boxes of a kind, with a key
 
 A group says *these are inside this*; a **class** says *these are of one kind*,
-wherever they sit. On a `flow`, a `tree` or `lanes`, declare 2 to 4 `classes`,
+wherever they sit. On a `flow`, a `tree` or `lanes`, declare 1 to 4 `classes`,
 each `{id, text}`, and give a node `class` naming one:
 
 ```json
@@ -776,7 +776,9 @@ keep them — and the key under the drawing shows each fill beside the class's
 `text`. Declare first the class the reader should notice least: in a C4-style
 context diagram that is the external systems, greyed by convention. A node with
 no `class` stays plain, so a class is for the boxes that stand apart, not a
-label every box must carry.
+label every box must carry — and one class is enough: a context diagram that
+greys only its external systems declares just that class, and the key still says
+what the grey means.
 
 Use a class for a grouping the reader must see across the whole drawing — who
 runs a system, which team owns a service, which steps are automated — and a

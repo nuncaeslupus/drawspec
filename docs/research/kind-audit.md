@@ -320,3 +320,8 @@ C4 person box would be a head like any other; `person` on a participant is refus
 naming `actor`. The figure (lengths in body units) stands over the name; all names sit
 on one line so the lifelines start level. Refused: a `weak` reply to an `async` message
 when no call between the two came before it — an async message awaits no reply.
+
+**Node classes, one is enough** (owner) — `classes` now takes 1–4, not 2–4: a C4 context
+greys only its external systems, and a second class for "ours" only added a pattern the
+reader had to decode. The key stays, since the grey still needs naming.
+`flow-classes-context` now declares just the external class.

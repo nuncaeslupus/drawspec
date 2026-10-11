@@ -35,7 +35,7 @@ from drawspec.kinds.graph import (
     graph_scene,
 )
 from drawspec.scene import Path, Polygon, Rect, Scene, TextRun
-from drawspec.schema import load_document, parse_document
+from drawspec.schema import load_document, parse_document, validate_document
 from drawspec.text import TextMeasurer
 from drawspec.theme import load_theme
 
@@ -628,10 +628,28 @@ def test_more_than_four_classes_are_refused_by_the_budget() -> None:
     assert "/classes" in _refusal(document)
 
 
-def test_one_class_alone_is_refused_by_the_schema() -> None:
+@pytest.mark.parametrize("kind", ["flow", "tree", "lanes"])
+def test_one_class_alone_greys_its_boxes_and_keeps_its_key(kind: str) -> None:
+    # A C4 context that greys only its external systems: one class, still keyed.
+    document = _classed(kind)
+    document["classes"] = [{"id": "theirs", "text": "Run by others"}]
+    document["nodes"][0].pop("class")  # type: ignore[index]
+    assert not validate_document(document)
+    scene = scene_for(parse_document(document), THEME, MEASURER)
+    rects = {
+        (p.fill, p.fill_colour, p.fill_opacity) for p in scene.primitives if isinstance(p, Rect)
+    }
+    assert ("solid", "currentColor", THEME.classes.tone) in rects
+    assert ("dots", "", 1.0) not in rects
+    names = {p.text for p in scene.primitives if isinstance(p, TextRun)}
+    assert "Run by others" in names
+
+
+def test_an_empty_classes_list_is_refused_by_the_schema() -> None:
     document = _classed()
-    document["classes"] = [{"id": "ours", "text": "Ours"}]
-    document["nodes"][1].pop("class")  # type: ignore[index]
+    document["classes"] = []
+    for node in document["nodes"]:  # type: ignore[attr-defined]
+        node.pop("class", None)
     assert "/classes" in _refusal(document)
 
 

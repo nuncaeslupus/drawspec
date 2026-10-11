@@ -3,7 +3,7 @@
   "version": 1,
   "kind": "flow",
   "title": "The library's lending system in context",
-  "description": "A system context diagram in the C4 style: the lending system in the middle, the people who use it drawn as people, and the systems run by other organisations greyed and named in the key.",
+  "description": "A system context diagram in the C4 style: the lending system in the middle, the people who use it drawn as people, and the systems run by other organisations greyed and named in the key — one class, since only the grey needs explaining.",
   "nodes": [
     {
       "id": "member",
@@ -18,8 +18,7 @@
     {
       "id": "lending",
       "text": "Lending system\nloans, reservations, fines, the catalogue",
-      "role": "emphasis",
-      "class": "ours"
+      "role": "emphasis"
     },
     {
       "id": "identity",
@@ -68,10 +67,6 @@
     {
       "id": "external",
       "text": "Run by another organisation"
-    },
-    {
-      "id": "ours",
-      "text": "Built and run by the library"
     }
   ]
 }

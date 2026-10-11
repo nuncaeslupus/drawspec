@@ -75,11 +75,11 @@
         },
         "classes": {
           "type": "array",
-          "description": "The classes the boxes are sorted into, each `{id, text}`: 2 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
+          "description": "The classes the boxes are sorted into, each `{id, text}`: 1 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
           "items": {
             "$ref": "#/$defs/class"
           },
-          "minItems": 2
+          "minItems": 1
         },
         "bands": {
           "type": "array",
@@ -174,11 +174,11 @@
         },
         "classes": {
           "type": "array",
-          "description": "The classes the boxes are sorted into, each `{id, text}`: 2 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
+          "description": "The classes the boxes are sorted into, each `{id, text}`: 1 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
           "items": {
             "$ref": "#/$defs/class"
           },
-          "minItems": 2
+          "minItems": 1
         },
         "bands": {
           "type": "array",
@@ -266,11 +266,11 @@
         },
         "classes": {
           "type": "array",
-          "description": "The classes the boxes are sorted into, each `{id, text}`: 2 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
+          "description": "The classes the boxes are sorted into, each `{id, text}`: 1 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
           "items": {
             "$ref": "#/$defs/class"
           },
-          "minItems": 2
+          "minItems": 1
         },
         "bands": {
           "type": "array",
@@ -1422,11 +1422,11 @@
         },
         "classes": {
           "type": "array",
-          "description": "The classes the boxes are sorted into, each `{id, text}`: 2 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
+          "description": "The classes the boxes are sorted into, each `{id, text}`: 1 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team.",
           "items": {
             "$ref": "#/$defs/class"
           },
-          "minItems": 2
+          "minItems": 1
         }
       },
       "required": [
