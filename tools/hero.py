@@ -383,6 +383,31 @@ def highlighted(source: str, x: float, y: float, size: float) -> str:
 
 # --- composition -------------------------------------------------------------
 
+#: claude-arsenal's own logo, for the "powered by" stamp on the frame.
+ARSENAL_LOGO: Final = ROOT / "docs" / "claude-arsenal-logo.svg"
+
+
+def powered_by() -> str:
+    """A "powered by" stamp for claude-arsenal, set on the frame's bottom edge at the right."""
+    src = ARSENAL_LOGO.read_text(encoding="utf-8").strip()
+    inner = src[src.index(">") + 1 : src.rindex("</svg>")]
+    lead, name = "powered by github.com/nuncaeslupus/", "claude-arsenal"
+    size, tile, pad, gap = 9.5, 16, 8, 6
+    lead_w = METRICS.width(lead, size, "mono")
+    width = pad + tile + gap + lead_w + METRICS.width(name, size, "mono") + pad
+    edge = INSET + 12
+    right, cy = WIDTH - edge - 24, HEIGHT - edge
+    x = right - width
+    tx = x + pad + tile + gap
+    return (
+        f'<rect x="{x:.1f}" y="{cy - 11}" width="{width:.1f}" height="22" rx="11" '
+        f'fill="{GROUND}" stroke="{INK}" stroke-opacity="0.55"/>'
+        f'<svg x="{x + pad:.1f}" y="{cy - tile / 2}" width="{tile}" height="{tile}" '
+        f'viewBox="0 0 64 64">{inner}</svg>'
+        + text(tx, cy + 3.4, lead, size, SOFT, role="mono")
+        + text(tx + lead_w, cy + 3.4, name, size, INK, role="mono", weight="bold")
+    )
+
 
 def compose() -> str:
     parts: list[str] = [grid()]
@@ -503,7 +528,8 @@ def compose() -> str:
     for x, y in ((50, 52), (50, HEIGHT - 52)):
         parts.append(registration(x, y))
 
-    parts.append(title_block(WIDTH - 44 - 300, HEIGHT - 44 - 98, 300))
+    parts.append(title_block(WIDTH - 44 - 300, HEIGHT - 52 - 98, 300))
+    parts.append(powered_by())
 
     body = "".join(parts)
     return (
