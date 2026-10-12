@@ -115,8 +115,15 @@ STATES_KINDS: Final = ("states",)
 #: The roles a state may take. `decision` is refused because a choice in a state
 #: machine is a guard on a transition, and a diamond would promise a step; `start`
 #: because the initial pseudo-state is a dot, not a box saying "start"; `note`
-#: and `group` because neither is a condition the machine can be in.
-STATE_ROLES: Final = ("step", "emphasis", "terminal")
+#: and `group` because neither is a condition the machine can be in. `fork` and
+#: `join` are UML's bar pseudo-states (#107): drawn as a short thick bar with no
+#: words, one way in and several out into the regions of one composite (a fork),
+#: or the reverse (a join). See `STATE_BARS`.
+STATE_ROLES: Final = ("step", "emphasis", "terminal", "fork", "join")
+
+#: The state roles that are bars, not boxes: a pseudo-state the machine passes
+#: through at once, so it has no words, no event to wait for, and a fixed shape.
+STATE_BARS: Final = ("fork", "join")
 
 #: The most orthogonal regions one composite state may hold (owner, kind audit
 #: question 4). UML textbooks draw two or three; past four, side by side or
@@ -731,12 +738,16 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # Set by the proposal rather than by the references: past fourteen states the
     # back edges a machine is full of cross in the layered layout.
     # `groups/regions` is the owner's (kind audit question 4): past four regions
-    # side by side a composite outgrows its share of the canvas.
+    # side by side a composite outgrows its share of the canvas. A name with `=`
+    # counts the entries of its array that take one of the roles after it: past
+    # four fork and join bars (#107) the machine is a workflow, and an activity
+    # diagram's job.
     "states": (
         ("states", 14),
         ("transitions", 24),
         ("groups/regions", STATES_REGION_MAX),
-    ),  # [6 states, 8 transitions, 3 regions]
+        ("states=fork|join", 4),
+    ),  # [8 states, 10 transitions, 3 regions, 2 bars]
     # Set by the proposal: past eight lifelines and thirty messages a sequence
     # diagram is a trace, not an explanation — split it into phases.
     "sequence": (("participants", 8), ("messages", 30)),  # [5 participants, 13 messages]
@@ -1170,8 +1181,26 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             required=True,
             description="Unique within the document, among the states and the groups.",
         ),
-        _text(),
-        _role(STATE_ROLES, "step"),
+        FieldSpec(
+            "text",
+            "string",
+            description=(
+                "The state's name. A newline makes it a lead and a detail, as on any box. "
+                "Required on every state but a `fork` or `join` bar, which has no words."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=STATE_ROLES,
+            description=(
+                "The semantic role, which the theme resolves to an appearance. Defaults "
+                "to 'step'. `fork` and `join` make this state a bar: a fork has one "
+                "transition in and two or more out, each into a different region of one "
+                "composite; a join is the reverse. A bar has no `text`, and the "
+                "transitions out of a fork or into a join carry no `event` or `guard`."
+            ),
+        ),
     ),
     "transition": (
         FieldSpec(
@@ -1279,10 +1308,11 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         FieldSpec(
             "initial",
             "string",
-            required=True,
             description=(
                 "The member this region starts in when its composite is entered, drawn "
-                "as a dot inside the region. Required: every region runs at once."
+                "as a dot inside the region. Required unless every way into the "
+                "composite is a `fork` with an arrow into this region, which says "
+                "where it starts instead."
             ),
         ),
     ),
@@ -5466,6 +5496,9 @@ def _readability_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         if name.endswith("*"):
             found.extend(_deep_budget(document, kind, name[:-1], limit))
             continue
+        if "=" in name:
+            found.extend(_role_budget(document, kind, name, limit))
+            continue
         entries = document.get(name)
         if not isinstance(entries, list) or len(entries) <= limit:
             continue
@@ -5485,6 +5518,28 @@ def _readability_violations(document: Mapping[str, Any], kind: str) -> list[Viol
             )
         )
     return found
+
+
+def _role_budget(document: Mapping[str, Any], kind: str, name: str, limit: int) -> list[Violation]:
+    """The budget of the entries of an array that take some roles: a machine's bars."""
+    outer, roles = name.split("=")
+    taking = roles.split("|")
+    counted = [
+        index
+        for index, entry in enumerate(_listed(document, outer))
+        if isinstance(entry, dict) and entry.get("role") in taking
+    ]
+    if len(counted) <= limit:
+        return []
+    named = " and ".join(taking)
+    return [
+        Violation(
+            _pointer(outer, counted[limit], "role"),
+            f"{len(counted)} {named} bars are past what one {kind} can be read at — "
+            f"{limit} at most. Past that the machine is a workflow: draw it as a `flow` "
+            f"or `lanes`, or split it into a machine per stage.",
+        )
+    ]
 
 
 def _nested_budget(document: Mapping[str, Any], name: str, limit: int) -> list[Violation]:
@@ -6584,13 +6639,23 @@ def _states_violations(document: Mapping[str, Any]) -> list[Violation]:
     found.extend(_self_containment(transitions, flattened, frozenset(groups)))
     found.extend(_loop_violations(transitions, frozenset(groups), "transitions"))
     found.extend(_crossing_regions(transitions, parent, region_of))
+    found.extend(_bar_violations(document, parent, region_of))
+    found.extend(_region_initials(document, groups, parent, region_of))
+    forks = {
+        state["id"]
+        for state in _listed(document, "states")
+        if isinstance(state, dict) and state.get("role") == "fork"
+    }
 
     # Two ways out of one state on the same event and guard: which one is taken?
+    # A fork's are all taken at once, which is what a fork is.
     seen: dict[tuple[str, str, str], tuple[int, str]] = {}
     for index, transition in enumerate(transitions):
         if not isinstance(transition, dict):
             continue
         source, target = transition.get("from"), transition.get("to")
+        if source in forks:
+            continue
         event, guard = transition.get("event", ""), transition.get("guard", "")
         if not all(isinstance(value, str) for value in (source, target, event, guard)):
             continue
@@ -6720,6 +6785,294 @@ def _composite_entries(group: Mapping[str, Any]) -> list[str]:
     return [str(group["initial"])]
 
 
+def _regions_above(
+    identifier: str, parent: Mapping[str, str], region_of: Mapping[str, int]
+) -> dict[str, int]:
+    """Each composite with regions that `identifier` is inside, and which region."""
+    found: dict[str, int] = {}
+    current = identifier
+    while current in parent and parent[current] not in found:
+        if current in region_of:
+            found[parent[current]] = region_of[current]
+        current = parent[current]
+    return found
+
+
+def _bar_violations(
+    document: Mapping[str, Any], parent: Mapping[str, str], region_of: Mapping[str, int]
+) -> list[Violation]:
+    """What a fork or join bar may not be, and the words every other state needs.
+
+    A bar is a pseudo-state the machine passes through at once (UML's fork and
+    join): it has no name, nothing to wait for, and a fixed count of ways in and
+    out. A fork splits one transition into one per region of a composite, so its
+    arrows must end in different regions of one composite — two in one region
+    would put the machine in two of its states at once, and arrows to states in
+    no region would claim a concurrency the machine has nowhere to hold. A join
+    is the same rule read backwards.
+    """
+    found: list[Violation] = []
+    bars: dict[str, str] = {}
+    for index, state in enumerate(_listed(document, "states")):
+        if not isinstance(state, dict) or not isinstance(state.get("id"), str):
+            continue
+        role = state.get("role")
+        if role in STATE_BARS:
+            bars[state["id"]] = str(role)
+            if "text" in state:
+                found.append(
+                    Violation(
+                        _pointer("states", index, "text"),
+                        f"a {role} is drawn as a bar with no words. Drop 'text'; name the "
+                        f"state the machine is in before or after it instead.",
+                    )
+                )
+        elif "text" not in state:
+            found.append(Violation(_pointer("states", index, "text"), "'text' is required"))
+    if not bars:
+        return found
+
+    def refuse_naming(pointer: str, name: object, what: str) -> None:
+        if isinstance(name, str) and name in bars:
+            found.append(
+                Violation(
+                    pointer,
+                    f"{name!r} is a {bars[name]} bar, which the machine passes through at "
+                    f"once and is never in, so it cannot be {what}. Name a state.",
+                )
+            )
+
+    refuse_naming("/initial", document.get("initial"), "where the machine starts")
+    for index, name in enumerate(_listed(document, "final")):
+        refuse_naming(_pointer("final", index), name, "where the machine ends")
+    for index, group in enumerate(_listed(document, "groups")):
+        if not isinstance(group, dict):
+            continue
+        refuse_naming(_pointer("groups", index, "initial"), group.get("initial"), "an entry")
+        for number, region in enumerate(_listed(group, "regions")):
+            if isinstance(region, dict):
+                refuse_naming(
+                    _pointer("groups", index, "regions", number, "initial"),
+                    region.get("initial"),
+                    "where a region starts",
+                )
+
+    into: dict[str, list[int]] = {bar: [] for bar in bars}
+    out: dict[str, list[int]] = {bar: [] for bar in bars}
+    transitions = _listed(document, "transitions")
+    for index, transition in enumerate(transitions):
+        if not isinstance(transition, dict):
+            continue
+        source, target = transition.get("from"), transition.get("to")
+        if isinstance(source, str) and source in bars:
+            if source == target:
+                found.append(
+                    Violation(
+                        _pointer("transitions", index, "to"),
+                        f"{source!r} is a {bars[source]} bar, and a bar is passed through, "
+                        f"not stayed in: it has no self-loop.",
+                    )
+                )
+                continue
+            out[source].append(index)
+            if "event" in transition:
+                found.append(
+                    Violation(
+                        _pointer("transitions", index, "event"),
+                        f"this transition leaves the {bars[source]} bar {source!r}, which "
+                        f"the machine passes through at once, so there is no event to wait "
+                        f"for. Put the event on the transition into the bar.",
+                    )
+                )
+            if bars[source] == "fork" and "guard" in transition:
+                found.append(
+                    Violation(
+                        _pointer("transitions", index, "guard"),
+                        f"a fork starts every one of its arrows at once, so none of them "
+                        f"can be guarded (UML forbids it). Put the guard on the transition "
+                        f"into {source!r}.",
+                    )
+                )
+        if isinstance(target, str) and target in bars and target != source:
+            into[target].append(index)
+            if bars[target] == "join":
+                for part in ("event", "guard"):
+                    if part in transition:
+                        found.append(
+                            Violation(
+                                _pointer("transitions", index, part),
+                                f"a join is passed when every arrow into it has arrived, "
+                                f"each as its state completes, so an arrow into "
+                                f"{target!r} has no {part} (UML forbids it). Move it to "
+                                f"the transition into this arrow's state, or out of "
+                                f"{target!r}.",
+                            )
+                        )
+
+    for index, state in enumerate(_listed(document, "states")):
+        if not isinstance(state, dict) or state.get("id") not in bars:
+            continue
+        bar = str(state["id"])
+        kind = bars[bar]
+        single, many = (into, out) if kind == "fork" else (out, into)
+        one_way, many_way = ("in", "out") if kind == "fork" else ("out", "in")
+        if len(single[bar]) != 1:
+            found.append(
+                Violation(
+                    _pointer("transitions", single[bar][1], "to" if kind == "fork" else "from")
+                    if len(single[bar]) > 1
+                    else _pointer("states", index),
+                    f"the {kind} {bar!r} has {len(single[bar])} transitions {one_way}; a "
+                    f"{kind} has exactly one, "
+                    + (
+                        "which it splits into one per region."
+                        if kind == "fork"
+                        else "which leaves once every region has arrived."
+                    ),
+                )
+            )
+        if len(many[bar]) < 2:
+            found.append(
+                Violation(
+                    _pointer("states", index),
+                    f"the {kind} {bar!r} has {len(many[bar])} transition"
+                    f"{'' if len(many[bar]) == 1 else 's'} {many_way}; a {kind} has two or "
+                    f"more, one per region of a composite. With one, draw a plain "
+                    f"transition instead.",
+                )
+            )
+            continue
+        ends = [
+            (number, transitions[number].get("to" if kind == "fork" else "from"))
+            for number in many[bar]
+        ]
+        found.extend(_bar_regions(bar, kind, ends, parent, region_of))
+    return found
+
+
+def _region_initials(
+    document: Mapping[str, Any],
+    groups: Mapping[str, Mapping[str, Any]],
+    parent: Mapping[str, str],
+    region_of: Mapping[str, int],
+) -> list[Violation]:
+    """Each region with no `initial` that the machine can enter without saying where.
+
+    Entering a composite enters every region at its `initial`, and so does
+    entering one state of one region for the others. Only a fork says where each
+    region it reaches starts, so a region may go without an `initial` exactly when
+    every way into its composite is a fork with an arrow into it.
+    """
+    bars = {
+        state["id"]: state.get("role")
+        for state in _listed(document, "states")
+        if isinstance(state, dict) and state.get("role") in STATE_BARS
+    }
+
+    def inside(identifier: str, composite: str) -> bool:
+        current: str | None = identifier
+        seen: set[str] = set()
+        while current is not None and current not in seen:
+            if current == composite:
+                return True
+            seen.add(current)
+            current = parent.get(current)
+        return False
+
+    found: list[Violation] = []
+    for index, group in enumerate(_listed(document, "groups")):
+        if not isinstance(group, dict) or group.get("id") not in groups:
+            continue
+        composite = str(group["id"])
+        regions = _listed(group, "regions")
+        missing = {
+            number
+            for number, region in enumerate(regions)
+            if isinstance(region, dict) and "initial" not in region
+        }
+        if not missing:
+            continue
+        # Why each region would be entered with nowhere to start: the first reason.
+        reasons: dict[int, str] = {}
+        initial = document.get("initial")
+        if isinstance(initial, str) and inside(initial, composite):
+            for number in missing:
+                reasons.setdefault(number, "the machine starts inside it")
+        forks: dict[str, set[int]] = {}
+        for transition in _listed(document, "transitions"):
+            if not isinstance(transition, dict):
+                continue
+            source, target = transition.get("from"), transition.get("to")
+            if not isinstance(source, str) or not isinstance(target, str):
+                continue
+            if not inside(target, composite) or inside(source, composite):
+                continue
+            if target == composite:
+                for number in missing:
+                    reasons.setdefault(number, f"a transition from {source!r} enters it")
+                continue
+            region = _regions_above(target, parent, region_of).get(composite)
+            if bars.get(source) == "fork":
+                forks.setdefault(source, set()).add(region if region is not None else -1)
+                continue
+            for number in missing - {region}:
+                reasons.setdefault(number, f"the transition from {source!r} to {target!r}")
+        for fork, reached in forks.items():
+            for number in missing - reached:
+                reasons.setdefault(number, f"the fork {fork!r} has no arrow into it")
+        for number in sorted(reasons):
+            found.append(
+                Violation(
+                    _pointer("groups", index, "regions", number, "initial"),
+                    f"this region of {composite!r} has no 'initial', and "
+                    f"{reasons[number]}, so the machine would be in no state of it. Name "
+                    f"where it starts, or reach it with an arrow from every fork into "
+                    f"{composite!r}.",
+                )
+            )
+    return found
+
+
+def _bar_regions(
+    bar: str,
+    kind: str,
+    ends: Sequence[tuple[int, object]],
+    parent: Mapping[str, str],
+    region_of: Mapping[str, int],
+) -> list[Violation]:
+    """A bar's far ends, each in a different region of one composite, or why not."""
+    names = [end for _, end in ends if isinstance(end, str)]
+    if len(names) != len(ends):
+        return []
+    above = [_regions_above(name, parent, region_of) for name in names]
+    shared = set(above[0]).intersection(*above[1:])
+    if any(len({regions[composite] for regions in above}) == len(names) for composite in shared):
+        return []
+    # The arrow that broke the rule: the first that shares a region with an
+    # earlier one, or is in no region the others are in.
+    position = next(
+        (
+            count - 1
+            for count in range(2, len(names) + 1)
+            if not any(
+                len({regions[composite] for regions in above[:count]}) == count
+                for composite in set(above[0]).intersection(*above[1:count])
+            )
+        ),
+        len(names) - 1,
+    )
+    verb, end = ("starts", "end") if kind == "fork" else ("waits for", "start")
+    return [
+        Violation(
+            _pointer("transitions", ends[position][0], "to" if kind == "fork" else "from"),
+            f"the {kind} {bar!r} {verb} parts of the machine that run at once, so each of "
+            f"its arrows must {end} in a different region of one composite state, and "
+            f"{names[position]!r} is in no region the others share, or in the same region "
+            f"as one of them. Give the composite 'regions', one per arrow.",
+        )
+    ]
+
+
 def _crossing_regions(
     transitions: Sequence[Any], parent: Mapping[str, str], region_of: Mapping[str, int]
 ) -> list[Violation]:
@@ -6731,13 +7084,7 @@ def _crossing_regions(
     """
 
     def regions_above(identifier: str) -> dict[str, int]:
-        found: dict[str, int] = {}
-        current = identifier
-        while current in parent and parent[current] not in found:
-            if current in region_of:
-                found[parent[current]] = region_of[current]
-            current = parent[current]
-        return found
+        return _regions_above(identifier, parent, region_of)
 
     found: list[Violation] = []
     for index, transition in enumerate(transitions):
@@ -10821,7 +11168,7 @@ def _states_document(document: Mapping[str, Any]) -> Document:
         height_binding=bool(document.get("height_binding", False)),
         theme=str(document.get("theme", "")),
         nodes=tuple(
-            Node(id=entry["id"], text=entry["text"], role=entry.get("role", "step"))
+            Node(id=entry["id"], text=entry.get("text", ""), role=entry.get("role", "step"))
             for entry in document["states"]
         ),
         initial=str(document["initial"]),
@@ -10867,7 +11214,7 @@ def _composite_groups(entry: Mapping[str, Any]) -> tuple[Group, ...]:
             Group(
                 id=name,
                 members=tuple(region["members"]),
-                initial=region["initial"],
+                initial=region.get("initial", ""),
                 region=True,
             )
             for name, region in zip(names, regions, strict=True)

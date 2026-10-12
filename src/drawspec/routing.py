@@ -483,6 +483,19 @@ def _on_person(box: Obstacle, side: str, x: float, y: float) -> tuple[float, flo
     return (box.x + inset, y) if side == "left" else (box.right - inset, y)
 
 
+#: The shape of a state machine's fork or join bar: a rectangle to route round and
+#: land on, but one whose long sides are *all* port — a bar is as long as its
+#: arrows need, so they are spread along the whole of it, each in the middle of
+#: an equal share, rather than across the middle `PORT_SPREAD` of a box's side.
+BAR_SHAPE: Final = "bar"
+
+#: A bar's long sides, by whether it lies across (`True`) or stands upright.
+_LONG_SIDES: Final[Mapping[bool, tuple[str, str]]] = {
+    True: ("top", "bottom"),
+    False: ("left", "right"),
+}
+
+
 def _spread(index: int, count: int) -> float:
     """Where the `index`th of `count` ports sits along its side, as a fraction.
 
@@ -1203,8 +1216,14 @@ def _assign_ports(
             other = connector.target if connector.source == node else connector.source
             return boxes[other].centre[along], index
 
+        bar = (
+            boxes[node].shape == BAR_SHAPE
+            and side in _LONG_SIDES[boxes[node].width >= boxes[node].height]
+        )
         for position, index in enumerate(sorted(indices, key=key)):
-            fractions[(index, f"{node}:{side}")] = _spread(position, len(indices))
+            fractions[(index, f"{node}:{side}")] = (
+                (position + 0.5) / len(indices) if bar else _spread(position, len(indices))
+            )
 
     assigned: dict[int, tuple[float, float]] = {}
     for index, (source_side, target_side) in sides.items():
@@ -1271,13 +1290,14 @@ def _clear_frame_ports(
             length = frame.width if along == 0 else frame.height
             if length <= 0:
                 continue
-            lines = [
+            leaving = [
                 line
                 for member, member_side, line, beyond in taken
                 if member_side == side
                 and _inside(boxes[member], frame)
                 and not _inside(boxes[beyond], frame)
             ]
+            lines = [*leaving]
             lines += [
                 where for axis, where in dividers.get(node, ()) if (axis == "x") == (along == 0)
             ]
@@ -1287,6 +1307,17 @@ def _clear_frame_ports(
             # member's line rather than across it.
             other = connector.target if end == 0 else connector.source
             toward = 1.0 if boxes[other].centre[along] >= low + length * ends[end] else -1.0
+            # A member's line between this end and the box it goes to would be
+            # crossed on the way there, so start past the outermost such line.
+            here, there = low + length * ends[end], boxes[other].centre[along]
+            between = [line for line in leaving if min(here, there) < line < max(here, there)]
+            if between:
+                past = (max(between) if toward > 0 else min(between)) + toward * spacing
+                if 0.05 <= (past - low) / length <= 0.95 and all(
+                    abs(past - line) >= spacing - _TOLERANCE for line in lines
+                ):
+                    ends[end] = (past - low) / length
+                    continue
             for step in range(int(length / spacing) + 1):
                 offers = (
                     (ends[end],)

@@ -310,6 +310,28 @@ they need a pseudo-state of their own (text rules, many arrows landing on one ba
 own refusals), and entering a composite or one state in a region already starts the
 other regions at their initials.
 
+**`states` fork and join bars** (#107) — built as two more state **roles**, `fork` and
+`join`, rather than a field of their own: transitions already name states by id, so a bar
+that is a state needs no new reference type, and the role list is where a state's kind
+of drawing is chosen. A bar has no `text` (refused on one; `text` is now required by the
+meaning pass on every other state rather than by the schema). Drawn as a solid bar, `bar`
+thick and `bar_step` long per arrow (theme `[states]`), lying across the flow; the layout
+gives it the width of the composite it fans into and holds it under what it hangs from
+(a sibling beside it gives way), then stretches it over its far ends' centres and pins
+each arrow's port there, so the arrows drop straight — moved past a frame's caption when
+that is in the way. Upright when the machine reads across: a box that `turns` is not
+transposed by the engine, and a machine whose top level comes out `right` is arranged
+again preferring `right`, which stacks its regions against the bars. Rules follow UML:
+one way into a fork and two or more out, each into a different region of one composite
+(the join mirrored); no `event` or `guard` out of a fork or into a join, no `event` out
+of a join; never `initial`, `final`, a region's `initial` or a loop. **A region's
+`initial` became optional** where every way into its composite is a fork with an arrow
+into it — otherwise every forked machine drew a redundant dot beside each fork arrow;
+it is still refused wherever the machine could enter the region without being told
+where. Budget: four bars (`states=fork|join`, a new role-count budget form). One router
+change outside bars: a frame's own edge now starts past any member's line it would
+otherwise cross to reach its target (no existing drawing changes).
+
 **`sequence` async messages and actors** (owner question 4) — built as roles, matching
 the kind's own conventions rather than new fields: a message's role already says call
 (`flow`), reply (`weak`) or the exchange that matters (`strong`), so `async` is a fourth

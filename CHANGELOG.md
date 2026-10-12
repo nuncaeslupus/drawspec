@@ -12,6 +12,21 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **Fork and join bars in `states`**: a state with `"role": "fork"` or `"join"` and no
+  `text` is UML's bar pseudo-state, drawn as a short thick bar across the flow (upright
+  when the machine reads across), `[states] bar_step` long per arrow and stretched to
+  reach over the states it splits into or gathers, so each arrow drops straight onto its
+  state. A region every fork reaches may omit its `initial`. Refused at their pointers:
+  `text` on a bar; a fork without exactly one way in and two or more out (a join the
+  reverse); arrows into two states of one region or into no region; an `event` or
+  `guard` out of a fork or into a join, or an `event` out of a join; a bar as `initial`,
+  `final` or a region's `initial`; a loop on a bar; a region with no `initial` the
+  machine can enter without a fork; more than 4 bars (budget `states=fork|join`). A
+  machine laid out across stacks its regions against its upright bars. New theme keys
+  `[states] bar` and `bar_step`. See `reference/states-fork-order.json`,
+  `states-fork-release.json` and `states-fork-onboarding.json`; no existing drawing
+  changes.
+
 - **`sequence` async messages and actors**: message role `async`, UML's asynchronous
   message — a solid line with an open head (new theme edge role `async`) — which opens
   no activation bar; a `weak` reply answering one is refused. Participant role `actor`

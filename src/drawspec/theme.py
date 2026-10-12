@@ -1124,6 +1124,14 @@ class StatesStyle:
     ring: float = 3.0
     """The daylight between a final pseudo-state's dot and the ring around it."""
 
+    bar: float = 6.0
+    """How thick a fork or join bar is, across the flow."""
+
+    bar_step: float = 44.0
+    """How much of a fork or join bar's length each of its arrows has: the bar is
+    at least this times the number of arrows on its busy side, so it grows with the
+    regions it splits into or gathers, and longer when it must reach over them."""
+
     @property
     def final(self) -> float:
         """The diameter of a final pseudo-state, ring included."""
@@ -1131,11 +1139,13 @@ class StatesStyle:
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> StatesStyle:
-        _reject_unknown(mapping, ("dot", "ring"), "[states]")
+        _reject_unknown(mapping, ("dot", "ring", "bar", "bar_step"), "[states]")
         defaults = cls()
         return cls(
             dot=_number(mapping.get("dot", defaults.dot), "[states] dot"),
             ring=_number(mapping.get("ring", defaults.ring), "[states] ring"),
+            bar=_number(mapping.get("bar", defaults.bar), "[states] bar"),
+            bar_step=_number(mapping.get("bar_step", defaults.bar_step), "[states] bar_step"),
         )
 
 

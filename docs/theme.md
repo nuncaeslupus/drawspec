@@ -206,6 +206,8 @@ How a state machine's pseudo-states are drawn. Appearance, so it lives here.
 |---|---|---|
 | `dot` | `10.0` | The diameter of the initial pseudo-state's filled dot, and of the dot inside a final pseudo-state's ring. |
 | `ring` | `3.0` | The daylight between a final pseudo-state's dot and the ring around it. |
+| `bar` | `6.0` | How thick a fork or join bar is, across the flow. |
+| `bar_step` | `44.0` | How much of a fork or join bar's length each of its arrows has: the bar is at least this times the number of arrows on its busy side, so it grows with the regions it splits into or gathers, and longer when it must reach over them. |
 
 ### `[sequence]`
 

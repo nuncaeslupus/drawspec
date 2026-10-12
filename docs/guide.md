@@ -1030,13 +1030,43 @@ Refused at their pointers: a state in two regions, a region with no `initial` or
 one outside it, `members` beside `regions`, an `initial` on the composite itself
 (each region names its own), one region alone, more than four (budget), and a
 transition from one region of a composite into another (they run at once, so
-neither can hand the machine to the other). Fork and join bars are not drawn:
-enter the composite, or a state inside one region, and the others start at their
-own `initial`. See
+neither can hand the machine to the other). Entering the composite, or a state
+inside one region, starts the others at their own `initial`. See
 [`reference/states-regions-order.json`](reference/states-regions-order.json),
 [`reference/states-regions-player.json`](reference/states-regions-player.json) and
 [`reference/states-regions-keyboard.json`](reference/states-regions-keyboard.json)
 (three regions, stacked).
+
+**Fork and join bars.** To say where each region starts, or that the machine
+leaves only once every region has finished, give a state `"role": "fork"` or
+`"role": "join"` and no `text`: it is drawn as UML's short thick bar, across the
+flow (upright when the machine reads left to right), long enough to reach over
+the states it splits into or gathers, each arrow dropping straight onto its state.
+A fork has exactly one transition in and two or more out, each into a different
+region of one composite; a join has two or more in, one from each region, and
+exactly one out. A region every fork reaches needs no `initial` — the fork says
+where it starts — but one the machine can enter any other way still does.
+
+```json
+{"id": "start", "role": "fork"},
+{"from": "basket", "to": "start", "event": "checkout"},
+{"from": "start", "to": "authorising"},
+{"from": "start", "to": "picking"}
+```
+
+A bar is passed at once, so it waits for nothing: the transitions out of a fork
+or into a join take no `event` or `guard` (UML forbids both; put them on the
+transition into the fork, or into each state before the join), nor does the way
+out of a join take an `event`; an `action` is fine anywhere. Refused at their
+pointers, too: `text` on a bar, a fork with a second way in or fewer than two
+out (and the join's mirror image), arrows into two states of one region or into
+states in no region, a bar as `initial`, `final` or a region's `initial`, a loop
+on a bar, and more than four bars (budget). See
+[`reference/states-fork-order.json`](reference/states-fork-order.json),
+[`reference/states-fork-release.json`](reference/states-fork-release.json)
+(three regions) and
+[`reference/states-fork-onboarding.json`](reference/states-fork-onboarding.json)
+(read across, bars upright).
 
 Refused, each at its pointer: a state no transition reaches from `initial` (a
 bug in the machine — add the transition or delete the state); a `final` state

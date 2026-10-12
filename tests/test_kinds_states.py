@@ -724,3 +724,268 @@ def test_entering_one_region_directly_still_enters_the_others() -> None:
     document["transitions"][0] = {"from": "stopped", "to": "paused", "event": "resume later"}
     # playing is still reached, through its region's initial
     assert not validate_document(document)
+
+
+# ---------------------------------------------------------------------------
+# Fork and join bars
+# ---------------------------------------------------------------------------
+
+
+def forked(**extra: Any) -> dict[str, Any]:
+    """An order that forks into payment and packing and joins before dispatch."""
+    document: dict[str, Any] = {
+        "version": 1,
+        "kind": "states",
+        "initial": "placed",
+        "final": ["dispatched"],
+        "states": [
+            {"id": "placed", "text": "Placed"},
+            {"id": "split", "role": "fork"},
+            {"id": "paying", "text": "Paying"},
+            {"id": "paid", "text": "Paid"},
+            {"id": "picking", "text": "Picking"},
+            {"id": "packed", "text": "Packed"},
+            {"id": "ready", "role": "join"},
+            {"id": "dispatched", "text": "Dispatched"},
+        ],
+        "groups": [
+            {
+                "id": "fulfilling",
+                "text": "Fulfilling",
+                "regions": [{"members": ["paying", "paid"]}, {"members": ["picking", "packed"]}],
+            }
+        ],
+        "transitions": [
+            {"from": "placed", "to": "split", "event": "confirmed"},
+            {"from": "split", "to": "paying"},
+            {"from": "split", "to": "picking"},
+            {"from": "paying", "to": "paid", "event": "approved"},
+            {"from": "picking", "to": "packed", "event": "scanned"},
+            {"from": "paid", "to": "ready"},
+            {"from": "packed", "to": "ready"},
+            {"from": "ready", "to": "dispatched", "action": "print label"},
+        ],
+    }
+    document.update(extra)
+    return document
+
+
+def test_a_fork_and_a_join_validate_without_region_initials() -> None:
+    # Every way into the composite is the fork, which says where each region starts.
+    assert not validate_document(forked())
+
+
+def test_bars_are_drawn_as_solid_bars_across_the_flow_with_no_words() -> None:
+    drawing = drawn(forked())
+    assert sorted(marker(drawing, "fork")) == ["split"]
+    assert sorted(marker(drawing, "join")) == ["ready"]
+    for bar in ("split", "ready"):
+        box = drawing.boxes[bar]
+        assert box.height == THEME.states.bar
+        assert box.width >= THEME.states.bar_step * 2
+        assert not box.block.lines
+    scene = graph_scene(parse_document(forked()), THEME, MEASURER)
+    from drawspec.scene import Polygon
+
+    solid = [p for p in scene.primitives if isinstance(p, Polygon) and p.region and p.fill]
+    assert len(solid) == 2
+
+
+def test_a_fork_drops_each_arrow_straight_onto_its_state() -> None:
+    drawing = drawn(forked())
+    bar = drawing.boxes["split"]
+    landed = []
+    for route in drawing.routes:
+        if route.source == "split":
+            assert len(route.points) == 2, route.points  # one straight segment
+            (x1, y1), (x2, _) = route.points
+            assert x1 == pytest.approx(x2)
+            assert y1 == pytest.approx(bar.y + bar.height)
+            assert bar.x < x1 < bar.x + bar.width
+            landed.append(x1)
+    assert len(landed) == 2 and abs(landed[0] - landed[1]) > THEME.states.bar_step / 2
+
+
+def test_a_join_gathers_its_arrows_at_separate_points() -> None:
+    drawing = drawn(forked())
+    bar = drawing.boxes["ready"]
+    ends = sorted(route.points[-1][0] for route in drawing.routes if route.target == "ready")
+    assert len(ends) == 2 and ends[1] - ends[0] > THEME.states.bar_step / 2
+    assert all(bar.x < x < bar.x + bar.width for x in ends)
+
+
+def test_a_bar_grows_with_its_arrows() -> None:
+    from drawspec.kinds.graph import _marker_box
+
+    two, four = _marker_box("fork", THEME, 2), _marker_box("fork", THEME, 4)
+    assert four.width == 2 * two.width
+
+
+def test_a_bar_turns_upright_when_the_machine_reads_across() -> None:
+    document = json.loads((REFERENCE / "states-fork-onboarding.json").read_text(encoding="utf-8"))
+    drawing = graph_drawing(parse_document(document), THEME.with_scale(0.9), MEASURER)
+    assert drawing.layout.direction == "right"
+    for bar in ("split", "both"):
+        box = drawing.boxes[bar]
+        assert box.width == pytest.approx(THEME.states.bar)
+        assert box.height > THEME.states.bar_step
+    # Its regions are stacked against the upright bars, one over the other.
+    regions = sorted(
+        (frame for frame in drawing.frames if frame.region_of == "preparing"), key=lambda f: f.y
+    )
+    assert len(regions) == 2 and regions[0].y + regions[0].height <= regions[1].y
+    # And each arrow leaves the fork straight across to its state.
+    for route in drawing.routes:
+        if route.source == "split":
+            assert len(route.points) == 2
+
+
+def test_a_bar_takes_no_text() -> None:
+    document = forked()
+    document["states"][1]["text"] = "Split"
+    assert pointers(document) == ["/states/1/text"]
+
+
+def test_every_other_state_still_needs_its_text() -> None:
+    document = forked()
+    del document["states"][0]["text"]
+    assert pointers(document) == ["/states/0/text"]
+
+
+def test_a_fork_with_one_way_out_is_refused() -> None:
+    document = forked()
+    document["transitions"] = [t for t in document["transitions"] if t.get("to") != "picking"]
+    document["groups"][0]["regions"][1]["initial"] = "picking"
+    assert "/states/1" in pointers(document)
+    assert "two or more" in messages(document)
+
+
+def test_a_fork_with_two_ways_in_is_refused() -> None:
+    document = forked()
+    document["states"].append({"id": "held", "text": "Held"})
+    document["transitions"] += [
+        {"from": "placed", "to": "held", "event": "query"},
+        {"from": "held", "to": "split", "event": "cleared"},
+    ]
+    assert pointers(document) == ["/transitions/9/to"]
+    assert "exactly one" in messages(document)
+
+
+def test_a_join_with_one_way_in_is_refused() -> None:
+    document = forked()
+    document["transitions"] = [t for t in document["transitions"] if t.get("from") != "packed"]
+    assert "/states/6" in pointers(document)
+
+
+def test_a_join_with_two_ways_out_is_refused() -> None:
+    document = forked()
+    document["transitions"].append({"from": "ready", "to": "placed"})
+    assert "/transitions/8/from" in pointers(document)
+
+
+def test_a_guard_or_event_on_a_forks_arrow_is_refused() -> None:
+    document = forked()
+    document["transitions"][1]["guard"] = "card on file"
+    document["transitions"][2]["event"] = "go"
+    assert pointers(document) == ["/transitions/1/guard", "/transitions/2/event"]
+    assert "UML forbids it" in messages(document)
+
+
+def test_an_event_or_guard_into_a_join_is_refused() -> None:
+    document = forked()
+    document["transitions"][5]["event"] = "settled"
+    document["transitions"][6]["guard"] = "complete"
+    assert pointers(document) == ["/transitions/5/event", "/transitions/6/guard"]
+
+
+def test_the_join_may_carry_an_action_on_its_way_out() -> None:
+    assert not validate_document(forked())  # `print label` is on the join's way out
+
+
+def test_a_fork_into_two_states_of_one_region_is_refused() -> None:
+    document = forked()
+    document["transitions"][2]["to"] = "paid"
+    assert "/transitions/2/to" in pointers(document)
+    assert "different region" in messages(document)
+
+
+def test_a_fork_into_states_in_no_region_is_refused() -> None:
+    document = forked()
+    document["states"].append({"id": "other", "text": "Other"})
+    document["transitions"].append({"from": "split", "to": "other"})
+    assert "/transitions/8/to" in pointers(document)
+
+
+def test_a_fork_does_not_make_the_machine_non_deterministic() -> None:
+    # Two completion transitions out of one state would be refused; out of a fork
+    # they are what a fork is.
+    assert not any("cannot say which" in v.message for v in validate_document(forked()))
+
+
+@pytest.mark.parametrize(
+    ("where", "pointer"),
+    [("initial", "/initial"), ("final", "/final/1")],
+)
+def test_a_bar_is_never_where_the_machine_starts_or_ends(where: str, pointer: str) -> None:
+    document = forked()
+    if where == "initial":
+        document["initial"] = "split"
+    else:
+        document["final"] = ["dispatched", "ready"]
+    assert pointer in pointers(document)
+
+
+def test_a_bar_has_no_self_loop() -> None:
+    document = forked()
+    document["transitions"].append({"from": "split", "to": "split"})
+    assert "/transitions/8/to" in pointers(document)
+
+
+def test_a_region_without_initial_entered_by_default_is_refused() -> None:
+    document = forked()
+    document["states"].append({"id": "back", "text": "Back"})
+    document["transitions"] += [
+        {"from": "dispatched", "to": "back", "event": "returned"},
+        {"from": "back", "to": "fulfilling", "event": "resend"},
+    ]
+    document["final"] = []
+    found = pointers(document)
+    assert "/groups/0/regions/0/initial" in found
+    assert "/groups/0/regions/1/initial" in found
+
+
+def test_a_fork_that_misses_a_region_needs_that_regions_initial() -> None:
+    document = forked()
+    document["groups"][0]["regions"].append({"members": ["noted"]})
+    document["states"].append({"id": "noted", "text": "Noted"})
+    assert pointers(document) == ["/groups/0/regions/2/initial"]
+    document["groups"][0]["regions"][2]["initial"] = "noted"
+    assert not validate_document(document)
+
+
+def test_a_cycle_refuses_a_bar_role() -> None:
+    document = {
+        "version": 1,
+        "kind": "cycle",
+        "nodes": [{"id": n, "text": n, "role": "fork" if n == "a" else "step"} for n in "abc"],
+        "edges": [{"from": "a", "to": "b"}, {"from": "b", "to": "c"}, {"from": "c", "to": "a"}],
+    }
+    assert "/nodes/0/role" in pointers(document)
+
+
+def test_the_budget_refuses_a_fifth_bar() -> None:
+    limit = dict(READABILITY_BUDGET["states"])["states=fork|join"]
+    document = forked()
+    document["states"] += [{"id": f"x{n}", "role": "fork"} for n in range(limit - 1)]
+    found = pointers(document)
+    assert f"/states/{len(forked()['states']) + limit - 2}/role" in found
+    assert any("bars are past" in v.message for v in validate_document(document))
+
+
+@pytest.mark.parametrize(
+    "name", ["states-fork-order", "states-fork-release", "states-fork-onboarding"]
+)
+def test_every_fork_reference_renders(name: str) -> None:
+    document = json.loads((REFERENCE / f"{name}.json").read_text(encoding="utf-8"))
+    assert not validate_document(document)
+    assert render(document).startswith("<svg")

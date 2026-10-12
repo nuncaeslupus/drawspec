@@ -358,7 +358,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `scatter` | 20 `positions` |
 | `curve` | 4 `curves` |
 | `files` | 30 `entries` |
-| `states` | 14 `states`, 24 `transitions`, 4 `regions` per group |
+| `states` | 14 `states`, 24 `transitions`, 4 `regions` per group, 4 `states` that are `fork` or `join` |
 | `sequence` | 8 `participants`, 30 `messages` |
 | `lanes` | 15 `nodes`, 16 `edges`, 6 `lanes`, 6 `phases`, 4 `classes` |
 | `entities` | 8 `entities`, 12 `edges`, 12 `fields` per entity, 8 `operations` per entity |
@@ -451,8 +451,8 @@ name, so a misspelt key is an error at the point it was written.
 | Field | Type | Required | What it is |
 |---|---|---|---|
 | `id` | string | **yes** | Unique within the document, among the states and the groups. |
-| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
-| `role` | string — one of `step`, `emphasis`, `terminal` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `text` | string | no | The state's name. A newline makes it a lead and a detail, as on any box. Required on every state but a `fork` or `join` bar, which has no words. |
+| `role` | string — one of `step`, `emphasis`, `terminal`, `fork`, `join` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. `fork` and `join` make this state a bar: a fork has one transition in and two or more out, each into a different region of one composite; a join is the reverse. A bar has no `text`, and the transitions out of a fork or into a join carry no `event` or `guard`. |
 
 ### `transition` object
 
@@ -480,7 +480,7 @@ name, so a misspelt key is an error at the point it was written.
 | Field | Type | Required | What it is |
 |---|---|---|---|
 | `members` | array of string, at least 1 | **yes** | The states (or groups) in this region. A state is in one region; each region is a machine of its own, running alongside the others. |
-| `initial` | string | **yes** | The member this region starts in when its composite is entered, drawn as a dot inside the region. Required: every region runs at once. |
+| `initial` | string | no | The member this region starts in when its composite is entered, drawn as a dot inside the region. Required unless every way into the composite is a `fork` with an arrow into this region, which says where it starts instead. |
 
 ### `participant` object
 
