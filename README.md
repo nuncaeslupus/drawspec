@@ -7,6 +7,15 @@
 Declarative diagram spec → clean, themeable SVG. Writable by an LLM with no
 coordinates to get wrong.
 
+For anyone — person or language model — who puts diagrams in docs, specs and
+READMEs and is tired of arrows that miss their boxes:
+
+```bash
+pip install drawspec && drawspec render diagram.json -o diagram.svg
+```
+
+**[See every kind drawn in the gallery →](https://nuncaeslupus.github.io/drawspec/docs/gallery/)**
+
 > **Status: it draws.** All thirty-six kinds render — `flow`, `tree`, `cycle`,
 > `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`,
 > `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`,
@@ -350,6 +359,17 @@ make gallery  # render every reference document and look at it
 make docs     # regenerate the format, CLI and theme references
 make schema   # regenerate the published JSON Schema
 ```
+
+## Related projects
+
+Built with [claude-arsenal](https://github.com/nuncaeslupus/claude-arsenal), the
+spec-driven Claude Code workflow and gated task queue this repo is developed on —
+whose spec and design skills draw their diagrams as drawspec documents. Same author:
+
+- [claude-arsenal](https://github.com/nuncaeslupus/claude-arsenal) — a Claude Code skill and plugin marketplace: specs before code, failing tests first, gates with numbers.
+- [integral-job-search](https://github.com/nuncaeslupus/integral-job-search) — a candidate-centred job search run as a conversation in Claude Code.
+- [literary-critic](https://github.com/nuncaeslupus/literary-critic) — lets an LLM index, analyse and advise on a full novel manuscript the way a professional editor would.
+- [doc-control](https://github.com/nuncaeslupus/doc-control) — a deterministic tool for AI agents to edit Word documents as tracked changes (in development).
 
 ## License
 
