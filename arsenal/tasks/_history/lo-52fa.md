@@ -2,6 +2,7 @@
 id: lo-52fa
 title: "C4: the consumer's 87 documents still pin the old schema URL"
 priority: 5
+status: done
 tags: [readiness, laptop]
 ---
 
