@@ -473,7 +473,7 @@ name, so a misspelt key is an error at the point it was written.
 | `text` | string | **yes** | The composite state's name, drawn at its frame's corner. |
 | `members` | array of string, at least 1 | no | The states (or groups) inside this composite state. A composite lists its `members` or its `regions`, not both. |
 | `initial` | string | no | The member this composite is entered at, drawn as a dot inside the frame. Required when a transition, or the machine's own `initial`, names the group. With `regions`, each region names its own instead. |
-| `regions` | array of [state_region](#state_region-object), at least 2 | no | Orthogonal regions: parts of this composite that are all current at once, drawn side by side (or stacked) and divided by dashed lines. Each region lists its own members and its own `initial`, and entering the composite enters every region there. A transition may not run between two regions of one composite. In place of `members`. |
+| `regions` | array of [state_region](#state_region-object), at least 2 | no | Orthogonal regions: parts of this composite that are all current at once, drawn side by side (or stacked) and divided by dashed lines. Each region lists its own members and its own `initial` — unless every way into the composite is a `fork` with an arrow into that region, which says where it starts — and entering the composite enters every region there. A transition may not run between two regions of one composite. In place of `members`. |
 
 ### `state_region` object
 

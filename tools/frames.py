@@ -166,14 +166,17 @@ def _drawing(document: Document) -> GraphDrawing:
 
 
 def check(path: Path) -> list[Crossing] | None:
-    """The crossings in one document, or `None` when it is not a graph kind with frames."""
+    """The crossings in one document, or `None` when it is not a graph kind with frames.
+
+    Raises:
+        FitError: the document cannot be laid out at any theme it fits, so there
+            is no drawing to check. Not a `None`: a document this check cannot
+            look at must not read as one it looked at and passed.
+    """
     document = load_document(path)
     if document.kind not in DRAWN_KINDS or not document.groups:
         return None
-    try:
-        return frame_crossings(_drawing(document))
-    except FitError:
-        return None
+    return frame_crossings(_drawing(document))
 
 
 def _documents(path: Path) -> list[Path]:
@@ -199,9 +202,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     arguments = parser.parse_args(argv)
 
-    total = checked = 0
+    total = checked = unfitted = 0
     for path in (each for given in arguments.paths for each in _documents(given)):
-        found = check(path)
+        try:
+            found = check(path)
+        except FitError as error:
+            unfitted += 1
+            print(f"{path.stem}: cannot be laid out, so cannot be checked: {error}")
+            continue
         if found is None:
             continue
         checked += 1
@@ -209,7 +217,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         for crossing in found:
             print(f"{path.stem}: {crossing}")
     print(f"\n{total} frame crossing(s) in {checked} drawing(s) with frames")
-    return 1 if total else 0
+    if unfitted:
+        print(f"{unfitted} document(s) could not be laid out and were not checked")
+    return 1 if total or unfitted else 0
 
 
 if __name__ == "__main__":

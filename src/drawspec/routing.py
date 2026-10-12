@@ -805,17 +805,18 @@ def route_edges(
     # line between two boxes outside a group that runs through it reads as one
     # that goes in and comes out again. Per edge, because the same frame is the
     # border every edge reaching a member has to cross.
-    fences = [
-        () if connector.source == connector.target else _fences(connector, boxes, anchors)
-        for connector in connectors
-    ]
+    # A self-loop has the same fences — the frames its box is not in — and
+    # weighs them when it picks a side.
+    fences = [_fences(connector, boxes, anchors) for connector in connectors]
     fenced_grids: dict[tuple[str, ...], _Grid] = {}
 
     routes: list[Route] = []
     for index, connector in enumerate(connectors):
         if connector.source == connector.target:
             routes.append(
-                _self_loop(connector, boxes[connector.source], obstacles, theme, direction)
+                _self_loop(
+                    connector, boxes[connector.source], obstacles, theme, direction, fences[index]
+                )
             )
             continue
         walls = (*obstacles, *fences[index])
@@ -2356,25 +2357,41 @@ def _self_loop(
     obstacles: Sequence[Obstacle],
     theme: Theme,
     direction: str = "down",
+    fences: Sequence[Obstacle] = (),
 ) -> Route:
     """A loop back to the same box, on the first side `loop_route` offers that is clear.
 
     For a caller that has not reserved room for the loop — the graph family
     routes its own, with room made for them in the layout; see `self_loops`.
 
+    `fences` are the frames the box is not in. A side that keeps out of them as
+    well as out of every other box is taken first; a loop that can only be drawn
+    through one still is, because a crossed frame is a worse drawing rather than
+    an impossible one.
+
     Raises:
         LayoutError: every side the loop could take crosses another box.
     """
     preferred = LOOP_SIDES.get(direction, LOOP_SIDES["down"])
-    for side in (*preferred, *(side for side in SIDES if side not in preferred)):
-        route = loop_route(box, side, connector, theme)
+    candidates = [
+        loop_route(box, side, connector, theme)
+        for side in (*preferred, *(side for side in SIDES if side not in preferred))
+    ]
+    clear = [
+        route
+        for route in candidates
         if all(
             not obstacle.crosses(first, second)
             for first, second in pairwise(route.points)
             for obstacle in obstacles
             if obstacle.id != box.id
-        ):
+        )
+    ]
+    for route in clear:
+        if not _enters(route.points, fences):
             return route
+    if clear:
+        return clear[0]
     raise LayoutError(
         f"no room for a self-loop on {connector.source!r}: every side of it is boxed in"
     )

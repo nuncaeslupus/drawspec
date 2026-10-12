@@ -1013,7 +1013,9 @@ required when anything enters the group.
 **Orthogonal regions.** When parts of one composite are current at the same time
 — an order paid for while it is packed, caps lock and num lock — give the
 composite `regions` in place of `members`: a list of `{members, initial}`, two
-to four of them. The regions are drawn side by side (stacked when they do not fit
+to four of them, where a region may leave out `initial` only when every way into
+the composite is a fork with an arrow into that region (the fork says where it
+starts). The regions are drawn side by side (stacked when they do not fit
 across) and divided by dashed lines, each with its own initial dot; entering the
 composite enters every region at its `initial`, and a transition from it leaves
 all of them. A transition from the composite with no `event` is the completion
@@ -1026,8 +1028,9 @@ transition, taken once every region is done:
 ]}
 ```
 
-Refused at their pointers: a state in two regions, a region with no `initial` or
-one outside it, `members` beside `regions`, an `initial` on the composite itself
+Refused at their pointers: a state in two regions, a region with no `initial`
+that the machine can enter other than by a fork with an arrow into it, an
+`initial` outside its region, `members` beside `regions`, an `initial` on the composite itself
 (each region names its own), one region alone, more than four (budget), and a
 transition from one region of a composite into another (they run at once, so
 neither can hand the machine to the other). Entering the composite, or a state

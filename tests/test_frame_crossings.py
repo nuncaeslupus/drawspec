@@ -19,6 +19,7 @@ from typing import Any
 import pytest
 from frames import border_crossings, check, frame_crossings
 
+from drawspec.errors import FitError
 from drawspec.kinds.containers import Frame
 from drawspec.kinds.graph import GraphDrawing, graph_drawing
 from drawspec.schema import parse_document
@@ -125,9 +126,14 @@ def test_the_invoice_cancellation_goes_round_the_issued_frame() -> None:
 
 
 def test_no_reference_drawing_routes_an_edge_through_a_foreign_frame() -> None:
-    found = {
-        path.stem: [str(crossing) for crossing in crossings]
-        for path in sorted(REFERENCE.glob("*.json"))
-        if (crossings := check(path))
-    }
+    """Every reference drawing — one that will not lay out is reported, not passed over."""
+    found: dict[str, list[str]] = {}
+    for path in sorted(REFERENCE.glob("*.json")):
+        try:
+            crossings = check(path)
+        except FitError as error:
+            found[path.stem] = [f"cannot be laid out: {error}"]
+            continue
+        if crossings:
+            found[path.stem] = [str(crossing) for crossing in crossings]
     assert found == {}

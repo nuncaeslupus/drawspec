@@ -3374,7 +3374,7 @@
         },
         "regions": {
           "type": "array",
-          "description": "Orthogonal regions: parts of this composite that are all current at once, drawn side by side (or stacked) and divided by dashed lines. Each region lists its own members and its own `initial`, and entering the composite enters every region there. A transition may not run between two regions of one composite. In place of `members`.",
+          "description": "Orthogonal regions: parts of this composite that are all current at once, drawn side by side (or stacked) and divided by dashed lines. Each region lists its own members and its own `initial` — unless every way into the composite is a `fork` with an arrow into that region, which says where it starts — and entering the composite enters every region there. A transition may not run between two regions of one composite. In place of `members`.",
           "items": {
             "$ref": "#/$defs/state_region"
           },
