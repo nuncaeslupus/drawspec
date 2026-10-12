@@ -10,6 +10,8 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-10-12
+
 ### Added
 
 - **Fork and join bars in `states`**: a state with `"role": "fork"` or `"join"` and no
@@ -309,6 +311,8 @@ against it would stop working. Everything below is about the *package*.
   sheet of reference drawings as plates, a JSON flow spec beside the drawing it
   renders, and a title block; the fonts are embedded as subset `@font-face` so
   the SVG renders the same through GitHub's `<img>`.
+- **The logo** beside the README heading (so on PyPI too) and on the gallery
+  page, as its header and favicon.
 
 ### Fixed
 
@@ -747,5 +751,6 @@ renderer, and a CLI.
      against. `main...HEAD` compares the default branch with itself, and a
      link to an unpushed tag is a 404: both show a reader nothing. -->
 
-[Unreleased]: https://github.com/nuncaeslupus/drawspec/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/nuncaeslupus/drawspec/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/nuncaeslupus/drawspec/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/nuncaeslupus/drawspec/releases/tag/v0.1.0
