@@ -14,6 +14,8 @@ READMEs and is tired of arrows that miss their boxes:
 pip install drawspec && drawspec render diagram.json -o diagram.svg
 ```
 
+**[See every kind drawn in the gallery →](https://nuncaeslupus.github.io/drawspec/docs/gallery/)**
+
 > **Status: it draws.** All thirty-six kinds render — `flow`, `tree`, `cycle`,
 > `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`,
 > `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`,
