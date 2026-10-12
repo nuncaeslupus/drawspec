@@ -60,11 +60,12 @@ of the kinds a change touched without checking the branch out.
 ```bash
 uv run python tools/collisions.py docs/gallery   # does a line cross a word
 uv run python tools/clipping.py  docs/gallery    # is every word on the page
+uv run python tools/frames.py    docs/gallery    # does an edge cut through a frame
 ```
 
-Both should report zero. They answer different questions and neither implies the
-other — `clipping.py` exists because a defect passed every check in the suite
-while being partly drawn off the canvas.
+All should report zero. They answer different questions and none implies another
+— `clipping.py` exists because a defect passed every check in the suite while
+being partly drawn off the canvas.
 
 ## What a change should look like
 

@@ -788,6 +788,15 @@ def route_edges(
             ),
         )
     grid = _build_grid(approaches, obstacles, lanes, theme.edge.clearance)
+    # A frame an edge has neither end in is in that edge's way like any box: a
+    # line between two boxes outside a group that runs through it reads as one
+    # that goes in and comes out again. Per edge, because the same frame is the
+    # border every edge reaching a member has to cross.
+    fences = [
+        () if connector.source == connector.target else _fences(connector, boxes, anchors)
+        for connector in connectors
+    ]
+    fenced_grids: dict[tuple[str, ...], _Grid] = {}
 
     routes: list[Route] = []
     for index, connector in enumerate(connectors):
@@ -796,6 +805,7 @@ def route_edges(
                 _self_loop(connector, boxes[connector.source], obstacles, theme, direction)
             )
             continue
+        walls = (*obstacles, *fences[index])
         if index in straight and connector.source_port is None and connector.target_port is None:
             chord = Route(
                 source=connector.source,
@@ -804,7 +814,7 @@ def route_edges(
                 points=_chord(boxes[connector.source], boxes[connector.target]),
                 label=connector.label,
             )
-            if _chord_is_drawable(chord, obstacles, theme):
+            if _chord_is_drawable(chord, walls, theme):
                 routes.append(chord)
                 continue
             # The centre line is only the first straight line worth trying. Two
@@ -814,7 +824,7 @@ def route_edges(
             # Routing that edge orthogonally drew a mesh of chords with two
             # right-angled brackets in it, which reads as two different
             # relations.
-            offset = _offset_chord(chord, boxes, obstacles, theme)
+            offset = _offset_chord(chord, boxes, walls, theme)
             if offset is not None:
                 routes.append(offset)
                 continue
@@ -824,6 +834,16 @@ def route_edges(
             # around. `direct` is a preference about how a relation reads, and a
             # line through an uninvolved node's text is not a reading of it.
         points = _route_one(connector, approaches[index], grid, obstacles, theme)
+        if _enters(points, fences[index]):
+            points = _fenced_route(
+                connector,
+                approaches,
+                index,
+                fences[index],
+                fenced_grids,
+                (obstacles, lanes, theme),
+                points,
+            )
         routes.append(
             Route(
                 source=connector.source,
@@ -839,8 +859,76 @@ def route_edges(
         if connector.source_port is not None or connector.target_port is not None
     }
     return straighten(
-        separate_lanes(tuple(routes), obstacles, theme), obstacles, theme, pinned=pinned
+        separate_lanes(tuple(routes), obstacles, theme, fences=fences),
+        obstacles,
+        theme,
+        pinned=pinned,
+        fences=fences,
     )
+
+
+def _fences(
+    connector: Connector, boxes: Mapping[str, Obstacle], frames: Sequence[Obstacle]
+) -> tuple[Obstacle, ...]:
+    """The frames `connector` has no end in: the ones its route must stay out of.
+
+    An end *in* a frame is a box inside its rectangle, or the frame itself, or a
+    frame nested inside it — so an edge into a member crosses that member's
+    frames once, and every other frame not at all.
+    """
+    ends = (boxes[connector.source], boxes[connector.target])
+    return tuple(
+        frame
+        for frame in frames
+        if frame.id not in (connector.source, connector.target)
+        and not any(_inside(end, frame) for end in ends)
+    )
+
+
+def _enters(points: Sequence[tuple[float, float]], fences: Sequence[Obstacle]) -> bool:
+    """Whether a route passes through the interior of any of `fences`."""
+    return any(
+        fence.crosses(first, second) for first, second in pairwise(points) for fence in fences
+    )
+
+
+def _fenced_route(
+    connector: Connector,
+    approaches: Mapping[int, tuple[_Approach, _Approach]],
+    index: int,
+    fences: Sequence[Obstacle],
+    grids: dict[tuple[str, ...], _Grid],
+    context: tuple[Sequence[Obstacle], tuple[set[float], set[float]], Theme],
+    unfenced: tuple[tuple[float, float], ...],
+) -> tuple[tuple[float, float], ...]:
+    """The route again, with the frames it has no end in as boxes to go round.
+
+    Only asked of a route that went through one, so a drawing whose edges
+    already keep out of foreign frames is routed exactly as before. The grid
+    gains a lane down the middle of each gap a frame's border makes, which is
+    the line a route round the frame wants; without it the nearest lane can be
+    the one between two boxes *inside* the frame. When there is no way round,
+    the route through is kept: a crossed frame is a worse drawing, not an
+    impossible one.
+    """
+    obstacles, lanes, theme = context
+    walls = (*obstacles, *fences)
+    key = tuple(sorted(fence.id for fence in fences))
+    grid = grids.get(key)
+    if grid is None:
+        channel, usable = theme.edge.lane_spacing, _usable_gap(theme)
+        widened = (
+            lanes[0]
+            | _lanes([value for box in walls for value in (box.x, box.right)], channel, usable),
+            lanes[1]
+            | _lanes([value for box in walls for value in (box.y, box.bottom)], channel, usable),
+        )
+        grid = grids[key] = _build_grid(approaches, walls, widened, theme.edge.clearance)
+    try:
+        points = _route_one(connector, approaches[index], grid, walls, theme)
+    except LayoutError:
+        return unfenced
+    return unfenced if _enters(points, fences) else points
 
 
 def _pinned_sides(connector: Connector, sides: tuple[str, str]) -> tuple[str, str]:
@@ -1566,7 +1654,11 @@ def _check_head_room(route: Route, theme: Theme) -> None:
 
 
 def separate_lanes(
-    routes: Sequence[Route], obstacles: Sequence[Obstacle], theme: Theme
+    routes: Sequence[Route],
+    obstacles: Sequence[Obstacle],
+    theme: Theme,
+    *,
+    fences: Sequence[Sequence[Obstacle]] = (),
 ) -> tuple[Route, ...]:
     """Move routes that share a lane apart, so each keeps its own line.
 
@@ -1584,6 +1676,9 @@ def separate_lanes(
     for. Each shifted route is re-checked against every box and reverted if the
     new line is worse than the shared one; a lane too narrow to share simply
     stays shared, which is what it looked like before.
+
+    `fences`, per route index, are the frames that route has no end in: a shift
+    may not carry it into one, any more than into a box.
     """
     spacing = theme.edge.lane_spacing
     moved = tuple(routes)
@@ -1591,7 +1686,7 @@ def separate_lanes(
         groups = _shared_runs(moved, spacing)
         if not groups:
             break
-        moved = _separated(moved, groups, obstacles, theme, spacing)
+        moved = _separated(moved, groups, obstacles, theme, spacing, fences)
     return moved
 
 
@@ -1601,6 +1696,7 @@ def _separated(
     obstacles: Sequence[Obstacle],
     theme: Theme,
     spacing: float,
+    fences: Sequence[Sequence[Obstacle]] = (),
 ) -> tuple[Route, ...]:
     """One pass of the separation. Repeated, because moving a run moves corners.
 
@@ -1615,6 +1711,7 @@ def _separated(
     for group, anchor in groups:
         for target, run in zip(_targets(group, anchor, spacing), group, strict=True):
             offers = _tries(target - run.line)
+            walls = (*obstacles, *(fences[run.index] if run.index < len(fences) else ()))
             # Every offer that does not strand a route on another's anchor, then
             # every offer at all. A preference rather than a rule: the point of
             # the pass is to get two lines off each other, and refusing the only
@@ -1623,7 +1720,7 @@ def _separated(
                 placed = False
                 for candidate_offset in offers:
                     candidate = _shifted(moved[run.index], run.segment, candidate_offset)
-                    if candidate is None or not _is_clear(candidate, obstacles, theme):
+                    if candidate is None or not _is_clear(candidate, walls, theme):
                         continue
                     if guarded and _lands_on_another(candidate, moved, run.index):
                         continue
@@ -1641,6 +1738,7 @@ def straighten(
     theme: Theme,
     *,
     pinned: Mapping[int, tuple[bool, bool]] | None = None,
+    fences: Sequence[Sequence[Obstacle]] = (),
 ) -> tuple[Route, ...]:
     """Every route with its unreadable turns taken out.
 
@@ -1669,7 +1767,8 @@ def straighten(
     change to what the drawing says.
 
     `pinned` names, per route index, the ends that may not move at all: a port
-    the caller fixed — a field's row — is where the line has to be.
+    the caller fixed — a field's row — is where the line has to be. `fences`,
+    per route index, are frames that route may not be slid into.
     """
     boxes = {box.id: box for box in obstacles}
     fixed = pinned or {}
@@ -1680,7 +1779,13 @@ def straighten(
         # turns, since each success removes at least one.
         for _ in range(len(route.points)):
             better = _unjogged(
-                settled[index], boxes, obstacles, theme, settled, index, fixed.get(index)
+                settled[index],
+                boxes,
+                (*obstacles, *(fences[index] if index < len(fences) else ())),
+                theme,
+                settled,
+                index,
+                fixed.get(index),
             )
             if better is None:
                 break

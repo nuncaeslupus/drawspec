@@ -725,6 +725,11 @@ This is `flow` and `tree` only. A `cycle` accepts `groups` and draws none — it
 places its steps on a ring — so an edge in one names a node, and a group id at
 either end is refused with a message that says which of the two you have.
 
+**An edge goes round a frame it has no end in.** One between two boxes outside a
+group, a composite state or one of its regions is routed round that frame rather
+than through it, and one that reaches a box inside crosses each frame's border
+once. A line straight through reads as one that goes in and comes out again.
+
 A band runs *along* the reading direction and is placed *across* it, so a process
 read across the page gets its bands above and below, and the same process read
 down gets them left and right. See

@@ -297,6 +297,13 @@ against it would stop working. Everything below is about the *package*.
 
 ### Fixed
 
+- **An edge no longer runs through a frame it has no end in.** A line between two
+  boxes outside a `flow`/`tree` group, a `states` composite or one of its regions
+  could take the straight way through the frame, reading as an edge that went in and
+  came out. The router now treats such a frame as a box for that edge (only when the
+  first route went through it, so other drawings are unchanged); an edge into a member
+  crosses each border once. New `tools/frames.py` checks this over the gallery. Only
+  `states-invoice` changes: *cancelled* now goes round *Issued* to *Void*.
 - **A chart's numbers print at the precision written.** Bar and point labels used
   the fewest decimals that kept the chart's values apart, so `8.4` among whole
   numbers printed `8`, a value the data does not hold. Every label in the set now

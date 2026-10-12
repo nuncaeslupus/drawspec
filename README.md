@@ -345,7 +345,7 @@ Everything you would look in, and the two directories you can ignore.
 | `corpus/` | 87 anonymized LLM-written diagrams and their measurements, as evidence |
 | `skills/` | An Agent Skill that points an agent at drawspec — install, read `AGENTS.md`, validate, render. A test holds every command it names to the CLI |
 | `tests/` | The suite. `test_acceptance.py` and `test_failure_families.py` are the two that encode the promises rather than the mechanics |
-| `tools/` | Development scripts, not shipped: the docs generator, the gallery builder, and the two checkers — `collisions.py` (is the word readable) and `clipping.py` (is the word on the page) |
+| `tools/` | Development scripts, not shipped: the docs generator, the gallery builder, and the checkers — `collisions.py` (is the word readable), `clipping.py` (is the word on the page) and `frames.py` (does an edge cut through a frame it has no end in) |
 | `status/` | The origin documents: the specification this was built from, and its plan. Kept because `docs/brief.md` is the summary and this is the source, and because the session protocol reads `status/plan.md` |
 | `.claude/`, `claude-arsenal/` | Development machinery for the agent workflow this is built with — task queue, session protocol, vendored skills. **Nothing here affects the package**; skip both if you are reading the project rather than working on it |
 
