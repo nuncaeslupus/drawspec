@@ -139,6 +139,9 @@ def _budgeted(name: str, limit: int) -> str:
         return f"{limit} `{outer}` per {per}"
     if name.endswith("*"):
         return f"{limit} `{name[:-1]}` in all, at every level"
+    if "=" in name:
+        outer, roles = name.split("=")
+        return f"{limit} `{outer}` that are " + " or ".join(f"`{r}`" for r in roles.split("|"))
     if "/" not in name:
         return f"{limit} `{name}`"
     outer, inner = name.split("/")

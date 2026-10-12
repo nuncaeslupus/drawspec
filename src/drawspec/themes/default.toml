@@ -152,6 +152,10 @@ tone = 0.14
 # about the cap height of the body type, the ring a stroke's width clear of it.
 dot = 10.0
 ring = 3.0
+# A fork or join bar: `bar` thick across the flow, and `bar_step` long for each
+# arrow on its busy side, so it grows with the regions it splits into or joins.
+bar = 6.0
+bar_step = 44.0
 
 [sequence]
 # A sequence diagram's activation bar, inferred from a call and its reply: about

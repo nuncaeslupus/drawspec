@@ -285,6 +285,7 @@ def arrange(
     centre: str = "",
     max_height: float = 0.0,
     room: Mapping[str, float] = MappingProxyType({}),
+    turning: Mapping[str, tuple[str, ...]] = MappingProxyType({}),
 ) -> Arrangement:
     """Lay out one level, laying out any group in it first.
 
@@ -300,6 +301,12 @@ def arrange(
     levels: a group's contents are as tall as they are, and the level above then
     fits or does not. Only the top level's choice can be steered by it, which is
     the one an author asking for a wide drawing means.
+
+    `turning` are the boxes that lie across the flow whichever way it runs (a
+    state machine's fork and join bars: see `LayoutNode.turns`), each with the
+    ids its arrows fan out to or in from. When those all sit in one group of
+    this level, the bar is laid out as wide as that group, so the room it needs
+    to reach over each of them is kept clear of its neighbours.
     """
     inner: dict[str, Arrangement] = {}
     sizes: dict[str, tuple[float, float]] = {}
@@ -322,10 +329,13 @@ def arrange(
                 depth if identifier in nesting.regions else depth + 1,
                 centre,
                 room=room,
+                turning=turning,
             )
             inner[identifier] = sub
             caption = captions.get(identifier)
-            top, bottom = _insets(caption, theme, spacing, identifier in entered)
+            top, bottom = _insets(
+                caption, theme, spacing, identifier in entered and prefer != "right"
+            )
             sizes[identifier] = (
                 max(
                     sub.width + pad.horizontal + room.get(identifier, 0.0) * 2,
@@ -346,11 +356,19 @@ def arrange(
             lifted.add((up_source, up_target))
 
     if level and all(identifier in nesting.regions for identifier in level):
-        layout = _regions_layout(level, sizes, spacing, max_width)
+        layout = _regions_layout(level, sizes, spacing, max_width, across=prefer != "right")
     else:
         layout = best_layout(
             LayeredEngine(spacing=spacing),
-            [LayoutNode(id=i, width=sizes[i][0], height=sizes[i][1]) for i in level],
+            [
+                LayoutNode(
+                    id=i,
+                    width=_bar_reach(i, turning, nesting, here, inner, sizes),
+                    height=sizes[i][1],
+                    turns=i in turning,
+                )
+                for i in level
+            ],
             [LayoutEdge(source=s, target=t) for s, t in sorted(lifted)],
             max_width=max_width,
             prefer=prefer,
@@ -367,7 +385,7 @@ def arrange(
             directions[identifier] = layout.direction
             continue
         caption = captions.get(identifier)
-        top, _ = _insets(caption, theme, spacing, identifier in entered)
+        top, _ = _insets(caption, theme, spacing, identifier in entered and prefer != "right")
         sub = inner[identifier]
         directions.update(sub.directions)
         # The contents are centred in whatever width the engine gave the frame,
@@ -406,13 +424,39 @@ def arrange(
     )
 
 
+def _bar_reach(
+    identifier: str,
+    turning: Mapping[str, tuple[str, ...]],
+    nesting: Nesting,
+    here: frozenset[str],
+    inner: Mapping[str, Arrangement],
+    sizes: Mapping[str, tuple[float, float]],
+) -> float:
+    """How wide `identifier` is laid out: its own width, or for a bar whose arrows
+    all reach into one group of this level, at least that group's width."""
+    width = sizes[identifier][0]
+    ends = turning.get(identifier)
+    if not ends:
+        return width
+    reached = {nesting.lift(end, here) for end in ends}
+    if len(reached) != 1:
+        return width
+    (group,) = reached
+    return max(width, sizes[group][0]) if group is not None and group in inner else width
+
+
 def _regions_layout(
     level: Sequence[str],
     sizes: Mapping[str, tuple[float, float]],
     spacing: Spacing,
     max_width: float,
+    *,
+    across: bool = True,
 ) -> Layout:
     """A composite state's regions: side by side when they fit across, else stacked.
+
+    Stacked whatever the width when `across` is false: a machine reading left to
+    right has its regions one over another, at right angles to its flow.
 
     Never a grid, which is what a layered engine makes of unconnected boxes too
     wide for one row: a divider has to run from one side of the composite to the
@@ -420,15 +464,15 @@ def _regions_layout(
     width of the column, so it is bounded by the dividers and the frame alone.
     """
     gap = spacing.node_gap
-    across = sum(sizes[i][0] for i in level) + gap * (len(level) - 1)
+    wide_row = sum(sizes[i][0] for i in level) + gap * (len(level) - 1)
     places: dict[str, Placement] = {}
-    if across <= max_width:
+    if across and wide_row <= max_width:
         tall = max(sizes[i][1] for i in level)
         x = 0.0
         for identifier in level:
             places[identifier] = Placement(x, 0.0, sizes[identifier][0], tall, 0)
             x += sizes[identifier][0] + gap
-        return Layout(placements=places, width=across, height=tall, direction="right")
+        return Layout(placements=places, width=wide_row, height=tall, direction="right")
     wide = max(sizes[i][0] for i in level)
     y = 0.0
     for rank, identifier in enumerate(level):
@@ -473,7 +517,8 @@ def _insets(
     to reach the first box, and given only the padding the router arrives with a
     few units of straight line and refuses to draw a head on it: the right
     refusal, the wrong geometry to hand it. A frame nothing crosses does not pay
-    for this, which is why a plain container is not mostly empty band.
+    for this, which is why a plain container is not mostly empty band. Nor does
+    one in a machine arranged reading across, whose arrows come in from the side.
     """
     if caption is None:
         return theme.box.padding.top, theme.box.padding.bottom

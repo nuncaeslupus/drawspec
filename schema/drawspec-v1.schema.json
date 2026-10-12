@@ -3374,7 +3374,7 @@
         },
         "regions": {
           "type": "array",
-          "description": "Orthogonal regions: parts of this composite that are all current at once, drawn side by side (or stacked) and divided by dashed lines. Each region lists its own members and its own `initial`, and entering the composite enters every region there. A transition may not run between two regions of one composite. In place of `members`.",
+          "description": "Orthogonal regions: parts of this composite that are all current at once, drawn side by side (or stacked) and divided by dashed lines. Each region lists its own members and its own `initial` — unless every way into the composite is a `fork` with an arrow into that region, which says where it starts — and entering the composite enters every region there. A transition may not run between two regions of one composite. In place of `members`.",
           "items": {
             "$ref": "#/$defs/state_region"
           },
@@ -4853,21 +4853,22 @@
         },
         "text": {
           "type": "string",
-          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+          "description": "The state's name. A newline makes it a lead and a detail, as on any box. Required on every state but a `fork` or `join` bar, which has no words."
         },
         "role": {
           "type": "string",
-          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'. `fork` and `join` make this state a bar: a fork has one transition in and two or more out, each into a different region of one composite; a join is the reverse. A bar has no `text`, and the transitions out of a fork or into a join carry no `event` or `guard`.",
           "enum": [
             "step",
             "emphasis",
-            "terminal"
+            "terminal",
+            "fork",
+            "join"
           ]
         }
       },
       "required": [
-        "id",
-        "text"
+        "id"
       ],
       "additionalProperties": false
     },
@@ -4884,12 +4885,11 @@
         },
         "initial": {
           "type": "string",
-          "description": "The member this region starts in when its composite is entered, drawn as a dot inside the region. Required: every region runs at once."
+          "description": "The member this region starts in when its composite is entered, drawn as a dot inside the region. Required unless every way into the composite is a `fork` with an arrow into this region, which says where it starts instead."
         }
       },
       "required": [
-        "members",
-        "initial"
+        "members"
       ],
       "additionalProperties": false
     },

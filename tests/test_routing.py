@@ -749,6 +749,20 @@ def test_an_anchor_never_blocks_a_route() -> None:
         assert route.points[0] != route.points[-1]
 
 
+def test_a_self_loop_takes_the_side_that_keeps_out_of_a_foreign_frame() -> None:
+    """A loop's first-choice side runs through a frame its box is not in.
+
+    The left side is clear, so the loop goes there rather than in and out of a
+    group it has nothing to do with.
+    """
+    box = Obstacle("a", x=0.0, y=0.0, width=100.0, height=40.0)
+    member = Obstacle("m", x=200.0, y=0.0, width=100.0, height=40.0)
+    frame = Obstacle("frame", x=110.0, y=-20.0, width=210.0, height=80.0)
+    (loop,) = route_edges((Connector("a", "a"),), (box, member), THEME, anchors=(frame,))
+    assert all(x <= box.right for x, _ in loop.points)
+    assert any(x < box.x for x, _ in loop.points)
+
+
 def test_an_anchor_that_repeats_an_obstacle_id_is_refused() -> None:
     """One id, one box. The two roles are separable; the name space is not."""
     with pytest.raises(LayoutError) as error:

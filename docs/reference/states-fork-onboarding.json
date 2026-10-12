@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "kind": "states",
+  "title": "A new starter's first week, read across",
+  "description": "A signed offer forks into setting up a laptop and opening accounts, two regions of one composite that run at once, each done when its work completes; the join bar passes when both are ready. A short band, so the machine reads left to right and its bars stand upright.",
+  "height": 240,
+  "height_binding": true,
+  "initial": "signed",
+  "states": [
+    {"id": "signed", "text": "Offer\nsigned"},
+    {"id": "split", "role": "fork"},
+    {"id": "laptop", "text": "Laptop\nset up"},
+    {"id": "accounts", "text": "Accounts\nopened"},
+    {"id": "both", "role": "join"},
+    {"id": "started", "text": "First day", "role": "emphasis"}
+  ],
+  "groups": [
+    {"id": "preparing", "text": "Preparing", "regions": [
+      {"members": ["laptop"]},
+      {"members": ["accounts"]}
+    ]}
+  ],
+  "transitions": [
+    {"from": "signed", "to": "split", "event": "HR confirms"},
+    {"from": "split", "to": "laptop"},
+    {"from": "split", "to": "accounts"},
+    {"from": "laptop", "to": "both"},
+    {"from": "accounts", "to": "both"},
+    {"from": "both", "to": "started"}
+  ]
+}

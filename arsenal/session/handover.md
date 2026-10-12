@@ -1,6 +1,6 @@
 # Session Handover
 
-**Date**: 2026-10-10 · **Branch**: `ccr-6186f7c4-lrvt8d` · **PR**: [#76](https://github.com/nuncaeslupus/drawspec/pull/76) (open, CI green)
+**Date**: 2026-10-12 · **Branch**: `ccr-6186f7c4-lrvt8d` · **PR**: [#113](https://github.com/nuncaeslupus/drawspec/pull/113) (merging when green)
 
 ## This session
 Compared drawspec with diagram-design and acted on it, without arsenal task files (owner: arsenal is unrelated tooling).
@@ -21,12 +21,12 @@ Evidence for each kind is in `docs/research/corpus-round2.md`; rows marked "(che
 Built: horizontal bars, quadrant names and axis ends, funnel amounts, gantt `done`, the io/subroutine/store roles,
 tinted frames and lane stripes (on by default), lanes `phases`, and chart values printed at the precision written.
 Owner questions answered and built in #106 (t-29944b23): level shading, node classes (1–4, with a key), the `person` role, states orthogonal regions, sequence async messages and actor participants.
-Still open: fork/join bars, and transitions from outside to outside routed through a composite frame.
+#113 (closes #107, #108): states fork/join bars; edges now route around frames holding neither end, checked by `tools/frames.py`; the logo on the README heading and the gallery page.
 
 **Open tasks:** #68 (C4: sweep `nuncaeslupus/opos`; needs a session with that repo).
 **Remind the owner:** #65 still needs the GitHub repo **topics** (About ⚙️, one per Enter):
 `diagrams svg diagram-generator llm llm-tools documentation json-schema python dataviz declarative`.
-Re-upload `docs/hero.png` as the social preview after #101.
+Re-upload `docs/hero.png` as the social preview if #110 did not already.
 
 ---
 

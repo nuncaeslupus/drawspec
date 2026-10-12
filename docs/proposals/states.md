@@ -131,7 +131,7 @@ also what UML means by a transition leaving a composite state.
 | `final` naming a group | v1 keeps finals as states; a composite's completion is drawn with a transition from the group. |
 | Two transitions with the same `from`, `event` and `guard` but different `to` | A non-deterministic machine; almost always a missing guard. |
 | `actor`, `centre`, `bands` | `actor` says who performs a step; a state is not performed. `bands` and `centre` have no meaning here. |
-| History (`H`), fork/join, parallel regions | Not in v1. Each needs its own pseudo-state and none has evidence yet. A machine with orthogonal regions is two machines; the message says draw two. |
+| History (`H`), fork/join, parallel regions | Not in v1. Each needs its own pseudo-state and none has evidence yet. A machine with orthogonal regions is two machines; the message says draw two. *(Later built: regions in #106 and fork/join bars in #107 — see `docs/research/kind-audit.md`, "As built". History is still out.)* |
 | More than **14** states or **24** transitions | Past that the layered layout produces the dense crossings this tool refuses elsewhere; split by composite state. Also bounded by `FitError`. |
 
 ## Roles and theme

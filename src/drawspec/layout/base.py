@@ -44,6 +44,10 @@ class LayoutNode:
     id: str
     width: float
     height: float
+    turns: bool = False
+    """Whether this box lies across the flow whichever way it runs: its `width`
+    is along the ranks when laid out `down`, and it stands upright laid out
+    `right`. A state machine's fork bar is one; every box with words is not."""
 
 
 @dataclass(frozen=True)

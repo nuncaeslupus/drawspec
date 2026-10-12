@@ -12,6 +12,21 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **Fork and join bars in `states`**: a state with `"role": "fork"` or `"join"` and no
+  `text` is UML's bar pseudo-state, drawn as a short thick bar across the flow (upright
+  when the machine reads across), `[states] bar_step` long per arrow and stretched to
+  reach over the states it splits into or gathers, so each arrow drops straight onto its
+  state. A region every fork reaches may omit its `initial`. Refused at their pointers:
+  `text` on a bar; a fork without exactly one way in and two or more out (a join the
+  reverse); arrows into two states of one region or into no region; an `event` or
+  `guard` out of a fork or into a join, or an `event` out of a join; a bar as `initial`,
+  `final` or a region's `initial`; a loop on a bar; a region with no `initial` the
+  machine can enter without a fork; more than 4 bars (budget `states=fork|join`). A
+  machine laid out across stacks its regions against its upright bars. New theme keys
+  `[states] bar` and `bar_step`. See `reference/states-fork-order.json`,
+  `states-fork-release.json` and `states-fork-onboarding.json`; no existing drawing
+  changes.
+
 - **`sequence` async messages and actors**: message role `async`, UML's asynchronous
   message — a solid line with an open head (new theme edge role `async`) — which opens
   no activation bar; a `weak` reply answering one is refused. Participant role `actor`
@@ -297,6 +312,13 @@ against it would stop working. Everything below is about the *package*.
 
 ### Fixed
 
+- **An edge no longer runs through a frame it has no end in.** A line between two
+  boxes outside a `flow`/`tree` group, a `states` composite or one of its regions
+  could take the straight way through the frame, reading as an edge that went in and
+  came out. The router now treats such a frame as a box for that edge (only when the
+  first route went through it, so other drawings are unchanged); an edge into a member
+  crosses each border once. New `tools/frames.py` checks this over the gallery. Only
+  `states-invoice` changes: *cancelled* now goes round *Issued* to *Void*.
 - **A chart's numbers print at the precision written.** Bar and point labels used
   the fewest decimals that kept the chart's values apart, so `8.4` among whole
   numbers printed `8`, a value the data does not hold. Every label in the set now

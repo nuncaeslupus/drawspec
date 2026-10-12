@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "kind": "states",
+  "title": "Payment and packing, forked and joined",
+  "description": "Once an order is confirmed a fork bar starts taking payment and packing at the same time, in two regions of one composite state; a join bar waits for both to finish before the parcel is handed to the courier. Cancelling leaves the composite from wherever each region has got to.",
+  "initial": "basket",
+  "final": ["delivered", "cancelled"],
+  "states": [
+    {"id": "basket", "text": "In the basket"},
+    {"id": "start", "role": "fork"},
+    {"id": "authorising", "text": "Authorising\nthe card"},
+    {"id": "captured", "text": "Payment\ncaptured"},
+    {"id": "picking", "text": "Picking"},
+    {"id": "packed", "text": "Packed"},
+    {"id": "ready", "role": "join"},
+    {"id": "dispatched", "text": "Dispatched", "role": "emphasis"},
+    {"id": "delivered", "text": "Delivered"},
+    {"id": "cancelled", "text": "Cancelled"}
+  ],
+  "groups": [
+    {"id": "fulfilling", "text": "Fulfilling", "regions": [
+      {"members": ["authorising", "captured"]},
+      {"members": ["picking", "packed"]}
+    ]}
+  ],
+  "transitions": [
+    {"from": "basket", "to": "start", "event": "checkout", "guard": "stock reserved"},
+    {"from": "start", "to": "authorising"},
+    {"from": "start", "to": "picking"},
+    {"from": "authorising", "to": "captured", "event": "bank approves"},
+    {"from": "picking", "to": "packed", "event": "last item scanned"},
+    {"from": "captured", "to": "ready"},
+    {"from": "packed", "to": "ready"},
+    {"from": "ready", "to": "dispatched", "action": "print label", "role": "strong"},
+    {"from": "dispatched", "to": "delivered", "event": "courier scans"},
+    {"from": "fulfilling", "to": "cancelled", "event": "customer cancels", "role": "weak"}
+  ]
+}

@@ -40,6 +40,12 @@ from drawspec.layout.base import (
 #: How close two coordinates have to be before they are the same one.
 _TOLERANCE: Final = 1e-9
 
+#: How hard a box that `turns` (a state machine's fork or join bar) holds out for
+#: its place under what it hangs from, against its peers in the rank. A bar
+#: splits into or gathers what is under or over it, so a sibling beside it gives
+#: way rather than share the offset: this many boxes' worth.
+TURNING_WEIGHT: Final = 8.0
+
 #: Barycentre sweeps to run. Four (two down, two up) is where the corpus's
 #: largest graph stops improving; more passes only cost determinism arguments.
 ORDERING_PASSES = 4
@@ -70,8 +76,9 @@ class LayeredEngine:
         # out. One placement routine, two directions, no second implementation to
         # keep in step with the first.
         transposed = direction == "right"
+        # A box that `turns` is not swapped going in, so coming out it has turned.
         working = (
-            [LayoutNode(node.id, node.height, node.width) for node in nodes]
+            [node if node.turns else LayoutNode(node.id, node.height, node.width) for node in nodes]
             if transposed
             else list(nodes)
         )
@@ -278,14 +285,17 @@ class LayeredEngine:
                 )
             for identifier, position in zip(
                 layer,
-                _isotonic([want - floor for want, floor in zip(wanted, floors, strict=True)]),
+                _isotonic(
+                    [want - floor for want, floor in zip(wanted, floors, strict=True)],
+                    [TURNING_WEIGHT if sizes[identifier].turns else 1.0 for identifier in layer],
+                ),
                 strict=True,
             ):
                 centres[identifier] = position + floors[layer.index(identifier)]
         return centres
 
 
-def _isotonic(wanted: Sequence[float]) -> list[float]:
+def _isotonic(wanted: Sequence[float], weights: Sequence[float] | None = None) -> list[float]:
     """The non-decreasing sequence closest to `wanted`, by least squares.
 
     Pool adjacent violators: walk left to right keeping blocks of a mean and a
@@ -293,16 +303,21 @@ def _isotonic(wanted: Sequence[float]) -> list[float]:
     cannot both have what they asked for, so they are merged and share the
     average. One pass, exact, and deterministic — which matters as much here as
     exactness, because these coordinates are committed.
+
+    `weights` says how hard each entry holds out for what it asked: a merged
+    block's mean is weighted by them. Every entry weighs one unless given.
     """
-    blocks: list[tuple[float, int]] = []
-    for value in wanted:
-        total, count = value, 1
-        while blocks and blocks[-1][0] >= total / count:
-            previous, weight = blocks.pop()
-            total += previous * weight
-            count += weight
-        blocks.append((total / count, count))
-    return [mean for mean, count in blocks for _ in range(count)]
+    blocks: list[tuple[float, float, int]] = []
+    for index, value in enumerate(wanted):
+        heavy = 1.0 if weights is None else weights[index]
+        total, weight, count = value * heavy, heavy, 1
+        while blocks and blocks[-1][0] >= total / weight:
+            previous, held, members = blocks.pop()
+            total += previous * held
+            weight += held
+            count += members
+        blocks.append((total / weight, weight, count))
+    return [mean for mean, _, count in blocks for _ in range(count)]
 
 
 def _sweep(

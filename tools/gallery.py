@@ -30,6 +30,7 @@ Usage, from the repository root:
 from __future__ import annotations
 
 import argparse
+import base64
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -46,6 +47,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REFERENCE_DIR = ROOT / "docs" / "reference"
 GALLERY_DIR = ROOT / "docs" / "gallery"
 PAGE = GALLERY_DIR / "index.html"
+LOGO = ROOT / "docs" / "logo.svg"
 
 # The order kinds appear in on the page: most used first, so a visitor meets the
 # diagrams they are likeliest to want before the specialised ones. `flow` leads
@@ -188,6 +190,9 @@ def page(entries: Sequence[Entry], profile: str) -> str:
         )
 
     drawn = sum(entry.rendered for entry in entries)
+    # Embedded, not linked: CI uploads the gallery directory on its own, where a
+    # relative path to docs/logo.svg would not resolve.
+    logo = "data:image/svg+xml;base64," + base64.b64encode(LOGO.read_bytes()).decode()
     # A deliberately plain page: the diagrams inherit `color` from it, which is
     # what the inline profile is for, and anything more would be judging the
     # page rather than the drawings.
@@ -195,6 +200,7 @@ def page(entries: Sequence[Entry], profile: str) -> str:
 <html lang="en">
 <meta charset="utf-8">
 <title>drawspec gallery — {escape(profile)}</title>
+<link rel="icon" href="{logo}">
 <style>
   body {{ font: 15px/1.5 system-ui, sans-serif; color: #1a1a1a; background: #fff;
          margin: 0 auto; max-width: 760px; padding: 2rem 1rem 6rem; }}
@@ -203,7 +209,8 @@ def page(entries: Sequence[Entry], profile: str) -> str:
   figcaption span {{ color: #888; }}
   svg {{ max-width: 100%; height: auto; }}
   .skipped {{ color: #777; font-style: italic; margin: 0; }}
-  h1 {{ font-size: 18px; }}
+  h1 {{ font-size: 18px; display: flex; align-items: center; gap: .5rem; }}
+  h1 img {{ width: 32px; height: 32px; }}
   h2 {{ font-size: 16px; margin: 3rem 0 1rem; padding-top: .5rem; border-top: 1px solid #ddd; }}
   h2 .top {{ font-size: 12px; font-weight: normal; margin-left: .5rem; }}
   nav {{ display: flex; flex-wrap: wrap; gap: .35rem .5rem; margin: 1rem 0 2rem; }}
@@ -212,7 +219,8 @@ def page(entries: Sequence[Entry], profile: str) -> str:
   nav a span, h1 span {{ color: #888; }}
   a {{ color: #2557a7; }}
 </style>
-<h1>drawspec gallery <span>({escape(profile)} profile, {drawn} of {len(entries)} drawn)</span></h1>
+<h1><img src="{logo}" alt="">drawspec gallery
+<span>({escape(profile)} profile, {drawn} of {len(entries)} drawn)</span></h1>
 <p>Every reference document through the current renderer, grouped by kind, the most
 used kinds first. Look at it.</p>
 <nav id="menu" aria-label="Kinds">{menu}</nav>

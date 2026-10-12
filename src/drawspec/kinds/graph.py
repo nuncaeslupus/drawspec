@@ -28,9 +28,10 @@ column of boxes with a line down the side.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from functools import partial
+from itertools import pairwise
 from types import MappingProxyType
 from typing import Final
 
@@ -66,6 +67,7 @@ from drawspec.kinds.lanes import Swimlanes, lanes_arrangement, lanes_primitives
 from drawspec.layout import Layout, Placement, Spacing
 from drawspec.legend import SWATCH_ROLE, Entry, height_of, primitives_for, width_of
 from drawspec.routing import (
+    BAR_SHAPE,
     LOOP_SIDES,
     Connector,
     Label,
@@ -85,8 +87,8 @@ from drawspec.routing import (
     place_loop,
     route_edges,
 )
-from drawspec.scene import Ellipse, Path, Primitive, Scene, TextLine, TextSpan, moved
-from drawspec.schema import Band, Document, Edge, Node
+from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextLine, TextSpan, moved
+from drawspec.schema import STATE_BARS, Band, Document, Edge, Node
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
 from drawspec.theme import POLARITY_GLYPHS, Theme
@@ -422,23 +424,28 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
             )
         else:
             swimlanes = None
-            arrangement = arrange(
-                nesting.roots,
-                nesting,
-                pairs,
-                inflated,
-                captions,
-                theme,
-                spacing,
-                max_width=width,
-                prefer=PREFERRED_DIRECTION,
-                entered=crossed(pairs, nesting),
-                centre=next((node.id for node in document.nodes if node.centre), ""),
-                # A binding height is the only thing that can make a chain read across
-                # rather than down: see `layout.base.best_layout`. An advisory height is
-                # not passed, because it is advisory.
-                max_height=(document.height or 0.0) if document.height_binding else 0.0,
-                room=_region_room(document, nesting, inflated, theme, measurer),
+            arrangement = _arranged(
+                partial(
+                    arrange,
+                    nesting.roots,
+                    nesting,
+                    pairs,
+                    inflated,
+                    captions,
+                    theme,
+                    spacing,
+                    max_width=width,
+                    entered=crossed(pairs, nesting),
+                    centre=next((node.id for node in document.nodes if node.centre), ""),
+                    # A binding height is the only thing that can make a chain read across
+                    # rather than down: see `layout.base.best_layout`. An advisory height is
+                    # not passed, because it is advisory.
+                    max_height=(document.height or 0.0) if document.height_binding else 0.0,
+                    room=_region_room(document, nesting, inflated, theme, measurer),
+                    turning=_bar_ends(document, markers),
+                ),
+                bool(nesting.regions),
+                (document.height or 0.0) if document.height_binding else 0.0,
             )
         missing = {
             identifier
@@ -468,6 +475,7 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         places = _pulled_in(
             places, markers, document.edges, arrangement, _spacing(theme), spacing.node_gap
         )
+    places, ports = _spanned_bars(places, markers, document.edges, arrangement, theme, spacing)
     layout = replace(arrangement.layout, placements=places)
     if not layout.fits:
         raise FitError(
@@ -478,7 +486,12 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         )
 
     shapes = {node.id: theme.roles[node.role].shape for node in document.nodes}
-    shapes.update(dict.fromkeys(markers, "ellipse"))
+    shapes.update(
+        {
+            identifier: BAR_SHAPE if marker in STATE_BARS else "ellipse"
+            for identifier, marker in markers.items()
+        }
+    )
     obstacles = tuple(
         Obstacle(
             identifier,
@@ -491,8 +504,15 @@ def graph_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         for identifier, place in sorted(layout.placements.items())
     )
     connectors = tuple(
-        Connector(edge.source, edge.target, role=_drawn_role(edge), label=_marked(edge, theme))
-        for edge in document.edges
+        Connector(
+            edge.source,
+            edge.target,
+            role=_drawn_role(edge),
+            label=_marked(edge, theme),
+            source_port=ports.get((index, 0)),
+            target_port=ports.get((index, 1)),
+        )
+        for index, edge in enumerate(document.edges)
     )
     loops = _placed_loops(
         connectors, {box.id: box for box in obstacles}, arrangement, theme, measurer
@@ -856,7 +876,7 @@ def _sized(
         ):
             boxes[identifier] = box
     for identifier, marker in markers.items():
-        boxes[identifier] = _marker_box(marker, theme)
+        boxes[identifier] = _marker_box(marker, theme, _bar_arrows(document, identifier))
     return boxes
 
 
@@ -1107,6 +1127,11 @@ def _with_pseudo_states(document: Document) -> tuple[Document, dict[str, str]]:
     first: list[Edge] = []
     last: list[Edge] = []
 
+    # A fork or join bar is the author's own state, by id, drawn as a mark: it
+    # keeps its id, so its transitions need nothing changed.
+    bars = {node.id: node.role for node in document.nodes if node.role in STATE_BARS}
+    markers.update(bars)
+
     start = fresh("(initial)")
     markers[start] = "initial"
     first.append(Edge(start, document.initial))
@@ -1126,7 +1151,13 @@ def _with_pseudo_states(document: Document) -> tuple[Document, dict[str, str]]:
     return (
         replace(
             document,
-            nodes=(*document.nodes, *(Node(id=marker, text=" ") for marker in markers)),
+            nodes=(
+                *(
+                    Node(id=node.id, text=" ") if node.id in bars else node
+                    for node in document.nodes
+                ),
+                *(Node(id=marker, text=" ") for marker in markers if marker not in bars),
+            ),
             edges=(*first, *document.edges, *last),
             groups=tuple(
                 replace(group, members=(*group.members, *added.get(group.id, ())))
@@ -1156,6 +1187,8 @@ def _pulled_in(
     moved = dict(places)
     frames = arrangement.frames
     for identifier, marker in markers.items():
+        if marker in STATE_BARS:
+            continue
         partner = next(
             (
                 edge.target if marker == "initial" else edge.source
@@ -1203,6 +1236,192 @@ def _pulled_in(
     return moved
 
 
+#: Which side of a bar faces back up the flow and which faces on down it.
+_BAR_SIDES: Final[Mapping[str, tuple[str, str]]] = {
+    "down": ("top", "bottom"),
+    "right": ("left", "right"),
+}
+
+
+def _spanned_bars(
+    places: Mapping[str, Placement],
+    markers: Mapping[str, str],
+    edges: Sequence[Edge],
+    arrangement: Arrangement,
+    theme: Theme,
+    spacing: Spacing,
+) -> tuple[dict[str, Placement], dict[tuple[int, int], tuple[str, float]]]:
+    """Each fork or join bar stretched to reach over the states its arrows join, and
+    the port each of those arrows takes on it: (edge index, 0 source / 1 target).
+
+    A bar is sized by its count of arrows, but the regions it splits into are as
+    wide as their states, so the arrows left the bar and turned to reach them.
+    So a bar lengthens to span its far ends' centres, keeping half a `bar_step`
+    beyond the outermost, and each arrow leaves it straight over (or under) the
+    end it joins, as a hand-drawn bar is drawn — unless a longer bar would come
+    within a node gap of another box, or an end is not beyond the bar in the
+    flow, when the arrows keep the even spread routing gives a bar.
+    """
+    ports: dict[tuple[int, int], tuple[str, float]] = {}
+    centres = {identifier: place.centre for identifier, place in places.items()}
+    centres.update(
+        {
+            frame.id: (frame.x + frame.width / 2, frame.y + frame.height / 2)
+            for frame in arrangement.frames
+        }
+    )
+    ends = {
+        bar: (
+            [
+                (
+                    index,
+                    0 if marker == "fork" else 1,
+                    edge.target if marker == "fork" else edge.source,
+                )
+                for index, edge in enumerate(edges)
+                if (edge.source if marker == "fork" else edge.target) == bar
+            ],
+            [
+                (
+                    index,
+                    1 if marker == "fork" else 0,
+                    edge.source if marker == "fork" else edge.target,
+                )
+                for index, edge in enumerate(edges)
+                if (edge.target if marker == "fork" else edge.source) == bar
+            ],
+        )
+        for bar, marker in markers.items()
+        if marker in STATE_BARS and bar in places
+    }
+    flows = {
+        bar: (0 if arrangement.directions.get(bar, arrangement.direction) != "right" else 1)
+        for bar in ends
+    }
+
+    def lengthwise(place: Placement, across: int, low: float, high: float) -> Placement:
+        if across == 0:
+            return replace(place, x=low, width=high - low)
+        return replace(place, y=low, height=high - low)
+
+    # First every bar at its own length, centred where the layout put it — which
+    # may have kept it more room than that (see `containers.arrange`).
+    moved = dict(places)
+    for bar, (busy, _) in ends.items():
+        place, across = places[bar], flows[bar]
+        start, end = (place.x, place.right) if across == 0 else (place.y, place.bottom)
+        own = theme.states.bar_step * max(len(busy), 2)
+        moved[bar] = lengthwise(
+            place, across, (start + end) / 2 - own / 2, (start + end) / 2 + own / 2
+        )
+    for bar, (busy, single) in ends.items():
+        marker, across = markers[bar], flows[bar]
+        direction = "right" if across else "down"
+        back, on = _BAR_SIDES[direction]
+        place = moved[bar]
+        far = {end for _, _, end in busy}
+        near = {end for _, _, end in single}
+        if not far <= centres.keys() or not near <= centres.keys():
+            continue
+        start, end = (place.x, place.right) if across == 0 else (place.y, place.bottom)
+        middle = (place.y + place.bottom) / 2 if across == 0 else (place.x + place.right) / 2
+
+        def beyond(
+            identifier: str, ahead: bool, middle: float = middle, across: int = across
+        ) -> bool:
+            flow = centres[identifier][1 - across]
+            return flow > middle if ahead else flow < middle
+
+        if not all(beyond(e, marker == "fork") for e in far) or not all(
+            beyond(e, marker != "fork") for e in near
+        ):
+            continue
+        margin = theme.states.bar_step / 2
+        lanes = {e: _clear_lane(e, centres, places, place, across, arrangement, theme) for e in far}
+        along = list(lanes.values())
+        # Far ends side by side across the bar's length would share a port: the
+        # regions run the other way. Leave them the even spread.
+        if any(second - first < margin for first, second in pairwise(sorted(along))):
+            continue
+        low, high = min(start, min(along) - margin), max(end, max(along) + margin)
+        stretched = lengthwise(place, across, low, high)
+        reach = Placement(
+            stretched.x - spacing.node_gap,
+            stretched.y - spacing.node_gap,
+            stretched.width + spacing.node_gap * 2,
+            stretched.height + spacing.node_gap * 2,
+            0,
+        )
+        if any(
+            other != bar and other in places and reach.overlaps(other_place)
+            for other, other_place in moved.items()
+        ):
+            continue
+        moved[bar] = stretched
+        length = high - low
+        busy_side = on if marker == "fork" else back
+        single_side = back if marker == "fork" else on
+        for index, end_of, identifier in busy:
+            ports[(index, end_of)] = (busy_side, (lanes[identifier] - low) / length)
+            if identifier in places and lanes[identifier] != centres[identifier][across]:
+                # Moved off a caption: the far end is met there too, so the line is straight.
+                other = places[identifier]
+                start_of = other.x if across == 0 else other.y
+                size = other.width if across == 0 else other.height
+                ports[(index, 1 - end_of)] = (
+                    single_side,
+                    (lanes[identifier] - start_of) / size,
+                )
+        for index, end_of, identifier in single:
+            spot = min(max(centres[identifier][across], low + margin), high - margin)
+            ports[(index, end_of)] = (single_side, (spot - low) / length)
+    return moved, ports
+
+
+def _clear_lane(
+    end: str,
+    centres: Mapping[str, tuple[float, float]],
+    places: Mapping[str, Placement],
+    bar: Placement,
+    across: int,
+    arrangement: Arrangement,
+    theme: Theme,
+) -> float:
+    """Where along a bar the straight line to `end` runs: through its centre, or —
+    when a frame's caption between the two is in the way — just past the caption,
+    as long as that still lands on `end` clear of its corners."""
+    lane = centres[end][across]
+    if end not in places:
+        return lane
+    target = places[end]
+    flow = (bar.y, target.y) if across == 0 else (bar.x, target.x)
+    low_flow, high_flow = min(flow), max(flow)
+    clearance = theme.edge.clearance
+    for frame in arrangement.frames:
+        caption = frame.caption
+        if caption is None:
+            continue
+        start = caption.x if across == 0 else caption.y
+        size = caption.width if across == 0 else caption.height
+        depth = (
+            (caption.y, caption.y + caption.height)
+            if across == 0
+            else (
+                caption.x,
+                caption.x + caption.width,
+            )
+        )
+        if depth[1] <= low_flow or depth[0] >= high_flow:
+            continue
+        if start - clearance < lane < start + size + clearance:
+            lane = start + size + clearance
+    first = target.x if across == 0 else target.y
+    extent = target.width if across == 0 else target.height
+    if not first + extent * 0.2 <= lane <= first + extent * 0.8:
+        return centres[end][across]
+    return lane
+
+
 def _crosses_border(reach: Placement, frame: Frame, inside: Placement) -> bool:
     """Whether `reach` crosses `frame`'s border on one side of `inside` but not the other."""
     held = (
@@ -1226,21 +1445,92 @@ def _crosses_border(reach: Placement, frame: Frame, inside: Placement) -> bool:
     return not within and not apart if held else not apart
 
 
-def _marker_box(marker: str, theme: Theme) -> Box:
-    """A pseudo-state's extent: a circle with no text, sized by the theme."""
+def _arranged(
+    arranging: Callable[..., Arrangement], regions: bool, max_height: float = 0.0
+) -> Arrangement:
+    """`containers.arrange`, and again reading across when that is how it should come out.
+
+    A composite's regions are arranged before the level around it picks its
+    direction, so they sit side by side under a machine that reads down — and
+    under one that turned out to read across (or would have, but for regions
+    side by side too wide to fit), where its bars stand upright and the regions
+    should be stacked against them, each reading across too. So a machine with
+    `regions` whose top level came out `right`, or too tall for a binding
+    height, is arranged once more preferring `right` all the way in, which stacks
+    them. Nothing without regions is arranged twice.
+    """
+    arrangement = arranging(prefer=PREFERRED_DIRECTION)
+    too_tall = bool(max_height) and arrangement.layout.height > max_height
+    if not regions or (arrangement.layout.direction != "right" and not too_tall):
+        return arrangement
+    again = arranging(prefer="right")
+    if again.layout.direction != "right" or not again.layout.fits:
+        return arrangement
+    return again if not too_tall or again.layout.height < arrangement.layout.height else arrangement
+
+
+def _bar_ends(document: Document, markers: Mapping[str, str]) -> dict[str, tuple[str, ...]]:
+    """Each fork's or join's far ends: where a fork's arrows go, where a join's come from."""
+    return {
+        bar: tuple(
+            edge.target if marker == "fork" else edge.source
+            for edge in document.edges
+            if (edge.source if marker == "fork" else edge.target) == bar
+        )
+        for bar, marker in markers.items()
+        if marker in STATE_BARS
+    }
+
+
+def _bar_arrows(document: Document, identifier: str) -> int:
+    """How many arrows a bar's busy side holds: a fork's ways out, a join's ways in."""
+    return max(
+        sum(edge.source == identifier for edge in document.edges),
+        sum(edge.target == identifier for edge in document.edges),
+    )
+
+
+def _marker_box(marker: str, theme: Theme, arrows: int = 0) -> Box:
+    """A pseudo-state's extent: a circle with no text, or a bar, sized by the theme.
+
+    A bar is sized lying across a `down` flow — `bar_step` per arrow long, `bar`
+    thick — and the layout turns it upright when the flow runs `right`.
+    """
+    empty = TextBlock(lines=(), width=0.0, height=0.0, advance=0.0, ascent=0.0, descent=0.0)
+    if marker in STATE_BARS:
+        return Box(
+            role=MARKER_ROLE,
+            shape=BAR_SHAPE,
+            level="label",
+            block=empty,
+            width=theme.states.bar_step * max(arrows, 2),
+            height=theme.states.bar,
+        )
     size = theme.states.dot if marker == "initial" else theme.states.final
     return Box(
         role=MARKER_ROLE,
         shape="ellipse",
         level="label",
-        block=TextBlock(lines=(), width=0.0, height=0.0, advance=0.0, ascent=0.0, descent=0.0),
+        block=empty,
         width=size,
         height=size,
     )
 
 
 def marker_primitives(box: Box, marker: str, theme: Theme) -> tuple[Primitive, ...]:
-    """A filled dot for the initial pseudo-state; a dot in a ring for a final one."""
+    """A filled dot for the initial pseudo-state; a dot in a ring for a final one;
+    a solid bar for a fork or a join."""
+    if marker in STATE_BARS:
+        left, top, right, bottom = box.x, box.y, box.x + box.width, box.y + box.height
+        return (
+            Polygon(
+                MARKER_ROLE,
+                points=((left, top), (right, top), (right, bottom), (left, bottom)),
+                fill="solid",
+                fill_colour="currentColor",
+                region=True,
+            ),
+        )
     cx, cy = box.x + box.width / 2, box.y + box.height / 2
     dot = theme.states.dot / 2
     filled = Ellipse(
@@ -1350,9 +1640,12 @@ def _framed(
     return GraphDrawing(
         layout=layout,
         boxes={
-            identifier: boxes[identifier]
-            .resized(width=place.width, height=place.height)
-            .moved_to(place.x + offset_x, place.y + offset_y)
+            identifier: (
+                # A bar is the one box the layout may make narrower: it turns.
+                replace(boxes[identifier], width=place.width, height=place.height)
+                if boxes[identifier].shape == BAR_SHAPE
+                else boxes[identifier].resized(width=place.width, height=place.height)
+            ).moved_to(place.x + offset_x, place.y + offset_y)
             for identifier, place in layout.placements.items()
         },
         routes=tuple(
