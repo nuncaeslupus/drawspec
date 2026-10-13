@@ -723,7 +723,9 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     ),  # [14 nodes, 12 edges, 3 loops, 3 classes]
     "tree": (("nodes", 15), ("classes", CLASSES_MAX)),  # [11 nodes, 3 classes]
     "cycle": (("nodes", 8),),  # [5]
-    "stack": (("items", 8),),  # [3]
+    # A consumer's corpus holds a nine-item legal enumeration (the principles of
+    # preventive action, LPRL art. 15), so 10, with headroom as for timeline.
+    "stack": (("items", 10),),  # [3]
     "timeline": (("items", 10),),  # [5]
     "columns": (("items", 6),),  # [5]
     "matrix": (("cells", 25),),  # [16]
