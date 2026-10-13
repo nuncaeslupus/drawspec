@@ -346,7 +346,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `flow` | 15 `nodes`, 16 `edges`, 6 `loops`, 4 `classes` |
 | `tree` | 15 `nodes`, 4 `classes` |
 | `cycle` | 8 `nodes` |
-| `stack` | 8 `items` |
+| `stack` | 10 `items` |
 | `timeline` | 10 `items` |
 | `columns` | 6 `items` |
 | `matrix` | 25 `cells` |

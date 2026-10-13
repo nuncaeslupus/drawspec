@@ -10,6 +10,14 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-10-13
+
+### Changed
+
+- **A `stack` takes up to 10 `items`** (was 8). A real document refused by 0.2.0
+  is a nine-item legal enumeration (the principles of preventive action, LPRL
+  art. 15) that splitting would misstate; 10 matches `timeline`.
+
 ## [0.2.0] — 2026-10-12
 
 ### Added
@@ -751,6 +759,7 @@ renderer, and a CLI.
      against. `main...HEAD` compares the default branch with itself, and a
      link to an unpushed tag is a 404: both show a reader nothing. -->
 
-[Unreleased]: https://github.com/nuncaeslupus/drawspec/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/nuncaeslupus/drawspec/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/nuncaeslupus/drawspec/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/nuncaeslupus/drawspec/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/nuncaeslupus/drawspec/releases/tag/v0.1.0
