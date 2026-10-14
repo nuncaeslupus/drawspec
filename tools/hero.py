@@ -8,6 +8,11 @@ sheet, sets each plate's ink with `color=`, and adds the furniture an engineerin
 drawing has — a grid, a border with zone marks, registration marks, a title block,
 and the wordmark.
 
+Two plates are not pictures at all: one small reference document as
+`render_text` draws it, in box drawing and again in ASCII, set line by line in
+the embedded monospace face, so the sheet shows the third output beside SVG and
+PNG.
+
 The one foreground drawing is rendered from the JSON printed beside it, so the
 banner shows exactly what the tool does: that document, and nothing else, made
 that picture.
@@ -100,9 +105,32 @@ PLATES: Final = (
     Plate("sankey-energy", 730, 56, 300, 0.68, "sankey"),
     Plate("sequence-dns", 1062, 56, 168, 0.68, "sequence"),
     Plate("venn-parity", 1088, 160, 130, 0.68, "venn"),
-    Plate("states-breaker", 942, 300, 130, 0.68, "states"),
-    Plate("journey-first-week", 1095, 330, 135, 0.68, "journey"),
 )
+
+
+@dataclass(frozen=True)
+class TextPlate:
+    """One reference document as `render_text` draws it in `charset`, `width` units wide."""
+
+    source: str
+    charset: str
+    x: float
+    y: float
+    width: float
+    figure: str
+
+
+#: The text plates: one small document, the same drawing in both character sets,
+#: side by side on the sheet's right, where the eye goes after the drawing.
+TEXT_PLATES: Final = (
+    TextPlate("sequence-terminal", "unicode", 940, 342, 128, "--format text"),
+    TextPlate("sequence-terminal", "ascii", 1092, 342, 128, "--charset ascii"),
+)
+
+#: DejaVu Sans Mono's advance, and the height its box-drawing verticals span, in
+#: ems: a line set that far below the last makes `│` on one meet `│` on the next.
+MONO_ADVANCE: Final = 1233 / 2048
+MONO_LEAD: Final = 2433 / 2048
 
 #: What drawspec draws, by family rather than by count, so no release dates it.
 GROUPS: Final = (
@@ -319,7 +347,7 @@ def title_block(x: float, y: float, w: float) -> str:
         rows=(sheet.Field("TITLE", "For all your diagram needs"),),
         cells=(
             (sheet.Field("SCALE", "no coordinates"), w * 0.52),
-            (sheet.Field("OUTPUT", "SVG · PNG"), w * 0.48),
+            (sheet.Field("OUTPUT", "SVG · PNG · TEXT"), w * 0.48),
         ),
     )
     return sheet.title_block(x, y, block, PALETTE, family=FAMILIES["mono"], style=BLOCK_STYLE)
@@ -414,6 +442,41 @@ def powered_by() -> str:
     )
 
 
+def typed(plate: TextPlate, number: int) -> str:
+    """A text plate: the document's `render_text` lines, set in the mono face on a
+    patch of ground so the ghost behind does not run through the characters."""
+    document = drawspec.load_document(REFERENCE / f"{plate.source}.json")
+    lines = drawspec.render_text(document, charset=plate.charset).rstrip("\n").split("\n")
+    columns = max(len(line) for line in lines)
+    size = plate.width / (columns * MONO_ADVANCE)
+    lead = size * MONO_LEAD
+    height = lead * len(lines)
+    pad = 6
+    rows = "".join(
+        f'<text x="{plate.x:.2f}" y="{plate.y + i * lead + size * 0.93:.2f}" '
+        f'font-family="{FAMILIES["mono"]}" font-size="{size:.3f}" fill="{PLATE_INK}" '
+        f'xml:space="preserve">{escape(line)}</text>'
+        for i, line in enumerate(lines)
+    )
+    return (
+        f'<rect x="{plate.x - pad}" y="{plate.y - pad}" width="{plate.width + 2 * pad}" '
+        f'height="{height + 2 * pad:.2f}" fill="{GROUND}" fill-opacity="0.9"/>'
+        f'<g opacity="0.82">{rows}</g>'
+        '<g opacity="0.95">'
+        + crop(plate.x - pad, plate.y - pad, plate.width + 2 * pad, height + 2 * pad)
+        + text(
+            plate.x - pad,
+            plate.y + height + pad + 11,
+            f"FIG. {number:02d} · {plate.figure}",
+            7.5,
+            SOFT,
+            role="mono",
+            spacing=1.2,
+        )
+        + "</g>"
+    )
+
+
 def compose() -> str:
     parts: list[str] = [grid()]
 
@@ -448,6 +511,8 @@ def compose() -> str:
             )
             + "</g>"
         )
+    for number, text_plate in enumerate(TEXT_PLATES, start=len(PLATES)):
+        parts.append(typed(text_plate, number))
     parts.append("</g>")
 
     parts.append(border())

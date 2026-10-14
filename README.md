@@ -5,7 +5,7 @@
 <!-- /claude-arsenal:attribution -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/hero.png" width="100%" alt="drawspec: a blueprint sheet with the wordmark, a JSON flow spec and the flow chart drawspec renders from it, over faint plates of a sankey, sequence, venn, state machine and journey drawn by drawspec">
+  <img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/hero.png" width="100%" alt="drawspec: a blueprint sheet with the wordmark, a JSON flow spec and the flow chart drawspec renders from it, over faint plates of a sankey, sequence and venn drawn by drawspec, and a small sequence diagram as drawspec's text output, once in box drawing and once in ASCII">
 </p>
 
 Declarative diagram spec → clean, themeable SVG. Writable by an LLM with no
@@ -122,6 +122,44 @@ wheel; no PDF, no JPEG). And for where no picture draws — a terminal, a commit
 message, a code block — twelve kinds, flows and state machines among them, come out
 as plain text, box-drawing or ASCII: 80 columns, 100 for swimlanes and sequences,
 or whatever `--width` you give.
+
+A small sequence, [`sequence-terminal.json`](docs/reference/sequence-terminal.json), as
+`drawspec render docs/reference/sequence-terminal.json --format text` draws it, and
+with `--charset ascii` added:
+
+<table>
+<tr><th><code>--format text</code></th><th><code>--charset ascii</code></th></tr>
+<tr>
+<td>
+
+```text
+┌───────┐     ┏━━━━━━━━━━┓
+│ Shell │     ┃ drawspec ┃
+└───┬───┘     ┗━━━━┯━━━━━┛
+    │ flow.json    │
+    ├─────────────▶┃
+    │ the drawing  ┃
+    │◁┄┄┄┄┄┄┄┄┄┄┄┄┄┤
+    │              │
+```
+
+</td>
+<td>
+
+```text
++-------+     #==========#
+| Shell |     # drawspec #
++---+---+     #====#=====#
+    | flow.json    |
+    +------------->#
+    | the drawing  #
+    |<<............+
+    |              |
+```
+
+</td>
+</tr>
+</table>
 
 ## What it looks like
 

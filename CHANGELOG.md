@@ -10,6 +10,8 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-10-14
+
 ### Added
 
 - **Text width defaults by kind**: 100 columns for `lanes` and `sequence`, whose parties
@@ -70,6 +72,13 @@ against it would stop working. Everything below is about the *package*.
 - The refusal for a kind with no text form names the kinds that have one, instead of
   saying only `files` does. A tree with bands refuses at its pointer; a tree with
   cross-links or groups is drawn as a graph.
+- **The bundled fonts cover Box Drawing and Block Elements** (U+2500–259F), the glyphs
+  text output draws with, so a label that uses one measures and rasterises as itself
+  rather than as `.notdef`. Every other glyph, and every advance, is unchanged.
+- **The README banner shows text output**: a small reference sequence,
+  `sequence-terminal`, as `--format text` and `--charset ascii` draw it, set in the
+  embedded monospace face beside the SVG plates; its title block's output reads
+  `SVG · PNG · TEXT`. The README shows the same two drawings beside the paragraph on text.
 
 ## [0.2.1] — 2026-10-13
 
@@ -820,7 +829,8 @@ renderer, and a CLI.
      against. `main...HEAD` compares the default branch with itself, and a
      link to an unpushed tag is a 404: both show a reader nothing. -->
 
-[Unreleased]: https://github.com/nuncaeslupus/drawspec/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/nuncaeslupus/drawspec/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/nuncaeslupus/drawspec/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/nuncaeslupus/drawspec/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/nuncaeslupus/drawspec/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/nuncaeslupus/drawspec/releases/tag/v0.1.0
