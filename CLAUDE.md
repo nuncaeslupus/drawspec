@@ -12,6 +12,13 @@ Before opening the PR, grep the docs for the kind's name and for any number or l
 the change made stale.
 
 <!-- claude-arsenal: auto-managed -->
+## Reviewing and merging
+
+Every PR needs a review before it merges, and a required "CodeRabbit" check gates it.
+CodeRabbit does not review this repo on its own (fewer than 10 stars), so comment
+`@coderabbitai review` on each PR. If it will not review, review the diff yourself.
+Merge only when CI is green and one of those reviews is done.
+
 ## Automatic session protocol
 
 Every session, without waiting to be asked:
