@@ -120,7 +120,8 @@ a chat, a slide, an attachment — the same drawing comes out as a PNG on a ligh
 dark or transparent background (`pip install 'drawspec[png]'`, one self-contained
 wheel; no PDF, no JPEG). And for where no picture draws — a terminal, a commit
 message, a code block — twelve kinds, flows and state machines among them, come out
-as plain text, 80 columns, box-drawing or ASCII.
+as plain text, box-drawing or ASCII: 80 columns, 100 for swimlanes and sequences,
+or whatever `--width` you give.
 
 ## What it looks like
 
