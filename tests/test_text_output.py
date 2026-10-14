@@ -488,3 +488,11 @@ def test_the_callers_width_wins_over_the_default() -> None:
     render_text(document)
     with pytest.raises(FitError):
         render_text(document, width=80)
+
+
+def test_a_sequence_wraps_only_the_labels_the_width_needs() -> None:
+    """At 100 columns a label with room keeps one line; the drawing still fits."""
+    drawn = render_text(load_document(REFERENCE / "sequence-dns.json"), width=100)
+    assert "where is wiki.example.org?" in drawn
+    assert "ask ns1.example.org" in drawn
+    assert max(cells(line) for line in drawn.splitlines()) <= 100
