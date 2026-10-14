@@ -1,8 +1,19 @@
 # Session Handover
 
-**Date**: 2026-10-12 · **Branch**: `ccr-6186f7c4-lrvt8d` · **PR**: [#113](https://github.com/nuncaeslupus/drawspec/pull/113) (merging when green)
+**Date**: 2026-10-14 · **Branch**: `ccr-9e7e50b9-yx501p` · **PRs**: #117, #120, #121 (all merged)
 
-## This session
+## 2026-10-14: text output
+- Barcodes, QR codes and pixel art were ruled out of scope. Text output was proposed instead (`docs/proposals/text.md`) and accepted.
+- #120 (t-f26679ad, closes #119): text for tree, sequence, gantt, timeline, board, stack, rag and meter (bar style). `files` is exempt from the width check for now.
+- #121 (t-5355943b, closes #118): text for flow, states and lanes on a character-grid router. Size limit is 15 boxes and 3 crossings.
+  - Default width is 100 for lanes and sequence, 80 for the rest. The caller's width always wins.
+  - A sequence's labels are wrapped one at a time, only as much as the width needs.
+- New rule at the top of `CLAUDE.md`: any kind, field, role or format change updates README, docs, AGENTS.md, llms.txt, CHANGELOG, generated docs and schema, the gallery and the proposals index in the same PR.
+- Open ideas:
+  - text for more kinds (`meter` thermometer, gantt dependency arrows, timeline spaced by `at`);
+  - `lanes-phases-purchase` needs 105 columns.
+
+## Previous session (2026-10-12)
 Compared drawspec with diagram-design and acted on it, without arsenal task files (owner: arsenal is unrelated tooling).
 Added: readability budget per kind, emphasis cap of 2, AGENTS.md routing guidance, `skills/drawspec/SKILL.md`, a CI gallery artifact,
 11 new kinds (states, sequence, lanes, entities, gantt, board, fishbone, venn, journey, treemap, sankey; 26 in total),
