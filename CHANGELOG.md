@@ -12,6 +12,9 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **Text width defaults by kind**: 100 columns for `lanes` and `sequence`, whose parties
+  sit side by side, 80 for the rest. `--width` (CLI), `width` (MCP) and `render_text(width=)`
+  still set any width the caller wants.
 - **Text output for eight more kinds** (proposal `text.md`, phase 1): `render --format
   text` / `-o diagram.txt`, `render_text()` and the MCP `render` tool's `format: "text"`
   now draw `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag` and `meter`

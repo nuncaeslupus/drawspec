@@ -117,6 +117,8 @@ the document already is.
 3. **Width:** default 80. Graph kinds are the risk: phase 2 measures how many reference
    flows fit at 80 / 100 / 120 before the default is settled, and proposes a per-kind
    default if 80 refuses too many. `--width` always overrides.
+   **Settled after phase 2:** 100 for `lanes` and `sequence`, 80 for every other kind;
+   the caller's width always wins.
 
 ## As built
 

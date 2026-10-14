@@ -56,7 +56,7 @@ from drawspec.export import BACKGROUNDS, DEFAULT_SCALE, MAX_SCALE, render_png
 from drawspec.kinds import TEXT_KINDS
 from drawspec.render import render_document, render_text
 from drawspec.schema import KINDS, SCHEMA_ID, Document, parse_document
-from drawspec.textgrid import CHARSETS, DEFAULT_WIDTH
+from drawspec.textgrid import CHARSETS, DEFAULT_WIDTH, WIDE_WIDTH
 
 #: What every tool is handed. Spelled once because all three take the same
 #: thing: an agent that has learnt one call has learnt all of them.
@@ -109,7 +109,8 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
                     "type": "number",
                     "description": (
                         "Override the document's width. With format `text`, the most terminal "
-                        f"cells a line may take (default {DEFAULT_WIDTH})."
+                        f"cells a line may take (default {DEFAULT_WIDTH}, or {WIDE_WIDTH} for "
+                        "`lanes` and `sequence`)."
                     ),
                 },
                 "height": {"type": "number", "description": "Override the document's height."},
@@ -213,7 +214,7 @@ def _render(arguments: dict[str, Any]) -> str | bytes:
         width = arguments.get("width")
         return render_text(
             document,
-            width=DEFAULT_WIDTH if width is None else int(width),
+            width=None if width is None else int(width),
             charset=str(arguments.get("charset", "unicode")),
         )
     if arguments.get("width") is not None:

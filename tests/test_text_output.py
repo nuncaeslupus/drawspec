@@ -38,7 +38,7 @@ from drawspec.filetree import rows, text
 from drawspec.kinds import TEXT_KINDS
 from drawspec.kinds.graphtext import GRAPH_TEXT_KINDS
 from drawspec.schema import Document, load_document, parse_document
-from drawspec.textgrid import cells, plain
+from drawspec.textgrid import cells, default_width, plain
 
 REFERENCE: Final = Path(__file__).resolve().parent.parent / "docs" / "reference"
 
@@ -474,3 +474,17 @@ def test_files_text_is_not_held_to_the_width() -> None:
     )
     drawn = render_text(document, width=40)
     assert max(len(line) for line in drawn.splitlines()) > 40
+
+
+@pytest.mark.parametrize(("kind", "expected"), [("sequence", 100), ("lanes", 100), ("tree", 80)])
+def test_default_width_is_per_kind(kind: str, expected: int) -> None:
+    """Sequences and lanes default to 100 columns, every other kind to 80."""
+    assert default_width(kind) == expected
+
+
+def test_the_callers_width_wins_over_the_default() -> None:
+    """A width the caller names is the width the drawing is held to."""
+    document = load_document(REFERENCE / "sequence-dns.json")
+    render_text(document)
+    with pytest.raises(FitError):
+        render_text(document, width=80)
