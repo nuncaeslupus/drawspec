@@ -390,9 +390,12 @@ drawspec render plan.json --format text --width 100 --charset ascii
 It is a second emitter, not a picture of the SVG: each kind lays itself out on a
 character grid from its own rows and columns. Twelve kinds have a text form —
 `files`, `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`,
-`meter` in the `bar` and `thermometer` styles, and the graph kinds `flow`, `states` and `lanes` —
-and every other kind refuses, naming them. The kinds whose message is an area,
-an angle or a curve never get one — a `dial` and a `bullet` meter included.
+`meter` in every style, and the graph kinds `flow`, `states` and `lanes` — and
+every other kind refuses, naming them. The kinds whose message is an area, an
+angle or a curve never get one. A `meter` `dial` is a half-circle of cells with
+its needle in the stroke nearest the amount's angle and its bands in shades
+under a key; a `bullet` is a bar's row on its bands' shades, their words over
+them — in both the readout says every number, as it does in the SVG.
 
 **The graph kinds are placed and routed in cells.** The layered engine ranks and
 orders the boxes as it does for the SVG; every edge is then the cheapest square

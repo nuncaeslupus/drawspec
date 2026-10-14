@@ -144,8 +144,8 @@ per charset under `tests/golden/text/`. What changed or was decided:
   drawn, see *Follow-ups* below.
 * **`rag` uses the default theme's words and shapes** (`■ RED`, `▲ AMBER`, `● GREEN`,
   ASCII `# ^ o`): text has no theme. **`meter` is `bar` only**, `[█████░░░│░░]`, the
-  target a bar across the track, the readout's lines under one another; `dial` and
-  `bullet` refuse, and so did `thermometer` until the follow-ups below.
+  target a bar across the track, the readout's lines under one another; `thermometer`,
+  `dial` and `bullet` refused until the follow-ups below.
 * **`tree`** draws its boxes on `files`' guides, a class named after its box and an
   edge's label on its stub; a tree with cross-links, a cycle, groups or bands refuses,
   as phase 2's work.
@@ -219,8 +219,9 @@ crossings counted, the budget's refusals, a golden file per kind per charset
 
 ### Follow-ups
 
-Three things phase 1 left out, built after both phases. Gated by
-`tests/test_text_output.py`, a golden file for `meter-appeal` in each charset, and the
+Four things phase 1 left out, built after both phases. Gated by
+`tests/test_text_output.py`, golden files for `meter-appeal`, `meter-ward` and
+`meter-library` in each charset, and the
 `gantt-semester` and `timeline-disaster` goldens regenerated and read.
 
 * **`meter`'s `thermometer` style has a text form.** A tube down the page, ten rows from
@@ -230,9 +231,25 @@ Three things phase 1 left out, built after both phases. Gated by
   ASCII `|===|==`); the readout, then the name, centred under the bulb. Several stand
   side by side, four cells apart, names on one row; an `emphasis` tube is heavy
   (`┏━━━┓`, ASCII `.===.`). Too wide is refused at the widest one's name.
-  **`dial` and `bullet` still refuse:** a dial's message is an angle, and a bullet's is
-  its bands' tones under the bar — a row of shaded cells would say less than the
-  readout already does. Both stay with *Never*'s reasoning.
+  `dial` and `bullet` refused here, as an angle and a band's tone; they have since
+  been drawn, below.
+* **`meter`'s `dial` and `bullet` styles have a text form**, kept honest in characters
+  (golden files for `meter-ward` and `meter-library`). A **dial** is the cells between
+  radius 5 and 3.7 rows of a half-circle, a cell being twice as tall as wide, from `min`
+  at the left to `max` at the right: each takes its band's shade by the value at its
+  centre, lightest first (`·░▒▓█` as the band count needs; ASCII `.:+%#`), or with no
+  bands the fill `█` (`#`) to the amount over `░` (`.`). The needle runs from the hub
+  `●` (`o`; `◉`, `@` for `emphasis`) toward the arc, one cell per row or column, in the
+  stroke nearest its angle — `─ ╱ │ ╲`, the diagonal taken as the 63° a cell's corners
+  make — and the target is `◆` (`*`) on the arc's cells along its angle. Under it are
+  the scale's ends, a key of its bands (`░ Safe`), the readout and the name; up to three
+  to a row with the rows as even as the count allows, as the SVG sets them. A **bullet**
+  is the bar's three columns with a track three rows deep: its bands in shades with
+  each band's word centred over it, the measure a thin heavy bar `━` (`=`) along the
+  middle row to the amount, the target `│` (`!`) down all three rows, and the SVG's
+  ticks from zero under it, the end always labelled. The track is the bar's ten to
+  forty cells, longer only when a band is too short for its word, which is refused at
+  the meter's pointer naming the width that gives it room.
 * **`gantt` dependencies are drawn.** Each is routed finish-to-start: out of the end of
   its bar along the row, down a column of blank cells, right along the dependent's row
   into a head on its first cell (`▒▒┐` … `└──▶▒▒`), the corner as near the bar it leaves

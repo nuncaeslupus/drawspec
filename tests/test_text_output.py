@@ -61,9 +61,6 @@ WIDER: Final = {
     "board-onboarding": 88,
 }
 
-#: Reference documents a text form refuses by design: a `dial` or `bullet` meter
-#: says something — an angle, a band's tone — a row of cells cannot.
-NO_TEXT: Final = ("meter-library", "meter-ward")
 
 #: One reference document per kind, held as a golden file in each charset.
 GOLDENS: Final = {
@@ -79,7 +76,7 @@ GOLDENS: Final = {
 }
 
 #: Golden files beyond one per kind: a second style of a kind, held the same way.
-MORE_GOLDENS: Final = ("meter-appeal",)
+MORE_GOLDENS: Final = ("meter-appeal", "meter-library", "meter-ward")
 
 CHARSETS: Final = ("unicode", "ascii")
 
@@ -87,7 +84,7 @@ CHARSETS: Final = ("unicode", "ascii")
 def _references() -> Iterator[tuple[str, Path]]:
     for path in sorted(REFERENCE.glob("*.json")):
         kind = json.loads(path.read_text(encoding="utf-8"))["kind"]
-        if kind in PHASE_ONE and path.stem not in NO_TEXT:
+        if kind in PHASE_ONE:
             yield path.stem, path
 
 
@@ -140,6 +137,7 @@ def _labels(document: Document) -> list[str]:
         found += [row.text for row in document.rag_rows] + [row.note for row in document.rag_rows]
     elif document.kind == "meter":
         found += [meter.text for meter in document.meters]
+        found += [band.text for meter in document.meters for band in meter.bands]
     found.append(document.caption)
     return [line for label in found for line in plain(label).split("\n") if line.strip()]
 
@@ -298,12 +296,10 @@ def _stack(role: str = "step") -> dict[str, Any]:
 
 
 def _meter(role: str = "step", style: str = "bar") -> dict[str, Any]:
-    return {
-        "version": 1,
-        "kind": "meter",
-        "style": style,
-        "meters": [{"text": "Done", "amount": 3, "max": 10, "role": role}],
-    }
+    meter: dict[str, Any] = {"text": "Done", "amount": 3, "max": 10, "role": role}
+    if style == "bullet":
+        meter["bands"] = [{"text": "Low", "to": 5}, {"text": "High", "to": 10}]
+    return {"version": 1, "kind": "meter", "style": style, "meters": [meter]}
 
 
 def _rag(rating: str = "red", trend: str = "same") -> dict[str, Any]:
@@ -342,6 +338,8 @@ ROLE_PAIRS: Final = {
     "stack terminal": (_stack(), _stack("terminal")),
     "meter emphasis": (_meter(), _meter("emphasis")),
     "thermometer emphasis": (_meter(style="thermometer"), _meter("emphasis", "thermometer")),
+    "dial emphasis": (_meter(style="dial"), _meter("emphasis", "dial")),
+    "bullet emphasis": (_meter(style="bullet"), _meter("emphasis", "bullet")),
     "gantt weak dependency": (_gantt(edge="flow"), _gantt(edge="weak")),
     "gantt strong dependency": (_gantt(edge="flow"), _gantt(edge="strong")),
     "rag rating": (_rag(), _rag("amber")),
@@ -407,13 +405,6 @@ def test_a_kind_without_a_text_form_refuses_naming_the_kinds_that_have_one(kind:
     assert f"a {kind!r} document has no text form" in message
     for named in TEXT_KINDS:
         assert f"`{named}`" in message
-
-
-@pytest.mark.parametrize("name", ["meter-ward", "meter-library"])
-def test_a_dial_or_bullet_meter_has_no_text_form(name: str) -> None:
-    refused = load_document(REFERENCE / f"{name}.json")
-    with pytest.raises(DrawspecError, match=r"^/style: .*only `bar` and `thermometer`"):
-        render_text(refused)
 
 
 def test_a_tree_with_a_cross_link_is_routed_rather_than_drawn_twice() -> None:
@@ -737,3 +728,144 @@ def test_an_ascii_dependency_line_never_uses_a_bars_glyph() -> None:
     bar_glyphs = {*TEXT_FILLS["ascii"].values(), TEXT_UNDONE["ascii"]}
     for across, *_ in TEXT_DEPENDENCY["ascii"].values():
         assert across not in bar_glyphs
+
+
+# ---------------------------------------------------------------------------
+# A bullet: a bar on its bands, each band a shade with its word over it
+# ---------------------------------------------------------------------------
+
+
+def _bullet(amount: float, target: float | None = None, role: str = "step") -> Document:
+    meter: dict[str, Any] = {
+        "text": "Visits",
+        "amount": amount,
+        "max": 100,
+        "role": role,
+        "bands": [
+            {"text": "Poor", "to": 50},
+            {"text": "Fair", "to": 80},
+            {"text": "Good", "to": 100},
+        ],
+    }
+    if target is not None:
+        meter["target"] = target
+    return parse_document({"version": 1, "kind": "meter", "style": "bullet", "meters": [meter]})
+
+
+def _track(drawn: str, row: int, opening: str = "[") -> str:
+    """The inside of the bullet's track on its `row`th line: 0 top, 1 measure, 2 bottom."""
+    lines = [line for line in drawn.splitlines() if opening in line]
+    line = lines[row]
+    return line[line.index(opening) + 1 : line.rindex({"[": "]", "┃": "┃", "|": "|"}[opening])]
+
+
+def test_a_bullets_bands_are_shades_lightest_first_with_their_words_over_them() -> None:
+    drawn = render_text(_bullet(0))
+    top = _track(drawn, 0)
+    assert len(top) == 40
+    assert top == "░" * 20 + "▒" * 12 + "▓" * 8
+    words = drawn.splitlines()[0]
+    start = drawn.splitlines()[1].index("[") + 1
+    assert words.index("Poor") - start in range(20 - 4)
+    assert words.index("Fair") - start in range(20, 32 - 4)
+    assert words.index("Good") - start in range(32, 40 - 4 + 1)
+
+
+def test_a_bullets_measure_is_a_thin_bar_over_its_bands_to_the_amount() -> None:
+    drawn = render_text(_bullet(60, target=90))
+    middle, bottom = _track(drawn, 1), _track(drawn, 2)
+    assert middle.startswith("━" * 24) and "━" not in middle[24:]
+    assert middle[24:] == bottom[24:]
+    assert middle[36] == bottom[36] == _track(drawn, 0)[36] == "│"
+    assert "60" in drawn and "Fair" in drawn and "target 90" in drawn
+
+
+def test_a_bullet_is_ticked_from_zero_to_its_end() -> None:
+    drawn = render_text(_bullet(60))
+    ticks = next(line for line in drawn.splitlines() if line.strip().startswith("0 "))
+    assert ticks.rstrip().endswith("100")
+    assert ticks.rindex("100") + 3 == drawn.splitlines()[1].rindex("]")
+
+
+def test_an_ascii_bullet() -> None:
+    drawn = render_text(_bullet(60, target=90), charset="ascii")
+    assert drawn.isascii()
+    assert _track(drawn, 0).startswith("." * 20 + ":" * 12)
+    assert _track(drawn, 1).startswith("=" * 24)
+    assert _track(render_text(_bullet(60, role="emphasis"), charset="ascii"), 1, "|")
+
+
+def test_a_bullet_too_narrow_for_its_band_words_refuses_naming_the_width() -> None:
+    document = _bullet(60)
+    with pytest.raises(FitError, match=r"^/meters/0/") as refused:
+        render_text(document, width=24)
+    needed = int(re.search(r"--width (\d+)", str(refused.value)).group(1))  # type: ignore[union-attr]
+    render_text(document, width=needed)
+
+
+# ---------------------------------------------------------------------------
+# A dial: a half-circle of cells, a needle from its hub
+# ---------------------------------------------------------------------------
+
+
+def _dial(amount: float, target: float | None = None, bands: bool = False) -> Document:
+    meter: dict[str, Any] = {"text": "Load", "amount": amount, "min": 20, "max": 120, "unit": "%"}
+    if target is not None:
+        meter["target"] = target
+    if bands:
+        meter["bands"] = [{"text": "Low", "to": 60}, {"text": "High", "to": 120}]
+    return parse_document({"version": 1, "kind": "meter", "style": "dial", "meters": [meter]})
+
+
+#: A needle rising to the right.
+RISING: Final = "\N{BOX DRAWINGS LIGHT DIAGONAL UPPER RIGHT TO LOWER LEFT}"
+
+
+@pytest.mark.parametrize(
+    ("amount", "needle"), [(20, "─●"), (120, "●─"), (70, "│"), (45, "╲"), (95, RISING)]
+)
+def test_a_dials_needle_points_at_its_amount(amount: float, needle: str) -> None:
+    drawn = render_text(_dial(amount))
+    hub = next(index for index, line in enumerate(drawn.splitlines()) if "●" in line)
+    lines = drawn.splitlines()
+    if needle in ("─●", "●─"):
+        assert needle in lines[hub]
+    else:
+        column = lines[hub].index("●")
+        above = lines[hub - 1]
+        assert needle in above[column - 2 : column + 3]
+
+
+def test_a_dial_is_filled_to_its_amount_and_labelled_at_its_ends() -> None:
+    drawn = render_text(_dial(70))
+    lines = drawn.splitlines()
+    hub = next(index for index, line in enumerate(lines) if "●" in line)
+    assert lines[hub].lstrip().startswith("█") and lines[hub].rstrip().endswith("░")
+    ends = lines[hub + 1]
+    assert ends.lstrip().startswith("20%") and ends.rstrip().endswith("120%")
+    assert lines[hub + 1].index("20%") == min(
+        line.index(line.lstrip()[0]) for line in lines[: hub + 1]
+    )
+
+
+def test_a_dials_target_is_a_tick_on_its_arc_and_its_bands_a_key() -> None:
+    drawn = render_text(_dial(70, target=110, bands=True))
+    arc = drawn.split("●")[0]
+    assert arc.count("◆") >= 1 and "░" in arc and "▓" in arc
+    assert "░ Low" in drawn and "▓ High" in drawn
+    assert "70%" in drawn and "target 110%" in drawn and "High" in drawn
+
+
+def test_an_ascii_dial() -> None:
+    drawn = render_text(_dial(70, target=110, bands=True), charset="ascii")
+    assert drawn.isascii() and "*" in drawn and "|" in drawn and ". Low" in drawn
+
+
+def test_dials_stand_three_to_a_row() -> None:
+    meters = [{"text": f"Dial {n}", "amount": 5, "max": 10} for n in range(4)]
+    document = parse_document({"version": 1, "kind": "meter", "style": "dial", "meters": meters})
+    lines = render_text(document).splitlines()
+    names = [line for line in lines if "Dial" in line]
+    assert len(names) == 2 and names[0].count("Dial") == 2 and names[1].count("Dial") == 2
+    with pytest.raises(FitError, match=r"^/meters/"):
+        render_text(document, width=20)

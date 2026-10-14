@@ -899,9 +899,10 @@ def _text_rows(items: tuple[Item, ...], heights: list[int]) -> tuple[list[int], 
     Raises:
         FitError: every entry is at the same point, as the SVG refuses it.
     """
-    shares = _shares(items, len(items))
-    values = [item.at for item in items if item.at is not None]
-    steps = [later - earlier for earlier, later in pairwise(values)] if shares is not None else []
+    # The steps in shares of the whole span: proportional to the `at` intervals,
+    # which is all the spacing below reads, and none at all for even spacing.
+    shares = _shares(items, len(items)) or []
+    steps = [later - earlier for earlier, later in pairwise(shares)]
     rows = [0]
     compressed: set[int] = set()
     if not steps or any(step < 0 for step in steps):
