@@ -33,7 +33,7 @@ from dataclasses import dataclass, field
 from typing import Final
 
 from drawspec.charts import AXIS_ROLE, FURNITURE_ROLE, _nice_step
-from drawspec.errors import DrawspecError, FitError
+from drawspec.errors import FitError
 from drawspec.kinds.treemap import bold
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextLine, TextSpan
 from drawspec.schema import METER_CURRENCIES, Document, Meter
@@ -46,6 +46,7 @@ from drawspec.textgrid import (
     finished,
     label_lines,
     pad,
+    plain,
     spelt,
     too_wide,
     widest,
@@ -972,22 +973,20 @@ def _readouts(document: Document, charset: str) -> list[list[str]]:
 
 
 def meter_text(document: Document, width: int, charset: str) -> str:
-    """A meter panel as plain text: a row of cells for `bar`, a tube for `thermometer`.
+    """A meter panel as plain text, in the panel's style.
 
-    A `dial`'s message is an angle and a `bullet`'s is its bands' tones, neither
-    of which cells can say better than the readout, so those two refuse.
+    A row of cells for `bar`; the same row on its bands' shades for `bullet`; a
+    tube for `thermometer`; a half-circle of cells with a needle for `dial`.
 
     Raises:
-        DrawspecError: the panel's style is `dial` or `bullet`.
         FitError: the panel is wider than `width`.
     """
     if document.meter_style == "thermometer":
         return _thermometer_text(document, width, charset)
-    if document.meter_style != "bar":
-        raise DrawspecError(
-            f"/style: a {document.meter_style!r} meter has no text form; only `bar` and "
-            f"`thermometer` do. Draw it as one of those, or render it as SVG."
-        )
+    if document.meter_style == "bullet":
+        return _bullet_text(document, width, charset)
+    if document.meter_style == "dial":
+        return _dial_text(document, width, charset)
     return _bar_text(document, width, charset)
 
 
@@ -1113,7 +1112,7 @@ def _tube_glyphs(charset: str, emphasis: bool) -> _TubeGlyphs:
     )
 
 
-def _tube(meter: Meter, charset: str) -> tuple[list[str], int]:
+def _tube(meter: Meter, charset: str, position: int) -> tuple[list[str], int]:
     """One thermometer, its tick labels at the left: equally wide lines, and its centre.
 
     The tube is `TUBE_ROWS` rows from `max` at the top to zero at the bottom,
@@ -1133,7 +1132,7 @@ def _tube(meter: Meter, charset: str) -> tuple[list[str], int]:
     for value, text in reversed(_ticks(meter.max, TUBE_ROWS, 3, unit)):
         row = row_of(value)
         if row not in labels:
-            labels[row] = spelt(text.replace(MINUS, "-"), charset, "/meters")
+            labels[row] = spelt(text.replace(MINUS, "-"), charset, f"/meters/{position}/unit")
     # The labels right-aligned, a space, then the tick's stub into the wall.
     side = max(cells(text) for text in labels.values()) + 1
     # The fill reaches the row its amount's tick would sit on, the same scale
@@ -1182,7 +1181,7 @@ def _thermometer_text(document: Document, width: int, charset: str) -> str:
         for position, meter in enumerate(meters)
     ]
     reads = _readouts(document, charset)
-    tubes = [_tube(meter, charset) for meter in meters]
+    tubes = [_tube(meter, charset, position) for position, meter in enumerate(meters)]
     columns: list[list[str]] = []
     depth = max(len(read) for read in reads)
     for (tube, middle), read, name in zip(tubes, reads, names, strict=True):
@@ -1219,6 +1218,425 @@ def _thermometer_text(document: Document, width: int, charset: str) -> str:
         )
         for row in range(height)
     ]
+    return finished(lines + caption_lines(document.caption, width, charset))
+
+
+#: A band's shade, lightest first as the SVG's tones go, by how many bands the
+#: meter has: each set as far apart as the charset allows.
+TEXT_SHADES: Final = {
+    "unicode": {2: "░▓", 3: "░▒▓", 4: "·░▒▓", 5: "·░▒▓█"},
+    "ascii": {2: ".#", 3: ".:#", 4: ".:+#", 5: ".:+%#"},
+}
+
+#: A bullet's measure: a thin heavy bar along the middle of its bands.
+TEXT_MEASURE: Final = {"unicode": "━", "ascii": "="}
+
+
+def _band_at(meter: Meter, value: float) -> int:
+    """The band `value` is in, as `band_of` reads the amount."""
+    for index, band in enumerate(meter.bands):
+        if value < band.to:
+            return index
+    return len(meter.bands) - 1
+
+
+def _band_cells(meter: Meter, track: int) -> list[int]:
+    """Each cell's band along a track `track` cells long, by the value at its centre."""
+    return [_band_at(meter, (cell + 0.5) / track * meter.max) for cell in range(track)]
+
+
+def _band_words(meter: Meter, track: int, words: list[str]) -> str | None:
+    """The band words centred over their bands, or `None` if one has too few cells.
+
+    A word must be shorter than its band, so two neighbours keep a space between.
+    """
+    owners = _band_cells(meter, track)
+    placed: list[tuple[int, str]] = []
+    for index, word in enumerate(words):
+        spans = [cell for cell, owner in enumerate(owners) if owner == index]
+        if not spans or cells(word) >= len(spans):
+            return None
+        placed.append((spans[0] + (len(spans) - cells(word)) // 2, word))
+    return _set(placed)
+
+
+def _set(placed: list[tuple[int, str]]) -> str:
+    """Words set at their cells along a row, left to right, spaces between."""
+    row = ""
+    for start, text in placed:
+        row += " " * (start - cells(row)) + text
+    return row
+
+
+def _tick_row(meter: Meter, track: int, charset: str, position: int) -> str:
+    """A bullet's ticks under its track: zero at the left, the end flush right.
+
+    The SVG's ticks; one that would run into its neighbour is dropped, never the
+    end, which drops the ones before it that it would run into.
+    """
+    unit = tick_unit(meter.unit)
+    texts = [
+        (value, spelt(text.replace(MINUS, "-"), charset, f"/meters/{position}/unit"))
+        for value, text in _ticks(meter.max, track, cells(number(meter.max, unit)) + 3, unit)
+    ]
+    placed: list[tuple[int, str]] = []
+
+    def clear(start: int) -> bool:
+        return not placed or placed[-1][0] + cells(placed[-1][1]) + 1 <= start
+
+    for value, text in texts[:-1]:
+        size = cells(text)
+        start = 0 if value == 0 else round(value / meter.max * track) - size // 2
+        if start >= 0 and start + size <= track and clear(start):
+            placed.append((start, text))
+    text = texts[-1][1]
+    start = max(track - cells(text), 0)
+    while not clear(start):
+        placed.pop()
+    placed.append((start, text))
+    return _set(placed)
+
+
+def _bullet_track(document: Document, words: list[list[str]], room: int) -> tuple[int, int]:
+    """The track's length in cells, and the least its band words need.
+
+    As a bar's, up to `TEXT_TRACK`'s longest; longer only when a band is too
+    short for its word, which no shorter track can carry.
+    """
+    least = TEXT_TRACK[0]
+    while least < 400 and any(
+        _band_words(meter, least, said) is None
+        for meter, said in zip(document.meters, words, strict=True)
+    ):
+        least += 1
+    return max(min(room, TEXT_TRACK[1]), least), least
+
+
+def _bullet_text(document: Document, width: int, charset: str) -> str:
+    """A `bullet` panel as plain text: a bar's three columns, the track on its bands.
+
+    Each meter is a block of rows: its band words over their bands; the track
+    three rows deep, the bands in shades lightest first as the SVG's tones; the
+    measure a thin heavy bar along the middle row to the amount; the target a
+    stroke down all three; and the ticks from zero under it. The name and the
+    readout start on the measure's row.
+
+    Raises:
+        FitError: the names, readouts and band words leave the tracks too few
+            columns.
+    """
+    glyphs = TEXT_BARS[charset]
+    meters = document.meters
+    names = [
+        label_lines(meter.text, charset, f"/meters/{position}/text")
+        for position, meter in enumerate(meters)
+    ]
+    bands = [
+        [
+            spelt(plain(band.text), charset, f"/meters/{position}/bands/{number_}/text")
+            for number_, band in enumerate(meter.bands)
+        ]
+        for position, meter in enumerate(meters)
+    ]
+    reads = _readouts(document, charset)
+    name_width = max(cells(line) for name in names for line in name)
+    read_width = max(cells(line) for read in reads for line in read)
+    beside = name_width + read_width + 2 * TEXT_GAP + 2
+    track, least = _bullet_track(document, bands, width - beside)
+    if beside + track > width:
+        position = max(
+            range(len(meters)),
+            key=lambda number_: (
+                max(cells(line) for line in names[number_])
+                + max(cells(line) for line in reads[number_])
+            ),
+        )
+        crowded = next(
+            (
+                number_
+                for number_, meter in enumerate(meters)
+                if _band_words(meter, TEXT_TRACK[0], bands[number_]) is None
+            ),
+            None,
+        )
+        if least > TEXT_TRACK[0] and crowded is not None:
+            position = crowded
+            what = f"the bands of {names[position][0]!r} with their words over them"
+        else:
+            what = f"the name {names[position][0]!r} and its readout {reads[position][0]!r}"
+        raise too_wide(f"/meters/{position}/text", what, beside + least, width)
+    shades = TEXT_SHADES[charset]
+    gap = " " * TEXT_GAP
+    lead = " " * (name_width + TEXT_GAP + 1)
+    drawn: list[Drawn] = []
+    for position, meter in enumerate(meters):
+        pointer = f"/meters/{position}/text"
+        what = f"the meter {names[position][0]!r}"
+        ramp = shades[len(meter.bands)]
+        under = [ramp[band] for band in _band_cells(meter, track)]
+        share = min(max(meter.amount / meter.max, 0.0), 1.0)
+        filled = round(share * track)
+        middle = [TEXT_MEASURE[charset]] * filled + under[filled:]
+        rows_ = [list(under), middle, list(under)]
+        if meter.target is not None:
+            mark = min(round(meter.target / meter.max * track), track - 1)
+            for row in rows_:
+                row[mark] = glyphs["target"]
+        opening, closing = TEXT_ENDS[charset]["emphasis" if meter.role == "emphasis" else "step"]
+        tracks = [opening + "".join(row) + closing for row in rows_]
+        said = _band_words(meter, track, bands[position]) or ""
+        lines = [lead + said, " " * (name_width + TEXT_GAP) + tracks[0]]
+        rest = [tracks[1], tracks[2], " " + _tick_row(meter, track, charset, position)]
+        name, read = names[position], reads[position]
+        for line in range(max(len(rest), len(name), len(read))):
+            left = name[line] if line < len(name) else ""
+            right = read[line] if line < len(read) else ""
+            body = rest[line] if line < len(rest) else ""
+            text = pad(left, name_width) + gap + pad(body, track + 2) + gap + right
+            lines.append(text)
+        if position:
+            drawn.append(Drawn("", pointer, what))
+        drawn.extend(Drawn(line, pointer, what) for line in lines)
+    widest(drawn, width)
+    return finished([line.text for line in drawn] + caption_lines(document.caption, width, charset))
+
+
+#: A dial's half-circle in cells: the outer radius in rows and the arc's depth,
+#: a cell being twice as tall as it is wide.
+DIAL_RADIUS: Final = 5.0
+DIAL_DEPTH: Final = 1.3
+
+#: Cells between two dials side by side, and rows between two rows of them.
+DIAL_GAP: Final = 4
+
+
+@dataclass(frozen=True)
+class _DialGlyphs:
+    """One dial's glyphs: the needle by its direction, its hub, the target, the fill."""
+
+    needle: tuple[str, str, str]
+    """Level, rising to the right, upright; falling to the right is `fall`."""
+    fall: str
+    hub: str
+    target: str
+    fill: str
+    empty: str
+
+
+def _dial_glyphs(charset: str, emphasis: bool) -> _DialGlyphs:
+    if charset == "ascii":
+        return _DialGlyphs(("-", "/", "|"), "\\", "@" if emphasis else "o", "*", "#", ".")
+    rising = "\N{BOX DRAWINGS LIGHT DIAGONAL UPPER RIGHT TO LOWER LEFT}"
+    return _DialGlyphs(("─", rising, "│"), "╲", "◉" if emphasis else "●", "◆", "█", "░")
+
+
+def _needle_glyph(glyphs: _DialGlyphs, angle: float) -> str:
+    """The stroke for a needle at `angle` degrees, each glyph taking the angles nearest its own.
+
+    A cell is twice as tall as it is wide, so a diagonal from corner to corner
+    rises at 63.4 degrees, not 45.
+    """
+    diagonal = math.degrees(math.atan2(1.0, 0.5))
+    if angle < diagonal / 2 or angle > 180 - diagonal / 2:
+        return glyphs.needle[0]
+    if angle < (diagonal + 90) / 2:
+        return glyphs.needle[1]
+    if angle <= 180 - (diagonal + 90) / 2:
+        return glyphs.needle[2]
+    return glyphs.fall
+
+
+def _dial(meter: Meter, charset: str, position: int) -> tuple[list[str], int]:
+    """One dial's half-circle with its ends under it: equally wide lines, and its hub's column.
+
+    The arc's cells are those between `DIAL_RADIUS` and `DIAL_DEPTH` in from it,
+    measured in rows with a cell half as wide as tall, from `min` at the left
+    round to `max` at the right. Each cell takes its band's shade by the value at
+    its centre — or, with no bands, the fill up to the amount — as the SVG's
+    sectors do. The needle runs from the hub to the arc at the amount's angle,
+    each cell drawn by the stroke nearest its direction; the target is the arc's
+    cells on the target's angle.
+    """
+    glyphs = _dial_glyphs(charset, meter.role == "emphasis")
+    span = meter.max - meter.min
+
+    def angle_of(value: float) -> float:
+        return 180.0 * (1 - (min(max(value, meter.min), meter.max) - meter.min) / span)
+
+    outer, inner = DIAL_RADIUS, DIAL_RADIUS - DIAL_DEPTH
+    across = int(2 * outer)
+    rows_ = math.ceil(outer)
+    grid: dict[tuple[int, int], str] = {}
+    arc: dict[tuple[int, int], float] = {}
+    for row in range(rows_):
+        for column in range(-across, across + 1):
+            distance = math.hypot(column / 2, row)
+            if inner <= distance < outer:
+                arc[(column, row)] = math.degrees(math.atan2(row, column / 2))
+    reading = angle_of(meter.amount)
+    ramp = TEXT_SHADES[charset].get(len(meter.bands), "")
+    for cell, angle in arc.items():
+        value = meter.min + (180.0 - angle) / 180.0 * span
+        if meter.bands:
+            grid[cell] = ramp[_band_at(meter, value)]
+        else:
+            full = meter.amount > meter.min and angle >= reading - 1e-9
+            grid[cell] = glyphs.fill if full else glyphs.empty
+
+    def ray(angle: float, start: float, end: float) -> list[tuple[int, int]]:
+        found: list[tuple[int, int]] = []
+        radians = math.radians(angle)
+        steps = int((end - start) / 0.05) + 1
+        for step in range(steps + 1):
+            reach = start + (end - start) * step / steps
+            cell = (round(2 * reach * math.cos(radians)), round(reach * math.sin(radians)))
+            if cell not in found:
+                found.append(cell)
+        return found
+
+    # The needle one cell per row where it is steep and one per column where it
+    # is shallow, so it is a stroke rather than a staircase two cells thick.
+    radians = math.radians(reading)
+    reach = inner - 0.6
+    tip = (2 * reach * math.cos(radians), reach * math.sin(radians))
+    stroke = _needle_glyph(glyphs, reading)
+    if abs(tip[0]) >= abs(tip[1]):
+        needle = [
+            (column, round(tip[1] * column / tip[0]))
+            for column in range(1, round(abs(tip[0])) + 1)
+            for column in (int(math.copysign(column, tip[0])),)
+        ]
+    else:
+        needle = [(round(tip[0] * row / tip[1]), row) for row in range(1, round(tip[1]) + 1)]
+    for cell in needle:
+        if cell not in arc:
+            grid[cell] = stroke
+    grid[(0, 0)] = glyphs.hub
+    if meter.target is not None:
+        aim = angle_of(meter.target)
+        marks = [cell for cell in ray(aim, inner, outer - 0.01) if cell in arc]
+        if not marks:
+            marks = [min(arc, key=lambda cell: abs(arc[cell] - aim))]
+        for cell in marks:
+            grid[cell] = glyphs.target
+    used = [column for column, _ in grid]
+    low, high = min(used), max(used)
+    lines = [
+        "".join(grid.get((column, row), " ") for column in range(low, high + 1))
+        for row in range(rows_ - 1, -1, -1)
+    ]
+    lines = [line for line in lines if line.strip()]
+    unit = tick_unit(meter.unit)
+    first, last = (
+        spelt(number(value, unit).replace(MINUS, "-"), charset, f"/meters/{position}/unit")
+        for value in (meter.min, meter.max)
+    )
+    room = max(high - low + 1, cells(first) + 1 + cells(last))
+    # The arc centred over the ends, which sit under its two feet.
+    indent = (room - (high - low + 1)) // 2
+    lines = [pad(" " * indent + line, room) for line in lines]
+    ends = first + " " * (room - cells(first) - cells(last)) + last
+    return [*lines, ends], indent - low
+
+
+def _key(meter: Meter, charset: str, position: int, room: int) -> list[str]:
+    """A dial's bands as a key — each shade then its word — packed into lines of `room`."""
+    if not meter.bands:
+        return []
+    ramp = TEXT_SHADES[charset][len(meter.bands)]
+    entries = [
+        ramp[number_]
+        + " "
+        + spelt(plain(band.text), charset, f"/meters/{position}/bands/{number_}/text")
+        for number_, band in enumerate(meter.bands)
+    ]
+    lines: list[str] = []
+    for entry in entries:
+        if lines and cells(lines[-1]) + 2 + cells(entry) <= room:
+            lines[-1] += "  " + entry
+        else:
+            lines.append(entry)
+    # Left-aligned as one block, so the shades stand in a column under each other.
+    size = max(cells(line) for line in lines)
+    return [pad(line, size) for line in lines]
+
+
+def _dial_text(document: Document, width: int, charset: str) -> str:
+    """A `dial` panel as plain text: half-circles side by side, words under each.
+
+    As the SVG sets them: up to `DIALS_PER_ROW` to a row, the rows as even as
+    the count allows and a short one centred. Under each arc are its scale's
+    ends, its bands' key, its readout and its name, every name in a row on the
+    same line.
+
+    Raises:
+        FitError: a row of dials side by side is wider than `width`.
+    """
+    meters = document.meters
+    names = [
+        label_lines(meter.text, charset, f"/meters/{position}/text")
+        for position, meter in enumerate(meters)
+    ]
+    reads = _readouts(document, charset)
+    dials = [_dial(meter, charset, position) for position, meter in enumerate(meters)]
+    keys = [
+        _key(meter, charset, position, cells(dial[0][0]))
+        for position, (meter, dial) in enumerate(zip(meters, dials, strict=True))
+    ]
+    count = len(meters)
+    rows_ = math.ceil(count / DIALS_PER_ROW)
+    across = math.ceil(count / rows_)
+    blocks: list[list[str]] = []
+    first_width = 0
+    for row in range(rows_):
+        members = list(range(row * across, min((row + 1) * across, count)))
+        depth = max(len(reads[index]) for index in members)
+        keyed = max(len(keys[index]) for index in members)
+        columns: list[list[str]] = []
+        for index in members:
+            arc, hub = dials[index]
+            key = [*keys[index], *[""] * (keyed - len(keys[index]))]
+            words = [*reads[index], *[""] * (depth - len(reads[index])), "", *names[index]]
+            under = [*key, *([""] if key else []), *words]
+            left = max(hub, *(cells(line) // 2 for line in under))
+            right = max(cells(arc[0]) - hub, *(cells(line) - cells(line) // 2 for line in under))
+            size = left + right
+            columns.append(
+                [pad(" " * (left - hub) + line, size) for line in arc]
+                + [""]
+                + [pad(" " * (left - cells(line) // 2) + line, size) for line in under]
+            )
+        sizes = [cells(column[0]) for column in columns]
+        needed = sum(sizes) + DIAL_GAP * (len(columns) - 1)
+        if needed > width:
+            slot = max(range(len(columns)), key=lambda number_: sizes[number_])
+            position = members[slot]
+            raise too_wide(
+                f"/meters/{position}/text",
+                f"the dial {names[position][0]!r} beside {len(columns) - 1} other"
+                f"{'s' if len(columns) > 2 else ''}"
+                if len(columns) > 1
+                else f"the dial {names[position][0]!r}",
+                needed,
+                width,
+            )
+        first_width = first_width or needed
+        indent = " " * max((first_width - needed) // 2, 0)
+        height = max(len(column) for column in columns)
+        gap = " " * DIAL_GAP
+        if blocks:
+            blocks.append([""])
+        blocks.append(
+            [
+                indent
+                + gap.join(
+                    column[line] if line < len(column) else " " * size
+                    for column, size in zip(columns, sizes, strict=True)
+                )
+                for line in range(height)
+            ]
+        )
+    lines = [line for block in blocks for line in block]
     return finished(lines + caption_lines(document.caption, width, charset))
 
 

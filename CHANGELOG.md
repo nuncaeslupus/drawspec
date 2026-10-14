@@ -47,7 +47,17 @@ against it would stop working. Everything below is about the *package*.
 
 - **Text output for a `thermometer` meter**: a tube down the page filled up from its
   bulb, the SVG's ticks at its left, the target a heavy stroke across it, the readout and
-  name under the bulb; several side by side. `dial` and `bullet` still refuse.
+  name under the bulb; several side by side.
+- **Text output for a `dial` and a `bullet` meter**, so every `meter` style has one. A
+  dial is a half-circle of cells five rows deep from `min` to `max`, its bands in shades
+  lightest first (`░ ▒ ▓`, ASCII `. : #`) or, with none, filled `█` to the amount; a
+  needle from the hub `●` in the stroke nearest its angle (`─ ╱ │ ╲`), the target `◆` on
+  the arc, the scale's ends under its feet, then a key of its bands, the readout and the
+  name; up to three to a row, as the SVG sets them. A bullet is a bar's row three cells
+  deep: its bands in shades with their words over them, the measure a thin heavy bar `━`
+  (`=`) along the middle to the amount, the target `│` (`!`) down all three, and the
+  SVG's ticks from zero under it. A band too short for its word is refused at the
+  meter's pointer, naming the width that gives it room.
 - **`gantt` dependencies in text**: each is a line from the end of its bar, down through
   blank cells and right into the start of the dependent bar (or straight down onto it),
   in its role's line style. One with no clean route is listed under the chart,
@@ -58,8 +68,8 @@ against it would stop working. Everything below is about the *package*.
 ### Changed
 
 - The refusal for a kind with no text form names the kinds that have one, instead of
-  saying only `files` does. A tree with bands, and a meter in the `dial` or `bullet`
-  style, refuse at their pointers; a tree with cross-links or groups is drawn as a graph.
+  saying only `files` does. A tree with bands refuses at its pointer; a tree with
+  cross-links or groups is drawn as a graph.
 
 ## [0.2.1] — 2026-10-13
 
