@@ -96,9 +96,12 @@ class Plate:
     Plates are drawn straight onto the blueprint, back to front, and are free to
     run into one another; `opacity` sets each one's place in that depth. A plate
     with a `charset` is the document as `render_text` draws it, set line by line
-    in the mono face; any other is the SVG drawing. Its caption goes below its
-    left edge, unless `label` places it: the caption's (left, baseline) where
-    the drawings around it leave it room.
+    in the mono face; any other is the SVG drawing, narrowed to `view` (a left
+    and a width in its own units) when its canvas is wider than its ink, and
+    stripped of its words when `words` is off — a plate lying behind the wordmark
+    is silhouette only. Its caption goes below its left edge, unless `label`
+    places it: the caption's (left, baseline) where the drawings around it leave
+    it room.
     """
 
     source: str
@@ -110,21 +113,31 @@ class Plate:
     opacity: float = 1.0
     charset: str | None = None
     label: tuple[float, float] | None = None
+    words: bool = True
+    view: tuple[float, float] | None = None
 
-
-#: The ghost: one drawing at several times the scale, run off the sheet behind
-#: everything, its words removed — there is more drawing than fits.
-GHOST: Final = Plate("venn-parity", 0, "", 640, 110, 760, opacity=0.12)
 
 #: The plates, back to front, inked on the one sheet and overlapping like layered
 #: drawings: the furthest dimmest, and the two text plates, the newest output, on
 #: top and brightest.
 PLATES: Final = (
-    Plate("venn-parity", 3, "venn", 738, 36, 202, opacity=0.5, label=(740, 46)),
-    Plate("sequence-dns", 2, "sequence", 930, 40, 304, opacity=0.62, label=(1140, 160)),
-    Plate("sankey-energy", 1, "sankey", 828, 150, 410, opacity=0.82, label=(1150, 380)),
-    Plate("sequence-terminal", 4, "--format text", 868, 410, 176, charset="unicode"),
-    Plate("sequence-terminal", 5, "--charset ascii", 1060, 424, 176, charset="ascii"),
+    Plate("venn-parity", 1, "venn", 214, 34, 236, opacity=0.3, words=False, label=(216, 44)),
+    Plate(
+        "pie-team-week",
+        2,
+        "pie",
+        476,
+        38,
+        246,
+        opacity=0.3,
+        words=False,
+        view=(150, 366),
+        label=(640, 44),
+    ),
+    Plate("gantt-migration", 3, "gantt", 790, 40, 390, opacity=0.62, label=(792, 238)),
+    Plate("mindmap-offsite", 4, "mindmap", 862, 236, 372, opacity=0.85, label=(1120, 398)),
+    Plate("sequence-terminal", 5, "--format text", 868, 412, 176, charset="unicode"),
+    Plate("sequence-terminal", 6, "--charset ascii", 1060, 426, 176, charset="ascii"),
 )
 
 #: DejaVu Sans Mono's advance, and the height its box-drawing verticals span, in
@@ -198,9 +211,22 @@ def _faces(svg: str) -> str:
     return svg
 
 
-def place(svg: str, prefix: str, x: float, y: float, width: float, ink: str) -> tuple[str, float]:
-    """`svg` scaled to `width` with its top-left at (x, y), inked `ink`; and its height."""
+def place(
+    svg: str,
+    prefix: str,
+    x: float,
+    y: float,
+    width: float,
+    ink: str,
+    view: tuple[float, float] | None = None,
+) -> tuple[str, float]:
+    """`svg` scaled to `width` with its top-left at (x, y), inked `ink`; and its height.
+
+    `view`, a (left, width) in the drawing's units, narrows it to that band.
+    """
     body, (vx, vy, vw, vh) = _inner(svg, prefix)
+    if view is not None:
+        vx, vw = view
     scale = width / vw
     group = (
         f'<g color="{ink}" transform="translate({x - vx * scale:.2f} {y - vy * scale:.2f}) '
@@ -481,7 +507,8 @@ def halo(svg: str, plate: Plate) -> str:
     match = _VIEWBOX.search(svg)
     if match is None:
         raise ValueError("drawing has no viewBox")
-    width = HALO * float(match.group(1).split()[2]) / plate.width
+    span = plate.view[1] if plate.view else float(match.group(1).split()[2])
+    width = HALO * span / plate.width
     return svg.replace(
         "<text ",
         f'<text stroke="{GROUND}" stroke-width="{width:.2f}" stroke-linejoin="round" '
@@ -497,8 +524,14 @@ def plate(plate: Plate) -> str:
         # The figure label is the plate's caption, so the document's own is left off.
         document = json.loads((REFERENCE / f"{plate.source}.json").read_text(encoding="utf-8"))
         document.pop("caption", None)
-        svg = halo(drawspec.render(document, cropped()), plate)
-        drawing, height = place(svg, f"p{plate.number}", plate.x, plate.y, plate.width, PLATE_INK)
+        svg = drawspec.render(document, cropped())
+        # A silhouette plate behind the wordmark loses its words; any other keeps
+        # them, haloed so the lines of the plate behind stop short of them.
+        silhouette = re.sub(r"<text\b.*?</text>", "", svg, flags=re.S)
+        svg = halo(svg, plate) if plate.words else silhouette
+        drawing, height = place(
+            svg, f"p{plate.number}", plate.x, plate.y, plate.width, PLATE_INK, plate.view
+        )
         drawing = f'<g opacity="{plate.opacity:g}">{drawing}</g>'
     size = 7.5
     label = f"FIG. {plate.number:02d} · {plate.figure}"
@@ -514,18 +547,13 @@ def plate(plate: Plate) -> str:
 def compose() -> str:
     parts: list[str] = [grid()]
 
-    # The ghost, then the plates back to front, all inside the border.
+    # The plates back to front, all inside the border.
     inner = INSET + 12
     parts.append(
         f'<clipPath id="hero-sheet"><rect x="{inner}" y="{inner}" '
         f'width="{WIDTH - 2 * inner}" height="{HEIGHT - 2 * inner}"/></clipPath>'
         '<g clip-path="url(#hero-sheet)">'
     )
-    svg = drawspec.render_file(REFERENCE / f"{GHOST.source}.json", cropped())
-    group, _ = place(svg, "ghost", GHOST.x, GHOST.y, GHOST.width, PLATE_INK)
-    # A ghost is construction geometry only: its words would be noise.
-    group = re.sub(r"<text\b.*?</text>", "", group, flags=re.S)
-    parts.append(f'<g opacity="{GHOST.opacity:g}">{group}</g>')
     parts.extend(plate(item) for item in PLATES)
     parts.append("</g>")
 
