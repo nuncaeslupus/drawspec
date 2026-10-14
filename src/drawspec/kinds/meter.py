@@ -1136,14 +1136,16 @@ def _tube(meter: Meter, charset: str) -> tuple[list[str], int]:
             labels[row] = spelt(text.replace(MINUS, "-"), charset, "/meters")
     # The labels right-aligned, a space, then the tick's stub into the wall.
     side = max(cells(text) for text in labels.values()) + 1
+    # The fill reaches the row its amount's tick would sit on, the same scale
+    # as the ticks and the target, so a meter at its target reads as at it.
     share = min(max(meter.amount / meter.max, 0.0), 1.0) if meter.max else 0.0
-    filled = round(share * TUBE_ROWS)
+    top = row_of(meter.amount) if share > 0 else TUBE_ROWS
     target = row_of(meter.target) if meter.target is not None else None
     empty = " "
     lines = [" " * (side + 1) + glyphs.cap]
     for row in range(TUBE_ROWS):
         label = labels.get(row, "")
-        inside = (glyphs.fill if row >= TUBE_ROWS - filled else empty) * 3
+        inside = (glyphs.fill if row >= top else empty) * 3
         if row == target:
             left, across, right, beyond = glyphs.target
             if label:

@@ -705,11 +705,11 @@ def _milestone(task: Task, x: float, y: float, half: float, theme: Theme) -> Pri
 #: roles keep the order the SVG's weights give them.
 TEXT_FILLS: Final = {
     "unicode": {"note": "░", "step": "▒", "strong": "▓", "emphasis": "█"},
-    "ascii": {"note": ".", "step": "=", "strong": "#", "emphasis": "@"},
+    "ascii": {"note": "%", "step": "=", "strong": "#", "emphasis": "@"},
 }
 
 #: The part of a bar not yet done, when its task says how much is.
-TEXT_UNDONE: Final = {"unicode": "·", "ascii": "-"}
+TEXT_UNDONE: Final = {"unicode": "·", "ascii": "_"}
 
 #: A milestone, per charset and role.
 TEXT_MILESTONES: Final = {
@@ -923,6 +923,8 @@ def gantt_text(document: Document, width: int, charset: str) -> str:
 
 #: A dependency's line, per charset and line style: across, down, the corner it
 #: turns down by, and the corner it turns right by.
+#: In ASCII no glyph a bar uses: `-` is a light line, `~` a heavy one, `.` a dashed one;
+#: an undone part is `_` and a `note` bar `%`, so a line never reads as a bar.
 TEXT_DEPENDENCY: Final = {
     "unicode": {
         "light": ("─", "│", "┐", "└"),
@@ -931,7 +933,7 @@ TEXT_DEPENDENCY: Final = {
     },
     "ascii": {
         "light": ("-", "|", "+", "+"),
-        "heavy": ("=", "#", "+", "+"),
+        "heavy": ("~", "#", "+", "+"),
         "dashed": (".", ":", "+", "+"),
     },
 }

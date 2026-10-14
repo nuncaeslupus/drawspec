@@ -139,7 +139,7 @@ per charset under `tests/golden/text/`. What changed or was decided:
 * **An `async` message is `──▷`, a `weak` reply `┄┄▷`:** the default theme draws `async`
   solid with an open head and `weak` dashed with one, so the table's single "dashed /
   async" row is split. In ASCII the open head is `>>`.
-* **`gantt` bars are filled by role**, lighter to heavier (`░ ▒ ▓ █`, ASCII `. = # @`),
+* **`gantt` bars are filled by role**, lighter to heavier (`░ ▒ ▓ █`, ASCII `% = # @`, undone `_`),
   the undone part of a `done` bar dotted, and **dependencies are not drawn** — since
   drawn, see *Follow-ups* below.
 * **`rag` uses the default theme's words and shapes** (`■ RED`, `▲ AMBER`, `● GREEN`,

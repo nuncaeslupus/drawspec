@@ -4,7 +4,7 @@ Autumn term                  +--------------------+   :
   Write a research proposal         ==============v   :
   Proposal due                                    @   :
 Spring term                                       +----------------------------+
-  Ethics review                                   ........v
+  Ethics review                                   %%%%%%%%v
   Collect data                                        :   ==============
   Analyse and write up                                :          ==============v
   Final report due                                    :                        *

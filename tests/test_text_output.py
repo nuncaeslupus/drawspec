@@ -536,11 +536,12 @@ def _tube_rows(drawn: str, charset: str = "unicode") -> list[str]:
 
 
 def test_a_thermometer_is_filled_from_its_bulb_to_its_amount() -> None:
-    """Half the amount fills half the tube's rows, from the bottom; the bulb is filled."""
+    """The fill runs up from the bulb to the row of its amount's own tick; the bulb is filled."""
     rows_ = _tube_rows(render_text(_thermometer(50)))
     filled = ["███" in row for row in rows_]
     assert filled == sorted(filled), "the fill is not one run up from the bulb"
-    assert sum(filled) == len(rows_) // 2
+    top = filled.index(True)
+    assert rows_[top].lstrip().startswith("50"), "the fill stops short of, or past, its tick"
     assert "│█████│" in render_text(_thermometer(50))
     assert "███" not in "".join(_tube_rows(render_text(_thermometer(0))))
 
@@ -727,3 +728,12 @@ def test_a_long_gap_is_compressed_and_marked() -> None:
     assert "┆" in "".join(lines[rows_[1] + 1 : rows_[2]])
     assert "┆" not in "".join(lines[rows_[0] : rows_[1]])
     assert ":" in render_text(_timeline(0, 1, 1000), charset="ascii")
+
+
+def test_an_ascii_dependency_line_never_uses_a_bars_glyph() -> None:
+    """In ASCII a dependency's horizontal run cannot be mistaken for part of a bar."""
+    from drawspec.kinds.gantt import TEXT_DEPENDENCY, TEXT_FILLS, TEXT_UNDONE
+
+    bar_glyphs = {*TEXT_FILLS["ascii"].values(), TEXT_UNDONE["ascii"]}
+    for across, *_ in TEXT_DEPENDENCY["ascii"].values():
+        assert across not in bar_glyphs
