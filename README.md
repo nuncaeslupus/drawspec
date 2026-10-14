@@ -5,7 +5,7 @@
 <!-- /claude-arsenal:attribution -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/hero.png" width="100%" alt="drawspec: a blueprint sheet with the wordmark, a JSON flow spec and the flow chart drawspec renders from it, with large faint venn and pie drawings behind the wordmark, a funnel and a mind map drawn by drawspec, and in front a small sequence diagram as drawspec's text output, once in box drawing and once in ASCII">
+  <img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/hero.png" width="100%" alt="drawspec: a blueprint sheet with the wordmark, a JSON flow spec and the flow chart drawspec renders from it, with large faint venn and pie drawings behind the wordmark, a mind map and a project file tree drawn by drawspec, and beside them a small sequence diagram as drawspec's text output, once in box drawing and once in ASCII">
 </p>
 
 Declarative diagram spec → clean, themeable SVG. Writable by an LLM with no

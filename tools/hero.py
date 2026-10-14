@@ -64,7 +64,7 @@ LOGO: Final = ROOT / "docs" / "logo.svg"
 #: The GitHub social-preview width, a little taller so the plates can be drawn
 #: large; the README shows it scaled to its column.
 WIDTH: Final = 1280
-HEIGHT: Final = 700
+HEIGHT: Final = 720
 #: How far the spec and its drawing sit below where a 640-high sheet put them.
 DROP: Final = HEIGHT - 640
 
@@ -118,8 +118,8 @@ class Plate:
 
 
 #: The plates, back to front, inked on the one sheet and overlapping like layered
-#: drawings: the furthest dimmest, and the two text plates, the newest output, on
-#: top and brightest.
+#: drawings: the furthest dimmest, and the two text plates, the newest output,
+#: brightest and in front.
 PLATES: Final = (
     # Silhouettes behind the wordmark, large enough to show above and below it.
     Plate("venn-parity", 1, "venn", 150, 36, 296, opacity=0.26, words=False, label=(44, 330)),
@@ -135,10 +135,28 @@ PLATES: Final = (
         view=(150, 366),
         label=(612, 330),
     ),
-    Plate("funnel-applications", 3, "funnel", 812, 38, 330, opacity=0.62, label=(1138, 70)),
-    Plate("mindmap-offsite", 4, "mindmap", 772, 178, 466, opacity=0.86, label=(1124, 374)),
-    Plate("sequence-terminal", 5, "--format text", 868, 412, 176, charset="unicode"),
-    Plate("sequence-terminal", 6, "--charset ascii", 1060, 426, 176, charset="ascii"),
+    Plate("mindmap-offsite", 3, "mindmap", 738, 40, 500, opacity=0.86, label=(1124, 258)),
+    Plate("files-project", 4, "files", 868, 284, 178, opacity=0.86, label=(868, 276)),
+    Plate(
+        "sequence-terminal",
+        5,
+        "--format text",
+        1060,
+        284,
+        176,
+        charset="unicode",
+        label=(1060, 276),
+    ),
+    Plate(
+        "sequence-terminal",
+        6,
+        "--charset ascii",
+        1060,
+        422,
+        176,
+        charset="ascii",
+        label=(1060, 414),
+    ),
 )
 
 #: DejaVu Sans Mono's advance, and the height its box-drawing verticals span, in
