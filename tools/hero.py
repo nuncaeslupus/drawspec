@@ -3,11 +3,11 @@
 Not shipped code. Every drawing on the sheet is a reference document rendered by
 drawspec's public `render_file`/`render` in the inline profile, its canvas
 cropped to the ink (`[canvas] width_mode = "ink"`), which draws in
-`currentColor`; this script only lays those drawings out as plates, each on its
-own tinted sheet stacked on the blueprint like paper on a drafting table, sets
-each plate's ink with `color=`, and adds the furniture an engineering drawing
-has — a grid, a border with zone marks, registration marks, a title block, and
-the wordmark.
+`currentColor`; this script only lays those drawings out as plates inked on one
+blueprint sheet, large enough to run into one another like layered drawings,
+sets each plate's ink with `color=`, and adds the furniture an engineering
+drawing has — a grid, a border with zone marks, registration marks, a title
+block, and the wordmark.
 
 Two plates are not pictures at all: one small reference document as
 `render_text` draws it, in box drawing and again in ASCII, set line by line in
@@ -64,7 +64,7 @@ LOGO: Final = ROOT / "docs" / "logo.svg"
 #: The GitHub social-preview width, a little taller so the plates can be drawn
 #: large; the README shows it scaled to its column.
 WIDTH: Final = 1280
-HEIGHT: Final = 680
+HEIGHT: Final = 700
 #: How far the spec and its drawing sit below where a 640-high sheet put them.
 DROP: Final = HEIGHT - 640
 
@@ -91,11 +91,14 @@ FAMILIES: Final = {"sans": "dshero-sans", "mono": "dshero-mono", "serif": "dsher
 
 @dataclass(frozen=True)
 class Plate:
-    """One reference drawing on its own sheet, its drawing `width` units wide.
+    """One reference drawing, `width` units wide with its top-left at (`x`, `y`).
 
-    (`x`, `y`) is the sheet's top-left corner before it is turned `angle` degrees
-    about its centre. A plate with a `charset` is the document as `render_text`
-    draws it, set line by line in the mono face; any other is the SVG drawing.
+    Plates are drawn straight onto the blueprint, back to front, and are free to
+    run into one another; `opacity` sets each one's place in that depth. A plate
+    with a `charset` is the document as `render_text` draws it, set line by line
+    in the mono face; any other is the SVG drawing. Its caption goes below its
+    left edge, unless `label` places it: the caption's (left, baseline) where
+    the drawings around it leave it room.
     """
 
     source: str
@@ -104,26 +107,24 @@ class Plate:
     x: float
     y: float
     width: float
-    angle: float = 0
+    opacity: float = 1.0
     charset: str | None = None
-    #: Caption at the header's right, for a plate whose top-left lies under another.
-    flip: bool = False
+    label: tuple[float, float] | None = None
 
 
 #: The ghost: one drawing at several times the scale, run off the sheet behind
 #: everything, its words removed — there is more drawing than fits.
-GHOST: Final = Plate("venn-parity", 0, "", 640, 110, 760)
-GHOST_OPACITY: Final = 0.12
+GHOST: Final = Plate("venn-parity", 0, "", 640, 110, 760, opacity=0.12)
 
-#: The plates, back to front: sheets stacked on the drafting table, each a little
-#: askew, each covering only the empty margin of the one behind. The two text
-#: plates, the newest output, lie on top.
+#: The plates, back to front, inked on the one sheet and overlapping like layered
+#: drawings: the furthest dimmest, and the two text plates, the newest output, on
+#: top and brightest.
 PLATES: Final = (
-    Plate("sequence-dns", 2, "sequence", 922, 38, 294, angle=1.4),
-    Plate("sankey-energy", 1, "sankey", 870, 170, 344, angle=-1.0, flip=True),
-    Plate("venn-parity", 3, "venn", 738, 36, 168, angle=-1.6),
-    Plate("sequence-terminal", 4, "--format text", 864, 392, 168, angle=-0.6, charset="unicode"),
-    Plate("sequence-terminal", 5, "--charset ascii", 1050, 398, 168, angle=1.0, charset="ascii"),
+    Plate("venn-parity", 3, "venn", 738, 36, 202, opacity=0.5, label=(740, 46)),
+    Plate("sequence-dns", 2, "sequence", 930, 40, 304, opacity=0.62, label=(1140, 160)),
+    Plate("sankey-energy", 1, "sankey", 828, 150, 410, opacity=0.82, label=(1150, 380)),
+    Plate("sequence-terminal", 4, "--format text", 868, 410, 176, charset="unicode"),
+    Plate("sequence-terminal", 5, "--charset ascii", 1060, 424, 176, charset="ascii"),
 )
 
 #: DejaVu Sans Mono's advance, and the height its box-drawing verticals span, in
@@ -441,93 +442,81 @@ def powered_by() -> str:
     )
 
 
-#: A plate's sheet: a shade lighter than the ground, its caption in a header
-#: strip, its drawing set `SHEET_PAD` in from the edges.
-SHEET: Final = "#0f3762"
-SHADOW: Final = "#020e1d"
-SHEET_HEAD: Final = 17
-SHEET_PAD: Final = 8
-
-
-def typed(plate: Plate, x: float, y: float) -> tuple[str, float]:
-    """A text plate's drawing: the document's `render_text` lines in the mono face,
-    with its top-left at (x, y); and its height."""
+def typed(plate: Plate) -> tuple[str, float]:
+    """A text plate: the document's `render_text` lines in the mono face, each run
+    of characters knocked out of whatever is drawn behind it; and its height."""
     document = drawspec.load_document(REFERENCE / f"{plate.source}.json")
     drawn = drawspec.render_text(document, charset=plate.charset or "unicode")
     lines = drawn.rstrip("\n").split("\n")
     columns = max(len(line) for line in lines)
     size = plate.width / (columns * MONO_ADVANCE)
+    advance = size * MONO_ADVANCE
     lead = size * MONO_LEAD
-    rows = "".join(
-        f'<text x="{x:.2f}" y="{y + i * lead + size * 0.93:.2f}" '
-        f'font-family="{FAMILIES["mono"]}" font-size="{size:.3f}" fill="{INK}" '
-        f'xml:space="preserve">{escape(line)}</text>'
-        for i, line in enumerate(lines)
-    )
-    return f'<g fill-opacity="0.92">{rows}</g>', lead * len(lines)
-
-
-def plate_sheet(plate: Plate, first: bool) -> str:
-    """`plate` on its own sheet: shadow, tinted face with a fine grid, a header
-    strip with the figure number and the source file, and the drawing."""
-    left, top = SHEET_PAD, SHEET_HEAD + SHEET_PAD
-    if plate.charset is not None:
-        drawing, height = typed(plate, left, top)
-    else:
-        svg = drawspec.render_file(REFERENCE / f"{plate.source}.json", cropped())
-        drawing, height = place(svg, f"p{plate.number}", left, top, plate.width, PLATE_INK)
-    w = plate.width + 2 * SHEET_PAD
-    h = SHEET_HEAD + height + 2 * SHEET_PAD
-    face = sheet.Palette(ground=SHEET, ink=INK, soft=SOFT, grid=GRID, accent=ACCENT)
-    caption = text(
-        w - SHEET_PAD if plate.flip else SHEET_PAD,
-        12,
-        f"FIG. {plate.number:02d} · {plate.figure}",
-        7.5,
-        SOFT,
-        role="mono",
-        anchor="end" if plate.flip else "start",
-        spacing=1.2,
-    )
-    # The source file, where the header has a free end for it.
-    origin = (
-        ""
-        if plate.flip or plate.charset is not None
-        else text(
-            w - SHEET_PAD,
-            12,
-            f"{plate.source}.json",
-            7,
-            SOFT,
-            role="mono",
-            anchor="end",
-            opacity=0.6,
+    knockouts, rows = [], []
+    for i, line in enumerate(lines):
+        top = plate.y + i * lead
+        # A run is characters with at most one space between them: a word, a label,
+        # a box's edge. The ground behind it is cleared, and only behind it.
+        for run in re.finditer(r"\S+(?: \S+)*", line):
+            knockouts.append(
+                f'<rect x="{plate.x + run.start() * advance - 1.5:.2f}" y="{top - 0.5:.2f}" '
+                f'width="{(run.end() - run.start()) * advance + 3:.2f}" '
+                f'height="{lead + 1:.2f}" fill="{GROUND}"/>'
+            )
+        rows.append(
+            f'<text x="{plate.x:.2f}" y="{top + size * 0.93:.2f}" '
+            f'font-family="{FAMILIES["mono"]}" font-size="{size:.3f}" fill="{INK}" '
+            f'xml:space="preserve">{escape(line)}</text>'
         )
+    return "".join(knockouts) + "".join(rows), lead * len(lines)
+
+
+#: The halo round a plate's words, in sheet units: wide enough that a line of the
+#: plate behind runs up to a label and stops, rather than through it.
+HALO: Final = 3.0
+
+
+def halo(svg: str, plate: Plate) -> str:
+    """`svg` with a stroke of ground painted under each of its words."""
+    match = _VIEWBOX.search(svg)
+    if match is None:
+        raise ValueError("drawing has no viewBox")
+    width = HALO * float(match.group(1).split()[2]) / plate.width
+    return svg.replace(
+        "<text ",
+        f'<text stroke="{GROUND}" stroke-width="{width:.2f}" stroke-linejoin="round" '
+        'paint-order="stroke" ',
     )
+
+
+def plate(plate: Plate) -> str:
+    """`plate` inked on the sheet, with its figure caption cleared out of what lies behind."""
+    if plate.charset is not None:
+        drawing, height = typed(plate)
+    else:
+        # The figure label is the plate's caption, so the document's own is left off.
+        document = json.loads((REFERENCE / f"{plate.source}.json").read_text(encoding="utf-8"))
+        document.pop("caption", None)
+        svg = halo(drawspec.render(document, cropped()), plate)
+        drawing, height = place(svg, f"p{plate.number}", plate.x, plate.y, plate.width, PLATE_INK)
+        drawing = f'<g opacity="{plate.opacity:g}">{drawing}</g>'
+    size = 7.5
+    label = f"FIG. {plate.number:02d} · {plate.figure}"
+    width = METRICS.width(label, size, "mono") + 1.2 * len(label)
+    at, base = plate.label or (plate.x, plate.y + height + 16)
     return (
-        f'<g transform="translate({plate.x:g} {plate.y:g}) '
-        f'rotate({plate.angle:g} {w / 2:.2f} {h / 2:.2f})">'
-        f'<rect x="3" y="5" width="{w:.2f}" height="{h:.2f}" fill="{SHADOW}" '
-        'fill-opacity="0.55" filter="url(#hero-shadow)"/>'
-        + sheet.grid("plate", w, h, face, pattern=first, minor=12, major=60)
-        + f'<rect width="{w:.2f}" height="{h:.2f}" fill="none" stroke="{INK}" '
-        'stroke-opacity="0.38"/>'
-        f'<path d="M 0 {SHEET_HEAD} H {w:.2f}" stroke="{INK}" stroke-opacity="0.18"/>'
-        + caption
-        + origin
-        + drawing
-        + "</g>"
+        drawing + f'<rect x="{at - 3:.2f}" y="{base - 8.5:.2f}" width="{width + 6:.2f}" '
+        f'height="11" fill="{GROUND}"/>'
+        + text(at, base, label, size, SOFT, role="mono", spacing=1.2)
     )
 
 
 def compose() -> str:
     parts: list[str] = [grid()]
 
-    # The ghost, then the plates on their sheets, all inside the border.
+    # The ghost, then the plates back to front, all inside the border.
     inner = INSET + 12
     parts.append(
-        '<defs><filter id="hero-shadow" x="-10%" y="-10%" width="130%" height="130%">'
-        '<feGaussianBlur stdDeviation="4"/></filter></defs>'
         f'<clipPath id="hero-sheet"><rect x="{inner}" y="{inner}" '
         f'width="{WIDTH - 2 * inner}" height="{HEIGHT - 2 * inner}"/></clipPath>'
         '<g clip-path="url(#hero-sheet)">'
@@ -536,9 +525,8 @@ def compose() -> str:
     group, _ = place(svg, "ghost", GHOST.x, GHOST.y, GHOST.width, PLATE_INK)
     # A ghost is construction geometry only: its words would be noise.
     group = re.sub(r"<text\b.*?</text>", "", group, flags=re.S)
-    parts.append(f'<g opacity="{GHOST_OPACITY:g}">{group}</g>')
-    for index, plate in enumerate(PLATES):
-        parts.append(plate_sheet(plate, index == 0))
+    parts.append(f'<g opacity="{GHOST.opacity:g}">{group}</g>')
+    parts.extend(plate(item) for item in PLATES)
     parts.append("</g>")
 
     parts.append(border())
