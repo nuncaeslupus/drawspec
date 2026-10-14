@@ -38,6 +38,19 @@ CHARSETS: Final = ("unicode", "ascii")
 #: The width a text form is drawn to when nobody says otherwise: a terminal's.
 DEFAULT_WIDTH: Final = 80
 
+#: Kinds drawn to a wider default, because their reference documents need it:
+#: participants and lanes sit side by side, so the width grows with their count.
+#: Measured in phase 2 of the text proposal — at 80, three of seven sequences
+#: and three of nine lanes are refused; at 100, one lanes document is.
+WIDE_WIDTH: Final = 100
+WIDE_KINDS: Final = frozenset({"lanes", "sequence"})
+
+
+def default_width(kind: str) -> int:
+    """The width a `kind` is drawn to when the caller names none."""
+    return WIDE_WIDTH if kind in WIDE_KINDS else DEFAULT_WIDTH
+
+
 #: Characters an `ascii` drawing writes for the punctuation a label commonly
 #: carries outside ASCII. Anything else that will not decompose to ASCII is
 #: refused rather than replaced with a `?` the author never wrote.
@@ -514,6 +527,8 @@ __all__ = [
     "BOX_STYLE",
     "CHARSETS",
     "DEFAULT_WIDTH",
+    "WIDE_KINDS",
+    "WIDE_WIDTH",
     "Drawn",
     "Grid",
     "box_glyphs",
@@ -521,6 +536,7 @@ __all__ = [
     "caption_lines",
     "cells",
     "centred",
+    "default_width",
     "finished",
     "head",
     "label_lines",

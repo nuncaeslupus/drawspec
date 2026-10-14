@@ -159,11 +159,15 @@ def test_without_a_root_the_top_level_entries_have_no_branches() -> None:
 
 
 def test_a_kind_without_a_text_form_refuses_naming_the_ones_with() -> None:
-    flow = parse_document(
-        {"version": 1, "kind": "flow", "nodes": [{"id": "a", "text": "A"}], "edges": []}
+    pie = parse_document(
+        {
+            "version": 1,
+            "kind": "pie",
+            "parts": [{"text": "A", "amount": 1}, {"text": "B", "amount": 2}],
+        }
     )
     with pytest.raises(DrawspecError, match=r"no text form.*`files`"):
-        render_text(flow)
+        render_text(pie)
 
 
 def test_the_cli_writes_the_text_form(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

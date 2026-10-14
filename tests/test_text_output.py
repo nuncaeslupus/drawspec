@@ -36,10 +36,15 @@ from drawspec.errors import DrawspecError, FitError
 from drawspec.examples import EXAMPLES
 from drawspec.filetree import rows, text
 from drawspec.kinds import TEXT_KINDS
+from drawspec.kinds.graphtext import GRAPH_TEXT_KINDS
 from drawspec.schema import Document, load_document, parse_document
-from drawspec.textgrid import cells, plain
+from drawspec.textgrid import cells, default_width, plain
 
 REFERENCE: Final = Path(__file__).resolve().parent.parent / "docs" / "reference"
+
+#: The kinds phase 1 gave a text form. The graph kinds of phase 2 are gated by
+#: `tests/test_text_graph.py`, which holds them to these same invariants.
+PHASE_ONE: Final = tuple(kind for kind in TEXT_KINDS if kind not in GRAPH_TEXT_KINDS)
 GOLDEN: Final = Path(__file__).resolve().parent / "golden" / "text"
 
 #: Set to regenerate the golden files after a change has been looked at by eye.
@@ -78,14 +83,14 @@ CHARSETS: Final = ("unicode", "ascii")
 def _references() -> Iterator[tuple[str, Path]]:
     for path in sorted(REFERENCE.glob("*.json")):
         kind = json.loads(path.read_text(encoding="utf-8"))["kind"]
-        if kind in TEXT_KINDS and path.stem not in NO_TEXT:
+        if kind in PHASE_ONE and path.stem not in NO_TEXT:
             yield path.stem, path
 
 
 #: Every document the gates run over: each kind's minimal example, and every
 #: reference document of a kind with a text form.
 FIXTURES: Final = {
-    **{f"example-{kind}": parse_document(EXAMPLES[kind]) for kind in TEXT_KINDS},
+    **{f"example-{kind}": parse_document(EXAMPLES[kind]) for kind in PHASE_ONE},
     **{name: load_document(path) for name, path in _references()},
 }
 
@@ -374,8 +379,8 @@ def test_golden(kind: str, charset: str) -> None:
     assert drawn == path.read_text(encoding="utf-8")
 
 
-def test_every_kind_with_a_text_form_has_a_golden() -> None:
-    assert sorted(GOLDENS) == sorted(TEXT_KINDS)
+def test_every_phase_one_kind_has_a_golden() -> None:
+    assert sorted(GOLDENS) == sorted(PHASE_ONE)
 
 
 # ---------------------------------------------------------------------------
@@ -383,7 +388,7 @@ def test_every_kind_with_a_text_form_has_a_golden() -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("kind", ["flow", "pie", "venn", "chart", "lanes"])
+@pytest.mark.parametrize("kind", ["pie", "venn", "chart", "sankey", "mindmap"])
 def test_a_kind_without_a_text_form_refuses_naming_the_kinds_that_have_one(kind: str) -> None:
     with pytest.raises(DrawspecError) as refused:
         render_text(parse_document(EXAMPLES[kind]))
@@ -399,11 +404,13 @@ def test_only_a_bar_meter_has_a_text_form() -> None:
         render_text(dial)
 
 
-def test_a_tree_with_a_cross_link_refuses_rather_than_drawing_it_twice() -> None:
+def test_a_tree_with_a_cross_link_is_routed_rather_than_drawn_twice() -> None:
+    """Guides hang each node once; a second parent makes it a graph, drawn as phase 2 draws one."""
     tree = _tree()
     tree["edges"].append({"from": "c", "to": "b"})
-    with pytest.raises(DrawspecError, match=r"^/edges/2: .*cross-links"):
-        render_text(parse_document(tree))
+    drawn = render_text(parse_document(tree))
+    assert drawn.count("Child") == 1
+    assert "├─" not in drawn and "▼" in drawn
 
 
 @pytest.mark.parametrize("name", [name for name in FIXTURES if FIXTURES[name].kind == "files"])
@@ -467,3 +474,25 @@ def test_files_text_is_not_held_to_the_width() -> None:
     )
     drawn = render_text(document, width=40)
     assert max(len(line) for line in drawn.splitlines()) > 40
+
+
+@pytest.mark.parametrize(("kind", "expected"), [("sequence", 100), ("lanes", 100), ("tree", 80)])
+def test_default_width_is_per_kind(kind: str, expected: int) -> None:
+    """Sequences and lanes default to 100 columns, every other kind to 80."""
+    assert default_width(kind) == expected
+
+
+def test_the_callers_width_wins_over_the_default() -> None:
+    """A width the caller names is the width the drawing is held to."""
+    document = load_document(REFERENCE / "sequence-dns.json")
+    render_text(document)
+    with pytest.raises(FitError):
+        render_text(document, width=80)
+
+
+def test_a_sequence_wraps_only_the_labels_the_width_needs() -> None:
+    """At 100 columns a label with room keeps one line; the drawing still fits."""
+    drawn = render_text(load_document(REFERENCE / "sequence-dns.json"), width=100)
+    assert "where is wiki.example.org?" in drawn
+    assert "ask ns1.example.org" in drawn
+    assert max(cells(line) for line in drawn.splitlines()) <= 100

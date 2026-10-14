@@ -1,0 +1,27 @@
+                              *
+                              |
+                              v
+                           +-----+
+                           | New |
+                           +--+--+
+                              | admitted
+                              |
+                              v
+                          +-------+
+                   +----->| Ready |<----------+
+                   |      +--+----+           |
+                   |         | dispatched     |
+                   |         |                |
+                   |         v                |
+time slice used up |#=========#               |
+                   +# Running #               |
+                    #===#====##               |
+           calls exit() |    | waits for I/O  |
+                        |    ++               |
+                        v     v               |
+                +--------+   +---------+      | I/O completes
+                | Exited |   | Blocked +------+
+                +---+----+   +---------+
+                    |
+                    v
+                    (*)

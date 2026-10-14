@@ -42,7 +42,7 @@ from drawspec.scene import Scene, moved
 from drawspec.schema import FILES_KINDS, Document, parse_document
 from drawspec.sheet import around
 from drawspec.text.measure import TextMeasurer
-from drawspec.textgrid import CHARSETS, DEFAULT_WIDTH
+from drawspec.textgrid import CHARSETS, default_width
 from drawspec.theme import Theme, load_theme
 
 
@@ -115,7 +115,7 @@ def _placed(scene: Scene, theme: Theme, document: Document) -> Scene:
     return centred(scene, theme)
 
 
-def render_text(document: Document, *, width: int = DEFAULT_WIDTH, charset: str = "unicode") -> str:
+def render_text(document: Document, *, width: int | None = None, charset: str = "unicode") -> str:
     """A document as plain text, for a code block, a terminal or a commit message.
 
     A second emitter rather than a rasteriser: each kind with a text form lays
@@ -123,7 +123,9 @@ def render_text(document: Document, *, width: int = DEFAULT_WIDTH, charset: str 
     order, intervals — and never from the SVG's coordinates, which are in points
     with proportional type and would collide when rounded to cells.
 
-    `width` is in terminal cells (an East Asian wide character is two). A drawing
+    `width` is in terminal cells (an East Asian wide character is two); left
+    out, it is 80, or 100 for `lanes` and `sequence`, whose parties sit side by
+    side. The caller's width always wins. A drawing
     that does not fit is refused at the pointer of its widest thing, with the
     width it needs; nothing is wrapped mid-word or truncated. `charset` is
     `unicode` (box drawing) or `ascii` (bytes below 128 only). A `files` tree
@@ -142,7 +144,7 @@ def render_text(document: Document, *, width: int = DEFAULT_WIDTH, charset: str 
             f"a {document.kind!r} document has no text form. The kinds that have one are "
             f"{', '.join(f'`{kind}`' for kind in TEXT_KINDS)}. Render it as SVG."
         )
-    return text_for(document, width, charset)
+    return text_for(document, default_width(document.kind) if width is None else width, charset)
 
 
 #: How far over the canvas a drawing may measure before it is refused, in user

@@ -1,3 +1,16 @@
+## Keep the repository in step with its kinds
+
+When a kind, a field, a role or an output format is added, removed or changed, the
+same pull request updates everything that describes it — never a follow-up:
+
+- `README.md` (the status list and the kind count), `docs/format.md`, `docs/guide.md`
+- generated files: `make docs` (`docs/cli.md`, reference docs), `make schema`
+- `AGENTS.md` (its kind table and guidance), `llms.txt`, `CHANGELOG.md` (Unreleased)
+- the gallery (`make gallery`, commit the result) and `docs/proposals/README.md`'s row
+
+Before opening the PR, grep the docs for the kind's name and for any number or list
+the change made stale.
+
 <!-- claude-arsenal: auto-managed -->
 ## Automatic session protocol
 

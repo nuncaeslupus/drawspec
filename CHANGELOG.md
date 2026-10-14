@@ -12,6 +12,9 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **Text width defaults by kind**: 100 columns for `lanes` and `sequence`, whose parties
+  sit side by side, 80 for the rest. `--width` (CLI), `width` (MCP) and `render_text(width=)`
+  still set any width the caller wants.
 - **Text output for eight more kinds** (proposal `text.md`, phase 1): `render --format
   text` / `-o diagram.txt`, `render_text()` and the MCP `render` tool's `format: "text"`
   now draw `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag` and `meter`
@@ -28,11 +31,25 @@ against it would stop working. Everything below is about the *package*.
   `style: "ascii"` still selects ASCII; unlike the other kinds, it is not held to
   `--width` for now, so a wide tree prints as it always did.
 
+- **Text output for the graph kinds** (proposal `text.md`, phase 2): `flow`, `states`
+  and `lanes` — and a `tree` with cross-links or groups — now have a text form. The
+  layered engine ranks and orders the boxes; each edge is routed square through free
+  cells, its label beside its own line, and a `┼` is drawn only where two edges really
+  cross. Groups are dashed frames named on their top border, a composite state's regions
+  are divided by a dashed rule, lanes are named columns (or rows) whose rules a hand-off
+  crosses, and phases are named beside them. A state machine's dots are `●` and `◉`
+  (`*` and `(*)` in ASCII), a fork or join a heavy bar, a self-transition a hook on the
+  box's side; a causal loop diagram's loops are listed under it. A graph is tried down
+  the page first, then with its words wrapped narrower, then across the page.
+- **A text budget** for the graph kinds: more than 15 boxes, or lines crossing more than
+  3 times in every arrangement, is refused at `/nodes` or `/edges` as noise, pointing at
+  SVG. `bands` have no text form yet and refuse at `/bands`.
+
 ### Changed
 
 - The refusal for a kind with no text form names the kinds that have one, instead of
-  saying only `files` does. A tree with cross-links, groups or bands, and a meter in any
-  style but `bar`, refuse at their pointers.
+  saying only `files` does. A tree with bands, and a meter in any style but `bar`, refuse
+  at their pointers; a tree with cross-links or groups is drawn as a graph.
 
 ## [0.2.1] — 2026-10-13
 

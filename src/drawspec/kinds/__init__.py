@@ -23,7 +23,8 @@ from drawspec.kinds.familytree import familytree_scene
 from drawspec.kinds.files import files_scene, files_text
 from drawspec.kinds.fishbone import fishbone_scene
 from drawspec.kinds.gantt import gantt_scene, gantt_text
-from drawspec.kinds.graph import DRAWN_KINDS, graph_scene, tree_text
+from drawspec.kinds.graph import DRAWN_KINDS, graph_scene
+from drawspec.kinds.graphtext import graph_text, tree_graph_text
 from drawspec.kinds.grid import grid_scene, stack_text, timeline_text
 from drawspec.kinds.journey import journey_scene
 from drawspec.kinds.meter import meter_scene, meter_text
@@ -99,13 +100,14 @@ IMPLEMENTED: tuple[str, ...] = (
 )
 
 
-#: The kinds with a text form, and the function that draws each: a direct
-#: reading of a layout that already sits on rows and columns. The graph kinds
-#: wait for a character-grid router; the kinds whose message is area, angle or
-#: curve never get one — their data is already the table a reader wants.
+#: The kinds with a text form, and the function that draws each. Phase 1's
+#: kinds are a direct reading of a layout that already sits on rows and columns;
+#: phase 2's graph kinds are placed by the layered engine and routed on cells
+#: (`kinds.graphtext`). The kinds whose message is area, angle or curve never get
+#: one — their data is already the table a reader wants.
 TEXT_FORMS: Final[dict[str, Callable[[Document, int, str], str]]] = {
     "files": files_text,
-    "tree": tree_text,
+    "tree": tree_graph_text,
     "sequence": sequence_text,
     "gantt": gantt_text,
     "timeline": timeline_text,
@@ -113,6 +115,9 @@ TEXT_FORMS: Final[dict[str, Callable[[Document, int, str], str]]] = {
     "stack": stack_text,
     "rag": rag_text,
     "meter": meter_text,
+    "flow": graph_text,
+    "states": graph_text,
+    "lanes": graph_text,
 }
 
 #: The kinds `render --format text` draws, in the order the refusal lists them.

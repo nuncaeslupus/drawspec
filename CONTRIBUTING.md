@@ -50,6 +50,11 @@ four rendering defects were found by looking at that page and by no gate.
 
 If your change alters the drawings, commit the regenerated gallery with it.
 
+A change that adds, removes or alters a kind, a field, a role or an output format
+updates, in the same pull request, `README.md`, `docs/format.md`, `docs/guide.md`,
+`AGENTS.md`, `llms.txt`, `CHANGELOG.md`, the generated docs and schema (`make docs
+&& make schema`), the gallery, and the proposals index — see `CLAUDE.md`.
+
 On a pull request, CI's `gallery` job renders the gallery from the branch's code
 and uploads it as a workflow artifact named `gallery-pr-<number>` (kept 14
 days). A reviewer can download it from the run's summary page and open the SVGs

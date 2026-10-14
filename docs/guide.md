@@ -388,14 +388,49 @@ drawspec render plan.json --format text --width 100 --charset ascii
 ```
 
 It is a second emitter, not a picture of the SVG: each kind lays itself out on a
-character grid from its own rows and columns. Nine kinds have a text form —
-`files`, `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`, and
-`meter` in the `bar` style — and every other kind refuses, naming them. The graph
-kinds (`flow`, `states`, `lanes`, a `tree` with cross-links) wait for a router
-that works in cells; the kinds whose message is an area, an angle or a curve never
-get one.
+character grid from its own rows and columns. Twelve kinds have a text form —
+`files`, `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`,
+`meter` in the `bar` style, and the graph kinds `flow`, `states` and `lanes` —
+and every other kind refuses, naming them. The kinds whose message is an area,
+an angle or a curve never get one.
 
-* **`--width`** is in terminal cells, 80 by default; an East Asian wide character
+**The graph kinds are placed and routed in cells.** The layered engine ranks and
+orders the boxes as it does for the SVG; every edge is then the cheapest square
+path through free cells, leaving and arriving at a box's side, and its label
+goes beside its own line. A line only ever crosses another square, and that cell
+is drawn `┼` — a `┼` is always a real crossing. A group is a dashed frame with its
+name on the top border, a composite state's regions are divided by a dashed rule,
+and lanes are columns (or rows) named at their head, with the hand-offs crossing
+the rule between them:
+
+```text
+                          ┌───────┐
+                   ┌─────▶│ Ready │◀──────────┐
+                   │      └──┬────┘           │
+                   │         │ dispatched     │
+                   │         │                │
+                   │         ▼                │
+time slice used up │┏━━━━━━━━━┓               │
+                   └┨ Running ┃               │
+                    ┗━━━┯━━━━┯┛               │
+           calls exit() │    │ waits for I/O  │
+                        │    └┐               │
+                        ▼     ▼               │
+                ┌────────┐   ┌─────────┐      │ I/O completes
+                │ Exited │   │ Blocked ├──────┘
+```
+
+A graph is tried **down the page first** — a terminal is narrow and scrolls —
+with its boxes' words as written, then wrapped narrower, then across the page;
+the first that fits `--width` is drawn. A `states` machine's start is `●` and its
+end `◉` (`*` and `(*)` in ASCII), a fork or join a heavy bar, and a transition
+to itself a hook on the box's side. **A text budget** refuses what would print as
+noise, at the document's pointer: more than 15 boxes, or lines that cross more
+than 3 times however the graph is arranged — render those as SVG. A `tree` with
+cross-links or groups is drawn this way too; `bands` have no text form yet.
+
+* **`--width`** is in terminal cells: 80 by default, 100 for `lanes` and `sequence`,
+  whose parties sit side by side; any width you pass wins. An East Asian wide character
   counts two. A drawing that does not fit is **refused** at the pointer of its
   widest thing, naming the width it needs — never cut short. A label the SVG would
   wrap (a card, a note, a message) is wrapped here too, at spaces only.
@@ -404,9 +439,12 @@ get one.
   `"style": "ascii"` is ASCII either way, and a `files` tree is not held to
   `--width` for now: it prints as it always did.
 * **Roles are glyphs.** `emphasis` is a heavy box (`┏━┓`), `terminal` a rounded
-  one (`╭─╮`), `start` a double one (`╔═╗`), `note` a dashed one; a `strong` edge
-  is `━━▶`, a `weak` one `┄┄▷`, an `async` one `──▷`; a status is the `+ ~ -`
-  mark in a column at the left. A `gantt` bar is filled lighter to heavier —
+  one (`╭─╮`), `start` a double one (`╔═╗`), `note` a dashed one; a `decision` is
+  between `<` and `>`, `io` between slants, a `subroutine` has doubled sides, a
+  `store` a lid and a `person` a head on the box. A `strong` edge is `━━▶`, a
+  `weak` one `┄┄▷`, an `async` one `──▷`, and `link` and `aside` have no head; a
+  status is the `+ ~ -` mark in a column at the left (in a graph, the box's last
+  line, `+ added`). A `gantt` bar is filled lighter to heavier —
   `note` `░`, `step` `▒`, `strong` `▓`, `emphasis` `█`.
 
 From Python, `render_text(document, width=80, charset="unicode")` returns the

@@ -1,6 +1,6 @@
 # Proposal: text output — diagrams as plain text for code blocks and terminals
 
-Status: **phase 1 built** (see *As built* at the end); phase 2 accepted — tasks `t-f26679ad` (phase 1) and `t-5355943b` (phase 2). Size **M** for phase 1 (one emitter, eight kinds that already sit
+Status: **both phases built** (see *As built* at the end) — tasks `t-f26679ad` (phase 1) and `t-5355943b` (phase 2). The default width stays 80 until the owner reads phase 2's width table. Size **M** for phase 1 (one emitter, eight kinds that already sit
 on a grid), **L** for phase 2 (graph kinds, which need a character-grid router).
 Depends on an owner decision: which phase, and whether the evidence below is enough.
 
@@ -117,6 +117,8 @@ the document already is.
 3. **Width:** default 80. Graph kinds are the risk: phase 2 measures how many reference
    flows fit at 80 / 100 / 120 before the default is settled, and proposes a per-kind
    default if 80 refuses too many. `--width` always overrides.
+   **Settled after phase 2:** 100 for `lanes` and `sequence`, 80 for every other kind;
+   the caller's width always wins.
 
 ## As built
 
@@ -154,3 +156,63 @@ per charset under `tests/golden/text/`. What changed or was decided:
   and refuses a character with no spelling, at its pointer.
 * **`files` is unchanged** byte for byte, except that a tree wider than `--width` is now
   refused like every other text drawing.
+
+### Phase 2
+
+As `drawspec.kinds.graphtext`, dispatched for `flow`, `states` and `lanes`, and for a
+`tree` that `files`' guides cannot draw. Gated by `tests/test_text_graph.py`: every
+reference document of the three kinds and each kind's example, in both charsets, held to
+phase 1's invariants, plus every edge touching both its boxes, the drawn `┼` equal to the
+crossings counted, the budget's refusals, a golden file per kind per charset
+(`flow-retry`, `states-process`, `lanes-phases-loan`), and the width table below.
+
+* **Placement is the layered engine's**, in cells: `kinds.lanes.acyclic` and
+  `rank_nodes` for the ranks (`kinds.lanes.ranked`, phases and all, for `lanes`),
+  `LayeredEngine`'s barycentre order and its isotonic alignment for the order and the
+  position across, an edge that spans ranks given a one-cell placeholder in each. A
+  group is laid out the same way inside a dashed frame and placed as one box in its
+  parent; a composite state's regions sit side by side, divided by a dashed rule.
+* **Routing is a cheapest-path search through free cells** — a price per cell, per
+  bend, per cell beside a box or beside another line, and a high one per crossing.
+  An edge leaves and arrives square to a side, a line already drawn is only crossed
+  square through one of its straight cells, and that cell is the only kind drawn `┼`.
+  A lane's divider, a phase's rule and a frame's border are crossed the same way, drawn
+  as the edge. Forward edges are routed and labelled first; each return edge is then
+  routed round their labels, one side after another until its own label has room.
+* **Labels go beside their own line**, never one space from a line that is not theirs
+  unless nothing else fits; an edge or a label with no room lays the whole drawing out
+  again with wider gaps.
+* **Direction is tried, not declared.** No document says one, and the SVG picks the one
+  that fits; text tries down the page first (a terminal is narrow and scrolls) with the
+  boxes' words as written, then wrapped at 24, 18 and 14 cells — which also stacks a
+  composite state's regions — then the same across the page. The first within `width`
+  and the crossing budget is drawn; none refuses at the narrowest one's rightmost
+  thing, naming the width it needs. For `lanes`, down the page means lanes as columns.
+* **The budget is 15 boxes and 3 crossings.** The box count is the schema's own
+  readability budget for a flow, so it binds only a document built past validation;
+  the crossing count is text's own. Measured: no reference drawing needs more than 3
+  in the arrangement it is drawn in; `flow-mesh`, a full mesh of `link`s, crosses 4 at
+  best and is refused at `/edges`. `bands` have no text form yet (`/bands`).
+* **Glyphs beyond phase 1's table:** a `decision` between `<` and `>`, `io` between
+  slants, a `subroutine` with doubled sides, a `store` with a lid, a `person` with a head
+  on its top border, a node `group` heavy-dashed; heads `▼ ▲ ▶ ◀` (`v ^ > <`), open
+  `▽ △ ▷ ◁` for `weak`, `◆` for `owns`, none for `link` and `aside`; a tee where a line
+  leaves a box. A state machine's dots are `●` and `◉` (`*`, `(*)`), a fork or join a heavy
+  bar, a self-loop a hook on the box's side with its label after it. A box's change is
+  its last line (`+ added`), its class a line in parentheses, and a causal loop
+  diagram's named loops are listed under the drawing, `R` or `B` before each.
+* **The width table**, every reference document at 80, 100 and 120 columns — refused
+  documents counted apart; "down" and "across" are the fits in one direction only:
+
+  | kind | documents | refused | fit at 80 / 100 / 120 | down only | across only |
+  |---|---:|---:|:-:|:-:|:-:|
+  | `flow` | 26 | 2 | 24 / 24 / 24 | 21 / 21 / 21 | 11 / 16 / 17 |
+  | `states` | 12 | 0 | 12 / 12 / 12 | 12 / 12 / 12 | 1 / 3 / 5 |
+  | `lanes` | 9 | 0 | 6 / 8 / 9 | 5 / 7 / 8 | 1 / 2 / 3 |
+  | `sequence` | 7 | 0 | 4 / 7 / 7 | — | — |
+
+  At 80 every drawable `flow` and `states` document fits; three `lanes` do not —
+  `lanes-classes-claim` (83), `lanes-expense` (89), `lanes-phases-purchase` (105) — nor
+  do three sequences (83, 85, 93). At 100 all but `lanes-phases-purchase` fit. **The
+  default stays 80**: whether `lanes` and `sequence` move to 100 is the owner's call,
+  and `--width` overrides either way.

@@ -31,7 +31,7 @@ breaks them under the words like every other stroke.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Final
 
@@ -877,24 +877,42 @@ def sequence_text(document: Document, width: int, charset: str) -> str:
     right of the drawing, on its message's rows.
 
     Like the SVG, a diagram too wide is tried again with its heads, labels and
-    notes wrapped narrower, at spaces, before it is refused.
+    notes wrapped narrower, at spaces, before it is refused — one at a time, the
+    widest first, so a label is wrapped only when the width needs it to be.
 
     Raises:
         FitError: not even the narrowest wrap fits `width`, naming the longest label.
     """
-    refusal: FitError | None = None
-    for limit in TEXT_WRAPS:
-        lines, needed = _sequence_lines(document, charset, limit)
-        if needed <= width:
-            return finished(lines + caption_lines(document.caption, width, charset))
-        refusal = _too_wide(document, charset, needed, width)
-    assert refusal is not None
-    raise refusal
+    limits: dict[str, int] = {}
+    settled: set[str] = set()
+    lines, needed, sizes = _sequence_lines(document, charset, limits)
+    while needed > width:
+        candidates = [
+            (size, pointer)
+            for pointer, size in sizes.items()
+            if size > TEXT_NARROWEST and pointer not in settled
+        ]
+        if not candidates:
+            raise _too_wide(document, charset, needed, width)
+        size, pointer = max(candidates)
+        limits[pointer] = size - 1
+        lines, needed, sizes = _sequence_lines(document, charset, limits)
+        if sizes[pointer] >= size:
+            # One word as wide as the line: nothing narrower to break it at.
+            settled.add(pointer)
+            limits[pointer] = size
+            lines, needed, sizes = _sequence_lines(document, charset, limits)
+    # Undo every wrap the fit turned out not to need, longest text first.
+    for pointer in sorted(limits, key=lambda key: -limits[key]):
+        relaxed = {key: limit for key, limit in limits.items() if key != pointer}
+        trial, wide, _ = _sequence_lines(document, charset, relaxed)
+        if wide <= width:
+            limits, lines = relaxed, trial
+    return finished(lines + caption_lines(document.caption, width, charset))
 
 
-#: The widest a head, a label or a note may be set, in cells, tried in turn:
-#: unwrapped first, then narrower until the diagram fits.
-TEXT_WRAPS: Final = (None, 32, 26, 22, 18, 14, 10)
+#: The narrowest a head, a label or a note is wrapped to, in cells.
+TEXT_NARROWEST: Final = 10
 
 
 def _loose(lines: Sequence[str], limit: int | None) -> list[str]:
@@ -917,15 +935,24 @@ def _loose(lines: Sequence[str], limit: int | None) -> list[str]:
     return out
 
 
-def _sequence_lines(document: Document, charset: str, limit: int | None) -> tuple[list[str], int]:
-    """The drawing at one wrap width, and how wide it came out."""
+def _sequence_lines(
+    document: Document, charset: str, limits: Mapping[str, int]
+) -> tuple[list[str], int, dict[str, int]]:
+    """The drawing with each text wrapped to its limit, by pointer, and how wide it came out.
+
+    Also returns each wrappable text's widest line, by pointer, so the caller
+    can choose which to wrap next.
+    """
     count = len(document.participants)
     index = {participant.id: position for position, participant in enumerate(document.participants)}
     rows_of = {message.id: row for row, message in enumerate(document.messages) if message.id}
 
     # -- heads ----------------------------------------------------------------
     names = [
-        _loose(label_lines(participant.text, charset, f"/participants/{position}/text"), limit)
+        _loose(
+            label_lines(participant.text, charset, f"/participants/{position}/text"),
+            limits.get(f"/participants/{position}/text"),
+        )
         for position, participant in enumerate(document.participants)
     ]
     inner = [max(cells(line) for line in lines) for lines in names]
@@ -960,13 +987,19 @@ def _sequence_lines(document: Document, charset: str, limit: int | None) -> tupl
     # -- columns: each gap as wide as the heads, then as the labels need -------
     gaps = [right_half[i] + left_half[i + 1] + TEXT_GAP for i in range(count - 1)]
     labels = [
-        _loose([" ".join(label_lines(message.text, charset, f"/messages/{row}/text"))], limit)
+        _loose(
+            [" ".join(label_lines(message.text, charset, f"/messages/{row}/text"))],
+            limits.get(f"/messages/{row}/text"),
+        )
         if message.text
         else []
         for row, message in enumerate(document.messages)
     ]
     notes = [
-        _loose([" ".join(label_lines(message.note, charset, f"/messages/{row}/note"))], limit)
+        _loose(
+            [" ".join(label_lines(message.note, charset, f"/messages/{row}/note"))],
+            limits.get(f"/messages/{row}/note"),
+        )
         if message.note
         else []
         for row, message in enumerate(document.messages)
@@ -1138,7 +1171,23 @@ def _sequence_lines(document: Document, charset: str, limit: int | None) -> tupl
         for offset, line in enumerate(notes[row]):
             grid.text(at[("label", row, 0)] + offset, drawing + TEXT_GAP, line)
     lines = grid.lines()
-    return lines, max(cells(line) for line in lines)
+    sizes = {
+        **{
+            f"/participants/{position}/text": max(cells(line) for line in name)
+            for position, name in enumerate(names)
+        },
+        **{
+            f"/messages/{row}/text": max(cells(line) for line in label)
+            for row, label in enumerate(labels)
+            if label
+        },
+        **{
+            f"/messages/{row}/note": max(cells(line) for line in note)
+            for row, note in enumerate(notes)
+            if note
+        },
+    }
+    return lines, max(cells(line) for line in lines), sizes
 
 
 def _tab(operator: str, text: str, charset: str, position: int) -> str:

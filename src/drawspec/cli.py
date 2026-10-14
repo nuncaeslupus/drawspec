@@ -49,7 +49,7 @@ from drawspec.export import BACKGROUNDS, DEFAULT_SCALE, MAX_SCALE, render_png
 from drawspec.kinds import TEXT_KINDS
 from drawspec.render import render_document, render_text
 from drawspec.schema import KINDS, Document, load_document, parse_document, schema_json
-from drawspec.textgrid import CHARSETS, DEFAULT_WIDTH
+from drawspec.textgrid import CHARSETS, DEFAULT_WIDTH, WIDE_WIDTH
 from drawspec.theme import load_theme
 
 #: The conventional name for standard input, as a document argument. Reading a
@@ -94,7 +94,7 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         help=(
             "override the document's width; with --format text, the most terminal cells a "
-            f"line may take (default {DEFAULT_WIDTH})"
+            f"line may take (default {DEFAULT_WIDTH}, or {WIDE_WIDTH} for lanes and sequence)"
         ),
     )
     render.add_argument("--height", type=float, help="override the document's height")
@@ -294,7 +294,7 @@ def _render(arguments: argparse.Namespace) -> int:
         elif output_format == "text":
             svg = render_text(
                 document,
-                width=DEFAULT_WIDTH if arguments.width is None else int(arguments.width),
+                width=None if arguments.width is None else int(arguments.width),
                 charset=arguments.charset or "unicode",
             ).rstrip("\n")
         else:
