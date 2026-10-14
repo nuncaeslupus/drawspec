@@ -45,11 +45,21 @@ against it would stop working. Everything below is about the *package*.
   3 times in every arrangement, is refused at `/nodes` or `/edges` as noise, pointing at
   SVG. `bands` have no text form yet and refuse at `/bands`.
 
+- **Text output for a `thermometer` meter**: a tube down the page filled up from its
+  bulb, the SVG's ticks at its left, the target a heavy stroke across it, the readout and
+  name under the bulb; several side by side. `dial` and `bullet` still refuse.
+- **`gantt` dependencies in text**: each is a line from the end of its bar, down through
+  blank cells and right into the start of the dependent bar (or straight down onto it),
+  in its role's line style. One with no clean route is listed under the chart,
+  `B after A`, instead of being dropped.
+- **A `timeline` in text is spaced by `at`** when every entry has one: gaps in proportion,
+  the closest pair one blank row apart, a gap past eight blank rows shortened and dashed.
+
 ### Changed
 
 - The refusal for a kind with no text form names the kinds that have one, instead of
-  saying only `files` does. A tree with bands, and a meter in any style but `bar`, refuse
-  at their pointers; a tree with cross-links or groups is drawn as a graph.
+  saying only `files` does. A tree with bands, and a meter in the `dial` or `bullet`
+  style, refuse at their pointers; a tree with cross-links or groups is drawn as a graph.
 
 ## [0.2.1] — 2026-10-13
 

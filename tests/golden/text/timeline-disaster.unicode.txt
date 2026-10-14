@@ -2,6 +2,15 @@
                  │                 │ Data lost
           08:00  ●  It fails       ┤                ┐
                  │                 │ Recovery time  │ Maximum tolerable downtime
+                 │                 │                │
+                 │                 │                │
+                 │                 │                │
+                 │                 │                │
+                 │                 │                │
+                 │                 │                │
 Next day, 08:00  ●  Systems back   ┤                │
                  │                 │ Work recovery  │
+                 │                 │                │
+                 │                 │                │
+                 │                 │                │
 Next day, 22:00  ●  Working again  ┘                ┘

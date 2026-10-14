@@ -390,9 +390,9 @@ drawspec render plan.json --format text --width 100 --charset ascii
 It is a second emitter, not a picture of the SVG: each kind lays itself out on a
 character grid from its own rows and columns. Twelve kinds have a text form —
 `files`, `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`,
-`meter` in the `bar` style, and the graph kinds `flow`, `states` and `lanes` —
+`meter` in the `bar` and `thermometer` styles, and the graph kinds `flow`, `states` and `lanes` —
 and every other kind refuses, naming them. The kinds whose message is an area,
-an angle or a curve never get one.
+an angle or a curve never get one — a `dial` and a `bullet` meter included.
 
 **The graph kinds are placed and routed in cells.** The layered engine ranks and
 orders the boxes as it does for the SVG; every edge is then the cheapest square
@@ -446,6 +446,21 @@ cross-links or groups is drawn this way too; `bands` have no text form yet.
   status is the `+ ~ -` mark in a column at the left (in a graph, the box's last
   line, `+ added`). A `gantt` bar is filled lighter to heavier —
   `note` `░`, `step` `▒`, `strong` `▓`, `emphasis` `█`.
+* **A plan's dependencies are lines.** Each runs from the end of its bar down
+  through blank cells and right into the start of the bar it holds up (`┐`, `└──▶`),
+  or straight down onto it when it starts right there (`▼`), in its role's line
+  style. A line never overprints a bar, a label, a phase's bracket or another line:
+  a dependency with no such route is listed under the chart instead —
+  `Ethics review after Proposal due` — never dropped.
+* **A timeline is spaced by `at`** when every entry has one and they rise in the
+  order written: the closest two entries one blank row apart, every other gap in
+  proportion, and a gap that would take more than eight blank rows shortened to
+  eight and drawn dashed (`┆`, `:` in ASCII) — not to scale. Otherwise the entries
+  are evenly spaced.
+* **A thermometer is a tube** down the page, ten rows from `max` to zero, filled
+  up from its bulb, ticked at its left with the SVG's ticks, its target a heavy
+  stroke across it (`┝━━━┿━━`), its readout and name under the bulb; several stand
+  side by side.
 
 From Python, `render_text(document, width=80, charset="unicode")` returns the
 string; the MCP `render` tool takes `"format": "text"` with the same `width` and

@@ -957,40 +957,58 @@ TEXT_TRACK: Final = (10, 40)
 TEXT_GAP: Final = 2
 
 
+def _readouts(document: Document, charset: str) -> list[list[str]]:
+    """Each meter's readout lines as text: no bold, a hyphen for a minus in ASCII."""
+    style = document.meter_style
+    return [
+        [
+            spelt(line.replace("**", "").replace(MINUS, "-"), charset, f"/meters/{position}")
+            if charset == "ascii"
+            else line.replace("**", "")
+            for line in readout(meter, style)
+        ]
+        for position, meter in enumerate(document.meters)
+    ]
+
+
 def meter_text(document: Document, width: int, charset: str) -> str:
+    """A meter panel as plain text: a row of cells for `bar`, a tube for `thermometer`.
+
+    A `dial`'s message is an angle and a `bullet`'s is its bands' tones, neither
+    of which cells can say better than the readout, so those two refuse.
+
+    Raises:
+        DrawspecError: the panel's style is `dial` or `bullet`.
+        FitError: the panel is wider than `width`.
+    """
+    if document.meter_style == "thermometer":
+        return _thermometer_text(document, width, charset)
+    if document.meter_style != "bar":
+        raise DrawspecError(
+            f"/style: a {document.meter_style!r} meter has no text form; only `bar` and "
+            f"`thermometer` do. Draw it as one of those, or render it as SVG."
+        )
+    return _bar_text(document, width, charset)
+
+
+def _bar_text(document: Document, width: int, charset: str) -> str:
     """A `bar` meter panel as plain text: `name  [██████░░░░]  7 of 12 chapters`.
 
     The rows layout's three columns — names, tracks sharing one left and one
     right edge, readouts — with the track filled to the amount on the meter's own
     scale, a target as a bar across it, and the readout `readout` writes, its
-    lines joined. An `emphasis` meter takes heavier ends. Only `bar`: a dial's
-    message is an angle and a bullet's is its bands' tones, neither of which a
-    row of cells can say better than the readout.
+    lines joined. An `emphasis` meter takes heavier ends.
 
     Raises:
-        DrawspecError: the panel's style is not `bar`.
         FitError: the names and readouts leave the tracks too few columns.
     """
-    if document.meter_style != "bar":
-        raise DrawspecError(
-            f"/style: a {document.meter_style!r} meter has no text form; only `bar` does. "
-            f"Draw it as `bar`, or render it as SVG."
-        )
     glyphs = TEXT_BARS[charset]
     meters = document.meters
     names = [
         label_lines(meter.text, charset, f"/meters/{position}/text")
         for position, meter in enumerate(meters)
     ]
-    reads = [
-        [
-            spelt(line.replace("**", "").replace(MINUS, "-"), charset, f"/meters/{position}")
-            if charset == "ascii"
-            else line.replace("**", "")
-            for line in readout(meter, "bar")
-        ]
-        for position, meter in enumerate(meters)
-    ]
+    reads = _readouts(document, charset)
     name_width = max(cells(line) for name in names for line in name)
     read_width = max(cells(line) for read in reads for line in read)
     track = min(width - name_width - read_width - 2 * TEXT_GAP - 2, TEXT_TRACK[1])
@@ -1029,6 +1047,179 @@ def meter_text(document: Document, width: int, charset: str) -> str:
             drawn.append(Drawn(text, f"/meters/{position}/text", what))
     widest(drawn, width)
     return finished([line.text for line in drawn] + caption_lines(document.caption, width, charset))
+
+
+#: A thermometer's tube in rows, from `max` at the top to zero at the bottom.
+TUBE_ROWS: Final = 10
+
+#: Cells between two thermometers side by side.
+TUBE_GAP: Final = 4
+
+
+@dataclass(frozen=True)
+class _TubeGlyphs:
+    """One thermometer's glyphs: its cap, walls, ticks, target and bulb."""
+
+    cap: str
+    wall: str
+    tick: str
+    """A tick's stub and the wall it meets, left of the tube."""
+    target: tuple[str, str, str, str]
+    """The target across the tube: left wall, inside, right wall, beyond."""
+    ticked_target: str
+    """The left wall where a tick and the target share a row."""
+    neck: tuple[str, str]
+    bulb: tuple[str, str]
+    base: str
+    fill: str
+
+
+def _tube_glyphs(charset: str, emphasis: bool) -> _TubeGlyphs:
+    if charset == "ascii":
+        rule = "=" if emphasis else "-"
+        return _TubeGlyphs(
+            cap=f".{rule * 3}.",
+            wall="|",
+            tick="-|",
+            target=("|", "=", "|", "=="),
+            ticked_target="-|",
+            neck=(".'", "'."),
+            bulb=("|", "|"),
+            base=f"'{rule * 5}'",
+            fill="#",
+        )
+    if emphasis:
+        return _TubeGlyphs(
+            cap="┏━━━┓",
+            wall="┃",
+            tick="─┨",
+            target=("┣", "━", "╋", "━━"),
+            ticked_target="─╋",
+            neck=("┏┛", "┗┓"),
+            bulb=("┃", "┃"),
+            base="┗━━━━━┛",
+            fill="█",
+        )
+    return _TubeGlyphs(
+        cap="╭───╮",
+        wall="│",
+        tick="─┤",
+        target=("┝", "━", "┿", "━━"),
+        ticked_target="─┿",
+        neck=("╭┘", "└╮"),
+        bulb=("│", "│"),
+        base="╰─────╯",
+        fill="█",
+    )
+
+
+def _tube(meter: Meter, charset: str) -> tuple[list[str], int]:
+    """One thermometer, its tick labels at the left: equally wide lines, and its centre.
+
+    The tube is `TUBE_ROWS` rows from `max` at the top to zero at the bottom,
+    filled up from the bulb to the amount; the bulb is always filled, as the
+    SVG's is. Ticks are the SVG's, `max` always labelled at the top; a target is
+    a heavy stroke across the tube and out past its right wall.
+    """
+    glyphs = _tube_glyphs(charset, meter.role == "emphasis")
+    last = TUBE_ROWS - 1
+    unit = tick_unit(meter.unit)
+
+    def row_of(value: float) -> int:
+        share = min(max(value / meter.max, 0.0), 1.0) if meter.max else 0.0
+        return round((1 - share) * last)
+
+    labels: dict[int, str] = {}
+    for value, text in reversed(_ticks(meter.max, TUBE_ROWS, 3, unit)):
+        row = row_of(value)
+        if row not in labels:
+            labels[row] = spelt(text.replace(MINUS, "-"), charset, "/meters")
+    # The labels right-aligned, a space, then the tick's stub into the wall.
+    side = max(cells(text) for text in labels.values()) + 1
+    # The fill reaches the row its amount's tick would sit on, the same scale
+    # as the ticks and the target, so a meter at its target reads as at it.
+    share = min(max(meter.amount / meter.max, 0.0), 1.0) if meter.max else 0.0
+    top = row_of(meter.amount) if share > 0 else TUBE_ROWS
+    target = row_of(meter.target) if meter.target is not None else None
+    empty = " "
+    lines = [" " * (side + 1) + glyphs.cap]
+    for row in range(TUBE_ROWS):
+        label = labels.get(row, "")
+        inside = (glyphs.fill if row >= top else empty) * 3
+        if row == target:
+            left, across, right, beyond = glyphs.target
+            if label:
+                lead = " " * (side - 1 - cells(label)) + label + " " + glyphs.ticked_target
+            else:
+                lead = " " * (side + 1) + left
+            lines.append(lead + across * 3 + right + beyond)
+            continue
+        if label:
+            lead = " " * (side - 1 - cells(label)) + label + " " + glyphs.tick
+        else:
+            lead = " " * (side + 1) + glyphs.wall
+        lines.append(lead + inside + glyphs.wall)
+    opening, closing = glyphs.neck
+    lines.append(" " * side + opening + glyphs.fill * 3 + closing)
+    lines.append(" " * side + glyphs.bulb[0] + glyphs.fill * 5 + glyphs.bulb[1])
+    lines.append(" " * side + glyphs.base)
+    room = max(cells(line) for line in lines)
+    return [pad(line, room) for line in lines], side + 3
+
+
+def _thermometer_text(document: Document, width: int, charset: str) -> str:
+    """A `thermometer` panel as plain text: tubes side by side, words under each.
+
+    The columns layout: each meter a column holding its tube on its bulb, its
+    readout under the bulb and its name under that, as the SVG stacks them.
+
+    Raises:
+        FitError: the columns side by side are wider than `width`.
+    """
+    meters = document.meters
+    names = [
+        label_lines(meter.text, charset, f"/meters/{position}/text")
+        for position, meter in enumerate(meters)
+    ]
+    reads = _readouts(document, charset)
+    tubes = [_tube(meter, charset) for meter in meters]
+    columns: list[list[str]] = []
+    depth = max(len(read) for read in reads)
+    for (tube, middle), read, name in zip(tubes, reads, names, strict=True):
+        # The words centred under the bulb, the tube's labels hanging to its left,
+        # every name on the same row however many lines the readouts above take.
+        words = [*read, *[""] * (depth - len(read)), "", *name]
+        left = max(middle, *(cells(line) // 2 for line in words))
+        right = max(cells(tube[0]) - middle, *(cells(line) - cells(line) // 2 for line in words))
+        column = left + right
+        columns.append(
+            [pad(" " * (left - middle) + line, column) for line in tube]
+            + [""]
+            + [pad(" " * (left - cells(line) // 2) + line, column) for line in words]
+        )
+    sizes = [cells(column[0]) for column in columns]
+    needed = sum(sizes) + TUBE_GAP * (len(columns) - 1)
+    if needed > width:
+        position = max(range(len(columns)), key=lambda number: sizes[number])
+        raise too_wide(
+            f"/meters/{position}/text",
+            f"the thermometer {names[position][0]!r} beside "
+            f"{len(columns) - 1} other{'s' if len(columns) > 2 else ''}"
+            if len(columns) > 1
+            else f"the thermometer {names[position][0]!r}",
+            needed,
+            width,
+        )
+    height = max(len(column) for column in columns)
+    gap = " " * TUBE_GAP
+    lines = [
+        gap.join(
+            column[row] if row < len(column) else " " * size
+            for column, size in zip(columns, sizes, strict=True)
+        )
+        for row in range(height)
+    ]
+    return finished(lines + caption_lines(document.caption, width, charset))
 
 
 __all__ = [

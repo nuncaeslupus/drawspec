@@ -1,6 +1,6 @@
 # Proposal: text output — diagrams as plain text for code blocks and terminals
 
-Status: **both phases built** (see *As built* at the end) — tasks `t-f26679ad` (phase 1) and `t-5355943b` (phase 2). The default width stays 80 until the owner reads phase 2's width table. Size **M** for phase 1 (one emitter, eight kinds that already sit
+Status: **both phases built, and three follow-ups** (see *As built* at the end) — tasks `t-f26679ad` (phase 1) and `t-5355943b` (phase 2). The default width stays 80 until the owner reads phase 2's width table. Size **M** for phase 1 (one emitter, eight kinds that already sit
 on a grid), **L** for phase 2 (graph kinds, which need a character-grid router).
 Depends on an owner decision: which phase, and whether the evidence below is enough.
 
@@ -139,18 +139,18 @@ per charset under `tests/golden/text/`. What changed or was decided:
 * **An `async` message is `──▷`, a `weak` reply `┄┄▷`:** the default theme draws `async`
   solid with an open head and `weak` dashed with one, so the table's single "dashed /
   async" row is split. In ASCII the open head is `>>`.
-* **`gantt` bars are filled by role**, lighter to heavier (`░ ▒ ▓ █`, ASCII `. = # @`),
-  the undone part of a `done` bar dotted, and **dependencies are not drawn**: a
-  finish-to-start line routed through cells would cross the bars it joins, and the
-  bars' order already says it.
+* **`gantt` bars are filled by role**, lighter to heavier (`░ ▒ ▓ █`, ASCII `% = # @`, undone `_`),
+  the undone part of a `done` bar dotted, and **dependencies are not drawn** — since
+  drawn, see *Follow-ups* below.
 * **`rag` uses the default theme's words and shapes** (`■ RED`, `▲ AMBER`, `● GREEN`,
   ASCII `# ^ o`): text has no theme. **`meter` is `bar` only**, `[█████░░░│░░]`, the
-  target a bar across the track, the readout's lines under one another; `thermometer`,
-  `dial` and `bullet` refuse.
+  target a bar across the track, the readout's lines under one another; `dial` and
+  `bullet` refuse, and so did `thermometer` until the follow-ups below.
 * **`tree`** draws its boxes on `files`' guides, a class named after its box and an
   edge's label on its stub; a tree with cross-links, a cycle, groups or bands refuses,
   as phase 2's work.
-* **A `timeline` is drawn down the page** with even rows, not spaced by `at`; a span is
+* **A `timeline` is drawn down the page** with even rows (spaced by `at` since the
+  follow-ups below); a span is
   a bracket in a lane beside the entries, each lane with its own column for its names.
 * **ASCII spells** the common punctuation (`→` as `->`, `—` as `--`, accents dropped)
   and refuses a character with no spelling, at its pointer.
@@ -216,3 +216,38 @@ crossings counted, the budget's refusals, a golden file per kind per charset
   do three sequences (83, 85, 93). At 100 all but `lanes-phases-purchase` fit. **The
   default stays 80**: whether `lanes` and `sequence` move to 100 is the owner's call,
   and `--width` overrides either way.
+
+### Follow-ups
+
+Three things phase 1 left out, built after both phases. Gated by
+`tests/test_text_output.py`, a golden file for `meter-appeal` in each charset, and the
+`gantt-semester` and `timeline-disaster` goldens regenerated and read.
+
+* **`meter`'s `thermometer` style has a text form.** A tube down the page, ten rows from
+  `max` at the top to zero, `╭───╮` on a bulb, filled `█` (`#`) up from the bulb to the
+  amount, the bulb always filled as the SVG's is; the SVG's ticks at its left, `max`
+  always labelled; a target a heavy stroke across the tube and out past it (`┝━━━┿━━`,
+  ASCII `|===|==`); the readout, then the name, centred under the bulb. Several stand
+  side by side, four cells apart, names on one row; an `emphasis` tube is heavy
+  (`┏━━━┓`, ASCII `.===.`). Too wide is refused at the widest one's name.
+  **`dial` and `bullet` still refuse:** a dial's message is an angle, and a bullet's is
+  its bands' tones under the bar — a row of shaded cells would say less than the
+  readout already does. Both stay with *Never*'s reasoning.
+* **`gantt` dependencies are drawn.** Each is routed finish-to-start: out of the end of
+  its bar along the row, down a column of blank cells, right along the dependent's row
+  into a head on its first cell (`▒▒┐` … `└──▶▒▒`), the corner as near the bar it leaves
+  as is free; when the dependent starts right where the bar ends, straight down onto it
+  (`▼`), and from a milestone straight down from the milestone. Line style by role —
+  `─` / `━` / `┄`, an open head for `weak`. Every cell a route takes must be blank, so a
+  line never overprints a bar, a label, a phase's bracket or another
+  line; a dependency that has no such route — its dependent above it, a bracket or bar
+  in the way, a second dependent of the same bar wanting the same column — is **listed
+  under the chart**, `B after A`, never refused and never dropped. `gantt-semester`
+  draws three of its four and lists one, within 80 columns.
+* **A `timeline` is spaced by `at`** when every entry has one and they rise in the order
+  written, as the SVG spaces it: the closest pair one blank row apart (rows per unit set
+  by the tightest interval and the entries' heights), every other gap in proportion. A
+  gap that would take more than eight blank rows (`TEXT_GAP_ROWS`) takes eight and its
+  line is dashed `┆` (`:`), marking it not to scale. Otherwise — an entry without `at`,
+  or entries out of order — evenly, as before; every entry at one point is refused as
+  the SVG refuses it.
