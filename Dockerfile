@@ -6,6 +6,9 @@ WORKDIR /app
 COPY pyproject.toml README.md LICENSE ./
 COPY src ./src
 COPY schema ./schema
-RUN pip install --no-cache-dir '.[mcp]'
+RUN pip install --no-cache-dir '.[mcp]' \
+    && useradd --create-home --shell /usr/sbin/nologin drawspec
+
+USER drawspec
 
 CMD ["drawspec-mcp"]
