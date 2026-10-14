@@ -14,6 +14,8 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`glama.json` and a `Dockerfile`** for MCP registries such as Glama: the image installs
+  `drawspec[mcp]` from the checkout and runs `drawspec-mcp` over stdio.
 - **Text width defaults by kind**: 100 columns for `lanes` and `sequence`, whose parties
   sit side by side, 80 for the rest. `--width` (CLI), `width` (MCP) and `render_text(width=)`
   still set any width the caller wants.
