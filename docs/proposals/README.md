@@ -59,6 +59,12 @@ the real originals each is checked against; a built one says so in its row.
 | 28 | [`clock.md`](clock.md) | `clock`: analogue faces showing a time, for teaching it — hands by the time, numerals, the time in words, `since` shaded — **built** | S | round-2 corpus section 12 (C1–C5) |
 | 27 | [`rag.md`](rag.md) | `rag`: workstreams or risks rated red, amber or green, each a word and a shape, the trend in words — **built** | S | round-2 corpus section 11 (R1–R6); `status` was taken, so the field is `rag` |
 
+## Proposed: output formats
+
+| # | Proposal | What | Size | Depends on |
+|---:|---|---|:-:|---|
+| 29 | [`text.md`](text.md) | text output for kinds that sit on a grid (`sequence`, `gantt`, `board`, …); graph kinds later | M / L | owner decision on evidence and scope |
+
 ## Deferred, not proposed
 
 The survey's one remaining *feature* verdict is left unbuilt on purpose, until a real
