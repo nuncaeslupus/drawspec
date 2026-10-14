@@ -63,7 +63,7 @@ the real originals each is checked against; a built one says so in its row.
 
 | # | Proposal | What | Size | Depends on |
 |---:|---|---|:-:|---|
-| 29 | [`text.md`](text.md) | text output for kinds that sit on a grid (`sequence`, `gantt`, `board`, …) and for the graph kinds (`flow`, `states`, `lanes`) — **both phases built** | M / L | accepted: both phases; width 80 for now, phase 2's 80 / 100 / 120 table is with the owner |
+| 29 | [`text.md`](text.md) | text output for kinds that sit on a grid (`sequence`, `gantt`, `board`, …) and for the graph kinds (`flow`, `states`, `lanes`) — **both phases built**, plus thermometer, gantt dependencies and `at` spacing | M / L | accepted: both phases; width 80 for now, phase 2's 80 / 100 / 120 table is with the owner |
 
 ## Deferred, not proposed
 
