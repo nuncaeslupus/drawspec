@@ -883,8 +883,50 @@ def stack_text(document: Document, width: int, charset: str) -> str:
     return finished([line.text for line in drawn] + caption_lines(document.caption, width, charset))
 
 
+#: The most blank rows between two entries of a timeline spaced by `at`. A gap
+#: that would take more is drawn this long, its line dashed: not to scale.
+TEXT_GAP_ROWS: Final = 8
+
+
+def _text_rows(items: tuple[Item, ...], heights: list[int]) -> tuple[list[int], set[int]]:
+    """Each entry's first row, and which gaps (by the entry above) are compressed.
+
+    Evenly — one blank row under each entry — unless every entry has an `at`
+    and they rise in the order written; then each gap is in proportion to its
+    interval, the closest pair one blank row apart, and a gap that would take
+    more than `TEXT_GAP_ROWS` blank rows takes that many and is marked.
+
+    Raises:
+        FitError: every entry is at the same point, as the SVG refuses it.
+    """
+    shares = _shares(items, len(items))
+    values = [item.at for item in items if item.at is not None]
+    steps = [later - earlier for earlier, later in pairwise(values)] if shares is not None else []
+    rows = [0]
+    compressed: set[int] = set()
+    if not steps or any(step < 0 for step in steps):
+        for height in heights[:-1]:
+            rows.append(rows[-1] + height + 1)
+        return rows, compressed
+    # Rows per unit: enough that the closest entries have one blank row between.
+    scale = max(
+        (height + 1) / step for height, step in zip(heights, steps, strict=False) if step > 0
+    )
+    for number, (height, step) in enumerate(zip(heights, steps, strict=False)):
+        distance = max(height + 1, round(step * scale))
+        if distance - height > TEXT_GAP_ROWS:
+            distance = height + TEXT_GAP_ROWS
+            compressed.add(number)
+        rows.append(rows[-1] + distance)
+    return rows, compressed
+
+
 def timeline_text(document: Document, width: int, charset: str) -> str:
     """A `timeline` as plain text: the axis down the page, one row per entry.
+
+    Spaced as the SVG spaces it: in proportion to `at` when every entry has one
+    (the closest two one blank row apart, a long gap shortened and dashed `┆`),
+    evenly otherwise.
 
     The layout's order, turned: each entry a mark on a vertical line with its
     words to the right, and what goes under the SVG's line — its `note`, or its
@@ -952,13 +994,13 @@ def timeline_text(document: Document, width: int, charset: str) -> str:
         ]
         for position, label in enumerate(labels)
     ]
-    rows: list[int] = []
-    row = 0
-    for label, when in zip(labels, whens, strict=True):
-        rows.append(row)
-        row += max(len(label), len(when)) + 1
+    heights = [max(len(label), len(when)) for label, when in zip(labels, whens, strict=True)]
+    rows, compressed = _text_rows(items, heights)
     grid = Grid(charset)
-    grid.vertical(axis, rows[0], rows[-1])
+    for number, (top, bottom) in enumerate(pairwise(rows)):
+        grid.vertical(axis, top, bottom, "dashed" if number in compressed else "light")
+    if len(rows) == 1:
+        grid.vertical(axis, rows[0], rows[0])
     lines_of: list[tuple[int, str, str]] = []
     for position, (label, when) in enumerate(zip(labels, whens, strict=True)):
         top = rows[position]

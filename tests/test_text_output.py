@@ -25,6 +25,7 @@ import os
 import re
 import unicodedata
 from collections.abc import Iterator
+from itertools import pairwise
 from pathlib import Path
 from typing import Any, Final
 
@@ -60,9 +61,9 @@ WIDER: Final = {
     "board-onboarding": 88,
 }
 
-#: Reference documents a text form refuses by design: a meter drawn as anything
-#: but `bar` says something — an angle, a band's tone — a row of cells cannot.
-NO_TEXT: Final = ("meter-appeal", "meter-library", "meter-ward")
+#: Reference documents a text form refuses by design: a `dial` or `bullet` meter
+#: says something — an angle, a band's tone — a row of cells cannot.
+NO_TEXT: Final = ("meter-library", "meter-ward")
 
 #: One reference document per kind, held as a golden file in each charset.
 GOLDENS: Final = {
@@ -76,6 +77,9 @@ GOLDENS: Final = {
     "rag": "rag-refit",
     "meter": "meter-migration",
 }
+
+#: Golden files beyond one per kind: a second style of a kind, held the same way.
+MORE_GOLDENS: Final = ("meter-appeal",)
 
 CHARSETS: Final = ("unicode", "ascii")
 
@@ -261,15 +265,19 @@ def _sequence(message: str = "flow", participant: str = "step") -> dict[str, Any
     }
 
 
-def _gantt(role: str = "step", milestone: bool = False) -> dict[str, Any]:
+def _gantt(role: str = "step", milestone: bool = False, edge: str = "") -> dict[str, Any]:
     task: dict[str, Any] = {"id": "t", "text": "Task", "role": role}
     task.update({"at": 2} if milestone else {"start": 0, "end": 4})
-    return {
+    document: dict[str, Any] = {
         "version": 1,
         "kind": "gantt",
         "axis": {"label": "Week"},
         "tasks": [task, {"id": "u", "text": "Other", "start": 1, "end": 3}],
     }
+    if edge:
+        document["tasks"][1].update({"start": 6, "end": 8})
+        document["edges"] = [{"from": "t", "to": "u", "role": edge}]
+    return document
 
 
 def _board(card: str = "step", column: str = "step") -> dict[str, Any]:
@@ -289,10 +297,11 @@ def _stack(role: str = "step") -> dict[str, Any]:
     }
 
 
-def _meter(role: str = "step") -> dict[str, Any]:
+def _meter(role: str = "step", style: str = "bar") -> dict[str, Any]:
     return {
         "version": 1,
         "kind": "meter",
+        "style": style,
         "meters": [{"text": "Done", "amount": 3, "max": 10, "role": role}],
     }
 
@@ -332,6 +341,9 @@ ROLE_PAIRS: Final = {
     "stack emphasis": (_stack(), _stack("emphasis")),
     "stack terminal": (_stack(), _stack("terminal")),
     "meter emphasis": (_meter(), _meter("emphasis")),
+    "thermometer emphasis": (_meter(style="thermometer"), _meter("emphasis", "thermometer")),
+    "gantt weak dependency": (_gantt(edge="flow"), _gantt(edge="weak")),
+    "gantt strong dependency": (_gantt(edge="flow"), _gantt(edge="strong")),
     "rag rating": (_rag(), _rag("amber")),
     "rag trend": (_rag(), _rag(trend="worse")),
 }
@@ -367,9 +379,8 @@ def test_the_role_table_glyphs() -> None:
 
 
 @pytest.mark.parametrize("charset", CHARSETS)
-@pytest.mark.parametrize("kind", sorted(GOLDENS))
-def test_golden(kind: str, charset: str) -> None:
-    name = GOLDENS[kind]
+@pytest.mark.parametrize("name", sorted([*GOLDENS.values(), *MORE_GOLDENS]))
+def test_golden(name: str, charset: str) -> None:
     drawn = _drawn(name, charset)
     path = GOLDEN / f"{name}.{charset}.txt"
     if UPDATE:
@@ -398,10 +409,11 @@ def test_a_kind_without_a_text_form_refuses_naming_the_kinds_that_have_one(kind:
         assert f"`{named}`" in message
 
 
-def test_only_a_bar_meter_has_a_text_form() -> None:
-    dial = parse_document({**EXAMPLES["meter"], "style": "dial"})
-    with pytest.raises(DrawspecError, match=r"^/style: .*only `bar`"):
-        render_text(dial)
+@pytest.mark.parametrize("name", ["meter-ward", "meter-library"])
+def test_a_dial_or_bullet_meter_has_no_text_form(name: str) -> None:
+    refused = load_document(REFERENCE / f"{name}.json")
+    with pytest.raises(DrawspecError, match=r"^/style: .*only `bar` and `thermometer`"):
+        render_text(refused)
 
 
 def test_a_tree_with_a_cross_link_is_routed_rather_than_drawn_twice() -> None:
@@ -496,3 +508,222 @@ def test_a_sequence_wraps_only_the_labels_the_width_needs() -> None:
     assert "where is wiki.example.org?" in drawn
     assert "ask ns1.example.org" in drawn
     assert max(cells(line) for line in drawn.splitlines()) <= 100
+
+
+# ---------------------------------------------------------------------------
+# A thermometer: a tube down the page, filled from its bulb
+# ---------------------------------------------------------------------------
+
+
+def _thermometer(amount: float, target: float | None = None) -> Document:
+    meter: dict[str, Any] = {"text": "Appeal", "amount": amount, "max": 100, "unit": "%"}
+    if target is not None:
+        meter["target"] = target
+    return parse_document(
+        {"version": 1, "kind": "meter", "style": "thermometer", "meters": [meter]}
+    )
+
+
+def _tube_rows(drawn: str, charset: str = "unicode") -> list[str]:
+    """The tube's rows, top to bottom: the lines between its cap and its bulb."""
+    lines = drawn.splitlines()
+    cap = "╭───╮" if charset == "unicode" else ".---."
+    top = next(number for number, line in enumerate(lines) if cap in line)
+    bottom = next(
+        number for number, line in enumerate(lines) if number > top and ("╯" in line or "'" in line)
+    )
+    return lines[top + 1 : bottom - 2]
+
+
+def test_a_thermometer_is_filled_from_its_bulb_to_its_amount() -> None:
+    """Half the amount fills half the tube's rows, from the bottom; the bulb is filled."""
+    rows_ = _tube_rows(render_text(_thermometer(50)))
+    filled = ["███" in row for row in rows_]
+    assert filled == sorted(filled), "the fill is not one run up from the bulb"
+    assert sum(filled) == len(rows_) // 2
+    assert "│█████│" in render_text(_thermometer(50))
+    assert "███" not in "".join(_tube_rows(render_text(_thermometer(0))))
+
+
+def test_a_thermometer_says_its_scale_target_and_readout() -> None:
+    drawn = render_text(_thermometer(30, target=80))
+    assert "100%" in drawn.splitlines()[1], "the goal is not labelled at the top of the tube"
+    assert "0%" in drawn
+    assert "┿━" in drawn, "no target across the tube"
+    assert "30 %" in drawn or "30%" in drawn
+    assert "target 80%" in drawn
+    target_row = next(number for number, row in enumerate(_tube_rows(drawn)) if "┿" in row)
+    assert target_row == 2, "80 of 100 is not a fifth of the way down a ten-row tube"
+
+
+def test_an_ascii_thermometer() -> None:
+    drawn = render_text(_thermometer(50, target=80), charset="ascii")
+    assert drawn.isascii()
+    assert "|###|" in drawn and "|===|==" in drawn
+
+
+def test_thermometers_stand_side_by_side() -> None:
+    document = parse_document(
+        {
+            "version": 1,
+            "kind": "meter",
+            "style": "thermometer",
+            "meters": [
+                {"text": "North", "amount": 20, "max": 100},
+                {"text": "South", "amount": 70, "max": 100},
+            ],
+        }
+    )
+    drawn = render_text(document)
+    assert drawn.splitlines()[0].count("╭───╮") == 2
+    names = next(line for line in drawn.splitlines() if "North" in line)
+    assert "South" in names
+    with pytest.raises(FitError, match=r"^/meters/"):
+        render_text(document, width=20)
+
+
+# ---------------------------------------------------------------------------
+# Gantt dependencies: a line from the end of one bar to the start of the next
+# ---------------------------------------------------------------------------
+
+
+def _plan(*tasks: tuple[str, float, float], edges: list[tuple[str, str]]) -> Document:
+    return parse_document(
+        {
+            "version": 1,
+            "kind": "gantt",
+            "axis": {"label": "Week"},
+            "tasks": [
+                {"id": name, "text": name.title(), "start": start, "end": end}
+                if end > start
+                else {"id": name, "text": name.title(), "at": start}
+                for name, start, end in tasks
+            ],
+            "edges": [{"from": source, "to": target} for source, target in edges],
+        }
+    )
+
+
+def _bar_of(line: str) -> tuple[int, int]:
+    """The first and one past the last cell of a row's bar."""
+    found = [column for column, character in enumerate(line) if character in "░▒▓█◆◇◈"]
+    return found[0], found[-1] + 1
+
+
+def test_a_dependency_runs_from_a_bars_end_down_and_into_the_next_bar() -> None:
+    drawn = render_text(_plan(("design", 0, 2), ("build", 5, 8), edges=[("design", "build")]))
+    lines = drawn.splitlines()
+    design = next(line for line in lines if line.startswith("Design"))
+    build = next(line for line in lines if line.startswith("Build"))
+    _, end = _bar_of(design)
+    start, _ = _bar_of(build)
+    assert design[end] == "┐", design
+    assert build[end] == "└" and build[start - 1] == "▶", build
+    assert set(build[end + 1 : start - 1]) <= {"─"}
+    assert "after" not in drawn
+
+
+def test_a_dependency_with_no_gap_arrives_from_above() -> None:
+    drawn = render_text(
+        _plan(("design", 0, 2), ("other", 0, 1), ("build", 2, 5), edges=[("design", "build")])
+    )
+    lines = drawn.splitlines()
+    build_row = next(n for n, line in enumerate(lines) if line.startswith("Build"))
+    start, _ = _bar_of(lines[build_row])
+    assert lines[build_row - 1][start] == "▼"
+    assert lines[0][start] == "┐"
+
+
+def test_a_dependency_never_overprints_a_bar() -> None:
+    plain_plan = _plan(("design", 0, 4), ("build", 5, 8), ("test", 1, 6), edges=[])
+    linked = _plan(("design", 0, 4), ("build", 5, 8), ("test", 1, 6), edges=[("design", "build")])
+    bars = "▒◆"
+    assert sum(render_text(plain_plan).count(glyph) for glyph in bars) == sum(
+        render_text(linked).count(glyph) for glyph in bars
+    )
+
+
+@pytest.mark.parametrize(
+    "tasks",
+    [
+        # The dependent sits above its prerequisite.
+        (("build", 5, 8), ("design", 0, 2)),
+        # A milestone right over the start of the next row: no cell between.
+        (("design", 3, 3), ("build", 3, 8)),
+        # A bar stands in the way down.
+        (("design", 0, 2), ("wall", 1, 6), ("build", 5, 8)),
+    ],
+)
+def test_a_dependency_that_cannot_be_routed_is_listed_under_the_chart(
+    tasks: tuple[tuple[str, float, float], ...],
+) -> None:
+    drawn = render_text(_plan(*tasks, edges=[("design", "build")]))
+    assert drawn.splitlines()[-1] == "Build after Design"
+    assert "▶" not in drawn and "▼" not in drawn
+    ascii_drawn = render_text(_plan(*tasks, edges=[("design", "build")]), charset="ascii")
+    assert ascii_drawn.splitlines()[-1] == "Build after Design"
+
+
+def test_a_milestone_drops_straight_onto_what_follows_it() -> None:
+    drawn = render_text(
+        _plan(("design", 3, 3), ("other", 0, 1), ("build", 3, 8), edges=[("design", "build")])
+    )
+    lines = drawn.splitlines()
+    column = lines[0].index("◆")
+    assert lines[1][column] == "▼" and lines[2][column] == "▒"
+
+
+def test_the_semester_draws_its_dependencies_within_80_columns() -> None:
+    drawn = render_text(FIXTURES["gantt-semester"], width=80)
+    assert max(cells(line) for line in drawn.splitlines()) <= 80
+    assert drawn.count("▼") == 3
+    # Proposal due → Ethics review would cross the spring term's bracket: listed instead.
+    assert drawn.splitlines()[-1] == "Ethics review after Proposal due"
+
+
+# ---------------------------------------------------------------------------
+# A timeline spaced by `at`
+# ---------------------------------------------------------------------------
+
+
+def _timeline(*ats: float | None) -> Document:
+    items: list[dict[str, Any]] = []
+    for number, at in enumerate(ats):
+        item: dict[str, Any] = {"text": f"Entry {number}"}
+        if at is not None:
+            item["at"] = at
+        items.append(item)
+    return parse_document({"version": 1, "kind": "timeline", "items": items})
+
+
+def _entry_rows(drawn: str) -> list[int]:
+    return [
+        number for number, line in enumerate(drawn.splitlines()) if "●" in line or " o " in line
+    ]
+
+
+def test_a_timeline_with_every_at_is_spaced_in_proportion() -> None:
+    """The closest pair one blank row apart; the rest in proportion to their interval."""
+    rows_ = _entry_rows(render_text(_timeline(0, 1, 4, 6)))
+    assert [later - earlier for earlier, later in pairwise(rows_)] == [2, 6, 4]
+
+
+def test_a_timeline_missing_an_at_is_evenly_spaced() -> None:
+    rows_ = _entry_rows(render_text(_timeline(0, None, 9)))
+    assert [later - earlier for earlier, later in pairwise(rows_)] == [2, 2]
+
+
+def test_a_timeline_out_of_order_is_evenly_spaced() -> None:
+    rows_ = _entry_rows(render_text(_timeline(0, 9, 3)))
+    assert [later - earlier for earlier, later in pairwise(rows_)] == [2, 2]
+
+
+def test_a_long_gap_is_compressed_and_marked() -> None:
+    drawn = render_text(_timeline(0, 1, 1000))
+    rows_ = _entry_rows(drawn)
+    gaps = [later - earlier for earlier, later in pairwise(rows_)]
+    assert gaps[0] == 2 and 2 < gaps[1] <= 10, gaps
+    lines = drawn.splitlines()
+    assert "┆" in "".join(lines[rows_[1] + 1 : rows_[2]])
+    assert "┆" not in "".join(lines[rows_[0] : rows_[1]])
+    assert ":" in render_text(_timeline(0, 1, 1000), charset="ascii")
