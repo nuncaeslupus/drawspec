@@ -121,21 +121,22 @@ class Plate:
 #: drawings: the furthest dimmest, and the two text plates, the newest output, on
 #: top and brightest.
 PLATES: Final = (
-    Plate("venn-parity", 1, "venn", 214, 34, 236, opacity=0.3, words=False, label=(216, 44)),
+    # Silhouettes behind the wordmark, large enough to show above and below it.
+    Plate("venn-parity", 1, "venn", 150, 36, 296, opacity=0.26, words=False, label=(44, 330)),
     Plate(
         "pie-team-week",
         2,
         "pie",
-        476,
-        38,
-        246,
-        opacity=0.3,
+        430,
+        40,
+        300,
+        opacity=0.26,
         words=False,
         view=(150, 366),
-        label=(640, 44),
+        label=(612, 330),
     ),
-    Plate("gantt-migration", 3, "gantt", 790, 40, 390, opacity=0.62, label=(792, 238)),
-    Plate("mindmap-offsite", 4, "mindmap", 862, 236, 372, opacity=0.85, label=(1120, 398)),
+    Plate("funnel-applications", 3, "funnel", 812, 38, 330, opacity=0.62, label=(1138, 70)),
+    Plate("mindmap-offsite", 4, "mindmap", 772, 178, 466, opacity=0.86, label=(1124, 374)),
     Plate("sequence-terminal", 5, "--format text", 868, 412, 176, charset="unicode"),
     Plate("sequence-terminal", 6, "--charset ascii", 1060, 426, 176, charset="ascii"),
 )
