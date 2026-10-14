@@ -869,3 +869,20 @@ def test_dials_stand_three_to_a_row() -> None:
     assert len(names) == 2 and names[0].count("Dial") == 2 and names[1].count("Dial") == 2
     with pytest.raises(FitError, match=r"^/meters/"):
         render_text(document, width=20)
+
+
+def test_a_timeline_spaced_across_the_float_range_renders() -> None:
+    """`at` values near the float limit still give proportional spacing, not an error."""
+    document = parse_document(
+        {
+            "version": 1,
+            "kind": "timeline",
+            "items": [
+                {"text": "Start", "at": -1e308},
+                {"text": "Middle", "at": 0},
+                {"text": "End", "at": 1e308},
+            ],
+        }
+    )
+    drawn = render_text(document)
+    assert all(label in drawn for label in ("Start", "Middle", "End"))

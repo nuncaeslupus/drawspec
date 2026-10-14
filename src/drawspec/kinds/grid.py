@@ -433,7 +433,11 @@ def _shares(items: tuple[Item, ...], count: int) -> list[float] | None:
             "nothing for the spacing to say. Give them different values, or drop "
             "`at` and let them space evenly."
         )
-    return [(value - low) / (high - low) for value in placed]
+    # Scaled first, so a span near the float limit (-1e308 to 1e308) cannot
+    # overflow to infinity; the shares are the same either way.
+    scale = max(abs(low), abs(high))
+    low, high = low / scale, high / scale
+    return [(value / scale - low) / (high - low) for value in placed]
 
 
 def _tightest(shares: list[float]) -> float:
