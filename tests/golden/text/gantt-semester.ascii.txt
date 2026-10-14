@@ -1,13 +1,15 @@
                                                       winter break
 Autumn term                  +--------------------+   :
   Lectures on study design   =====================    :
-  Write a research proposal         ==============    :
+  Write a research proposal         ==============v   :
   Proposal due                                    @   :
 Spring term                                       +----------------------------+
-  Ethics review                                   ........
+  Ethics review                                   ........v
   Collect data                                        :   ==============
-  Analyse and write up                                :          ==============
+  Analyse and write up                                :          ==============v
   Final report due                                    :                        *
                              +------+------+------+-------+------+------+------+
                                Sep    Oct    Nov    Dec     Jan    Feb    Mar
                                                     Month
+
+Ethics review after Proposal due

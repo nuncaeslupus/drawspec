@@ -47,10 +47,12 @@ from drawspec.textgrid import (
     centred,
     finished,
     label_lines,
+    line_style,
     pad,
     spelt,
     too_wide,
     widest,
+    wrapped,
 )
 from drawspec.theme import Theme
 
@@ -734,9 +736,11 @@ def gantt_text(document: Document, width: int, charset: str) -> str:
     column. Bars are filled by role, lighter to heavier — `note`, `step`,
     `strong`, `emphasis` — and a task's `done` share is the filled part, the rest
     dotted. A milestone is `◆`; a mark is a dotted line down every row, named
-    above the first. Dependencies are not drawn: finish-to-start is already what
-    the bars' order says, and a routed line through a grid of cells would cross
-    the bars it joins.
+    above the first. A dependency is a line from the end of its bar down through
+    blank cells and right into the start of the next, its head into that bar,
+    in its role's line style; one that has no such route — it would overprint a
+    bar, a label, a phase's bracket or another line — is listed under the chart
+    instead, `B after A`, so no dependency is ever silently dropped.
 
     Raises:
         FitError: the label column leaves the axis too few columns for its tick
@@ -804,6 +808,8 @@ def gantt_text(document: Document, width: int, charset: str) -> str:
     tasks = {task.id: task for task in document.tasks}
     body: list[list[str]] = []
     pointers: list[tuple[str, str]] = []
+    bar_row: dict[str, int] = {}
+    extent: dict[str, tuple[int, int]] = {}
 
     def row(text: str, pointer: str, what: str) -> list[str]:
         cells_ = list(pad(text, left + room + 1))
@@ -832,15 +838,31 @@ def gantt_text(document: Document, width: int, charset: str) -> str:
         what = f"the label {' '.join(lines)!r}"
         # The bar goes on the task's own words, under its actor when it has one.
         written = [row(" " * indent + line, pointer, what) for line in lines]
-        first = written[1 if task.actor and len(written) > 1 else 0]
+        bar_row[task.id] = len(body) - len(written) + (1 if task.actor and len(written) > 1 else 0)
+        first = body[bar_row[task.id]]
         if task.milestone:
             first[_cell(first, x(task.begins))] = TEXT_MILESTONES[charset][task.role]
+            extent[task.id] = (x(task.begins), x(task.begins) + 1)
             continue
         start, end = x(task.start), max(x(task.end), x(task.start) + 1)
+        extent[task.id] = (start, end)
         fill = TEXT_FILLS[charset][task.role]
         done = start + round((end - start) * task.done / 100) if task.done is not None else end
         for cell in range(start, end):
             first[_cell(first, cell)] = fill if cell < done else TEXT_UNDONE[charset]
+
+    # -- dependencies: down from a bar's end, right into the next bar's start ---
+    unrouted: list[tuple[int, str]] = []
+    milestones = {task.id for task in document.tasks if task.milestone}
+    for edge_position, edge in enumerate(document.edges):
+        route = _route(body, bar_row, extent, edge.source, edge.target, milestones)
+        if route is None:
+            source = " ".join(label_lines(tasks[edge.source].text, charset, "/edges"))
+            target = " ".join(label_lines(tasks[edge.target].text, charset, "/edges"))
+            unrouted.append((edge_position, f"{target} after {source}"))
+            continue
+        for number, column, part in route:
+            body[number][_cell(body[number], column)] = _dependency_glyph(part, edge.role, charset)
 
     # -- marks: a dotted line down the rows, named above them ------------------
     header: list[list[str]] = []
@@ -889,8 +911,110 @@ def gantt_text(document: Document, width: int, charset: str) -> str:
     drawn.append(
         Drawn(" " * left + centred(caption, room + 1), "/axis/label", f"the axis label {caption!r}")
     )
+    if unrouted:
+        drawn.append(Drawn(""))
+        for edge_position, dependency in unrouted:
+            pointer = f"/edges/{edge_position}"
+            for part in wrapped(dependency, width, pointer, width):
+                drawn.append(Drawn(part, pointer, f"the dependency {dependency!r}"))
     widest(drawn, width)
     return finished([line.text for line in drawn] + caption_lines(document.caption, width, charset))
+
+
+#: A dependency's line, per charset and line style: across, down, the corner it
+#: turns down by, and the corner it turns right by.
+TEXT_DEPENDENCY: Final = {
+    "unicode": {
+        "light": ("─", "│", "┐", "└"),
+        "heavy": ("━", "┃", "┓", "┗"),
+        "dashed": ("┄", "┆", "┐", "└"),
+    },
+    "ascii": {
+        "light": ("-", "|", "+", "+"),
+        "heavy": ("=", "#", "+", "+"),
+        "dashed": (".", ":", "+", "+"),
+    },
+}
+
+#: A dependency's head: into a bar from the left, and from above. Open for `weak`.
+TEXT_DEPENDENCY_HEADS: Final = {
+    "unicode": {"filled": ("▶", "▼"), "open": ("▷", "▽")},
+    "ascii": {"filled": (">", "v"), "open": (">", "v")},
+}
+
+
+def _route(
+    body: list[list[str]],
+    bar_row: dict[str, int],
+    extent: dict[str, tuple[int, int]],
+    source: str,
+    target: str,
+    milestones: set[str],
+) -> list[tuple[int, int, str]] | None:
+    """A finish-to-start line's cells and what each is, from the source's end to the head.
+
+    Out of the bar's end along its row, down a column of free cells, then right
+    along the target's row into its first cell — or, when the target starts too
+    close for that, straight down onto it. Every cell must be blank: a line never
+    overprints a bar, a label, a phase's bracket or another line. `None` when no
+    such route exists — the target is above its source, or starts left of where
+    the source ends, or something stands in every way down.
+    """
+    top, bottom = bar_row[source], bar_row[target]
+    _, after = extent[source]
+    start, _ = extent[target]
+    if bottom <= top:
+        return None
+    if source in milestones and start == after - 1 and bottom > top + 1:
+        # A milestone over the start of what follows it: straight down from it.
+        route = [(line, start, "down") for line in range(top + 1, bottom - 1)]
+        route.append((bottom - 1, start, "down_head"))
+        return route if _free(body, route) else None
+    if start < after:
+        return None
+
+    # Down then right: a corner in any column from the bar's end to two short of
+    # the target, the nearest first, so the line hugs the bar it leaves.
+    for corner in range(after, start - 1):
+        route = [(top, column, "across") for column in range(after, corner)]
+        route.append((top, corner, "turn_down"))
+        route += [(line, corner, "down") for line in range(top + 1, bottom)]
+        route.append((bottom, corner, "turn_right"))
+        route += [(bottom, column, "across") for column in range(corner + 1, start - 1)]
+        route.append((bottom, start - 1, "right_head"))
+        if _free(body, route):
+            return route
+    # Straight down onto the target's first cell, the head just above it.
+    route = [(top, column, "across") for column in range(after, start)]
+    if bottom == top + 1:
+        route.append((top, start, "down_head"))
+    else:
+        route.append((top, start, "turn_down"))
+        route += [(line, start, "down") for line in range(top + 1, bottom - 1)]
+        route.append((bottom - 1, start, "down_head"))
+    return route if _free(body, route) else None
+
+
+def _free(body: list[list[str]], route: list[tuple[int, int, str]]) -> bool:
+    """Whether every cell of `route` is blank."""
+    return all(
+        column < len(body[line]) and body[line][_cell(body[line], column)] == " "
+        for line, column, _ in route
+    )
+
+
+def _dependency_glyph(part: str, role: str, charset: str) -> str:
+    """The glyph for one part of a dependency's line, in its role's style."""
+    across, down, turn_down, turn_right = TEXT_DEPENDENCY[charset][line_style(role)]
+    right_head, down_head = TEXT_DEPENDENCY_HEADS[charset]["open" if role == "weak" else "filled"]
+    return {
+        "across": across,
+        "down": down,
+        "turn_down": turn_down,
+        "turn_right": turn_right,
+        "right_head": right_head,
+        "down_head": down_head,
+    }[part]
 
 
 def _spread(text: str) -> list[str]:
