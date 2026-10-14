@@ -56,7 +56,7 @@ usage: drawspec render [-h] [-o OUT] [--theme THEME] [--width WIDTH]
 | `--width` | Override the document's width; with --format text, the most terminal cells a line may take (default 80). |
 | `--height` | Override the document's height. |
 | `--profile` | The embedding profile. One of `inline`, `standalone`. Default `inline`. |
-| `--format` | What to write: svg; png, a raster image of the standalone drawing; or text, the diagram as plain text for a code block or a terminal (files, tree, sequence, gantt, timeline, board, stack, rag, meter). Default: from the -o extension, else svg. One of `svg`, `png`, `text`. |
+| `--format` | What to write: svg; png, a raster image of the standalone drawing; or text, the diagram as plain text for a code block or a terminal (files, tree, sequence, gantt, timeline, board, stack, rag, meter, flow, states, lanes). Default: from the -o extension, else svg. One of `svg`, `png`, `text`. |
 | `--charset` | For text: box-drawing characters, or ASCII only (default unicode). One of `unicode`, `ascii`. |
 | `--scale` | For png: pixels per SVG unit, at most 8 (default 2). |
 | `--background` | For png: theme ink on white, light ink on near-black, or no page (default light). One of `light`, `dark`, `transparent`. |

@@ -1702,7 +1702,8 @@ def tree_text(document: Document, width: int, charset: str) -> str:
 
     Raises:
         DrawspecError: the tree has cross-links, a cycle, groups or bands — a
-            graph a guide cannot draw, which waits for the text router.
+            graph a guide cannot draw. `kinds.graphtext.tree_graph_text` sends
+            all but bands to the graph router instead of here.
         FitError: a line is wider than `width`, at the widest box's pointer.
     """
     if document.groups or document.bands:

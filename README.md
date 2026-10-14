@@ -119,8 +119,8 @@ so it survives dark mode and greyscale printing. For anywhere an SVG cannot go �
 a chat, a slide, an attachment — the same drawing comes out as a PNG on a light,
 dark or transparent background (`pip install 'drawspec[png]'`, one self-contained
 wheel; no PDF, no JPEG). And for where no picture draws — a terminal, a commit
-message, a code block — nine kinds come out as plain text, 80 columns, box-drawing
-or ASCII.
+message, a code block — twelve kinds, flows and state machines among them, come out
+as plain text, 80 columns, box-drawing or ASCII.
 
 ## What it looks like
 

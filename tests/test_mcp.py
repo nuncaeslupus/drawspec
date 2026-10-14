@@ -216,9 +216,19 @@ def test_render_returns_plain_text_when_asked(client: Client) -> None:
 
 
 def test_a_kind_with_no_text_form_is_a_located_refusal(client: Client) -> None:
-    result = client.tool("render", document=GOOD, format="text")
+    pie = {
+        "version": 1,
+        "kind": "pie",
+        "parts": [{"text": "A", "amount": 1}, {"text": "B", "amount": 2}],
+    }
+    result = client.tool("render", document=pie, format="text")
     assert result.get("isError"), result
     assert "`sequence`" in _body(result)["message"]
+
+
+def test_a_flow_renders_as_text(client: Client) -> None:
+    result = client.tool("render", document=GOOD, format="text")
+    assert not result.get("isError"), result
 
 
 def test_an_out_of_range_scale_is_a_refusal_not_a_crash(client: Client) -> None:

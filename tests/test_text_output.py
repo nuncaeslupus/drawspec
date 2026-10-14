@@ -36,10 +36,15 @@ from drawspec.errors import DrawspecError, FitError
 from drawspec.examples import EXAMPLES
 from drawspec.filetree import rows, text
 from drawspec.kinds import TEXT_KINDS
+from drawspec.kinds.graphtext import GRAPH_TEXT_KINDS
 from drawspec.schema import Document, load_document, parse_document
 from drawspec.textgrid import cells, plain
 
 REFERENCE: Final = Path(__file__).resolve().parent.parent / "docs" / "reference"
+
+#: The kinds phase 1 gave a text form. The graph kinds of phase 2 are gated by
+#: `tests/test_text_graph.py`, which holds them to these same invariants.
+PHASE_ONE: Final = tuple(kind for kind in TEXT_KINDS if kind not in GRAPH_TEXT_KINDS)
 GOLDEN: Final = Path(__file__).resolve().parent / "golden" / "text"
 
 #: Set to regenerate the golden files after a change has been looked at by eye.
@@ -78,14 +83,14 @@ CHARSETS: Final = ("unicode", "ascii")
 def _references() -> Iterator[tuple[str, Path]]:
     for path in sorted(REFERENCE.glob("*.json")):
         kind = json.loads(path.read_text(encoding="utf-8"))["kind"]
-        if kind in TEXT_KINDS and path.stem not in NO_TEXT:
+        if kind in PHASE_ONE and path.stem not in NO_TEXT:
             yield path.stem, path
 
 
 #: Every document the gates run over: each kind's minimal example, and every
 #: reference document of a kind with a text form.
 FIXTURES: Final = {
-    **{f"example-{kind}": parse_document(EXAMPLES[kind]) for kind in TEXT_KINDS},
+    **{f"example-{kind}": parse_document(EXAMPLES[kind]) for kind in PHASE_ONE},
     **{name: load_document(path) for name, path in _references()},
 }
 
@@ -374,8 +379,8 @@ def test_golden(kind: str, charset: str) -> None:
     assert drawn == path.read_text(encoding="utf-8")
 
 
-def test_every_kind_with_a_text_form_has_a_golden() -> None:
-    assert sorted(GOLDENS) == sorted(TEXT_KINDS)
+def test_every_phase_one_kind_has_a_golden() -> None:
+    assert sorted(GOLDENS) == sorted(PHASE_ONE)
 
 
 # ---------------------------------------------------------------------------
@@ -383,7 +388,7 @@ def test_every_kind_with_a_text_form_has_a_golden() -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("kind", ["flow", "pie", "venn", "chart", "lanes"])
+@pytest.mark.parametrize("kind", ["pie", "venn", "chart", "sankey", "mindmap"])
 def test_a_kind_without_a_text_form_refuses_naming_the_kinds_that_have_one(kind: str) -> None:
     with pytest.raises(DrawspecError) as refused:
         render_text(parse_document(EXAMPLES[kind]))
@@ -399,11 +404,13 @@ def test_only_a_bar_meter_has_a_text_form() -> None:
         render_text(dial)
 
 
-def test_a_tree_with_a_cross_link_refuses_rather_than_drawing_it_twice() -> None:
+def test_a_tree_with_a_cross_link_is_routed_rather_than_drawn_twice() -> None:
+    """Guides hang each node once; a second parent makes it a graph, drawn as phase 2 draws one."""
     tree = _tree()
     tree["edges"].append({"from": "c", "to": "b"})
-    with pytest.raises(DrawspecError, match=r"^/edges/2: .*cross-links"):
-        render_text(parse_document(tree))
+    drawn = render_text(parse_document(tree))
+    assert drawn.count("Child") == 1
+    assert "├─" not in drawn and "▼" in drawn
 
 
 @pytest.mark.parametrize("name", [name for name in FIXTURES if FIXTURES[name].kind == "files"])
