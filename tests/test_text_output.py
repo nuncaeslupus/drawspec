@@ -458,3 +458,12 @@ def test_the_cli_refuses_a_text_option_it_cannot_honour(
     source = tmp_path / "stack.json"
     source.write_text(json.dumps(_stack()), encoding="utf-8")
     assert main(["render", str(source), *arguments]) == 2
+
+
+def test_files_text_is_not_held_to_the_width() -> None:
+    """A `files` tree wider than `width` prints as it always did, for now."""
+    document = parse_document(
+        {"version": 1, "kind": "files", "entries": [{"path": "a/" + "b" * 120 + ".txt"}]}
+    )
+    drawn = render_text(document, width=40)
+    assert max(len(line) for line in drawn.splitlines()) > 40

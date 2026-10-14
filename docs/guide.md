@@ -401,7 +401,8 @@ get one.
   wrap (a card, a note, a message) is wrapped here too, at spaces only.
 * **`--charset ascii`** draws with bytes below 128 only, spelling `→` as `->` and
   refusing a character with no ASCII spelling. A `files` tree with
-  `"style": "ascii"` is ASCII either way.
+  `"style": "ascii"` is ASCII either way, and a `files` tree is not held to
+  `--width` for now: it prints as it always did.
 * **Roles are glyphs.** `emphasis` is a heavy box (`┏━┓`), `terminal` a rounded
   one (`╭─╮`), `start` a double one (`╔═╗`), `note` a dashed one; a `strong` edge
   is `━━▶`, a `weak` one `┄┄▷`, an `async` one `──▷`; a status is the `+ ~ -`

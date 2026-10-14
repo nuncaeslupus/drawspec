@@ -25,8 +25,8 @@ against it would stop working. Everything below is about the *package*.
   is two). A drawing wider than `width` is refused at its widest thing's pointer, naming
   the width it needs; text is wrapped only where the SVG wraps it, and only at spaces.
   `ascii` is bytes below 128 only. A `files` tree's output is unchanged, and its
-  `style: "ascii"` still selects ASCII; like every text drawing, one wider than
-  `--width` (80 by default) is now refused rather than written over the edge.
+  `style: "ascii"` still selects ASCII; unlike the other kinds, it is not held to
+  `--width` for now, so a wide tree prints as it always did.
 
 ### Changed
 
