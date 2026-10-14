@@ -46,8 +46,10 @@ from drawspec.emit import PROFILES
 from drawspec.errors import DocumentError, DrawspecError, ThemeError
 from drawspec.examples import EXAMPLES, PURPOSE
 from drawspec.export import BACKGROUNDS, DEFAULT_SCALE, MAX_SCALE, render_png
+from drawspec.kinds import TEXT_KINDS
 from drawspec.render import render_document, render_text
 from drawspec.schema import KINDS, Document, load_document, parse_document, schema_json
+from drawspec.textgrid import CHARSETS, DEFAULT_WIDTH
 from drawspec.theme import load_theme
 
 #: The conventional name for standard input, as a document argument. Reading a
@@ -76,17 +78,25 @@ def build_parser() -> argparse.ArgumentParser:
 
     render = commands.add_parser(
         "render",
-        help="render a document to SVG or PNG",
+        help="render a document to SVG, PNG or plain text",
         description=(
             "Read a document, draw it, and write the SVG to stdout or to a file. "
             "With --format png, or an -o ending in .png, write a PNG instead "
-            "(needs pip install 'drawspec[png]')."
+            "(needs pip install 'drawspec[png]'). With --format text, or an -o ending in "
+            ".txt, write the diagram as plain text, refused when it is wider than --width."
         ),
     )
     render.add_argument("document", help="the document to render")
     render.add_argument("-o", "--out", help="write here instead of stdout")
     render.add_argument("--theme", help="a bundled theme name or a theme file")
-    render.add_argument("--width", type=float, help="override the document's width")
+    render.add_argument(
+        "--width",
+        type=float,
+        help=(
+            "override the document's width; with --format text, the most terminal cells a "
+            f"line may take (default {DEFAULT_WIDTH})"
+        ),
+    )
     render.add_argument("--height", type=float, help="override the document's height")
     render.add_argument(
         "--profile", choices=PROFILES, default="inline", help="the embedding profile"
@@ -95,10 +105,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--format",
         choices=FORMATS,
         help=(
-            "what to write: svg; png, a raster image of the standalone drawing; or text, a "
-            "`files` tree as plain text for a code block. Default: from the -o extension, "
-            "else svg"
+            "what to write: svg; png, a raster image of the standalone drawing; or text, the "
+            f"diagram as plain text for a code block or a terminal ({', '.join(TEXT_KINDS)}). "
+            "Default: from the -o extension, else svg"
         ),
+    )
+    render.add_argument(
+        "--charset",
+        choices=CHARSETS,
+        help="for text: box-drawing characters, or ASCII only (default unicode)",
     )
     render.add_argument(
         "--scale",
@@ -245,6 +260,16 @@ def _render(arguments: argparse.Namespace) -> int:
     if output_format != "png" and (arguments.scale is not None or arguments.background):
         print("drawspec: --scale and --background apply to --format png only", file=sys.stderr)
         return USAGE
+    if output_format != "text" and arguments.charset:
+        print("drawspec: --charset applies to --format text only", file=sys.stderr)
+        return USAGE
+    if (
+        output_format == "text"
+        and arguments.width is not None
+        and (arguments.width < 1 or arguments.width != int(arguments.width))
+    ):
+        print("drawspec: with --format text, --width is a whole number of columns", file=sys.stderr)
+        return USAGE
     if output_format == "png" and not arguments.out and sys.stdout.isatty():
         print(
             "drawspec: a PNG is binary and stdout is a terminal; pass -o file.png "
@@ -255,7 +280,7 @@ def _render(arguments: argparse.Namespace) -> int:
 
     try:
         document = _read(arguments.document)
-        if arguments.width is not None:
+        if arguments.width is not None and output_format != "text":
             document = replace(document, width=arguments.width)
         if arguments.height is not None:
             document = replace(document, height=arguments.height)
@@ -267,7 +292,11 @@ def _render(arguments: argparse.Namespace) -> int:
                 background=arguments.background or "light",
             )
         elif output_format == "text":
-            svg = render_text(document).rstrip("\n")
+            svg = render_text(
+                document,
+                width=DEFAULT_WIDTH if arguments.width is None else int(arguments.width),
+                charset=arguments.charset or "unicode",
+            ).rstrip("\n")
         else:
             svg = render_document(document, arguments.theme, arguments.profile)
     except DrawspecError as error:

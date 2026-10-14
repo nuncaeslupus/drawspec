@@ -31,7 +31,19 @@ from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextLine, T
 from drawspec.schema import RAG_VALUES, Document
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
-from drawspec.theme import Theme
+from drawspec.textgrid import (
+    STRAIGHT,
+    Drawn,
+    caption_lines,
+    cells,
+    finished,
+    label_lines,
+    pad,
+    too_wide,
+    widest,
+)
+from drawspec.textgrid import wrapped as words_of
+from drawspec.theme import RagStyle, Theme
 
 #: The most of the width the name column may take.
 NAME_SHARE: Final = 0.3
@@ -328,4 +340,105 @@ def _arrow(trend: str, cx: float, cy: float, size: float, theme: Theme) -> list[
     ]
 
 
-__all__ = ["RagDrawing", "rag_drawing", "rag_scene"]
+# ---------------------------------------------------------------------------
+# Text: the report as the table it already is
+# ---------------------------------------------------------------------------
+
+#: The default theme's shapes, as characters: square, triangle, circle.
+TEXT_MARKS: Final = {
+    "unicode": {"red": "■", "amber": "▲", "green": "●"},
+    "ascii": {"red": "#", "amber": "^", "green": "o"},
+}
+
+#: A trend's arrow, as a character: up for better, across for same, down for worse.
+TEXT_TRENDS: Final = {
+    "unicode": {"better": "↑", "same": "→", "worse": "↓"},
+    "ascii": {"better": "^", "same": ">", "worse": "v"},
+}
+
+#: Cells between two columns.
+TEXT_COLUMN_GAP: Final = 3
+
+
+def rag_text(document: Document, width: int, charset: str) -> str:
+    """A `rag` report as plain text: a row per workstream, every column lined up.
+
+    The layout's own table: the name (its caption under it), the rating said
+    twice without colour — the default theme's shape as a character and its word
+    in capitals — the trend as an arrow and its word, and the note in the rest of
+    the width, wrapped at spaces as the SVG wraps it. Rows are ruled apart.
+
+    Raises:
+        FitError: the names and marks leave the notes no room for their longest
+            word, at that note's pointer.
+    """
+    rows = document.rag_rows
+    style = RagStyle()
+    names = [
+        label_lines(row.text, charset, f"/rows/{position}/text")
+        for position, row in enumerate(rows)
+    ]
+    marks = [f"{TEXT_MARKS[charset][row.rag]} {style.word(row.rag).upper()}" for row in rows]
+    trends = [
+        f"{TEXT_TRENDS[charset][row.trend]} {style.word(row.trend)}" if row.trend else ""
+        for row in rows
+    ]
+    name_width = max(cells(line) for lines in names for line in lines)
+    mark_width = max(cells(mark) for mark in marks)
+    trend_width = max(cells(trend) for trend in trends)
+    columns = [name_width, mark_width] + ([trend_width] if trend_width else [])
+    used = sum(columns) + TEXT_COLUMN_GAP * (len(columns) - 1)
+    room = width - used - TEXT_COLUMN_GAP
+    has_note = any(row.note for row in rows)
+    # The notes need their longest word, and ten cells at least to read as a column.
+    least = max(
+        [10]
+        + [
+            cells(word)
+            for position, row in enumerate(rows)
+            for word in " ".join(label_lines(row.note, charset, f"/rows/{position}/note")).split()
+        ]
+    )
+    if has_note and room < least:
+        position = max(
+            range(len(rows)), key=lambda number: max(cells(line) for line in names[number])
+        )
+        raise too_wide(
+            f"/rows/{position}/text",
+            f"the name {names[position][0]!r}, with the marks, trends and notes beside it,",
+            used + TEXT_COLUMN_GAP + least,
+            width,
+        )
+    gap = " " * TEXT_COLUMN_GAP
+    drawn: list[Drawn] = []
+    full = used + (TEXT_COLUMN_GAP + room if has_note else 0)
+    for position, row in enumerate(rows):
+        pointer = f"/rows/{position}/text"
+        notes = (
+            [
+                line
+                for text in label_lines(row.note, charset, f"/rows/{position}/note")
+                for line in words_of(
+                    text, room, f"/rows/{position}/note", width, used + TEXT_COLUMN_GAP
+                )
+            ]
+            if row.note
+            else []
+        )
+        for line in range(max(len(names[position]), len(notes), 1)):
+            parts = [
+                pad(names[position][line] if line < len(names[position]) else "", name_width),
+                pad(marks[position] if line == 0 else "", mark_width),
+            ]
+            if trend_width:
+                parts.append(pad(trends[position] if line == 0 else "", trend_width))
+            if has_note:
+                parts.append(notes[line] if line < len(notes) else "")
+            drawn.append(Drawn(gap.join(parts), pointer, f"the row {names[position][0]!r}"))
+        if position < len(rows) - 1:
+            drawn.append(Drawn(STRAIGHT[charset]["light"][0] * full))
+    widest(drawn, width)
+    return finished([line.text for line in drawn] + caption_lines(document.caption, width, charset))
+
+
+__all__ = ["RagDrawing", "rag_drawing", "rag_scene", "rag_text"]

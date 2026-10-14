@@ -53,8 +53,10 @@ from drawspec import __version__
 from drawspec.errors import DrawspecError
 from drawspec.examples import PURPOSE
 from drawspec.export import BACKGROUNDS, DEFAULT_SCALE, MAX_SCALE, render_png
-from drawspec.render import render_document
+from drawspec.kinds import TEXT_KINDS
+from drawspec.render import render_document, render_text
 from drawspec.schema import KINDS, SCHEMA_ID, Document, parse_document
+from drawspec.textgrid import CHARSETS, DEFAULT_WIDTH
 
 #: What every tool is handed. Spelled once because all three take the same
 #: thing: an agent that has learnt one call has learnt all of them.
@@ -89,12 +91,13 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
     ),
     types.Tool(
         name="render",
-        title="Render a drawspec document to SVG or PNG",
+        title="Render a drawspec document to SVG, PNG or text",
         description=(
             "Draw the document and return the SVG. The output is safe to paste inline into "
             "a Markdown page: no global styles, no colliding ids, and no meaning carried by "
             "colour alone. With format `png` it returns a PNG image instead, for a chat, a "
-            "slide or an attachment (needs the server's `drawspec[png]` extra). Refuses "
+            "slide or an attachment (needs the server's `drawspec[png]` extra); with format "
+            "`text`, the diagram as plain text, for the kinds that have a text form. Refuses "
             "with located violations exactly as `validate` does."
         ),
         input_schema={
@@ -102,12 +105,27 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
             "properties": {
                 "document": _DOCUMENT,
                 "theme": _THEME,
-                "width": {"type": "number", "description": "Override the document's width."},
+                "width": {
+                    "type": "number",
+                    "description": (
+                        "Override the document's width. With format `text`, the most terminal "
+                        f"cells a line may take (default {DEFAULT_WIDTH})."
+                    ),
+                },
                 "height": {"type": "number", "description": "Override the document's height."},
                 "format": {
                     "type": "string",
-                    "enum": ["svg", "png"],
-                    "description": "svg (default) or png.",
+                    "enum": ["svg", "png", "text"],
+                    "description": (
+                        "svg (default), png, or text: the diagram as plain text for a code "
+                        f"block or a terminal, for the kinds {', '.join(TEXT_KINDS)}."
+                    ),
+                },
+                "charset": {
+                    "type": "string",
+                    "enum": list(CHARSETS),
+                    "description": "text only: box-drawing characters, or ASCII only "
+                    "(default unicode).",
                 },
                 "scale": {
                     "type": "number",
@@ -184,13 +202,20 @@ def _validate(arguments: dict[str, Any]) -> dict[str, Any]:
 
 
 def _render(arguments: dict[str, Any]) -> str | bytes:
-    """The SVG, or the PNG when `format` asks for one.
+    """The SVG, or the PNG or the plain text when `format` asks for one.
 
     The overrides are applied to the *document*, before anything is drawn: width
     is an input to wrapping, to sizing and to the direction choice, so applying
     it afterwards would scale a picture that had already decided it fitted.
     """
     document = _document(arguments)
+    if arguments.get("format") == "text":
+        width = arguments.get("width")
+        return render_text(
+            document,
+            width=DEFAULT_WIDTH if width is None else int(width),
+            charset=str(arguments.get("charset", "unicode")),
+        )
     if arguments.get("width") is not None:
         document = replace(document, width=float(arguments["width"]))
     if arguments.get("height") is not None:

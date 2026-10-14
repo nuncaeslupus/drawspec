@@ -1,6 +1,6 @@
 # Proposal: text output — diagrams as plain text for code blocks and terminals
 
-Status: **accepted** — tasks `t-f26679ad` (phase 1) and `t-5355943b` (phase 2). Size **M** for phase 1 (one emitter, eight kinds that already sit
+Status: **phase 1 built** (see *As built* at the end); phase 2 accepted — tasks `t-f26679ad` (phase 1) and `t-5355943b` (phase 2). Size **M** for phase 1 (one emitter, eight kinds that already sit
 on a grid), **L** for phase 2 (graph kinds, which need a character-grid router).
 Depends on an owner decision: which phase, and whether the evidence below is enough.
 
@@ -117,3 +117,40 @@ the document already is.
 3. **Width:** default 80. Graph kinds are the risk: phase 2 measures how many reference
    flows fit at 80 / 100 / 120 before the default is settled, and proposes a per-kind
    default if 80 refuses too many. `--width` always overrides.
+
+## As built
+
+Phase 1, as `drawspec.textgrid` (cells, boxes, the junction grid, the one too-wide
+refusal) and a `<kind>_text(document, width, charset)` beside each kind's layout,
+dispatched by `drawspec.kinds.TEXT_FORMS`. Gated by `tests/test_text_output.py`: every
+reference document of the nine kinds, in both charsets, plus a golden file per kind
+per charset under `tests/golden/text/`. What changed or was decided:
+
+* **Measured at 80:** every phase-1 reference document fits except four, which refuse
+  at 80 naming the width they need — `sequence-async-export` (83), `sequence-drain`
+  (85), `sequence-dns` (93) and `board-onboarding` (88, five columns and the word
+  *Thirty-minute*). The test lists them; the width a refusal names is checked to be
+  enough. A sequence too wide is first tried with its heads, labels and notes wrapped
+  narrower, as the SVG's is.
+* **`start` is a double box** (`╔═╗`, ASCII `*-*`). The table gave `terminal` the rounded
+  one, and `start` — a thinner pill in the SVG — must not draw like it.
+* **An `async` message is `──▷`, a `weak` reply `┄┄▷`:** the default theme draws `async`
+  solid with an open head and `weak` dashed with one, so the table's single "dashed /
+  async" row is split. In ASCII the open head is `>>`.
+* **`gantt` bars are filled by role**, lighter to heavier (`░ ▒ ▓ █`, ASCII `. = # @`),
+  the undone part of a `done` bar dotted, and **dependencies are not drawn**: a
+  finish-to-start line routed through cells would cross the bars it joins, and the
+  bars' order already says it.
+* **`rag` uses the default theme's words and shapes** (`■ RED`, `▲ AMBER`, `● GREEN`,
+  ASCII `# ^ o`): text has no theme. **`meter` is `bar` only**, `[█████░░░│░░]`, the
+  target a bar across the track, the readout's lines under one another; `thermometer`,
+  `dial` and `bullet` refuse.
+* **`tree`** draws its boxes on `files`' guides, a class named after its box and an
+  edge's label on its stub; a tree with cross-links, a cycle, groups or bands refuses,
+  as phase 2's work.
+* **A `timeline` is drawn down the page** with even rows, not spaced by `at`; a span is
+  a bracket in a lane beside the entries, each lane with its own column for its names.
+* **ASCII spells** the common punctuation (`→` as `->`, `—` as `--`, accents dropped)
+  and refuses a character with no spelling, at its pointer.
+* **`files` is unchanged** byte for byte, except that a tree wider than `--width` is now
+  refused like every other text drawing.

@@ -43,6 +43,21 @@ from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextLine, T
 from drawspec.schema import Document, Fragment, Message
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
+from drawspec.textgrid import (
+    Grid,
+    box_glyphs,
+    boxed,
+    caption_lines,
+    cells,
+    centred,
+    finished,
+    head,
+    label_lines,
+    line_style,
+    plain,
+    spelt,
+    too_wide,
+)
 from drawspec.theme import Theme
 
 #: The role a fragment's frame and its tab are drawn in: a thin solid line, so
@@ -835,4 +850,332 @@ def _lines(block: TextBlock, x: float, top: float, role: str, anchor: str) -> li
     return lines
 
 
-__all__ = ["Activation", "SequenceDrawing", "activations", "sequence_drawing", "sequence_scene"]
+# ---------------------------------------------------------------------------
+# Text: lifelines as columns, messages as rows
+# ---------------------------------------------------------------------------
+
+#: The stick figure an `actor` participant is drawn as, over its name.
+TEXT_FIGURE: Final = ("o", "/|\\")
+
+#: Cells between two heads, and between a label and the lifelines at its ends.
+TEXT_GAP: Final = 2
+
+#: How far right of its lifeline a message to itself turns back, in cells.
+TEXT_HOOK: Final = 3
+
+
+def sequence_text(document: Document, width: int, charset: str) -> str:
+    """A `sequence` as plain text: a column per participant, a row per message.
+
+    The layout's own topology: participants left to right in the order written,
+    messages top to bottom, columns as far apart as their labels need (each
+    message, shortest span first, widens the gaps it crosses evenly), and the
+    activation bars `activations` infers drawn heavy on the lifeline. A call is
+    `──▶`, a reply `◁┄┄`, an async message `──▷`, a `strong` one `━━▶`. A
+    fragment is a frame round its rows with its operator and guard on the top
+    edge; a group of lifelines is a bracket over its heads; a note is written
+    right of the drawing, on its message's rows.
+
+    Like the SVG, a diagram too wide is tried again with its heads, labels and
+    notes wrapped narrower, at spaces, before it is refused.
+
+    Raises:
+        FitError: not even the narrowest wrap fits `width`, naming the longest label.
+    """
+    refusal: FitError | None = None
+    for limit in TEXT_WRAPS:
+        lines, needed = _sequence_lines(document, charset, limit)
+        if needed <= width:
+            return finished(lines + caption_lines(document.caption, width, charset))
+        refusal = _too_wide(document, charset, needed, width)
+    assert refusal is not None
+    raise refusal
+
+
+#: The widest a head, a label or a note may be set, in cells, tried in turn:
+#: unwrapped first, then narrower until the diagram fits.
+TEXT_WRAPS: Final = (None, 32, 26, 22, 18, 14, 10)
+
+
+def _loose(lines: Sequence[str], limit: int | None) -> list[str]:
+    """`lines` broken at spaces to at most `limit` cells; a longer word keeps its own line."""
+    if limit is None:
+        return list(lines)
+    out: list[str] = []
+    for text in lines:
+        line = ""
+        for word in text.split(" "):
+            if not word:
+                continue
+            candidate = f"{line} {word}" if line else word
+            if line and cells(candidate) > limit:
+                out.append(line)
+                line = word
+            else:
+                line = candidate
+        out.append(line)
+    return out
+
+
+def _sequence_lines(document: Document, charset: str, limit: int | None) -> tuple[list[str], int]:
+    """The drawing at one wrap width, and how wide it came out."""
+    count = len(document.participants)
+    index = {participant.id: position for position, participant in enumerate(document.participants)}
+    rows_of = {message.id: row for row, message in enumerate(document.messages) if message.id}
+
+    # -- heads ----------------------------------------------------------------
+    names = [
+        _loose(label_lines(participant.text, charset, f"/participants/{position}/text"), limit)
+        for position, participant in enumerate(document.participants)
+    ]
+    inner = [max(cells(line) for line in lines) for lines in names]
+    groups = [
+        (sorted(index[member] for member in group.members), position, group)
+        for position, group in enumerate(document.groups)
+    ]
+    titles = [
+        spelt(plain(group.text), charset, f"/groups/{position}/text")
+        for position, group in enumerate(document.groups)
+    ]
+    for members, position, _ in groups:
+        if len(members) == 1:
+            inner[members[0]] = max(inner[members[0]], cells(titles[position]) + 2)
+    heads: list[list[str]] = []
+    for position, participant in enumerate(document.participants):
+        if participant.role == ACTOR:
+            heads.append(
+                [
+                    *(centred(line, inner[position]) for line in TEXT_FIGURE),
+                    *(centred(line, inner[position]) for line in names[position]),
+                ]
+            )
+        else:
+            heads.append(
+                boxed(names[position], participant.role, charset, inner[position], "centre")
+            )
+    head_width = [max(cells(line) for line in lines) for lines in heads]
+    left_half = [(wide - 1) // 2 for wide in head_width]
+    right_half = [wide - 1 - half for wide, half in zip(head_width, left_half, strict=True)]
+
+    # -- columns: each gap as wide as the heads, then as the labels need -------
+    gaps = [right_half[i] + left_half[i + 1] + TEXT_GAP for i in range(count - 1)]
+    labels = [
+        _loose([" ".join(label_lines(message.text, charset, f"/messages/{row}/text"))], limit)
+        if message.text
+        else []
+        for row, message in enumerate(document.messages)
+    ]
+    notes = [
+        _loose([" ".join(label_lines(message.note, charset, f"/messages/{row}/note"))], limit)
+        if message.note
+        else []
+        for row, message in enumerate(document.messages)
+    ]
+    reach = [max((cells(line) for line in lines), default=0) for lines in labels]
+    needs: list[tuple[int, int, int]] = []
+    for row, message in enumerate(document.messages):
+        low, high = sorted((index[message.source], index[message.target]))
+        if low != high:
+            needs.append((low, high, max(reach[row] + 2 * TEXT_GAP, 4)))
+        elif low < count - 1:
+            needs.append((low, low + 1, TEXT_HOOK + 2 + reach[row] + TEXT_GAP))
+    for members, position, _ in groups:
+        if len(members) > 1:
+            first, last = members[0], members[-1]
+            wanted = cells(titles[position]) + 6 - left_half[first] - right_half[last]
+            needs.append((first, last, wanted))
+    for low, high, need in sorted(needs, key=lambda entry: entry[1] - entry[0]):
+        short = need - sum(gaps[low:high])
+        if short > 0:
+            share, odd = divmod(short, high - low)
+            for gap in range(low, high):
+                gaps[gap] += share + (1 if gap - low < odd else 0)
+    xs = [left_half[0]]
+    for gap in gaps:
+        xs.append(xs[-1] + gap)
+
+    # -- rows -----------------------------------------------------------------
+    spans = [(rows_of[fragment.start], rows_of[fragment.end]) for fragment in document.fragments]
+
+    def inside(outer: int, inner: int) -> bool:
+        """Whether fragment `inner` is framed inside fragment `outer`."""
+        (first, last), (start, end) = spans[outer], spans[inner]
+        same = (first, last) == (start, end)
+        return outer != inner and first <= start and end <= last and (not same or outer < inner)
+
+    depth = [sum(1 for outer in range(len(spans)) if inside(outer, p)) for p in range(len(spans))]
+    top_rows = (1 if groups else 0) + max(len(lines) for lines in heads)
+    layout: list[tuple[str, int, int]] = []
+    for row in range(len(document.messages)):
+        for position in sorted(
+            (p for p, (start, _) in enumerate(spans) if start == row), key=lambda p: depth[p]
+        ):
+            layout.append(("top", position, 0))
+        for position, fragment in enumerate(document.fragments):
+            for number, branch in enumerate(fragment.branches):
+                if rows_of[branch.at] == row:
+                    layout.append(("else", position, number))
+        for number in range(max(len(labels[row]), len(notes[row]) - 1, 1)):
+            layout.append(("label", row, number))
+        layout.append(("arrow", row, 0))
+        for position in sorted(
+            (p for p, (_, end) in enumerate(spans) if end == row), key=lambda p: -depth[p]
+        ):
+            layout.append(("bottom", position, 0))
+    at = {entry: top_rows + number for number, entry in enumerate(layout)}
+    last_row = top_rows + len(layout)
+
+    # -- frames, innermost first, each clear of what it holds -----------------
+    extent: dict[int, tuple[int, int]] = {}
+    for position in sorted(range(len(spans)), key=lambda p: -depth[p]):
+        start, end = spans[position]
+        involved = [
+            index[participant]
+            for message in document.messages[start : end + 1]
+            for participant in (message.source, message.target)
+        ]
+        low, high = min(involved), max(involved)
+        left, right = xs[low] - TEXT_GAP, xs[high] + TEXT_GAP
+        for row in range(start, end + 1):
+            message = document.messages[row]
+            if message.source == message.target:
+                hook = xs[index[message.source]] + TEXT_HOOK + 2 + reach[row] + 1
+                right = max(right, hook)
+        for other, (first, last) in extent.items():
+            if inside(position, other):
+                left, right = min(left, first - TEXT_GAP), max(right, last + TEXT_GAP)
+        fragment = document.fragments[position]
+        right = max(
+            right, left + cells(_tab(fragment.operator, fragment.text, charset, position)) + 5
+        )
+        for number, branch in enumerate(fragment.branches):
+            if branch.text:
+                guard = _guard(branch.text, charset, f"/fragments/{position}/else/{number}/text")
+                right = max(right, left + cells(guard) + 5)
+        while left in xs:
+            left -= 1
+        while right in xs:
+            right += 1
+        extent[position] = (left, right)
+    shift = max([0, *(-left for left, _ in extent.values())])
+    xs = [x + shift for x in xs]
+    extent = {position: (left + shift, right + shift) for position, (left, right) in extent.items()}
+
+    grid = Grid(charset)
+    # Group brackets over the heads.
+    for members, position, _ in groups:
+        first, last = members[0], members[-1]
+        left = xs[first] - left_half[first]
+        right = xs[last] + right_half[last]
+        grid.horizontal(0, left, right, "dashed")
+        grid.arm(0, left, "s", "dashed")
+        grid.arm(0, right, "s", "dashed")
+        grid.text(0, left + 2, f" {titles[position]} ")
+    # Heads, bottom-aligned, and the lifelines under them.
+    for position, lines in enumerate(heads):
+        top = top_rows - len(lines)
+        left = xs[position] - left_half[position]
+        for offset, line in enumerate(lines):
+            grid.text(top + offset, left, line)
+        grid.vertical(xs[position], top_rows, last_row)
+        if document.participants[position].role != ACTOR:
+            grid.text(
+                top_rows - 1,
+                xs[position],
+                box_glyphs(document.participants[position].role, charset).down,
+            )
+            grid.arm(top_rows, xs[position], "n")
+    for bar in activations(document):
+        grid.vertical(
+            xs[bar.participant], at[("arrow", bar.start, 0)], at[("arrow", bar.end, 0)], "heavy"
+        )
+    # Frames.
+    for position, (left, right) in extent.items():
+        top, bottom = at[("top", position, 0)], at[("bottom", position, 0)]
+        grid.horizontal(top, left, right)
+        grid.horizontal(bottom, left, right)
+        grid.vertical(left, top, bottom)
+        grid.vertical(right, top, bottom)
+        fragment = document.fragments[position]
+        grid.text(top, left + 2, f" {_tab(fragment.operator, fragment.text, charset, position)} ")
+        for number, branch in enumerate(fragment.branches):
+            row = at[("else", position, number)]
+            grid.horizontal(row, left, right, "dashed")
+            for side in (left, right):
+                grid.arm(row, side, "n")
+                grid.arm(row, side, "s")
+            if branch.text:
+                guard = _guard(branch.text, charset, f"/fragments/{position}/else/{number}/text")
+                grid.text(row, left + 2, f" {guard} ")
+    # Messages.
+    for row, message in enumerate(document.messages):
+        source, target = xs[index[message.source]], xs[index[message.target]]
+        label_row, arrow_row = at[("label", row, 0)], at[("arrow", row, 0)]
+        style = line_style(message.role)
+        if source == target:
+            grid.horizontal(label_row, source, source + TEXT_HOOK, style)
+            grid.vertical(source + TEXT_HOOK, label_row, arrow_row, style)
+            grid.arm(label_row, source + TEXT_HOOK, "w", style)
+            grid.arm(arrow_row, source + TEXT_HOOK, "w", style)
+            tip = head(message.role, charset, rightward=False)
+            grid.horizontal(arrow_row, source + cells(tip) + 1, source + TEXT_HOOK, style)
+            grid.text(arrow_row, source + 1, tip)
+            for offset, line in enumerate(labels[row]):
+                grid.text(label_row + offset, source + TEXT_HOOK + 2, line)
+        else:
+            rightward = target > source
+            tip = head(message.role, charset, rightward)
+            if rightward:
+                grid.horizontal(arrow_row, source, target - cells(tip) - 1, style)
+                grid.text(arrow_row, target - cells(tip), tip)
+            else:
+                grid.horizontal(arrow_row, target + cells(tip) + 1, source, style)
+                grid.text(arrow_row, target + 1, tip)
+            for offset, line in enumerate(labels[row]):
+                grid.text(label_row + offset, min(source, target) + TEXT_GAP, line)
+    drawing = grid.width
+    for row in range(len(document.messages)):
+        for offset, line in enumerate(notes[row]):
+            grid.text(at[("label", row, 0)] + offset, drawing + TEXT_GAP, line)
+    lines = grid.lines()
+    return lines, max(cells(line) for line in lines)
+
+
+def _tab(operator: str, text: str, charset: str, position: int) -> str:
+    """A fragment's tab as text: its operator, then its guard in brackets."""
+    if not text:
+        return operator
+    return f"{operator} {_guard(text, charset, f'/fragments/{position}/text')}"
+
+
+def _guard(text: str, charset: str, pointer: str) -> str:
+    """A guard as the SVG writes it: in brackets."""
+    return f"[{spelt(plain(text), charset, pointer)}]"
+
+
+def _too_wide(document: Document, charset: str, needed: int, width: int) -> FitError:
+    """The refusal for a sequence too wide: at its longest label, or its widest name."""
+    texts = [
+        (cells(" ".join(label_lines(message.text, charset))), f"/messages/{row}/text", message.text)
+        for row, message in enumerate(document.messages)
+    ] + [
+        (cells(" ".join(label_lines(message.note, charset))), f"/messages/{row}/note", message.note)
+        for row, message in enumerate(document.messages)
+    ]
+    _, pointer, text = max(texts, key=lambda entry: entry[0])
+    return too_wide(
+        pointer,
+        f"{len(document.participants)} lifelines, with {plain(text)!r} the longest label,",
+        needed,
+        width,
+    )
+
+
+__all__ = [
+    "Activation",
+    "SequenceDrawing",
+    "activations",
+    "sequence_drawing",
+    "sequence_scene",
+    "sequence_text",
+]

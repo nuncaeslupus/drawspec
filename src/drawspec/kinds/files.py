@@ -489,4 +489,24 @@ _PICTOGRAMS: Final[dict[str, tuple[tuple[tuple[float, float], ...], ...]]] = {
 }
 
 
-__all__ = ["files_scene"]
+# ---------------------------------------------------------------------------
+# The text form: `render --format text`
+# ---------------------------------------------------------------------------
+
+
+def files_text(document: Document, width: int, charset: str) -> str:
+    """The tree as plain text, the way `tree` prints it, for a code block.
+
+    `style: "ascii"` draws plain-ASCII branches whatever `charset` asks for, as it
+    did before any other kind had a text form; otherwise `charset` decides.
+
+    `width` is not enforced here, for now: a `files` tree printed as it always
+    was, however wide, rather than refused like the other kinds' text.
+    """
+    chosen = "ascii" if document.style == "ascii" or charset == "ascii" else "unicode"
+    tree = rows(document.entries, document.root, document.order)
+    drawn = text(tree, chosen)
+    return drawn
+
+
+__all__ = ["files_scene", "files_text"]

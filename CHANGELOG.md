@@ -10,6 +10,30 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+### Added
+
+- **Text output for eight more kinds** (proposal `text.md`, phase 1): `render --format
+  text` / `-o diagram.txt`, `render_text()` and the MCP `render` tool's `format: "text"`
+  now draw `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag` and `meter`
+  (the `bar` style) as well as `files`. Each kind lays itself out on a character grid from
+  its layout's topology — a sequence's lifelines as columns and messages as rows, a plan's
+  bars in cells on the SVG's axis — never from the SVG's coordinates. Roles are glyphs: a
+  heavy box for `emphasis`, rounded for `terminal`, double for `start`, dashed for `note`;
+  `━━▶`, `┄┄▷` and `──▷` for `strong`, `weak` and `async`; the `+ ~ -` status column.
+- **`--width N` and `--charset unicode|ascii`** for text, and `render_text(document, *,
+  width=80, charset="unicode")`. Width is in terminal cells (an East Asian wide character
+  is two). A drawing wider than `width` is refused at its widest thing's pointer, naming
+  the width it needs; text is wrapped only where the SVG wraps it, and only at spaces.
+  `ascii` is bytes below 128 only. A `files` tree's output is unchanged, and its
+  `style: "ascii"` still selects ASCII; unlike the other kinds, it is not held to
+  `--width` for now, so a wide tree prints as it always did.
+
+### Changed
+
+- The refusal for a kind with no text form names the kinds that have one, instead of
+  saying only `files` does. A tree with cross-links, groups or bands, and a meter in any
+  style but `bar`, refuse at their pointers.
+
 ## [0.2.1] — 2026-10-13
 
 ### Changed

@@ -38,13 +38,13 @@ Legal before the command name.
 
 ### `drawspec render`
 
-Read a document, draw it, and write the SVG to stdout or to a file. With --format png, or an -o ending in .png, write a PNG instead (needs pip install 'drawspec[png]').
+Read a document, draw it, and write the SVG to stdout or to a file. With --format png, or an -o ending in .png, write a PNG instead (needs pip install 'drawspec[png]'). With --format text, or an -o ending in .txt, write the diagram as plain text, refused when it is wider than --width.
 
 ```
 usage: drawspec render [-h] [-o OUT] [--theme THEME] [--width WIDTH]
                        [--height HEIGHT] [--profile {inline,standalone}]
-                       [--format {svg,png,text}] [--scale SCALE]
-                       [--background {light,dark,transparent}]
+                       [--format {svg,png,text}] [--charset {unicode,ascii}]
+                       [--scale SCALE] [--background {light,dark,transparent}]
                        document
 ```
 
@@ -53,10 +53,11 @@ usage: drawspec render [-h] [-o OUT] [--theme THEME] [--width WIDTH]
 | `document` | The document to render. |
 | `-o`, `--out` | Write here instead of stdout. |
 | `--theme` | A bundled theme name or a theme file. |
-| `--width` | Override the document's width. |
+| `--width` | Override the document's width; with --format text, the most terminal cells a line may take (default 80). |
 | `--height` | Override the document's height. |
 | `--profile` | The embedding profile. One of `inline`, `standalone`. Default `inline`. |
-| `--format` | What to write: svg; png, a raster image of the standalone drawing; or text, a `files` tree as plain text for a code block. Default: from the -o extension, else svg. One of `svg`, `png`, `text`. |
+| `--format` | What to write: svg; png, a raster image of the standalone drawing; or text, the diagram as plain text for a code block or a terminal (files, tree, sequence, gantt, timeline, board, stack, rag, meter). Default: from the -o extension, else svg. One of `svg`, `png`, `text`. |
+| `--charset` | For text: box-drawing characters, or ASCII only (default unicode). One of `unicode`, `ascii`. |
 | `--scale` | For png: pixels per SVG unit, at most 8 (default 2). |
 | `--background` | For png: theme ink on white, light ink on near-black, or no page (default light). One of `light`, `dark`, `transparent`. |
 

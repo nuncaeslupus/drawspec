@@ -158,11 +158,11 @@ def test_without_a_root_the_top_level_entries_have_no_branches() -> None:
     assert text(rows([Entry("a/b"), Entry("c")])) == "a/\n└── b\nc\n"
 
 
-def test_only_a_files_document_has_a_text_form() -> None:
+def test_a_kind_without_a_text_form_refuses_naming_the_ones_with() -> None:
     flow = parse_document(
         {"version": 1, "kind": "flow", "nodes": [{"id": "a", "text": "A"}], "edges": []}
     )
-    with pytest.raises(DrawspecError, match="only a `files` document"):
+    with pytest.raises(DrawspecError, match=r"no text form.*`files`"):
         render_text(flow)
 
 

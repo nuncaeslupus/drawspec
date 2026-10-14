@@ -36,13 +36,13 @@ from typing import Any, Final
 from drawspec.clearance import cleared
 from drawspec.emit import emit
 from drawspec.errors import DrawspecError, FitError
-from drawspec.filetree import rows, text
 from drawspec.geometry import fit
-from drawspec.kinds import scene_for
+from drawspec.kinds import TEXT_KINDS, scene_for, text_for
 from drawspec.scene import Scene, moved
 from drawspec.schema import FILES_KINDS, Document, parse_document
 from drawspec.sheet import around
 from drawspec.text.measure import TextMeasurer
+from drawspec.textgrid import CHARSETS, DEFAULT_WIDTH
 from drawspec.theme import Theme, load_theme
 
 
@@ -115,24 +115,34 @@ def _placed(scene: Scene, theme: Theme, document: Document) -> Scene:
     return centred(scene, theme)
 
 
-def render_text(document: Document) -> str:
-    """A `files` document as plain text, the way `tree` prints it.
+def render_text(document: Document, *, width: int = DEFAULT_WIDTH, charset: str = "unicode") -> str:
+    """A document as plain text, for a code block, a terminal or a commit message.
 
-    The one kind with a text form, because it is the one whose usual home is a
-    code block: a README's layout section is read in a terminal as often as in a
-    browser. `ascii` style draws plain-ASCII branches; every other style draws
-    box-drawing ones.
+    A second emitter rather than a rasteriser: each kind with a text form lays
+    itself out on a character grid from its layout's topology — rows, columns,
+    order, intervals — and never from the SVG's coordinates, which are in points
+    with proportional type and would collide when rounded to cells.
+
+    `width` is in terminal cells (an East Asian wide character is two). A drawing
+    that does not fit is refused at the pointer of its widest thing, with the
+    width it needs; nothing is wrapped mid-word or truncated. `charset` is
+    `unicode` (box drawing) or `ascii` (bytes below 128 only). A `files` tree
+    with `style: "ascii"` is drawn in ASCII whatever `charset` says, as it always
+    was.
 
     Raises:
-        DrawspecError: the document is not a `files` tree.
+        DrawspecError: the kind has no text form, or a label has a character
+            with no ASCII spelling in an `ascii` drawing.
+        FitError: the drawing is wider than `width`.
     """
-    if document.kind not in FILES_KINDS:
+    if charset not in CHARSETS:
+        raise DrawspecError(f"charset must be one of {', '.join(CHARSETS)}; got {charset!r}")
+    if document.kind not in TEXT_KINDS:
         raise DrawspecError(
-            f"only a `files` document has a text form; this one is a {document.kind!r}. "
-            f"Render it as SVG."
+            f"a {document.kind!r} document has no text form. The kinds that have one are "
+            f"{', '.join(f'`{kind}`' for kind in TEXT_KINDS)}. Render it as SVG."
         )
-    charset = "ascii" if document.style == "ascii" else "unicode"
-    return text(rows(document.entries, document.root, document.order), charset)
+    return text_for(document, width, charset)
 
 
 #: How far over the canvas a drawing may measure before it is refused, in user
