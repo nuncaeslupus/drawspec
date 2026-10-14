@@ -63,7 +63,7 @@ the real originals each is checked against; a built one says so in its row.
 
 | # | Proposal | What | Size | Depends on |
 |---:|---|---|:-:|---|
-| 29 | [`text.md`](text.md) | text output for kinds that sit on a grid (`sequence`, `gantt`, `board`, …); graph kinds later | M / L | owner decision on evidence and scope |
+| 29 | [`text.md`](text.md) | text output for kinds that sit on a grid (`sequence`, `gantt`, `board`, …); graph kinds later | M / L | accepted: both phases, width 80 (phase 2 measures) |
 
 ## Deferred, not proposed
 

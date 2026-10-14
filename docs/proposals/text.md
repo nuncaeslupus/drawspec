@@ -1,6 +1,6 @@
 # Proposal: text output — diagrams as plain text for code blocks and terminals
 
-Status: **proposed**. Size **M** for phase 1 (one emitter, eight kinds that already sit
+Status: **accepted** — tasks `t-f26679ad` (phase 1) and `t-5355943b` (phase 2). Size **M** for phase 1 (one emitter, eight kinds that already sit
 on a grid), **L** for phase 2 (graph kinds, which need a character-grid router).
 Depends on an owner decision: which phase, and whether the evidence below is enough.
 
@@ -110,12 +110,10 @@ the document already is.
 * A golden file per phase-1 kind per charset, reviewed by eye once, then held.
 * The refusal for a non-text kind names the kinds that have a text form.
 
-## Open questions for the owner
+## Owner decisions
 
-1. **Evidence.** The project adds nothing nobody asked for. The case above is reasoning,
-   not a corpus: none of the 89 originals is text. Is "READMEs read in terminals and
-   LLM context" enough, or should a round of real text diagrams (from READMEs, RFCs,
-   code comments) be collected first, the way round 2 was for the newer kinds?
-2. **Scope.** Phase 1 only, or phase 1 with phase 2 queued behind it?
-3. **Default width.** 80 (terminals, commit messages) or 100 (most code blocks render
-   wider)? The proposal says 80.
+1. **Evidence:** enough; no text corpus round first.
+2. **Scope:** both phases; phase 2 queued behind phase 1.
+3. **Width:** default 80. Graph kinds are the risk: phase 2 measures how many reference
+   flows fit at 80 / 100 / 120 before the default is settled, and proposes a per-kind
+   default if 80 refuses too many. `--width` always overrides.
