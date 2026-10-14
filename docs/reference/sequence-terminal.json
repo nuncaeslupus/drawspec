@@ -1,0 +1,15 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "sequence",
+  "title": "A drawing for a terminal",
+  "description": "Where no picture draws, the same document comes back as text: box drawing, or ASCII.",
+  "participants": [
+    {"id": "shell", "text": "Shell"},
+    {"id": "drawspec", "text": "drawspec", "role": "emphasis"}
+  ],
+  "messages": [
+    {"from": "shell", "to": "drawspec", "text": "flow.json"},
+    {"from": "drawspec", "to": "shell", "text": "the drawing", "role": "weak"}
+  ]
+}

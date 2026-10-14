@@ -447,7 +447,7 @@ FIT_TABLE: Final = {
         "down": (5, 7, 8),
         "right": (1, 2, 3),
     },
-    "sequence": {"documents": 7, "refused": 0, "any": (4, 7, 7)},
+    "sequence": {"documents": 8, "refused": 0, "any": (5, 8, 8)},
 }
 
 
