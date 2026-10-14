@@ -383,29 +383,34 @@ def highlighted(source: str, x: float, y: float, size: float) -> str:
 
 # --- composition -------------------------------------------------------------
 
-#: claude-arsenal's own logo, for the "powered by" stamp on the frame.
+#: claude-arsenal's own logo, for the "built with" stamp on the frame.
 ARSENAL_LOGO: Final = ROOT / "docs" / "claude-arsenal-logo.svg"
+#: claude-arsenal's orange (#c4623f), lifted a step so it reads on the dark ground.
+ARSENAL: Final = "#e07a45"
 
 
 def powered_by() -> str:
-    """A "powered by" stamp for claude-arsenal, set on the frame's bottom edge at the right."""
+    """A "built with" badge for claude-arsenal, set on the frame's bottom edge at the right."""
     src = ARSENAL_LOGO.read_text(encoding="utf-8").strip()
     inner = src[src.index(">") + 1 : src.rindex("</svg>")]
-    lead, name = "powered by github.com/nuncaeslupus/", "claude-arsenal"
-    size, tile, pad, gap = 9.5, 16, 8, 6
-    lead_w = METRICS.width(lead, size, "mono")
-    width = pad + tile + gap + lead_w + METRICS.width(name, size, "mono") + pad
+    lead, name, url = "built with", "claude-arsenal", "github.com/nuncaeslupus/claude-arsenal"
+    tile, pad, gap = 22, 8, 8
+    lead_w = METRICS.width(lead, 12, "sans")
+    name_w = METRICS.width(name, 15, "sans", "bold")
+    url_w = METRICS.width(url, 10, "mono")
+    width = pad + tile + gap + lead_w + 6 + name_w + 12 + url_w + pad + 6
     edge = INSET + 12
     right, cy = WIDTH - edge - 24, HEIGHT - edge
     x = right - width
     tx = x + pad + tile + gap
     return (
-        f'<rect x="{x:.1f}" y="{cy - 11}" width="{width:.1f}" height="22" rx="11" '
-        f'fill="{GROUND}" stroke="{INK}" stroke-opacity="0.55"/>'
+        f'<rect x="{x:.1f}" y="{cy - 16}" width="{width:.1f}" height="32" rx="16" '
+        f'fill="{GROUND}" stroke="{ARSENAL}" stroke-width="1.5"/>'
         f'<svg x="{x + pad:.1f}" y="{cy - tile / 2}" width="{tile}" height="{tile}" '
         f'viewBox="0 0 64 64">{inner}</svg>'
-        + text(tx, cy + 3.4, lead, size, SOFT, role="mono")
-        + text(tx + lead_w, cy + 3.4, name, size, INK, role="mono", weight="bold")
+        + text(tx, cy + 4.3, lead, 12, SOFT)
+        + text(tx + lead_w + 6, cy + 5.3, name, 15, ARSENAL, weight="bold")
+        + text(tx + lead_w + 6 + name_w + 12, cy + 3.6, url, 10, SOFT, role="mono")
     )
 
 
