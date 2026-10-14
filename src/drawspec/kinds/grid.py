@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import math
 from itertools import pairwise
+from typing import Final
 
 from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
@@ -37,6 +38,18 @@ from drawspec.scene import (
 from drawspec.schema import Cell, Document, Item
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
+from drawspec.textgrid import (
+    Drawn,
+    Grid,
+    boxed,
+    caption_lines,
+    cells,
+    finished,
+    label_lines,
+    widest,
+    words_fit,
+    wrapped,
+)
 from drawspec.theme import Theme
 
 #: The role the timeline's own axis and ticks are drawn with. An axis is a plain
@@ -452,9 +465,6 @@ def _centres(
     return [first + share * (last - first) for share in shares]
 
 
-__all__ = ["AXIS_ROLE", "TICK_FRACTION", "grid_scene"]
-
-
 # ---------------------------------------------------------------------------
 # matrix
 # ---------------------------------------------------------------------------
@@ -829,3 +839,156 @@ def _facing(
         return ((sx2, y), (tx1, y)) if tx1 >= sx2 else ((sx1, y), (tx2, y))
     x = (max(sx1, tx1) + min(sx2, tx2)) / 2
     return ((x, sy2), (x, ty1)) if ty1 >= sy2 else ((x, sy1), (x, ty2))
+
+
+# ---------------------------------------------------------------------------
+# Text: `stack` as boxes on boxes, `timeline` down the page
+# ---------------------------------------------------------------------------
+
+#: A timeline entry's mark on the axis, per charset.
+TEXT_TICK: Final = {"unicode": "●", "ascii": "o"}
+
+
+def stack_text(document: Document, width: int, charset: str) -> str:
+    """A `stack` as plain text: its layers as boxes, top to bottom, all one width.
+
+    One width is the SVG's rule — a layer narrower than the one under it would
+    read as less important — so every box is as wide as the widest layer's text,
+    and a layer wider than `width` is wrapped at spaces, as the SVG wraps it.
+
+    Raises:
+        FitError: one word is wider than `width` leaves inside a box.
+    """
+    texts = [
+        (text, f"/items/{position}/text")
+        for position, item in enumerate(document.items)
+        for text in label_lines(item.text, charset, f"/items/{position}/text")
+    ]
+    words_fit(texts, width - 4, width, 4)
+    layers = [
+        [
+            line
+            for text in label_lines(item.text, charset, f"/items/{position}/text")
+            for line in wrapped(text, width - 4, f"/items/{position}/text", width, 4)
+        ]
+        for position, item in enumerate(document.items)
+    ]
+    inner = max(cells(line) for lines in layers for line in lines)
+    drawn = [
+        Drawn(line, f"/items/{position}/text", f"the layer {lines[0]!r}")
+        for position, (item, lines) in enumerate(zip(document.items, layers, strict=True))
+        for line in boxed(lines, item.role, charset, inner, "centre")
+    ]
+    widest(drawn, width)
+    return finished([line.text for line in drawn] + caption_lines(document.caption, width, charset))
+
+
+def timeline_text(document: Document, width: int, charset: str) -> str:
+    """A `timeline` as plain text: the axis down the page, one row per entry.
+
+    The layout's order, turned: each entry a mark on a vertical line with its
+    words to the right, and what goes under the SVG's line — its `note`, or its
+    `at` when it has no note — in a column to the left. A span is a bracket
+    beside the entries it runs between, its name beside it; spans that overlap
+    take lanes left to right in the order written, as the SVG's lanes go down.
+
+    Raises:
+        FitError: a line is wider than `width`, at the widest entry's pointer.
+    """
+    items = document.items
+    labels = [
+        label_lines(item.text, charset, f"/items/{position}/text")
+        for position, item in enumerate(items)
+    ]
+    whens = [
+        label_lines(item.note, charset, f"/items/{position}/note")
+        if item.note
+        else ([f"{item.at:g}"] if item.at is not None else [])
+        for position, item in enumerate(items)
+    ]
+    when_width = max((cells(line) for lines in whens for line in lines), default=0)
+    axis = when_width + 2 if when_width else 0
+    text_left = axis + 3
+    # Spans: brackets in lanes, each lane with its own column for its names.
+    order = {item.id: position for position, item in enumerate(items) if item.id}
+    lanes: list[list[tuple[int, int, int]]] = []
+    for position, span in enumerate(document.spans):
+        first, last = sorted((order[span.start], order[span.end]))
+        for lane in lanes:
+            if all(last <= start or first >= end for start, end, _ in lane):
+                lane.append((first, last, position))
+                break
+        else:
+            lanes.append([(first, last, position)])
+    names = [
+        " ".join(label_lines(span.text, charset, f"/spans/{position}/text"))
+        for position, span in enumerate(document.spans)
+    ]
+    # What the brackets take beside the entries: per lane, a gap, the bracket,
+    # a gap, its widest name.
+    beside = sum(4 + max(cells(names[position]) for *_, position in lane) for lane in lanes)
+    # An entry too wide for the line is wrapped at spaces, as the SVG wraps its labels.
+    words_fit(
+        [
+            (line, f"/items/{position}/text")
+            for position, label in enumerate(labels)
+            for line in label
+        ],
+        width - text_left - beside,
+        width,
+        text_left + beside,
+    )
+    labels = [
+        [
+            part
+            for line in label
+            for part in wrapped(
+                line,
+                width - text_left - beside,
+                f"/items/{position}/text",
+                width,
+                text_left + beside,
+            )
+        ]
+        for position, label in enumerate(labels)
+    ]
+    rows: list[int] = []
+    row = 0
+    for label, when in zip(labels, whens, strict=True):
+        rows.append(row)
+        row += max(len(label), len(when)) + 1
+    grid = Grid(charset)
+    grid.vertical(axis, rows[0], rows[-1])
+    lines_of: list[tuple[int, str, str]] = []
+    for position, (label, when) in enumerate(zip(labels, whens, strict=True)):
+        top = rows[position]
+        for offset, line in enumerate(when):
+            grid.text(top + offset, when_width - cells(line), line)
+        grid.text(top, axis, TEXT_TICK[charset])
+        for offset, line in enumerate(label):
+            grid.text(top + offset, text_left, line)
+            lines_of.append((top + offset, f"/items/{position}/text", f"the entry {label[0]!r}"))
+    labels_right = text_left + max(cells(line) for label in labels for line in label)
+
+    column = labels_right + 2
+    for lane in lanes:
+        for first, last, position in lane:
+            top, bottom = rows[first], rows[last]
+            grid.vertical(column, top, bottom)
+            grid.arm(top, column, "w")
+            grid.arm(bottom, column, "w")
+            name_row = top + 1 if bottom > top + 1 else top
+            grid.text(name_row, column + 2, names[position])
+            lines_of.append((name_row, f"/spans/{position}/text", f"the span {names[position]!r}"))
+        column += 4 + max(cells(names[position]) for *_, position in lane)
+    text = grid.lines()
+    pointer_of = {number: (pointer, what) for number, pointer, what in lines_of}
+    drawn = [
+        Drawn(line, *pointer_of.get(number, ("/items", "the entries")))
+        for number, line in enumerate(text)
+    ]
+    widest(drawn, width)
+    return finished(text + caption_lines(document.caption, width, charset))
+
+
+__all__ = ["AXIS_ROLE", "TICK_FRACTION", "grid_scene", "stack_text", "timeline_text"]

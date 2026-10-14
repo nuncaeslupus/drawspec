@@ -154,7 +154,7 @@ fields are legal. Thirty-four exist, and they fall into twenty-three families:
 | Grid | `stack`, `timeline`, `columns`, `matrix` | Things in an arrangement: layers, events in order, side-by-side comparison, rows against columns. |
 | Shape | `pyramid`, `rings`, `funnel` | Things in a proportion: levels narrowing to an apex, scopes nested inside scopes, stages narrowing to an outcome. |
 | Plot | `chart`, `quadrant`, `scatter`, `curve` | Things with numbers: series against axes, items placed in a plane, points by two measured values, a named shape with labelled waypoints. |
-| Listing | `files` | Things in folders: a directory tree from its paths, drawn with pictures or as `tree`-style text (`drawspec render --format text`). |
+| Listing | `files` | Things in folders: a directory tree from its paths, drawn with pictures or as `tree`-style text (see [Plain text](#plain-text-for-a-terminal-or-a-code-block)). |
 | Machine | `states` | Things that change state: the conditions something can be in, and the events that move it between them. |
 | Exchange | `sequence` | Things said in order: messages between a fixed set of participants, read down the page. |
 | Model | `entities` | Things with fields, and how they relate: an ER model, a database schema, a class diagram. |
@@ -363,6 +363,54 @@ dependency for a format every PNG viewer already covers.
 
 From Python, `render_png(document, theme, scale=2.0, background="light")` returns
 the bytes; it raises `ExportError` when the extra is missing.
+
+## Plain text, for a terminal or a code block
+
+Some of a diagram's readers never see a picture: a terminal, a commit message, a
+code comment, a mail client that strips images, a language model's context. For
+those, render the same document as text:
+
+```bash
+drawspec render plan.json --format text            # to stdout, 80 columns
+drawspec render plan.json -o plan.txt              # inferred from .txt
+drawspec render plan.json --format text --width 100 --charset ascii
+```
+
+```text
+┌─────────┐  ┌────────┐
+│ Browser │  │ Server │
+└────┬────┘  └───┬────┘
+     │ GET /     │
+     ├──────────▶┃
+     │ the page  ┃
+     │◁┄┄┄┄┄┄┄┄┄┄┤
+     │           │
+```
+
+It is a second emitter, not a picture of the SVG: each kind lays itself out on a
+character grid from its own rows and columns. Nine kinds have a text form —
+`files`, `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`, and
+`meter` in the `bar` style — and every other kind refuses, naming them. The graph
+kinds (`flow`, `states`, `lanes`, a `tree` with cross-links) wait for a router
+that works in cells; the kinds whose message is an area, an angle or a curve never
+get one.
+
+* **`--width`** is in terminal cells, 80 by default; an East Asian wide character
+  counts two. A drawing that does not fit is **refused** at the pointer of its
+  widest thing, naming the width it needs — never cut short. A label the SVG would
+  wrap (a card, a note, a message) is wrapped here too, at spaces only.
+* **`--charset ascii`** draws with bytes below 128 only, spelling `→` as `->` and
+  refusing a character with no ASCII spelling. A `files` tree with
+  `"style": "ascii"` is ASCII either way.
+* **Roles are glyphs.** `emphasis` is a heavy box (`┏━┓`), `terminal` a rounded
+  one (`╭─╮`), `start` a double one (`╔═╗`), `note` a dashed one; a `strong` edge
+  is `━━▶`, a `weak` one `┄┄▷`, an `async` one `──▷`; a status is the `+ ~ -`
+  mark in a column at the left. A `gantt` bar is filled lighter to heavier —
+  `note` `░`, `step` `▒`, `strong` `▓`, `emphasis` `█`.
+
+From Python, `render_text(document, width=80, charset="unicode")` returns the
+string; the MCP `render` tool takes `"format": "text"` with the same `width` and
+`charset`.
 
 ## Validating in a build
 

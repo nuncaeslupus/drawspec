@@ -40,6 +40,18 @@ from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextLine, T
 from drawspec.schema import Axis, Document, Task, _figure
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
+from drawspec.textgrid import (
+    Drawn,
+    caption_lines,
+    cells,
+    centred,
+    finished,
+    label_lines,
+    pad,
+    spelt,
+    too_wide,
+    widest,
+)
 from drawspec.theme import Theme
 
 #: The most of the canvas the label column may take. A longer label wraps.
@@ -683,4 +695,218 @@ def _milestone(task: Task, x: float, y: float, half: float, theme: Theme) -> Pri
     )
 
 
-__all__ = ["GanttDrawing", "gantt_drawing", "gantt_scene"]
+# ---------------------------------------------------------------------------
+# Text: a row per task, a bar of cells on a numbered axis
+# ---------------------------------------------------------------------------
+
+#: What a bar is filled with, per charset and role: lighter to heavier, so the
+#: roles keep the order the SVG's weights give them.
+TEXT_FILLS: Final = {
+    "unicode": {"note": "░", "step": "▒", "strong": "▓", "emphasis": "█"},
+    "ascii": {"note": ".", "step": "=", "strong": "#", "emphasis": "@"},
+}
+
+#: The part of a bar not yet done, when its task says how much is.
+TEXT_UNDONE: Final = {"unicode": "·", "ascii": "-"}
+
+#: A milestone, per charset and role.
+TEXT_MILESTONES: Final = {
+    "unicode": {"note": "◇", "step": "◆", "strong": "◆", "emphasis": "◈"},
+    "ascii": {"note": "o", "step": "*", "strong": "*", "emphasis": "@"},
+}
+
+#: A mark's line down the rows, the axis, its ticks, and a phase's bracket ends.
+TEXT_FURNITURE: Final = {
+    "unicode": {"mark": "┆", "axis": "─", "tick": "┬", "open": "┌", "close": "┐", "one": "│"},
+    "ascii": {"mark": ":", "axis": "-", "tick": "+", "open": "+", "close": "+", "one": "|"},
+}
+
+#: Cells between the label column and the plot.
+TEXT_COLUMN_GAP: Final = 2
+
+
+def gantt_text(document: Document, width: int, charset: str) -> str:
+    """A `gantt` as plain text: one row per task, its bar in cells on a numbered axis.
+
+    The layout's rows in the order written, a phase as a heading row with its
+    tasks indented under it and a bracket over its span; the axis the SVG draws,
+    with the same range and ticks, scaled to the columns left of the label
+    column. Bars are filled by role, lighter to heavier — `note`, `step`,
+    `strong`, `emphasis` — and a task's `done` share is the filled part, the rest
+    dotted. A milestone is `◆`; a mark is a dotted line down every row, named
+    above the first. Dependencies are not drawn: finish-to-start is already what
+    the bars' order says, and a routed line through a grid of cells would cross
+    the bars it joins.
+
+    Raises:
+        FitError: the label column leaves the axis too few columns for its tick
+            labels, naming the widest task label and the width it needs.
+    """
+    axis = document.axes[0]
+    furniture = TEXT_FURNITURE[charset]
+    grouped = bool(document.groups)
+    indent = 2 if grouped else 0
+    labels = {
+        task.id: label_lines(task.label, charset, f"/tasks/{position}/text")
+        for position, task in enumerate(document.tasks)
+    }
+    headings = {
+        group.id: " ".join(label_lines(group.text, charset, f"/groups/{position}/text"))
+        for position, group in enumerate(document.groups)
+    }
+    column = max(
+        [indent + max(cells(line) for line in lines) for lines in labels.values()]
+        + [cells(text) for text in headings.values()]
+    )
+    low, high = _range(document)
+    ticks, names = _ticks_for(axis, low, high)
+    tick_texts = [spelt(text, charset, "/axis") for _, text in ticks]
+    period_names = [
+        spelt(name, charset, f"/axis/categories/{position}") for position, name in enumerate(names)
+    ]
+
+    # The plot's columns: as many as are left, and as many as its words need.
+    tail = (cells(tick_texts[-1]) + 1) // 2 if tick_texts and not names else 0
+    left = column + TEXT_COLUMN_GAP
+    room = width - left - tail - 1
+    span = high - low
+    need = 1
+    if names:
+        need = max(cells(name) + 1 for name in period_names) * len(period_names)
+    else:
+        for (here, text), (there, other) in pairwise(ticks):
+            gap = (cells(text) + cells(other)) / 2 + 1
+            need = max(need, math.ceil(gap * span / (there - here)))
+    need = max(need, 10)
+    if room < need:
+        widest_task = max(
+            range(len(document.tasks)),
+            key=lambda position: (
+                indent + max(cells(line) for line in labels[document.tasks[position].id])
+            ),
+        )
+        return_needed = left + need + tail + 1
+        raise too_wide(
+            f"/tasks/{widest_task}/text",
+            f"the label column, as wide as {' '.join(labels[document.tasks[widest_task].id])!r},",
+            return_needed,
+            width,
+        )
+
+    def x(value: float) -> int:
+        return left + round((value - low) / span * room)
+
+    # -- rows -----------------------------------------------------------------
+    first_of = {
+        min(group.members, key=[task.id for task in document.tasks].index): group
+        for group in document.groups
+    }
+    tasks = {task.id: task for task in document.tasks}
+    body: list[list[str]] = []
+    pointers: list[tuple[str, str]] = []
+
+    def row(text: str, pointer: str, what: str) -> list[str]:
+        cells_ = list(pad(text, left + room + 1))
+        body.append(cells_)
+        pointers.append((pointer, what))
+        return cells_
+
+    for position, task in enumerate(document.tasks):
+        group = first_of.get(task.id)
+        if group is not None:
+            number = document.groups.index(group)
+            line = row(
+                headings[group.id], f"/groups/{number}/text", f"the phase {headings[group.id]!r}"
+            )
+            start = x(min(tasks[member].begins for member in group.members))
+            end = x(max(tasks[member].finishes for member in group.members))
+            if end <= start:
+                line[_cell(line, start)] = furniture["one"]
+            else:
+                for cell in range(start, end + 1):
+                    line[_cell(line, cell)] = TEXT_FURNITURE[charset]["axis"]
+                line[_cell(line, start)] = furniture["open"]
+                line[_cell(line, end)] = furniture["close"]
+        lines = labels[task.id]
+        pointer = f"/tasks/{position}/text"
+        what = f"the label {' '.join(lines)!r}"
+        # The bar goes on the task's own words, under its actor when it has one.
+        written = [row(" " * indent + line, pointer, what) for line in lines]
+        first = written[1 if task.actor and len(written) > 1 else 0]
+        if task.milestone:
+            first[_cell(first, x(task.begins))] = TEXT_MILESTONES[charset][task.role]
+            continue
+        start, end = x(task.start), max(x(task.end), x(task.start) + 1)
+        fill = TEXT_FILLS[charset][task.role]
+        done = start + round((end - start) * task.done / 100) if task.done is not None else end
+        for cell in range(start, end):
+            first[_cell(first, cell)] = fill if cell < done else TEXT_UNDONE[charset]
+
+    # -- marks: a dotted line down the rows, named above them ------------------
+    header: list[list[str]] = []
+    for mark_position, mark in enumerate(document.marks):
+        at = x(mark.at)
+        name = spelt(mark.text, charset, f"/marks/{mark_position}/text")
+        start = at if at + cells(name) <= width else at - cells(name) + 1
+        lane = 0
+        while lane < len(header) and any(
+            cell != " " for cell in header[lane][max(start - 1, 0) : start + cells(name) + 1]
+        ):
+            lane += 1
+        if lane == len(header):
+            header.append([" "] * (width + 1))
+        header[lane][start : start + cells(name)] = [*name, *[""] * (cells(name) - len(name))]
+        for line in header[lane + 1 :]:
+            if line[at] == " ":
+                line[at] = furniture["mark"]
+        for line in body:
+            if line[_cell(line, at)] == " ":
+                line[_cell(line, at)] = furniture["mark"]
+
+    # -- the axis -------------------------------------------------------------
+    rule = [" "] * left + [furniture["axis"]] * (room + 1)
+    under = [" "] * (left + room + tail + 2)
+    if names:
+        for value, _ in ticks:
+            rule[x(value)] = furniture["tick"]
+        for position, name in enumerate(period_names):
+            first_cell, last_cell = x(position + 1.0), x(position + 2.0)
+            text = centred(name, last_cell - first_cell)
+            under[first_cell : first_cell + cells(text)] = _spread(text)
+    else:
+        for (value, _), text in zip(ticks, tick_texts, strict=True):
+            rule[x(value)] = furniture["tick"]
+            start = x(value) - (cells(text) - 1) // 2
+            under[start : start + cells(text)] = _spread(text)
+    caption = spelt(_with_unit(axis).replace("**", ""), charset, "/axis/label")
+
+    drawn = [Drawn("".join(line)) for line in header]
+    drawn += [
+        Drawn("".join(line), pointer, what)
+        for line, (pointer, what) in zip(body, pointers, strict=True)
+    ]
+    drawn += [Drawn("".join(rule)), Drawn("".join(under))]
+    drawn.append(
+        Drawn(" " * left + centred(caption, room + 1), "/axis/label", f"the axis label {caption!r}")
+    )
+    widest(drawn, width)
+    return finished([line.text for line in drawn] + caption_lines(document.caption, width, charset))
+
+
+def _spread(text: str) -> list[str]:
+    """`text` as one entry per terminal cell: a wide character, then an empty one."""
+    return [part for character in text for part in (character, "")[: cells(character)]]
+
+
+def _cell(line: list[str], column: int) -> int:
+    """The index in `line` of the character at terminal cell `column`.
+
+    A row's label may hold wide characters, each two cells and one character, so
+    the plot's cells sit that many characters further left than their column.
+    """
+    label = "".join(line)
+    shift = cells(label[: min(column, len(line))]) - min(column, len(line))
+    return column - max(shift, 0)
+
+
+__all__ = ["GanttDrawing", "gantt_drawing", "gantt_scene", "gantt_text"]

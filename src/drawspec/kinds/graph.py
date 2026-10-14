@@ -36,6 +36,7 @@ from types import MappingProxyType
 from typing import Final
 
 from drawspec.errors import DrawspecError, FitError
+from drawspec.filetree import STATUS_MARKS
 from drawspec.geometry import Box, normalise, size_box
 from drawspec.kinds.common import (
     DRAWN_MARKS,
@@ -91,6 +92,20 @@ from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextLine, T
 from drawspec.schema import STATE_BARS, Band, Document, Edge, Node
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
+from drawspec.textgrid import (
+    STRAIGHT,
+    Drawn,
+    box_glyphs,
+    boxed,
+    caption_lines,
+    cells,
+    finished,
+    label_lines,
+    line_style,
+    plain,
+    spelt,
+    widest,
+)
 from drawspec.theme import POLARITY_GLYPHS, Theme
 
 #: The kinds this family draws. `cycle` is a graph kind by the schema and
@@ -1667,6 +1682,111 @@ def _framed(
     )
 
 
+# ---------------------------------------------------------------------------
+# Text: a `tree` as boxes on guides
+# ---------------------------------------------------------------------------
+
+#: A child's guide, per charset: its branch, and the last child's branch.
+TEXT_BRANCHES: Final = {"unicode": ("├", "└"), "ascii": ("|", "`")}
+
+
+def tree_text(document: Document, width: int, charset: str) -> str:
+    """A `tree` as plain text: each box under its parent, joined by `files`' guides.
+
+    The layered engine's topology without its coordinates: a node's children in
+    the order their edges are written, each box indented under its parent's and
+    joined to it by a guide from the parent's bottom edge to the child's side. An
+    edge's label rides on its stub, drawn in the edge's line style; a class is
+    named after its box; a status is the `+ ~ -` mark `files` writes, in a column
+    at the left that appears only when some node has one.
+
+    Raises:
+        DrawspecError: the tree has cross-links, a cycle, groups or bands — a
+            graph a guide cannot draw, which waits for the text router.
+        FitError: a line is wider than `width`, at the widest box's pointer.
+    """
+    if document.groups or document.bands:
+        raise DrawspecError(
+            f"/{'groups' if document.groups else 'bands'}: a `tree` with groups or bands has "
+            f"no text form yet. Render it as SVG."
+        )
+    index = {node.id: position for position, node in enumerate(document.nodes)}
+    children: dict[str, list[tuple[int, Edge]]] = {node.id: [] for node in document.nodes}
+    parent: dict[str, str] = {}
+    for position, edge in enumerate(document.edges):
+        if edge.target in parent or edge.target == edge.source:
+            raise DrawspecError(
+                f"/edges/{position}: {edge.target!r} already hangs under "
+                f"{parent.get(edge.target, edge.source)!r}. A `tree` with cross-links has no "
+                f"text form yet; render it as SVG."
+            )
+        parent[edge.target] = edge.source
+        children[edge.source].append((position, edge))
+    classes = {klass.id: klass.text for klass in document.classes}
+    vertical = STRAIGHT[charset]["light"][1]
+    reached: set[str] = set()
+
+    def subtree(identifier: str) -> list[Drawn]:
+        reached.add(identifier)
+        node = document.nodes[index[identifier]]
+        pointer = f"/nodes/{index[identifier]}/text"
+        what = f"the box {plain(node.label)!r}"
+        box = boxed(label_lines(node.label, charset, pointer), node.role, charset)
+        if children[identifier]:
+            box[-1] = box[-1][:2] + box_glyphs(node.role, charset).down + box[-1][3:]
+        if node.klass in classes:
+            klass = spelt(plain(classes[node.klass]), charset, "/classes")
+            box[1] += f"  ({klass})"
+        out = [
+            Drawn(line, pointer, what, node.status if row == 1 else "", row == 1)
+            for row, line in enumerate(box)
+        ]
+        under = children[identifier]
+        for number, (position, edge) in enumerate(under):
+            last = number == len(under) - 1
+            stub = STRAIGHT[charset][line_style(edge.role)][0]
+            label = spelt(plain(edge.label).replace("\n", " "), charset, f"/edges/{position}/label")
+            reach = f"{stub} {label} {stub}" if label else stub
+            indent = " " * cells(reach)
+            branch = TEXT_BRANCHES[charset][1 if last else 0]
+            joined = box_glyphs(document.nodes[index[edge.target]].role, charset).joined
+            seen = False
+            for line in subtree(edge.target):
+                if line.joint and not seen:
+                    seen = True
+                    text = f"  {branch}{reach}{joined}{line.text[1:]}"
+                elif not seen:
+                    text = f"  {vertical} {indent[1:]}{line.text}"
+                else:
+                    text = ("   " if last else f"  {vertical}") + indent + line.text
+                out.append(Drawn(text, line.pointer, line.what, line.status, False))
+        return out
+
+    drawn: list[Drawn] = []
+    for node in document.nodes:
+        if node.id not in parent:
+            drawn.extend(subtree(node.id))
+    if len(reached) < len(document.nodes):
+        stray = next(
+            position for position, node in enumerate(document.nodes) if node.id not in reached
+        )
+        raise DrawspecError(
+            f"/nodes/{stray}: {document.nodes[stray].id!r} is on a cycle, and a `tree` drawn "
+            f"as text hangs every node from a root. Render it as SVG."
+        )
+    if any(line.status for line in drawn):
+        drawn = [
+            Drawn(
+                f"{STATUS_MARKS[line.status]} {line.text}" if line.status else f"  {line.text}",
+                line.pointer,
+                line.what,
+            )
+            for line in drawn
+        ]
+    widest(drawn, width)
+    return finished([line.text for line in drawn] + caption_lines(document.caption, width, charset))
+
+
 __all__ = [
     "DRAWN_KINDS",
     "NODE_WIDEN",
@@ -1678,4 +1798,5 @@ __all__ = [
     "graph_drawing",
     "graph_scene",
     "marker_primitives",
+    "tree_text",
 ]

@@ -1,0 +1,7 @@
+          02:00  o  Last backup    +
+                 |                 | Data lost
+          08:00  o  It fails       +                +
+                 |                 | Recovery time  | Maximum tolerable downtime
+Next day, 08:00  o  Systems back   +                |
+                 |                 | Work recovery  |
+Next day, 22:00  o  Working again  +                +

@@ -189,7 +189,7 @@ A refusal is information, not an obstacle. Three kinds, and each tells you what 
 - **A refused field** — you wrote a coordinate or a style. Delete it; express the
   intent with `kind` or `role` instead.
 
-Always run `drawspec validate` before calling a document done; it prints every problem.
+Always run `drawspec validate` before calling a document done; it prints every problem. For a terminal, a commit message or a code block, `drawspec render --format text` draws `files`, `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag` and a `bar` `meter` as plain text, 80 columns unless `--width` says otherwise; a drawing too wide is refused at its widest label's pointer, and other kinds refuse.
 
 ## Do not
 

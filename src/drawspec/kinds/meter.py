@@ -33,12 +33,23 @@ from dataclasses import dataclass, field
 from typing import Final
 
 from drawspec.charts import AXIS_ROLE, FURNITURE_ROLE, _nice_step
-from drawspec.errors import FitError
+from drawspec.errors import DrawspecError, FitError
 from drawspec.kinds.treemap import bold
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextLine, TextSpan
 from drawspec.schema import METER_CURRENCIES, Document, Meter
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
+from drawspec.textgrid import (
+    Drawn,
+    caption_lines,
+    cells,
+    finished,
+    label_lines,
+    pad,
+    spelt,
+    too_wide,
+    widest,
+)
 from drawspec.theme import Theme
 
 #: The role a target is drawn in: the heaviest stroke the theme has, headless.
@@ -922,4 +933,110 @@ def _thermometer(
     return tuple(points)
 
 
-__all__ = ["MeterDrawing", "band_of", "meter_drawing", "meter_scene", "number", "readout"]
+# ---------------------------------------------------------------------------
+# Text: a progress bar per meter
+# ---------------------------------------------------------------------------
+
+#: A bar's ends, per charset and role: heavier for the meter the panel is about.
+TEXT_ENDS: Final = {
+    "unicode": {"step": ("[", "]"), "emphasis": ("┃", "┃")},
+    "ascii": {"step": ("[", "]"), "emphasis": ("|", "|")},
+}
+
+#: A bar's filled part, empty part and target mark, per charset.
+TEXT_BARS: Final = {
+    "unicode": {"fill": "█", "empty": "░", "target": "│"},
+    "ascii": {"fill": "#", "empty": "-", "target": "!"},
+}
+
+#: The shortest track worth drawing, and the longest: past forty cells a bar
+#: says nothing more precisely than its readout already does.
+TEXT_TRACK: Final = (10, 40)
+
+#: Cells between the name, the track and the readout.
+TEXT_GAP: Final = 2
+
+
+def meter_text(document: Document, width: int, charset: str) -> str:
+    """A `bar` meter panel as plain text: `name  [██████░░░░]  7 of 12 chapters`.
+
+    The rows layout's three columns — names, tracks sharing one left and one
+    right edge, readouts — with the track filled to the amount on the meter's own
+    scale, a target as a bar across it, and the readout `readout` writes, its
+    lines joined. An `emphasis` meter takes heavier ends. Only `bar`: a dial's
+    message is an angle and a bullet's is its bands' tones, neither of which a
+    row of cells can say better than the readout.
+
+    Raises:
+        DrawspecError: the panel's style is not `bar`.
+        FitError: the names and readouts leave the tracks too few columns.
+    """
+    if document.meter_style != "bar":
+        raise DrawspecError(
+            f"/style: a {document.meter_style!r} meter has no text form; only `bar` does. "
+            f"Draw it as `bar`, or render it as SVG."
+        )
+    glyphs = TEXT_BARS[charset]
+    meters = document.meters
+    names = [
+        label_lines(meter.text, charset, f"/meters/{position}/text")
+        for position, meter in enumerate(meters)
+    ]
+    reads = [
+        [
+            spelt(line.replace("**", "").replace(MINUS, "-"), charset, f"/meters/{position}")
+            if charset == "ascii"
+            else line.replace("**", "")
+            for line in readout(meter, "bar")
+        ]
+        for position, meter in enumerate(meters)
+    ]
+    name_width = max(cells(line) for name in names for line in name)
+    read_width = max(cells(line) for read in reads for line in read)
+    track = min(width - name_width - read_width - 2 * TEXT_GAP - 2, TEXT_TRACK[1])
+    if track < TEXT_TRACK[0]:
+        position = max(
+            range(len(meters)),
+            key=lambda number: (
+                max(cells(line) for line in names[number])
+                + max(cells(line) for line in reads[number])
+            ),
+        )
+        raise too_wide(
+            f"/meters/{position}/text",
+            f"the name {names[position][0]!r} and its readout {reads[position][0]!r}",
+            name_width + read_width + 2 * TEXT_GAP + 2 + TEXT_TRACK[0],
+            width,
+        )
+    drawn: list[Drawn] = []
+    for position, meter in enumerate(meters):
+        share = min(max(meter.amount / meter.max, 0.0), 1.0) if meter.max else 0.0
+        filled = round(share * track)
+        bar = [glyphs["fill"]] * filled + [glyphs["empty"]] * (track - filled)
+        if meter.target is not None and meter.max:
+            bar[min(round(meter.target / meter.max * track), track - 1)] = glyphs["target"]
+        opening, closing = TEXT_ENDS[charset]["emphasis" if meter.role == "emphasis" else "step"]
+        track_text = opening + "".join(bar) + closing
+        gap = " " * TEXT_GAP
+        what = f"the meter {names[position][0]!r}"
+        # The name's caption under the name and the readout's band and target under
+        # its amount, each in its own column, as the SVG stacks them.
+        for line in range(max(len(names[position]), len(reads[position]))):
+            name = names[position][line] if line < len(names[position]) else ""
+            read = reads[position][line] if line < len(reads[position]) else ""
+            middle = track_text if line == 0 else " " * cells(track_text)
+            text = pad(name, name_width) + gap + middle + gap + read
+            drawn.append(Drawn(text, f"/meters/{position}/text", what))
+    widest(drawn, width)
+    return finished([line.text for line in drawn] + caption_lines(document.caption, width, charset))
+
+
+__all__ = [
+    "MeterDrawing",
+    "band_of",
+    "meter_drawing",
+    "meter_scene",
+    "meter_text",
+    "number",
+    "readout",
+]

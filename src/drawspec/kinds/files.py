@@ -20,6 +20,7 @@ from drawspec.kinds.common import DRAWN_MARKS
 from drawspec.scene import Path, Polygon, Primitive, Rect, Scene, TextRun
 from drawspec.schema import Document
 from drawspec.text.measure import TextMeasurer
+from drawspec.textgrid import Drawn, widest
 from drawspec.theme import Theme
 
 #: The roles every part is drawn in. Pictures are outlined like a box; guides,
@@ -489,4 +490,48 @@ _PICTOGRAMS: Final[dict[str, tuple[tuple[tuple[float, float], ...], ...]]] = {
 }
 
 
-__all__ = ["files_scene"]
+# ---------------------------------------------------------------------------
+# The text form: `render --format text`
+# ---------------------------------------------------------------------------
+
+
+def files_text(document: Document, width: int, charset: str) -> str:
+    """The tree as plain text, the way `tree` prints it, for a code block.
+
+    `style: "ascii"` draws plain-ASCII branches whatever `charset` asks for, as it
+    did before any other kind had a text form; otherwise `charset` decides.
+
+    Raises:
+        FitError: a line is wider than `width`, at that entry's pointer.
+    """
+    chosen = "ascii" if document.style == "ascii" or charset == "ascii" else "unicode"
+    tree = rows(document.entries, document.root, document.order)
+    drawn = text(tree, chosen)
+    lines = drawn.splitlines()
+    entry = {row_number: row for row_number, row in enumerate(tree)}
+    widest(
+        [
+            Drawn(
+                line, _entry_pointer(document, entry[number]), f"the entry {entry[number].name!r}"
+            )
+            for number, line in enumerate(lines)
+        ],
+        width,
+    )
+    return drawn
+
+
+def _entry_pointer(document: Document, row: Row) -> str:
+    """The pointer of the entry a row was drawn for — its note, when it has one — or the root's.
+
+    A row is a path's last segment, so the entry is the first whose path ends in
+    it: the same name twice in one tree points at the first, which is still a
+    place the author can see the width being spent.
+    """
+    for position, entry in enumerate(document.entries):
+        if entry.path.rstrip("/").split("/")[-1] == row.name:
+            return f"/entries/{position}/{'note' if entry.note else 'path'}"
+    return "/root"
+
+
+__all__ = ["files_scene", "files_text"]

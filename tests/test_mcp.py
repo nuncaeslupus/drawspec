@@ -204,6 +204,23 @@ def test_render_returns_a_png_image_block_when_asked(client: Client) -> None:
     assert base64.b64decode(block["data"]).startswith(b"\x89PNG\r\n\x1a\n")
 
 
+def test_render_returns_plain_text_when_asked(client: Client) -> None:
+    """`format: text` arrives as a text block, drawn to `width` in `charset`."""
+    stack = {"version": 1, "kind": "stack", "items": [{"text": "Top"}, {"text": "Bottom"}]}
+    result = client.tool("render", document=stack, format="text", width=40, charset="ascii")
+    assert not result.get("isError"), result
+    text = result["content"][0]["text"]
+    assert "Top" in text and "Bottom" in text
+    assert text.isascii()
+    assert all(len(line) <= 40 for line in text.splitlines())
+
+
+def test_a_kind_with_no_text_form_is_a_located_refusal(client: Client) -> None:
+    result = client.tool("render", document=GOOD, format="text")
+    assert result.get("isError"), result
+    assert "`sequence`" in _body(result)["message"]
+
+
 def test_an_out_of_range_scale_is_a_refusal_not_a_crash(client: Client) -> None:
     result = client.tool("render", document=GOOD, format="png", scale=100)
     assert result["isError"] is True, result

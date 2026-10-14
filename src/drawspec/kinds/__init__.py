@@ -7,29 +7,32 @@ downstream of it sees a `Scene` and nothing else.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import Final
+
 from drawspec.charts import chart_scene
 from drawspec.errors import DrawspecError
 from drawspec.kinds.argument import argument_scene
 from drawspec.kinds.barmodel import barmodel_scene
-from drawspec.kinds.board import board_scene
+from drawspec.kinds.board import board_scene, board_text
 from drawspec.kinds.clock import clock_scene
 from drawspec.kinds.common import box_primitives, captioned, outline, text_runs
 from drawspec.kinds.cycle import cycle_scene
 from drawspec.kinds.entities import entities_scene
 from drawspec.kinds.familytree import familytree_scene
-from drawspec.kinds.files import files_scene
+from drawspec.kinds.files import files_scene, files_text
 from drawspec.kinds.fishbone import fishbone_scene
-from drawspec.kinds.gantt import gantt_scene
-from drawspec.kinds.graph import DRAWN_KINDS, graph_scene
-from drawspec.kinds.grid import grid_scene
+from drawspec.kinds.gantt import gantt_scene, gantt_text
+from drawspec.kinds.graph import DRAWN_KINDS, graph_scene, tree_text
+from drawspec.kinds.grid import grid_scene, stack_text, timeline_text
 from drawspec.kinds.journey import journey_scene
-from drawspec.kinds.meter import meter_scene
+from drawspec.kinds.meter import meter_scene, meter_text
 from drawspec.kinds.mindmap import mindmap_scene
 from drawspec.kinds.numberline import numberline_scene
 from drawspec.kinds.pie import pie_scene
-from drawspec.kinds.rag import rag_scene
+from drawspec.kinds.rag import rag_scene, rag_text
 from drawspec.kinds.sankey import sankey_scene
-from drawspec.kinds.sequence import sequence_scene
+from drawspec.kinds.sequence import sequence_scene, sequence_text
 from drawspec.kinds.shape import shape_scene
 from drawspec.kinds.treemap import treemap_scene
 from drawspec.kinds.venn import venn_scene
@@ -94,6 +97,31 @@ IMPLEMENTED: tuple[str, ...] = (
     *CLOCK_KINDS,
     "cycle",
 )
+
+
+#: The kinds with a text form, and the function that draws each: a direct
+#: reading of a layout that already sits on rows and columns. The graph kinds
+#: wait for a character-grid router; the kinds whose message is area, angle or
+#: curve never get one — their data is already the table a reader wants.
+TEXT_FORMS: Final[dict[str, Callable[[Document, int, str], str]]] = {
+    "files": files_text,
+    "tree": tree_text,
+    "sequence": sequence_text,
+    "gantt": gantt_text,
+    "timeline": timeline_text,
+    "board": board_text,
+    "stack": stack_text,
+    "rag": rag_text,
+    "meter": meter_text,
+}
+
+#: The kinds `render --format text` draws, in the order the refusal lists them.
+TEXT_KINDS: Final = tuple(TEXT_FORMS)
+
+
+def text_for(document: Document, width: int, charset: str) -> str:
+    """`document` as plain text, by the text form its kind owns. See `render_text`."""
+    return TEXT_FORMS[document.kind](document, width, charset)
 
 
 def scene_for(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
@@ -172,6 +200,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
 
 __all__ = [
     "IMPLEMENTED",
+    "TEXT_FORMS",
+    "TEXT_KINDS",
     "argument_scene",
     "barmodel_scene",
     "board_scene",
@@ -196,6 +226,7 @@ __all__ = [
     "scene_for",
     "sequence_scene",
     "shape_scene",
+    "text_for",
     "text_runs",
     "treemap_scene",
     "venn_scene",

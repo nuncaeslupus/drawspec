@@ -118,7 +118,9 @@ when two diagrams share a page, and no information carried by colour alone —
 so it survives dark mode and greyscale printing. For anywhere an SVG cannot go —
 a chat, a slide, an attachment — the same drawing comes out as a PNG on a light,
 dark or transparent background (`pip install 'drawspec[png]'`, one self-contained
-wheel; no PDF, no JPEG).
+wheel; no PDF, no JPEG). And for where no picture draws — a terminal, a commit
+message, a code block — nine kinds come out as plain text, 80 columns, box-drawing
+or ASCII.
 
 ## What it looks like
 
@@ -224,6 +226,7 @@ pip install drawspec               # or drawspec[png] for PNG export
 drawspec render diagram.json -o diagram.svg   # or to stdout
 drawspec render diagram.json -o diagram.png   # needs drawspec[png]; --background dark, --scale 3
 drawspec render diagram.json --theme blueprint -o sheet.png  # on a drafting sheet, like the banner
+drawspec render diagram.json --format text      # plain text, 80 columns; --charset ascii
 drawspec validate diagram.json                # every violation, by JSON pointer
 drawspec theme check default                  # including the greyscale invariant
 drawspec theme from site.css -o house.toml    # a theme from your brand's CSS or design tokens

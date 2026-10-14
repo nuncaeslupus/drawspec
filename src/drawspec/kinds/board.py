@@ -38,6 +38,21 @@ from drawspec.scene import Path, Polygon, Primitive, Scene, TextLine, TextSpan
 from drawspec.schema import BoardColumn, Card, Document
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
+from drawspec.textgrid import (
+    STRAIGHT,
+    Drawn,
+    boxed,
+    caption_lines,
+    cells,
+    centred,
+    finished,
+    label_lines,
+    pad,
+    spelt,
+    too_wide,
+    widest,
+    wrapped,
+)
 from drawspec.theme import Theme
 
 #: The most of the canvas the slice labels' margin may take. A longer name wraps.
@@ -348,4 +363,147 @@ def _left(block: TextBlock, x: float, top: float) -> list[TextLine]:
     return _lines(block, x, top, "start", "body")
 
 
-__all__ = ["BoardDrawing", "board_drawing", "board_scene", "heading_of"]
+# ---------------------------------------------------------------------------
+# Text: columns of cards
+# ---------------------------------------------------------------------------
+
+#: Cells between two columns, and between the slice names and the first column.
+TEXT_GUTTER: Final = 2
+
+
+def board_text(document: Document, width: int, charset: str) -> str:
+    """A `board` as plain text: columns of boxed cards under their headings.
+
+    The layout's own grid: equal columns across the width, each heading — its
+    name, and `n / limit` counted by `heading_of` — over a rule, heavy for an
+    `emphasis` column or one over its limit; cards stacked in each cell in the
+    order written, a card's words wrapped at spaces to its column as the SVG
+    wraps them, its note under it. With slices, their names in a margin at the
+    left and a line between each two, the cut a heavy one.
+
+    Raises:
+        FitError: a word is wider than its column can hold, at its pointer.
+    """
+    columns = document.board_columns
+    slices = document.slices
+    names = {
+        item.id: " ".join(label_lines(item.text, charset, f"/rows/{position}/text"))
+        for position, item in enumerate(slices)
+    }
+    count = len(columns)
+    headings = [
+        (
+            spelt(
+                heading_of(item, document.cards)[0].replace("**", ""),
+                charset,
+                f"/columns/{position}/text",
+            ),
+            heading_of(item, document.cards)[1],
+        )
+        for position, item in enumerate(columns)
+    ]
+    # The narrowest a column may be: its longest word, between a card's sides.
+    words = [
+        (cells(word) + 2, f"/cards/{position}/text", word)
+        for position, card in enumerate(document.cards)
+        for word in " ".join(label_lines(card.label, charset)).split(" ")
+    ]
+    words += [
+        (cells(word), f"/cards/{position}/note", word)
+        for position, card in enumerate(document.cards)
+        for word in " ".join(label_lines(card.note, charset)).split(" ")
+    ]
+    words += [
+        (cells(word), f"/columns/{position}/text", word)
+        for position, (text, _) in enumerate(headings)
+        for word in text.split(" ")
+    ]
+    least_column, pointer, word = max([(5, "/columns", ""), *words], key=lambda entry: entry[0])
+    # The slice names' margin: as wide as the widest name, or, when the columns
+    # need the room, as its longest word, the names wrapping under it. The gutter
+    # narrows to one cell before anything is refused.
+    whole = least = 0
+    if slices:
+        whole = max(cells(name) for name in names.values())
+        least = max(cells(part) for name in names.values() for part in name.split(" "))
+    for gutter, margin in ((TEXT_GUTTER, whole), (TEXT_GUTTER, least), (1, least)):
+        margin += gutter if slices else 0
+        column = (width - margin - gutter * (count - 1)) // count
+        if column >= least_column:
+            break
+    else:
+        needed = margin + count * least_column + gutter * (count - 1)
+        what = f"the word {word!r}" if word else f"{count} columns"
+        raise too_wide(pointer, what, needed, width)
+    heavy, light = STRAIGHT[charset]["heavy"][0], STRAIGHT[charset]["light"][0]
+
+    def stack(card_position: int) -> list[str]:
+        card = document.cards[card_position]
+        pointer = f"/cards/{card_position}/text"
+        texts = label_lines(card.label, charset, pointer)
+        # A space inside each side when the column has room for the longest word
+        # with it; a narrow column gives the space up before it refuses the word.
+        longest = max(cells(word) for text in texts for word in text.split(" "))
+        padding = 1 if longest <= column - 4 else 0
+        room = column - 2 - 2 * padding
+        words = [line for text in texts for line in wrapped(text, room, pointer, width)]
+        lines = boxed(words, card.role, charset, room, "centre", padding)
+        if card.note:
+            note_pointer = f"/cards/{card_position}/note"
+            note = " ".join(label_lines(card.note, charset, note_pointer))
+            lines += [centred(line, column) for line in wrapped(note, column, note_pointer, width)]
+        return lines
+
+    drawn: list[Drawn] = []
+    heading_lines = [
+        wrapped(text, column, f"/columns/{position}/text", width)
+        for position, (text, _) in enumerate(headings)
+    ]
+    tall = max(len(lines) for lines in heading_lines)
+    for number in range(tall):
+        cells_ = [
+            centred(lines[number], column) if number < len(lines) else " " * column
+            for lines in heading_lines
+        ]
+        drawn.append(Drawn(" " * margin + (" " * gutter).join(cells_)))
+    drawn.append(
+        Drawn(
+            " " * margin
+            + (" " * gutter).join(
+                (heavy if role == "emphasis" else light) * column for _, role in headings
+            )
+        )
+    )
+    row_ids = [item.id for item in slices] or [""]
+    for number, row in enumerate(row_ids):
+        stacks = [
+            [
+                line
+                for position, card in enumerate(document.cards)
+                if card.column == item.id and card.row == row
+                for line in stack(position)
+            ]
+            for item in columns
+        ]
+        name = names.get(row, "")
+        name_lines = wrapped(name, margin - gutter, f"/rows/{number}/text", width) if name else []
+        height = max([len(lines) for lines in stacks] + [len(name_lines), 1])
+        for line in range(height):
+            left = pad(name_lines[line] if line < len(name_lines) else "", margin)
+            drawn.append(
+                Drawn(
+                    left
+                    + (" " * gutter).join(
+                        pad(lines[line], column) if line < len(lines) else " " * column
+                        for lines in stacks
+                    )
+                )
+            )
+        if number < len(row_ids) - 1:
+            rule = heavy if row == document.cut else STRAIGHT[charset]["dashed"][0]
+            drawn.append(Drawn(rule * (margin + count * column + gutter * (count - 1))))
+    widest(drawn, width)
+    return finished([line.text for line in drawn] + caption_lines(document.caption, width, charset))
+
+
+__all__ = ["BoardDrawing", "board_drawing", "board_scene", "board_text", "heading_of"]

@@ -1,0 +1,15 @@
+  my-app/
+  |-- src/
+  |   |-- components/
+  |   |   |-- Button.tsx
+  |   |   `-- ... 12 more
+  |   |-- index.ts                  # entry point
+  |   `-- utils -> ../shared/utils
+  |-- tests/
++ |   `-- index.test.ts
+  |-- dist/                         # empty, git-ignored
+  |-- docs/
+  |   `-- guide.pdf
+  |-- .gitignore
+~ |-- package.json
+  `-- README.md
