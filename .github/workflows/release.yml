@@ -173,6 +173,26 @@ jobs:
       - name: Upload
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
 
+  mcp-registry:
+    name: Publish to the MCP Registry
+    needs: [tag, publish]
+    if: needs.tag.outputs.tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      # The registry checks io.github.nuncaeslupus/* against this workflow's OIDC
+      # token, and the package by the `mcp-name:` line in the README now on PyPI.
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install mcp-publisher
+        run: curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+
+      - run: ./mcp-publisher login github-oidc
+
+      - run: ./mcp-publisher publish
+
   announce:
     name: Cut the GitHub release
     needs: [tag, publish]

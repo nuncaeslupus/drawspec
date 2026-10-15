@@ -198,6 +198,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     example.add_argument("kind", choices=KINDS, help="which kind to write")
 
+    # The same server as `drawspec-mcp`, reachable as `drawspec mcp` so a launcher
+    # that can only run the package's own command (`uvx --from 'drawspec[mcp]'
+    # drawspec mcp`, the MCP Registry's entry) gets to it too.
+    commands.add_parser(
+        "mcp",
+        help="serve validate, render and kinds as MCP tools over stdio",
+        description="The MCP server; needs the extra: pip install 'drawspec[mcp]'.",
+    )
+
     return parser
 
 
@@ -224,6 +233,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _validate(arguments)
     if arguments.command == "kinds":
         return _kinds()
+    if arguments.command == "mcp":
+        from drawspec.mcp import main as serve_mcp
+
+        serve_mcp()
+        return OK
     if arguments.command == "example":
         return _example(arguments)
     if arguments.command == "theme":

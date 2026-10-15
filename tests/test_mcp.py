@@ -284,3 +284,42 @@ def test_an_unknown_tool_says_which_tools_there_are(client: Client) -> None:
     assert result["isError"] is True, result
     said = result["content"][0]["text"]
     assert "validate" in said and "render" in said and "kinds" in said
+
+
+def test_the_cli_serves_the_same_server() -> None:
+    """`drawspec mcp` is what the MCP Registry's `uvx --from 'drawspec[mcp]' drawspec mcp` runs."""
+    initialize = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-06-18",
+            "capabilities": {},
+            "clientInfo": {"name": "test", "version": "0"},
+        },
+    }
+    done = subprocess.run(
+        [sys.executable, "-c", "from drawspec.cli import main; main(['mcp'])"],
+        input=json.dumps(initialize) + "\n",
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    reply = json.loads(done.stdout.splitlines()[0])
+    assert reply["result"]["serverInfo"]["name"] == "drawspec"
+
+
+def test_server_json_matches_the_released_package() -> None:
+    """The MCP Registry publishes server.json as is, so it must name the PyPI version."""
+    import tomllib
+    from pathlib import Path
+
+    from drawspec import __version__
+
+    root = Path(__file__).parent.parent
+    version = tomllib.loads((root / "pyproject.toml").read_text())["project"]["version"]
+    server = json.loads((root / "server.json").read_text())
+    assert server["version"] == version == __version__
+    assert {p["version"] for p in server["packages"]} == {version}
+    assert f"mcp-name: {server['name']}" in (root / "README.md").read_text(encoding="utf-8")
