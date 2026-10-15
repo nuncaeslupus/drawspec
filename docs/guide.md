@@ -466,7 +466,7 @@ cross-links or groups is drawn this way too; `bands` have no text form yet.
   side by side.
 
 From Python, `render_text(document, width=80, charset="unicode")` returns the
-string; the MCP `render` tool takes `"format": "text"` with the same `width` and
+string; the MCP `render_document` tool takes `"format": "text"` with the same `width` and
 `charset`.
 
 ## Validating in a build
@@ -760,14 +760,19 @@ picking a winner would be drawspec deciding which of two things you meant.
 ## Using it from an agent: the MCP server
 
 If the thing writing your documents is a language model rather than a person,
-there is a third interface. `drawspec-mcp` serves the same work as three MCP
-tools over stdio:
+there is a third interface. `drawspec-mcp` serves the same work as five MCP
+tools over stdio, one per step of writing a document:
 
 | Tool | Answers |
 |---|---|
-| `validate` | would `render` refuse this, and **where** — every violation as `{"pointer", "message"}` |
-| `render` | the SVG, with the same optional `theme`, `width` and `height` — or, with `"format": "png"` (and optional `scale`, `background`), a base64 PNG image block, when the server has `drawspec[png]` |
-| `kinds` | every kind and what it is for, so a model chooses one instead of guessing |
+| `list_kinds` | every kind and what it is for, so a model chooses one instead of guessing |
+| `get_example` | the smallest valid document of one kind — what `drawspec example <kind>` prints |
+| `get_schema` | one kind's fields, cut from the published schema with only the definitions it uses |
+| `validate_document` | would `render_document` refuse this, and **where** — every violation as `{"pointer", "message"}` |
+| `render_document` | the SVG, with the same optional `theme`, `width` and `height` — or, with `"format": "png"` (and optional `scale`, `background`), a base64 PNG image block, when the server has `drawspec[png]`; or with `"format": "text"`, the plain-text form |
+
+All five are read-only; the JSON answers also come back as structured content
+matching each tool's output schema.
 
 ```bash
 pip install 'drawspec[mcp]'
@@ -783,7 +788,7 @@ Then point a client at it. For anything that reads the conventional JSON config:
 }
 ```
 
-**`validate` is the one that earns the server.** Shelling out to the CLI works,
+**`validate_document` is the one that earns the server.** Shelling out to the CLI works,
 and it hands a model prose on stderr that it has to read to discover that
 `/edges/2/to` names nothing. As a tool the same refusal comes back as data, in
 the model's own loop, and the write-validate-fix cycle closes without a shell in

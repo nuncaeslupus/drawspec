@@ -11,7 +11,8 @@ rather than guess at.
 
 1. **Install.** `pip install drawspec`. If your client speaks MCP and the
    `drawspec-mcp` server is available (`pip install 'drawspec[mcp]'`), use its
-   `kinds`, `validate` and `render` tools instead of the shell commands below.
+   `list_kinds`, `get_example`, `get_schema`, `validate_document` and
+   `render_document` tools instead of the shell commands below.
 2. **Read the format.** `AGENTS.md` at
    https://github.com/nuncaeslupus/drawspec/blob/main/AGENTS.md — read it whole,
    once. Offline, `drawspec kinds` lists the kinds and `drawspec example <kind>`

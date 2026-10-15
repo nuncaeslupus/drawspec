@@ -10,6 +10,24 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+## [0.3.2] — 2026-10-15
+
+### Changed
+
+- **The MCP tools are renamed to one verb_noun convention**: `validate` →
+  `validate_document`, `render` → `render_document`, `kinds` → `list_kinds`. The CLI
+  commands keep their names.
+- **Sharper tool descriptions**: when to validate and when to render, the shape of
+  every answer and of every refusal, and read-only annotations on all tools. JSON
+  answers also come back as structured content matching an output schema.
+
+### Added
+
+- **`get_example`** and **`get_schema`** MCP tools: the smallest valid document of a
+  kind (what `drawspec example` prints), and that kind's slice of the published
+  schema with only the definitions it uses (a few thousand characters, not the whole
+  file's two hundred thousand).
+
 ## [0.3.1] — 2026-10-15
 
 ### Added
