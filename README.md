@@ -6,6 +6,8 @@
 [![Built with claude-arsenal](https://img.shields.io/badge/built%20with-claude--arsenal-d97756)](https://github.com/nuncaeslupus/claude-arsenal)
 <!-- /claude-arsenal:attribution -->
 
+[![drawspec MCP server – quality and maintenance score on Glama](https://glama.ai/mcp/servers/nuncaeslupus/drawspec/badges/score.svg)](https://glama.ai/mcp/servers/nuncaeslupus/drawspec)
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/hero.png" width="100%" alt="drawspec: a blueprint sheet with the wordmark, a JSON flow spec and the flow chart drawspec renders from it, with large faint venn and pie drawings behind the wordmark, a mind map and a project file tree drawn by drawspec, and beside them a small sequence diagram as drawspec's text output, once in box drawing and once in ASCII">
 </p>
