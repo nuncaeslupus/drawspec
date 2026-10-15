@@ -106,7 +106,8 @@ _READ_ONLY: Final = types.ToolAnnotations(
 #: tool, so a caller has one error path.
 _REFUSAL_SHAPE: Final[str] = (
     "Refusals are error results with JSON text "
-    '`{"ok": false, "error", "message", "violations": [{"pointer": "/edges/0/to", "message"}]}`: '
+    '`{"ok": false, "error": "DocumentError", "message": "...", '
+    '"violations": [{"pointer": "/edges/0/to", "message": "..."}]}`: '
     "`error` is e.g. `DocumentError` or `FitError`, `pointer` is RFC 6901 (empty for the "
     "whole document), and `violations` is never empty."
 )
