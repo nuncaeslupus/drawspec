@@ -10,6 +10,16 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+## [0.3.3] — 2026-10-15
+
+### Changed
+
+- **Tighter MCP tool descriptions**: each now says what its arguments accept, with an
+  example value (the bundled theme names, `kind`, the document as a JSON object), how
+  `width`, `height` and `theme` behave with `format: text`, and what a call costs (local,
+  deterministic, rough answer size). Return shapes already in an output schema are no
+  longer repeated, and the refusal shape is shorter.
+
 ## [0.3.2] — 2026-10-15
 
 ### Changed
