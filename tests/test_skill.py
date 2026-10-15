@@ -49,7 +49,7 @@ def test_every_mcp_tool_the_skill_names_exists() -> None:
     source = (Path(__file__).resolve().parents[1] / "src" / "drawspec" / "mcp.py").read_text(
         encoding="utf-8"
     )
-    served = set(re.findall(r'name="([a-z]+)"', source))
-    for tool in ("kinds", "validate", "render"):
+    served = set(re.findall(r'name="([a-z_]+)"', source))
+    for tool in ("list_kinds", "get_example", "get_schema", "validate_document", "render_document"):
         assert tool in served
         assert f"`{tool}`" in TEXT

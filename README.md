@@ -363,7 +363,8 @@ what the guide and the references are for. [`llms.txt`](llms.txt) is the index
 that points at it.
 
 And if your client speaks **MCP**, `pip install 'drawspec[mcp]'` gives you
-`drawspec-mcp`: `validate`, `render` and `kinds` as tools, so a refusal arrives as
+`drawspec-mcp`: `list_kinds`, `get_example`, `get_schema`, `validate_document` and
+`render_document` as tools, so a refusal arrives as
 `{"pointer": "/edges/0/to", "message": …}` in the model's own loop instead of as
 prose on stderr it has to read. Same checks, same messages, no shell. See
 [the guide](docs/guide.md#using-it-from-an-agent-the-mcp-server).

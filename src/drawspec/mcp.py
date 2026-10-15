@@ -1,4 +1,4 @@
-"""drawspec as three MCP tools, so an agent's refusals arrive as data.
+"""drawspec as five MCP tools, so an agent's refusals arrive as data.
 
 An agent writing a document today has to shell out to `drawspec validate`,
 capture stderr, and read prose to find out that `/edges/2/to` names nothing.
@@ -9,19 +9,23 @@ pass is one edit — and they arrive in the one shape a program cannot use.
 as `{"pointer": "/edges/0/to", "message": ...}` inside the agent's own loop, and
 the write-validate-fix cycle closes without a shell in it.
 
-Three tools and deliberately not more:
+Five tools, one per step of writing a document, and deliberately not more:
 
 ======================  ====================================================
-:func:`_validate`       would `render` refuse this, and where
-:func:`_render`         the SVG, or a PNG as an image block
-:func:`_kinds`          the thirteen kinds and what each is for
+``list_kinds``          every kind and what each is for
+``get_example``         the smallest valid document of one kind
+``get_schema``          one kind's fields, cut from the published schema
+``validate_document``   would ``render_document`` refuse this, and where
+``render_document``     the SVG, a PNG as an image block, or plain text
 ======================  ====================================================
 
 **Nothing here paraphrases drawspec.** Every tool takes the document the CLI
 takes and reports the violations :class:`~drawspec.schema.Violation` already
-carries; `kinds` is `drawspec.examples.PURPOSE` verbatim. A layer that reworded
-the refusals would be a third description of the format to keep in step with the
-schema and `AGENTS.md`, which is the drift this project keeps designing out.
+carries; `list_kinds` is `drawspec.examples.PURPOSE` verbatim, `get_example`
+is `drawspec.examples.EXAMPLES` and `get_schema` a slice of the generated
+schema. A layer that reworded the refusals would be a third description of the
+format to keep in step with the schema and `AGENTS.md`, which is the drift this
+project keeps designing out.
 
 Run it with `python -m drawspec.mcp`, or as the `drawspec-mcp` script. It speaks
 stdio, which is what every client supports; there is no HTTP transport because
@@ -51,20 +55,21 @@ except ImportError as error:  # pragma: no cover - the extra is installed in CI
 
 from drawspec import __version__
 from drawspec.errors import DrawspecError
-from drawspec.examples import PURPOSE
+from drawspec.examples import EXAMPLES, PURPOSE
 from drawspec.export import BACKGROUNDS, DEFAULT_SCALE, MAX_SCALE, render_png
 from drawspec.kinds import TEXT_KINDS
 from drawspec.render import render_document, render_text
-from drawspec.schema import KINDS, SCHEMA_ID, Document, parse_document
+from drawspec.schema import KINDS, SCHEMA_ID, Document, build_schema, parse_document
 from drawspec.textgrid import CHARSETS, DEFAULT_WIDTH, WIDE_WIDTH
 
-#: What every tool is handed. Spelled once because all three take the same
-#: thing: an agent that has learnt one call has learnt all of them.
+#: What every tool is handed. Spelled once because the document tools all take
+#: the same thing: an agent that has learnt one call has learnt all of them.
 _DOCUMENT: Final[dict[str, Any]] = {
     "type": "object",
     "description": (
-        f"A drawspec document, as JSON. The full field list is published at {SCHEMA_ID}, "
-        f"and `kinds` names the {len(KINDS)} values `kind` may take."
+        f"A drawspec document, as JSON. `list_kinds` names the {len(KINDS)} values `kind` "
+        "may take, `get_example` returns the smallest valid document of one, and "
+        f"`get_schema` returns its fields (the whole format is published at {SCHEMA_ID})."
     ),
 }
 
@@ -73,32 +78,132 @@ _THEME: Final[dict[str, Any]] = {
     "description": "A bundled theme name or a path to a theme file. Omit for the default.",
 }
 
+_KIND: Final[dict[str, Any]] = {
+    "type": "string",
+    "enum": list(KINDS),
+    "description": "A diagram kind, as `list_kinds` names them.",
+}
+
+#: Every tool reads its arguments and writes nothing: calling one twice with the
+#: same arguments returns the same answer and changes nothing anywhere.
+_READ_ONLY: Final = types.ToolAnnotations(
+    read_only_hint=True, destructive_hint=False, idempotent_hint=True, open_world_hint=False
+)
+
+#: What a refused call returns, in the description's words. One shape for every
+#: tool, so a caller has one error path.
+_REFUSAL_SHAPE: Final[str] = (
+    "A refusal comes back as an error result whose text is JSON: "
+    '`{"ok": false, "error": "<type>", "message": "<text>", '
+    '"violations": [{"pointer": "/edges/0/to", "message": "<text>"}]}`, '
+    "where `pointer` is an RFC 6901 JSON pointer into the document (empty for the "
+    "document as a whole) and `violations` is never empty."
+)
+
 
 TOOLS: Final[tuple[types.Tool, ...]] = (
     types.Tool(
-        name="validate",
+        name="list_kinds",
+        title="List the diagram kinds",
+        description=(
+            "List the vocabulary: every value `kind` may take and what each one is for, as "
+            '`{"kinds": [{"kind": "flow", "purpose": "<text>"}]}`. Takes no arguments. Call '
+            "it first, before "
+            "choosing a kind — several kinds are not box-and-arrow diagrams and are easy to "
+            "miss; then `get_example` for a starting document."
+        ),
+        input_schema={"type": "object", "properties": {}},
+        output_schema={
+            "type": "object",
+            "properties": {
+                "kinds": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {"kind": {"type": "string"}, "purpose": {"type": "string"}},
+                        "required": ["kind", "purpose"],
+                    },
+                }
+            },
+            "required": ["kinds"],
+        },
+        annotations=_READ_ONLY,
+    ),
+    types.Tool(
+        name="get_example",
+        title="Get an example document of one kind",
+        description=(
+            "Get the smallest valid document of one kind, as JSON ready to edit: the fastest "
+            "way to the right field names. Use it after `list_kinds` has settled the kind, "
+            "and `get_schema` only when a field the example does not use is needed."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {"kind": _KIND},
+            "required": ["kind"],
+        },
+        output_schema={"type": "object", "description": "A drawspec document."},
+        annotations=_READ_ONLY,
+    ),
+    types.Tool(
+        name="get_schema",
+        title="Get the JSON Schema for one kind",
+        description=(
+            "Get the JSON Schema for one kind's documents: every field it accepts, with "
+            "types, limits and descriptions, plus the shared definitions it refers to. Use "
+            "it when `get_example` does not show a field you need. Referential rules "
+            "(unique ids, edges that land on real nodes) are beyond JSON Schema — "
+            "`validate_document` checks those."
+        ),
+        input_schema={
+            "type": "object",
+            "properties": {"kind": _KIND},
+            "required": ["kind"],
+        },
+        output_schema={"type": "object", "description": "A JSON Schema (draft 2020-12)."},
+        annotations=_READ_ONLY,
+    ),
+    types.Tool(
+        name="validate_document",
         title="Validate a drawspec document",
         description=(
-            "Answer whether `render` would refuse this document, and if so exactly where. "
-            "Returns every violation, not the first — each located by JSON pointer, so one "
-            "pass is one edit. Call this before `render` while a document is being written."
+            "Check whether `render_document` would refuse this document, and if so exactly "
+            "where, without drawing anything for you to read. Returns every violation, not "
+            "the first, so one pass is one edit. Call it while a document is being written "
+            "or edited; skip it when you are about to render anyway, since "
+            "`render_document` refuses in the same shape. "
+            'A valid document returns `{"ok": true, "kind": "flow", "message": "<text>"}`. '
+            + _REFUSAL_SHAPE
         ),
         input_schema={
             "type": "object",
             "properties": {"document": _DOCUMENT, "theme": _THEME},
             "required": ["document"],
         },
+        output_schema={
+            "type": "object",
+            "properties": {
+                "ok": {"type": "boolean"},
+                "kind": {"type": "string"},
+                "message": {"type": "string"},
+            },
+            "required": ["ok", "kind", "message"],
+        },
+        annotations=_READ_ONLY,
     ),
     types.Tool(
-        name="render",
+        name="render_document",
         title="Render a drawspec document to SVG, PNG or text",
         description=(
-            "Draw the document and return the SVG. The output is safe to paste inline into "
-            "a Markdown page: no global styles, no colliding ids, and no meaning carried by "
-            "colour alone. With format `png` it returns a PNG image instead, for a chat, a "
-            "slide or an attachment (needs the server's `drawspec[png]` extra); with format "
-            "`text`, the diagram as plain text, for the kinds that have a text form. Refuses "
-            "with located violations exactly as `validate` does."
+            "Draw the document. Use it when the document is ready to show; while still "
+            "fixing errors, `validate_document` returns just the verdict instead of the drawing. "
+            "Returns one content "
+            "block: by default a text block holding the SVG markup, safe to paste inline "
+            "into a Markdown page (no global styles, no colliding ids, no meaning carried "
+            "by colour alone); with format `png`, an image block (base64 `image/png`) for "
+            "a chat, a slide or an attachment, which needs the server's `drawspec[png]` "
+            "extra; with format `text`, a text block with the diagram as plain text, for "
+            "the kinds that have a text form. Nothing is written to disk. " + _REFUSAL_SHAPE
         ),
         input_schema={
             "type": "object",
@@ -142,17 +247,7 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
             },
             "required": ["document"],
         },
-    ),
-    types.Tool(
-        name="kinds",
-        title="List the diagram kinds",
-        description=(
-            "The vocabulary: every value `kind` may take and what each one is for. Takes no "
-            "arguments. Read this before choosing a kind — several of them are not "
-            "box-and-arrow diagrams and are easy to miss."
-        ),
-        input_schema={"type": "object", "properties": {}},
-        annotations=types.ToolAnnotations(read_only_hint=True, idempotent_hint=True),
+        annotations=_READ_ONLY,
     ),
 )
 
@@ -240,6 +335,67 @@ def _kinds() -> dict[str, Any]:
     return {"kinds": [{"kind": kind, "purpose": PURPOSE[kind]} for kind in KINDS]}
 
 
+def _kind(arguments: dict[str, Any]) -> str:
+    """The `kind` argument, checked: an unknown kind is the arguments' fault."""
+    kind = str(arguments["kind"])
+    if kind not in KINDS:
+        raise ValueError(f"unknown kind {kind!r}; `list_kinds` names the {len(KINDS)} kinds")
+    return kind
+
+
+def _example(arguments: dict[str, Any]) -> dict[str, Any]:
+    """The smallest document of one kind — the same one `drawspec example` prints."""
+    return dict(EXAMPLES[_kind(arguments)])
+
+
+def _schema(arguments: dict[str, Any]) -> dict[str, Any]:
+    """One kind's branch of the published schema, with only the definitions it uses.
+
+    The whole schema is some two hundred thousand characters, most of it about
+    kinds the caller is not writing. The branch is cut from the same generated
+    schema the file is, so the two cannot disagree; the `$defs` it needs are
+    followed transitively through `$ref`, since a definition may refer to another.
+    """
+    kind = _kind(arguments)
+    full = build_schema()
+    branch = next(v for v in full["oneOf"] if kind in v["properties"]["kind"]["enum"])
+    branch = {**branch, "properties": {**branch["properties"], "kind": {"const": kind}}}
+    branch.pop("title", None)
+    definitions: dict[str, Any] = full["$defs"]
+    needed: dict[str, Any] = {}
+    pending = _refs(branch)
+    while pending:
+        name = pending.pop()
+        if name not in needed:
+            needed[name] = definitions[name]
+            pending |= _refs(definitions[name])
+    schema = {
+        "$schema": full["$schema"],
+        "$id": SCHEMA_ID,
+        "title": f"drawspec {kind} document",
+        "description": full["description"],
+        **branch,
+    }
+    if needed:
+        schema["$defs"] = dict(sorted(needed.items()))
+    return schema
+
+
+def _refs(node: object) -> set[str]:
+    """The `$defs` names a schema fragment refers to, directly."""
+    if isinstance(node, dict):
+        found = set()
+        ref = node.get("$ref")
+        if isinstance(ref, str) and ref.startswith("#/$defs/"):
+            found.add(ref.removeprefix("#/$defs/"))
+        for value in node.values():
+            found |= _refs(value)
+        return found
+    if isinstance(node, list):
+        return set().union(*(_refs(item) for item in node)) if node else set()
+    return set()
+
+
 def _image(png: bytes) -> types.CallToolResult:
     data = base64.b64encode(png).decode("ascii")
     return types.CallToolResult(
@@ -248,8 +404,14 @@ def _image(png: bytes) -> types.CallToolResult:
 
 
 def _text(payload: object) -> types.CallToolResult:
-    body = payload if isinstance(payload, str) else json.dumps(payload, indent=2)
-    return types.CallToolResult(content=[types.TextContent(type="text", text=body)])
+    if isinstance(payload, str):
+        return types.CallToolResult(content=[types.TextContent(type="text", text=payload)])
+    # A JSON answer goes out twice: as text for clients that read only content,
+    # and as structured content matching the tool's `output_schema`.
+    return types.CallToolResult(
+        content=[types.TextContent(type="text", text=json.dumps(payload, indent=2))],
+        structured_content=payload if isinstance(payload, dict) else None,
+    )
 
 
 async def _on_list_tools(
@@ -271,20 +433,24 @@ async def _on_call_tool(
     """
     arguments = dict(params.arguments or {})
     try:
-        if params.name == "validate":
+        if params.name == "validate_document":
             return _text(_validate(arguments))
-        if params.name == "render":
+        if params.name == "render_document":
             rendered = _render(arguments)
             return _image(rendered) if isinstance(rendered, bytes) else _text(rendered)
-        if params.name == "kinds":
+        if params.name == "list_kinds":
             return _text(_kinds())
+        if params.name == "get_example":
+            return _text(_example(arguments))
+        if params.name == "get_schema":
+            return _text(_schema(arguments))
     except DrawspecError as error:
         return types.CallToolResult(
             content=[types.TextContent(type="text", text=json.dumps(_refusal(error), indent=2))],
             is_error=True,
         )
     except ValueError as error:
-        # An out-of-range `scale` or an unknown `background`: the arguments,
+        # An out-of-range `scale`, an unknown `background` or `kind`: the arguments,
         # not the document, so there is nothing to locate.
         message = str(error)
         return types.CallToolResult(
@@ -344,9 +510,10 @@ def build_server() -> Server[None]:
         title="drawspec",
         instructions=(
             "Write what a diagram means — nodes, edges, labels, and a semantic role for each — "
-            "and drawspec decides every coordinate. Call `kinds` to choose a kind, `validate` "
-            "while writing (its violations are located by JSON pointer), and `render` for the "
-            f"SVG. The document format is published at {SCHEMA_ID}."
+            "and drawspec decides every coordinate. Call `list_kinds` to choose a kind, "
+            "`get_example` for a starting document (`get_schema` for every field), "
+            "`validate_document` while writing (its violations are located by JSON pointer), "
+            f"and `render_document` for the SVG. The document format is published at {SCHEMA_ID}."
         ),
         on_list_tools=_on_list_tools,
         on_call_tool=_on_call_tool,

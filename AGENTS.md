@@ -11,7 +11,7 @@ drawspec schema --out schema.json             # the full JSON Schema
 drawspec theme from site.css -o house.toml    # a theme from a brand's CSS or design tokens
 ```
 
-**If your client speaks MCP**, `drawspec-mcp` serves `validate`, `render` and `kinds` as tools,
+**If your client speaks MCP**, `drawspec-mcp` serves `list_kinds`, `get_example`, `get_schema`, `validate_document` and `render_document` as tools,
 each violation a `{"pointer": "/edges/0/to", "message": …}` object: `pip install 'drawspec[mcp]'`, [`docs/guide.md`](docs/guide.md).
 
 ## The one rule
