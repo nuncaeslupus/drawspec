@@ -94,7 +94,8 @@ _READ_ONLY: Final = types.ToolAnnotations(
 #: tool, so a caller has one error path.
 _REFUSAL_SHAPE: Final[str] = (
     "A refusal comes back as an error result whose text is JSON: "
-    '`{"ok": false, "error", "message", "violations": [{"pointer", "message"}]}`, '
+    '`{"ok": false, "error": "<type>", "message": "<text>", '
+    '"violations": [{"pointer": "/edges/0/to", "message": "<text>"}]}`, '
     "where `pointer` is an RFC 6901 JSON pointer into the document (empty for the "
     "document as a whole) and `violations` is never empty."
 )
@@ -106,7 +107,8 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
         title="List the diagram kinds",
         description=(
             "List the vocabulary: every value `kind` may take and what each one is for, as "
-            '`{"kinds": [{"kind", "purpose"}]}`. Takes no arguments. Call it first, before '
+            '`{"kinds": [{"kind": "flow", "purpose": "<text>"}]}`. Takes no arguments. Call '
+            "it first, before "
             "choosing a kind — several kinds are not box-and-arrow diagrams and are easy to "
             "miss; then `get_example` for a starting document."
         ),
@@ -170,7 +172,8 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
             "the first, so one pass is one edit. Call it while a document is being written "
             "or edited; skip it when you are about to render anyway, since "
             "`render_document` refuses in the same shape. "
-            'A valid document returns `{"ok": true, "kind", "message"}`. ' + _REFUSAL_SHAPE
+            'A valid document returns `{"ok": true, "kind": "flow", "message": "<text>"}`. '
+            + _REFUSAL_SHAPE
         ),
         input_schema={
             "type": "object",
@@ -193,7 +196,8 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
         title="Render a drawspec document to SVG, PNG or text",
         description=(
             "Draw the document. Use it when the document is ready to show; while still "
-            "fixing errors, `validate_document` is the cheaper call. Returns one content "
+            "fixing errors, `validate_document` returns just the verdict instead of the drawing. "
+            "Returns one content "
             "block: by default a text block holding the SVG markup, safe to paste inline "
             "into a Markdown page (no global styles, no colliding ids, no meaning carried "
             "by colour alone); with format `png`, an image block (base64 `image/png`) for "
