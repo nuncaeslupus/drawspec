@@ -4,7 +4,7 @@
 
 ```
 usage: drawspec [-h] [--version]
-                {render,validate,theme,schema,kinds,example} ...
+                {render,validate,theme,schema,kinds,example,mcp} ...
 ```
 
 Nothing is printed to stdout but the thing that was asked for — the SVG, the
@@ -142,6 +142,14 @@ usage: drawspec example [-h]
 | Argument | What it does |
 |---|---|
 | `kind` | Which kind to write. One of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`. |
+
+### `drawspec mcp`
+
+The MCP server; needs the extra: pip install 'drawspec[mcp]'.
+
+```
+usage: drawspec mcp [-h]
+```
 
 ## Embedding profiles
 

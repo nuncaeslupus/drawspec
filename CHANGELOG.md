@@ -10,6 +10,16 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-10-15
+
+### Added
+
+- **The official MCP Registry** lists drawspec as `io.github.nuncaeslupus/drawspec`:
+  `server.json`, the `mcp-name` line the registry looks for in the PyPI README, and a
+  release job that publishes it through GitHub's OIDC once PyPI has the version.
+- **`drawspec mcp`**, the same server as `drawspec-mcp`, so a launcher that only runs the
+  package's own command reaches it: `uvx --from 'drawspec[mcp]' drawspec mcp`.
+
 ## [0.3.0] — 2026-10-14
 
 ### Added

@@ -19,7 +19,7 @@ from drawspec.scene import Ellipse, Path, Polygon, Rect, Scene, TextRun
 from drawspec.schema import Document, load_document, parse_document, validate_document
 from drawspec.theme import Theme, load_theme
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 __all__ = [
     "Box",
