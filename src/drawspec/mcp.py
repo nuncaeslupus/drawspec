@@ -37,6 +37,7 @@ from __future__ import annotations
 import base64
 import json
 from dataclasses import replace
+from pathlib import Path
 from typing import Any, Final
 
 try:
@@ -54,6 +55,7 @@ except ImportError as error:  # pragma: no cover - the extra is installed in CI
     ) from error
 
 from drawspec import __version__
+from drawspec import theme as _theme_module
 from drawspec.errors import DrawspecError
 from drawspec.examples import EXAMPLES, PURPOSE
 from drawspec.export import BACKGROUNDS, DEFAULT_SCALE, MAX_SCALE, render_png
@@ -67,21 +69,31 @@ from drawspec.textgrid import CHARSETS, DEFAULT_WIDTH, WIDE_WIDTH
 _DOCUMENT: Final[dict[str, Any]] = {
     "type": "object",
     "description": (
-        f"A drawspec document, as JSON. `list_kinds` names the {len(KINDS)} values `kind` "
-        "may take, `get_example` returns the smallest valid document of one, and "
-        f"`get_schema` returns its fields (the whole format is published at {SCHEMA_ID})."
+        "A drawspec document as a JSON object (not a string or a path), e.g. "
+        '`{"version": 1, "kind": "flow", "nodes": [...], "edges": [...]}`. '
+        f"`list_kinds` names the {len(KINDS)} values `kind` may take, `get_example` returns "
+        "the smallest valid document of one, and `get_schema` returns its fields (the whole "
+        f"format is published at {SCHEMA_ID})."
     ),
 }
 
+#: The themes shipped inside the package, by the name `theme` accepts.
+_BUNDLED_THEMES: Final[tuple[str, ...]] = tuple(
+    sorted(path.stem for path in (Path(_theme_module.__file__).parent / "themes").glob("*.toml"))
+)
+
 _THEME: Final[dict[str, Any]] = {
     "type": "string",
-    "description": "A bundled theme name or a path to a theme file. Omit for the default.",
+    "description": (
+        f"A bundled theme name ({', '.join(_BUNDLED_THEMES)}) or a path to a `.toml` theme "
+        "file on the server's disk, e.g. `blueprint`. Omit for `default`."
+    ),
 }
 
 _KIND: Final[dict[str, Any]] = {
     "type": "string",
     "enum": list(KINDS),
-    "description": "A diagram kind, as `list_kinds` names them.",
+    "description": "A diagram kind, exactly as `list_kinds` names it, e.g. `flow`.",
 }
 
 #: Every tool reads its arguments and writes nothing: calling one twice with the
@@ -93,11 +105,11 @@ _READ_ONLY: Final = types.ToolAnnotations(
 #: What a refused call returns, in the description's words. One shape for every
 #: tool, so a caller has one error path.
 _REFUSAL_SHAPE: Final[str] = (
-    "A refusal comes back as an error result whose text is JSON: "
-    '`{"ok": false, "error": "<type>", "message": "<text>", '
-    '"violations": [{"pointer": "/edges/0/to", "message": "<text>"}]}`, '
-    "where `pointer` is an RFC 6901 JSON pointer into the document (empty for the "
-    "document as a whole) and `violations` is never empty."
+    "Refusals are error results with JSON text "
+    '`{"ok": false, "error": "DocumentError", "message": "...", '
+    '"violations": [{"pointer": "/edges/0/to", "message": "..."}]}`: '
+    "`error` is e.g. `DocumentError` or `FitError`, `pointer` is RFC 6901 (empty for the "
+    "whole document), and `violations` is never empty."
 )
 
 
@@ -106,11 +118,12 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
         name="list_kinds",
         title="List the diagram kinds",
         description=(
-            "List the vocabulary: every value `kind` may take and what each one is for, as "
-            '`{"kinds": [{"kind": "flow", "purpose": "<text>"}]}`. Takes no arguments. Call '
-            "it first, before "
-            "choosing a kind — several kinds are not box-and-arrow diagrams and are easy to "
-            "miss; then `get_example` for a starting document."
+            f"List the vocabulary: all {len(KINDS)} values `kind` may take, each with a "
+            "one-line purpose. Call it first, before choosing a kind — several kinds are not "
+            "box-and-arrow diagrams and are easy to miss — then `get_example` for a starting "
+            "document. No arguments. Static and local: no I/O, about 4 KB, the same "
+            "answer every call, in a fixed order that keeps related kinds (graphs, grids, "
+            "shapes, charts) adjacent."
         ),
         input_schema={"type": "object", "properties": {}},
         output_schema={
@@ -134,8 +147,11 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
         title="Get an example document of one kind",
         description=(
             "Get the smallest valid document of one kind, as JSON ready to edit: the fastest "
-            "way to the right field names. Use it after `list_kinds` has settled the kind, "
-            "and `get_schema` only when a field the example does not use is needed."
+            "way to the right field names. `kind` is one exact value from `list_kinds`, e.g. "
+            "`flow`. Use it after `list_kinds` has settled the kind, and `get_schema` only for "
+            "a field the example leaves out. Static and local: the document `drawspec example "
+            "<kind>` prints, under 1 KB, identical every call; it passes `validate_document` "
+            "as is. An unknown kind is an error result naming `list_kinds`."
         ),
         input_schema={
             "type": "object",
@@ -149,11 +165,13 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
         name="get_schema",
         title="Get the JSON Schema for one kind",
         description=(
-            "Get the JSON Schema for one kind's documents: every field it accepts, with "
-            "types, limits and descriptions, plus the shared definitions it refers to. Use "
-            "it when `get_example` does not show a field you need. Referential rules "
-            "(unique ids, edges that land on real nodes) are beyond JSON Schema — "
-            "`validate_document` checks those."
+            "Get the JSON Schema (draft 2020-12) for one kind's documents: every field it "
+            "accepts, with types, limits and descriptions, plus only the shared `$defs` it "
+            "refers to. `kind` is one value from `list_kinds`, e.g. `sequence`. Use it when "
+            "`get_example` does not show a field you need. Local and deterministic: 3 to 13 KB "
+            "per kind, cut from the ~150 KB published schema. Referential rules (unique ids, "
+            "edges that land on real nodes) are beyond JSON Schema — `validate_document` "
+            "checks those."
         ),
         input_schema={
             "type": "object",
@@ -167,12 +185,11 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
         name="validate_document",
         title="Validate a drawspec document",
         description=(
-            "Check whether `render_document` would refuse this document, and if so exactly "
-            "where, without drawing anything for you to read. Returns every violation, not "
-            "the first, so one pass is one edit. Call it while a document is being written "
-            "or edited; skip it when you are about to render anyway, since "
-            "`render_document` refuses in the same shape. "
-            'A valid document returns `{"ok": true, "kind": "flow", "message": "<text>"}`. '
+            "Check whether `render_document` would refuse this document, and exactly where. "
+            "It renders with the same `theme` and discards the drawing, so it passes only "
+            "what draws; every violation comes back at once, so one pass is one edit. Call "
+            "it while writing or editing; skip it when about to render anyway, since "
+            "`render_document` refuses in the same shape. Local, deterministic, milliseconds. "
             + _REFUSAL_SHAPE
         ),
         input_schema={
@@ -195,15 +212,14 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
         name="render_document",
         title="Render a drawspec document to SVG, PNG or text",
         description=(
-            "Draw the document. Use it when the document is ready to show; while still "
-            "fixing errors, `validate_document` returns just the verdict instead of the drawing. "
-            "Returns one content "
-            "block: by default a text block holding the SVG markup, safe to paste inline "
-            "into a Markdown page (no global styles, no colliding ids, no meaning carried "
-            "by colour alone); with format `png`, an image block (base64 `image/png`) for "
-            "a chat, a slide or an attachment, which needs the server's `drawspec[png]` "
-            "extra; with format `text`, a text block with the diagram as plain text, for "
-            "the kinds that have a text form. Nothing is written to disk. " + _REFUSAL_SHAPE
+            "Draw the document. Use it when it is ready to show; while still fixing errors, "
+            "`validate_document` returns just the verdict. Returns one content block by "
+            "`format`: `svg` (default) self-contained SVG text, safe inline in Markdown; "
+            "`png` a base64 `image/png` block (needs the server's `drawspec[png]` extra, "
+            "slowest); `text` plain text for a code block, only for kinds with a text form. "
+            "`width`/`height` override the document's size; with `text`, `width` is cells per "
+            "line and `height` and `theme` are ignored. Local, deterministic, writes nothing. "
+            + _REFUSAL_SHAPE
         ),
         input_schema={
             "type": "object",
@@ -213,12 +229,15 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
                 "width": {
                     "type": "number",
                     "description": (
-                        "Override the document's width. With format `text`, the most terminal "
-                        f"cells a line may take (default {DEFAULT_WIDTH}, or {WIDE_WIDTH} for "
-                        "`lanes` and `sequence`)."
+                        "Override the document's width, e.g. `640`. With format `text`, the "
+                        f"most terminal cells a line may take (default {DEFAULT_WIDTH}, or "
+                        f"{WIDE_WIDTH} for `lanes` and `sequence`)."
                     ),
                 },
-                "height": {"type": "number", "description": "Override the document's height."},
+                "height": {
+                    "type": "number",
+                    "description": "Override the document's height (ignored with format `text`).",
+                },
                 "format": {
                     "type": "string",
                     "enum": ["svg", "png", "text"],
