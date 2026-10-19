@@ -41,8 +41,9 @@ Legal before the command name.
 Read a document, draw it, and write the SVG to stdout or to a file. With --format png, or an -o ending in .png, write a PNG instead (needs pip install 'drawspec[png]'). With --format text, or an -o ending in .txt, write the diagram as plain text, refused when it is wider than --width.
 
 ```
-usage: drawspec render [-h] [-o OUT] [--theme THEME] [--width WIDTH]
-                       [--height HEIGHT] [--profile {inline,standalone}]
+usage: drawspec render [-h] [-o OUT] [--theme THEME] [--variant NAME=THEME]
+                       [--width WIDTH] [--height HEIGHT]
+                       [--profile {inline,standalone}]
                        [--format {svg,png,text}] [--charset {unicode,ascii}]
                        [--scale SCALE] [--background {light,dark,transparent}]
                        document
@@ -53,6 +54,7 @@ usage: drawspec render [-h] [-o OUT] [--theme THEME] [--width WIDTH]
 | `document` | The document to render. |
 | `-o`, `--out` | Write here instead of stdout. |
 | `--theme` | A bundled theme name or a theme file. |
+| `--variant` | For svg: also draw the diagram in THEME, switched on by an ancestor's data-theme=NAME (and, for NAME dark, by prefers-color-scheme). Repeatable. --theme is the base and answers to light. |
 | `--width` | Override the document's width; with --format text, the most terminal cells a line may take (default 80, or 100 for lanes and sequence). |
 | `--height` | Override the document's height. |
 | `--profile` | The embedding profile. One of `inline`, `standalone`. Default `inline`. |

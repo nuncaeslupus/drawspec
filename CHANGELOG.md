@@ -24,6 +24,16 @@ against it would stop working. Everything below is about the *package*.
   Example: `reference/gantt-life-cycles.json`, the PMBOK continuum of life cycles
   (issue #131).
 
+- **One SVG, several themes** (#136): `render --variant dark=night.toml` (repeatable;
+  `variants=` in Python, `variants` in MCP's `render_document`) draws the document in
+  each theme and merges them into one SVG whose colours are CSS custom properties. An
+  ancestor's `data-theme="name"` selects a theme, a variant named `dark` also follows
+  `prefers-color-scheme`, and the base theme answers to `light`. A variant may change
+  colours only; one that changes the drawing is refused by name. The root carries
+  `data-drawspec-theme="light=name@digest …"`. The `<style>` this needs is admitted by
+  the embedding check only when every rule is scoped to the drawing's root and sets
+  only its own colour properties. Single-theme output is unchanged.
+
 ### Fixed
 
 - **A `cycle` edge's `label` is drawn** (#134). It was accepted, validated and dropped.

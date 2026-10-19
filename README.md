@@ -121,7 +121,10 @@ result is not in the format at all:
 Output is SVG that can be pasted inline into a Markdown document: colour
 inherited from the surrounding page, no global `<style>`, no ids that collide
 when two diagrams share a page, and no information carried by colour alone —
-so it survives dark mode and greyscale printing. For anywhere an SVG cannot go —
+so it survives dark mode and greyscale printing. A theme with colours in it can
+bring a second theme for the dark page: `--variant dark=night.toml` writes one SVG
+that switches with the reader's `prefers-color-scheme` and with a page's own
+`data-theme` attribute. For anywhere an SVG cannot go —
 a chat, a slide, an attachment — the same drawing comes out as a PNG on a light,
 dark or transparent background (`pip install 'drawspec[png]'`, one self-contained
 wheel; no PDF, no JPEG). And for where no picture draws — a terminal, a commit

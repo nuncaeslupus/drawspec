@@ -9,6 +9,7 @@ drawspec render diagram.json -o diagram.svg   # or stdout; -o diagram.png needs 
 drawspec validate diagram.json                # every violation, with a JSON pointer
 drawspec schema --out schema.json             # the full JSON Schema
 drawspec theme from site.css -o house.toml    # a theme from a brand's CSS or design tokens
+drawspec render d.json --theme accent --variant dark=night.toml   # one SVG, both page modes
 ```
 
 **If your client speaks MCP**, `drawspec-mcp` serves `list_kinds`, `get_example`, `get_schema`, `validate_document` and `render_document` as tools,
