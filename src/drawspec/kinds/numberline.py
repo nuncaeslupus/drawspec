@@ -40,7 +40,7 @@ from drawspec.routing import end_marker
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextLine, TextSpan, moved
 from drawspec.schema import Document, NumberAxis, NumberPoint, NumberRange
 from drawspec.text.measure import TextMeasurer
-from drawspec.text.wrap import TextBlock, wrap
+from drawspec.text.wrap import TextBlock, bold_lines, wrap
 from drawspec.theme import Theme
 
 #: Lengths in units, a unit being the body size over eleven, so the spacing
@@ -532,7 +532,7 @@ def _caption(axis: NumberAxis) -> str:
 
 
 def _wrapped(text: str, role: str, width: float, theme: Theme, measurer: TextMeasurer) -> TextBlock:
-    words = f"**{text.replace('**', '')}**" if role == "emphasis" else text
+    words = bold_lines(text) if role == "emphasis" else text
     try:
         return wrap(words, width, measurer, theme=theme, level="body")
     except FitError as error:

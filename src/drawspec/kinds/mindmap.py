@@ -52,7 +52,7 @@ from drawspec.kinds.common import outline, text_runs
 from drawspec.scene import Path, Polygon, Primitive, Scene, TextLine, TextSpan, moved
 from drawspec.schema import Document, MindmapBranch
 from drawspec.text.measure import TextMeasurer
-from drawspec.text.wrap import TextBlock, wrap
+from drawspec.text.wrap import TextBlock, bold_lines, wrap
 from drawspec.theme import Theme
 
 #: The most of the canvas the centre's pill, and a main branch's box, may take;
@@ -290,7 +290,7 @@ def _attempt(
     width = theme.canvas.width
     try:
         centre = _box(
-            f"**{document.centre.replace('**', '')}**",
+            bold_lines(document.centre),
             theme,
             measurer,
             role=CENTRE_ROLE,
@@ -700,10 +700,7 @@ def _ribbon(
 def _words(branch: MindmapBranch, *, bold: bool = False) -> str:
     """A branch's words as set: a main branch and an `emphasis` one are bold."""
     if bold or branch.role == "emphasis":
-        return "\n".join(
-            f"**{line.replace('**', '')}**" if line.strip() else line
-            for line in branch.text.split("\n")
-        )
+        return bold_lines(branch.text)
     return branch.text
 
 

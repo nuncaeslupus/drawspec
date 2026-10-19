@@ -19,6 +19,7 @@ import pytest
 
 from drawspec import render
 from drawspec.errors import FitError, ThemeError
+from drawspec.kinds import scene_for
 from drawspec.kinds.numberline import NumberlineDrawing, numberline_drawing
 from drawspec.scene import Ellipse, TextLine
 from drawspec.scene import Path as Stroke
@@ -338,3 +339,28 @@ def test_the_numberline_theme_section_is_checked() -> None:
         load_theme({"version": 1, "numberline": {"ends": "arrows"}})
     with pytest.raises(ThemeError):
         load_theme({"version": 1, "numberline": {"dots": "big"}})
+
+
+def test_a_two_line_emphasis_point_is_bold_on_both_lines_with_no_markers() -> None:
+    """Issue #133: one `**…**` pair around two lines printed both markers raw.
+
+    `wrap` splits on the newline first, so a pair spanning it became two
+    unmatched halves. Each line is now bolded on its own.
+    """
+    document = {
+        "version": 1,
+        "kind": "numberline",
+        "axis": {"min": 0, "max": 12},
+        "points": [
+            {"at": 4, "text": "O = 4"},
+            {"at": 7, "text": "tE beta = 7\n(O + 4M + P) / 6", "role": "emphasis"},
+            {"at": 11, "text": "P = 11"},
+        ],
+    }
+    drawing = render(document)
+    assert "**" not in drawing
+    built = scene_for(parse_document(document), THEME, MEASURER)
+    lines = [p for p in built.primitives if isinstance(p, TextLine)]
+    emphasised = [line for line in lines if "tE beta" in line.text or "4M" in line.text]
+    assert len(emphasised) == 2
+    assert all(span.weight == "bold" for line in emphasised for span in line.spans)
