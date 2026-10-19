@@ -1607,6 +1607,16 @@ default), so the band reads in greyscale and on a dark page. Pair it with a `tod
 mark and the plan says where each task should be and where it is. See
 [`reference/gantt-progress.json`](reference/gantt-progress.json).
 
+A task's row can carry more than its bar. `events` are moments on the task's own row,
+each `{"at": 9, "text": "Release"}`: a diamond on the bar where it falls, with its words
+centred under the bar. A milestone task takes a row of its own, but several events share
+their task's row. `iterations` are the cycles the work goes round, each
+`{"start": 0, "end": 3}`: a curved arrow over the bar from the iteration's end back to its start,
+its head onto the bar. Together they make each task a lane, so life cycles can be compared
+on one axis. A predictive lane has no arcs and one event at its end. An agile lane loops
+four times and delivers four times. See
+[`reference/gantt-life-cycles.json`](reference/gantt-life-cycles.json).
+
 `edges` are finish-to-start: each is drawn from the end of one bar into the start
 of the other, and the line goes round the bars it can rather than through them.
 Roles `flow`, `strong` (the critical path) and `weak` (a soft dependency).
@@ -1623,12 +1633,16 @@ value or mark off the axis; a dependency whose `to` starts before its `from` end
 dependency on an unknown task or on itself; a phase whose tasks are not
 consecutive, a task in two phases, and — with phases — a task in none; a phase
 with no `text`; `progress` (the field is `done`); `done` outside 0–100 or on a
-milestone; and a newline in a
-task's `text` when it has an actor. Budget: 16 tasks, 20 edges and 4 marks. See
+milestone; an event or iteration outside its task's `start` to `end`, or on a milestone;
+an iteration whose `end` is not after its `start`, or that starts before the one written
+before it ends (they may touch); and a newline in a
+task's `text` when it has an actor. Budget: 16 tasks, 20 edges and 4 marks, and 8 events
+and 8 iterations a task. See
 [`reference/gantt-migration.json`](reference/gantt-migration.json),
 [`reference/gantt-critical-path.json`](reference/gantt-critical-path.json),
-[`reference/gantt-upgrade.json`](reference/gantt-upgrade.json) and
-[`reference/gantt-semester.json`](reference/gantt-semester.json).
+[`reference/gantt-upgrade.json`](reference/gantt-upgrade.json),
+[`reference/gantt-semester.json`](reference/gantt-semester.json) and
+[`reference/gantt-life-cycles.json`](reference/gantt-life-cycles.json).
 
 ## A board
 

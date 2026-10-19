@@ -362,7 +362,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `sequence` | 8 `participants`, 30 `messages` |
 | `lanes` | 15 `nodes`, 16 `edges`, 6 `lanes`, 6 `phases`, 4 `classes` |
 | `entities` | 8 `entities`, 12 `edges`, 12 `fields` per entity, 8 `operations` per entity |
-| `gantt` | 16 `tasks`, 20 `edges`, 4 `marks` |
+| `gantt` | 16 `tasks`, 20 `edges`, 4 `marks`, 8 `events` per task, 8 `iterations` per task |
 | `board` | 6 `columns`, 4 `rows`, 32 `cards`, 8 `cards` per cell |
 | `fishbone` | 6 `categories`, 5 `causes` per category |
 | `venn` | 4 `sets`, 15 `regions` |
@@ -563,7 +563,23 @@ name, so a misspelt key is an error at the point it was written.
 | `at` | number | no | Instead of `start` and `end`: makes the task a milestone, drawn as a mark at this point with no length. |
 | `actor` | string | no | Who does it — free text, drawn as the row label's lead, so the names line up in a column. A task with an actor may not put a newline in `text`. |
 | `done` | number | no | How much of the task is complete, 0 to 100: drawn as a solid band inside the bar from its start, MS Project's progress line. Not on a milestone. |
+| `events` | array of [task-event](#task-event-object) | no | Moments on the task's own row — a delivery, a release, a review — each a diamond on the bar where it falls, its words under the bar. Unlike a milestone task they take no row of their own, so several fall on one row. Within the task's `start` to `end`; not on a milestone. |
+| `iterations` | array of [iteration](#iteration-object) | no | Cycles the work goes round: each an arc over the bar from an iteration's `end` back to its `start`, the return a life cycle draws. Within the task's `start` to `end`, in order and not overlapping; not on a milestone. |
 | `role` | string — one of `step`, `strong`, `emphasis`, `note` | no | `step` (the default bar), `strong` (on the critical path: drawn heavier, the word its dependencies take), `emphasis` (the task the diagram is about) or `note` (outside the plan, drawn lighter). |
+
+### `task-event` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `at` | number | **yes** | Where on the axis, inside the task's interval. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `iteration` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `start` | number | **yes** | Where the cycle begins on the axis: the arc's head lands here. |
+| `end` | number | **yes** | Where it ends and turns back, after `start`: the arc leaves from here. |
 
 ### `dependency` object
 

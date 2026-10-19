@@ -24,6 +24,12 @@ the line turns back along the gap beside the target's row.
 
 **Marks** are lines across every row, drawn in the theme's `[gantt] marks` role,
 with their names above the first row; names that would touch take another line.
+
+**Events and iterations** are a task's own: an event is a milestone's diamond on
+the task's bar, its words centred under the bar; an iteration is a curved arc over the
+bar from the iteration's end back to its start, the head onto the bar, the way a
+life cycle draws the work going round. A row with either grows by what they take,
+so lanes of a life-cycle comparison stay on the one axis.
 """
 
 from __future__ import annotations
@@ -31,7 +37,10 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from itertools import pairwise
-from typing import Final
+from typing import TYPE_CHECKING, Final
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from drawspec.charts import AXIS_ROLE, FURNITURE_ROLE, TARGET_TICKS, Scale, _nice_step, _ticks
 from drawspec.errors import FitError
@@ -73,6 +82,20 @@ COLUMN_GAP: Final = 10.0
 BRACKET: Final = 5.0
 MARK_GAP: Final = 4.0
 
+#: An iteration's arc: how far in from the iteration's ends its legs stand,
+#: beyond an event's diamond, and how much higher than its head it rises.
+LEG: Final = 3.0
+RISE: Final = 4.0
+
+#: How many straight pieces an iteration's curved arc is drawn in.
+ARC_SAMPLES: Final = 16
+
+#: An iteration's upright stubs, as a share of its rise: one in this many.
+STUB: Final = 3.0
+
+#: The gap between a bar's events and their words under it.
+EVENT_GAP: Final = 2.0
+
 #: How much taller than a bar a milestone is drawn, and an emphasised one.
 MILESTONE: Final = 1.25
 FOCAL: Final = 1.5
@@ -106,6 +129,12 @@ class GanttDrawing:
 
     marks: tuple[float, ...] = ()
     """Each mark's x, in document order."""
+
+    events: dict[str, tuple[tuple[float, float], ...]] = field(default_factory=dict)
+    """Each task's events' centres, in its order, by task id."""
+
+    iterations: dict[str, tuple[tuple[tuple[float, float], ...], ...]] = field(default_factory=dict)
+    """Each task's iterations' arcs, tail (at the iteration's end) first, by task id."""
 
 
 def gantt_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
@@ -214,9 +243,16 @@ def gantt_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         for group in document.groups
     }
     bar = BAR * unit
+    # An event is a milestone's diamond; an iteration's legs stand clear of one,
+    # and its arc rises a head's length and more above the bar.
+    event_half = bar * MILESTONE / 2
+    leg = event_half + LEG * unit
+    rise = theme.head_length_for("flow") + RISE * unit
+    event_drop = event_half - bar / 2 + EVENT_GAP * unit
     primitives: list[Primitive] = []
     texts: list[Primitive] = []
     rows: dict[str, tuple[float, float]] = {}
+    centres: dict[str, float] = {}
     heading_rows: list[tuple[float, float, str]] = []
     y = header
     for task in document.tasks:
@@ -229,9 +265,21 @@ def gantt_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
             y += height
         block = blocks[task.id]
         tallest = bar * (FOCAL if task.milestone and task.role == "emphasis" else 1.0)
-        height = max(block.height, tallest) + 2 * ROW_PAD * unit
+        above = rise if task.iterations else 0.0
+        below = event_drop + line.height if any(event.text for event in task.events) else 0.0
+        if task.events and not below:
+            below = event_half - bar / 2
+        drawn = above + tallest + below
+        inner = max(block.height, drawn)
+        height = inner + 2 * ROW_PAD * unit
         rows[task.id] = (y, y + height)
-        texts.extend(_lines(block, indent, y + (height - block.height) / 2))
+        pad_top = y + ROW_PAD * unit
+        centres[task.id] = pad_top + (inner - drawn) / 2 + above + tallest / 2
+        # The label beside the bar, as far as the row lets it be.
+        label_top = min(
+            max(centres[task.id] - block.height / 2, pad_top), pad_top + inner - block.height
+        )
+        texts.extend(_lines(block, indent, label_top))
         y += height
     rows_bottom = y
 
@@ -259,9 +307,10 @@ def gantt_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
     bars: dict[str, tuple[float, float, float, float]] = {}
     milestones: dict[str, tuple[float, float]] = {}
     ends: dict[str, tuple[tuple[float, float], tuple[float, float]]] = {}
+    on_bars: dict[str, tuple[tuple[float, float], ...]] = {}
+    iterations: dict[str, tuple[tuple[tuple[float, float], ...], ...]] = {}
     for task in document.tasks:
-        top, bottom = rows[task.id]
-        middle = (top + bottom) / 2
+        middle = centres[task.id]
         if task.milestone:
             half = bar * MILESTONE / 2 * (FOCAL / MILESTONE if task.role == "emphasis" else 1.0)
             x = scale.to_pixels(task.begins)
@@ -276,6 +325,26 @@ def gantt_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         if task.done:
             primitives.append(_done(task.done, box, theme))
         ends[task.id] = ((left, middle), (right, middle))
+        arcs = _arcs(task, scale, box[1], leg=leg, rise=rise)
+        if arcs:
+            iterations[task.id] = arcs
+            for arc in arcs:
+                primitives.extend(edge_primitives(Route(task.id, task.id, "flow", arc), theme))
+        if task.events:
+            on_bars[task.id] = tuple((scale.to_pixels(event.at), middle) for event in task.events)
+            for x, _ in on_bars[task.id]:
+                primitives.append(_diamond("step", x, middle, event_half, theme))
+            texts.extend(
+                _event_words(
+                    task,
+                    on_bars[task.id],
+                    middle + bar / 2 + event_drop,
+                    width,
+                    theme,
+                    measurer,
+                    line.ascent,
+                )
+            )
 
     # Dependencies, finish to start: the first candidate that crosses no other task.
     order = {task.id: index for index, task in enumerate(document.tasks)}
@@ -392,7 +461,104 @@ def gantt_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         routes=tuple(routes),
         rows=rows,
         marks=tuple(marks),
+        events=on_bars,
+        iterations=iterations,
     )
+
+
+def _arcs(
+    task: Task, scale: Scale, bar_top: float, *, leg: float, rise: float
+) -> tuple[tuple[tuple[float, float], ...], ...]:
+    """Each iteration's arc over the bar: up from near its end, back, down onto near its start.
+
+    The legs stand `leg` in from the iteration's ends, clear of an event's diamond
+    there and of the next iteration's leg, which stands as far the other side.
+
+    Raises:
+        FitError: an iteration is too short on the axis for its two legs.
+    """
+    found: list[tuple[tuple[float, float], ...]] = []
+    for position, (start, end) in enumerate(task.iterations):
+        left, right = scale.to_pixels(start) + leg, scale.to_pixels(end) - leg
+        if right - left < leg:
+            raise FitError(
+                f"the iteration {_figure(start)} to {_figure(end)} of {task.label!r} is "
+                f"{scale.to_pixels(end) - scale.to_pixels(start):.0f} units on the axis, too "
+                f"short for its arc, which needs {3 * leg:.0f} (iteration {position + 1}). "
+                f"Make it longer, or give the diagram more width."
+            )
+        # A curve, not a bracket: the loop back reads as "again" where a square
+        # bracket reads as a span. A short upright stub at each leg, so it leaves
+        # the bar and lands on it upright and the head points down onto it; the
+        # curve between peaks at `rise`, a cubic's peak being 3/4 of its handles'.
+        stub = rise / STUB
+        base = bar_top - stub
+        handle = base - (rise - stub) / 0.75
+        curve = (
+            _cubic((right, base), (right, handle), (left, handle), (left, base), step / ARC_SAMPLES)
+            for step in range(ARC_SAMPLES + 1)
+        )
+        found.append(((right, bar_top), *curve, (left, bar_top)))
+    return tuple(found)
+
+
+def _cubic(
+    p0: tuple[float, float],
+    p1: tuple[float, float],
+    p2: tuple[float, float],
+    p3: tuple[float, float],
+    t: float,
+) -> tuple[float, float]:
+    """The point at `t` along the cubic Bézier curve through `p0`..`p3`."""
+    u = 1 - t
+    a, b, c, d = u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t
+    return (
+        a * p0[0] + b * p1[0] + c * p2[0] + d * p3[0],
+        a * p0[1] + b * p1[1] + c * p2[1] + d * p3[1],
+    )
+
+
+def _event_words(
+    task: Task,
+    centres: tuple[tuple[float, float], ...],
+    top: float,
+    width: float,
+    theme: Theme,
+    measurer: TextMeasurer,
+    ascent: float,
+) -> list[TextLine]:
+    """A task's events' words, each centred under its event and kept on the canvas.
+
+    Raises:
+        FitError: two events' words would touch.
+    """
+    size = theme.scale["label"]
+    gap = measurer.measure(" ", theme.font.default, size).width
+    found: list[TextLine] = []
+    last: tuple[float, str] | None = None
+    for event, (x, _) in zip(task.events, centres, strict=True):
+        if not event.text:
+            continue
+        wide = measurer.measure(event.text, theme.font.default, size).width
+        left = min(max(x - wide / 2, 0.0), width - wide)
+        if last is not None and left < last[0] + gap:
+            raise FitError(
+                f"the events {last[1]!r} and {event.text!r} on {task.label!r} are too close "
+                f"for their words to sit side by side under the bar. Shorten the words, "
+                f"move the events apart, or give the diagram more width."
+            )
+        last = (left + wide, event.text)
+        found.append(
+            TextLine(
+                FURNITURE_ROLE,
+                x=left + wide / 2,
+                y=top + ascent,
+                spans=(TextSpan(text=event.text, font=theme.font.default),),
+                level="label",
+                anchor="middle",
+            )
+        )
+    return found
 
 
 def _candidates(
@@ -685,8 +851,13 @@ def _done(done: float, box: tuple[float, float, float, float], theme: Theme) -> 
 def _milestone(task: Task, x: float, y: float, half: float, theme: Theme) -> Primitive:
     """A milestone: a filled diamond (or a dot) centred on its value."""
     role = "note" if task.role == "note" else ("emphasis" if task.role in HEAVY else "step")
-    solid = "" if task.role == "note" else "solid"
-    ink = "" if task.role == "note" else "currentColor"
+    return _diamond(role, x, y, half, theme)
+
+
+def _diamond(role: str, x: float, y: float, half: float, theme: Theme) -> Primitive:
+    """A filled diamond (or a dot, by the theme) centred on (x, y); hollow for `note`."""
+    solid = "" if role == "note" else "solid"
+    ink = "" if role == "note" else "currentColor"
     if theme.gantt.milestone == "circle":
         return Ellipse(role, cx=x, cy=y, rx=half * 0.8, ry=half * 0.8, fill=solid, fill_colour=ink)
     return Polygon(
@@ -726,6 +897,13 @@ TEXT_FURNITURE: Final = {
 #: Cells between the label column and the plot.
 TEXT_COLUMN_GAP: Final = 2
 
+#: An iteration's arc in the row over its bar: the head down onto the bar at the
+#: iteration's start, the run back along the row, the corner up from its end.
+TEXT_ITERATION: Final = {
+    "unicode": ("▼", "─", "┐"),
+    "ascii": ("v", "-", "+"),
+}
+
 
 def gantt_text(document: Document, width: int, charset: str) -> str:
     """A `gantt` as plain text: one row per task, its bar in cells on a numbered axis.
@@ -735,16 +913,20 @@ def gantt_text(document: Document, width: int, charset: str) -> str:
     with the same range and ticks, scaled to the columns left of the label
     column. Bars are filled by role, lighter to heavier — `note`, `step`,
     `strong`, `emphasis` — and a task's `done` share is the filled part, the rest
-    dotted. A milestone is `◆`; a mark is a dotted line down every row, named
-    above the first. A dependency is a line from the end of its bar down through
-    blank cells and right into the start of the next, its head into that bar,
-    in its role's line style; one that has no such route — it would overprint a
+    dotted. A milestone is `◆`, and so is a task's event, on its bar, its words
+    in the row under the bar or, when they would not fit there, listed under
+    the chart; an iteration is `▼───┐` in a row over the bar, from its start to
+    its end. A mark is a dotted line down every row, named above the first. A
+    dependency is a line from the end of its bar down through blank cells and
+    right into the start of the next, its head into that bar, in its role's
+    line style; one that has no such route — it would overprint a
     bar, a label, a phase's bracket or another line — is listed under the chart
     instead, `B after A`, so no dependency is ever silently dropped.
 
     Raises:
         FitError: the label column leaves the axis too few columns for its tick
-            labels, naming the widest task label and the width it needs.
+            labels, naming the widest task label and the width it needs; or an
+            iteration is too short on the axis for its arc's two cells.
     """
     axis = document.axes[0]
     furniture = TEXT_FURNITURE[charset]
@@ -806,6 +988,7 @@ def gantt_text(document: Document, width: int, charset: str) -> str:
         for group in document.groups
     }
     tasks = {task.id: task for task in document.tasks}
+    listed: list[Drawn] = []
     body: list[list[str]] = []
     pointers: list[tuple[str, str]] = []
     bar_row: dict[str, int] = {}
@@ -836,6 +1019,11 @@ def gantt_text(document: Document, width: int, charset: str) -> str:
         lines = labels[task.id]
         pointer = f"/tasks/{position}/text"
         what = f"the label {' '.join(lines)!r}"
+        arcs = (
+            row("", f"/tasks/{position}/iterations", f"the iterations of {' '.join(lines)!r}")
+            if task.iterations and not task.milestone
+            else None
+        )
         # The bar goes on the task's own words, under its actor when it has one.
         written = [row(" " * indent + line, pointer, what) for line in lines]
         bar_row[task.id] = len(body) - len(written) + (1 if task.actor and len(written) > 1 else 0)
@@ -850,6 +1038,12 @@ def gantt_text(document: Document, width: int, charset: str) -> str:
         done = start + round((end - start) * task.done / 100) if task.done is not None else end
         for cell in range(start, end):
             first[_cell(first, cell)] = fill if cell < done else TEXT_UNDONE[charset]
+        if arcs is not None:
+            _text_arcs(arcs, task, position, x, charset, left=left, tail=tail, room=room)
+        for event in task.events:
+            first[_cell(first, min(x(event.at), end - 1))] = TEXT_MILESTONES[charset]["step"]
+        if any(event.text for event in task.events):
+            listed.extend(_text_events(body, row, task, position, bar_row[task.id], x, charset))
 
     # -- dependencies: down from a bar's end, right into the next bar's start ---
     unrouted: list[tuple[int, str]] = []
@@ -917,8 +1111,94 @@ def gantt_text(document: Document, width: int, charset: str) -> str:
             pointer = f"/edges/{edge_position}"
             for part in wrapped(dependency, width, pointer, width):
                 drawn.append(Drawn(part, pointer, f"the dependency {dependency!r}"))
+    if listed:
+        drawn.append(Drawn(""))
+        for entry in listed:
+            for part in wrapped(entry.text, width, entry.pointer, width):
+                drawn.append(Drawn(part, entry.pointer, entry.what))
     widest(drawn, width)
     return finished([line.text for line in drawn] + caption_lines(document.caption, width, charset))
+
+
+def _text_arcs(
+    line: list[str],
+    task: Task,
+    position: int,
+    x: Callable[[float], int],
+    charset: str,
+    *,
+    left: int,
+    tail: int,
+    room: int,
+) -> None:
+    """Each iteration's arc in `line`, the row over the bar: `▼───┐` from start to end.
+
+    Raises:
+        FitError: an iteration spans fewer than two cells, the least an arc is.
+    """
+    head, run, corner = TEXT_ITERATION[charset]
+    span = max(task.finishes - task.begins, 1e-9)
+    for number, (start, end) in enumerate(task.iterations):
+        first, last = x(start), x(end) - 1
+        if last <= first:
+            # Two cells for the iteration: its share of the axis at least that.
+            share = (end - start) / span * (x(task.end) - x(task.start)) / max(room, 1)
+            needed = left + math.ceil(2.5 / max(share, 1e-9)) + tail + 1
+            raise too_wide(
+                f"/tasks/{position}/iterations/{number}",
+                f"the iteration {_figure(start)} to {_figure(end)}, too short for its arc,",
+                needed,
+                left + room + tail + 1,
+            )
+        line[_cell(line, first)] = head
+        for cell in range(first + 1, last):
+            line[_cell(line, cell)] = run
+        line[_cell(line, last)] = corner
+
+
+def _text_events(
+    body: list[list[str]],
+    row: Callable[[str, str, str], list[str]],
+    task: Task,
+    position: int,
+    bar: int,
+    x: Callable[[float], int],
+    charset: str,
+) -> list[Drawn]:
+    """A task's events' words in the row under its bar, each centred under its event.
+
+    A label line already under the bar takes them where its plot is blank; else a
+    row is added. When any two would touch, or one would cover something drawn,
+    none is written there and they are returned to be listed under the chart,
+    `Task: words at 5`, so no event's words are ever dropped.
+    """
+    pointer = f"/tasks/{position}/events"
+    words = [
+        (event, spelt(event.text, charset, f"{pointer}/{number}/text"))
+        for number, event in enumerate(task.events)
+        if event.text
+    ]
+    under = body[bar + 1] if bar + 1 < len(body) else None
+    size = len(under) if under is not None else len(body[bar])
+    placed: list[tuple[int, str]] = []
+    end = -2
+    for event, text in words:
+        start = min(max(x(event.at) - (cells(text) - 1) // 2, 0), size - cells(text))
+        free = under is None or all(
+            under[_cell(under, cell)] == " " for cell in range(start - 1, start + cells(text) + 1)
+        )
+        if start <= end + 1 or not free:
+            label = " ".join(label_lines(task.label, charset, f"/tasks/{position}/text"))
+            listed = ", ".join(f"{text} at {_figure(event.at)}" for event, text in words)
+            entry = f"{label}: {listed}"
+            return [Drawn(entry, pointer, f"the events of {label!r}")]
+        placed.append((start, text))
+        end = start + cells(text) - 1
+    line = under if under is not None else row("", pointer, f"the events of {task.label!r}")
+    for start, text in placed:
+        index = _cell(line, start)
+        line[index : index + len(_spread(text))] = _spread(text)
+    return []
 
 
 #: A dependency's line, per charset and line style: across, down, the corner it

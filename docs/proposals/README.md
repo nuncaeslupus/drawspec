@@ -72,6 +72,7 @@ Fields on an existing kind, each asked for by a real figure filed as an issue.
 | # | Proposal | What | Size | Depends on |
 |---:|---|---|:-:|---|
 | 30 | [`entities-centre.md`](entities-centre.md) | `entities` + `centre`: a star schema, the fact table in the middle and its dimensions round it — **built** | S | `flow`'s radial placement; issue #135 (one original) |
+| 31 | [`gantt-events-iterations.md`](gantt-events-iterations.md) | `gantt` + `events` and `iterations` on a task: lanes of a life-cycle comparison on one axis, deliveries and loops per row — **built** | S | issue #131 (one original) |
 
 ## Deferred, not proposed
 

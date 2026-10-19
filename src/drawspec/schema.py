@@ -774,7 +774,14 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
         ("entities/operations", 8),
     ),  # [5 entities, 5 edges, 6 fields, 3 operations]
     # Set by the proposal: a two-hundred-line plan is a project tool's export.
-    "gantt": (("tasks", 16), ("edges", 20), ("marks", 4)),  # [11 tasks, 9 edges, 2 marks]
+    # A row's deliveries and iterations: past eight a row's marks crowd its bar.
+    "gantt": (
+        ("tasks", 16),
+        ("edges", 20),
+        ("marks", 4),
+        ("tasks/events", 8),
+        ("tasks/iterations", 8),
+    ),  # [11 tasks, 9 edges, 2 marks, 4 events, 4 iterations]
     # Set by the proposal: past six columns a card's words no longer fit its
     # column. A name with an `@` counts the first array's entries per what the
     # second names — here the cards that share a column and a slice.
@@ -1636,6 +1643,28 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
         FieldSpec(
+            "events",
+            "array",
+            item_ref="task-event",
+            description=(
+                "Moments on the task's own row — a delivery, a release, a review — each a "
+                "diamond on the bar where it falls, its words under the bar. Unlike a "
+                "milestone task they take no row of their own, so several fall on one "
+                "row. Within the task's `start` to `end`; not on a milestone."
+            ),
+        ),
+        FieldSpec(
+            "iterations",
+            "array",
+            item_ref="iteration",
+            description=(
+                "Cycles the work goes round: each an arc over the bar from an "
+                "iteration's `end` back to its `start`, the return a life cycle draws. "
+                "Within the task's `start` to `end`, in order and not overlapping; not on "
+                "a milestone."
+            ),
+        ),
+        FieldSpec(
             "role",
             "string",
             enum=TASK_ROLES,
@@ -1644,6 +1673,29 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
                 "word its dependencies take), `emphasis` (the task the diagram is about) or "
                 "`note` (outside the plan, drawn lighter)."
             ),
+        ),
+    ),
+    "task-event": (
+        FieldSpec(
+            "at",
+            "number",
+            required=True,
+            description="Where on the axis, inside the task's interval.",
+        ),
+        _text(required=False),
+    ),
+    "iteration": (
+        FieldSpec(
+            "start",
+            "number",
+            required=True,
+            description="Where the cycle begins on the axis: the arc's head lands here.",
+        ),
+        FieldSpec(
+            "end",
+            "number",
+            required=True,
+            description="Where it ends and turns back, after `start`: the arc leaves from here.",
         ),
     ),
     "dependency": (
@@ -4408,6 +4460,14 @@ class Relation:
 
 
 @dataclass(frozen=True)
+class TaskEvent:
+    """A moment on a `gantt` task's own row: a delivery, a release, a review."""
+
+    at: float
+    text: str = ""
+
+
+@dataclass(frozen=True)
 class Task:
     """One row of a `gantt`: an interval from `start` to `end`, or a milestone `at`."""
 
@@ -4420,6 +4480,12 @@ class Task:
     actor: str = ""
     done: float | None = None
     """How much is complete, 0 to 100, or `None` for a plan that does not say."""
+
+    events: tuple[TaskEvent, ...] = ()
+    """Moments on the task's own row, in the order written."""
+
+    iterations: tuple[tuple[float, float], ...] = ()
+    """Each cycle's start and end, in the order written."""
 
     @property
     def milestone(self) -> bool:
@@ -7531,6 +7597,84 @@ def _gantt_refusal(violation: Violation, document: Mapping[str, Any]) -> Violati
     return violation
 
 
+def _row_marks_violations(
+    task: Mapping[str, Any], index: int, span: tuple[float, float] | None
+) -> list[Violation]:
+    """A task's `events` and `iterations`: on an interval, inside it, cycles in order.
+
+    A milestone is a moment, so nothing falls inside it and nothing goes round
+    it. An event or a cycle outside the bar would claim a delivery the task does
+    not cover. Cycles are written in order and may touch, end to start, as one
+    iteration hands on to the next; overlapping, two arcs would be drawn over
+    one stretch of bar and the reader could not tell which return is which.
+    """
+    found: list[Violation] = []
+    present = [name for name in ("events", "iterations") if task.get(name)]
+    if "at" in task:
+        for name in present:
+            found.append(
+                Violation(
+                    _pointer("tasks", index, name),
+                    f"a milestone is a moment, so nothing falls inside it and it has no "
+                    f"{name}. Make the task an interval with `start` and `end`, or put each "
+                    f"event on the task it belongs to.",
+                )
+            )
+        return found
+    if span is None or span[0] == span[1]:
+        return found
+    low, high = span
+
+    def within(value: Any, pointer: str) -> bool:
+        if not _is_number(value):
+            return False
+        if low <= value <= high:
+            return True
+        found.append(
+            Violation(
+                pointer,
+                f"{_figure(value)} is outside this task, which runs {_figure(low)} to "
+                f"{_figure(high)}: it would be drawn off its bar. Move it, or widen the task.",
+            )
+        )
+        return False
+
+    for position, event in enumerate(_listed(task, "events")):
+        if isinstance(event, dict):
+            within(event.get("at"), _pointer("tasks", index, "events", position, "at"))
+    previous: float | None = None
+    for position, cycle in enumerate(_listed(task, "iterations")):
+        if not isinstance(cycle, dict):
+            continue
+        here = _pointer("tasks", index, "iterations", position)
+        sound = within(cycle.get("start"), f"{here}/start") & within(
+            cycle.get("end"), f"{here}/end"
+        )
+        if not sound:
+            continue
+        start, end = float(cycle["start"]), float(cycle["end"])
+        if end <= start:
+            found.append(
+                Violation(
+                    f"{here}/end",
+                    f"this iteration ends at {_figure(end)}, which is not after it starts at "
+                    f"{_figure(start)}. An iteration runs forward and its arc turns back.",
+                )
+            )
+            continue
+        if previous is not None and start < previous:
+            found.append(
+                Violation(
+                    f"{here}/start",
+                    f"this iteration starts at {_figure(start)}, before the one written "
+                    f"before it ends at {_figure(previous)}. Iterations follow one another: "
+                    f"write them in order, each starting where or after the last ends.",
+                )
+            )
+        previous = end
+    return found
+
+
 def _gantt_violations(document: Mapping[str, Any]) -> list[Violation]:
     """What a plan may not be: tasks that are not one thing, and claims that cannot hold.
 
@@ -7647,6 +7791,7 @@ def _gantt_violations(document: Mapping[str, Any]) -> list[Violation]:
                 span = (values["start"], values["end"])
         for name, value in values.items():
             outside(value, _pointer("tasks", index, name))
+        found.extend(_row_marks_violations(task, index, span))
         text = task.get("text")
         if isinstance(task.get("actor"), str) and isinstance(text, str) and "\n" in text:
             found.append(
@@ -11383,6 +11528,14 @@ def _gantt_document(document: Mapping[str, Any]) -> Document:
                 role=entry.get("role", "step"),
                 actor=entry.get("actor", ""),
                 done=_optional_number(entry.get("done")),
+                events=tuple(
+                    TaskEvent(at=float(event["at"]), text=event.get("text", ""))
+                    for event in entry.get("events", ())
+                ),
+                iterations=tuple(
+                    (float(cycle["start"]), float(cycle["end"]))
+                    for cycle in entry.get("iterations", ())
+                ),
             )
             for entry in document["tasks"]
         ),

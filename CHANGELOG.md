@@ -12,6 +12,17 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`gantt` tasks take `events` and `iterations`**, so one row can be a lane of a
+  life-cycle comparison. An event (`{at, text?}`) is a diamond on the task's own bar
+  with its words under it, such as a delivery or a release; several fall on one row
+  where a milestone task would take a row each. An iteration (`{start, end}`) is a
+  curved arrow over the bar from the iteration's end back to its start, the loop a life cycle
+  draws. Both lie within the task's `start` to `end`. Iterations are in order and may
+  touch but not overlap. Neither is allowed on a milestone. Each is budgeted at 8 per
+  task. Text output draws an iteration as `▼───┐` over the bar and an event as `◆` on
+  it, with the words under the bar, or listed under the chart when they would touch.
+  Example: `reference/gantt-life-cycles.json`, the PMBOK continuum of life cycles
+  (issue #131).
 - **`entities` star schemas**: `"centre": true` on one entity places it in the middle and
   the rest round it, the first above and the rest clockwise in the order written, with
   the PK/FK marks and crow's feet `entities` draws. Lines naming no field join the boxes
