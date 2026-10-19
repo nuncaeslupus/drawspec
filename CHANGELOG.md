@@ -10,6 +10,18 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A `matrix` return edge reaches its cells, and its label is not crossed** (issue #132,
+  still showing in 0.4.0). An edge between cells in neighbouring rows that share no
+  column, such as the return from the last output to the first process, ran level along
+  the join between the rows, at a height neither cell occupies, so the arrow touched
+  neither; and its label lay across the links from each process to its output, which
+  were broken short of the outputs to let it through. Such an edge now leaves its source
+  across the join, runs along it and enters its target, a quarter in from the side it
+  comes from; its label is wrapped onto the widest stretch of the join that no other
+  edge crosses, and the join is made deep enough for it and for the head.
+
 ## [0.4.1] — 2026-10-19
 
 ### Fixed
