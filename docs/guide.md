@@ -324,6 +324,45 @@ In both profiles, no information is carried by colour alone. A diagram that
 still reads on a black-and-white printer is the same diagram that still reads in
 dark mode, and neither is caught by looking at the screen it was made on.
 
+### One file for a light page and a dark one
+
+A theme that pins colours — `accent`, a house theme from `drawspec theme from` —
+draws the same colours on both pages. When a site has a light and a dark mode,
+give the drawing a second theme instead of rendering it twice:
+
+```bash
+drawspec render diagram.json --theme house.toml --variant dark=house-dark.toml -o diagram.svg
+```
+
+The SVG carries both themes' colours as CSS custom properties and switches
+between them by itself:
+
+- an ancestor's `data-theme="dark"` (on `<html>`, say) selects the variant, and
+  `data-theme="light"` the base theme given by `--theme`;
+- with neither, a variant named `dark` follows the reader's
+  `prefers-color-scheme`, and the page's own attribute wins over that setting;
+- `--variant` repeats, for any other name a page switches on
+  (`--variant sepia=…` answers to `data-theme="sepia"`).
+
+From Python it is `render(document, "house", variants={"dark": "house-dark"})`,
+and from MCP the `variants` argument of `render_document`.
+
+**A variant changes colours only.** Both themes draw the document; if the two
+drawings differ in anything but paint — a font, a size, a radius, a fill pattern,
+two colours one theme keeps apart and the other merges — the render is refused
+with `ThemeError` naming the variant. Each theme is still loaded and checked on
+its own, so its contrast and greyscale rules hold in its own mode.
+
+This is the one SVG drawspec writes with a `<style>` in it, and the embedding
+check holds it to a closed shape: every rule is scoped to the drawing's own root
+(`#ds…-svg`), and every declaration sets one of the drawing's own properties to a
+colour one of its themes declares. Each element keeps its base colour as a plain
+attribute too, so a host that strips `<style>` still shows a whole drawing. The
+root is stamped `data-drawspec-theme="light=house@1a2b3c4d dark=house-dark@…"`:
+each theme's name and a digest of everything it declares, so a build can tell
+which themes a file came from and redraw it when one changes. A single-theme
+render is unchanged: no `<style>`, no stamp. PNG and text output take one theme.
+
 ## Exporting an image
 
 An SVG is the best form for a page you control. For everywhere else — a chat

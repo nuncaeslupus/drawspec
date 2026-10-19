@@ -263,6 +263,17 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
                     "enum": list(BACKGROUNDS),
                     "description": "png only: the page the drawing is on (default light).",
                 },
+                "variants": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string"},
+                    "description": (
+                        "svg only: more themes for the same drawing, by the name a page "
+                        'selects each with, e.g. `{"dark": "./dark.toml"}`. The SVG '
+                        "switches on an ancestor's `data-theme`, and `dark` also follows "
+                        "`prefers-color-scheme`; `theme` is the base and answers to `light`. "
+                        "A variant may change colours only."
+                    ),
+                },
             },
             "required": ["document"],
         },
@@ -324,6 +335,9 @@ def _render(arguments: dict[str, Any]) -> str | bytes:
     it afterwards would scale a picture that had already decided it fitted.
     """
     document = _document(arguments)
+    variants = arguments.get("variants") or None
+    if variants and arguments.get("format", "svg") != "svg":
+        raise DrawspecError("`variants` applies to format svg only")
     if arguments.get("format") == "text":
         width = arguments.get("width")
         return render_text(
@@ -342,7 +356,7 @@ def _render(arguments: dict[str, Any]) -> str | bytes:
             scale=float(arguments.get("scale", DEFAULT_SCALE)),
             background=str(arguments.get("background", "light")),
         )
-    return render_document(document, arguments.get("theme") or None)
+    return render_document(document, arguments.get("theme") or None, variants=variants)
 
 
 def _kinds() -> dict[str, Any]:
