@@ -18,6 +18,21 @@ against it would stop working. Everything below is about the *package*.
   square, spread along each side of the middle; a second `centre`, or one in a class
   hierarchy, is refused. Reference: `entities-star.json`. (#135)
 
+### Fixed
+
+- **A `cycle` edge's `label` is drawn** (#134). It was accepted, validated and dropped.
+  It now sits beside its own arc, outside the ring and clear of every step, and a label
+  with no room there is refused by name. A new test walks every kind's field tables and
+  fails on any free-text field that is accepted and not drawn. It keeps a short, explained
+  list of exceptions, which is `note` on the kinds other than `timeline` that v1 keeps.
+- **A `matrix` edge label no longer prints over cell text** (#132). A labelled edge
+  running along the join between two rows opens a channel there for its words. Every
+  label is tried at points along its run until one is clear of the cells' words, and is
+  refused by name when none is.
+- **A two-line `emphasis` point on a `numberline` is bold on both lines** (#133). It
+  printed `**` raw: one bold pair spanning a newline was split into two unmatched halves.
+  Every kind that sets a whole label bold now bolds each line on its own.
+
 ## [0.3.3] — 2026-10-15
 
 ### Changed

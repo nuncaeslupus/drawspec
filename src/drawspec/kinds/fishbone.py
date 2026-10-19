@@ -43,7 +43,7 @@ from drawspec.kinds.common import outline, text_runs
 from drawspec.scene import Path, Primitive, Scene, TextLine, TextSpan, moved
 from drawspec.schema import Cause, Document
 from drawspec.text.measure import TextMeasurer
-from drawspec.text.wrap import TextBlock, wrap
+from drawspec.text.wrap import TextBlock, bold_lines, wrap
 from drawspec.theme import Theme
 
 #: The most of the canvas the effect's box may take, and a category's name.
@@ -446,10 +446,7 @@ def _shifted(bone: BoneDrawn, dx: float, dy: float) -> BoneDrawn:
 def _words(cause: Cause) -> str:
     """A cause's words as set: a confirmed root cause is bold throughout."""
     if cause.role == "emphasis":
-        return "\n".join(
-            f"**{line.replace('**', '')}**" if line.strip() else line
-            for line in cause.text.split("\n")
-        )
+        return bold_lines(cause.text)
     return cause.text
 
 
@@ -484,7 +481,7 @@ def _block(text: str, width: float, theme: Theme, measurer: TextMeasurer) -> Tex
 
 def _labelled(text: str, width: float, theme: Theme, measurer: TextMeasurer) -> TextBlock:
     """A category's name, bold, wrapped to its share of the canvas."""
-    bold = f"**{text.replace('**', '')}**"
+    bold = bold_lines(text)
     try:
         return wrap(bold, width, measurer, theme=theme, level="body")
     except FitError as error:
