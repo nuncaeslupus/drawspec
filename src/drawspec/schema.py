@@ -1471,6 +1471,16 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
         ),
         _role(ENTITY_ROLES, "step"),
         FieldSpec(
+            "centre",
+            "boolean",
+            description=(
+                "Whether this entity is the one the rest are arranged around: a star "
+                "schema's fact table, its dimensions round it — the first above, the rest "
+                "clockwise in the order written. One entity per document may say so, and "
+                "not in a class hierarchy, which is drawn general above specific."
+            ),
+        ),
+        FieldSpec(
             "fields",
             "array",
             item_ref="field",
@@ -3705,7 +3715,8 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             description=(
                 "The boxes: each a name (and a stereotype), a rule, its fields, and its "
                 "operations under a second rule. Placed by their relations: general above "
-                "specific when there is a hierarchy, side by side otherwise."
+                "specific when there is a hierarchy, side by side otherwise; round the one "
+                "marked `centre`, a star schema's fact table, when one is."
             ),
         ),
         FieldSpec(
@@ -4430,6 +4441,8 @@ class Entity:
     tag: str = ""
     fields: tuple[EntityField, ...] = ()
     operations: tuple[str, ...] = ()
+    centre: bool = False
+    """Whether the rest are arranged round this one, a star schema's fact table."""
 
 
 @dataclass(frozen=True)
@@ -7519,6 +7532,35 @@ def _entities_violations(document: Mapping[str, Any]) -> list[Violation]:
                     )
                 else:
                     hierarchy.setdefault(ends["from"], []).append(ends["to"])
+
+    # A star: one entity in the middle, the rest round it. A class hierarchy is
+    # drawn general above specific, which a ring round a middle cannot keep.
+    middles = [
+        index
+        for index, entity in enumerate(_listed(document, "entities"))
+        if isinstance(entity, dict) and entity.get("centre") is True
+    ]
+    for index in middles[1:]:
+        found.append(
+            Violation(
+                _pointer("entities", index, "centre"),
+                "a second entity says it is the centre. A star has one middle: the fact "
+                "table. Drop 'centre' here, or split the diagram into one star per fact.",
+            )
+        )
+    if middles:
+        for index, edge in enumerate(_listed(document, "edges")):
+            if isinstance(edge, dict) and edge.get("role") in HIERARCHY_ROLES:
+                found.append(
+                    Violation(
+                        _pointer("entities", middles[0], "centre"),
+                        f"edge {index} is {edge['role']!r}, and a class hierarchy is drawn "
+                        f"general above specific; arranged round a middle, a subclass could "
+                        f"land above its parent. Drop 'centre', or draw the hierarchy in a "
+                        f"diagram of its own.",
+                    )
+                )
+                break
     return found
 
 
@@ -11444,6 +11486,7 @@ def _entities_document(document: Mapping[str, Any]) -> Document:
                     for field in entry.get("fields", ())
                 ),
                 operations=tuple(entry.get("operations", ())),
+                centre=bool(entry.get("centre", False)),
             )
             for entry in document["entities"]
         ),

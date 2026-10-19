@@ -1477,7 +1477,7 @@
         },
         "entities": {
           "type": "array",
-          "description": "The boxes: each a name (and a stereotype), a rule, its fields, and its operations under a second rule. Placed by their relations: general above specific when there is a hierarchy, side by side otherwise.",
+          "description": "The boxes: each a name (and a stereotype), a rule, its fields, and its operations under a second rule. Placed by their relations: general above specific when there is a hierarchy, side by side otherwise; round the one marked `centre`, a star schema's fact table, when one is.",
           "items": {
             "$ref": "#/$defs/entity"
           },
@@ -3559,6 +3559,10 @@
             "emphasis",
             "note"
           ]
+        },
+        "centre": {
+          "type": "boolean",
+          "description": "Whether this entity is the one the rest are arranged around: a star schema's fact table, its dimensions round it — the first above, the rest clockwise in the order written. One entity per document may say so, and not in a class hierarchy, which is drawn general above specific."
         },
         "fields": {
           "type": "array",

@@ -43,11 +43,11 @@ pip install drawspec && drawspec render diagram.json -o diagram.svg
 > hand-off between parties is an arrow crossing a lane. `entities` is the
 > nineteenth: ER models, database schemas and class diagrams as one kind — boxes
 > of fields, relations that can land on one row, crow's feet or multiplicities at
-> the ends, and inheritance with a hollow triangle. `gantt` is the twentieth: a
-> plan, one row per task, with phases, milestones, finish-to-start dependencies
-> and marks such as *today* — on a numbered axis in a unit you name, never dates;
-> a task's row can carry its deliveries and the iterations it goes round, so
-> life cycles compare lane by lane.
+> the ends, inheritance with a hollow triangle, and a star schema round its fact
+> table. `gantt` is the twentieth: a plan, one row per task, with phases,
+> milestones, finish-to-start dependencies and marks such as *today* — on a
+> numbered axis in a unit you name, never dates; a task's row can carry its
+> deliveries and the iterations it goes round, so life cycles compare lane by lane.
 > `board` is the twenty-first: cards sorted into columns — a kanban board with
 > work-in-progress limits drawspec counts, a retrospective, or a story map whose
 > releases are slices across the columns with a heavy cut under the first.
