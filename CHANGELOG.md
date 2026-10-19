@@ -15,8 +15,8 @@ against it would stop working. Everything below is about the *package*.
 - **`gantt` tasks take `events` and `iterations`**, so one row can be a lane of a
   life-cycle comparison. An event (`{at, text?}`) is a diamond on the task's own bar
   with its words under it, such as a delivery or a release; several fall on one row
-  where a milestone task would take a row each. An iteration (`{start, end}`) is an
-  arc over the bar from the iteration's end back to its start, the loop a life cycle
+  where a milestone task would take a row each. An iteration (`{start, end}`) is a
+  curved arrow over the bar from the iteration's end back to its start, the loop a life cycle
   draws. Both lie within the task's `start` to `end`. Iterations are in order and may
   touch but not overlap. Neither is allowed on a milestone. Each is budgeted at 8 per
   task. Text output draws an iteration as `▼───┐` over the bar and an event as `◆` on

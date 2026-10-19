@@ -643,20 +643,21 @@ def test_words_at_the_canvas_edge_are_pulled_back_onto_it() -> None:
 
 
 def test_an_iteration_is_an_arc_over_the_bar_from_its_end_back_to_its_start() -> None:
-    """Tail on the bar's top near x(end), up, left, and down with its head near x(start).
+    """Tail on the bar's top near x(end), a curve up and back, head down near x(start).
 
-    Each leg stands the same distance inside its iteration, so the arc of 0-3 and
-    that of 3-6 meet the bar on either side of the event at 3, never on it.
+    A curve, not a bracket: it leaves and lands upright, and rises above the bar in
+    between. Each leg stands the same distance inside its iteration, so the arc of
+    0-3 and that of 3-6 meet the bar on either side of the event at 3, never on it.
     """
     drawing = drawn(lanes())
     _, top, _, _ = drawing.bars["agile"]
     arcs = drawing.iterations["agile"]
     assert len(arcs) == 4
     for arc, (start, end) in zip(arcs, ((0, 3), (3, 6), (6, 9), (9, 12)), strict=True):
-        (x1, y1), (x2, y2), (x3, y3), (x4, y4) = arc
+        (x1, y1), (x4, y4) = arc[0], arc[-1]
         assert y1 == pytest.approx(top) and y4 == pytest.approx(top)
-        assert y2 == pytest.approx(y3) and y2 < top
-        assert x1 == pytest.approx(x2) and x3 == pytest.approx(x4)
+        assert all(y < top for _, y in arc[1:-1])
+        assert [x for x, _ in arc] == sorted((x for x, _ in arc), reverse=True)
         inset = drawing.scale.to_pixels(end) - x1
         assert x4 - drawing.scale.to_pixels(start) == pytest.approx(inset)
         assert inset > 0
@@ -671,7 +672,7 @@ def test_a_row_with_arcs_and_words_is_taller_and_its_arcs_stay_inside_it() -> No
     plain = drawn(lanes(iterations=[], events=[]))
     top, bottom = drawing.rows["agile"]
     assert bottom - top > plain.rows["agile"][1] - plain.rows["agile"][0]
-    assert all(arc[1][1] > top for arc in drawing.iterations["agile"])
+    assert all(y > top for arc in drawing.iterations["agile"] for _, y in arc)
 
 
 def test_an_iteration_too_short_for_its_arc_is_refused() -> None:

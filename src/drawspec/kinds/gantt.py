@@ -26,7 +26,7 @@ the line turns back along the gap beside the target's row.
 with their names above the first row; names that would touch take another line.
 
 **Events and iterations** are a task's own: an event is a milestone's diamond on
-the task's bar, its words centred under the bar; an iteration is an arc over the
+the task's bar, its words centred under the bar; an iteration is a curved arc over the
 bar from the iteration's end back to its start, the head onto the bar, the way a
 life cycle draws the work going round. A row with either grows by what they take,
 so lanes of a life-cycle comparison stay on the one axis.
@@ -86,6 +86,12 @@ MARK_GAP: Final = 4.0
 #: beyond an event's diamond, and how much higher than its head it rises.
 LEG: Final = 3.0
 RISE: Final = 4.0
+
+#: How many straight pieces an iteration's curved arc is drawn in.
+ARC_SAMPLES: Final = 16
+
+#: An iteration's upright stubs, as a share of its rise: one in this many.
+STUB: Final = 3.0
 
 #: The gap between a bar's events and their words under it.
 EVENT_GAP: Final = 2.0
@@ -481,9 +487,35 @@ def _arcs(
                 f"short for its arc, which needs {3 * leg:.0f} (iteration {position + 1}). "
                 f"Make it longer, or give the diagram more width."
             )
-        top = bar_top - rise
-        found.append(((right, bar_top), (right, top), (left, top), (left, bar_top)))
+        # A curve, not a bracket: the loop back reads as "again" where a square
+        # bracket reads as a span. A short upright stub at each leg, so it leaves
+        # the bar and lands on it upright and the head points down onto it; the
+        # curve between peaks at `rise`, a cubic's peak being 3/4 of its handles'.
+        stub = rise / STUB
+        base = bar_top - stub
+        handle = base - (rise - stub) / 0.75
+        curve = (
+            _cubic((right, base), (right, handle), (left, handle), (left, base), step / ARC_SAMPLES)
+            for step in range(ARC_SAMPLES + 1)
+        )
+        found.append(((right, bar_top), *curve, (left, bar_top)))
     return tuple(found)
+
+
+def _cubic(
+    p0: tuple[float, float],
+    p1: tuple[float, float],
+    p2: tuple[float, float],
+    p3: tuple[float, float],
+    t: float,
+) -> tuple[float, float]:
+    """The point at `t` along the cubic Bézier curve through `p0`..`p3`."""
+    u = 1 - t
+    a, b, c, d = u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t
+    return (
+        a * p0[0] + b * p1[0] + c * p2[0] + d * p3[0],
+        a * p0[1] + b * p1[1] + c * p2[1] + d * p3[1],
+    )
 
 
 def _event_words(

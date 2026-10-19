@@ -1605,7 +1605,7 @@ A task's row can carry more than its bar. `events` are moments on the task's own
 each `{"at": 9, "text": "Release"}`: a diamond on the bar where it falls, with its words
 centred under the bar. A milestone task takes a row of its own, but several events share
 their task's row. `iterations` are the cycles the work goes round, each
-`{"start": 0, "end": 3}`: an arc over the bar from the iteration's end back to its start,
+`{"start": 0, "end": 3}`: a curved arrow over the bar from the iteration's end back to its start,
 its head onto the bar. Together they make each task a lane, so life cycles can be compared
 on one axis. A predictive lane has no arcs and one event at its end. An agile lane loops
 four times and delivers four times. See
