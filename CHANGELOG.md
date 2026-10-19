@@ -10,6 +10,8 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+## [0.4.2] — 2026-10-19
+
 ### Fixed
 
 - **A `matrix` return edge reaches its cells, and its label is not crossed** (issue #132,
