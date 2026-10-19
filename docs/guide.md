@@ -1449,21 +1449,27 @@ general end, solid for a subclass and dashed for an implementation. With a
 hierarchy in the diagram, general entities are placed above specific ones and it
 reads down; without one it reads across, the one side of each relation before
 its many side; either way the other direction is taken when the first does not
-fit.
+fit. A star schema marks its fact table `"centre": true`: it is placed in the
+middle and the rest stand round it, the first above and the rest clockwise in the
+order written. A line naming no field joins the two boxes square, the ends on each
+side of the middle spread along it; one naming a field still leaves its row.
 
 Refused, each at its pointer: a cardinality or a row on `inherits`/`realizes`; a
 hierarchy that loops (at the relation that closes it); a `from_field` that is a
 field of another entity; a relation of an entity to itself; a `to_end` on `owns`
 (the whole is always one); a `...` field that is not last, or that carries a
 type, key or id; a name on two lines; a `tag` over 16 characters; and aggregation
-(`aggregates`), which is not offered — say `owns` or `link`. Visibility is not a
+(`aggregates`), which is not offered — say `owns` or `link`; a second `centre`;
+and a `centre` in a diagram with `inherits` or `realizes`, since a hierarchy is
+drawn general above specific. Visibility is not a
 field: write `- name` in `text`. Entity roles are `step`, `emphasis` and `note` (an
 outside entity, drawn dashed). Budget: 8 entities, 12 edges, 12 fields and 8
 operations per entity. See
 [`reference/entities-library.json`](reference/entities-library.json),
 [`reference/entities-orders.json`](reference/entities-orders.json),
-[`reference/entities-shapes.json`](reference/entities-shapes.json) and
-[`reference/entities-enrolment.json`](reference/entities-enrolment.json).
+[`reference/entities-shapes.json`](reference/entities-shapes.json),
+[`reference/entities-enrolment.json`](reference/entities-enrolment.json) and
+[`reference/entities-star.json`](reference/entities-star.json).
 
 ## A funnel that says how many
 

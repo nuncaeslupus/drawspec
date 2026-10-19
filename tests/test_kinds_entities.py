@@ -10,6 +10,7 @@ their refusal.
 
 from __future__ import annotations
 
+import itertools
 import json
 import math
 from pathlib import Path
@@ -208,6 +209,143 @@ def test_two_relations_between_stacked_boxes_take_opposite_sides() -> None:
         for route, index in ((first, 0), (second, -1))
     }
     assert sides == {"left", "right"}
+
+
+# ---------------------------------------------------------------------------
+# A star
+# ---------------------------------------------------------------------------
+
+
+def star(*dimensions: str, named: bool = False) -> dict[str, Any]:
+    """A fact table in the middle and one dimension per name, each with a key it refers to."""
+    entities: list[dict[str, Any]] = [
+        {
+            "id": "sales",
+            "text": "`fact_sales`",
+            "centre": True,
+            "fields": [
+                *(
+                    {"id": f"s_{name}", "text": f"`{name}_id`", "key": "foreign"}
+                    for name in dimensions
+                ),
+                {"text": "`amount`"},
+            ],
+        }
+    ]
+    edges: list[dict[str, Any]] = []
+    for name in dimensions:
+        entities.append(
+            {
+                "id": name,
+                "text": f"`dim_{name}`",
+                "fields": [{"id": f"{name}_id", "text": f"`{name}_id`", "key": "primary"}],
+            }
+        )
+        edge = {"from": name, "to": "sales", "from_end": "one", "to_end": "zero-or-many"}
+        if named:
+            edge.update(from_field=f"{name}_id", to_field=f"s_{name}")
+        edges.append(edge)
+    return {"version": 1, "kind": "entities", "entities": entities, "edges": edges}
+
+
+def _crosses(first: Any, second: Any) -> bool:
+    """Whether a horizontal run of one route crosses a vertical run of the other inside both."""
+    for one, other in ((first, second), (second, first)):
+        for (ax, ay), (bx, by) in itertools.pairwise(one.points):
+            if abs(ay - by) > EPSILON:
+                continue
+            for (cx, cy), (dx, dy) in itertools.pairwise(other.points):
+                if abs(cx - dx) > EPSILON:
+                    continue
+                if (
+                    min(ax, bx) + EPSILON < cx < max(ax, bx) - EPSILON
+                    and min(cy, dy) + EPSILON < ay < max(cy, dy) - EPSILON
+                ):
+                    return True
+    return False
+
+
+def test_a_star_puts_four_dimensions_one_per_side_of_the_fact() -> None:
+    """The first above, the rest clockwise: right, below, left, as written."""
+    boxes = drawn(star("date", "product", "store", "customer")).boxes
+    sales = boxes["sales"]
+    assert boxes["date"].bottom < sales.y
+    assert boxes["product"].x > sales.right
+    assert boxes["store"].y > sales.bottom
+    assert boxes["customer"].right < sales.x
+
+
+def test_a_star_draws_each_plain_spoke_straight_across_its_gap() -> None:
+    """Two points each: a dimension square to a side is joined with no bend.
+
+    Read as a layered drawing, the one below counted as a line going backwards
+    and was sent out a side and round.
+    """
+    drawing = drawn(star("date", "product", "store", "customer"))
+    assert [len(route.points) for route in drawing.routes] == [2, 2, 2, 2]
+
+
+def test_a_star_spreads_the_spokes_along_each_side_of_the_fact() -> None:
+    """Seven dimensions: no two lines end at one point of the middle."""
+    drawing = drawn(star("a", "b", "c", "d", "e", "f", "g"))
+    ends = [route.points[-1] for route in drawing.routes]
+    assert len({(round(x, 3), round(y, 3)) for x, y in ends}) == 7
+
+
+@pytest.mark.parametrize("count", [4, 5, 6, 7])
+def test_no_two_boxes_of_a_star_overlap(count: int) -> None:
+    """Up to the budget's seven round one: the ring widens until none touch."""
+    names = [f"d{index}" for index in range(count)]
+    boxes = list(drawn(star(*names)).boxes.values())
+    for index, first in enumerate(boxes):
+        for second in boxes[index + 1 :]:
+            apart = (
+                first.right <= second.x
+                or second.right <= first.x
+                or first.bottom <= second.y
+                or second.bottom <= first.y
+            )
+            assert apart, (first.entity.id, second.entity.id)
+
+
+def test_a_star_still_crowded_after_the_last_widening_is_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With no widening left, seven dimensions on the first ring touch: refused, not drawn.
+
+    The last widening used to be taken on trust, so a ring that ran out of tries
+    while still crowded was drawn with its boxes within the node gap.
+    """
+    monkeypatch.setattr("drawspec.kinds.entities.STAR_TRIES", 0)
+    with pytest.raises(FitError, match="however far"):
+        drawn(star("a", "b", "c", "d", "e", "f", "g"))
+
+
+@pytest.mark.parametrize("named", [False, True])
+def test_no_two_spokes_of_a_star_cross(named: bool) -> None:
+    """A row-anchored line to the dimension below goes round the side it crosses nothing on.
+
+    Its side counted the lines already there and went to the emptier one, which
+    put it on the left, past the row the line to the left dimension leaves from.
+    """
+    routes = drawn(star("date", "product", "store", "customer", named=named)).routes
+    for index, first in enumerate(routes):
+        for second in routes[index + 1 :]:
+            assert not _crosses(first, second)
+
+
+def test_a_second_centre_is_refused() -> None:
+    document = star("date", "product")
+    document["entities"][1]["centre"] = True
+    assert pointers(document) == ["/entities/1/centre"]
+    assert "one middle" in messages(document)
+
+
+def test_a_centre_in_a_class_hierarchy_is_refused() -> None:
+    document = classes()
+    document["entities"][0]["centre"] = True
+    assert pointers(document) == ["/entities/0/centre"]
+    assert "general above specific" in messages(document)
 
 
 # ---------------------------------------------------------------------------

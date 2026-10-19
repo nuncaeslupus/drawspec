@@ -177,7 +177,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `entities` | array of [entity](#entity-object), at least 1 | **yes** | The boxes: each a name (and a stereotype), a rule, its fields, and its operations under a second rule. Placed by their relations: general above specific when there is a hierarchy, side by side otherwise. |
+| `entities` | array of [entity](#entity-object), at least 1 | **yes** | The boxes: each a name (and a stereotype), a rule, its fields, and its operations under a second rule. Placed by their relations: general above specific when there is a hierarchy, side by side otherwise; round the one marked `centre`, a star schema's fact table, when one is. |
 | `edges` | array of [relation](#relation-object) | no | The relations between entities, each landing on a box — or, with `from_field` / `to_field`, on one row of it — and carrying a cardinality at either end. A hierarchy may not loop. |
 
 ### `gantt`
@@ -526,6 +526,7 @@ name, so a misspelt key is an error at the point it was written.
 | `text` | string | **yes** | The entity's name, drawn bold over its fields. One line: may carry `code` and **bold** spans — a table name is usually `code`. |
 | `tag` | string | no | A short stereotype drawn over the name in guillemets — `interface` is drawn «interface». Free text, 16 characters at most. |
 | `role` | string — one of `step`, `emphasis`, `note` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `centre` | boolean | no | Whether this entity is the one the rest are arranged around: a star schema's fact table, its dimensions round it — the first above, the rest clockwise in the order written. One entity per document may say so, and not in a class hierarchy, which is drawn general above specific. |
 | `fields` | array of [field](#field-object) | no | What the entity holds, one row each under its name: attributes, columns. A last field of `...` stands for those not shown. |
 | `operations` | array of string | no | What a class can do — `area() → float` — drawn in a compartment of their own under the fields. Strings, not objects: an operation is read, never linked to. |
 

@@ -12,6 +12,12 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`entities` star schemas**: `"centre": true` on one entity places it in the middle and
+  the rest round it, the first above and the rest clockwise in the order written, with
+  the PK/FK marks and crow's feet `entities` draws. Lines naming no field join the boxes
+  square, spread along each side of the middle; a second `centre`, or one in a class
+  hierarchy, is refused. Reference: `entities-star.json`. (#135)
+
 - **One SVG, several themes** (#136): `render --variant dark=night.toml` (repeatable;
   `variants=` in Python, `variants` in MCP's `render_document`) draws the document in
   each theme and merges them into one SVG whose colours are CSS custom properties. An
