@@ -118,11 +118,31 @@ def cycle_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
         )
 
     primitives: list[Primitive] = []
+    # Where the ring edges' labels sit, kept as boxes: the canvas is framed
+    # against the ink, and a label's ink is its box, not its baseline point.
+    label_boxes: list[tuple[float, float, float, float]] = []
     # Arcs first, so a node box is drawn over the line that reaches it rather
     # than under it — the same paint order every other family uses.
     for index, node_id in enumerate(order):
         following = order[(index + 1) % len(order)]
         role = _edge_role(document, node_id, following)
+        label = _edge_label(document, node_id, following)
+        if label:
+            run, box = _ring_label(
+                centre,
+                radius,
+                index,
+                len(order),
+                (node_id, following),
+                placed,
+                label,
+                role,
+                theme,
+                measurer,
+                extent,
+            )
+            primitives.append(run)
+            label_boxes.append(box)
         primitives.extend(
             _arc(
                 centre,
@@ -159,6 +179,9 @@ def cycle_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     # was this family's own ten units of `[box] padding` while every other family
     # had a different answer.
     _, top, _, bottom = extents(primitives)
+    for _, label_top, _, label_bottom in label_boxes:
+        top = min(top, label_top)
+        bottom = max(bottom, label_bottom)
     shift = -top
     primitives = [moved(primitive, 0.0, shift) for primitive in primitives]
     centre = (centre[0], centre[1] + shift)
@@ -285,6 +308,95 @@ def _edge_role(document: Document, source: str, target: str) -> str:
         if edge.source == source and edge.target == target:
             return edge.role
     return "flow"
+
+
+def _edge_label(document: Document, source: str, target: str) -> str:
+    for edge in document.edges:
+        if edge.source == source and edge.target == target:
+            return edge.label
+    return ""
+
+
+def _ring_label(
+    centre: tuple[float, float],
+    radius: float,
+    index: int,
+    count: int,
+    ends: tuple[str, str],
+    placed: dict[str, Box],
+    label: str,
+    role: str,
+    theme: Theme,
+    measurer: TextMeasurer,
+    extent: float,
+) -> tuple[TextRun, tuple[float, float, float, float]]:
+    """A ring edge's label: at the middle of its arc, outside the ring.
+
+    It used to be accepted and never drawn (issue #134) — the one outcome the
+    format promises never to give, because the author believes the reader sees
+    it. Outside rather than inside, because the inside is where shortcuts and
+    spokes run and their labels sit; outside, the only neighbours are the two
+    steps the arc joins.
+
+    The label's nearest corner keeps the daylight every label keeps from the
+    stroke — from the outer edge of the band or the head's wing, whichever the
+    theme draws — so a label at three o'clock and one at noon both stand clear.
+
+    Raises:
+        FitError: the label would cover a step or run off the canvas. Naming the
+            edge, rather than overprinting the step's words.
+    """
+    source, target = ends
+    begin = _leaves(centre, radius, _angle(index, count), placed[source], theme, forwards=True)
+    finish = _leaves(
+        centre, radius, _angle(index + 1, count), placed[target], theme, forwards=False
+    )
+    middle = (begin + finish) / 2
+    outward = (math.cos(middle), math.sin(middle))
+    stroke = (
+        theme.cycle.width * HEAD_FLARE / 2
+        if theme.cycle.connector == "band"
+        else theme.edge.head_length / 2
+    )
+    size = measurer.measure(label, theme.font.default, theme.scale["label"])
+    half = abs(outward[0]) * size.width / 2 + abs(outward[1]) * size.height / 2
+    away = radius + stroke + theme.edge.clearance + half
+    middle_x = centre[0] + outward[0] * away
+    middle_y = centre[1] + outward[1] * away
+    box = (
+        middle_x - size.width / 2,
+        middle_y - size.height / 2,
+        middle_x + size.width / 2,
+        middle_y + size.height / 2,
+    )
+    daylight = theme.edge.clearance
+    for step_id, step in placed.items():
+        if (
+            box[0] < step.x + step.width + daylight
+            and step.x - daylight < box[2]
+            and box[1] < step.y + step.height + daylight
+            and step.y - daylight < box[3]
+        ):
+            raise FitError(
+                f"the label {label!r} on the edge from {source!r} to {target!r} has no room "
+                f"outside the ring: it would cover the step {step_id!r}. Shorten the label, "
+                f"or give the diagram more width so the ring is bigger."
+            )
+    if box[0] < 0 or box[2] > extent:
+        raise FitError(
+            f"the label {label!r} on the edge from {source!r} to {target!r} runs off the "
+            f"canvas beside the ring. Shorten the label, or give the diagram more width."
+        )
+    run = TextRun(
+        role,
+        x=middle_x,
+        y=middle_y + (size.ascent - size.descent) / 2,
+        text=label,
+        level="label",
+        font=theme.font.default,
+        anchor="middle",
+    )
+    return run, box
 
 
 def _shortcut(

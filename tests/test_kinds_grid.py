@@ -11,10 +11,12 @@ path is asserted here too: parse, load the theme, fit, render, emit.
 
 from __future__ import annotations
 
+import copy
 import re
 from collections.abc import Mapping
 from dataclasses import replace
 from itertools import pairwise
+from typing import Any
 from xml.etree import ElementTree
 
 import pytest
@@ -1129,3 +1131,68 @@ def test_stack_layers_are_graded_lightest_first_unless_the_theme_says_not() -> N
     plain = replace(THEME, levels=replace(THEME.levels, shade=False))
     layers = [p for p in grid_scene(document, plain, MEASURER).primitives if isinstance(p, Rect)]
     assert all(layer.fill == "" for layer in layers)
+
+
+STAKEHOLDERS: dict[str, Any] = {
+    "version": 1,
+    "kind": "matrix",
+    "columns": ["Start", "Plan", "Execute", "Monitor"],
+    "rows": ["Process", "Output"],
+    "cells": [
+        {"id": "p0", "text": "Identify stakeholders", "column": 0, "row": 0},
+        {"id": "p1", "text": "Plan engagement", "column": 1, "row": 0},
+        {"id": "p2", "text": "Manage engagement", "column": 2, "row": 0},
+        {"id": "p3", "text": "Monitor engagement", "column": 3, "row": 0},
+        {"id": "o0", "text": "Register", "column": 0, "row": 1},
+        {"id": "o1", "text": "Engagement plan", "column": 1, "row": 1},
+        {"id": "o2", "text": "Change requests", "column": 2, "row": 1},
+        {"id": "o3", "text": "Performance data", "column": 3, "row": 1},
+    ],
+    "edges": [
+        {"from": "p0", "to": "p1"},
+        {"from": "p1", "to": "p2"},
+        {"from": "p2", "to": "p3"},
+        {"from": "o3", "to": "p0", "role": "weak", "label": "repeats throughout"},
+    ],
+}
+
+
+def _text_box(primitive: TextRun | TextLine) -> tuple[float, float, float, float]:
+    """The measured box of a run or a laid-out line."""
+    if isinstance(primitive, TextLine):
+        left, right = line_bounds(primitive, THEME, MEASURER)
+        span = primitive.spans[0]
+    else:
+        extents = MEASURER.measure(primitive.text, THEME.font.default, THEME.scale["label"])
+        shift = {"start": 0.0, "middle": extents.width / 2, "end": extents.width}
+        left = primitive.x - shift[primitive.anchor]
+        right = left + extents.width
+        return left, primitive.y - extents.ascent, right, primitive.y + extents.descent
+    extents = MEASURER.measure(span.text, span.font, THEME.scale[primitive.level])
+    return left, primitive.y - extents.ascent, right, primitive.y + extents.descent
+
+
+def test_a_return_edge_label_on_a_matrix_clears_every_cells_words() -> None:
+    """Issue #132: the return from the last output to the first process ran along
+    the join between the rows, and its label, centred on the run, printed over the
+    words of the cells it passed. The join now opens a channel for it, and every
+    label is kept off every cell's words — or refused, never overprinted."""
+    built = scene_for(parse_document(STAKEHOLDERS), THEME, MEASURER)
+    label = next(
+        p for p in built.primitives if isinstance(p, TextRun) and p.text == "repeats throughout"
+    )
+    box = _text_box(label)
+    for line in (p for p in built.primitives if isinstance(p, TextLine)):
+        other = _text_box(line)
+        assert (
+            box[2] <= other[0] or other[2] <= box[0] or box[3] <= other[1] or other[3] <= box[1]
+        ), f"the label overprints {line.text!r}"
+
+
+def test_a_labelled_return_opens_a_channel_between_the_rows() -> None:
+    """The channel is for the label: without one the join stays as it was."""
+    plain = copy.deepcopy(STAKEHOLDERS)
+    del plain["edges"][3]["label"]
+    labelled = scene_for(parse_document(STAKEHOLDERS), THEME, MEASURER)
+    unlabelled = scene_for(parse_document(plain), THEME, MEASURER)
+    assert labelled.height > unlabelled.height

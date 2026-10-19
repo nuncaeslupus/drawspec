@@ -34,7 +34,7 @@ from drawspec.errors import FitError
 from drawspec.scene import Path, Polygon, Primitive, Scene, TextLine, TextSpan
 from drawspec.schema import Document, ModelBar, ModelBrace, ModelPart
 from drawspec.text.measure import TextMeasurer
-from drawspec.text.wrap import TextBlock, wrap
+from drawspec.text.wrap import TextBlock, bold_lines, wrap
 from drawspec.theme import Theme
 
 #: Lengths in units, a unit being the body size over eleven, so the spacing
@@ -421,7 +421,7 @@ def _curl(
 def _wrapped(
     text: str, width: float, theme: Theme, measurer: TextMeasurer, *, bold: bool = False
 ) -> TextBlock:
-    words = f"**{text.replace('**', '')}**" if bold else text
+    words = bold_lines(text) if bold else text
     try:
         return wrap(words, width, measurer, theme=theme, level="body")
     except FitError as error:

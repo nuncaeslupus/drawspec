@@ -37,7 +37,7 @@ from drawspec.kinds.common import lead_rule, outline, text_runs
 from drawspec.scene import Path, Polygon, Primitive, Scene, TextLine, TextSpan
 from drawspec.schema import BoardColumn, Card, Document
 from drawspec.text.measure import TextMeasurer
-from drawspec.text.wrap import TextBlock, wrap
+from drawspec.text.wrap import TextBlock, bold_lines, wrap
 from drawspec.textgrid import (
     STRAIGHT,
     Drawn,
@@ -314,7 +314,7 @@ def _card_text(
 
 def _bold(text: str) -> str:
     """A name set bold. Its own spans are dropped: the whole name is bold."""
-    return f"**{text.replace('**', '')}**"
+    return bold_lines(text)
 
 
 def _natural(text: str, theme: Theme, measurer: TextMeasurer) -> float:
