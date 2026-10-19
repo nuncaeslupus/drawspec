@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 
 from drawspec.charts import AXIS_ROLE, FURNITURE_ROLE, TARGET_TICKS, Scale, _nice_step, _ticks
 from drawspec.errors import FitError
-from drawspec.routing import Route, edge_primitives
+from drawspec.routing import Route, edge_primitives, end_marker
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextLine, TextSpan
 from drawspec.schema import Axis, Document, Task, _figure
 from drawspec.text.measure import TextMeasurer
@@ -83,15 +83,21 @@ BRACKET: Final = 5.0
 MARK_GAP: Final = 4.0
 
 #: An iteration's arc: how far in from the iteration's ends its legs stand,
-#: beyond an event's diamond, and how much higher than its head it rises.
+#: beyond an event's diamond, and how much higher than its head it rises at most.
 LEG: Final = 3.0
-RISE: Final = 4.0
+RISE: Final = 12.0
+
+#: How far above the bar an iteration's arc stands, so its head is seen whole
+#: and not run into the bar's edge.
+LIFT: Final = 2.0
+
+#: An iteration's arc rises this share of its width, up to its cap: a circle
+#: that comes down at some 55 degrees, steep enough for its head to point at
+#: the bar rather than lie along it.
+ARC_HEIGHT: Final = 0.27
 
 #: How many straight pieces an iteration's curved arc is drawn in.
-ARC_SAMPLES: Final = 16
-
-#: An iteration's upright stubs, as a share of its rise: one in this many.
-STUB: Final = 3.0
+ARC_SAMPLES: Final = 32
 
 #: The gap between a bar's events and their words under it.
 EVENT_GAP: Final = 2.0
@@ -248,6 +254,7 @@ def gantt_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
     event_half = bar * MILESTONE / 2
     leg = event_half + LEG * unit
     rise = theme.head_length_for("flow") + RISE * unit
+    lift = LIFT * unit
     event_drop = event_half - bar / 2 + EVENT_GAP * unit
     primitives: list[Primitive] = []
     texts: list[Primitive] = []
@@ -265,7 +272,7 @@ def gantt_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
             y += height
         block = blocks[task.id]
         tallest = bar * (FOCAL if task.milestone and task.role == "emphasis" else 1.0)
-        above = rise if task.iterations else 0.0
+        above = rise + lift if task.iterations else 0.0
         below = event_drop + line.height if any(event.text for event in task.events) else 0.0
         if task.events and not below:
             below = event_half - bar / 2
@@ -325,11 +332,17 @@ def gantt_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
         if task.done:
             primitives.append(_done(task.done, box, theme))
         ends[task.id] = ((left, middle), (right, middle))
-        arcs = _arcs(task, scale, box[1], leg=leg, rise=rise)
+        arcs = _arcs(
+            task, scale, box[1] - lift, leg=leg, rise=rise, head=theme.head_length_for("flow")
+        )
         if arcs:
             iterations[task.id] = arcs
             for arc in arcs:
-                primitives.extend(edge_primitives(Route(task.id, task.id, "flow", arc), theme))
+                # The shaft stops halfway into the head rather than at its tip: a
+                # stroke run on to the point shows past it, wider than the point is.
+                into = ((arc[-2][0] + arc[-1][0]) / 2, (arc[-2][1] + arc[-1][1]) / 2)
+                primitives.append(Path("flow", points=(*arc[:-1], into)))
+                primitives.extend(end_marker("arrow", arc[-2], arc[-1], "flow", theme))
         if task.events:
             on_bars[task.id] = tuple((scale.to_pixels(event.at), middle) for event in task.events)
             for x, _ in on_bars[task.id]:
@@ -467,7 +480,7 @@ def gantt_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
 
 
 def _arcs(
-    task: Task, scale: Scale, bar_top: float, *, leg: float, rise: float
+    task: Task, scale: Scale, bar_top: float, *, leg: float, rise: float, head: float
 ) -> tuple[tuple[tuple[float, float], ...], ...]:
     """Each iteration's arc over the bar: up from near its end, back, down onto near its start.
 
@@ -488,34 +501,26 @@ def _arcs(
                 f"Make it longer, or give the diagram more width."
             )
         # A curve, not a bracket: the loop back reads as "again" where a square
-        # bracket reads as a span. A short upright stub at each leg, so it leaves
-        # the bar and lands on it upright and the head points down onto it; the
-        # curve between peaks at `rise`, a cubic's peak being 3/4 of its handles'.
-        stub = rise / STUB
-        base = bar_top - stub
-        handle = base - (rise - stub) / 0.75
-        curve = (
-            _cubic((right, base), (right, handle), (left, handle), (left, base), step / ARC_SAMPLES)
-            for step in range(ARC_SAMPLES + 1)
+        # bracket reads as a span. A circle's arc, so it bends evenly all the way.
+        # Its last piece is the chord under the head, one head long, so the head
+        # lies along it and the shaft inside the head is straight, not bowing out
+        # of its side. Never more than a half circle, however short.
+        half = (right - left) / 2
+        sag = min(rise, ARC_HEIGHT * (right - left), half)
+        radius = (half * half + sag * sag) / (2 * sag)
+        centre = ((left + right) / 2, bar_top - sag + radius)
+        sweep = math.asin(half / radius)
+        under_head = 2 * math.asin(min(head / (2 * radius), 1.0))
+        angles = [
+            sweep - (2 * sweep - under_head) * step / ARC_SAMPLES for step in range(ARC_SAMPLES + 1)
+        ]
+        found.append(
+            tuple(
+                (centre[0] + radius * math.sin(angle), centre[1] - radius * math.cos(angle))
+                for angle in (*angles, -sweep)
+            )
         )
-        found.append(((right, bar_top), *curve, (left, bar_top)))
     return tuple(found)
-
-
-def _cubic(
-    p0: tuple[float, float],
-    p1: tuple[float, float],
-    p2: tuple[float, float],
-    p3: tuple[float, float],
-    t: float,
-) -> tuple[float, float]:
-    """The point at `t` along the cubic Bézier curve through `p0`..`p3`."""
-    u = 1 - t
-    a, b, c, d = u * u * u, 3 * u * u * t, 3 * u * t * t, t * t * t
-    return (
-        a * p0[0] + b * p1[0] + c * p2[0] + d * p3[0],
-        a * p0[1] + b * p1[1] + c * p2[1] + d * p3[1],
-    )
 
 
 def _event_words(

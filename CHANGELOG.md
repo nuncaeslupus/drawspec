@@ -10,6 +10,13 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`gantt` iteration arrows are circular arcs** that bend evenly and stop just above the
+  bar, steep enough for the head to point down at it. 0.4.0 drew a flattened curve with
+  upright stubs at each end, which kinked where they met and left the head lying on the
+  bar's edge, its shaft entering from one side and showing past its tip.
+
 ## [0.4.0] — 2026-10-19
 
 ### Added
