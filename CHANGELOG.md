@@ -12,6 +12,23 @@ against it would stop working. Everything below is about the *package*.
 
 ### Fixed
 
+- **A `matrix` return edge reaches its cells, and its label is not crossed** (issue #132,
+  still showing in 0.4.0). An edge between cells in neighbouring rows that share no
+  column, such as the return from the last output to the first process, ran level along
+  the join between the rows, at a height neither cell occupies, so the arrow touched
+  neither; and its label lay across the links from each process to its output, which
+  were broken short of the outputs to let it through. Such an edge now leaves its source
+  across the join, runs along it and enters its target, a quarter in from the side it
+  comes from; its label is wrapped onto the widest stretch of the join that no other
+  edge crosses, and the join is made deep enough for it and for the head. The label is
+  centred in the gap between the cells and its run, rather than hung off the run.
+- **A `matrix` with edges centres each cell's words in the cell it draws.** Such a
+  matrix draws every cell an edge clearance in from its slot, but sized the cell's box
+  for the whole slot, so the box was taller and wider than the cell: a two-line cell's
+  words sat a clearance low, all but touching its bottom, and a line as wide as the slot
+  ran past the cell's sides. Boxes are now sized for the cell, and rows are deep enough
+  for the box and the clearance either side. Matrices with edges come out a little
+  taller; tables without edges are unchanged.
 - **An edge to or from a `group` no longer undoes the packing of its members.** Groups
   that an edge ranks side by side were each still packed as if alone on the sheet, so a
   control plane with an arrow to each of two worker nodes needed 1072 on a 640 canvas, in

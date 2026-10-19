@@ -1190,9 +1190,128 @@ def test_a_return_edge_label_on_a_matrix_clears_every_cells_words() -> None:
 
 
 def test_a_labelled_return_opens_a_channel_between_the_rows() -> None:
-    """The channel is for the label: without one the join stays as it was."""
+    """The channel is deeper for the label: without one it only makes room for a head."""
     plain = copy.deepcopy(STAKEHOLDERS)
     del plain["edges"][3]["label"]
     labelled = scene_for(parse_document(STAKEHOLDERS), THEME, MEASURER)
     unlabelled = scene_for(parse_document(plain), THEME, MEASURER)
     assert labelled.height > unlabelled.height
+
+
+#: The return of issue #132 as opos drew it: each process produces its output
+#: below, and the return's label is longer than any one column is wide.
+PRODUCING: dict[str, Any] = {
+    **STAKEHOLDERS,
+    "edges": [
+        *STAKEHOLDERS["edges"][:3],
+        *({"from": f"p{n}", "to": f"o{n}", "role": "link"} for n in range(4)),
+        {
+            "from": "o3",
+            "to": "p0",
+            "role": "weak",
+            "label": "repeats periodically throughout the whole of the project",
+        },
+    ],
+}
+
+
+def _cell_box(built: Scene, text: str) -> tuple[float, float, float, float]:
+    """The outline of the cell whose first line starts with `text`."""
+    line = next(
+        p for p in built.primitives if isinstance(p, TextLine) and p.spans[0].text.startswith(text)
+    )
+    outline = next(
+        p
+        for p in built.primitives
+        if isinstance(p, Polygon)
+        and p.points[0][0] <= line.x <= p.points[1][0]
+        and p.points[0][1] <= line.y <= p.points[2][1]
+    )
+    return outline.points[0][0], outline.points[0][1], outline.points[2][0], outline.points[2][1]
+
+
+def _on_border(point: tuple[float, float], box: tuple[float, float, float, float]) -> bool:
+    x, y = point
+    inside = box[0] <= x <= box[2] and box[1] <= y <= box[3]
+    edge = min(abs(x - box[0]), abs(x - box[2]), abs(y - box[1]), abs(y - box[3]))
+    return inside and edge < 1e-6
+
+
+def test_a_return_between_rows_that_share_no_column_reaches_both_cells() -> None:
+    """Issue #132, still open in 0.4.0: the return ran level along the join
+    between the rows, from the source's left side to the target's right side —
+    at a height neither cell occupies, so the dashed arrow touched neither. It
+    now leaves its source across the join, runs along it, and enters its target."""
+    built = scene_for(parse_document(PRODUCING), THEME, MEASURER)
+    route = next(p for p in built.primitives if isinstance(p, Path) and p.role == "weak")
+    head = next(p for p in built.primitives if isinstance(p, Polygon) and p.role == "weak")
+    assert _on_border(route.points[0], _cell_box(built, "Performance"))
+    assert _on_border(head.points[0], _cell_box(built, "Identify"))
+
+
+def test_a_return_label_sits_where_no_other_edge_crosses_it() -> None:
+    """The links from each process to its output cross the join the return runs
+    along. Laid across them, the label was struck through or broke them short
+    of their outputs; it is now wrapped onto the stretch between two of them."""
+    built = scene_for(parse_document(PRODUCING), THEME, MEASURER)
+    words = [p for p in built.primitives if isinstance(p, TextRun) and p.role == "weak"]
+    assert len(words) > 1, "the label should have wrapped to fit between two links"
+    assert " ".join(w.text for w in words) == PRODUCING["edges"][-1]["label"]
+    links = [p for p in built.primitives if isinstance(p, Path) and p.role == "link"]
+    for word in words:
+        left, top, right, bottom = _text_box(word)
+        for link in links:
+            (x, y0), (_, y1) = link.points
+            assert not (left <= x <= right and min(y0, y1) <= bottom and top <= max(y0, y1)), (
+                f"a link crosses {word.text!r}"
+            )
+
+
+def _wordy(source: dict[str, Any]) -> dict[str, Any]:
+    """`source` with a first cell long enough to wrap onto several lines."""
+    wordy = copy.deepcopy(source)
+    wordy["cells"][0]["text"] = "Identify every one of the project's stakeholders"
+    return wordy
+
+
+@pytest.mark.parametrize("edges", [True, False], ids=["with-edges", "table"])
+def test_a_cells_words_are_centred_in_the_cell_drawn(edges: bool) -> None:
+    """A matrix with edges draws each cell an inset in from its slot, but sized
+    the box for the whole slot: the box was taller than the cell, and a
+    two-line cell's words sat an inset low, all but touching its bottom
+    (opos diagram 65). The ink, first ascent to last descent, is now centred
+    in the cell less its padding — whose bottom is deliberately the deeper —
+    and inside the cell either side."""
+    source = _wordy(PRODUCING)
+    if not edges:
+        del source["edges"]
+    built = scene_for(parse_document(source), THEME, MEASURER)
+    padding = THEME.box.padding
+    outlines = [p for p in built.primitives if isinstance(p, Polygon) and len(p.points) == 4]
+    lines = [p for p in built.primitives if isinstance(p, TextLine)]
+    seen = 0
+    for outline in outlines:
+        (left, top), _, (right, bottom), _ = outline.points
+        inside = [line for line in lines if left < line.x < right and top < line.y < bottom]
+        if not inside:
+            continue
+        boxes = [_text_box(line) for line in inside]
+        ink_top, ink_bottom = min(b[1] for b in boxes), max(b[3] for b in boxes)
+        above, below = ink_top - top - padding.top, bottom - ink_bottom - padding.bottom
+        assert above == pytest.approx(below, abs=0.01), [line.spans[0].text for line in inside]
+        assert left < min(b[0] for b in boxes) and max(b[2] for b in boxes) < right
+        seen += len(inside) > 1
+    assert seen, "no cell wrapped, so nothing tested the multi-line case"
+
+
+def test_a_return_label_is_centred_between_the_cells_and_its_run() -> None:
+    """Hung a clearance off its run, the return's label sat nearer the cells
+    above it than its own stroke. It is centred in the gap, ink to ink."""
+    built = scene_for(parse_document(PRODUCING), THEME, MEASURER)
+    words = [_text_box(p) for p in built.primitives if isinstance(p, TextRun) and p.role == "weak"]
+    run = next(p for p in built.primitives if isinstance(p, Path) and p.role == "weak")
+    cells = _cell_box(built, "Identify")[3]
+    join = run.points[1][1]
+    ink_top, ink_bottom = min(b[1] for b in words), max(b[3] for b in words)
+    assert cells < ink_top < ink_bottom < join
+    assert ink_top - cells == pytest.approx(join - ink_bottom, abs=0.01)

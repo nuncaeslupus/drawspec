@@ -3368,7 +3368,11 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
                 "What connects to what, between cells that carry an `id`. The cells of a "
                 "grid are not always only cells: one may produce another, or come before "
                 "it. The grid places them; the relations are a separate thing, and "
-                "without them a reader sees a table where the source drew a process."
+                "without them a reader sees a table where the source drew a process. "
+                "An edge between cells in neighbouring rows that share no column, such as "
+                "a return from the last output to the first process, turns along the "
+                "join between the rows, and its label is wrapped onto a stretch of that "
+                "join no other edge crosses."
             ),
         ),
         FieldSpec(
