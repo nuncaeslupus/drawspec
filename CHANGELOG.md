@@ -10,6 +10,8 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-10-19
+
 ### Fixed
 
 - **`gantt` iteration arrows are circular arcs** that bend evenly and stop just above the
