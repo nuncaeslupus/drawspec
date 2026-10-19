@@ -75,6 +75,12 @@ GROUP_ROLE: Final = "group"
 #: the pyramid mistake in a new place.
 GROUP_LEVEL: Final = "body"
 
+#: How many times a level too wide for its canvas packs its groups again, each
+#: time narrower: see `arrange`. Each round is a whole re-layout of the groups
+#: below, and only a level that does not fit pays for more than one; the
+#: Kubernetes cluster that prompted it fits on the second.
+NARROWING_ROUNDS: Final = 6
+
 
 @dataclass(frozen=True)
 class Frame:
@@ -308,45 +314,7 @@ def arrange(
     this level, the bar is laid out as wide as that group, so the room it needs
     to reach over each of them is kept clear of its neighbours.
     """
-    inner: dict[str, Arrangement] = {}
-    sizes: dict[str, tuple[float, float]] = {}
     pad = theme.box.padding
-    for identifier in level:
-        if identifier in nesting.groups:
-            sub = arrange(
-                nesting.members[identifier],
-                nesting,
-                edges,
-                boxes,
-                captions,
-                theme,
-                spacing,
-                max_width - pad.horizontal * 2,
-                prefer,
-                entered,
-                # A region is part of its composite, not a frame inside it: what
-                # it holds is washed as one step in from the composite.
-                depth if identifier in nesting.regions else depth + 1,
-                centre,
-                room=room,
-                turning=turning,
-            )
-            inner[identifier] = sub
-            caption = captions.get(identifier)
-            top, bottom = _insets(
-                caption, theme, spacing, identifier in entered and prefer != "right"
-            )
-            sizes[identifier] = (
-                max(
-                    sub.width + pad.horizontal + room.get(identifier, 0.0) * 2,
-                    (caption.width + pad.horizontal) if caption else 0.0,
-                ),
-                sub.height + top + bottom,
-            )
-        else:
-            box = boxes[identifier]
-            sizes[identifier] = (box.width, box.height)
-
     here = frozenset(level)
     lifted: set[tuple[str, str]] = set()
     for source, target in edges:
@@ -355,26 +323,106 @@ def arrange(
         if up_source is not None and up_target is not None and up_source != up_target:
             lifted.add((up_source, up_target))
 
-    if level and all(identifier in nesting.regions for identifier in level):
-        layout = _regions_layout(level, sizes, spacing, max_width, across=prefer != "right")
-    else:
-        layout = best_layout(
-            LayeredEngine(spacing=spacing),
-            [
-                LayoutNode(
-                    id=i,
-                    width=_bar_reach(i, turning, nesting, here, inner, sizes),
-                    height=sizes[i][1],
-                    turns=i in turning,
+    # Each group first gets the whole width to pack its members into. That is
+    # right while the groups end up one under another, and wrong as soon as an
+    # arrow puts two of them side by side: a control plane with an arrow to
+    # each of two worker nodes ranks the nodes together, each packed as if it
+    # were alone on the sheet, and the drawing needed 1072 on a 640 canvas in
+    # both directions — the arrow had, in effect, undone the packing. So a
+    # level that comes out too wide gives the groups in its too-wide ranks less
+    # room, in proportion to what they took, and packs them again; it stops
+    # when the level fits or when a round makes it no narrower, and keeps the
+    # narrowest it saw.
+    budgets = {
+        identifier: max_width - pad.horizontal * 2
+        for identifier in level
+        if identifier in nesting.groups
+    }
+    best: tuple[Layout, dict[str, Arrangement]] | None = None
+    for _ in range(NARROWING_ROUNDS):
+        inner: dict[str, Arrangement] = {}
+        sizes: dict[str, tuple[float, float]] = {}
+        for identifier in level:
+            if identifier in nesting.groups:
+                sub = arrange(
+                    nesting.members[identifier],
+                    nesting,
+                    edges,
+                    boxes,
+                    captions,
+                    theme,
+                    spacing,
+                    budgets[identifier],
+                    prefer,
+                    entered,
+                    # A region is part of its composite, not a frame inside it: what
+                    # it holds is washed as one step in from the composite.
+                    depth if identifier in nesting.regions else depth + 1,
+                    centre,
+                    room=room,
+                    turning=turning,
                 )
-                for i in level
-            ],
-            [LayoutEdge(source=s, target=t) for s, t in sorted(lifted)],
-            max_width=max_width,
-            prefer=prefer,
-            centre=centre,
-            max_height=max_height,
-        )
+                inner[identifier] = sub
+                caption = captions.get(identifier)
+                top, bottom = _insets(
+                    caption, theme, spacing, identifier in entered and prefer != "right"
+                )
+                sizes[identifier] = (
+                    max(
+                        sub.width + pad.horizontal + room.get(identifier, 0.0) * 2,
+                        (caption.width + pad.horizontal) if caption else 0.0,
+                    ),
+                    sub.height + top + bottom,
+                )
+            else:
+                box = boxes[identifier]
+                sizes[identifier] = (box.width, box.height)
+
+        engine = LayeredEngine(spacing=spacing)
+        nodes = [
+            LayoutNode(
+                id=i,
+                width=_bar_reach(i, turning, nesting, here, inner, sizes),
+                height=sizes[i][1],
+                turns=i in turning,
+            )
+            for i in level
+        ]
+        ranked = [LayoutEdge(source=s, target=t) for s, t in sorted(lifted)]
+        if level and all(identifier in nesting.regions for identifier in level):
+            layout = _regions_layout(level, sizes, spacing, max_width, across=prefer != "right")
+        else:
+            layout = best_layout(
+                engine,
+                nodes,
+                ranked,
+                max_width=max_width,
+                prefer=prefer,
+                centre=centre,
+                max_height=max_height,
+            )
+        if best is not None and layout.width >= best[0].width:
+            break  # narrower budgets bought nothing: the groups cannot pack tighter
+        best = (layout, inner)
+        if layout.width <= max_width or not inner:
+            break
+        # Which groups give way is read off the preferred direction, the one the
+        # level will take once it fits: when nothing fits `best_layout` hands back
+        # whichever direction is narrower, and across, every group adds width.
+        probe = layout
+        if layout.direction != prefer and ranked:
+            probe = replace(engine.layout(nodes, ranked, prefer), direction=prefer)
+        shares = _shares(probe, max_width)
+        if not shares.keys() & inner.keys():
+            shares = {identifier: max_width / layout.width for identifier in inner}
+        budgets = {
+            identifier: min(budgets[identifier], sub.width * shares[identifier])
+            if identifier in shares
+            else budgets[identifier]
+            for identifier, sub in inner.items()
+        }
+    assert best is not None
+    layout, inner = best
 
     places: dict[str, Placement] = {}
     frames: list[Frame] = []
@@ -422,6 +470,29 @@ def arrange(
         frames=tuple(frames),
         directions=MappingProxyType(directions),
     )
+
+
+def _shares(layout: Layout, max_width: float) -> dict[str, float]:
+    """The boxes that make `layout` too wide, each with the share of its width to keep.
+
+    Running down, a rank is a row and only the rows wider than the canvas count:
+    a control plane alone in its row keeps its packing while the two nodes beside
+    each other below it give way, by as much as their own row overflows. Running
+    across, every rank adds to the width, so every box gives way alike.
+    """
+    if layout.direction != "down":
+        return dict.fromkeys(layout.placements, max_width / layout.width)
+    shares: dict[str, float] = {}
+    for rank in layout.ranks:
+        placed = [i for i in rank if i in layout.placements]
+        if not placed:
+            continue
+        extent = max(layout.placements[i].right for i in placed) - min(
+            layout.placements[i].x for i in placed
+        )
+        if extent > max_width:
+            shares.update(dict.fromkeys(placed, max_width / extent))
+    return shares
 
 
 def _bar_reach(

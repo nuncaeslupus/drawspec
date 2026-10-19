@@ -10,6 +10,15 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+### Fixed
+
+- **An edge to or from a `group` no longer undoes the packing of its members.** Groups
+  that an edge ranks side by side were each still packed as if alone on the sheet, so a
+  control plane with an arrow to each of two worker nodes needed 1072 on a 640 canvas, in
+  both directions, and was refused. A level too wide for its canvas now packs the groups
+  in its too-wide rows narrower until it fits; a group alone in its row keeps its rows,
+  and members keep the order they were written in.
+
 ## [0.4.1] — 2026-10-19
 
 ### Fixed

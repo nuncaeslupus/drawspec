@@ -513,6 +513,51 @@ def test_an_edge_may_join_two_containers() -> None:
         assert frame.y - 1e-6 <= point[1] <= frame.bottom + 1e-6
 
 
+CLUSTER_PLANE = (
+    ("api", "kube-apiserver"),
+    ("etcd", "etcd"),
+    ("sched", "kube-scheduler"),
+    ("ctrl", "kube-controller-manager"),
+    ("cloud", "cloud-controller-manager"),
+)
+CLUSTER_NODE = (
+    ("kubelet", "kubelet"),
+    ("proxy", "kube-proxy"),
+    ("runtime", "container runtime (containerd)"),
+    ("pods", "pods"),
+)
+
+
+def test_an_edge_between_groups_does_not_undo_the_packing_of_their_members() -> None:
+    """A Kubernetes cluster: a control plane with an arrow to each of two nodes.
+
+    Without the arrows the three frames stack and each packs its members into
+    rows. With them the two nodes rank side by side, and each was still packed
+    as if it had the sheet to itself, so the drawing needed 1072 on a 640 canvas
+    in both directions and was refused — the arrow had undone the packing. The
+    nodes now give way and pack narrower; the control plane, alone in its row,
+    keeps its rows; and every group keeps the order its members were written in.
+    """
+    nodes = list(CLUSTER_PLANE)
+    groups: list[tuple[str, str, tuple[str, ...]]] = [
+        ("control", "Control plane", tuple(i for i, _ in CLUSTER_PLANE))
+    ]
+    for n in ("1", "2"):
+        nodes += [(i + n, t) for i, t in CLUSTER_NODE]
+        groups.append(("node" + n, "Node " + n, tuple(i + n for i, _ in CLUSTER_NODE)))
+    built = drawing(flow(nodes, [("control", "node1"), ("control", "node2")], groups))
+
+    assert built.width <= THEME.canvas.width + 1e-6
+    for _, _, members in groups:
+        placed = sorted(members, key=lambda i: (round(built.boxes[i].y, 3), built.boxes[i].x))
+        assert tuple(placed) == members
+    plane = [built.boxes[i] for i, _ in CLUSTER_PLANE]
+    rows = {round(box.y, 3) for box in plane}
+    assert 1 < len(rows) < len(plane), "the control plane is packed into rows, not a line"
+    first, second = frame_named(built, "node1"), frame_named(built, "node2")
+    assert first.y == pytest.approx(second.y) and first.right <= second.x
+
+
 def test_a_cycle_refuses_a_group_at_an_edge_end_rather_than_crashing() -> None:
     """The widened id space stops where the frame does.
 
