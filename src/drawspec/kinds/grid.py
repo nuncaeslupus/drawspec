@@ -23,7 +23,7 @@ from typing import Final
 
 from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
-from drawspec.kinds.common import box_primitives, level_tones, text_runs, toned
+from drawspec.kinds.common import box_primitives, level_tones, line_bounds, text_runs, toned
 from drawspec.legend import Entry, entries_for, height_of, primitives_for
 from drawspec.scene import (
     Path,
@@ -534,9 +534,13 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         else 0.0
     )
 
+    # A labelled edge that runs along the join between two rows gets a channel
+    # there, deep enough for its words: the join is only a stroke wide, and a
+    # label centred on it would print over the cells either side (issue #132).
+    channels = _channels(document, cells, theme, measurer)
     tops = [heading_height]
-    for height in heights:
-        tops.append(tops[-1] + height)
+    for row, height in enumerate(heights):
+        tops.append(tops[-1] + height + channels.get(row + 1, 0.0))
 
     primitives: list[Primitive] = []
     for index, heading in enumerate(document.columns):
@@ -576,12 +580,15 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     # that make them read as tables.
     inset = theme.edge.clearance if document.edges else 0.0
     placements: dict[str, tuple[float, float, float, float]] = {}
+    # Every cell's words as boxes, so an edge label can be kept off them.
+    words: list[tuple[float, float, float, float]] = []
 
     for cell in cells:
         left = heading_width + cell.column * column_width + inset
         cell_width = column_width * cell.across - inset * 2
         top = tops[cell.row] + inset
-        cell_height = tops[cell.row + cell.down] - tops[cell.row] - inset * 2
+        last = cell.row + cell.down
+        cell_height = tops[last] - channels.get(last, 0.0) - tops[cell.row] - inset * 2
         right, bottom = left + cell_width, top + cell_height
         if cell.id:
             placements[cell.id] = (left, top, right, bottom)
@@ -602,9 +609,11 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
             .resized(width=cell_width, height=cell_height)
             .moved_to(left, top)
         )
-        primitives.extend(text_runs(placed, theme, measurer))
+        runs = text_runs(placed, theme, measurer)
+        primitives.extend(runs)
+        words.extend(_line_box(run, theme, measurer) for run in runs)
 
-    primitives.extend(_cell_edges(document, placements, theme, measurer))
+    primitives.extend(_cell_edges(document, placements, words, theme, measurer))
 
     # What the fills stand for. A matrix's whole content is a comparison between
     # groups of cells, so a matrix with two groups and no key is a drawing whose
@@ -747,9 +756,78 @@ def _heading_width(document: Document, theme: Theme, measurer: TextMeasurer, wid
     )
 
 
+def _channels(
+    document: Document, cells: tuple[Cell, ...], theme: Theme, measurer: TextMeasurer
+) -> dict[int, float]:
+    """How much deeper each join between two rows is drawn, keyed by the lower row.
+
+    A cell edge between two cells in neighbouring rows, with a column or more
+    between them, runs across the page along the join between their rows — the return from the last
+    output to the first process is the case that found it. With no channel the
+    join is two clearances deep and the label has nowhere to go but onto the
+    cells' words. So such a join is widened by two lines of label: one for the
+    stroke's daylight and one for the words, either side of the stroke.
+
+    Only for a labelled edge between cells in *adjacent* rows: one further
+    apart runs through the row between them, and a channel at either join
+    would not move it.
+    """
+    by_id = {cell.id: cell for cell in cells if cell.id}
+    found: dict[int, float] = {}
+    for edge in document.edges:
+        if not edge.label or edge.source not in by_id or edge.target not in by_id:
+            continue
+        source, target = by_id[edge.source], by_id[edge.target]
+        upper, lower = sorted((source, target), key=lambda cell: cell.row)
+        # At least one whole column between them, so the run stays across the
+        # page: diagonal neighbours run down the join between their columns,
+        # which a deeper row join would only make more certain.
+        between = max(
+            target.column - (source.column + source.across),
+            source.column - (target.column + target.across),
+        )
+        if between < 1 or upper.row + upper.down != lower.row:
+            continue
+        extents = measurer.measure(edge.label, theme.font.default, theme.scale["label"])
+        need = 2 * (extents.ascent + extents.descent) + theme.edge.clearance
+        found[lower.row] = max(found.get(lower.row, 0.0), need)
+    return found
+
+
+#: Where along its own edge a label is tried, as a share of the run from source to
+#: target: the middle first, then out towards either end. The middle is what a
+#: reader expects and what every label got before any were moved.
+LABEL_STOPS: Final = (0.5, 0.375, 0.625, 0.25, 0.75, 0.125, 0.875)
+
+
+def _line_box(
+    line: TextLine, theme: Theme, measurer: TextMeasurer
+) -> tuple[float, float, float, float]:
+    """A laid-out line's box: its measured extent across, its line box down."""
+    left, right = line_bounds(line, theme, measurer)
+    size = theme.scale[line.level]
+    extents = measurer.measure(line.spans[0].text, line.spans[0].font, size)
+    return left, line.y - extents.ascent, right, line.y + extents.descent
+
+
+def _overlaps(
+    box: tuple[float, float, float, float],
+    others: list[tuple[float, float, float, float]],
+    margin: float,
+) -> bool:
+    return any(
+        box[0] < other[2] + margin
+        and other[0] < box[2] + margin
+        and box[1] < other[3] + margin
+        and other[1] < box[3] + margin
+        for other in others
+    )
+
+
 def _cell_edges(
     document: Document,
     placements: dict[str, tuple[float, float, float, float]],
+    words: list[tuple[float, float, float, float]],
     theme: Theme,
     measurer: TextMeasurer,
 ) -> list[Primitive]:
@@ -767,10 +845,18 @@ def _cell_edges(
     with the label beside it. Facing edges rather than centres, because two
     cells of a grid are almost always neighbours — the run is short, and a line
     from centre to centre would be a line inside two boxes.
+
+    A label is kept off every cell's words and every other label (issue #132: a
+    return edge from the last output back to the first process ran along the
+    gutter between the rows, and its label, centred on the run, printed over
+    the two cells' words it passed). It is tried at the middle of its run on
+    the usual side, then on the other side, then further out towards either
+    end; and refused by name when no stop is clear, rather than overprinted.
     """
     if not document.edges:
         return []
     primitives: list[Primitive] = []
+    labels: list[tuple[float, float, float, float]] = []
     size = theme.scale["label"]
     for edge in document.edges:
         source, target = placements[edge.source], placements[edge.target]
@@ -809,12 +895,39 @@ def _cell_edges(
         if edge.label:
             extents = measurer.measure(edge.label, theme.font.default, size)
             away = theme.edge.clearance + extents.ascent
-            middle = ((start[0] + finish[0]) / 2, (start[1] + finish[1]) / 2)
+            spot = None
+            for share in LABEL_STOPS:
+                along = (
+                    start[0] + (finish[0] - start[0]) * share,
+                    start[1] + (finish[1] - start[1]) * share,
+                )
+                for side in (1.0, -1.0):
+                    x = along[0] - towards[1] * away * side
+                    y = along[1] + towards[0] * away * side
+                    box = (
+                        x - extents.width / 2,
+                        y - extents.ascent,
+                        x + extents.width / 2,
+                        y + extents.descent,
+                    )
+                    if not _overlaps(box, [*words, *labels], theme.edge.clearance / 2):
+                        spot = (x, y, box)
+                        break
+                if spot is not None:
+                    break
+            if spot is None:
+                raise FitError(
+                    f"the label {edge.label!r} on the edge from {edge.source!r} to "
+                    f"{edge.target!r} has nowhere along its run that is clear of the cells' "
+                    f"words. Shorten the label, give the diagram more width, or say it in the "
+                    f"figure's caption."
+                )
+            labels.append(spot[2])
             primitives.append(
                 TextRun(
                     role,
-                    x=middle[0] - towards[1] * away,
-                    y=middle[1] + towards[0] * away,
+                    x=spot[0],
+                    y=spot[1],
                     text=edge.label,
                     level="label",
                     font=theme.font.default,

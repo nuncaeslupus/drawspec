@@ -17,7 +17,7 @@ import pytest
 
 from drawspec.errors import FitError
 from drawspec.text import TextMeasurer
-from drawspec.text.wrap import Line, Span, TextBlock, parse_spans, wrap
+from drawspec.text.wrap import Line, Span, TextBlock, bold_lines, parse_spans, wrap
 from drawspec.theme import load_theme
 
 THEME = load_theme()
@@ -365,3 +365,12 @@ def test_a_lead_keeps_an_inline_span_the_author_asked_for() -> None:
     result = block("Run `make test`\nbefore every push", 400.0)
     fonts = {span.font for span in result.lines[0].spans}
     assert "mono" in fonts
+
+
+def test_bold_lines_bolds_each_line_on_its_own() -> None:
+    """A `**` pair must not cross a newline: `wrap` would split it into two
+    unmatched markers and print them (issue #133). Inner markers are dropped,
+    since the whole is bold already and a nested pair would end the bold early."""
+    assert bold_lines("one\ntwo") == "**one**\n**two**"
+    assert bold_lines("a **b** c") == "**a b c**"
+    assert bold_lines("lead\n\ndetail") == "**lead**\n\n**detail**"

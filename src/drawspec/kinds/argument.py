@@ -40,7 +40,7 @@ from drawspec.routing import end_marker
 from drawspec.scene import Path, Primitive, Rect, Scene, TextLine, TextRun, TextSpan, moved
 from drawspec.schema import ArgumentPoint, Document
 from drawspec.text.measure import TextMeasurer
-from drawspec.text.wrap import TextBlock, wrap
+from drawspec.text.wrap import TextBlock, bold_lines, wrap
 from drawspec.theme import Theme
 
 #: The most of the canvas the claim, and one point, may take before wrapping.
@@ -283,9 +283,7 @@ def _sized(
     level = "body"
     words = text
     if point is None or point.role == "emphasis":
-        words = "\n".join(
-            f"**{line.replace('**', '')}**" if line.strip() else line for line in text.split("\n")
-        )
+        words = bold_lines(text)
     try:
         block = _balanced(words, cap, level, theme, measurer)
     except FitError as error:

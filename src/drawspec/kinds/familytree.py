@@ -58,7 +58,7 @@ from drawspec.scene import (
 )
 from drawspec.schema import Document, FamilyCouple, FamilyPerson
 from drawspec.text.measure import TextMeasurer
-from drawspec.text.wrap import TextBlock, wrap
+from drawspec.text.wrap import TextBlock, bold_lines, wrap
 from drawspec.theme import Theme
 
 #: The widest a name may be wrapped to, as a share of the canvas; the narrowest
@@ -393,10 +393,7 @@ def _attempt_from(
         if data.text:
             words = data.text
             if data.role == "emphasis":
-                words = "\n".join(
-                    f"**{line.replace('**', '')}**" if line.strip() else line
-                    for line in words.split("\n")
-                )
+                words = bold_lines(words)
             try:
                 block = wrap(words, cap, measurer, theme=theme, level="body")
             except FitError as error:
