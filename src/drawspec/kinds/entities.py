@@ -565,24 +565,23 @@ def _star(middle: str, nodes: Sequence[LayoutNode], spacing: Spacing, width: flo
     until no two boxes are nearer than that gap.
 
     Raises:
-        FitError: the ring does not fit the canvas.
+        FitError: the ring does not fit the canvas, or its boxes are still
+            nearer than a node gap after the last widening.
     """
     gap = spacing.node_gap
     layout = radial(nodes, spacing, centre=middle)
     for _ in range(STAR_TRIES):
-        places = list(layout.placements.values())
-        crowded = any(
-            first.x < second.right + gap
-            and second.x < first.right + gap
-            and first.y < second.bottom + gap
-            and second.y < first.bottom + gap
-            for index, first in enumerate(places)
-            for second in places[index + 1 :]
-        )
-        if not crowded:
+        if not _crowded(layout, gap):
             break
         spacing = replace(spacing, rank_gap=spacing.rank_gap + gap)
         layout = radial(nodes, spacing, centre=middle)
+    # The last widening is checked too: running out of tries is not a fit.
+    if _crowded(layout, gap):
+        raise FitError(
+            f"this star's entities stay nearer than {gap:.0f} to each other however far "
+            f"the ring is widened. Show fewer fields (end with `...`), shorten the widest "
+            f"rows, or split the dimensions over two diagrams."
+        )
     if layout.width > width:
         raise FitError(
             f"this star needs {layout.width:.0f} across and the canvas is {width:.0f}. "
@@ -590,6 +589,19 @@ def _star(middle: str, nodes: Sequence[LayoutNode], spacing: Spacing, width: flo
             f"dimensions over two diagrams, or give it more width."
         )
     return replace(layout, direction="down")
+
+
+def _crowded(layout: Layout, gap: float) -> bool:
+    """Whether any two boxes of `layout` are nearer than `gap`, across or down."""
+    places = list(layout.placements.values())
+    return any(
+        first.x < second.right + gap
+        and second.x < first.right + gap
+        and first.y < second.bottom + gap
+        and second.y < first.bottom + gap
+        for index, first in enumerate(places)
+        for second in places[index + 1 :]
+    )
 
 
 #: How many relations may cross one gap between ranks before it is widened by a

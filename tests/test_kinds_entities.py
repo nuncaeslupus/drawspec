@@ -308,6 +308,19 @@ def test_no_two_boxes_of_a_star_overlap(count: int) -> None:
             assert apart, (first.entity.id, second.entity.id)
 
 
+def test_a_star_still_crowded_after_the_last_widening_is_refused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With no widening left, seven dimensions on the first ring touch: refused, not drawn.
+
+    The last widening used to be taken on trust, so a ring that ran out of tries
+    while still crowded was drawn with its boxes within the node gap.
+    """
+    monkeypatch.setattr("drawspec.kinds.entities.STAR_TRIES", 0)
+    with pytest.raises(FitError, match="however far"):
+        drawn(star("a", "b", "c", "d", "e", "f", "g"))
+
+
 @pytest.mark.parametrize("named", [False, True])
 def test_no_two_spokes_of_a_star_cross(named: bool) -> None:
     """A row-anchored line to the dimension below goes round the side it crosses nothing on.
