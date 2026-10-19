@@ -65,6 +65,14 @@ the real originals each is checked against; a built one says so in its row.
 |---:|---|---|:-:|---|
 | 29 | [`text.md`](text.md) | text output for kinds that sit on a grid (`sequence`, `gantt`, `board`, …) and for the graph kinds (`flow`, `states`, `lanes`) — **both phases built**, plus every `meter` style, gantt dependencies and `at` spacing | M / L | accepted: both phases; width 80 for now, phase 2's 80 / 100 / 120 table is with the owner |
 
+## Extensions filed as issues
+
+Fields on an existing kind, each asked for by a real figure filed as an issue.
+
+| # | Proposal | What | Size | Depends on |
+|---:|---|---|:-:|---|
+| 30 | [`entities-centre.md`](entities-centre.md) | `entities` + `centre`: a star schema, the fact table in the middle and its dimensions round it — **built** | S | `flow`'s radial placement; issue #135 (one original) |
+
 ## Deferred, not proposed
 
 The survey's one remaining *feature* verdict is left unbuilt on purpose, until a real

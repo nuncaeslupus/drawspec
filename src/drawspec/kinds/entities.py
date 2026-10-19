@@ -32,7 +32,15 @@ from types import MappingProxyType
 from typing import Final
 
 from drawspec.errors import DrawspecError, FitError
-from drawspec.layout import LayeredEngine, Layout, LayoutEdge, LayoutNode, Spacing, best_layout
+from drawspec.layout import (
+    LayeredEngine,
+    Layout,
+    LayoutEdge,
+    LayoutNode,
+    Spacing,
+    best_layout,
+    radial,
+)
 from drawspec.routing import (
     LABEL_GAP,
     Connector,
@@ -260,7 +268,11 @@ def entities_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -
     # rather than taking the upward ones for returns and sending them round the
     # outside; the route is turned back to the author's direction afterwards.
     used: dict[tuple[str, str], int] = {}
-    connectors = tuple(_connector(relation, boxes, used) for relation in document.relations)
+    middle = next((entity.id for entity in document.entities if entity.centre), "")
+    spokes, rounds = _spokes(middle, boxes, document.relations) if middle else ({}, {})
+    connectors = tuple(
+        _connector(relation, boxes, used, spokes, rounds) for relation in document.relations
+    )
     routed = route_edges(connectors, obstacles, router, direction=layout.direction)
     routes = tuple(
         replace(
@@ -500,6 +512,9 @@ def _placed(
         ),
     )
     nodes = [LayoutNode(identifier, box.width, box.height) for identifier, box in boxes.items()]
+    middle = next((entity.id for entity in document.entities if entity.centre), "")
+    if middle:
+        return _star(middle, nodes, across, width)
     edges = [LayoutEdge(source, target) for source, target in pairs]
     ceiling = (document.height or 0.0) if document.height_binding else 0.0
     prefer = "down" if hierarchy else "right"
@@ -534,6 +549,49 @@ def _placed(
     return layout
 
 
+#: How many times a star's ring is widened, a node gap at a time, before its
+#: boxes are taken not to fit round the middle at all.
+STAR_TRIES: Final = 40
+
+
+def _star(middle: str, nodes: Sequence[LayoutNode], spacing: Spacing, width: float) -> Layout:
+    """A star schema: the `centre` entity in the middle, the rest round it.
+
+    The radial placement `flow`'s `centre` uses — the first entity above, the
+    rest clockwise in the order written — with the gap a relation's label and
+    its two ends' marks need, as when the schema reads across. Four round the
+    middle sit one per side; more take the diagonals too, where a wide box
+    would reach its neighbour, so the ring is widened a node gap at a time
+    until no two boxes are nearer than that gap.
+
+    Raises:
+        FitError: the ring does not fit the canvas.
+    """
+    gap = spacing.node_gap
+    layout = radial(nodes, spacing, centre=middle)
+    for _ in range(STAR_TRIES):
+        places = list(layout.placements.values())
+        crowded = any(
+            first.x < second.right + gap
+            and second.x < first.right + gap
+            and first.y < second.bottom + gap
+            and second.y < first.bottom + gap
+            for index, first in enumerate(places)
+            for second in places[index + 1 :]
+        )
+        if not crowded:
+            break
+        spacing = replace(spacing, rank_gap=spacing.rank_gap + gap)
+        layout = radial(nodes, spacing, centre=middle)
+    if layout.width > width:
+        raise FitError(
+            f"this star needs {layout.width:.0f} across and the canvas is {width:.0f}. "
+            f"Shorten the widest rows, show fewer fields (end with `...`), split the "
+            f"dimensions over two diagrams, or give it more width."
+        )
+    return replace(layout, direction="down")
+
+
 #: How many relations may cross one gap between ranks before it is widened by a
 #: lane for each further one.
 CROWD: Final = 2
@@ -550,14 +608,24 @@ def _crowding(layout: Layout, pairs: Sequence[tuple[str, str]]) -> int:
 
 
 def _connector(
-    relation: Relation, boxes: Mapping[str, EntityBox], used: dict[tuple[str, str], int]
+    relation: Relation,
+    boxes: Mapping[str, EntityBox],
+    used: dict[tuple[str, str], int],
+    spokes: Mapping[tuple[str, str], Port] | None = None,
+    rounds: Mapping[frozenset[str], str] | None = None,
 ) -> Connector:
     """A relation as the router takes it, with a fixed port for each end naming a field.
 
     `used` counts the row-anchored ends already on each side of each box, so two
     relations between boxes one above the other take opposite sides rather than
     crossing on the same one.
+
+    In a star, `spokes` holds a port for each end of a line to the middle that
+    names no field, and `rounds` the side a row-anchored line to a dimension
+    above or below the middle goes round by (see `_spokes`).
     """
+    spokes = spokes or {}
+    rounds = rounds or {}
     first, second = (relation.source, relation.target)
     first_field, second_field = (relation.source_field, relation.target_field)
     if not ranked_forward(relation):
@@ -565,6 +633,8 @@ def _connector(
         first_field, second_field = second_field, first_field
     source, target = boxes[first], boxes[second]
     side, other = _facing(source, target, used)
+    if frozenset((first, second)) in rounds:
+        side = other = rounds[frozenset((first, second))]
     for identifier, named, taken in ((first, first_field, side), (second, second_field, other)):
         if named:
             used[(identifier, taken)] = used.get((identifier, taken), 0) + 1
@@ -576,10 +646,87 @@ def _connector(
         source_port=(
             _general_port(source, target)
             if relation.role in HIERARCHY_ROLES
-            else _row_port(source, first_field, side)
+            else _row_port(source, first_field, side) or spokes.get((first, second))
         ),
-        target_port=_row_port(target, second_field, other),
+        target_port=_row_port(target, second_field, other) or spokes.get((second, first)),
     )
+
+
+#: A fixed port: the side of a box and how far along it, from its top or left.
+Port = tuple[str, float]
+
+
+def _spokes(
+    middle: str, boxes: Mapping[str, EntityBox], relations: Sequence[Relation]
+) -> tuple[dict[tuple[str, str], Port], dict[frozenset[str], str]]:
+    """How each line between a star's middle and a dimension meets the two boxes.
+
+    The router reads a ring as it reads a layered drawing, so a dimension above
+    or below the middle counted as a line going backwards and was sent out a
+    side and round, and the diagonal ones all ran into the middle's top beside
+    the one straight above. So a line naming no field is given its ports, keyed
+    `(box, other box)`: straight across the gap to a dimension square to a side;
+    from the near side of a diagonal one, along, and into the middle's side, one
+    bend. The ends on each side of the middle are spread along it in the order
+    their dimensions stand, so no two meet at one point and none cross.
+
+    A line from one of the middle's rows to a dimension above or below goes out
+    a side, along and back in, and it crosses every line that leaves that side
+    from a row it passes. So it takes the side, keyed by the pair, where it
+    passes fewer: the lines to the dimensions beside the middle are placed
+    first, since their side is not a choice.
+    """
+    centre = boxes[middle]
+    sides: dict[str, list[tuple[float, str]]] = {}
+    ports: dict[tuple[str, str], Port] = {}
+    rows: dict[str, list[float]] = {"left": [], "right": []}
+    stacked: list[tuple[str, float]] = []
+    seen: set[str] = set()
+    for relation in relations:
+        if middle not in (relation.source, relation.target):
+            continue
+        outward = relation.source == middle
+        peer_id = relation.target if outward else relation.source
+        named = relation.source_field if outward else relation.target_field
+        if peer_id == middle or peer_id in seen:
+            continue
+        seen.add(peer_id)
+        peer = boxes[peer_id]
+        across = peer.x >= centre.right or peer.right <= centre.x
+        above = peer.bottom <= centre.y
+        if across:
+            side = "right" if peer.x >= centre.right else "left"
+            if named:
+                rows[side].append(centre.row_centre(named))
+            if peer.bottom <= centre.y or peer.y >= centre.bottom:
+                ports[(peer_id, middle)] = ("bottom" if above else "top", 0.5)
+            else:
+                ports[(peer_id, middle)] = ("left" if side == "right" else "right", 0.5)
+            order = peer.centre[1]
+        else:
+            if named:
+                stacked.append((peer_id, centre.row_centre(named)))
+            side = "top" if above else "bottom"
+            ports[(peer_id, middle)] = ("bottom" if above else "top", 0.5)
+            order = peer.centre[0]
+        ports[(middle, peer_id)] = (side, 0.0)
+        sides.setdefault(side, []).append((order, peer_id))
+    for side, peers in sides.items():
+        for index, (_, peer_id) in enumerate(sorted(peers)):
+            ports[(middle, peer_id)] = (side, (index + 1) / (len(peers) + 1))
+    rounds: dict[frozenset[str], str] = {}
+    for peer_id, row in stacked:
+        below = boxes[peer_id].y >= centre.bottom
+
+        def passed(side: str, row: float = row, below: bool = below) -> int:
+            return sum(1 for other in rows[side] if (other > row) == below and other != row)
+
+        toward = "right" if boxes[peer_id].centre[0] >= centre.centre[0] else "left"
+        away = "left" if toward == "right" else "right"
+        side = away if passed(away) < passed(toward) else toward
+        rows[side].append(row)
+        rounds[frozenset((middle, peer_id))] = side
+    return ports, rounds
 
 
 def _general_port(general: EntityBox, specific: EntityBox) -> tuple[str, float]:

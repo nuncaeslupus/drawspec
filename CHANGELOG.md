@@ -10,6 +10,14 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+### Added
+
+- **`entities` star schemas**: `"centre": true` on one entity places it in the middle and
+  the rest round it, the first above and the rest clockwise in the order written, with
+  the PK/FK marks and crow's feet `entities` draws. Lines naming no field join the boxes
+  square, spread along each side of the middle; a second `centre`, or one in a class
+  hierarchy, is refused. Reference: `entities-star.json`. (#135)
+
 ## [0.3.3] — 2026-10-15
 
 ### Changed
