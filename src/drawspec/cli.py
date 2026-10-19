@@ -90,6 +90,16 @@ def build_parser() -> argparse.ArgumentParser:
     render.add_argument("-o", "--out", help="write here instead of stdout")
     render.add_argument("--theme", help="a bundled theme name or a theme file")
     render.add_argument(
+        "--variant",
+        action="append",
+        metavar="NAME=THEME",
+        help=(
+            "for svg: also draw the diagram in THEME, switched on by an ancestor's "
+            "data-theme=NAME (and, for NAME dark, by prefers-color-scheme). Repeatable. "
+            "--theme is the base and answers to light"
+        ),
+    )
+    render.add_argument(
         "--width",
         type=float,
         help=(
@@ -274,6 +284,19 @@ def _render(arguments: argparse.Namespace) -> int:
     if output_format != "png" and (arguments.scale is not None or arguments.background):
         print("drawspec: --scale and --background apply to --format png only", file=sys.stderr)
         return USAGE
+    if output_format != "svg" and arguments.variant:
+        print("drawspec: --variant applies to --format svg only", file=sys.stderr)
+        return USAGE
+    variants: dict[str, str] = {}
+    for pair in arguments.variant or ():
+        name, equals, source = pair.partition("=")
+        if not (equals and name and source):
+            print(f"drawspec: --variant takes NAME=THEME; got {pair!r}", file=sys.stderr)
+            return USAGE
+        if name in variants:
+            print(f"drawspec: --variant {name!r} is given twice", file=sys.stderr)
+            return USAGE
+        variants[name] = source
     if output_format != "text" and arguments.charset:
         print("drawspec: --charset applies to --format text only", file=sys.stderr)
         return USAGE
@@ -312,7 +335,9 @@ def _render(arguments: argparse.Namespace) -> int:
                 charset=arguments.charset or "unicode",
             ).rstrip("\n")
         else:
-            svg = render_document(document, arguments.theme, arguments.profile)
+            svg = render_document(
+                document, arguments.theme, arguments.profile, variants=variants or None
+            )
     except DrawspecError as error:
         return _refuse(error)
 
