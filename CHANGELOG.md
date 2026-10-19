@@ -10,6 +10,8 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-10-19
+
 ### Added
 
 - **`gantt` tasks take `events` and `iterations`**, so one row can be a lane of a
