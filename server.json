@@ -7,12 +7,12 @@
     "url": "https://github.com/nuncaeslupus/drawspec",
     "source": "github"
   },
-  "version": "0.4.1",
+  "version": "0.4.2",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "drawspec",
-      "version": "0.4.1",
+      "version": "0.4.2",
       "runtimeHint": "uvx",
       "runtimeArguments": [
         {
