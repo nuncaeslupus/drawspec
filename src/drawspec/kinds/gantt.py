@@ -48,7 +48,7 @@ from drawspec.routing import Route, edge_primitives
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextLine, TextSpan
 from drawspec.schema import Axis, Document, Task, _figure
 from drawspec.text.measure import TextMeasurer
-from drawspec.text.wrap import TextBlock, wrap
+from drawspec.text.wrap import TextBlock, bold_lines, wrap
 from drawspec.textgrid import (
     Drawn,
     caption_lines,
@@ -699,7 +699,7 @@ def _label(task: Task) -> str:
 
 def _heading(text: str) -> str:
     """A phase's name, set bold. Its own spans are dropped: the whole name is bold."""
-    return f"**{text.replace('**', '')}**"
+    return bold_lines(text)
 
 
 def _natural(text: str, theme: Theme, measurer: TextMeasurer) -> float:

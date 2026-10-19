@@ -35,7 +35,7 @@ from drawspec.errors import FitError
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, Rect, Scene, TextLine, TextSpan
 from drawspec.schema import Document
 from drawspec.text.measure import TextMeasurer
-from drawspec.text.wrap import TextBlock, wrap
+from drawspec.text.wrap import TextBlock, bold_lines, wrap
 from drawspec.theme import Theme
 
 #: The most of the canvas the margin of level and row names may take.
@@ -313,9 +313,7 @@ def monotone(points: tuple[tuple[float, float], ...]) -> tuple[tuple[float, floa
 
 def _bold(text: str) -> str:
     """A name set bold. Its own spans are dropped: the whole name is bold."""
-    return "\n".join(
-        f"**{line.replace('**', '')}**" if line.strip() else line for line in text.split("\n")
-    )
+    return bold_lines(text)
 
 
 def _natural(text: str, theme: Theme, measurer: TextMeasurer) -> float:

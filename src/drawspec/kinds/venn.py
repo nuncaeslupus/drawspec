@@ -42,7 +42,7 @@ from drawspec.scene import (
 )
 from drawspec.schema import Document, Region, VennSet
 from drawspec.text.measure import TextMeasurer
-from drawspec.text.wrap import TextBlock, wrap
+from drawspec.text.wrap import TextBlock, bold_lines, wrap
 from drawspec.theme import Theme
 
 #: The centres of the circles for a radius of one, in the order the sets are
@@ -474,9 +474,7 @@ def _outline(mask: tuple[bool, ...], count: int, radius: float) -> tuple[tuple[f
 
 
 def _bold(text: str) -> str:
-    return "\n".join(
-        f"**{line.replace('**', '')}**" if line.strip() else line for line in text.split("\n")
-    )
+    return bold_lines(text)
 
 
 def _named(text: str, width: float, theme: Theme, measurer: TextMeasurer) -> TextBlock:

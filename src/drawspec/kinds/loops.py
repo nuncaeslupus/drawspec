@@ -36,7 +36,7 @@ from drawspec.routing import Route
 from drawspec.scene import Path, Polygon, Primitive, TextLine, TextSpan
 from drawspec.schema import CausalLoop, Document, Edge
 from drawspec.text.measure import TextMeasurer
-from drawspec.text.wrap import TextBlock, wrap
+from drawspec.text.wrap import TextBlock, bold_lines, wrap
 from drawspec.theme import POLARITY_GLYPHS, Theme
 
 #: The letters a loop's type is drawn with.
@@ -372,7 +372,7 @@ def _delay_primitives(delay: Delay, role: str, unit: float) -> tuple[Primitive, 
 
 
 def _letters(name: str, theme: Theme, measurer: TextMeasurer) -> TextBlock:
-    return wrap(f"**{name}**", 1e6, measurer, theme=theme, level="body")
+    return wrap(bold_lines(name), 1e6, measurer, theme=theme, level="body")
 
 
 def _name_wraps(text: str, theme: Theme, measurer: TextMeasurer) -> list[TextBlock]:

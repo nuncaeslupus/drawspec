@@ -1019,6 +1019,12 @@ chord would cross the middle is refused rather than drawn through the hub. See
 [`reference/cycle-hub-quality.json`](reference/cycle-hub-quality.json) and
 [`reference/cycle-hub-flywheel.json`](reference/cycle-hub-flywheel.json).
 
+An edge on the ring takes a `label` too — the return into a new round, say, as
+`"label": "Next sprint"`. It is drawn beside its own arc, outside the ring, where
+it cannot be read as belonging to the whole loop. A label with no room there,
+because the ring already fills the width, is refused naming the edge: shorten it,
+or give the diagram more `width`.
+
 ## A causal loop diagram
 
 How a system feeds itself is a causal loop diagram: a few variables, arrows saying

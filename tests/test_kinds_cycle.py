@@ -717,3 +717,69 @@ def test_an_emphasised_hub_counts_towards_the_emphasis_cap() -> None:
     document["nodes"][0]["role"] = "emphasis"  # type: ignore[index]
     document["nodes"][1]["role"] = "emphasis"  # type: ignore[index]
     assert any(pointer.endswith("/role") for pointer in violations(document))
+
+
+def _run_box(run: TextRun) -> tuple[float, float, float, float]:
+    """A text run's measured box, honouring its anchor."""
+    extents = MEASURER.measure(run.text, THEME.font.default, THEME.scale[run.level])
+    shift = {"start": 0.0, "middle": extents.width / 2, "end": extents.width}[run.anchor]
+    left = run.x - shift
+    return left, run.y - extents.ascent, left + extents.width, run.y + extents.descent
+
+
+SPRINT = {
+    "version": 1,
+    "kind": "cycle",
+    "nodes": [
+        {"id": "planning", "text": "Sprint planning"},
+        {"id": "work", "text": "Daily work"},
+        {"id": "review", "text": "Review"},
+        {"id": "retro", "text": "Retrospective"},
+    ],
+    "edges": [
+        {"from": "planning", "to": "work"},
+        {"from": "work", "to": "review"},
+        {"from": "review", "to": "retro"},
+        {"from": "retro", "to": "planning", "label": "Next sprint"},
+    ],
+}
+
+
+def test_an_edge_label_is_drawn_outside_the_ring_and_clear_of_the_steps() -> None:
+    """Issue #134: the label was accepted, validated and never drawn.
+
+    It goes beside its own arc, outside the ring: inside, the four arcs and the
+    middle of the ring are shared by every step, and a label there would read as
+    belonging to the whole cycle. It must not touch a step, and the canvas must
+    contain it — `extents` treats text as a point, so the scene is grown by it.
+    """
+    built = cycle_scene(parse_document(SPRINT), THEME, MEASURER)
+    labels = [p for p in built.primitives if isinstance(p, TextRun) and p.text == "Next sprint"]
+    assert len(labels) == 1
+    box = _run_box(labels[0])
+    steps = [p for p in built.primitives if isinstance(p, Rect)]
+    centres = [(r.x + r.width / 2, r.y + r.height / 2) for r in steps]
+    cx = sum(x for x, _ in centres) / len(centres)
+    cy = sum(y for _, y in centres) / len(centres)
+    radius = sum(math.dist((cx, cy), centre) for centre in centres) / len(centres)
+    middle = ((box[0] + box[2]) / 2, (box[1] + box[3]) / 2)
+    assert math.dist((cx, cy), middle) > radius
+    for step in steps:
+        assert (
+            box[2] <= step.x
+            or step.x + step.width <= box[0]
+            or box[3] <= step.y
+            or step.y + step.height <= box[1]
+        ), f"the label overlaps the step at {step.x:.0f},{step.y:.0f}"
+    assert box[0] >= 0 and box[2] <= built.width
+    assert box[1] >= 0 and box[3] <= built.height
+    assert "Next sprint" in render(SPRINT)
+
+
+def test_an_edge_label_with_no_room_beside_the_ring_is_refused_by_name() -> None:
+    """A refusal naming the edge, rather than a label cut off at the canvas edge."""
+    narrow = json.loads(json.dumps(SPRINT))
+    narrow["width"] = 400
+    narrow["edges"][3]["label"] = "Next sprint, and then the one after it"
+    with pytest.raises(FitError, match="'retro' to 'planning'"):
+        cycle_scene(parse_document(narrow), THEME, MEASURER)
