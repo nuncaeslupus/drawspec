@@ -510,6 +510,17 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     heading_width = _heading_width(document, theme, measurer, width) if document.rows else 0.0
     column_width = (width - heading_width) / across
 
+    # A matrix that carries relations is a grid of boxes rather than a solid
+    # table, so its cells stand apart far enough for an arrow to live in the
+    # join. Only then: the tables that have no edges keep the shared borders
+    # that make them read as tables.
+    inset = theme.edge.clearance if document.edges else 0.0
+
+    # Each box is sized for the cell it is drawn as: its slot less the inset
+    # either side. Sized for the whole slot, it came out taller than its cell,
+    # `resized` never shrinks a box, and the words were centred on a box that
+    # hung past the cell's bottom — sitting low in every cell of a matrix with
+    # edges.
     boxes = {
         (cell.column, cell.row): size_box(
             cell.text,
@@ -517,12 +528,12 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
             measurer=measurer,
             role=cell.role,
             level="body",
-            max_width=column_width * cell.across,
+            max_width=column_width * cell.across - inset * 2,
             shape="rect",
         )
         for cell in cells
     }
-    heights = _row_heights(cells, boxes, down)
+    heights = _row_heights(cells, boxes, down, inset)
     heading_height = (
         size_box(
             " ".join(document.columns) or "x",
@@ -535,12 +546,6 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         if document.columns
         else 0.0
     )
-
-    # A matrix that carries relations is a grid of boxes rather than a solid
-    # table, so its cells stand apart far enough for an arrow to live in the
-    # join. Only then: the tables that have no edges keep the shared borders
-    # that make them read as tables.
-    inset = theme.edge.clearance if document.edges else 0.0
 
     def across_of(cell: Cell) -> tuple[float, float]:
         left = heading_width + cell.column * column_width + inset
@@ -733,7 +738,7 @@ def _check_cells(cells: tuple[Cell, ...]) -> None:
 
 
 def _row_heights(
-    cells: tuple[Cell, ...], boxes: dict[tuple[int, int], Box], down: int
+    cells: tuple[Cell, ...], boxes: dict[tuple[int, int], Box], down: int, inset: float = 0.0
 ) -> list[float]:
     """Every row the same depth: the deepest any one cell needs of a single row.
 
@@ -748,9 +753,13 @@ def _row_heights(
     It needs its rows together, not each of them as deep as itself, so what it
     demands of one row is its own depth divided by how many it spans — which is
     what keeps a two-row cell from doubling the matrix.
+
+    A cell is drawn `inset` in from its slot on every side, so the slot is
+    charged the box and both insets: a row only as deep as the box left the
+    cell shorter than its own text block.
     """
     demand = max(
-        (boxes[(cell.column, cell.row)].height / cell.down for cell in cells),
+        ((boxes[(cell.column, cell.row)].height + inset * 2) / cell.down for cell in cells),
         default=0.0,
     )
     return [demand] * down
@@ -1006,7 +1015,16 @@ def _cell_edges(
             continue
         if turn is not None and turn.block is not None:
             primitives.extend(
-                _turn_label(edge.label, turn, route[1][1], role, [*words, *labels], labels, theme)
+                _turn_label(
+                    edge.label,
+                    turn,
+                    route[1][1],
+                    abs(route[1][1] - route[0][1]),
+                    role,
+                    [*words, *labels],
+                    labels,
+                    theme,
+                )
             )
             continue
         towards = ((finish[0] - start[0]) / span, (finish[1] - start[1]) / span)
@@ -1078,17 +1096,23 @@ def _turn_label(
     text: str,
     turn: _Turn,
     join: float,
+    half: float,
     role: str,
     others: list[tuple[float, float, float, float]],
     labels: list[tuple[float, float, float, float]],
     theme: Theme,
 ) -> list[Primitive]:
-    """A turning edge's label, on the stretch of the join kept for it, above or below the run."""
+    """A turning edge's label, on the stretch of the join kept for it, above or below the run.
+
+    `half` is the gap from the cells' edge to the run. The label is centred in
+    it, ink to ink, so it sits as far from the cells as from its own stroke;
+    hung a clearance off the run it crowded the cells above it.
+    """
     block = turn.block
     assert block is not None  # the caller draws only a turn that carries a label
     height = block.ascent + block.descent + (len(block) - 1) * block.advance
     clearance = theme.edge.clearance
-    for top in (join - clearance - height, join + clearance):
+    for top in (join - (half + height) / 2, join + (half - height) / 2):
         box = (turn.centre - block.width / 2, top, turn.centre + block.width / 2, top + height)
         if not _overlaps(box, others, clearance / 2):
             labels.append(box)

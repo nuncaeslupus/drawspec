@@ -20,7 +20,15 @@ against it would stop working. Everything below is about the *package*.
   were broken short of the outputs to let it through. Such an edge now leaves its source
   across the join, runs along it and enters its target, a quarter in from the side it
   comes from; its label is wrapped onto the widest stretch of the join that no other
-  edge crosses, and the join is made deep enough for it and for the head.
+  edge crosses, and the join is made deep enough for it and for the head. The label is
+  centred in the gap between the cells and its run, rather than hung off the run.
+- **A `matrix` with edges centres each cell's words in the cell it draws.** Such a
+  matrix draws every cell an edge clearance in from its slot, but sized the cell's box
+  for the whole slot, so the box was taller and wider than the cell: a two-line cell's
+  words sat a clearance low, all but touching its bottom, and a line as wide as the slot
+  ran past the cell's sides. Boxes are now sized for the cell, and rows are deep enough
+  for the box and the clearance either side. Matrices with edges come out a little
+  taller; tables without edges are unchanged.
 
 ## [0.4.1] — 2026-10-19
 

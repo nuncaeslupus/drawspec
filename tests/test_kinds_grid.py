@@ -1265,3 +1265,53 @@ def test_a_return_label_sits_where_no_other_edge_crosses_it() -> None:
             assert not (left <= x <= right and min(y0, y1) <= bottom and top <= max(y0, y1)), (
                 f"a link crosses {word.text!r}"
             )
+
+
+def _wordy(source: dict[str, Any]) -> dict[str, Any]:
+    """`source` with a first cell long enough to wrap onto several lines."""
+    wordy = copy.deepcopy(source)
+    wordy["cells"][0]["text"] = "Identify every one of the project's stakeholders"
+    return wordy
+
+
+@pytest.mark.parametrize("edges", [True, False], ids=["with-edges", "table"])
+def test_a_cells_words_are_centred_in_the_cell_drawn(edges: bool) -> None:
+    """A matrix with edges draws each cell an inset in from its slot, but sized
+    the box for the whole slot: the box was taller than the cell, and a
+    two-line cell's words sat an inset low, all but touching its bottom
+    (opos diagram 65). The ink, first ascent to last descent, is now centred
+    in the cell less its padding — whose bottom is deliberately the deeper —
+    and inside the cell either side."""
+    source = _wordy(PRODUCING)
+    if not edges:
+        del source["edges"]
+    built = scene_for(parse_document(source), THEME, MEASURER)
+    padding = THEME.box.padding
+    outlines = [p for p in built.primitives if isinstance(p, Polygon) and len(p.points) == 4]
+    lines = [p for p in built.primitives if isinstance(p, TextLine)]
+    seen = 0
+    for outline in outlines:
+        (left, top), _, (right, bottom), _ = outline.points
+        inside = [line for line in lines if left < line.x < right and top < line.y < bottom]
+        if not inside:
+            continue
+        boxes = [_text_box(line) for line in inside]
+        ink_top, ink_bottom = min(b[1] for b in boxes), max(b[3] for b in boxes)
+        above, below = ink_top - top - padding.top, bottom - ink_bottom - padding.bottom
+        assert above == pytest.approx(below, abs=0.01), [line.spans[0].text for line in inside]
+        assert left < min(b[0] for b in boxes) and max(b[2] for b in boxes) < right
+        seen += len(inside) > 1
+    assert seen, "no cell wrapped, so nothing tested the multi-line case"
+
+
+def test_a_return_label_is_centred_between_the_cells_and_its_run() -> None:
+    """Hung a clearance off its run, the return's label sat nearer the cells
+    above it than its own stroke. It is centred in the gap, ink to ink."""
+    built = scene_for(parse_document(PRODUCING), THEME, MEASURER)
+    words = [_text_box(p) for p in built.primitives if isinstance(p, TextRun) and p.role == "weak"]
+    run = next(p for p in built.primitives if isinstance(p, Path) and p.role == "weak")
+    cells = _cell_box(built, "Identify")[3]
+    join = run.points[1][1]
+    ink_top, ink_bottom = min(b[1] for b in words), max(b[3] for b in words)
+    assert cells < ink_top < ink_bottom < join
+    assert ink_top - cells == pytest.approx(join - ink_bottom, abs=0.01)
