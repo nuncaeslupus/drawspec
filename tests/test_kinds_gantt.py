@@ -11,6 +11,7 @@ the refusal.
 from __future__ import annotations
 
 import json
+import math
 from itertools import pairwise
 from pathlib import Path
 from typing import Any
@@ -643,11 +644,12 @@ def test_words_at_the_canvas_edge_are_pulled_back_onto_it() -> None:
 
 
 def test_an_iteration_is_an_arc_over_the_bar_from_its_end_back_to_its_start() -> None:
-    """Tail on the bar's top near x(end), a curve up and back, head down near x(start).
+    """Tail just over the bar near x(end), a circle's arc up and back, head down near x(start).
 
-    A curve, not a bracket: it leaves and lands upright, and rises above the bar in
-    between. Each leg stands the same distance inside its iteration, so the arc of
-    0-3 and that of 3-6 meet the bar on either side of the event at 3, never on it.
+    A circle, so it bends evenly; it ends a little clear of the bar, so the head is
+    seen whole, and comes down steeply, so the head points at the bar. Each leg
+    stands the same distance inside its iteration, so the arc of 0-3 and that of
+    3-6 meet the bar on either side of the event at 3, never on it.
     """
     drawing = drawn(lanes())
     _, top, _, _ = drawing.bars["agile"]
@@ -655,8 +657,18 @@ def test_an_iteration_is_an_arc_over_the_bar_from_its_end_back_to_its_start() ->
     assert len(arcs) == 4
     for arc, (start, end) in zip(arcs, ((0, 3), (3, 6), (6, 9), (9, 12)), strict=True):
         (x1, y1), (x4, y4) = arc[0], arc[-1]
-        assert y1 == pytest.approx(top) and y4 == pytest.approx(top)
-        assert all(y < top for _, y in arc[1:-1])
+        assert y1 == pytest.approx(y4) and y1 < top
+        assert all(y < y1 for _, y in arc[1:-1])
+        middle = arc[len(arc) // 2]
+        centre_x = (x1 + x4) / 2
+        # The centre on the arc's axis, as far from a middle point as from its ends.
+        centre_y = ((x1 - centre_x) ** 2 - (middle[0] - centre_x) ** 2 + y1**2 - middle[1] ** 2) / (
+            2 * (y1 - middle[1])
+        )
+        radius = math.dist(arc[0], (centre_x, centre_y))
+        assert all(math.dist(point, (centre_x, centre_y)) == pytest.approx(radius) for point in arc)
+        (xa, ya), (xb, yb) = arc[-2], arc[-1]
+        assert math.degrees(math.atan2(yb - ya, xa - xb)) > 30
         assert [x for x, _ in arc] == sorted((x for x, _ in arc), reverse=True)
         inset = drawing.scale.to_pixels(end) - x1
         assert x4 - drawing.scale.to_pixels(start) == pytest.approx(inset)
