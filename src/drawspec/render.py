@@ -34,22 +34,25 @@ from pathlib import Path
 from typing import Any, Final
 
 from drawspec.clearance import cleared
-from drawspec.emit import emit
-from drawspec.errors import DrawspecError, FitError
+from drawspec.emit import check_embedding_safety, emit, namespace_for
+from drawspec.errors import DrawspecError, EmitError, FitError
 from drawspec.geometry import fit
 from drawspec.kinds import TEXT_KINDS, scene_for, text_for
 from drawspec.scene import Scene, moved
 from drawspec.schema import FILES_KINDS, Document, parse_document
-from drawspec.sheet import around
+from drawspec.sheet import Sheet, around
 from drawspec.text.measure import TextMeasurer
 from drawspec.textgrid import CHARSETS, default_width
 from drawspec.theme import Theme, load_theme
+from drawspec.variants import BASE_NAME, check_names, merged
 
 
 def render(
     document: Mapping[str, Any],
     theme: Theme | str | Path | None = None,
     profile: str = "inline",
+    *,
+    variants: Mapping[str, Theme | str | Path] | None = None,
 ) -> str:
     """Render a document mapping to SVG.
 
@@ -58,24 +61,70 @@ def render(
         theme: a `Theme`, a bundled theme name, a theme file path, or None for the
             default. A `theme` named by the document is used when this is None.
         profile: `inline` (default) or `standalone` — see `drawspec.emit`.
+        variants: more themes for the same drawing, by the name a page selects
+            each with (`data-theme="dark"`). The SVG then carries every theme's
+            colours as CSS custom properties and switches between them — see
+            `drawspec.variants`. A variant named `dark` also follows the reader's
+            `prefers-color-scheme`. `theme` is the base and answers to `light`.
 
     Raises:
         DocumentError: the document violates the schema, with the offending
             field's JSON pointer.
-        ThemeError: the theme is malformed or greyscale-ambiguous.
+        ThemeError: the theme is malformed or greyscale-ambiguous, or a variant
+            draws the document differently from the base in more than colour.
         FitError: the content cannot fit at the theme's minimum legible size.
         EmitError: a primitive names a role the theme does not declare, or the
             SVG failed its own embedding-safety check.
     """
-    return render_document(parse_document(document), theme, profile)
+    return render_document(parse_document(document), theme, profile, variants=variants)
 
 
 def render_document(
     document: Document,
     theme: Theme | str | Path | None = None,
     profile: str = "inline",
+    *,
+    variants: Mapping[str, Theme | str | Path] | None = None,
 ) -> str:
     """Render an already-parsed `Document`. See `render`."""
+    if variants:
+        check_names(list(variants))
+    drawing, fitted, sheet = _drawn(document, theme, profile)
+    if not variants:
+        return emit(drawing, fitted, profile, sheet=sheet)
+
+    # Every theme is drawn under the base's namespace and with patterns named by
+    # use, so the drawings can differ only in paint — which `merged` checks.
+    namespace = namespace_for(drawing, fitted, profile, sheet)
+    drawings = [
+        (
+            BASE_NAME,
+            fitted,
+            emit(drawing, fitted, profile, namespace=namespace, sheet=sheet, ordinal=True),
+        )
+    ]
+    for name, source in variants.items():
+        other, other_theme, other_sheet = _drawn(document, source, profile)
+        svg = emit(
+            other, other_theme, profile, namespace=namespace, sheet=other_sheet, ordinal=True
+        )
+        drawings.append((name, other_theme, svg))
+    svg = merged(drawings, namespace)
+    violations = check_embedding_safety(
+        svg, fitted, profile, namespace=namespace, variants=[t for _, t, _ in drawings[1:]]
+    )
+    if violations:
+        raise EmitError(
+            "the multi-theme SVG failed its own embedding-safety check: "
+            + "; ".join(str(violation) for violation in violations)
+        )
+    return svg
+
+
+def _drawn(
+    document: Document, theme: Theme | str | Path | None, profile: str
+) -> tuple[Scene, Theme, Sheet | None]:
+    """The finished drawing, the theme it fitted at, and its sheet, if any."""
     resolved = load_theme(theme if theme is not None else (document.theme or None))
     if document.width:
         # The document may override the canvas width and nothing else: width is
@@ -98,8 +147,8 @@ def render_document(
         # The sheet is the standalone canvas's furniture; inline, the page is
         # the canvas and the theme's sheet is ignored like its `ink` is.
         drawing, sheet = around(drawing, fitted.theme, document, measurer)
-        return emit(drawing, fitted.theme, profile, sheet=sheet)
-    return emit(drawing, fitted.theme, profile)
+        return drawing, fitted.theme, sheet
+    return drawing, fitted.theme, None
 
 
 def _placed(scene: Scene, theme: Theme, document: Document) -> Scene:
