@@ -18,8 +18,8 @@ from typing import Any
 import pytest
 
 from drawspec import render
-from drawspec.errors import DocumentError, ThemeError
-from drawspec.kinds.gantt import GanttDrawing, gantt_drawing
+from drawspec.errors import DocumentError, FitError, ThemeError
+from drawspec.kinds.gantt import GanttDrawing, gantt_drawing, gantt_text
 from drawspec.scene import Ellipse, Polygon, TextLine
 from drawspec.scene import Path as Stroke
 from drawspec.schema import READABILITY_BUDGET, parse_document, validate_document
@@ -558,3 +558,193 @@ def test_the_theme_sets_how_strong_the_done_band_is() -> None:
     assert band.fill_opacity == pytest.approx(0.4)
     with pytest.raises(ThemeError, match=r"\[gantt\] done"):
         load_theme({"version": 1, "gantt": {"done": 1.5}})
+
+
+# ---------------------------------------------------------------------------
+# Events and iterations: a life cycle's deliveries and loops on a task's row
+# ---------------------------------------------------------------------------
+
+
+def lanes(**agile: Any) -> dict[str, Any]:
+    """The issue's case: a predictive lane and an agile one over one axis."""
+    task: dict[str, Any] = {
+        "id": "agile",
+        "text": "Agile",
+        "start": 0,
+        "end": 12,
+        "iterations": [
+            {"start": 0, "end": 3},
+            {"start": 3, "end": 6},
+            {"start": 6, "end": 9},
+            {"start": 9, "end": 12},
+        ],
+        "events": [{"at": at, "text": f"D{n}"} for n, at in enumerate((3, 6, 9, 12), 1)],
+    }
+    task.update(agile)
+    return {
+        "version": 1,
+        "kind": "gantt",
+        "axis": {"label": "Month", "min": 0, "max": 12},
+        "tasks": [
+            {
+                "id": "predictive",
+                "text": "Predictive",
+                "start": 0,
+                "end": 12,
+                "events": [{"at": 12, "text": "Delivery"}],
+            },
+            task,
+        ],
+    }
+
+
+def test_lanes_with_points_and_iterations_are_one_row_each_on_one_axis() -> None:
+    """Two tasks, two rows: events and arcs live on their task's row, not rows of their own."""
+    drawing = drawn(lanes())
+    assert list(drawing.rows) == ["predictive", "agile"]
+    assert list(drawing.bars) == ["predictive", "agile"]
+    assert drawing.milestones == {}
+
+
+def test_a_point_is_a_diamond_on_its_bar_at_its_value() -> None:
+    """Four deliveries at 3, 6, 9 and 12: their centres on the bar's midline at those x."""
+    drawing = drawn(lanes())
+    _, top, right, bottom = drawing.bars["agile"]
+    centres = drawing.events["agile"]
+    assert [x for x, _ in centres] == pytest.approx(
+        [drawing.scale.to_pixels(value) for value in (3, 6, 9, 12)]
+    )
+    assert all(y == pytest.approx((top + bottom) / 2) for _, y in centres)
+    assert centres[-1][0] == pytest.approx(right)
+
+
+def test_a_points_words_are_centred_under_the_bar() -> None:
+    """`D2` is centred on x(6) and its baseline is below the bar's bottom edge."""
+    drawing = drawn(lanes())
+    _, _, _, bottom = drawing.bars["agile"]
+    (words,) = [
+        p for p in drawing.scene.primitives if isinstance(p, TextLine) and p.spans[0].text == "D2"
+    ]
+    assert words.anchor == "middle"
+    assert words.x == pytest.approx(drawing.scale.to_pixels(6))
+    assert words.y > bottom
+
+
+def test_words_at_the_canvas_edge_are_pulled_back_onto_it() -> None:
+    """`Delivery` at the axis's end would overhang the canvas centred; it is shifted left."""
+    drawing = drawn(lanes())
+    (words,) = [
+        p
+        for p in drawing.scene.primitives
+        if isinstance(p, TextLine) and p.spans[0].text == "Delivery"
+    ]
+    wide = MEASURER.measure("Delivery", THEME.font.default, THEME.scale["label"]).width
+    assert words.x + wide / 2 <= THEME.canvas.width + EPSILON
+
+
+def test_an_iteration_is_an_arc_over_the_bar_from_its_end_back_to_its_start() -> None:
+    """Tail on the bar's top near x(end), up, left, and down with its head near x(start).
+
+    Each leg stands the same distance inside its iteration, so the arc of 0-3 and
+    that of 3-6 meet the bar on either side of the event at 3, never on it.
+    """
+    drawing = drawn(lanes())
+    _, top, _, _ = drawing.bars["agile"]
+    arcs = drawing.iterations["agile"]
+    assert len(arcs) == 4
+    for arc, (start, end) in zip(arcs, ((0, 3), (3, 6), (6, 9), (9, 12)), strict=True):
+        (x1, y1), (x2, y2), (x3, y3), (x4, y4) = arc
+        assert y1 == pytest.approx(top) and y4 == pytest.approx(top)
+        assert y2 == pytest.approx(y3) and y2 < top
+        assert x1 == pytest.approx(x2) and x3 == pytest.approx(x4)
+        inset = drawing.scale.to_pixels(end) - x1
+        assert x4 - drawing.scale.to_pixels(start) == pytest.approx(inset)
+        assert inset > 0
+    for earlier, later in pairwise(arcs):
+        event = drawing.events["agile"][arcs.index(earlier)][0]
+        assert earlier[0][0] < event < later[-1][0]
+
+
+def test_a_row_with_arcs_and_words_is_taller_and_its_arcs_stay_inside_it() -> None:
+    """The arcs rise above the bar and the words hang below it, both inside the row."""
+    drawing = drawn(lanes())
+    plain = drawn(lanes(iterations=[], events=[]))
+    top, bottom = drawing.rows["agile"]
+    assert bottom - top > plain.rows["agile"][1] - plain.rows["agile"][0]
+    assert all(arc[1][1] > top for arc in drawing.iterations["agile"])
+
+
+def test_an_iteration_too_short_for_its_arc_is_refused() -> None:
+    """One axis unit of twelve on the default canvas leaves no room for two legs."""
+    document = lanes(iterations=[{"start": 0, "end": 0.1}], events=[])
+    with pytest.raises(FitError, match="too short for its arc"):
+        drawn(document)
+
+
+def test_points_words_that_would_touch_are_refused() -> None:
+    """Two long words at 6 and 6.1 cannot sit side by side under the bar."""
+    document = lanes(
+        iterations=[],
+        events=[{"at": 6, "text": "First delivery"}, {"at": 6.1, "text": "Second delivery"}],
+    )
+    with pytest.raises(FitError, match="too close"):
+        drawn(document)
+
+
+def test_the_lanes_are_valid_and_points_and_iterations_are_refused_where_they_cannot_hold() -> None:
+    """Each refusal at its own pointer: outside, backwards, overlapping, on a milestone."""
+    assert pointers(lanes()) == []
+    assert pointers(lanes(events=[{"at": 13}])) == ["/tasks/1/events/0/at"]
+    assert pointers(lanes(iterations=[{"start": -1, "end": 13}])) == [
+        "/tasks/1/iterations/0/start",
+        "/tasks/1/iterations/0/end",
+    ]
+    assert pointers(lanes(iterations=[{"start": 5, "end": 5}])) == ["/tasks/1/iterations/0/end"]
+    assert pointers(lanes(iterations=[{"start": 0, "end": 4}, {"start": 3, "end": 6}])) == [
+        "/tasks/1/iterations/1/start"
+    ]
+    milestone = lanes()
+    milestone["tasks"][1] = {"id": "agile", "text": "Agile", "at": 12, "events": [{"at": 12}]}
+    assert pointers(milestone) == ["/tasks/1/events"]
+    assert "a milestone is a moment" in messages(milestone)
+
+
+def test_iterations_that_touch_end_to_start_are_valid() -> None:
+    """3-6 after 0-3 hands on at 3: touching is how one iteration follows another."""
+    assert pointers(lanes(iterations=[{"start": 0, "end": 3}, {"start": 3, "end": 6}])) == []
+
+
+def test_points_and_iterations_count_against_the_readability_budget() -> None:
+    """Nine events on one task: the ninth is refused, over the eight a row reads at a glance."""
+    names = dict(READABILITY_BUDGET["gantt"])
+    assert names["tasks/events"] == 8 and names["tasks/iterations"] == 8
+    document = lanes(events=[{"at": float(value)} for value in range(9)], iterations=[])
+    assert pointers(document) == ["/tasks/1/events/8"]
+
+
+def test_text_draws_arcs_over_the_bar_and_points_on_it_with_their_words_under() -> None:
+    """The agile row: `▼──┐` per iteration above, `◆` at each delivery, `D1` under it."""
+    text = gantt_text(parse_document(lanes()), 80, "unicode")
+    lines = text.splitlines()
+    (bar,) = [index for index, line in enumerate(lines) if line.startswith("Agile")]
+    assert lines[bar - 1].count("▼") == 4 and lines[bar - 1].count("┐") == 4
+    assert lines[bar].count("◆") == 4
+    assert "D1" in lines[bar + 1] and "D4" in lines[bar + 1]
+    assert lines[bar + 1].index("D2") <= lines[bar].index("◆", lines[bar].index("◆") + 1)
+
+
+def test_text_lists_points_words_that_would_touch_under_the_chart() -> None:
+    """Words that cannot share the row under the bar are listed, never dropped."""
+    document = lanes(
+        iterations=[],
+        events=[{"at": 6, "text": "First delivery"}, {"at": 7, "text": "Second delivery"}],
+    )
+    text = gantt_text(parse_document(document), 80, "ascii")
+    assert "Agile: First delivery at 6, Second delivery at 7" in text
+
+
+def test_text_refuses_an_iteration_shorter_than_two_cells() -> None:
+    """At 40 columns an iteration of a tenth of a month is less than one cell."""
+    document = lanes(iterations=[{"start": 0, "end": 0.1}], events=[])
+    with pytest.raises(FitError, match="/tasks/1/iterations/0"):
+        gantt_text(parse_document(document), 40, "ascii")

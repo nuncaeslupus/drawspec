@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "kind": "gantt",
+  "title": "Four life cycles over one project",
+  "description": "The continuum of project life cycles: predictive, iterative, incremental and agile, each a lane over the same twenty weeks, with its deliveries and the cycles its work goes round.",
+  "caption": "Arcs are cycles the work goes round; diamonds are deliveries to the customer.",
+  "axis": {"label": "Time", "unit": "weeks", "min": 0, "max": 20},
+  "tasks": [
+    {"id": "predictive", "text": "**Predictive** — fixed scope, one delivery", "start": 0, "end": 20,
+     "events": [{"at": 20, "text": "Delivery"}]},
+    {"id": "iterative", "text": "**Iterative** — refined until right, one delivery", "start": 0, "end": 20,
+     "iterations": [{"start": 0, "end": 7}, {"start": 7, "end": 14}, {"start": 14, "end": 20}],
+     "events": [{"at": 20, "text": "Delivery"}]},
+    {"id": "incremental", "text": "**Incremental** — a piece at a time", "start": 0, "end": 20,
+     "events": [{"at": 7, "text": "Increment 1"}, {"at": 14, "text": "Increment 2"}, {"at": 20, "text": "Increment 3"}]},
+    {"id": "agile", "text": "**Agile** — refined and delivered often", "start": 0, "end": 20, "role": "emphasis",
+     "iterations": [{"start": 0, "end": 5}, {"start": 5, "end": 10}, {"start": 10, "end": 15}, {"start": 15, "end": 20}],
+     "events": [{"at": 5, "text": "1"}, {"at": 10, "text": "2"}, {"at": 15, "text": "3"}, {"at": 20, "text": "4"}]}
+  ]
+}

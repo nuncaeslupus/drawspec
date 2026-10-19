@@ -3919,6 +3919,24 @@
       ],
       "additionalProperties": false
     },
+    "iteration": {
+      "type": "object",
+      "properties": {
+        "start": {
+          "type": "number",
+          "description": "Where the cycle begins on the axis: the arc's head lands here."
+        },
+        "end": {
+          "type": "number",
+          "description": "Where it ends and turns back, after `start`: the arc leaves from here."
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "additionalProperties": false
+    },
     "journey-row": {
       "type": "object",
       "properties": {
@@ -4924,6 +4942,20 @@
           "type": "number",
           "description": "How much of the task is complete, 0 to 100: drawn as a solid band inside the bar from its start, MS Project's progress line. Not on a milestone."
         },
+        "events": {
+          "type": "array",
+          "description": "Moments on the task's own row — a delivery, a release, a review — each a diamond on the bar where it falls, its words under the bar. Unlike a milestone task they take no row of their own, so several fall on one row. Within the task's `start` to `end`; not on a milestone.",
+          "items": {
+            "$ref": "#/$defs/task-event"
+          }
+        },
+        "iterations": {
+          "type": "array",
+          "description": "Cycles the work goes round: each an arc over the bar from an iteration's `end` back to its `start`, the return a life cycle draws. Within the task's `start` to `end`, in order and not overlapping; not on a milestone.",
+          "items": {
+            "$ref": "#/$defs/iteration"
+          }
+        },
         "role": {
           "type": "string",
           "description": "`step` (the default bar), `strong` (on the critical path: drawn heavier, the word its dependencies take), `emphasis` (the task the diagram is about) or `note` (outside the plan, drawn lighter).",
@@ -4938,6 +4970,23 @@
       "required": [
         "id",
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "task-event": {
+      "type": "object",
+      "properties": {
+        "at": {
+          "type": "number",
+          "description": "Where on the axis, inside the task's interval."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "at"
       ],
       "additionalProperties": false
     },
