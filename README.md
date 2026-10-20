@@ -3,7 +3,7 @@
 <!-- mcp-name: io.github.nuncaeslupus/drawspec -->
 
 [![PyPI](https://img.shields.io/pypi/v/drawspec)](https://pypi.org/project/drawspec/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/nuncaeslupus/drawspec/blob/main/LICENSE)
 [![drawspec MCP server – quality and maintenance score on Glama](https://glama.ai/mcp/servers/nuncaeslupus/drawspec/badges/score.svg)](https://glama.ai/mcp/servers/nuncaeslupus/drawspec)
 <!-- claude-arsenal:attribution: added by claude-arsenal's /init. Delete this block to drop it (it is not put back), or set `attribution = false` in the arsenal config.toml. -->
 [![Built with claude-arsenal](https://img.shields.io/badge/built%20with-claude--arsenal-d97756)](https://github.com/nuncaeslupus/claude-arsenal)
@@ -64,8 +64,8 @@ drawspec draws this:
 
 <p align="center">
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/flow-retry-dark.png">
-  <img src="docs/readme/flow-retry-light.png" alt="A flow chart: fetch the vendor's export, retried on timeout; check the row counts; on a match load into staging, retried on deadlock, then swap into live; otherwise page the data owner" width="620">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/flow-retry-dark.png">
+  <img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/flow-retry-light.png" alt="A flow chart: fetch the vendor's export, retried on timeout; check the row counts; on a match load into staging, retried on deadlock, then swap into live; otherwise page the data owner" width="620">
 </picture>
 </p>
 
@@ -128,8 +128,8 @@ activation bars, arrows and spacing are worked out for you:
 
 <p align="center">
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/sequence-dns-dark.png">
-  <img src="docs/readme/sequence-dns-light.png" alt="A sequence diagram: a laptop asks a recursive resolver, which asks the root, the .org server and the authoritative server in turn, caches the answer and replies" width="720">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sequence-dns-dark.png">
+  <img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sequence-dns-light.png" alt="A sequence diagram: a laptop asks a recursive resolver, which asks the root, the .org server and the authoritative server in turn, caches the answer and replies" width="720">
 </picture>
 </p>
 
@@ -144,37 +144,37 @@ for all of them. Click a drawing for its source.
 <tr><th width="33%"><code>sequence</code></th><th width="33%"><code>entities</code></th><th width="33%"><code>states</code></th></tr>
 <tr>
 <td align="center" valign="middle">
-<a href="docs/reference/sequence-checkout.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/sequence-checkout-dark.png"><img src="docs/readme/sequence-checkout-light.png" alt="A checkout sequence diagram with alt and par fragments"></picture></a>
+<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/sequence-checkout.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sequence-checkout-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sequence-checkout-light.png" alt="A checkout sequence diagram with alt and par fragments"></picture></a>
 </td>
 <td align="center" valign="middle">
-<a href="docs/reference/entities-orders.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/entities-orders-dark.png"><img src="docs/readme/entities-orders-light.png" alt="A database schema of customers, orders and order lines with crow's-foot ends"></picture></a>
+<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/entities-orders.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/entities-orders-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/entities-orders-light.png" alt="A database schema of customers, orders and order lines with crow's-foot ends"></picture></a>
 </td>
 <td align="center" valign="middle">
-<a href="docs/reference/states-ticket.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/states-ticket-dark.png"><img src="docs/readme/states-ticket-light.png" alt="A support ticket state machine"></picture></a>
+<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/states-ticket.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/states-ticket-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/states-ticket-light.png" alt="A support ticket state machine"></picture></a>
 </td>
 </tr>
 <tr><th width="33%"><code>gantt</code></th><th width="33%"><code>mindmap</code></th><th width="33%"><code>sankey</code></th></tr>
 <tr>
 <td align="center" valign="middle">
-<a href="docs/reference/gantt-migration.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/gantt-migration-dark.png"><img src="docs/readme/gantt-migration-light.png" alt="A migration plan as a Gantt chart with phases and milestones"></picture></a>
+<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/gantt-migration.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/gantt-migration-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/gantt-migration-light.png" alt="A migration plan as a Gantt chart with phases and milestones"></picture></a>
 </td>
 <td align="center" valign="middle">
-<a href="docs/reference/mindmap-offsite.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/mindmap-offsite-dark.png"><img src="docs/readme/mindmap-offsite-light.png" alt="A mind map planning a team offsite"></picture></a>
+<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/mindmap-offsite.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/mindmap-offsite-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/mindmap-offsite-light.png" alt="A mind map planning a team offsite"></picture></a>
 </td>
 <td align="center" valign="middle">
-<a href="docs/reference/sankey-budget.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/sankey-budget-dark.png"><img src="docs/readme/sankey-budget-light.png" alt="A Sankey diagram of where a budget goes"></picture></a>
+<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/sankey-budget.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sankey-budget-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sankey-budget-light.png" alt="A Sankey diagram of where a budget goes"></picture></a>
 </td>
 </tr>
 <tr><th width="33%"><code>venn</code></th><th width="33%"><code>chart</code></th><th width="33%"><code>fishbone</code></th></tr>
 <tr>
 <td align="center" valign="middle">
-<a href="docs/reference/venn-telemetry.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/venn-telemetry-dark.png"><img src="docs/readme/venn-telemetry-light.png" alt="A three-set Venn diagram of logs, metrics and traces"></picture></a>
+<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/venn-telemetry.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/venn-telemetry-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/venn-telemetry-light.png" alt="A three-set Venn diagram of logs, metrics and traces"></picture></a>
 </td>
 <td align="center" valign="middle">
-<a href="docs/reference/chart-bars.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/chart-bars-dark.png"><img src="docs/readme/chart-bars-light.png" alt="A bar and line chart of incidents per quarter"></picture></a>
+<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/chart-bars.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/chart-bars-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/chart-bars-light.png" alt="A bar and line chart of incidents per quarter"></picture></a>
 </td>
 <td align="center" valign="middle">
-<a href="docs/reference/fishbone-flaky-ci.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/fishbone-flaky-ci-dark.png"><img src="docs/readme/fishbone-flaky-ci-light.png" alt="A fishbone diagram of causes of a flaky CI"></picture></a>
+<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/fishbone-flaky-ci.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/fishbone-flaky-ci-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/fishbone-flaky-ci-light.png" alt="A fishbone diagram of causes of a flaky CI"></picture></a>
 </td>
 </tr>
 </table>
@@ -184,7 +184,7 @@ The full list: `flow` · `tree` · `cycle` · `stack` · `timeline` · `columns`
 `curve` · `files` · `states` · `sequence` · `lanes` · `entities` · `gantt` ·
 `board` · `fishbone` · `venn` · `journey` · `treemap` · `sankey` · `numberline` ·
 `barmodel` · `waterfall` · `pie` · `mindmap` · `argument` · `familytree` ·
-`meter` · `rag` · `clock`. Each has an example in [`docs/reference`](docs/reference),
+`meter` · `rag` · `clock`. Each has an example in [`docs/reference`](https://github.com/nuncaeslupus/drawspec/tree/main/docs/reference),
 and [the gallery](https://nuncaeslupus.github.io/drawspec/docs/gallery/)
 (`docs/gallery/index.html`) draws every one.
 
@@ -194,11 +194,11 @@ and [the gallery](https://nuncaeslupus.github.io/drawspec/docs/gallery/)
   `list_kinds`, `get_example`, `get_schema`, `validate_document` and
   `render_document`. A mistake comes back as data the model can act on:
   `{"pointer": "/edges/0/to", "message": …}`.
-  See [the guide](docs/guide.md#using-it-from-an-agent-the-mcp-server).
-- **[`AGENTS.md`](AGENTS.md)** — the whole format on one page, written for a model to
+  See [the guide](https://github.com/nuncaeslupus/drawspec/blob/main/docs/guide.md#using-it-from-an-agent-the-mcp-server).
+- **[`AGENTS.md`](https://github.com/nuncaeslupus/drawspec/blob/main/AGENTS.md)** — the whole format on one page, written for a model to
   read in one pass: which kind fits, the size limits, the roles, worked examples, and
-  what each error means. [`llms.txt`](llms.txt) indexes it.
-- **Agent Skill** — copy [`skills/drawspec/`](skills/drawspec/SKILL.md) into your
+  what each error means. [`llms.txt`](https://github.com/nuncaeslupus/drawspec/blob/main/llms.txt) indexes it.
+- **Agent Skill** — copy [`skills/drawspec/`](https://github.com/nuncaeslupus/drawspec/blob/main/skills/drawspec/SKILL.md) into your
   skills directory.
 - **JSON Schema** — start a document with
   `"$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json"`
@@ -251,11 +251,11 @@ drawspec schema --out drawspec-v1.schema.json        # for editor completion
 
 | Page | What it covers |
 |---|---|
-| [Guide](docs/guide.md) | Install, a first diagram, choosing a kind, embedding, validating in CI, themes |
-| [Document format](docs/format.md) | Every field of every kind, and every refused field with the reason |
-| [Command line](docs/cli.md) | Every command, option and exit code |
-| [Themes](docs/theme.md) | Every theme key and its default |
-| [AGENTS.md](AGENTS.md) | The format on one page, for language models |
+| [Guide](https://github.com/nuncaeslupus/drawspec/blob/main/docs/guide.md) | Install, a first diagram, choosing a kind, embedding, validating in CI, themes |
+| [Document format](https://github.com/nuncaeslupus/drawspec/blob/main/docs/format.md) | Every field of every kind, and every refused field with the reason |
+| [Command line](https://github.com/nuncaeslupus/drawspec/blob/main/docs/cli.md) | Every command, option and exit code |
+| [Themes](https://github.com/nuncaeslupus/drawspec/blob/main/docs/theme.md) | Every theme key and its default |
+| [AGENTS.md](https://github.com/nuncaeslupus/drawspec/blob/main/AGENTS.md) | The format on one page, for language models |
 
 The references are generated from the code (`make docs`), and a test fails if they
 drift.
@@ -289,4 +289,4 @@ By the same author:
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT — see [`LICENSE`](https://github.com/nuncaeslupus/drawspec/blob/main/LICENSE).
