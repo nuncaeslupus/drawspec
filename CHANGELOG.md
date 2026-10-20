@@ -10,6 +10,14 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+### Changed
+
+- **A shorter README that leads with what drawspec does.** The long status list and the
+  corpus figures are gone; a flow and a sequence are shown spec-beside-drawing, with a
+  grid of nine more kinds and a section on use from an LLM. The drawings are PNGs, one
+  per GitHub theme (`make readme`, `tools/readme.py`), so they show on the dark theme,
+  and the text example is ASCII, whose columns line up in any font.
+
 ## [0.4.2] — 2026-10-19
 
 ### Fixed
