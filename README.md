@@ -9,6 +9,10 @@
 [![Built with claude-arsenal](https://img.shields.io/badge/built%20with-claude--arsenal-d97756)](https://github.com/nuncaeslupus/claude-arsenal)
 <!-- /claude-arsenal:attribution -->
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/hero.png" width="100%" alt="drawspec: a blueprint sheet with the wordmark, a JSON flow spec and the flow chart drawspec renders from it, with large faint venn and pie drawings behind the wordmark, a mind map and a project file tree drawn by drawspec, and beside them a small sequence diagram as drawspec's text output, once in box drawing and once in ASCII">
+</p>
+
 **Diagrams from a JSON description — no coordinates, so nothing to misplace.**
 You say what the diagram *means*: the boxes, the arrows, the labels, and a role
 for each. drawspec decides every position, size, route and colour, and draws a
@@ -137,46 +141,40 @@ charts, kanban boards, fishbone, family trees, file trees and more — one forma
 for all of them. Click a drawing for its source.
 
 <table>
+<tr><th width="33%"><code>sequence</code></th><th width="33%"><code>entities</code></th><th width="33%"><code>states</code></th></tr>
 <tr>
-<td align="center" width="33%">
-<a href="docs/reference/sequence-checkout.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/sequence-checkout-dark.png"><img src="docs/readme/sequence-checkout-light.png" alt="A checkout sequence diagram with alt and par fragments"></picture></a><br>
-<sub><code>sequence</code></sub>
+<td align="center" valign="middle">
+<a href="docs/reference/sequence-checkout.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/sequence-checkout-dark.png"><img src="docs/readme/sequence-checkout-light.png" alt="A checkout sequence diagram with alt and par fragments"></picture></a>
 </td>
-<td align="center" width="33%">
-<a href="docs/reference/entities-orders.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/entities-orders-dark.png"><img src="docs/readme/entities-orders-light.png" alt="A database schema of customers, orders and order lines with crow's-foot ends"></picture></a><br>
-<sub><code>entities</code></sub>
+<td align="center" valign="middle">
+<a href="docs/reference/entities-orders.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/entities-orders-dark.png"><img src="docs/readme/entities-orders-light.png" alt="A database schema of customers, orders and order lines with crow's-foot ends"></picture></a>
 </td>
-<td align="center" width="33%">
-<a href="docs/reference/states-ticket.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/states-ticket-dark.png"><img src="docs/readme/states-ticket-light.png" alt="A support ticket state machine"></picture></a><br>
-<sub><code>states</code></sub>
+<td align="center" valign="middle">
+<a href="docs/reference/states-ticket.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/states-ticket-dark.png"><img src="docs/readme/states-ticket-light.png" alt="A support ticket state machine"></picture></a>
 </td>
 </tr>
+<tr><th width="33%"><code>gantt</code></th><th width="33%"><code>mindmap</code></th><th width="33%"><code>sankey</code></th></tr>
 <tr>
-<td align="center" width="33%">
-<a href="docs/reference/gantt-migration.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/gantt-migration-dark.png"><img src="docs/readme/gantt-migration-light.png" alt="A migration plan as a Gantt chart with phases and milestones"></picture></a><br>
-<sub><code>gantt</code></sub>
+<td align="center" valign="middle">
+<a href="docs/reference/gantt-migration.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/gantt-migration-dark.png"><img src="docs/readme/gantt-migration-light.png" alt="A migration plan as a Gantt chart with phases and milestones"></picture></a>
 </td>
-<td align="center" width="33%">
-<a href="docs/reference/mindmap-offsite.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/mindmap-offsite-dark.png"><img src="docs/readme/mindmap-offsite-light.png" alt="A mind map planning a team offsite"></picture></a><br>
-<sub><code>mindmap</code></sub>
+<td align="center" valign="middle">
+<a href="docs/reference/mindmap-offsite.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/mindmap-offsite-dark.png"><img src="docs/readme/mindmap-offsite-light.png" alt="A mind map planning a team offsite"></picture></a>
 </td>
-<td align="center" width="33%">
-<a href="docs/reference/sankey-budget.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/sankey-budget-dark.png"><img src="docs/readme/sankey-budget-light.png" alt="A Sankey diagram of where a budget goes"></picture></a><br>
-<sub><code>sankey</code></sub>
+<td align="center" valign="middle">
+<a href="docs/reference/sankey-budget.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/sankey-budget-dark.png"><img src="docs/readme/sankey-budget-light.png" alt="A Sankey diagram of where a budget goes"></picture></a>
 </td>
 </tr>
+<tr><th width="33%"><code>venn</code></th><th width="33%"><code>chart</code></th><th width="33%"><code>fishbone</code></th></tr>
 <tr>
-<td align="center" width="33%">
-<a href="docs/reference/venn-telemetry.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/venn-telemetry-dark.png"><img src="docs/readme/venn-telemetry-light.png" alt="A three-set Venn diagram of logs, metrics and traces"></picture></a><br>
-<sub><code>venn</code></sub>
+<td align="center" valign="middle">
+<a href="docs/reference/venn-telemetry.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/venn-telemetry-dark.png"><img src="docs/readme/venn-telemetry-light.png" alt="A three-set Venn diagram of logs, metrics and traces"></picture></a>
 </td>
-<td align="center" width="33%">
-<a href="docs/reference/chart-bars.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/chart-bars-dark.png"><img src="docs/readme/chart-bars-light.png" alt="A bar and line chart of incidents per quarter"></picture></a><br>
-<sub><code>chart</code></sub>
+<td align="center" valign="middle">
+<a href="docs/reference/chart-bars.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/chart-bars-dark.png"><img src="docs/readme/chart-bars-light.png" alt="A bar and line chart of incidents per quarter"></picture></a>
 </td>
-<td align="center" width="33%">
-<a href="docs/reference/fishbone-flaky-ci.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/fishbone-flaky-ci-dark.png"><img src="docs/readme/fishbone-flaky-ci-light.png" alt="A fishbone diagram of causes of a flaky CI"></picture></a><br>
-<sub><code>fishbone</code></sub>
+<td align="center" valign="middle">
+<a href="docs/reference/fishbone-flaky-ci.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/fishbone-flaky-ci-dark.png"><img src="docs/readme/fishbone-flaky-ci-light.png" alt="A fishbone diagram of causes of a flaky CI"></picture></a>
 </td>
 </tr>
 </table>
