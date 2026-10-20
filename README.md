@@ -29,7 +29,7 @@ pip install drawspec
 drawspec render diagram.json -o diagram.svg
 ```
 
-**[Browse the gallery: all 36 kinds, drawn →](https://nuncaeslupus.github.io/drawspec/docs/gallery/)**
+**[Browse the gallery: every kind, drawn →](https://nuncaeslupus.github.io/drawspec/docs/gallery/)**
 
 ## Example
 
@@ -133,7 +133,7 @@ activation bars, arrows and spacing are worked out for you:
 </picture>
 </p>
 
-## 36 kinds of diagram
+## Kinds of diagram
 
 Flow charts, sequence diagrams, state machines, ER and class diagrams, Gantt
 charts, swimlanes, mind maps, timelines, Venn, Sankey, treemaps, pie and bar
@@ -220,11 +220,11 @@ A typical loop: the model picks a kind, writes the JSON, calls
   works in dark mode and in greyscale print. `--variant dark=<theme>` adds a dark
   version that follows `prefers-color-scheme`.
 - **PNG** on a light, dark or transparent background (`pip install 'drawspec[png]'`).
-- **Plain text** (box-drawing or ASCII) for twelve kinds, including flows, state
+- **Plain text** (box-drawing or ASCII) for many kinds, including flows, state
   machines, sequences, Gantt charts and file trees.
 - **Themes**: change one TOML file and every diagram in a project follows.
   `drawspec theme from site.css` builds one from your CSS or design tokens.
-- **Readable by design**: each kind has a size budget (15 boxes for a `flow`);
+- **Readable by design**: each kind has a size budget;
   past it, drawspec asks you to split the diagram rather than draw a dense one.
 
 ## Command line
