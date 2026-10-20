@@ -32,6 +32,7 @@ EXAMPLES = [
 
 
 def main() -> int:
+    """Write a light and a dark PNG of every example; return the first failing exit code."""
     OUT.mkdir(parents=True, exist_ok=True)
     for name in EXAMPLES:
         for background in ("light", "dark"):
