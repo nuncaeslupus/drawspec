@@ -190,7 +190,9 @@ def test_each_readme_example_is_the_render_of_the_document_beside_it() -> None:
     root = Path(__file__).resolve().parents[1]
     readme = (root / "README.md").read_text(encoding="utf-8")
     pairs = re.findall(
-        r"```json\n(.*?)```.*?src=\"" + RAW + r"docs/readme/([^\"]+)-light\.png\"",
+        # the gap may not cross another fence or heading, so a missing drawing
+        # cannot pair its spec with a later gallery image
+        r"```json\n(.*?)```(?:(?!```|\n#).)*?src=\"" + RAW + r"docs/readme/([^\"]+)-light\.png\"",
         readme,
         re.DOTALL,
     )
