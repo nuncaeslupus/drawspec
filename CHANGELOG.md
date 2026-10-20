@@ -10,7 +10,14 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+## [0.4.3] — 2026-10-20
+
 ### Changed
+
+- **The README renders on PyPI.** Every image and link in it is now an absolute
+  `raw.githubusercontent.com` / `github.com` URL, because PyPI shows the long description
+  without the repository beside it and relative paths broke there; the new README, merged
+  after 0.4.2, reaches PyPI with this release.
 
 - **A shorter README that leads with what drawspec does.** The long status list and the
   corpus figures are gone; a flow and a sequence are shown spec-beside-drawing, with a

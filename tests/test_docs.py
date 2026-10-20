@@ -145,6 +145,9 @@ def test_every_role_is_drawn_somewhere_in_the_reference_set() -> None:
 # --------------------------------------------------------------------------
 
 
+RAW = r"https://raw\.githubusercontent\.com/nuncaeslupus/drawspec/main/"
+
+
 def test_every_json_example_in_the_readme_is_a_document_that_validates() -> None:
     """A trimmed snippet that no longer parses is worse than no example.
 
@@ -163,7 +166,10 @@ def test_every_json_example_in_the_readme_is_a_document_that_validates() -> None
         kinds.add(document.kind)
     assert len(kinds) >= 2, f"every README example is the same kind: {kinds}"
 
-    drawings = re.findall(r'src="(docs/readme/[^"]+-light\.png)"', readme)
+    # PyPI shows the README without the repository beside it, so its images are
+    # absolute raw.githubusercontent.com URLs; the path under `docs/readme/` is
+    # what has to exist here.
+    drawings = re.findall(r'src="' + RAW + r'(docs/readme/[^"]+-light\.png)"', readme)
     assert len(drawings) >= len(blocks), f"{len(blocks)} specs but {len(drawings)} drawings"
     for path in drawings:
         assert (Path(__file__).resolve().parents[1] / path).exists(), (
@@ -184,7 +190,9 @@ def test_each_readme_example_is_the_render_of_the_document_beside_it() -> None:
     root = Path(__file__).resolve().parents[1]
     readme = (root / "README.md").read_text(encoding="utf-8")
     pairs = re.findall(
-        r"```json\n(.*?)```.*?src=\"docs/readme/([^\"]+)-light\.png\"", readme, re.DOTALL
+        r"```json\n(.*?)```.*?src=\"" + RAW + r"docs/readme/([^\"]+)-light\.png\"",
+        readme,
+        re.DOTALL,
     )
     assert pairs, "no spec is paired with a drawing in the README"
     for block, name in pairs:
