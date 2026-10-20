@@ -5,6 +5,7 @@
 [![PyPI](https://img.shields.io/pypi/v/drawspec)](https://pypi.org/project/drawspec/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/nuncaeslupus/drawspec/blob/main/LICENSE)
 [![drawspec MCP server – quality and maintenance score on Glama](https://glama.ai/mcp/servers/nuncaeslupus/drawspec/badges/score.svg)](https://glama.ai/mcp/servers/nuncaeslupus/drawspec)
+[![drawspec on mcprush](https://mcprush.com/badge/drawspec-mcp/score.svg)](https://mcprush.com/to/drawspec-mcp?ref=badge)
 <!-- claude-arsenal:attribution: added by claude-arsenal's /init. Delete this block to drop it (it is not put back), or set `attribution = false` in the arsenal config.toml. -->
 [![Built with claude-arsenal](https://img.shields.io/badge/built%20with-claude--arsenal-d97756)](https://github.com/nuncaeslupus/claude-arsenal)
 <!-- /claude-arsenal:attribution -->
