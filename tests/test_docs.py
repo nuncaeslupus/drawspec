@@ -163,7 +163,7 @@ def test_every_json_example_in_the_readme_is_a_document_that_validates() -> None
         kinds.add(document.kind)
     assert len(kinds) >= 2, f"every README example is the same kind: {kinds}"
 
-    drawings = re.findall(r'src="(docs/gallery/[^"]+\.svg)"', readme)
+    drawings = re.findall(r'src="(docs/readme/[^"]+-light\.png)"', readme)
     assert len(drawings) >= len(blocks), f"{len(blocks)} specs but {len(drawings)} drawings"
     for path in drawings:
         assert (Path(__file__).resolve().parents[1] / path).exists(), (
@@ -174,19 +174,22 @@ def test_every_json_example_in_the_readme_is_a_document_that_validates() -> None
 def test_each_readme_example_is_the_render_of_the_document_beside_it() -> None:
     """The pairing itself, not just that both halves exist.
 
-    Every README example names a drawing under `docs/gallery/`, and every such
-    drawing is `make gallery`'s render of the reference document of the same
-    name. So the spec shown must be the reference document — otherwise the
+    Every README example names a drawing under `docs/readme/`, and every such
+    drawing is `make readme`'s render of the reference document of the same
+    name — a PNG per GitHub theme, since an SVG in an `<img>` draws black on its
+    dark one. So the spec shown must be the reference document — otherwise the
     picture drifts from the text the first time either is edited, which is the
     failure this whole arrangement exists to prevent.
     """
     root = Path(__file__).resolve().parents[1]
     readme = (root / "README.md").read_text(encoding="utf-8")
-    pairs = re.findall(r"```json\n(.*?)```.*?src=\"docs/gallery/([^\"]+)\.svg\"", readme, re.DOTALL)
+    pairs = re.findall(
+        r"```json\n(.*?)```.*?src=\"docs/readme/([^\"]+)-light\.png\"", readme, re.DOTALL
+    )
     assert pairs, "no spec is paired with a drawing in the README"
     for block, name in pairs:
         reference = root / "docs" / "reference" / f"{name}.json"
-        assert reference.exists(), f"README pairs a spec with {name}.svg, which has no document"
+        assert reference.exists(), f"README pairs a spec with {name}, which has no document"
         shown = json.loads(block)
         actual = json.loads(reference.read_text(encoding="utf-8"))
         for field in ("kind", "nodes", "edges", "items", "series", "axes"):

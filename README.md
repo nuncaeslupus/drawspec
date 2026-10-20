@@ -2,408 +2,265 @@
 
 <!-- mcp-name: io.github.nuncaeslupus/drawspec -->
 
+[![PyPI](https://img.shields.io/pypi/v/drawspec)](https://pypi.org/project/drawspec/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![drawspec MCP server – quality and maintenance score on Glama](https://glama.ai/mcp/servers/nuncaeslupus/drawspec/badges/score.svg)](https://glama.ai/mcp/servers/nuncaeslupus/drawspec)
 <!-- claude-arsenal:attribution: added by claude-arsenal's /init. Delete this block to drop it (it is not put back), or set `attribution = false` in the arsenal config.toml. -->
 [![Built with claude-arsenal](https://img.shields.io/badge/built%20with-claude--arsenal-d97756)](https://github.com/nuncaeslupus/claude-arsenal)
 <!-- /claude-arsenal:attribution -->
 
-[![drawspec MCP server – quality and maintenance score on Glama](https://glama.ai/mcp/servers/nuncaeslupus/drawspec/badges/score.svg)](https://glama.ai/mcp/servers/nuncaeslupus/drawspec)
+**Diagrams from a JSON description — no coordinates, so nothing to misplace.**
+You say what the diagram *means*: the boxes, the arrows, the labels, and a role
+for each. drawspec decides every position, size, route and colour, and draws a
+clean SVG, PNG or plain-text diagram.
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/hero.png" width="100%" alt="drawspec: a blueprint sheet with the wordmark, a JSON flow spec and the flow chart drawspec renders from it, with large faint venn and pie drawings behind the wordmark, a mind map and a project file tree drawn by drawspec, and beside them a small sequence diagram as drawspec's text output, once in box drawing and once in ASCII">
-</p>
-
-Declarative diagram spec → clean, themeable SVG. Writable by an LLM with no
-coordinates to get wrong.
-
-For anyone — person or language model — who puts diagrams in docs, specs and
-READMEs and is tired of arrows that miss their boxes:
+It is built for language models first. An LLM that writes SVG by hand gets the
+content right and the placement wrong — arrows that miss their boxes, text that
+spills out, lines that stop short. A drawspec document has no `x`, `y` or font
+size to get wrong: those fields are refused, and every mistake comes back as an
+error pointing at the exact field, so the model can fix it and try again.
 
 ```bash
-pip install drawspec && drawspec render diagram.json -o diagram.svg
+pip install drawspec
+drawspec render diagram.json -o diagram.svg
 ```
 
-**[See every kind drawn in the gallery →](https://nuncaeslupus.github.io/drawspec/docs/gallery/)**
+**[Browse the gallery: all 36 kinds, drawn →](https://nuncaeslupus.github.io/drawspec/docs/gallery/)**
 
-> **Status: it draws.** All thirty-six kinds render — `flow`, `tree`, `cycle`,
-> `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`,
-> `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`,
-> `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag` and `clock` — and each of
-> the eleven failure families below has a test asserting it cannot be expressed.
-> The vocabulary opened from nine to thirteen on evidence: see `docs/kinds-wanted.md`, which
-> sorts all 89 hand-drawn originals by the kind that would have to draw them.
-> `scatter` is the fourteenth, added on a different kind of evidence: a real
-> consumer's need for two continuous, ticked axes, which `quadrant` refuses.
-> `files` is the fifteenth: a directory listing drawn from its paths, as
-> pictures or as the `tree`-style text a code block wants. `states` is the
-> sixteenth: a state machine, with its initial and final dots, labelled
-> transitions, self-loops, and a refusal for any state nothing reaches.
-> `sequence` is the seventeenth: messages between participants, in order,
-> with activation bars inferred from each call and its reply. `lanes` is the
-> eighteenth: a `flow` document whose actors are drawn as swimlanes, so every
-> hand-off between parties is an arrow crossing a lane. `entities` is the
-> nineteenth: ER models, database schemas and class diagrams as one kind — boxes
-> of fields, relations that can land on one row, crow's feet or multiplicities at
-> the ends, inheritance with a hollow triangle, and a star schema round its fact
-> table. `gantt` is the twentieth: a plan, one row per task, with phases,
-> milestones, finish-to-start dependencies and marks such as *today* — on a
-> numbered axis in a unit you name, never dates; a task's row can carry its
-> deliveries and the iterations it goes round, so life cycles compare lane by lane.
-> `board` is the twenty-first: cards sorted into columns — a kanban board with
-> work-in-progress limits drawspec counts, a retrospective, or a story map whose
-> releases are slices across the columns with a heavy cut under the first.
-> `fishbone` is the twenty-second: one effect and the causes investigated,
-> grouped by category on bones slanting into a spine — the root cause drawn heavy.
-> `venn` is the twenty-third: two or three equal circles (four equal ellipses), each region's words
-> named by the sets it is in and placed inside it — no coordinates, no sizes.
-> `journey` is the twenty-fourth: one person's feeling, a named level per stage,
-> drawn as a line through every stage over what they do there — no scores.
-> `treemap` is the twenty-fifth: the parts of one known total, each a rectangle
-> by its area with its label inside it — a few proportions stated, not explored.
-> `sankey` is the twenty-sixth: where a known quantity goes, each flow a band as
-> thick as its amount, columns derived from the flows — a few flows stated, not explored.
-> `numberline` is the twenty-seventh: values and ranges on one scale, each end of a
-> range in or out of it — an inequality, the pH scale, a spectrum; not *when*, which is `timeline`.
-> `barmodel` is the twenty-eighth: a word problem as bars of parts in proportion,
-> braced with their checked totals — the bar model, or tape diagram, of primary maths.
-> `waterfall` is the twenty-ninth: how one total became another, step by step, every
-> subtotal checked against the running sum — the bridge chart of a budget paper.
-> `pie` is the thirtieth: the shares of one known total as labelled sectors — a few
-> proportions stated, as on a `treemap`, with a donut as a theme's choice.
-> `mindmap` is the thirty-first: a topic in the middle and its branches round it as
-> peers, nested three deep and balanced on two sides — where a `tree` would rank them.
-> `argument` is the thirty-second: a claim and the points for and against it, tagged and
-> hatched by stance, co-premises under one bracket — the argument map of a law or
-> critical-thinking course.
-> `familytree` is the thirty-third: people, the couples they form and their children,
-> a generation to a row and numbered for you (II-3), in the standard's symbols — the
-> pedigree of a genetics clinic, and the family tree of a history lesson.
-> `meter` is the thirty-fourth: one amount against its scale — a progress bar, a
-> fundraising thermometer, a dial or a bullet graph, alone or a few to a panel, every
-> band named in words.
-> `rag` is the thirty-fifth: workstreams or risks rated red, amber or green — a
-> highlight report, a risk register — each rating a word and a shape, never colour alone,
-> with its trend written in words.
-> `clock` is the thirty-sixth: analogue clock faces showing a time, for teaching it — the
-> hour hand moving on with the minutes, the time in words under each face or hidden for a
-> worksheet, and how long since an earlier time shaded round the face.
-> A `flow` also draws a causal loop diagram: a sign on every arrow, delay marks,
-> and named loops marked R or B, the type derived from the signs, never written.
+## Example
 
-## The problem
+You write this:
 
-Language models draw diagrams by emitting SVG with absolute `x`/`y`
-coordinates, and they fail at the same things every time: arrows with a head
-but no shaft, text that escapes its box, lines that stop short of the shape
-they point at, a different font size in every element.
+```json
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "flow",
+  "title": "The nightly import",
+  "description": "The vendor's export is fetched, checked and loaded into staging before it replaces the live table; a timeout and a deadlock are each retried in place.",
+  "nodes": [
+    {"id": "fetch", "text": "Fetch the vendor's export", "role": "start"},
+    {"id": "check", "text": "Do the row counts match?", "role": "decision"},
+    {"id": "load", "text": "Load into staging"},
+    {"id": "page", "text": "Page the data owner", "role": "terminal"},
+    {"id": "swap", "text": "Swap staging into live", "role": "terminal"}
+  ],
+  "edges": [
+    {"from": "fetch", "to": "fetch", "label": "timed out: retry"},
+    {"from": "fetch", "to": "check"},
+    {"from": "check", "to": "load", "label": "yes"},
+    {"from": "check", "to": "page", "label": "no"},
+    {"from": "load", "to": "load", "label": "deadlock: retry"},
+    {"from": "load", "to": "swap"}
+  ]
+}
+```
 
-These are not failures of judgement. In a corpus of 87 LLM-written diagrams
-reviewed by a human, **63 drew a complaint, and every one was about placement,
-not content** — nobody disputed what the diagram said, only where things ended
-up. See `docs/brief.md` for the measured breakdown.
+drawspec draws this:
 
-Placement failures cannot be reviewed away: a cheap mechanical check over
-finished SVG catches 17 of those 63 and misses 46. They have to be made
-impossible to express.
+<p align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/flow-retry-dark.png">
+  <img src="docs/readme/flow-retry-light.png" alt="A flow chart: fetch the vendor's export, retried on timeout; check the row counts; on a match load into staging, retried on deadlock, then swap into live; otherwise page the data owner" width="620">
+</picture>
+</p>
 
-## The approach
+The same document as text, for a terminal, a commit message or a code block
+(`--format text --charset ascii`):
 
-The author writes what the diagram *means* — nodes, edges, labels, and a
-semantic role for each. Everything that can be got wrong without seeing the
-result is not in the format at all:
+```text
+             *---------------------------*
+             | Fetch the vendor's export +-+ timed out: retry
+             |                           |<+
+             *-------------+-------------*
+                           |
+                           v
+                       +--------------------------+
+                       < Do the row counts match? >
+                       ++-------------------+-----+
+                        | yes               | no
+                   +----+                   |
+                   v                        v
++-------------------+                      .---------------------.
+| Load into staging +-+ deadlock: retry    ( Page the data owner )
+|                   |<+                    '---------------------'
++---------+---------+
+          |
+          v
+       .------------------------.
+       ( Swap staging into live )
+       '------------------------'
+```
 
-| The author writes | The tool decides |
-|---|---|
-| Nodes, edges, labels | Coordinates, box sizes, canvas size |
-| A semantic role per node | Font family and size, colour, stroke weight |
-| Grouping and diagram type | Edge routing, anchor points, arrowheads |
-| An optional size budget | Overlap resolution, label placement |
+A sequence diagram works the same way — participants and messages in order;
+activation bars, arrows and spacing are worked out for you:
 
-Output is SVG that can be pasted inline into a Markdown document: colour
-inherited from the surrounding page, no global `<style>`, no ids that collide
-when two diagrams share a page, and no information carried by colour alone —
-so it survives dark mode and greyscale printing. A theme with colours in it can
-bring a second theme for the dark page: `--variant dark=night.toml` writes one SVG
-that switches with the reader's `prefers-color-scheme` and with a page's own
-`data-theme` attribute. For anywhere an SVG cannot go —
-a chat, a slide, an attachment — the same drawing comes out as a PNG on a light,
-dark or transparent background (`pip install 'drawspec[png]'`, one self-contained
-wheel; no PDF, no JPEG). And for where no picture draws — a terminal, a commit
-message, a code block — twelve kinds, flows and state machines among them, come out
-as plain text, box-drawing or ASCII: 80 columns, 100 for swimlanes and sequences,
-or whatever `--width` you give.
+```json
+{
+  "version": 1,
+  "kind": "sequence",
+  "title": "Resolving a name the first time",
+  "caption": "Nothing is cached yet, so the resolver walks the hierarchy from the top.",
+  "participants": [
+    {"id": "laptop", "text": "Laptop"},
+    {"id": "resolver", "text": "Recursive resolver", "role": "emphasis"},
+    {"id": "root", "text": "Root server"},
+    {"id": "tld", "text": "`.org` server"},
+    {"id": "auth", "text": "Authoritative server"}
+  ],
+  "messages": [
+    {"from": "laptop", "to": "resolver", "text": "where is `wiki.example.org`?"},
+    {"from": "resolver", "to": "root", "text": "where is `wiki.example.org`?"},
+    {"from": "root", "to": "resolver", "text": "ask the `.org` servers", "role": "weak"},
+    {"from": "resolver", "to": "tld", "text": "where is `wiki.example.org`?"},
+    {"from": "tld", "to": "resolver", "text": "ask `ns1.example.org`", "role": "weak"},
+    {"from": "resolver", "to": "auth", "text": "where is `wiki.example.org`?"},
+    {"from": "auth", "to": "resolver", "text": "`203.0.113.7`", "role": "weak"},
+    {"from": "resolver", "to": "resolver", "text": "cache it for the TTL", "note": "the next lookup stops here"},
+    {"from": "resolver", "to": "laptop", "text": "`203.0.113.7`", "role": "weak"}
+  ]
+}
+```
 
-A small sequence, [`sequence-terminal.json`](docs/reference/sequence-terminal.json), as
-`drawspec render docs/reference/sequence-terminal.json --format text` draws it, and
-with `--charset ascii` added:
+<p align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/readme/sequence-dns-dark.png">
+  <img src="docs/readme/sequence-dns-light.png" alt="A sequence diagram: a laptop asks a recursive resolver, which asks the root, the .org server and the authoritative server in turn, caches the answer and replies" width="720">
+</picture>
+</p>
+
+## 36 kinds of diagram
+
+Flow charts, sequence diagrams, state machines, ER and class diagrams, Gantt
+charts, swimlanes, mind maps, timelines, Venn, Sankey, treemaps, pie and bar
+charts, kanban boards, fishbone, family trees, file trees and more — one format
+for all of them. Click a drawing for its source.
 
 <table>
-<tr><th><code>--format text</code></th><th><code>--charset ascii</code></th></tr>
 <tr>
-<td>
-
-```text
-┌───────┐     ┏━━━━━━━━━━┓
-│ Shell │     ┃ drawspec ┃
-└───┬───┘     ┗━━━━┯━━━━━┛
-    │ flow.json    │
-    ├─────────────▶┃
-    │ the drawing  ┃
-    │◁┄┄┄┄┄┄┄┄┄┄┄┄┄┤
-    │              │
-```
-
+<td align="center" width="33%">
+<a href="docs/reference/sequence-checkout.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/sequence-checkout-dark.png"><img src="docs/readme/sequence-checkout-light.png" alt="A checkout sequence diagram with alt and par fragments"></picture></a><br>
+<sub><code>sequence</code></sub>
 </td>
-<td>
-
-```text
-+-------+     #==========#
-| Shell |     # drawspec #
-+---+---+     #====#=====#
-    | flow.json    |
-    +------------->#
-    | the drawing  #
-    |<<............+
-    |              |
-```
-
+<td align="center" width="33%">
+<a href="docs/reference/entities-orders.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/entities-orders-dark.png"><img src="docs/readme/entities-orders-light.png" alt="A database schema of customers, orders and order lines with crow's-foot ends"></picture></a><br>
+<sub><code>entities</code></sub>
+</td>
+<td align="center" width="33%">
+<a href="docs/reference/states-ticket.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/states-ticket-dark.png"><img src="docs/readme/states-ticket-light.png" alt="A support ticket state machine"></picture></a><br>
+<sub><code>states</code></sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="33%">
+<a href="docs/reference/gantt-migration.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/gantt-migration-dark.png"><img src="docs/readme/gantt-migration-light.png" alt="A migration plan as a Gantt chart with phases and milestones"></picture></a><br>
+<sub><code>gantt</code></sub>
+</td>
+<td align="center" width="33%">
+<a href="docs/reference/mindmap-offsite.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/mindmap-offsite-dark.png"><img src="docs/readme/mindmap-offsite-light.png" alt="A mind map planning a team offsite"></picture></a><br>
+<sub><code>mindmap</code></sub>
+</td>
+<td align="center" width="33%">
+<a href="docs/reference/sankey-budget.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/sankey-budget-dark.png"><img src="docs/readme/sankey-budget-light.png" alt="A Sankey diagram of where a budget goes"></picture></a><br>
+<sub><code>sankey</code></sub>
+</td>
+</tr>
+<tr>
+<td align="center" width="33%">
+<a href="docs/reference/venn-telemetry.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/venn-telemetry-dark.png"><img src="docs/readme/venn-telemetry-light.png" alt="A three-set Venn diagram of logs, metrics and traces"></picture></a><br>
+<sub><code>venn</code></sub>
+</td>
+<td align="center" width="33%">
+<a href="docs/reference/chart-bars.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/chart-bars-dark.png"><img src="docs/readme/chart-bars-light.png" alt="A bar and line chart of incidents per quarter"></picture></a><br>
+<sub><code>chart</code></sub>
+</td>
+<td align="center" width="33%">
+<a href="docs/reference/fishbone-flaky-ci.json"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/readme/fishbone-flaky-ci-dark.png"><img src="docs/readme/fishbone-flaky-ci-light.png" alt="A fishbone diagram of causes of a flaky CI"></picture></a><br>
+<sub><code>fishbone</code></sub>
 </td>
 </tr>
 </table>
 
-## What it looks like
+The full list: `flow` · `tree` · `cycle` · `stack` · `timeline` · `columns` ·
+`matrix` · `pyramid` · `rings` · `funnel` · `chart` · `quadrant` · `scatter` ·
+`curve` · `files` · `states` · `sequence` · `lanes` · `entities` · `gantt` ·
+`board` · `fishbone` · `venn` · `journey` · `treemap` · `sankey` · `numberline` ·
+`barmodel` · `waterfall` · `pie` · `mindmap` · `argument` · `familytree` ·
+`meter` · `rag` · `clock`. Each has an example in [`docs/reference`](docs/reference),
+and [the gallery](https://nuncaeslupus.github.io/drawspec/docs/gallery/)
+(`docs/gallery/index.html`) draws every one.
 
-Three documents and the drawings they produced. Nothing was positioned by hand,
-and every one of these is a file in [`docs/reference/`](docs/reference) that
-`make gallery` renders — so the picture is always the render of the spec beside
-it.
+## Using it from an LLM
 
-### A flow
+- **MCP server** — `pip install 'drawspec[mcp]'` adds `drawspec-mcp`, with the tools
+  `list_kinds`, `get_example`, `get_schema`, `validate_document` and
+  `render_document`. A mistake comes back as data the model can act on:
+  `{"pointer": "/edges/0/to", "message": …}`.
+  See [the guide](docs/guide.md#using-it-from-an-agent-the-mcp-server).
+- **[`AGENTS.md`](AGENTS.md)** — the whole format on one page, written for a model to
+  read in one pass: which kind fits, the size limits, the roles, worked examples, and
+  what each error means. [`llms.txt`](llms.txt) indexes it.
+- **Agent Skill** — copy [`skills/drawspec/`](skills/drawspec/SKILL.md) into your
+  skills directory.
+- **JSON Schema** — start a document with
+  `"$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json"`
+  for completion and errors as you type, in an editor or a structured-output call.
 
-```json
-{
-  "version": 1,
-  "kind": "flow",
-  "title": "Triaging a report",
-  "nodes": [
-    {"id": "arrive", "text": "A report arrives", "role": "start"},
-    {"id": "repro", "text": "Does it reproduce?", "role": "decision"},
-    {"id": "fix", "text": "Schedule a fix", "role": "step"},
-    {"id": "ask", "text": "Ask for the document", "role": "terminal"}
-  ],
-  "edges": [
-    {"from": "arrive", "to": "repro"},
-    {"from": "repro", "to": "fix", "label": "yes"},
-    {"from": "repro", "to": "ask", "label": "no"}
-  ]
-}
-```
+A typical loop: the model picks a kind, writes the JSON, calls
+`validate_document`, fixes what is reported, and renders.
 
-<p align="center">
-  <img src="docs/gallery/flow-triage.svg" alt="A flow chart: a report arrives, is asked whether it reproduces, and is either scheduled for a fix or sent back for the document" width="460">
-</p>
+## What you get
 
-The `role` on each node is the only appearance decision in the file, and it is a
-semantic one: `start` and `terminal` came out as pills and `decision` as a
-diamond because *the theme* says those roles look like that. Change the theme and
-every diagram in your project changes with it.
+| You write | drawspec decides |
+|---|---|
+| Nodes, edges, labels | Coordinates, box sizes, canvas size |
+| A semantic role per node (`start`, `decision`, `emphasis`…) | Shape, font, colour, stroke weight |
+| The kind of diagram | Layout, edge routing, arrowheads, label placement |
 
-### A timeline
+- **SVG** that pastes inline into Markdown or HTML: it takes the page's text colour,
+  carries no global styles or colliding ids, and never relies on colour alone, so it
+  works in dark mode and in greyscale print. `--variant dark=<theme>` adds a dark
+  version that follows `prefers-color-scheme`.
+- **PNG** on a light, dark or transparent background (`pip install 'drawspec[png]'`).
+- **Plain text** (box-drawing or ASCII) for twelve kinds, including flows, state
+  machines, sequences, Gantt charts and file trees.
+- **Themes**: change one TOML file and every diagram in a project follows.
+  `drawspec theme from site.css` builds one from your CSS or design tokens.
+- **Readable by design**: each kind has a size budget (15 boxes for a `flow`);
+  past it, drawspec asks you to split the diagram rather than draw a dense one.
 
-The thirty-six kinds are the part people do not expect, so here is one that is not
-a box-and-arrow diagram at all:
-
-```json
-{
-  "version": 1,
-  "kind": "timeline",
-  "title": "How the work went",
-  "items": [
-    {"text": "Brief", "note": "March"},
-    {"text": "Specification", "note": "April"},
-    {"text": "Plan", "note": "May"},
-    {"text": "Foundation", "note": "June to July"},
-    {"text": "Kinds", "note": "August"}
-  ]
-}
-```
-
-<p align="center">
-  <img src="docs/gallery/timeline-work.svg" alt="A timeline: brief, specification, plan, foundation and kinds, each with the month it happened below the axis" width="560">
-</p>
-
-Above the line is what happened; below it is when. That is what `note` means on a
-timeline, and it is the only kind that draws one.
-
-### A chart
-
-```json
-{
-  "version": 1,
-  "kind": "chart",
-  "title": "Where the tickets went",
-  "axes": {
-    "horizontal": { "label": "Quarter", "min": 0, "max": 5 },
-    "vertical": { "label": "Incidents" }
-  },
-  "series": [
-    { "name": "Platform", "mark": "bar", "data": [[1, 34], [2, 41], [3, 28], [4, 22]] },
-    { "name": "Service desk", "mark": "bar", "data": [[1, 52], [2, 47], [3, 55], [4, 38]] },
-    { "name": "Still open", "mark": "line", "data": [[1, 12], [2, 18], [3, 9], [4, 6]] }
-  ]
-}
-```
-
-<p align="center">
-  <img src="docs/gallery/chart-bars.svg" alt="A bar chart of two teams' incident counts over four quarters, with a line for the ones still open" width="560">
-</p>
-
-No colours are named anywhere in that file. The series are told apart by fill
-pattern as well as by hue, which is what lets the same drawing survive greyscale
-printing — a theme is checked against that invariant by `drawspec theme check`.
-
-**There are no coordinates in any of them, and none may be written.** `x`,
-`font_size`, `stroke` and twenty-odd other fields are refused by name, with the
-JSON pointer of the place they were written. A document may size the whole canvas
-— `width` and `height` at the top level — and may not size one box in it.
-
-## Try it
+## Command line
 
 ```bash
-pip install drawspec               # or drawspec[png] for PNG export
-
-drawspec render diagram.json -o diagram.svg   # or to stdout
-drawspec render diagram.json -o diagram.png   # needs drawspec[png]; --background dark, --scale 3
-drawspec render diagram.json --theme blueprint -o sheet.png  # on a drafting sheet, like the banner
-drawspec render diagram.json --format text      # plain text, 80 columns; --charset ascii
-drawspec validate diagram.json                # every violation, by JSON pointer
-drawspec theme check default                  # including the greyscale invariant
-drawspec theme from site.css -o house.toml    # a theme from your brand's CSS or design tokens
-drawspec schema --out drawspec-v1.schema.json # for editor completion
+drawspec render diagram.json -o diagram.svg          # or to stdout
+drawspec render diagram.json -o diagram.png          # needs drawspec[png]; --background dark, --scale 3
+drawspec render diagram.json --theme blueprint -o sheet.png
+drawspec render diagram.json --format text           # 80 columns; --charset ascii
+drawspec validate diagram.json                       # every error, by JSON pointer
+drawspec theme from site.css -o house.toml           # a theme from your CSS
+drawspec schema --out drawspec-v1.schema.json        # for editor completion
 ```
-
-Put `"$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json"` at the top
-of a document and any editor with JSON Schema support completes the fields and
-flags a refused one *while you type it*, rather than after a render.
-
-## The gallery
-
-**[Every kind, drawn, on one page →](https://nuncaeslupus.github.io/drawspec/docs/gallery/)**
-
-One document per kind lives in [`docs/reference`](docs/reference), and `make
-gallery` renders every one of them into `docs/gallery/index.html`, which is what
-that link publishes. It is the fastest way to see the whole vocabulary, and the
-fastest way to see what a change did — looking at it is how four rendering
-defects were found that no gate had caught.
-
-It is committed as well as published, so a diff shows what a change did to the
-pictures.
-
-Every kind is drawn to the theme's one canvas width, and a diagram narrower than
-it is centred in it rather than cropped to its own ink. That is what makes the
-three above the same type size at the same column width — and it is the whole
-reason the width belongs to the theme. Set `[canvas] width_mode = "ink"` for a
-diagram meant to be sized on its own.
-
-Every kind is also framed alike: `[canvas] margin` is the blank between the
-drawing and the edge of the figure, one number applied in one place. Before it
-existed each family invented its own, so a timeline above a flow chart bled to
-the edge beside the flow's quarter-inch of white.
 
 ## What it is not
 
-drawspec draws **simple, declarative diagrams well**, and it is the wrong tool
-for several jobs it might look like it does.
-
-* **It is not a Graphviz replacement.** Graphviz is a graph-layout engine with
-  decades of work behind its layered and force-directed placement, and it will
-  lay out a hundred-node graph that drawspec refuses. drawspec's layout exists
-  to serve thirty-six named diagram shapes at the sizes a document reads at; past
-  each kind's readability budget (fifteen boxes on a `flow`) it will tell you to
-  split the diagram into an overview and details rather than produce something
-  dense and unreadable, which is deliberate but is not what a graph tool does.
-* **It is not charting software.** `chart` has lines, bars, areas, stacks,
-  point labels and a legend. It has no statistics, no interactivity, no dates,
-  no log scales, no error bars, and no second axis. If you are exploring data,
-  use a plotting library; if you are *stating* a small number you already know,
-  this draws it in the same ink and at the same type size as every other
-  diagram on the page, which a plotting library will not. `treemap` and `sankey`
-  are held to the same line: ten parts and one level of groups at most, every part
-  labelled inside itself; fourteen nodes in four columns, every flow balanced and
-  thick enough to see — a few proportions and flows you already know, not a
-  disk-usage explorer or a flow analyser.
-* **It is not a drawing program.** A document has no coordinates in it, on
-  purpose — see *The approach* above. Anything whose whole point is where things are
-  (a floor plan, a map, a picture of two overlapping Wi-Fi cells) has no
-  declarative description, and drawspec should decline it rather than pretend.
-* **It is not a rich-text system.** Text carries `**bold**` and `` `code` ``
-  spans and nothing else.
-
-What it is good at is the long tail of ordinary explanatory diagrams — the kind
-that fills a set of course notes, a design document or a runbook — drawn
-consistently, reviewably, and without an author ever choosing a coordinate.
+- **Not a graph-layout engine.** For a hundred-node graph, use Graphviz.
+- **Not a plotting library.** `chart` states a few numbers you already know; it has
+  no statistics, dates, log scales or interactivity.
+- **Not a drawing program.** Anything whose point is *where* things are — a floor
+  plan, a map — has no place in a format without coordinates.
 
 ## Documentation
 
-[**The guide**](docs/guide.md) is the way in, and it is meant to be enough on its
-own — install, a first diagram, choosing a kind, embedding the output, validating
-in a build, and writing a theme. Under it sit three references, each **generated
-from the code it describes**, so none of them can quietly go out of date:
-
-| Page | What it answers |
+| Page | What it covers |
 |---|---|
-| [The document format](docs/format.md) | Every field a document may carry, by kind — and every field that is refused, with the reason |
-| [The command line](docs/cli.md) | Every command, argument and exit code |
-| [The theme reference](docs/theme.md) | Every key a theme may set, and what the default sets it to |
+| [Guide](docs/guide.md) | Install, a first diagram, choosing a kind, embedding, validating in CI, themes |
+| [Document format](docs/format.md) | Every field of every kind, and every refused field with the reason |
+| [Command line](docs/cli.md) | Every command, option and exit code |
+| [Themes](docs/theme.md) | Every theme key and its default |
+| [AGENTS.md](AGENTS.md) | The format on one page, for language models |
 
-`make docs` regenerates all three; a test fails if what is committed is not what
-the code would write, which is the same arrangement the published JSON Schema
-has.
-
-### If you are an agent, or pointing one here
-
-[**`AGENTS.md`**](AGENTS.md) is the whole format on one page — whether to draw
-at all, which kind fits what the reader must understand, the readability budget,
-the roles, worked examples, and what each refusal is telling you to do. It is written to be read in a single pass rather than navigated, which is
-what the guide and the references are for. [`llms.txt`](llms.txt) is the index
-that points at it.
-
-And if your client speaks **MCP**, `pip install 'drawspec[mcp]'` gives you
-`drawspec-mcp`: `list_kinds`, `get_example`, `get_schema`, `validate_document` and
-`render_document` as tools, so a refusal arrives as
-`{"pointer": "/edges/0/to", "message": …}` in the model's own loop instead of as
-prose on stderr it has to read. Same checks, same messages, no shell. See
-[the guide](docs/guide.md#using-it-from-an-agent-the-mcp-server).
-
-For agents that load [Agent Skills](https://agentskills.io), copy
-[`skills/drawspec/`](skills/drawspec/SKILL.md) into your skills directory: a
-short pointer that installs drawspec, reads `AGENTS.md`, and validates before rendering.
-
-It cannot drift either: a test asserts that every kind in the vocabulary is named
-in it, that every role the theme declares appears, and that **every example in it
-is a document that still validates**. An agent copying from a stale brief is the
-failure that file exists to prevent, so it is held to the same standard as the
-generated references.
-
-## Repository layout
-
-Everything you would look in, and the two directories you can ignore.
-
-| Path | What |
-|---|---|
-| `src/` | The library and CLI — `src/drawspec/` is the whole of the shipped package |
-| `docs/` | Everything written. The four entries below are the ones worth knowing apart |
-| `docs/guide.md` | Using drawspec in another project: install, first diagram, embedding, theming |
-| `docs/format.md`, `docs/cli.md`, `docs/theme.md` | The three generated references. `make docs` writes them; `tools/docs.py` is the generator |
-| `docs/reference/` | One document per kind — the examples, and what the gallery and the acceptance suite both render |
-| `docs/gallery/` | The rendered gallery: `make gallery` writes it, and it is committed so a diff shows what a change did to the pictures |
-| `docs/brief.md` | The originating brief: the problem, the measured failure taxonomy, the acceptance tests. `theme-requirements.md`, `kinds-wanted.md` and the `plan-round-*.md` files sit beside it — the evidence each round was decided on |
-| `schema/` | The published JSON Schema, versioned and addressable. Copied into the wheel from here, so there is only ever one of it |
-| `corpus/` | 87 anonymized LLM-written diagrams and their measurements, as evidence |
-| `skills/` | An Agent Skill that points an agent at drawspec — install, read `AGENTS.md`, validate, render. A test holds every command it names to the CLI |
-| `tests/` | The suite. `test_acceptance.py` and `test_failure_families.py` are the two that encode the promises rather than the mechanics |
-| `tools/` | Development scripts, not shipped: the docs generator, the gallery builder, and the checkers — `collisions.py` (is the word readable), `clipping.py` (is the word on the page) and `frames.py` (does an edge cut through a frame it has no end in) |
-| `status/` | The origin documents: the specification this was built from, and its plan. Kept because `docs/brief.md` is the summary and this is the source, and because the session protocol reads `status/plan.md` |
-| `.claude/`, `claude-arsenal/` | Development machinery for the agent workflow this is built with — task queue, session protocol, vendored skills. **Nothing here affects the package**; skip both if you are reading the project rather than working on it |
+The references are generated from the code (`make docs`), and a test fails if they
+drift.
 
 ## Development
 
@@ -411,22 +268,27 @@ Everything you would look in, and the two directories you can ignore.
 make sync     # install with dev extras
 make lint     # ruff + strict mypy
 make test     # pytest
-make gallery  # render every reference document and look at it
+make gallery  # render every reference document into docs/gallery
+make readme   # redraw the README's example images in docs/readme
 make docs     # regenerate the format, CLI and theme references
 make schema   # regenerate the published JSON Schema
 ```
 
+The library is in `src/drawspec/`, the examples in `docs/reference/`, the tests in
+`tests/`. `docs/brief.md` and `corpus/` hold the original design brief and the
+evidence it was based on. `.claude/` and `claude-arsenal/` are development tooling
+and do not affect the package.
+
 ## Related projects
 
-Built with [claude-arsenal](https://github.com/nuncaeslupus/claude-arsenal), the
-spec-driven Claude Code workflow and gated task queue this repo is developed on —
-whose spec and design skills draw their diagrams as drawspec documents. Same author:
+Built with [claude-arsenal](https://github.com/nuncaeslupus/claude-arsenal), a
+spec-driven Claude Code workflow whose skills draw their diagrams with drawspec.
+By the same author:
 
-- [claude-arsenal](https://github.com/nuncaeslupus/claude-arsenal) — a Claude Code skill and plugin marketplace: specs before code, failing tests first, gates with numbers.
 - [integral-job-search](https://github.com/nuncaeslupus/integral-job-search) — a candidate-centred job search run as a conversation in Claude Code.
 - [literary-critic](https://github.com/nuncaeslupus/literary-critic) — lets an LLM index, analyse and advise on a full novel manuscript the way a professional editor would.
 - [doc-control](https://github.com/nuncaeslupus/doc-control) — a deterministic tool for AI agents to edit Word documents as tracked changes (in development).
 
 ## License
 
-MIT — see `LICENSE`.
+MIT — see [`LICENSE`](LICENSE).
