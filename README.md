@@ -29,7 +29,7 @@ pip install drawspec
 drawspec render diagram.json -o diagram.svg
 ```
 
-**[Browse the gallery: every kind, drawn →](https://nuncaeslupus.github.io/drawspec/docs/gallery/)**
+**[Browse the gallery: more than 30 kinds, drawn →](https://nuncaeslupus.github.io/drawspec/docs/gallery/)**
 
 ## Example
 
@@ -133,7 +133,7 @@ activation bars, arrows and spacing are worked out for you:
 </picture>
 </p>
 
-## Kinds of diagram
+## More than 30 kinds of diagram
 
 Flow charts, sequence diagrams, state machines, ER and class diagrams, Gantt
 charts, swimlanes, mind maps, timelines, Venn, Sankey, treemaps, pie and bar
