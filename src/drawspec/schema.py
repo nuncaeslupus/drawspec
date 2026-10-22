@@ -12243,6 +12243,7 @@ def _mindmap_document(document: Mapping[str, Any]) -> Document:
 
 
 def _sunburst_node(entry: Mapping[str, Any]) -> SunburstNode:
+    """One sunburst node and its subtree, built from the validated mapping."""
     return SunburstNode(
         text=str(entry["text"]),
         children=tuple(_sunburst_node(child) for child in entry.get("children", ())),

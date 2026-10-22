@@ -113,6 +113,7 @@ def sunburst_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -
     slice_angle = 360.0 / leaves
 
     def assign(nodes: tuple[SunburstNode, ...], depth: int, start: float, ancestor: int) -> None:
+        """Lay `nodes` out from `start`, each spanning its leaves, children within."""
         angle = start
         for index, node in enumerate(nodes):
             top = ancestor if depth > 1 else index
