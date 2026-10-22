@@ -301,7 +301,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | Field | Type | Required | What it is |
 |---|---|---|---|
 | `centre` | string | no | An optional hub label in the middle — the overall topic. Left out, the first ring fills the centre. |
-| `nodes` | array of [sunburst-node](#sunburst-node-object), at least 2 | **yes** | The first ring, 2 to 8, clockwise from twelve o'clock in the order written, each with optional `children` for the ring nested inside it. Nested up to three rings, 30 sectors in all; every terminal sector takes an equal angle, so there are no amounts. |
+| `nodes` | array of [sunburst-node](#sunburst-node-object), at least 2 | **yes** | The first ring, 2 to 8, clockwise from twelve o'clock in the order written, each with optional `children` for the ring nested inside it. Nested up to three rings, 150 sectors in all; every terminal sector takes an equal angle, so there are no amounts. |
 
 ### `mindmap`
 

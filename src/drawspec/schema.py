@@ -604,8 +604,10 @@ SUNBURST_DEPTH_MAX: Final = 3
 #: for a word read outward.
 SUNBURST_RING_MAX: Final = 8
 
-#: The most nodes in all rings together: past this the wheel is searched, not read.
-SUNBURST_NODE_MAX: Final = 30
+#: The most nodes in all rings together. A full feelings-wheel is ~130 terms and
+#: reads cleanly on a wide enough canvas; past this a wheel is searched, not read,
+#: and anything the type cannot hold at the legible floor is refused by fit first.
+SUNBURST_NODE_MAX: Final = 150
 
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
 #: into each other at the canvas width.
@@ -878,10 +880,10 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     "rag": (("rows", RAG_ROW_MAX),),  # [10]
     # Set by the corpus: a worksheet holds a dozen faces (C4).
     "clock": (("clocks", CLOCK_MAX),),  # [8]
-    # Owner-approved: a handful of first-ring sectors, three rings, 30 in all. The
+    # Owner-approved: up to eight first-ring sectors, three rings, 150 in all. The
     # total across the rings is checked with the nodes (see `_sunburst_violations`),
     # since the nesting key is `children`, not `nodes`.
-    "sunburst": (("nodes", SUNBURST_RING_MAX),),  # [8 in the first ring, 28 in all]
+    "sunburst": (("nodes", SUNBURST_RING_MAX),),  # first ring; the total is _sunburst_violations
 }
 
 
@@ -4232,7 +4234,7 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             description=(
                 "The first ring, 2 to 8, clockwise from twelve o'clock in the order written, "
                 "each with optional `children` for the ring nested inside it. Nested up to "
-                "three rings, 30 sectors in all; every terminal sector takes an equal angle, "
+                "three rings, 150 sectors in all; every terminal sector takes an equal angle, "
                 "so there are no amounts."
             ),
         ),

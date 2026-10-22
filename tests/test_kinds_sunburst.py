@@ -15,7 +15,7 @@ from typing import Any
 import pytest
 
 from drawspec import render
-from drawspec.errors import FitError
+from drawspec.errors import FitError, ThemeError
 from drawspec.kinds.sunburst import SunburstDrawing, sunburst_drawing
 from drawspec.schema import SUNBURST_NODE_MAX, parse_document, validate_document
 from drawspec.text import TextMeasurer
@@ -157,6 +157,17 @@ def test_sunburst_rejects_coordinate_and_weight_fields() -> None:
         assert validate_document(document), f"{field} should be refused"
 
 
+def test_sunburst_shallow_leaf_reaches_the_rim() -> None:
+    # A tree of uneven depth still draws as a full disc: a terminal node shallower
+    # than the deepest ring spans out to the rim, while an inner node keeps its ring.
+    drawing = drawn(wheel())
+    rim = drawing.radius
+    shallow = [s for s in drawing.segments if s.leaf and s.depth < drawing.rings]
+    assert shallow, "the sample wheel should have a leaf above the deepest ring"
+    assert all(abs(s.r_out - rim) < 1e-6 for s in shallow)
+    assert all(s.r_out < rim - 1e-6 for s in drawing.segments if not s.leaf)
+
+
 def test_sunburst_deeply_nested_input_is_refused_not_a_recursionerror() -> None:
     # `sunburst-node` is self-referential; validate_document must not recurse into
     # a RecursionError on pathologically deep input (it serves MCP/agent input).
@@ -169,6 +180,36 @@ def test_sunburst_deeply_nested_input_is_refused_not_a_recursionerror() -> None:
     document = wheel(nodes=[deep])
     found = validate_document(document)
     assert found and any("fourth ring" in message for message in messages(document).splitlines())
+
+
+def test_sunburst_theme_weights_apply_and_make_heavier_lines() -> None:
+    heavy = load_theme({"version": 1, "sunburst": {"weights": [0.02, 0.01, 0.005]}})
+    assert heavy.sunburst.weights == (0.02, 0.01, 0.005)
+    # The structure is solid ink; heavier weights lay down more of it.
+    doc = parse_document(wheel())
+
+    def ink_area(theme: object) -> float:
+        drawing = sunburst_drawing(doc, theme, MEASURER)  # type: ignore[arg-type]
+        total = 0.0
+        for p in drawing.scene.primitives:
+            pts = getattr(p, "points", None)
+            if getattr(p, "fill", "") == "solid" and pts:
+                xs = [x for x, _ in pts]
+                ys = [y for _, y in pts]
+                total += (max(xs) - min(xs)) * (max(ys) - min(ys))
+        return total
+
+    assert ink_area(heavy) > ink_area(THEME)
+
+
+def test_sunburst_weights_that_thicken_outwards_are_refused() -> None:
+    with pytest.raises(ThemeError):
+        load_theme({"version": 1, "sunburst": {"weights": [0.002, 0.004, 0.001]}})
+
+
+def test_sunburst_weights_need_one_per_level() -> None:
+    with pytest.raises(ThemeError):
+        load_theme({"version": 1, "sunburst": {"weights": [0.006, 0.003]}})
 
 
 def test_sunburst_refuses_more_than_the_node_budget() -> None:
