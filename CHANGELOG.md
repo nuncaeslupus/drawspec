@@ -10,6 +10,16 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+### Added
+
+- **A `sunburst` kind.** A hierarchy drawn as concentric rings of sectors, each label read
+  from the middle outward: a wheel of emotions, a taxonomy. The input is just a tree of
+  `{text, children?}` with an optional `centre` hub — every terminal node takes an equal
+  slice and a parent spans its own, so there are no amounts. The rings are sized to the
+  words they hold, labels are set at one size and stepped down only to fit, and none is
+  ever upside down. Up to three rings and 30 sectors; `make docs`, `make schema` and the
+  gallery pick it up.
+
 ## [0.4.3] — 2026-10-20
 
 ### Changed

@@ -2756,6 +2756,73 @@
         "clocks"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "sunburst",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "sunburst"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "centre": {
+          "type": "string",
+          "description": "An optional hub label in the middle — the overall topic. Left out, the first ring fills the centre."
+        },
+        "nodes": {
+          "type": "array",
+          "description": "The first ring, 2 to 8, clockwise from twelve o'clock in the order written, each with optional `children` for the ring nested inside it. Nested up to three rings, 30 sectors in all; every terminal sector takes an equal angle, so there are no amounts.",
+          "items": {
+            "$ref": "#/$defs/sunburst-node"
+          },
+          "minItems": 2
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "nodes"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -4912,6 +4979,27 @@
       },
       "required": [
         "members"
+      ],
+      "additionalProperties": false
+    },
+    "sunburst-node": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "children": {
+          "type": "array",
+          "description": "The sectors nested inside this one — the next ring, drawn clockwise in the order written. At most three rings in all; leave it out of a node that ends the hierarchy.",
+          "items": {
+            "$ref": "#/$defs/sunburst-node"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "text"
       ],
       "additionalProperties": false
     },

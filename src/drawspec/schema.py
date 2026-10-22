@@ -590,6 +590,23 @@ CLOCK_MAX: Final = 12
 #: hours the hour hand has gone all the way round and the sweep says nothing.
 CLOCK_SINCE_MAX: Final = 12 * 60
 
+#: Sunburst wheels: a hierarchy drawn as concentric rings of sectors, each label
+#: read from the middle outward. A layout family of its own; every sector's angle
+#: is its share of the circle, computed from the tree — a terminal node gets an
+#: equal slice and a parent spans its descendants.
+SUNBURST_KINDS: Final = ("sunburst",)
+
+#: The most rings (levels of nodes). Three keeps the outer labels readable; a
+#: fourth is refused, with the hint to fold detail into fewer rings.
+SUNBURST_DEPTH_MAX: Final = 3
+
+#: The most nodes in the first ring. Past eight the central wedges are too narrow
+#: for a word read outward.
+SUNBURST_RING_MAX: Final = 8
+
+#: The most nodes in all rings together: past this the wheel is searched, not read.
+SUNBURST_NODE_MAX: Final = 30
+
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
 #: into each other at the canvas width.
 NUMBERLINE_TICK_MAX: Final = 30
@@ -666,6 +683,9 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: — a `matrix` scale is a tone with no word on it, and a `board` sorts, not rates.
 #: `clock` is the twenty-third: two hands placed by a time — a `meter` dial reads
 #: one amount on a half-circle, and nothing else places a hand by the hour.
+#: `sunburst` is the twenty-fourth: a hierarchy as concentric rings of sectors,
+#: read from the middle outward — a `treemap` nests by area and a `mindmap`
+#: radiates, but neither splits a ring into its parent's sectors.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -693,6 +713,7 @@ KINDS: Final = (
     + METER_KINDS
     + RAG_KINDS
     + CLOCK_KINDS
+    + SUNBURST_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -857,6 +878,10 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     "rag": (("rows", RAG_ROW_MAX),),  # [10]
     # Set by the corpus: a worksheet holds a dozen faces (C4).
     "clock": (("clocks", CLOCK_MAX),),  # [8]
+    # Owner-approved: a handful of first-ring sectors, three rings, 30 in all. The
+    # total across the rings is checked with the nodes (see `_sunburst_violations`),
+    # since the nesting key is `children`, not `nodes`.
+    "sunburst": (("nodes", SUNBURST_RING_MAX),),  # [8 in the first ring, 28 in all]
 }
 
 
@@ -2688,6 +2713,20 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "sunburst-node": (
+        _text(),
+        FieldSpec(
+            "children",
+            "array",
+            item_ref="sunburst-node",
+            min_items=1,
+            description=(
+                "The sectors nested inside this one — the next ring, drawn clockwise in the "
+                "order written. At most three rings in all; leave it out of a node that ends "
+                "the hierarchy."
+            ),
+        ),
+    ),
     "treemap-group": (
         FieldSpec(
             "id",
@@ -4175,6 +4214,29 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    SUNBURST_KINDS: (
+        FieldSpec(
+            "centre",
+            "string",
+            description=(
+                "An optional hub label in the middle — the overall topic. Left out, the first "
+                "ring fills the centre."
+            ),
+        ),
+        FieldSpec(
+            "nodes",
+            "array",
+            required=True,
+            item_ref="sunburst-node",
+            min_items=2,
+            description=(
+                "The first ring, 2 to 8, clockwise from twelve o'clock in the order written, "
+                "each with optional `children` for the ring nested inside it. Nested up to "
+                "three rings, 30 sectors in all; every terminal sector takes an equal angle, "
+                "so there are no amounts."
+            ),
+        ),
+    ),
     MINDMAP_KINDS: (
         FieldSpec(
             "centre",
@@ -4814,6 +4876,14 @@ class MindmapBranch:
 
 
 @dataclass(frozen=True)
+class SunburstNode:
+    """One sector of a `sunburst`, with the sectors nested inside it, in order."""
+
+    text: str
+    children: tuple[SunburstNode, ...] = ()
+
+
+@dataclass(frozen=True)
 class PiePart:
     """One part of a `pie`: a sector whose angle is its share of the total."""
 
@@ -5124,7 +5194,7 @@ class Document:
     """A `pie`'s parts, in the order written: clockwise from twelve o'clock."""
 
     centre: str = ""
-    """A `mindmap`'s topic, drawn in the middle."""
+    """A `mindmap`'s topic, or a `sunburst`'s optional hub label, drawn in the middle."""
 
     branches: tuple[MindmapBranch, ...] = ()
     """A `mindmap`'s main branches, in the order written: clockwise from the top right."""
@@ -5159,6 +5229,10 @@ class Document:
     clock_readout: str = "words"
     """What is written under a `clock` document's faces."""
 
+    sunburst_nodes: tuple[SunburstNode, ...] = ()
+    """A `sunburst`'s first ring, in the order written: clockwise from twelve o'clock,
+    each node's `children` the ring nested inside it."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -5189,6 +5263,7 @@ class Document:
             ("meter", METER_KINDS),
             ("rag", RAG_KINDS),
             ("clock", CLOCK_KINDS),
+            ("sunburst", SUNBURST_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -5409,6 +5484,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_rag_refusal(violation) for violation in found]
     if kind in CLOCK_KINDS:
         found = [_clock_refusal(violation) for violation in found]
+    if kind in SUNBURST_KINDS:
+        found = [_sunburst_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -5787,6 +5864,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _meter_violations(document)
     if kind in CLOCK_KINDS:
         return _clock_violations(document)
+    if kind in SUNBURST_KINDS:
+        return _sunburst_violations(document)
     if kind == "chart":
         return _chart_violations(document)
     if kind == "quadrant":
@@ -10386,6 +10465,118 @@ def _mindmap_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a sunburst has no place for a field an author may reach for.
+SUNBURST_REFUSED: Final = {
+    "angle": (
+        "a sector's angle is its share of the circle, computed from the tree — a terminal "
+        "node takes an equal slice and a parent spans its children. It is never written"
+    ),
+    "weight": (
+        "every terminal node weighs the same, so the wheel is read from its shape alone. A "
+        "wheel sized by amounts is a `pie` or a `treemap`"
+    ),
+    "value": (
+        "a sunburst states a hierarchy, not quantities: the shares are equal and derived. "
+        "For an amount per part draw a `pie` or a `treemap`"
+    ),
+    "amount": (
+        "a sunburst states a hierarchy, not quantities: the shares are equal and derived. "
+        "For an amount per part draw a `pie` or a `treemap`"
+    ),
+    "size": (
+        "a label's size is chosen to fit its sector, largest first and smaller for a longer "
+        "word: the type is drawspec's, never the author's"
+    ),
+    "radius": (
+        "the rings are sized to the words they hold; a radius set by the author is a coordinate"
+    ),
+    "role": (
+        "a sunburst node is words in a sector, with no shape or stance to mark: it takes only "
+        "`text` and `children`"
+    ),
+    "id": "nothing refers to a sector: its place is where it is written, nested in its parent",
+    "edges": (
+        "a sunburst is nested, so there is nothing to connect; a line between sectors is a `flow`"
+    ),
+}
+
+
+def _sunburst_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a sunburst, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    unknown = "is not a known field" in violation.message or (
+        "is not" in violation.message and "field" in violation.message
+    )
+    if unknown and name in SUNBURST_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {SUNBURST_REFUSED[name]}.")
+    if parts[1:] == ["nodes"] and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a sunburst needs at least 2 nodes in its first ring: one sector is a whole "
+            "circle, which says nothing.",
+        )
+    if name == "children" and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "an empty 'children' list draws nothing: leave the field out of a node that ends "
+            "the hierarchy.",
+        )
+    return violation
+
+
+def _sunburst_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """No empty words, no fourth ring, and the first-ring and total caps."""
+    found: list[Violation] = []
+    centre = document.get("centre")
+    if isinstance(centre, str) and centre and not centre.strip():
+        found.append(Violation("/centre", "the hub label needs words, or leave `centre` out."))
+
+    total = 0
+    first = document.get("nodes")
+
+    def walk(entries: object, pointer: str, depth: int) -> None:
+        nonlocal total
+        if not isinstance(entries, list):
+            return
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, dict):
+                continue
+            total += 1
+            here = f"{pointer}/{index}"
+            text = entry.get("text")
+            if isinstance(text, str) and not text.strip():
+                found.append(
+                    Violation(
+                        f"{here}/text", "a sector needs words: an empty one is a blank wedge."
+                    )
+                )
+            children = entry.get("children")
+            if depth == SUNBURST_DEPTH_MAX and isinstance(children, list):
+                found.append(
+                    Violation(
+                        f"{here}/children",
+                        f"a fourth ring is past what one sunburst can be read at — "
+                        f"{SUNBURST_DEPTH_MAX} rings at most. Fold the detail into this "
+                        f"sector's words, or make it the centre of a wheel of its own.",
+                    )
+                )
+                continue
+            walk(children, f"{here}/children", depth + 1)
+
+    walk(first, "/nodes", 1)
+    if total > SUNBURST_NODE_MAX:
+        found.append(
+            Violation(
+                "/nodes",
+                f"{total} sectors in all is past what one sunburst can be read at — "
+                f"{SUNBURST_NODE_MAX} at most, counted across every ring. Split it into an "
+                f"overview wheel and a wheel per branch.",
+            )
+        )
+    return found
+
+
 def _figure(value: float) -> str:
     """A number as an author wrote it: no float noise, no trailing zeros."""
     text = f"{round(value, 9):.9f}".rstrip("0").rstrip(".")
@@ -11155,6 +11346,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _rag_document(document)
     if kind in CLOCK_KINDS:
         return _clock_document(document)
+    if kind in SUNBURST_KINDS:
+        return _sunburst_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -12013,6 +12206,29 @@ def _mindmap_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _sunburst_node(entry: Mapping[str, Any]) -> SunburstNode:
+    return SunburstNode(
+        text=str(entry["text"]),
+        children=tuple(_sunburst_node(child) for child in entry.get("children", ())),
+    )
+
+
+def _sunburst_document(document: Mapping[str, Any]) -> Document:
+    """A sunburst: its optional hub and its nested rings, in the order written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        centre=str(document.get("centre", "")),
+        sunburst_nodes=tuple(_sunburst_node(entry) for entry in document["nodes"]),
+    )
+
+
 def _pie_document(document: Mapping[str, Any]) -> Document:
     """A pie: its parts in the order written, and the unit they are in."""
     return Document(
@@ -12371,6 +12587,10 @@ __all__ = [
     "SHAPE_KINDS",
     "STATES_KINDS",
     "STATE_ROLES",
+    "SUNBURST_DEPTH_MAX",
+    "SUNBURST_KINDS",
+    "SUNBURST_NODE_MAX",
+    "SUNBURST_RING_MAX",
     "TRANSITION_ROLES",
     "TREEMAP_KINDS",
     "TREEMAP_PART_ROLES",
@@ -12428,6 +12648,7 @@ __all__ = [
     "SankeyNode",
     "Series",
     "Slice",
+    "SunburstNode",
     "TreemapGroup",
     "TreemapPart",
     "VennSet",

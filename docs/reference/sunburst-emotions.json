@@ -1,0 +1,26 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "sunburst",
+  "title": "The wheel of emotions",
+  "description": "Four core feelings, each opening into finer ones, and those into the words we reach for — read from the middle outward.",
+  "centre": "How I feel",
+  "nodes": [
+    {"text": "Angry", "children": [
+      {"text": "Hurt", "children": [{"text": "Let down"}, {"text": "Devastated"}]},
+      {"text": "Mad", "children": [{"text": "Furious"}, {"text": "Jealous"}]}
+    ]},
+    {"text": "Sad", "children": [
+      {"text": "Lonely", "children": [{"text": "Isolated"}, {"text": "Abandoned"}]},
+      {"text": "Low", "children": [{"text": "Empty"}, {"text": "Guilty"}]}
+    ]},
+    {"text": "Happy", "children": [
+      {"text": "Content", "children": [{"text": "Peaceful"}, {"text": "Hopeful"}]},
+      {"text": "Playful", "children": [{"text": "Eager"}, {"text": "Curious"}]}
+    ]},
+    {"text": "Afraid", "children": [
+      {"text": "Anxious", "children": [{"text": "Worried"}, {"text": "Tense"}]},
+      {"text": "Insecure", "children": [{"text": "Inferior"}, {"text": "Weak"}]}
+    ]}
+  ]
+}
