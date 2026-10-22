@@ -1520,6 +1520,10 @@ class SunburstStyle:
                 f"first-ring divider, a ring boundary, a deep division — got {raw!r}"
             )
         weights = tuple(_number(value, "[sunburst] weights") for value in raw)
+        if any(not weight < float("inf") for weight in weights):
+            raise ThemeError(
+                f"[sunburst] weights: expected finite shares of the radius, got {list(weights)!r}"
+            )
         if any(later > earlier for earlier, later in pairwise(weights)):
             raise ThemeError(
                 f"[sunburst] weights: {list(weights)!r} thickens outwards; the structure reads "

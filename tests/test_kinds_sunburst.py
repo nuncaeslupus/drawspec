@@ -212,6 +212,13 @@ def test_sunburst_weights_need_one_per_level() -> None:
         load_theme({"version": 1, "sunburst": {"weights": [0.006, 0.003]}})
 
 
+def test_sunburst_non_finite_weights_are_refused() -> None:
+    # inf would reach the geometry and emit inf/nan into the SVG; nan would be floored.
+    for bad in (float("inf"), float("nan")):
+        with pytest.raises(ThemeError):
+            load_theme({"version": 1, "sunburst": {"weights": [bad, 0.0035, 0.002]}})
+
+
 def test_sunburst_refuses_more_than_the_node_budget() -> None:
     many = [{"text": f"n{i}"} for i in range(SUNBURST_NODE_MAX + 1)]
     # Spread them under two roots so the first-ring cap is not what trips.
