@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-36 kinds. The machine-readable form of this page is the published
+37 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock` | **yes** | Which of the thirty-six diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst` | **yes** | Which of the thirty-seven diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -296,6 +296,13 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 |---|---|---|---|
 | `rows` | array of [rag-row](#rag-row-object), at least 1 | **yes** | The workstreams or risks, 1 to 15, in the order written: each a name, its `rag`, and optionally a `trend` and a `note`. |
 
+### `sunburst`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `centre` | string | no | An optional hub label in the middle — the overall topic. Left out, the first ring fills the centre. |
+| `nodes` | array of [sunburst-node](#sunburst-node-object), at least 2 | **yes** | The first ring, 2 to 8, clockwise from twelve o'clock in the order written, each with optional `children` for the ring nested inside it. Nested up to three rings, 150 sectors in all; every terminal sector takes an equal angle, so there are no amounts. |
+
 ### `mindmap`
 
 | Field | Type | Required | What it is |
@@ -379,6 +386,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `meter` | 6 `meters`, 5 `bands` per meter |
 | `rag` | 15 `rows` |
 | `clock` | 12 `clocks` |
+| `sunburst` | 8 `nodes` |
 
 ## Emphasis
 
@@ -866,6 +874,13 @@ name, so a misspelt key is an error at the point it was written.
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the branch the map is about: bold, its line heavy all the way from the centre; at most two) or `note` (context, not content: faint, and so is everything under it). |
 | `branches` | array of [mindmap-branch](#mindmap-branch-object), at least 1 | no | The branches off this one, drawn top to bottom in the order written. At most three levels below the centre: a branch, a twig, a leaf. |
+
+### `sunburst-node` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `children` | array of [sunburst-node](#sunburst-node-object), at least 1 | no | The sectors nested inside this one — the next ring, drawn clockwise in the order written. At most three rings in all; leave it out of a node that ends the hierarchy. |
 
 ### `treemap-group` object
 

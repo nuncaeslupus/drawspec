@@ -35,6 +35,7 @@ from drawspec.kinds.rag import rag_scene, rag_text
 from drawspec.kinds.sankey import sankey_scene
 from drawspec.kinds.sequence import sequence_scene, sequence_text
 from drawspec.kinds.shape import shape_scene
+from drawspec.kinds.sunburst import sunburst_scene
 from drawspec.kinds.treemap import treemap_scene
 from drawspec.kinds.venn import venn_scene
 from drawspec.kinds.waterfall import waterfall_scene
@@ -60,6 +61,7 @@ from drawspec.schema import (
     SANKEY_KINDS,
     SEQUENCE_KINDS,
     SHAPE_KINDS,
+    SUNBURST_KINDS,
     TREEMAP_KINDS,
     VENN_KINDS,
     WATERFALL_KINDS,
@@ -96,6 +98,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *METER_KINDS,
     *RAG_KINDS,
     *CLOCK_KINDS,
+    *SUNBURST_KINDS,
     "cycle",
 )
 
@@ -192,6 +195,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return rag_scene(document, theme, measurer)
     if document.kind in CLOCK_KINDS:
         return clock_scene(document, theme, measurer)
+    if document.kind in SUNBURST_KINDS:
+        return sunburst_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -231,6 +236,7 @@ __all__ = [
     "scene_for",
     "sequence_scene",
     "shape_scene",
+    "sunburst_scene",
     "text_for",
     "text_runs",
     "treemap_scene",

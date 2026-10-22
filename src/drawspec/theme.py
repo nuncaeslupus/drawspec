@@ -1491,6 +1491,47 @@ class MindmapStyle:
         return cls(boxes=boxes, taper=taper)
 
 
+#: How many line weights a sunburst is given: first-ring divider, ring boundary, deep.
+SUNBURST_WEIGHTS: Final = 3
+
+
+@dataclass(frozen=True)
+class SunburstStyle:
+    """How heavy a sunburst's three structural lines are.
+
+    The author says what the hierarchy is; how boldly its structure is drawn is
+    house style, so it is set once for every wheel in a report, never per document.
+    """
+
+    weights: tuple[float, ...] = (0.006, 0.0035, 0.002)
+    """The width of a first-ring divider and the rim, a ring boundary and the hub
+    circle, and a division two or more rings deep — each as a share of the wheel's
+    radius, floored at a hairline so a small wheel keeps its lines, so the structure
+    grows heavier on a wide wheel. Heaviest first; none heavier than the one before."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> SunburstStyle:
+        _reject_unknown(mapping, ("weights",), "[sunburst]")
+        defaults = cls()
+        raw = mapping.get("weights", list(defaults.weights))
+        if not isinstance(raw, list) or len(raw) != SUNBURST_WEIGHTS:
+            raise ThemeError(
+                f"[sunburst] weights: expected {SUNBURST_WEIGHTS} shares of the radius — a "
+                f"first-ring divider, a ring boundary, a deep division — got {raw!r}"
+            )
+        weights = tuple(_number(value, "[sunburst] weights") for value in raw)
+        if any(not weight < float("inf") for weight in weights):
+            raise ThemeError(
+                f"[sunburst] weights: expected finite shares of the radius, got {list(weights)!r}"
+            )
+        if any(later > earlier for earlier, later in pairwise(weights)):
+            raise ThemeError(
+                f"[sunburst] weights: {list(weights)!r} thickens outwards; the structure reads "
+                f"from the first-ring dividers out, so no weight may be more than the one before"
+            )
+        return cls(weights=weights)
+
+
 #: The fills an `against` box may take: a pattern faint enough to read words over.
 ARGUMENT_FILLS: Final = ("hatch", "dots", "cross", "grid")
 
@@ -2094,6 +2135,7 @@ _TOP_LEVEL_KEYS: Final = (
     "pie",
     "flow",
     "mindmap",
+    "sunburst",
     "argument",
     "familytree",
     "rag",
@@ -2133,6 +2175,7 @@ class Theme:
     numberline: NumberlineStyle = NumberlineStyle()
     pie: PieStyle = PieStyle()
     mindmap: MindmapStyle = MindmapStyle()
+    sunburst: SunburstStyle = SunburstStyle()
     argument: ArgumentStyle = ArgumentStyle()
     familytree: FamilytreeStyle = FamilytreeStyle()
     rag: RagStyle = RagStyle()
@@ -2201,6 +2244,7 @@ class Theme:
             numberline=NumberlineStyle.from_mapping(_section(mapping, "numberline")),
             pie=PieStyle.from_mapping(_section(mapping, "pie")),
             mindmap=MindmapStyle.from_mapping(_section(mapping, "mindmap")),
+            sunburst=SunburstStyle.from_mapping(_section(mapping, "sunburst")),
             argument=ArgumentStyle.from_mapping(_section(mapping, "argument")),
             familytree=FamilytreeStyle.from_mapping(_section(mapping, "familytree")),
             rag=RagStyle.from_mapping(_section(mapping, "rag")),

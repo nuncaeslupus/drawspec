@@ -10,6 +10,20 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+### Added
+
+- **A `sunburst` kind.** A hierarchy drawn as concentric rings of sectors, each label read
+  from the middle outward: a wheel of emotions, a taxonomy. The input is just a tree of
+  `{text, children?}` with an optional `centre` hub — every terminal node takes an equal
+  slice and a parent spans its own, so there are no amounts. A terminal node reaches the
+  rim, so an uneven tree is a full disc; each ring takes one size and its band is sized to
+  the type it carries, so the words sit near their borders; labels are centred and never
+  upside down; the hub label fills its disc. The structure is drawn in three weights — bold
+  first-ring dividers and rim, medium ring boundaries, thin deep divisions — tunable in a
+  `[sunburst]` theme section and scaling with the wheel. Up to three rings and 150 sectors,
+  with the full Willcox/Junto feelings wheel as a reference. `make docs`, `make schema` and
+  the gallery pick it up.
+
 ## [0.4.3] — 2026-10-20
 
 ### Changed

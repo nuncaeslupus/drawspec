@@ -1,0 +1,24 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "sunburst",
+  "title": "Photosynthesis",
+  "description": "The same revision notes as the photosynthesis mind map, drawn as a sunburst.",
+  "centre": "Photosynthesis",
+  "nodes": [
+    {"text": "Needs", "children": [
+      {"text": "Light"}, {"text": "Water"}, {"text": "CO₂"}, {"text": "Chlorophyll"}
+    ]},
+    {"text": "Makes", "children": [
+      {"text": "Glucose", "children": [{"text": "Respiration"}, {"text": "Starch"}]},
+      {"text": "Oxygen", "children": [{"text": "Stomata"}]}
+    ]},
+    {"text": "Where", "children": [
+      {"text": "Chloroplasts"},
+      {"text": "Leaves", "children": [{"text": "Palisade"}]}
+    ]},
+    {"text": "Limits", "children": [
+      {"text": "Light"}, {"text": "CO₂ level"}, {"text": "Heat"}
+    ]}
+  ]
+}

@@ -246,6 +246,13 @@ shape = "pie"
 boxes = false
 taper = [6.0, 3.0, 1.5]
 
+[sunburst]
+# How boldly a sunburst's structure is drawn, as shares of the wheel's radius with a
+# hairline floor, so a wide wheel reads as firmly as a small one: a first-ring divider
+# and the rim, a ring boundary and the hub circle, a division two or more rings deep.
+# Heaviest first; none heavier than the one before.
+weights = [0.006, 0.0035, 0.002]
+
 [argument]
 # How an argument map shows which way a point bears, twice so greyscale holds: a
 # tag in the box's top margin, read aloud down a chain (claim, because, but, but),

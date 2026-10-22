@@ -64,6 +64,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "meter": "one amount against its scale — a progress bar, a thermometer, a dial, a bullet",
     "rag": "workstreams or risks rated red, amber or green, in words and shapes — a status report",
     "clock": "analogue clock faces showing a time, for teaching it — quarter past, half past",
+    "sunburst": "a hierarchy as concentric rings of sectors, read from the middle outward",
 }
 
 #: The smallest document of each kind that renders.
@@ -377,6 +378,15 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "version": 1,
         "kind": "clock",
         "clocks": [{"time": "3:15"}],
+    },
+    "sunburst": {
+        "version": 1,
+        "kind": "sunburst",
+        "centre": "Feelings",
+        "nodes": [
+            {"text": "Angry", "children": [{"text": "Hurt"}, {"text": "Mad"}]},
+            {"text": "Happy", "children": [{"text": "Proud"}, {"text": "Playful"}]},
+        ],
     },
     "rag": {
         "version": 1,

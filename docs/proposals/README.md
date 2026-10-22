@@ -58,6 +58,7 @@ the real originals each is checked against; a built one says so in its row.
 | 26 | [`meter.md`](meter.md) | `meter`: one amount against its scale — progress bar, thermometer, dial, bullet; `style` per document — **built** | S | round-2 corpus section 10 (G1–G9) |
 | 28 | [`clock.md`](clock.md) | `clock`: analogue faces showing a time, for teaching it — hands by the time, numerals, the time in words, `since` shaded — **built** | S | round-2 corpus section 12 (C1–C5) |
 | 27 | [`rag.md`](rag.md) | `rag`: workstreams or risks rated red, amber or green, each a word and a shape, the trend in words — **built** | S | round-2 corpus section 11 (R1–R6); `status` was taken, so the field is `rag` |
+| 30 | [`sunburst.md`](sunburst.md) | `sunburst`: a hierarchy as concentric rings of sectors, read from the middle outward, labels rotated and stepped to fit (the emotion wheel) — **built** | M | owner request; equal-angle leaves, 3 rings, optional hub |
 
 ## Proposed: output formats
 
@@ -102,8 +103,8 @@ self-loop geometry that `flow` then either adopts or refuses.
   the gallery and looked at; `make docs` and `make schema` regenerated; a row in
   `AGENTS.md`'s kind table (a test enforces it); every refusal in the proposal as a test
   with its JSON pointer; `collisions.py` and `clipping.py` clean on the references.
-* **The README's count** (now "thirty-six kinds") and the `kind` enum description change with
-  every new kind.
+* **The README's count** ("more than 30 kinds") and the `kind` enum description (now
+  "thirty-seven diagrams") change with every new kind.
 
 ## Decisions for the owner
 
