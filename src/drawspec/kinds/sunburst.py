@@ -45,8 +45,9 @@ HUB_ROLE: Final = "step"
 PAD: Final = 3.0
 """The least space between a label and its band's rim, and its sector's edges."""
 
-#: The smallest a label may be stepped to, as a share of the body size, before
-#: the wheel is refused as too crowded to read.
+#: The layout's own lower bound on a label, as a share of the body size. The
+#: effective floor is this or the theme's `min_legible_size`, whichever is
+#: larger: below it the wheel is refused rather than drawn too small to read.
 FLOOR_SHARE: Final = 0.5
 
 #: The most degrees one straight piece of an arc may span.
@@ -156,7 +157,7 @@ def sunburst_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -
 
     # Each label: set at the body size, stepped down only to fit its band (the
     # word, read radially) and its sector (the line height, across the arc).
-    floor = base * FLOOR_SHARE
+    floor = max(base * FLOOR_SHARE, theme.canvas.min_legible_size)
     for segment in segments:
         extents = measurer.measure(segment.text, font, base)
         band = segment.r_out - segment.r_in - 2 * pad
@@ -173,7 +174,8 @@ def sunburst_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -
         if size < floor:
             raise FitError(
                 f"the label {segment.text[:40]!r} cannot be made to fit its sector on a "
-                f"sunburst {width:.0f} wide, even stepped down to {FLOOR_SHARE:.0%} of the type. "
+                f"sunburst {width:.0f} wide, even stepped down to {floor:.1f} units, the "
+                f"smallest legible type. "
                 f"Shorten it, give the wheel a `centre` hub to push the rings out, or give a "
                 f"node fewer children."
             )

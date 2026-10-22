@@ -157,6 +157,20 @@ def test_sunburst_rejects_coordinate_and_weight_fields() -> None:
         assert validate_document(document), f"{field} should be refused"
 
 
+def test_sunburst_deeply_nested_input_is_refused_not_a_recursionerror() -> None:
+    # `sunburst-node` is self-referential; validate_document must not recurse into
+    # a RecursionError on pathologically deep input (it serves MCP/agent input).
+    deep: dict[str, Any] = {"text": "a"}
+    cursor = deep
+    for _ in range(3000):
+        child: dict[str, Any] = {"text": "x"}
+        cursor["children"] = [child]
+        cursor = child
+    document = wheel(nodes=[deep])
+    found = validate_document(document)
+    assert found and any("fourth ring" in message for message in messages(document).splitlines())
+
+
 def test_sunburst_refuses_more_than_the_node_budget() -> None:
     many = [{"text": f"n{i}"} for i in range(SUNBURST_NODE_MAX + 1)]
     # Spread them under two roots so the first-ring cap is not what trips.

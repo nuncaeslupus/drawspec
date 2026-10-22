@@ -3202,7 +3202,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the thirty-six diagrams this is. It selects the fields that are "
+            "Which of the thirty-seven diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -5432,6 +5432,14 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         if "version" not in document:
             found.append(Violation("/version", _VERSION_REQUIRED))
         return tuple(found)
+
+    if kind in SUNBURST_KINDS:
+        # `sunburst-node` is self-referential, so cap the depth before the
+        # recursive structural pass can overflow on pathologically deep input.
+        too_deep = _sunburst_too_deep(document)
+        if too_deep is not None:
+            found.append(too_deep)
+            return tuple(found)
 
     _check_object(document, fields_for(kind), "", found)
 
@@ -10525,6 +10533,41 @@ def _sunburst_refusal(violation: Violation) -> Violation:
     return violation
 
 
+def _sunburst_fourth_ring(pointer: str) -> Violation:
+    """The located violation for a node that would open a fourth ring."""
+    return Violation(
+        pointer,
+        f"a fourth ring is past what one sunburst can be read at — "
+        f"{SUNBURST_DEPTH_MAX} rings at most. Fold the detail into this "
+        f"sector's words, or make it the centre of a wheel of its own.",
+    )
+
+
+def _sunburst_too_deep(document: Mapping[str, Any]) -> Violation | None:
+    """The first node nested past `SUNBURST_DEPTH_MAX`, found without recursion.
+
+    `sunburst-node` refers to itself through `children`, and the structural pass
+    (`_check_object`) recurses once per level with no depth limit. A document
+    nested hundreds deep still parses as JSON, so without this it raises
+    `RecursionError` inside `validate_document` — which also serves MCP and agent
+    input — instead of a located violation. This iterative pre-scan runs first so
+    the depth cap is reported before the recursive pass can overflow.
+    """
+    stack: list[tuple[object, str, int]] = [(document.get("nodes"), "/nodes", 1)]
+    while stack:
+        entries, pointer, depth = stack.pop()
+        if not isinstance(entries, list):
+            continue
+        for index, entry in enumerate(entries):
+            if not isinstance(entry, dict) or not isinstance(entry.get("children"), list):
+                continue
+            here = f"{pointer}/{index}/children"
+            if depth == SUNBURST_DEPTH_MAX:
+                return _sunburst_fourth_ring(here)
+            stack.append((entry["children"], here, depth + 1))
+    return None
+
+
 def _sunburst_violations(document: Mapping[str, Any]) -> list[Violation]:
     """No empty words, no fourth ring, and the first-ring and total caps."""
     found: list[Violation] = []
@@ -10553,14 +10596,7 @@ def _sunburst_violations(document: Mapping[str, Any]) -> list[Violation]:
                 )
             children = entry.get("children")
             if depth == SUNBURST_DEPTH_MAX and isinstance(children, list):
-                found.append(
-                    Violation(
-                        f"{here}/children",
-                        f"a fourth ring is past what one sunburst can be read at — "
-                        f"{SUNBURST_DEPTH_MAX} rings at most. Fold the detail into this "
-                        f"sector's words, or make it the centre of a wheel of its own.",
-                    )
-                )
+                found.append(_sunburst_fourth_ring(f"{here}/children"))
                 continue
             walk(children, f"{here}/children", depth + 1)
 

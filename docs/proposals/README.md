@@ -103,8 +103,8 @@ self-loop geometry that `flow` then either adopts or refuses.
   the gallery and looked at; `make docs` and `make schema` regenerated; a row in
   `AGENTS.md`'s kind table (a test enforces it); every refusal in the proposal as a test
   with its JSON pointer; `collisions.py` and `clipping.py` clean on the references.
-* **The README's count** (now "thirty-six kinds") and the `kind` enum description change with
-  every new kind.
+* **The README's count** ("more than 30 kinds") and the `kind` enum description (now
+  "thirty-seven diagrams") change with every new kind.
 
 ## Decisions for the owner
 
