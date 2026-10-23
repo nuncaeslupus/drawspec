@@ -28,6 +28,9 @@ EXAMPLES = [
     "venn-telemetry",
     "chart-bars",
     "fishbone-flaky-ci",
+    "sunburst-emotions",
+    "treemap-disk",
+    "pie-spending",
 ]
 
 

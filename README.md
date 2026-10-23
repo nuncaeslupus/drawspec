@@ -139,43 +139,56 @@ activation bars, arrows and spacing are worked out for you:
 Flow charts, sequence diagrams, state machines, ER and class diagrams, Gantt
 charts, swimlanes, mind maps, timelines, Venn, Sankey, treemaps, pie and bar
 charts, kanban boards, fishbone, family trees, file trees and more — one format
-for all of them. Click a drawing for its source.
+for all of them. Click a drawing to open it full size, or a kind's name for its
+source — the code is all here.
 
 <table>
-<tr><th width="33%"><code>sequence</code></th><th width="33%"><code>entities</code></th><th width="33%"><code>states</code></th></tr>
+<tr><th width="33%"><a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/sequence-checkout.json"><code>sequence</code></a></th><th width="33%"><a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/entities-orders.json"><code>entities</code></a></th><th width="33%"><a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/states-ticket.json"><code>states</code></a></th></tr>
 <tr>
 <td align="center" valign="middle">
-<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/sequence-checkout.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sequence-checkout-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sequence-checkout-light.png" alt="A checkout sequence diagram with alt and par fragments"></picture></a>
+<a href="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sequence-checkout-light.png"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sequence-checkout-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sequence-checkout-light.png" alt="A checkout sequence diagram with alt and par fragments"></picture></a>
 </td>
 <td align="center" valign="middle">
-<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/entities-orders.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/entities-orders-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/entities-orders-light.png" alt="A database schema of customers, orders and order lines with crow's-foot ends"></picture></a>
+<a href="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/entities-orders-light.png"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/entities-orders-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/entities-orders-light.png" alt="A database schema of customers, orders and order lines with crow's-foot ends"></picture></a>
 </td>
 <td align="center" valign="middle">
-<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/states-ticket.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/states-ticket-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/states-ticket-light.png" alt="A support ticket state machine"></picture></a>
+<a href="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/states-ticket-light.png"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/states-ticket-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/states-ticket-light.png" alt="A support ticket state machine"></picture></a>
 </td>
 </tr>
-<tr><th width="33%"><code>gantt</code></th><th width="33%"><code>mindmap</code></th><th width="33%"><code>sankey</code></th></tr>
+<tr><th width="33%"><a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/gantt-migration.json"><code>gantt</code></a></th><th width="33%"><a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/mindmap-offsite.json"><code>mindmap</code></a></th><th width="33%"><a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/sankey-budget.json"><code>sankey</code></a></th></tr>
 <tr>
 <td align="center" valign="middle">
-<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/gantt-migration.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/gantt-migration-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/gantt-migration-light.png" alt="A migration plan as a Gantt chart with phases and milestones"></picture></a>
+<a href="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/gantt-migration-light.png"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/gantt-migration-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/gantt-migration-light.png" alt="A migration plan as a Gantt chart with phases and milestones"></picture></a>
 </td>
 <td align="center" valign="middle">
-<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/mindmap-offsite.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/mindmap-offsite-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/mindmap-offsite-light.png" alt="A mind map planning a team offsite"></picture></a>
+<a href="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/mindmap-offsite-light.png"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/mindmap-offsite-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/mindmap-offsite-light.png" alt="A mind map planning a team offsite"></picture></a>
 </td>
 <td align="center" valign="middle">
-<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/sankey-budget.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sankey-budget-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sankey-budget-light.png" alt="A Sankey diagram of where a budget goes"></picture></a>
+<a href="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sankey-budget-light.png"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sankey-budget-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sankey-budget-light.png" alt="A Sankey diagram of where a budget goes"></picture></a>
 </td>
 </tr>
-<tr><th width="33%"><code>venn</code></th><th width="33%"><code>chart</code></th><th width="33%"><code>fishbone</code></th></tr>
+<tr><th width="33%"><a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/venn-telemetry.json"><code>venn</code></a></th><th width="33%"><a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/chart-bars.json"><code>chart</code></a></th><th width="33%"><a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/fishbone-flaky-ci.json"><code>fishbone</code></a></th></tr>
 <tr>
 <td align="center" valign="middle">
-<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/venn-telemetry.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/venn-telemetry-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/venn-telemetry-light.png" alt="A three-set Venn diagram of logs, metrics and traces"></picture></a>
+<a href="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/venn-telemetry-light.png"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/venn-telemetry-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/venn-telemetry-light.png" alt="A three-set Venn diagram of logs, metrics and traces"></picture></a>
 </td>
 <td align="center" valign="middle">
-<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/chart-bars.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/chart-bars-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/chart-bars-light.png" alt="A bar and line chart of incidents per quarter"></picture></a>
+<a href="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/chart-bars-light.png"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/chart-bars-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/chart-bars-light.png" alt="A bar and line chart of incidents per quarter"></picture></a>
 </td>
 <td align="center" valign="middle">
-<a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/fishbone-flaky-ci.json"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/fishbone-flaky-ci-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/fishbone-flaky-ci-light.png" alt="A fishbone diagram of causes of a flaky CI"></picture></a>
+<a href="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/fishbone-flaky-ci-light.png"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/fishbone-flaky-ci-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/fishbone-flaky-ci-light.png" alt="A fishbone diagram of causes of a flaky CI"></picture></a>
+</td>
+</tr>
+<tr><th width="33%"><a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/sunburst-emotions.json"><code>sunburst</code></a></th><th width="33%"><a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/treemap-disk.json"><code>treemap</code></a></th><th width="33%"><a href="https://github.com/nuncaeslupus/drawspec/blob/main/docs/reference/pie-spending.json"><code>pie</code></a></th></tr>
+<tr>
+<td align="center" valign="middle">
+<a href="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sunburst-emotions-light.png"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sunburst-emotions-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/sunburst-emotions-light.png" alt="The feelings wheel as a sunburst: core feelings in the middle, finer ones read outward"></picture></a>
+</td>
+<td align="center" valign="middle">
+<a href="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/treemap-disk-light.png"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/treemap-disk-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/treemap-disk-light.png" alt="A treemap of disk usage by folder"></picture></a>
+</td>
+<td align="center" valign="middle">
+<a href="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/pie-spending-light.png"><picture><source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/pie-spending-dark.png"><img src="https://raw.githubusercontent.com/nuncaeslupus/drawspec/main/docs/readme/pie-spending-light.png" alt="A pie chart of monthly spending"></picture></a>
 </td>
 </tr>
 </table>
