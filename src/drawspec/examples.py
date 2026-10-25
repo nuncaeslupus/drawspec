@@ -29,7 +29,7 @@ from typing import Any, Final
 #: that looks right rather than one that says the right thing.
 PURPOSE: Final[Mapping[str, str]] = {
     "flow": "steps with branching; a process that can merge and loop back",
-    "tree": "a hierarchy; one parent per child",
+    "tree": "a hierarchy; one parent per child — or, as a bracket, a knockout draw or a cladogram",
     "cycle": "a loop that returns to where it started, through every step",
     "stack": "ordered layers, read down",
     "timeline": "events along time, with what happened above the line and when below",

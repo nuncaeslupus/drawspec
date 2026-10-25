@@ -51,7 +51,7 @@ Pick by what the reader must **understand**, not by what it looks like.
 | The reader must understand… | Kind | Payload |
 |---|---|---|
 | How work moves, branches, merges or loops back; or a causal loop diagram | `flow` | `nodes` + `edges` (causal: `polarity` `+`/`-` on every edge, `delay`, named `loops`, R/B derived from the signs) |
-| A hierarchy: what belongs to or reports to what | `tree` | `nodes` + `edges` |
+| A hierarchy: what belongs to or reports to what; a knockout bracket or a cladogram, leaves on one edge | `tree` (+ `"style": "bracket"`) | `nodes` + `edges`; a bracket: `root` `left` (cladogram, default)/`right` (tournament)/`middle` (two-sided), ≤ 16 leaves, inner `text` may be `""`, an edge `label` is the child's score or trait, `strong` edges heavy |
 | What a proposed change adds, changes or removes — one drawing, not before + after | `flow` or `tree` + `status` | `added`/`changed`/`removed` on nodes and edges; an edge touching a removed node is `removed`, one touching an added node `added` |
 | A loop that returns to where it started | `cycle` | `nodes` + `edges` closing the ring (+ `hub`: what it turns around, joined only by `aside`/`weak`/`link` spokes) |
 | Layers, each resting on the one below | `stack` | `items` |
@@ -190,7 +190,7 @@ A refusal is information, not an obstacle. Three kinds, and each tells you what 
 - **A refused field** — you wrote a coordinate or a style. Delete it; express the
   intent with `kind` or `role` instead.
 
-Always run `drawspec validate` before calling a document done; it prints every problem. For a terminal, a commit message or a code block, `drawspec render --format text` draws `files`, `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`, `meter` (every style), `railroad`, `network`, `timing`, `gitgraph` (as `git log --graph` does), `flow`, `states` and `lanes` as plain text, 80 columns (100 for `lanes` and `sequence`) unless `--width` says otherwise (a plan's dependencies are lines into the next bar, or listed under it as `B after A` when no clean route exists; a timeline whose entries all have `at` is spaced in proportion, long gaps shortened and dashed); a drawing too wide is refused at its widest thing's pointer, a graph past the text budget (15 boxes, 3 crossings) is refused as noise, and other kinds refuse.
+Always run `drawspec validate` before calling a document done; it prints every problem. For a terminal, a commit message or a code block, `drawspec render --format text` draws `files`, `tree` (a bracket too), `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`, `meter` (every style), `railroad`, `network`, `timing`, `gitgraph` (as `git log --graph` does), `flow`, `states` and `lanes` as plain text, 80 columns (100 for `lanes` and `sequence`) unless `--width` says otherwise (a plan's dependencies are lines into the next bar, or listed under it as `B after A` when no clean route exists; a timeline whose entries all have `at` is spaced in proportion, long gaps shortened and dashed); a drawing too wide is refused at its widest thing's pointer, a graph past the text budget (15 boxes, 3 crossings) is refused as noise, and other kinds refuse.
 
 ## Do not
 

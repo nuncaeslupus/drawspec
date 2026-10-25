@@ -138,7 +138,8 @@ activation bars, arrows and spacing are worked out for you:
 
 Flow charts, sequence diagrams, state machines, ER and class diagrams, Gantt
 charts, swimlanes, mind maps, timelines, Venn, Sankey, treemaps, pie and bar
-charts, kanban boards, fishbone, family trees, file trees, timing diagrams, network diagrams and more — one format
+charts, kanban boards, fishbone, family trees, file trees, timing diagrams, network diagrams,
+tournament brackets, cladograms and more — one format
 for all of them. Click a drawing to open it full size, or a kind's name for its
 source — the code is all here.
 

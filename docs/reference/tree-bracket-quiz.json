@@ -1,0 +1,143 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "tree",
+  "title": "Quiz league: finals night",
+  "description": "Eight teams drawn as a two-sided bracket, four on each side meeting in the final in the middle, each team's points in a round beside its name.",
+  "style": "bracket",
+  "root": "middle",
+  "nodes": [
+    {
+      "id": "q0",
+      "text": "Know-Alls"
+    },
+    {
+      "id": "q1",
+      "text": "Quizzly Bears"
+    },
+    {
+      "id": "q2",
+      "text": "Les Quizérables"
+    },
+    {
+      "id": "q3",
+      "text": "Trivia Newton"
+    },
+    {
+      "id": "q4",
+      "text": "Agatha Quiztie"
+    },
+    {
+      "id": "q5",
+      "text": "Fact Hunt"
+    },
+    {
+      "id": "q6",
+      "text": "Mind the Gap"
+    },
+    {
+      "id": "q7",
+      "text": "Brains Trust"
+    },
+    {
+      "id": "a",
+      "text": "Quizzly Bears"
+    },
+    {
+      "id": "b",
+      "text": "Trivia Newton"
+    },
+    {
+      "id": "c",
+      "text": "Agatha Quiztie"
+    },
+    {
+      "id": "d",
+      "text": "Brains Trust"
+    },
+    {
+      "id": "left",
+      "text": "Quizzly Bears"
+    },
+    {
+      "id": "right",
+      "text": "Brains Trust"
+    },
+    {
+      "id": "final",
+      "text": "Brains Trust"
+    }
+  ],
+  "edges": [
+    {
+      "from": "a",
+      "to": "q0",
+      "label": "41"
+    },
+    {
+      "from": "a",
+      "to": "q1",
+      "label": "47"
+    },
+    {
+      "from": "b",
+      "to": "q2",
+      "label": "38"
+    },
+    {
+      "from": "b",
+      "to": "q3",
+      "label": "44"
+    },
+    {
+      "from": "c",
+      "to": "q4",
+      "label": "52"
+    },
+    {
+      "from": "c",
+      "to": "q5",
+      "label": "39"
+    },
+    {
+      "from": "d",
+      "to": "q6",
+      "label": "45"
+    },
+    {
+      "from": "d",
+      "to": "q7",
+      "label": "50"
+    },
+    {
+      "from": "left",
+      "to": "a",
+      "label": "49"
+    },
+    {
+      "from": "left",
+      "to": "b",
+      "label": "46"
+    },
+    {
+      "from": "right",
+      "to": "c",
+      "label": "43"
+    },
+    {
+      "from": "right",
+      "to": "d",
+      "label": "48"
+    },
+    {
+      "from": "final",
+      "to": "left",
+      "label": "44"
+    },
+    {
+      "from": "final",
+      "to": "right",
+      "label": "51"
+    }
+  ]
+}
