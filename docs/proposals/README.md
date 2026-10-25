@@ -61,6 +61,7 @@ the real originals each is checked against; a built one says so in its row.
 | 30 | [`sunburst.md`](sunburst.md) | `sunburst`: a hierarchy as concentric rings of sectors, read from the middle outward, labels rotated and stepped to fit (the emotion wheel) — **built** | M | owner request; equal-angle leaves, 3 rings, optional hub |
 | 32 | [`timing.md`](timing.md) | `timing`: signals over one time axis — clock and level lanes, bus words in hexagons, named-state lanes; markers and named intervals (datasheet SPI/I²C figures, WaveDrom, UML timing) — **built**, with a text form | M | owner request; published originals T1–T5 (NXP UM10204, TI SPI, uml-diagrams.org, PlantUML, WaveDrom) |
 | 33 | [`gitgraph.md`](gitgraph.md) | `gitgraph`: commits on branches over time — forks, merges, tags, cherry-picks; lanes and parents derived from the order written (git-flow, trunk-based, Pro Git) — **built** | M | owner request; four published originals; text form like `git log --graph` |
+| 34 | [`network.md`](network.md) | `network`: networks as buses, hosts hanging between them with an address per attachment, columns derived so no line crosses a bus it is not on (nwdiag) — **built** | M | owner request; published nwdiag / PlantUML examples; text form |
 
 ## Proposed: output formats
 
@@ -106,7 +107,7 @@ self-loop geometry that `flow` then either adopts or refuses.
   `AGENTS.md`'s kind table (a test enforces it); every refusal in the proposal as a test
   with its JSON pointer; `collisions.py` and `clipping.py` clean on the references.
 * **The README's count** ("more than 30 kinds") and the `kind` enum description (now
-  "thirty-nine diagrams") change with every new kind.
+  "forty diagrams") change with every new kind.
 
 ## Decisions for the owner
 

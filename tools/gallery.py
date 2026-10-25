@@ -93,6 +93,7 @@ KIND_ORDER: tuple[str, ...] = (
     "barmodel",
     "clock",
     "sunburst",
+    "network",
     "timing",
     "gitgraph",
 )

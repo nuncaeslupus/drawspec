@@ -609,6 +609,26 @@ SUNBURST_RING_MAX: Final = 8
 #: and anything the type cannot hold at the legible floor is refused by fit first.
 SUNBURST_NODE_MAX: Final = 150
 
+#: Network diagrams in the nwdiag style: networks as horizontal buses in the order
+#: written, hosts as boxes in columns, each dropping a line to every bus it is on.
+#: A layout family of its own; the column order is derived (`drawspec.buses`).
+NETWORK_KINDS: Final = ("network",)
+
+#: The most networks (buses). Past six the hosts between them are a rack drawing.
+NETWORK_MAX: Final = 6
+
+#: The most hosts. Past two dozen boxes a network diagram is an inventory: draw an
+#: overview with one host per role and a diagram per segment.
+NETWORK_HOST_MAX: Final = 24
+
+#: The most groups (shaded backdrops behind hosts).
+NETWORK_GROUP_MAX: Final = 6
+
+#: The roles a host may take: the default box (a server, a router, any device),
+#: the host the diagram is about, a drum for where data rests (a database, a
+#: storage array), and a person for a user's machine or a client. drawspec draws
+#: no device icons: a router is a host on two networks, and its name says so.
+NETWORK_HOST_ROLES: Final = ("step", "emphasis", "store", "person")
 #: Timing diagrams: signals over one shared time axis, a lane each — clock lines,
 #: digital levels, buses with labelled values, and named-state lanes (WaveDrom,
 #: PlantUML and UML timing diagrams, datasheet SPI and I²C figures). A layout
@@ -750,6 +770,8 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: `gitgraph` is the twenty-sixth: commits on branches over time, forked and
 #: merged — a `gantt` has intervals, a `flow` has no lanes in time, and a
 #: `timeline` has one line.
+#: `network` is the twenty-seventh: networks as buses with hosts hanging between
+#: them — a `flow` joins boxes to boxes, and nothing else joins boxes to a bus.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -778,6 +800,7 @@ KINDS: Final = (
     + RAG_KINDS
     + CLOCK_KINDS
     + SUNBURST_KINDS
+    + NETWORK_KINDS
     + TIMING_KINDS
     + GITGRAPH_KINDS
 )
@@ -948,6 +971,13 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # total across the rings is checked with the nodes (see `_sunburst_violations`),
     # since the nesting key is `children`, not `nodes`.
     "sunburst": (("nodes", SUNBURST_RING_MAX),),  # first ring; the total is _sunburst_violations
+    # Set by the proposal: nwdiag's and PlantUML's own examples hold two or three
+    # networks and four to ten hosts; past these the drawing is an inventory.
+    "network": (
+        ("networks", NETWORK_MAX),
+        ("hosts", NETWORK_HOST_MAX),
+        ("groups", NETWORK_GROUP_MAX),
+    ),  # [3 networks, 10 hosts, 3 groups]
     # Set by the evidence (NXP UM10204, TI SPI figures, UML timing): an SPI read is
     # four signals over ~20 steps; the step cap is checked per signal's values in
     # `_timing_violations`, since it is a length, not an array of objects.
@@ -2909,6 +2939,104 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "network-segment": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the networks; what a host's attachment names.",
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description=(
+                "The network's name, written in bold at the left of its bus. Left out, the "
+                "`id` is the name."
+            ),
+        ),
+        FieldSpec(
+            "address",
+            "string",
+            description=(
+                "The network's address, written on its bus after the name — `210.x.x.x/24`, "
+                "`10.0.1.0/24`. Words, not parsed: drawspec checks nothing about it."
+            ),
+        ),
+    ),
+    "network-attachment": (
+        FieldSpec(
+            "network",
+            "string",
+            required=True,
+            description="The id of a network this host is on.",
+        ),
+        FieldSpec(
+            "address",
+            "string",
+            description=(
+                "The host's address on that network, written beside its line where it meets "
+                "the bus — `.1`, `10.0.1.10`. Optional."
+            ),
+        ),
+    ),
+    "network-host": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the hosts; what a group's `members` name.",
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description=(
+                "The words in the host's box. Left out, the `id` is the name. A newline makes "
+                "the first line a lead over a detail — `db01` over `primary`."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=NETWORK_HOST_ROLES,
+            description=(
+                "`step` (the default box: a server, a router, a firewall, any device), "
+                "`emphasis` (the host the diagram is about; at most two), `store` (a drum: a "
+                "database, a storage array) or `person` (a user's machine, a client). No "
+                "device icons: say what a box is in its words."
+            ),
+        ),
+        FieldSpec(
+            "networks",
+            "array",
+            required=True,
+            item_ref="network-attachment",
+            min_items=1,
+            description=(
+                "The networks this host is on, each with an optional address. A host on two "
+                "or more is drawn between them, joining them — a router, a firewall, a "
+                "dual-homed server. Its line may cross no bus it is not on, so the column "
+                "order is drawspec's; a set of attachments no order can draw is refused."
+            ),
+        ),
+    ),
+    "network-group": (
+        FieldSpec(
+            "text",
+            "string",
+            description="The group's name, at the top left of its backdrop. Optional.",
+        ),
+        FieldSpec(
+            "members",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=1,
+            description=(
+                "The ids of the hosts drawn on this group's shaded backdrop, side by side. A "
+                "host is in one group at most."
+            ),
+        ),
+    ),
     "gitgraph-branch": (
         FieldSpec(
             "name",
@@ -3449,7 +3577,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the thirty-nine diagrams this is. It selects the fields that are "
+            "Which of the forty diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -4461,6 +4589,42 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    NETWORK_KINDS: (
+        FieldSpec(
+            "networks",
+            "array",
+            required=True,
+            item_ref="network-segment",
+            min_items=1,
+            description=(
+                "The networks, 1 to 6, each a horizontal bus, drawn top to bottom in the order "
+                "written. Write them in the order traffic meets them — the internet, the DMZ, "
+                "the internal network, storage — so a host on two neighbours sits between them."
+            ),
+        ),
+        FieldSpec(
+            "hosts",
+            "array",
+            required=True,
+            item_ref="network-host",
+            min_items=1,
+            description=(
+                "The hosts, 1 to 24, each a box under its topmost network with a line to every "
+                "network it is on. The columns are drawspec's: ordered so no line crosses a bus "
+                "it is not on, then as few and as close to the order written as that allows."
+            ),
+        ),
+        FieldSpec(
+            "groups",
+            "array",
+            item_ref="network-group",
+            min_items=1,
+            description=(
+                "Optional: up to 6 sets of hosts drawn on a shaded backdrop, with an optional "
+                "name — a cluster, a rack, a site. No host outside a group may stand inside it."
+            ),
+        ),
+    ),
     TIMING_KINDS: (
         FieldSpec(
             "signals",
@@ -5200,6 +5364,35 @@ class MindmapBranch:
 
 
 @dataclass(frozen=True)
+class NetworkSegment:
+    """One network of a `network` diagram: a bus, its name and its address."""
+
+    id: str
+    text: str
+    address: str = ""
+
+
+@dataclass(frozen=True)
+class NetworkHost:
+    """One host of a `network` diagram, and the networks it is on, in network order."""
+
+    id: str
+    text: str
+    role: str = "step"
+    networks: tuple[str, ...] = ()
+    addresses: tuple[str, ...] = ()
+    """The host's address on each of its `networks`, in the same order; may be empty."""
+
+
+@dataclass(frozen=True)
+class NetworkGroup:
+    """A set of hosts drawn on one shaded backdrop."""
+
+    text: str
+    members: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class TimingSignal:
     """One lane of a `timing` figure: a name, what it draws, and a value per step."""
 
@@ -5609,6 +5802,14 @@ class Document:
     """A `sunburst`'s first ring, in the order written: clockwise from twelve o'clock,
     each node's `children` the ring nested inside it."""
 
+    networks: tuple[NetworkSegment, ...] = ()
+    """A `network` diagram's buses, top to bottom in the order written."""
+
+    hosts: tuple[NetworkHost, ...] = ()
+    """A `network` diagram's hosts, in the order written."""
+
+    host_groups: tuple[NetworkGroup, ...] = ()
+    """A `network` diagram's groups, in the order written."""
     timing_signals: tuple[TimingSignal, ...] = ()
     """A `timing` figure's lanes, top to bottom, each a value per step."""
 
@@ -5660,6 +5861,7 @@ class Document:
             ("rag", RAG_KINDS),
             ("clock", CLOCK_KINDS),
             ("sunburst", SUNBURST_KINDS),
+            ("network", NETWORK_KINDS),
             ("timing", TIMING_KINDS),
             ("gitgraph", GITGRAPH_KINDS),
         ):
@@ -5892,6 +6094,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_clock_refusal(violation) for violation in found]
     if kind in SUNBURST_KINDS:
         found = [_sunburst_refusal(violation) for violation in found]
+    if kind in NETWORK_KINDS:
+        found = [_network_refusal(violation) for violation in found]
     if kind in TIMING_KINDS:
         found = [_timing_refusal(violation) for violation in found]
     if kind in GITGRAPH_KINDS:
@@ -6284,6 +6488,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _clock_violations(document)
     if kind in SUNBURST_KINDS:
         return _sunburst_violations(document)
+    if kind in NETWORK_KINDS:
+        return _network_violations(document)
     if kind in TIMING_KINDS:
         return _timing_violations(document)
     if kind in GITGRAPH_KINDS:
@@ -11027,6 +11233,238 @@ def _sunburst_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a network diagram has no place for a field an author may reach for.
+NETWORK_REFUSED: Final = {
+    "column": (
+        "a host's column is drawspec's: chosen so no line crosses a bus it is not on, then "
+        "as few columns and as close to the order written as that allows"
+    ),
+    "order": (
+        "the networks are drawn in the order written and the columns are derived from the "
+        "attachments; reorder the `networks` array to move a bus"
+    ),
+    "icon": (
+        "drawspec draws no device icons: a host is a box (`store` a drum, `person` a client), "
+        "and its words say what it is — `fw01 (firewall)`"
+    ),
+    "shape": (
+        "a host's shape comes from its `role`: `step` a box, `store` a drum, `person` a client"
+    ),
+    "edges": (
+        "a network diagram joins hosts to buses, not hosts to hosts: put both hosts on a "
+        "network. For links between boxes, draw a `flow`"
+    ),
+    "color": "appearance is the theme's: a network's bus is drawn the same as every other",
+    "colour": "appearance is the theme's: a network's bus is drawn the same as every other",
+}
+
+#: What a device role an author may reach for is, in drawspec's vocabulary.
+NETWORK_ROLE_HINTS: Final = {
+    "router": "a router is a host on two networks: leave the role out and name it",
+    "firewall": "a firewall is a host on the networks it divides: leave the role out and name it",
+    "switch": "a switch is the network itself: make it one of the `networks`",
+    "server": "a server is the default box: leave the role out",
+    "database": "a database is `store`, drawn as a drum",
+    "storage": "a storage array is `store`, drawn as a drum",
+    "cloud": "the internet is a network: make it the first of the `networks`",
+    "internet": "the internet is a network: make it the first of the `networks`",
+    "client": "a user's machine is `person`",
+    "user": "a user's machine is `person`",
+}
+
+
+def _network_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a network diagram, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    if "is not a known field" in violation.message and name in NETWORK_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {NETWORK_REFUSED[name]}.")
+    if name == "role" and "is not one of" in violation.message:
+        value = violation.message.split(" is not one of", 1)[0].strip("'\"")
+        hint = NETWORK_ROLE_HINTS.get(value.lower())
+        if hint:
+            return Violation(
+                violation.pointer,
+                f"{value!r} is not a host role ({', '.join(NETWORK_HOST_ROLES)}): {hint}. "
+                f"drawspec draws no device icons.",
+            )
+    return violation
+
+
+def _network_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Ids that land, no empty bus, groups that hold, and lines that cross no bus.
+
+    The last is the kind's one hard question: a host on two networks that are not
+    neighbours must stand outside every bus between them. `drawspec.buses` looks
+    for a column order where every host does; when it finds none the document is
+    refused here, at the host, before any layout runs.
+    """
+    from drawspec.buses import arrange
+
+    found: list[Violation] = []
+    networks: dict[str, int] = {}
+    # Whether every entry is whole enough to arrange: a network skipped here keeps
+    # its slot, so a host on a later one would name an index past the count.
+    whole = True
+    for index, entry in enumerate(_listed(document, "networks")):
+        if not isinstance(entry, dict):
+            whole = False
+            continue
+        identifier = entry.get("id")
+        text = entry.get("text")
+        if isinstance(text, str) and not text.strip():
+            found.append(Violation(_pointer("networks", index, "text"), "a network needs a name."))
+        if not isinstance(identifier, str):
+            whole = False
+            continue
+        if identifier in networks:
+            found.append(
+                Violation(_pointer("networks", index, "id"), f"duplicate network id {identifier!r}")
+            )
+            whole = False
+            continue
+        networks[identifier] = index
+
+    hosts: dict[str, int] = {}
+    attached: list[list[int]] = []
+    used: set[int] = set()
+    for index, entry in enumerate(_listed(document, "hosts")):
+        if not isinstance(entry, dict):
+            whole = False
+            continue
+        identifier = entry.get("id")
+        text = entry.get("text")
+        if isinstance(text, str) and not text.strip():
+            found.append(Violation(_pointer("hosts", index, "text"), "a host needs a name."))
+        if isinstance(identifier, str):
+            if identifier in hosts or identifier in networks:
+                what = "host" if identifier in hosts else "network"
+                found.append(
+                    Violation(
+                        _pointer("hosts", index, "id"),
+                        f"{identifier!r} is already the id of a {what}: every id names one thing.",
+                    )
+                )
+            else:
+                hosts[identifier] = index
+        on: list[int] = []
+        for position, item in enumerate(_listed(entry, "networks")):
+            if not isinstance(item, dict) or not isinstance(item.get("network"), str):
+                whole = False
+                continue
+            name = item["network"]
+            pointer = _pointer("hosts", index, "networks", position, "network")
+            if name not in networks:
+                found.append(
+                    Violation(
+                        pointer, f"{name!r} is not the id of any network" + _closest(name, networks)
+                    )
+                )
+                whole = False
+                continue
+            if networks[name] in on:
+                found.append(
+                    Violation(
+                        pointer,
+                        f"this host is on {name!r} already: one line per network. Two addresses "
+                        f"on one network go in one `address`, `.1, .2`.",
+                    )
+                )
+                continue
+            on.append(networks[name])
+        if not on:
+            whole = False
+        used.update(on)
+        attached.append(on)
+
+    for name, index in networks.items():
+        if index not in used and whole:
+            found.append(
+                Violation(
+                    _pointer("networks", index),
+                    f"no host is on {name!r}: an empty bus says nothing. Put a host on it, or "
+                    f"leave it out.",
+                )
+            )
+
+    members: list[list[int]] = []
+    owner: dict[str, int] = {}
+    for index, entry in enumerate(_listed(document, "groups")):
+        if not isinstance(entry, dict):
+            whole = False
+            continue
+        text = entry.get("text")
+        if isinstance(text, str) and not text.strip():
+            found.append(
+                Violation(
+                    _pointer("groups", index, "text"),
+                    "a group's name needs words, or leave `text` out.",
+                )
+            )
+        listed: list[int] = []
+        for position, member in enumerate(_listed(entry, "members")):
+            if not isinstance(member, str):
+                whole = False
+                continue
+            pointer = _pointer("groups", index, "members", position)
+            if member not in hosts:
+                found.append(
+                    Violation(
+                        pointer, f"{member!r} is not the id of any host" + _closest(member, hosts)
+                    )
+                )
+                whole = False
+                continue
+            if member in owner:
+                where = "this group" if owner[member] == index else f"group {owner[member]}"
+                found.append(
+                    Violation(
+                        pointer,
+                        f"{member!r} is in {where} already: a host stands on one backdrop.",
+                    )
+                )
+                continue
+            owner[member] = index
+            listed.append(hosts[member])
+        members.append(listed)
+
+    if found or not whole or not attached or len(hosts) != len(attached):
+        return found
+    if len(networks) > NETWORK_MAX or len(attached) > NETWORK_HOST_MAX:
+        return found  # the budget refuses it, and the search would be slow for nothing
+
+    names = list(networks)
+    arrangement = arrange(len(networks), attached, members)
+    for host, network in arrangement.crossings[:1]:
+        on = sorted(attached[host])
+        found.append(
+            Violation(
+                _pointer("hosts", host, "networks"),
+                f"this host is on {names[on[0]]!r} and {names[on[-1]]!r}, so its line passes "
+                f"{names[network]!r}, which it is not on — and in no column order does it stand "
+                f"clear of the hosts on {names[network]!r}. Put it on {names[network]!r} too, "
+                f"move {names[network]!r} in `networks` so the ones it joins are neighbours, or "
+                f"split the diagram.",
+            )
+        )
+    named = {index: identifier for identifier, index in hosts.items()}
+    clashes = [clash for clash in arrangement.clashes if not arrangement.crossings]
+    for group, other in clashes[:1]:
+        if other >= 0:
+            message = (
+                f"no column order keeps this group's hosts together without host "
+                f"{named[other]!r} standing on its backdrop too. Add it to the group, or group "
+                f"fewer."
+            )
+        else:
+            message = (
+                f"no column order keeps this group's backdrop clear of group {-1 - other}'s. "
+                f"Merge the two, or group fewer hosts."
+            )
+        found.append(Violation(_pointer("groups", group, "members"), message))
+    return found
+
+
 #: Why a timing figure has no place for a field an author may reach for.
 TIMING_REFUSED: Final = {
     "wave": (
@@ -12404,6 +12842,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _clock_document(document)
     if kind in SUNBURST_KINDS:
         return _sunburst_document(document)
+    if kind in NETWORK_KINDS:
+        return _network_document(document)
     if kind in TIMING_KINDS:
         return _timing_document(document)
     if kind in GITGRAPH_KINDS:
@@ -13290,6 +13730,48 @@ def _sunburst_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _network_document(document: Mapping[str, Any]) -> Document:
+    """A network diagram: its buses, its hosts and its groups, in the order written."""
+    order = {entry["id"]: index for index, entry in enumerate(document["networks"])}
+
+    def host(entry: Mapping[str, Any]) -> NetworkHost:
+        attached = sorted(entry["networks"], key=lambda item: order[item["network"]])
+        return NetworkHost(
+            id=str(entry["id"]),
+            text=str(entry.get("text", entry["id"])),
+            role=str(entry.get("role", "step")),
+            networks=tuple(str(item["network"]) for item in attached),
+            addresses=tuple(str(item.get("address", "")) for item in attached),
+        )
+
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        networks=tuple(
+            NetworkSegment(
+                id=str(entry["id"]),
+                text=str(entry.get("text", entry["id"])),
+                address=str(entry.get("address", "")),
+            )
+            for entry in document["networks"]
+        ),
+        hosts=tuple(host(entry) for entry in document["hosts"]),
+        host_groups=tuple(
+            NetworkGroup(
+                text=str(entry.get("text", "")),
+                members=tuple(str(member) for member in entry["members"]),
+            )
+            for entry in document.get("groups", ())
+        ),
+    )
+
+
 def _gitgraph_document(document: Mapping[str, Any]) -> Document:
     """A git graph: its branches and its steps, in the order written."""
     return Document(
@@ -13693,6 +14175,11 @@ __all__ = [
     "MINDMAP_KINDS",
     "MINDMAP_NODE_MAX",
     "MINDMAP_ROLES",
+    "NETWORK_GROUP_MAX",
+    "NETWORK_HOST_MAX",
+    "NETWORK_HOST_ROLES",
+    "NETWORK_KINDS",
+    "NETWORK_MAX",
     "NUMBERLINE_KINDS",
     "NUMBERLINE_POINT_MAX",
     "NUMBERLINE_RANGE_MAX",
@@ -13784,6 +14271,9 @@ __all__ = [
     "ModelBar",
     "ModelBrace",
     "ModelPart",
+    "NetworkGroup",
+    "NetworkHost",
+    "NetworkSegment",
     "Node",
     "NodeClass",
     "NumberAxis",

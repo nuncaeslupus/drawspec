@@ -12,6 +12,21 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **A `network` kind.** Network diagrams in the nwdiag style: each network a horizontal
+  bus with its name and address on it, top to bottom in the order written; each host a
+  box under its topmost network with a straight line to every network it is on, a
+  per-attachment address (`.1`) beside the line where it meets the bus. A host on two
+  networks stands between them and joins them. The input has no coordinates — `networks`,
+  `hosts` with their attachments, optional `groups` drawn as a shaded backdrop — and the
+  column order is derived so that no line crosses a bus it is not on (a document where no
+  order manages it is refused at the host), then for the fewest columns, the shortest
+  buses and the order written; hosts whose spans are apart stack in one column. Host roles
+  reuse the existing shapes (`store` a drum, `person` a client, `emphasis`), with no
+  device icons. A `[network]` theme section sets the bus and group washes. It has a text
+  form (`--format text`): buses as heavy rules, the same columns. Up to 6 networks, 24
+  hosts and 6 groups; three reference documents (nwdiag's own DMZ example, a three-tier
+  web application, a small office LAN on the blueprint theme).
+
 - **A `timing` kind.** Signals against one shared time axis, a lane each — the SPI and
   I²C figures of a datasheet, a WaveDrom waveform, a UML timing diagram. Every signal is
   a `text` and one value per step: a `bit` lane takes `0`, `1`, `z`, `x` and the clock

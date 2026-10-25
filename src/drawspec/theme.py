@@ -1532,6 +1532,44 @@ class SunburstStyle:
         return cls(weights=weights)
 
 
+#: The darkest a network diagram's bus or group wash may be: words are read on it.
+NETWORK_TONE_MAX: Final = 0.4
+
+
+@dataclass(frozen=True)
+class NetworkStyle:
+    """How a network diagram washes its buses and its groups' backdrops.
+
+    Both are the page's ink at part opacity, so they follow the page into dark
+    mode and print as greys. A bus's name and address are written on it, and a
+    group's hosts stand on its backdrop, so neither may be dark.
+    """
+
+    bus: float = 0.16
+    """How much ink fills a network's bus, behind its name and address."""
+
+    group: float = 0.07
+    """How much ink fills a group's backdrop, behind its hosts. Lighter than a bus,
+    so a group reads as ground and a bus as a thing."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> NetworkStyle:
+        _reject_unknown(mapping, ("bus", "group"), "[network]")
+        defaults = cls()
+        values = {}
+        for key in ("bus", "group"):
+            value = _number(
+                mapping.get(key, getattr(defaults, key)), f"[network] {key}", positive=False
+            )
+            if not 0.0 <= value <= NETWORK_TONE_MAX:
+                raise ThemeError(
+                    f"[network] {key}: expected a share of the ink from 0 to "
+                    f"{NETWORK_TONE_MAX:g}, got {value!r}; words are read on it"
+                )
+            values[key] = value
+        return cls(bus=values["bus"], group=values["group"])
+
+
 #: The most of a step a timing transition may take: past half, a step is all slant.
 TIMING_SLEW_MAX: Final = 0.5
 
@@ -2211,6 +2249,7 @@ _TOP_LEVEL_KEYS: Final = (
     "flow",
     "mindmap",
     "sunburst",
+    "network",
     "timing",
     "gitgraph",
     "argument",
@@ -2253,6 +2292,8 @@ class Theme:
     pie: PieStyle = PieStyle()
     mindmap: MindmapStyle = MindmapStyle()
     sunburst: SunburstStyle = SunburstStyle()
+    network: NetworkStyle = NetworkStyle()
+
     timing: TimingStyle = TimingStyle()
     gitgraph: GitgraphStyle = GitgraphStyle()
     argument: ArgumentStyle = ArgumentStyle()
@@ -2324,6 +2365,7 @@ class Theme:
             pie=PieStyle.from_mapping(_section(mapping, "pie")),
             mindmap=MindmapStyle.from_mapping(_section(mapping, "mindmap")),
             sunburst=SunburstStyle.from_mapping(_section(mapping, "sunburst")),
+            network=NetworkStyle.from_mapping(_section(mapping, "network")),
             timing=TimingStyle.from_mapping(_section(mapping, "timing")),
             gitgraph=GitgraphStyle.from_mapping(_section(mapping, "gitgraph")),
             argument=ArgumentStyle.from_mapping(_section(mapping, "argument")),
