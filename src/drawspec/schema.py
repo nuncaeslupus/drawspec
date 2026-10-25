@@ -855,6 +855,41 @@ AUTOMATON_NAME_MAX: Final = 12
 AUTOMATON_EMPTY_SPELLINGS: Final = ("ε", "ϵ", "λ", "eps", "epsilon", "lambda")
 _AUTOMATON_EMPTY: Final = frozenset(word.casefold() for word in AUTOMATON_EMPTY_SPELLINGS)
 
+#: Neural networks in the two notations most figures use: `neurons`, the
+#: textbook's fully connected figure (layers as columns of circles, every neuron
+#: joined to every neuron of the next layer), and `blocks`, a paper's architecture
+#: figure (layers as boxes in sequence with their tensor shapes, skip connections
+#: and repeated blocks). One kind, because both say the same thing — the layers of
+#: a network in order — and an author moves between them as the network grows.
+NEURALNET_KINDS: Final = ("neuralnet",)
+
+#: How a network is drawn. `neurons` is the default: the figure every textbook
+#: opens with.
+NEURALNET_STYLES: Final = ("neurons", "blocks")
+
+#: Which way a `blocks` network's layers run: across the page (LeNet, AlexNet,
+#: PlotNeuralNet), or down or up it (ResNet's stacked blocks; the Transformer reads
+#: from the bottom).
+NEURALNET_DIRECTIONS: Final = ("right", "down", "up")
+
+#: The most layers one network holds. LeNet-5 is seven, a Transformer encoder
+#: drawn whole about eight; past sixteen boxes the network wants an overview of
+#: its stages and a figure per stage.
+NEURALNET_LAYER_MAX: Final = 16
+
+#: The most neurons a `neurons` layer is drawn whole with. A larger layer is drawn
+#: as its first neurons, a column of dots and its last, with its size written
+#: under it — Nielsen's 784 input neurons, as every textbook draws them.
+NEURALNET_NEURONS_SHOWN: Final = 8
+
+#: The most characters a neuron's label holds: `x₁`, `h₂`, `ŷ`, `+1`. A label is
+#: inside a circle, and every circle is drawn the size of the widest.
+NEURALNET_LABEL_MAX: Final = 4
+
+#: The most skip connections and repeated blocks a `blocks` network carries.
+NEURALNET_SKIP_MAX: Final = 6
+NEURALNET_REPEAT_MAX: Final = 3
+
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
 #: into each other at the canvas width.
 NUMBERLINE_TICK_MAX: Final = 30
@@ -983,6 +1018,9 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: circles, a doubled ring for an accepting state, an arrow from nowhere into the
 #: start, symbols on curved arcs — where a `states` diagram is UML's rounded
 #: boxes, a filled start dot and `event [guard] / action` labels.
+#: `neuralnet` is the thirty-fourth: a neural network's layers in order, as
+#: columns of neurons fully joined or as boxes with tensor shapes — where a `flow`
+#: draws no neurons and computes no parameters.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -1020,6 +1058,7 @@ KINDS: Final = (
     + WARDLEY_KINDS
     + PERT_KINDS
     + AUTOMATON_KINDS
+    + NEURALNET_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -1236,6 +1275,14 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     "automaton": (
         ("states", AUTOMATON_STATE_MAX),
         ("transitions", AUTOMATON_TRANSITION_MAX),
+    ),
+    # Set by the evidence: LeNet-5 is seven layers, a Transformer encoder drawn
+    # whole eight, ResNet's residual block four with one skip, Nielsen's network
+    # three columns. [7 layers; 8 layers, 2 skips, 1 repeat; 5 and 1]
+    "neuralnet": (
+        ("layers", NEURALNET_LAYER_MAX),
+        ("skips", NEURALNET_SKIP_MAX),
+        ("repeats", NEURALNET_REPEAT_MAX),
     ),
 }
 
@@ -3456,6 +3503,113 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "neuralnet-layer": (
+        FieldSpec(
+            "id",
+            "string",
+            description=(
+                "A handle for this layer, unique in the document, that a `blocks` network's "
+                "`skips` and `repeats` name: `conv1`, `add`. Needed only by a layer they name."
+            ),
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description=(
+                "The layer's name. In `neurons`, written under its column: `Input layer`, "
+                "`Hidden 1`; may be left out. In `blocks`, required, and written in its box: "
+                "`Conv 5x5, 6`, `Multi-head attention`."
+            ),
+        ),
+        FieldSpec(
+            "size",
+            "integer",
+            exclusive_minimum=0,
+            description=(
+                "`neurons` only, and required there: how many neurons the layer holds. Up to "
+                f"{NEURALNET_NEURONS_SHOWN} are drawn whole; a larger layer is drawn as its "
+                "first three, a column of dots and its last two, with its size under it."
+            ),
+        ),
+        FieldSpec(
+            "labels",
+            "array",
+            item_kind="string",
+            description=(
+                "`neurons` only: a name inside each neuron, top to bottom — `x₁`, `x₂` — "
+                f"one per neuron, at most {NEURALNET_LABEL_MAX} characters each. Only on a "
+                "layer drawn whole."
+            ),
+        ),
+        FieldSpec(
+            "bias",
+            "boolean",
+            description=(
+                "`neurons` only: `true` draws a bias unit, `+1`, above the column, joined to "
+                "every neuron of the next layer. Not on the last layer, which feeds nothing."
+            ),
+        ),
+        FieldSpec(
+            "type",
+            "string",
+            description=(
+                "`blocks` only: what sort of layer this is — `conv`, `pool`, `dense`. Layers "
+                f"of one type share a fill, and a key names them; at most {CLASSES_MAX} types."
+            ),
+        ),
+        FieldSpec(
+            "shape",
+            "string",
+            description=(
+                "`blocks` only: the tensor the layer puts out, written beside its box in the "
+                "label size: `28x28x6`, `512`."
+            ),
+        ),
+    ),
+    "neuralnet-skip": (
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description="The id of the layer whose output the connection carries.",
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description=(
+                "The id of a later layer the connection feeds — an `add` layer for a residual "
+                "connection, a `concat` for a dense one. Not the next layer: that is joined "
+                "already."
+            ),
+        ),
+        _text(required=False),
+    ),
+    "neuralnet-repeat": (
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description="The id of the first layer of the repeated block.",
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description="The id of the last layer of the block; the same as `from` for one.",
+        ),
+        FieldSpec(
+            "times",
+            "integer",
+            exclusive_minimum=1,
+            required=True,
+            description=(
+                "How many times the block is stacked: `6`, drawn "
+                "`\N{MULTIPLICATION SIGN}6` by its frame."
+            ),
+        ),
+        _text(required=False),
+    ),
     "sunburst-node": (
         _text(),
         FieldSpec(
@@ -4308,7 +4462,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the forty-six diagrams this is. It selects the fields that are "
+            "Which of the forty-seven diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -5681,6 +5835,62 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    NEURALNET_KINDS: (
+        FieldSpec(
+            "style",
+            "string",
+            enum=NEURALNET_STYLES,
+            description=(
+                "`neurons` (the default) draws each layer as a column of circles, every "
+                "neuron joined to every neuron of the next layer: the textbook's fully "
+                "connected network. `blocks` draws each layer as a box in sequence, its "
+                "tensor shape beside it, its fill by `type`, with `skips` and `repeats`: a "
+                "paper's architecture figure."
+            ),
+        ),
+        FieldSpec(
+            "layers",
+            "array",
+            required=True,
+            item_ref="neuralnet-layer",
+            min_items=1,
+            description=(
+                f"The layers, input first, 1 to {NEURALNET_LAYER_MAX} (at least 2 in "
+                "`neurons`). Each is joined to the next in the order written."
+            ),
+        ),
+        FieldSpec(
+            "skips",
+            "array",
+            item_ref="neuralnet-skip",
+            description=(
+                "`blocks` only: connections that jump over layers — ResNet's identity "
+                "shortcut, U-Net's copy — each drawn as a line bowed round the layers it "
+                "bypasses, into the layer it feeds."
+            ),
+        ),
+        FieldSpec(
+            "repeats",
+            "array",
+            item_ref="neuralnet-repeat",
+            description=(
+                "`blocks` only: runs of layers stacked several times, each drawn once inside "
+                "a frame marked with how many times it stacks — the Transformer's `Nx`. Two "
+                "repeats never overlap, and a skip is inside a repeat or outside it, never "
+                "across its frame."
+            ),
+        ),
+        FieldSpec(
+            "direction",
+            "string",
+            enum=NEURALNET_DIRECTIONS,
+            description=(
+                "`blocks` only: which way the layers run — `right` (across the page), `down` "
+                "or `up` (the Transformer's bottom-to-top). Left out, across, and down when "
+                "across does not fit."
+            ),
+        ),
+    ),
     PERT_KINDS: (
         FieldSpec(
             "activities",
@@ -6479,6 +6689,35 @@ class PertActivity:
 
 
 @dataclass(frozen=True)
+class NeuralLayer:
+    """One layer of a `neuralnet`: its handle, its name, and its style's fields."""
+
+    id: str = ""
+    text: str = ""
+    size: int = 0
+    """How many neurons a `neurons` layer holds, or 0 in `blocks`."""
+
+    labels: tuple[str, ...] = ()
+    bias: bool = False
+    type: str = ""
+    """A `blocks` layer's sort — `conv` — which decides its fill, or empty."""
+
+    shape: str = ""
+    """A `blocks` layer's output tensor, as written, or empty."""
+
+
+@dataclass(frozen=True)
+class NeuralSpan:
+    """A run of a `neuralnet`'s layers, `from` to `to`: a skip, or a repeated block."""
+
+    source: str
+    target: str
+    text: str = ""
+    times: int = 0
+    """How many times a repeated block is stacked; 0 for a skip."""
+
+
+@dataclass(frozen=True)
 class AutomatonState:
     """One state of an `automaton`: its handle, the name drawn in it, a Moore output."""
 
@@ -6975,6 +7214,21 @@ class Document:
     automaton_deterministic: bool = False
     """Whether the author declared the automaton a DFA (checked by validation)."""
 
+    neural_style: str = "neurons"
+    """How a `neuralnet` is drawn: `neurons` or `blocks`."""
+
+    neural_layers: tuple[NeuralLayer, ...] = ()
+    """A `neuralnet`'s layers, input first."""
+
+    neural_skips: tuple[NeuralSpan, ...] = ()
+    """A `blocks` network's skip connections, in the order written."""
+
+    neural_repeats: tuple[NeuralSpan, ...] = ()
+    """A `blocks` network's repeated blocks, in the order written."""
+
+    neural_direction: str = ""
+    """Which way a `blocks` network runs, or empty to choose: across, else down."""
+
     packet_fields: tuple[PacketField, ...] = ()
     """A `packet`'s bit fields, in reading order: left to right, row after row."""
 
@@ -7079,6 +7333,7 @@ class Document:
             ("gitgraph", GITGRAPH_KINDS),
             ("pert", PERT_KINDS),
             ("automaton", AUTOMATON_KINDS),
+            ("neuralnet", NEURALNET_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -7320,6 +7575,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_pert_refusal(violation) for violation in found]
     if kind in AUTOMATON_KINDS:
         found = [_automaton_refusal(violation) for violation in found]
+    if kind in NEURALNET_KINDS:
+        found = [_neuralnet_refusal(violation) for violation in found]
     if kind in PACKET_KINDS:
         found = [_packet_refusal(violation) for violation in found]
     if kind in WARDLEY_KINDS:
@@ -7668,6 +7925,18 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
         "Past thirty-six moves the arcs are a weave. Merge symbols that do the same thing "
         "into a class (`digit` for 0-9), or leave the dead state and its moves out."
     ),
+    ("neuralnet", "layers"): (
+        "Past sixteen layers a network is searched, not read. Draw its stages as one box "
+        "each — `Stage 2: 4 residual blocks` — and a figure per stage carrying its layers."
+    ),
+    ("neuralnet", "skips"): (
+        "Past six skip connections the bows are a weave. Draw one block with its skip and "
+        "repeat it with `repeats`, as ResNet's figures do."
+    ),
+    ("neuralnet", "repeats"): (
+        "Past three repeated blocks the frames crowd the layers. Draw each stage as one box, "
+        "and a figure of the block it repeats."
+    ),
     ("meters", "bands"): (
         "Past five bands neighbouring tones blur: merge the bands the reader need not tell "
         "apart. Few's bullet graph uses two to five."
@@ -7977,6 +8246,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _pert_violations(document)
     if kind in AUTOMATON_KINDS:
         return _automaton_violations(document)
+    if kind in NEURALNET_KINDS:
+        return _neuralnet_violations(document)
     if kind in PACKET_KINDS:
         return _packet_violations(document)
     if kind in WARDLEY_KINDS:
@@ -14945,6 +15216,285 @@ def _pert_cycle(
     return None
 
 
+#: Why a neural network has no place for a field an author may reach for.
+NEURALNET_REFUSED: Final = {
+    "neurons": "a layer's neuron count is `size`",
+    "units": "a layer's neuron count is `size`",
+    "nodes": "a network's columns and boxes are its `layers`, in order",
+    "edges": (
+        "each layer is joined to the next in the order written; a connection that jumps "
+        "over layers is a `skips` entry, in `blocks`"
+    ),
+    "connections": (
+        "each layer is joined to the next in the order written; a connection that jumps "
+        "over layers is a `skips` entry, in `blocks`"
+    ),
+    "residual": "a residual connection is a `skips` entry, from the block's input to its `add`",
+    "activation": (
+        "write the activation in the layer's `text` (`Dense 128, ReLU`), or in `blocks` as "
+        "a layer of its own"
+    ),
+    "output": "a `blocks` layer's output tensor is `shape`",
+    "dims": "a `blocks` layer's output tensor is `shape`",
+    "label": "a layer's name is `text`; the names inside a layer's neurons are `labels`",
+    "repeat": "a repeated block is a `repeats` entry: `from`, `to` and `times`",
+    "times": "a repeated block is a `repeats` entry: `from`, `to` and `times`",
+    "role": "a `blocks` layer's fill comes from its `type`, and the key names each type",
+    "fill": "a `blocks` layer's fill comes from its `type`, and the key names each type",
+    "colour": "a `blocks` layer's fill comes from its `type`, and the key names each type",
+    "color": "a `blocks` layer's fill comes from its `type`, and the key names each type",
+    "groups": "a frame round layers is a `repeats` entry, marked with how many times it stacks",
+}
+
+#: The fields only one style draws, and that style.
+_NEURALNET_STYLE_FIELDS: Final = {
+    "size": "neurons",
+    "labels": "neurons",
+    "bias": "neurons",
+    "type": "blocks",
+    "shape": "blocks",
+    "skips": "blocks",
+    "repeats": "blocks",
+    "direction": "blocks",
+}
+
+
+def _neuralnet_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a neural network, told what this kind means by it."""
+    name = violation.pointer.split("/")[-1]
+    unknown = "is not a known field" in violation.message or (
+        "is not" in violation.message and "field" in violation.message
+    )
+    if unknown and name in NEURALNET_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {NEURALNET_REFUSED[name]}.")
+    return violation
+
+
+def _neuralnet_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """What a neural network may not be: a field of the other style, a name that lands nowhere.
+
+    `neurons`: at least two layers, each with a `size`; labels one per neuron, short,
+    on a layer drawn whole; no bias on the last layer. `blocks`: every layer named;
+    ids unique; a skip from an earlier layer to a later one past the next; repeats
+    that never overlap, and no skip across a repeat's frame; at most four types.
+    """
+    found: list[Violation] = []
+    style = document.get("style", "neurons")
+    if style not in NEURALNET_STYLES:
+        return found
+    other = "blocks" if style == "neurons" else "neurons"
+
+    def wrong_style(pointer: str, name: str) -> Violation:
+        return Violation(
+            pointer,
+            f"{name!r} is drawn only in the `{other}` style, and this network is "
+            f'`{style}`. Leave it out, or set `"style": "{other}"`.',
+        )
+
+    for name in ("skips", "repeats", "direction"):
+        if name in document and _NEURALNET_STYLE_FIELDS[name] != style:
+            found.append(wrong_style(f"/{name}", name))
+
+    layers = list(_listed(document, "layers"))
+    if style == "neurons" and len(layers) == 1:
+        found.append(
+            Violation(
+                "/layers",
+                "a network of neurons needs at least two layers — an input and an output — "
+                "for the connections between them to be drawn.",
+            )
+        )
+    ids: dict[str, int] = {}
+    types: list[str] = []
+    for index, entry in enumerate(layers):
+        if not isinstance(entry, dict):
+            continue
+        here = _pointer("layers", index)
+        for name in ("size", "labels", "bias", "type", "shape"):
+            if name in entry and _NEURALNET_STYLE_FIELDS[name] != style:
+                found.append(wrong_style(f"{here}/{name}", name))
+        identifier = entry.get("id")
+        if isinstance(identifier, str):
+            if not identifier.strip():
+                found.append(
+                    Violation(f"{here}/id", "an id needs a value — `conv1` — or leave it out.")
+                )
+            elif identifier in ids:
+                found.append(
+                    Violation(
+                        f"{here}/id",
+                        f"{identifier!r} is already the id of layer {ids[identifier]}: every "
+                        f"layer needs its own, so a skip or a repeat names one box.",
+                    )
+                )
+            else:
+                ids[identifier] = index
+        text = entry.get("text")
+        if style == "blocks" and "text" not in entry:
+            found.append(
+                Violation(
+                    f"{here}/text",
+                    "a block says what the layer is — `Conv 3x3, 64`, `Max pool 2x2` — in `text`.",
+                )
+            )
+        elif isinstance(text, str) and not text.strip():
+            found.append(Violation(f"{here}/text", "a layer's name needs words, or leave it out."))
+        if style == "neurons":
+            size = entry.get("size")
+            if "size" not in entry:
+                found.append(
+                    Violation(
+                        f"{here}/size",
+                        "a layer of neurons says how many it holds: `size` — `3`, `784`.",
+                    )
+                )
+            labels = entry.get("labels")
+            if isinstance(labels, list) and isinstance(size, int):
+                if size > NEURALNET_NEURONS_SHOWN:
+                    found.append(
+                        Violation(
+                            f"{here}/labels",
+                            f"a layer of {size} is drawn as its first and last neurons with "
+                            f"dots between, past the {NEURALNET_NEURONS_SHOWN} drawn whole, so "
+                            f"its neurons cannot each be labelled. Say what they are in the "
+                            f"layer's `text`: `Pixels (784)`.",
+                        )
+                    )
+                elif len(labels) != size:
+                    found.append(
+                        Violation(
+                            f"{here}/labels",
+                            f"{len(labels)} labels for {size} neurons: give one per neuron, top "
+                            f"to bottom, or leave `labels` out.",
+                        )
+                    )
+                for position, label in enumerate(labels):
+                    if isinstance(label, str) and (
+                        "\n" in label or len(label) > NEURALNET_LABEL_MAX
+                    ):
+                        found.append(
+                            Violation(
+                                f"{here}/labels/{position}",
+                                f"{label!r} does not fit in a neuron: one line of at most "
+                                f"{NEURALNET_LABEL_MAX} characters — `x₁`, `h₂`, `ŷ`. Say what "
+                                f"the neurons mean in the layer's `text` or the caption.",
+                            )
+                        )
+            if entry.get("bias") is True and index == len(layers) - 1:
+                found.append(
+                    Violation(
+                        f"{here}/bias",
+                        "the last layer feeds no layer, so it has no bias unit to draw. A "
+                        "bias belongs to the layer it is drawn beside, feeding the next.",
+                    )
+                )
+        kind = entry.get("type")
+        if style == "blocks" and isinstance(kind, str) and kind not in types:
+            types.append(kind)
+            if len(types) > CLASSES_MAX:
+                found.append(
+                    Violation(
+                        f"{here}/type",
+                        f"{kind!r} is a {len(types)}th type, past the {CLASSES_MAX} fills a "
+                        f"key tells apart. Merge types the reader need not tell apart "
+                        f"(`norm` into `conv`), or leave `type` off the minor layers.",
+                    )
+                )
+
+    if style != "blocks":
+        return found
+
+    def resolve(value: object, here: str) -> int | None:
+        if not isinstance(value, str):
+            return None
+        if value in ids:
+            return ids[value]
+        close = get_close_matches(value, list(ids), n=1)
+        hint = f" Did you mean {close[0]!r}?" if close else ""
+        found.append(Violation(here, f"{value!r} names no layer's `id`.{hint}"))
+        return None
+
+    spans: list[tuple[int, int]] = []
+    for index, entry in enumerate(_listed(document, "repeats")):
+        if not isinstance(entry, dict):
+            continue
+        here = _pointer("repeats", index)
+        first = resolve(entry.get("from"), f"{here}/from")
+        last = resolve(entry.get("to"), f"{here}/to")
+        if first is None or last is None:
+            continue
+        if last < first:
+            found.append(
+                Violation(
+                    f"{here}/to",
+                    "a repeated block runs from its first layer to its last, in the order "
+                    "written: this `to` comes before its `from`.",
+                )
+            )
+            continue
+        clash = next((span for span in spans if span[0] <= last and first <= span[1]), None)
+        if clash is not None:
+            found.append(
+                Violation(
+                    here,
+                    "two repeated blocks share a layer: each layer is in one frame at most. "
+                    "Merge them, or end one before the other starts.",
+                )
+            )
+            continue
+        spans.append((first, last))
+
+    seen: set[tuple[int, int]] = set()
+    for index, entry in enumerate(_listed(document, "skips")):
+        if not isinstance(entry, dict):
+            continue
+        here = _pointer("skips", index)
+        first = resolve(entry.get("from"), f"{here}/from")
+        last = resolve(entry.get("to"), f"{here}/to")
+        if first is None or last is None:
+            continue
+        if last <= first:
+            found.append(
+                Violation(
+                    f"{here}/to",
+                    "a skip carries a layer's output forward, to a later layer: this `to` is "
+                    "not after its `from`. A network that feeds back is recurrent — draw it "
+                    "unrolled, or as a `flow`.",
+                )
+            )
+        elif last == first + 1:
+            found.append(
+                Violation(
+                    f"{here}/to",
+                    "these two layers are next to each other, and joined already by the "
+                    "sequence. A skip jumps over at least one layer.",
+                )
+            )
+        elif (first, last) in seen:
+            found.append(Violation(here, "this skip is written already: write each once."))
+        else:
+            seen.add((first, last))
+            across = next(
+                (
+                    span
+                    for span in spans
+                    if (span[0] <= first + 1 <= span[1]) != (span[0] <= last <= span[1])
+                ),
+                None,
+            )
+            if across is not None:
+                found.append(
+                    Violation(
+                        here,
+                        "this skip runs across a repeated block's frame: it branches off the "
+                        "arrow leaving its `from` on one side of the frame and lands on the "
+                        "other. Keep it inside the block (from the layer before the block's "
+                        "first, at the earliest), or round the whole of it.",
+                    )
+                )
+    return found
+
+
 #: Why an automaton has no place for a field an author may reach for.
 AUTOMATON_REFUSED: Final = {
     "initial": "the start state is the top-level `start`, the id of one state",
@@ -16009,6 +16559,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _pert_document(document)
     if kind in AUTOMATON_KINDS:
         return _automaton_document(document)
+    if kind in NEURALNET_KINDS:
+        return _neuralnet_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -16974,6 +17526,45 @@ def _automaton_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _neuralnet_document(document: Mapping[str, Any]) -> Document:
+    """A neural network: its layers in order, and a `blocks` network's spans."""
+
+    def span(entry: Mapping[str, Any]) -> NeuralSpan:
+        return NeuralSpan(
+            source=str(entry["from"]),
+            target=str(entry["to"]),
+            text=str(entry.get("text", "")),
+            times=int(entry.get("times", 0)),
+        )
+
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        neural_style=str(document.get("style", "neurons")),
+        neural_layers=tuple(
+            NeuralLayer(
+                id=str(entry.get("id", "")),
+                text=str(entry.get("text", "")),
+                size=int(entry.get("size", 0)),
+                labels=tuple(str(label) for label in entry.get("labels", ())),
+                bias=entry.get("bias") is True,
+                type=str(entry.get("type", "")),
+                shape=str(entry.get("shape", "")),
+            )
+            for entry in document["layers"]
+        ),
+        neural_skips=tuple(span(entry) for entry in document.get("skips", ())),
+        neural_repeats=tuple(span(entry) for entry in document.get("repeats", ())),
+        neural_direction=str(document.get("direction", "")),
+    )
+
+
 def _sunburst_node(entry: Mapping[str, Any]) -> SunburstNode:
     """One sunburst node and its subtree, built from the validated mapping."""
     return SunburstNode(
@@ -17571,6 +18162,14 @@ __all__ = [
     "NETWORK_HOST_ROLES",
     "NETWORK_KINDS",
     "NETWORK_MAX",
+    "NEURALNET_DIRECTIONS",
+    "NEURALNET_KINDS",
+    "NEURALNET_LABEL_MAX",
+    "NEURALNET_LAYER_MAX",
+    "NEURALNET_NEURONS_SHOWN",
+    "NEURALNET_REPEAT_MAX",
+    "NEURALNET_SKIP_MAX",
+    "NEURALNET_STYLES",
     "NUMBERLINE_KINDS",
     "NUMBERLINE_POINT_MAX",
     "NUMBERLINE_RANGE_MAX",
@@ -17701,6 +18300,8 @@ __all__ = [
     "NetworkGroup",
     "NetworkHost",
     "NetworkSegment",
+    "NeuralLayer",
+    "NeuralSpan",
     "Node",
     "NodeClass",
     "NumberAxis",

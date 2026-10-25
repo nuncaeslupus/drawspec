@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "kind": "neuralnet",
+  "title": "A network to read handwritten digits",
+  "description": "Nielsen's three-layer network: 784 input neurons, one per pixel of a 28x28 image, a hidden layer of 15, and 10 outputs, one per digit.",
+  "layers": [
+    {"text": "Input layer", "size": 784},
+    {"text": "Hidden layer", "size": 15},
+    {"text": "Output layer", "size": 10}
+  ],
+  "caption": "Every neuron feeds every neuron of the next layer; large layers are cut."
+}

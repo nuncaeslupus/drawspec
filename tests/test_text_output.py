@@ -89,6 +89,7 @@ GOLDENS: Final = {
     "packet": "packet-ipv4",
     "pert": "pert-textbook",
     "automaton": "automaton-epsilon-nfa",
+    "neuralnet": "neuralnet-mnist",
 }
 
 #: Golden files beyond one per kind: a second style of a kind, held the same way.
@@ -100,6 +101,8 @@ MORE_GOLDENS: Final = (
     "packet-vlan",
     "automaton-edge-detector",
     "automaton-moore-parity",
+    "neuralnet-lenet",
+    "neuralnet-transformer-encoder",
 )
 
 CHARSETS: Final = ("unicode", "ascii")
@@ -190,6 +193,10 @@ def _labels(document: Document) -> list[str]:
         found += [state.output for state in document.automaton_states]
         found += [move.symbol for move in document.automaton_transitions]
         found += [move.output for move in document.automaton_transitions]
+    elif document.kind == "neuralnet":
+        found += [layer.text for layer in document.neural_layers]
+        found += [layer.type for layer in document.neural_layers]
+        found += [layer.shape for layer in document.neural_layers]
     found.append(document.caption)
     return [line for label in found for line in plain(label).split("\n") if line.strip()]
 

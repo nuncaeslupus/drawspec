@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Forty-six exist, and they fall into thirty-five families:
+fields are legal. Forty-seven exist, and they fall into thirty-six families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -156,6 +156,7 @@ fields are legal. Forty-six exist, and they fall into thirty-five families:
 | Plot | `chart`, `quadrant`, `scatter`, `curve` | Things with numbers: series against axes, items placed in a plane, points by two measured values, a named shape with labelled waypoints. |
 | Listing | `files` | Things in folders: a directory tree from its paths, drawn with pictures or as `tree`-style text (see [Plain text](#plain-text-for-a-terminal-or-a-code-block)). |
 | Automaton | `automaton` | A finite automaton as the theory textbooks draw it: states as circles, accepting ones doubled, an arrow from nowhere into the start, symbols on the arcs (DFA, NFA, ε-NFA, Mealy, Moore). |
+| Neural network | `neuralnet` | A neural network's layers in order: columns of neurons, every one joined to every one of the next layer (the textbook figure), or boxes in sequence with tensor shapes, skip connections and repeated blocks (a paper's architecture figure). |
 | Machine | `states` | Things that change state: the conditions something can be in, and the events that move it between them. |
 | Exchange | `sequence` | Things said in order: messages between a fixed set of participants, read down the page. |
 | Model | `entities` | Things with fields, and how they relate: an ER model, a database schema, a class diagram. |
@@ -441,12 +442,13 @@ drawspec render plan.json --format text --width 100 --charset ascii
 ```
 
 It is a second emitter, not a picture of the SVG: each kind lays itself out on a
-character grid from its own rows and columns. Nineteen kinds have a text form —
+character grid from its own rows and columns. Twenty kinds have a text form —
 `files`, `tree` (a bracket too), `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`,
 `meter` in every style, `timing`, `gitgraph` (as `git log --graph` draws it),
 `network`, `railroad`, `packet`, the graph kinds `flow`, `states` and `lanes`,
-`pert`, drawn as a flow of boxes that each carry the activity's times, and
-`automaton`, drawn as its transition table (100 columns by default) — and
+`pert`, drawn as a flow of boxes that each carry the activity's times,
+`automaton`, drawn as its transition table (100 columns by default), and
+`neuralnet`, drawn as a model summary with its parameters counted — and
 every other kind refuses, naming them. The kinds whose message is an area, an
 angle or a curve never get one. A `meter` `dial` is a half-circle of cells with
 its needle in the stroke nearest the amount's angle and its bands in shades
@@ -1334,6 +1336,56 @@ NFA), [`reference/automaton-epsilon-nfa.json`](reference/automaton-epsilon-nfa.j
 (a Mealy machine) and
 [`reference/automaton-moore-parity.json`](reference/automaton-moore-parity.json) (a
 Moore machine).
+
+## A neural network
+
+There are as many ways to draw a neural network as there are papers, but two
+notations carry most figures, and `neuralnet` draws both. **`neurons`** (the
+default) is the textbook's fully connected figure — Nielsen's MNIST network, NN-SVG's
+FCNN style: each layer a column of circles, every neuron joined to every neuron of
+the next layer:
+
+```json
+{
+  "version": 1,
+  "kind": "neuralnet",
+  "layers": [
+    {"text": "Input layer", "size": 784},
+    {"text": "Hidden layer", "size": 15},
+    {"text": "Output layer", "size": 10}
+  ]
+}
+```
+
+**A large layer is cut.** Up to eight neurons are drawn whole; a larger layer is
+drawn as its first three, a column of dots and its last two, joined like the rest,
+with its size written under its name (`784 neurons`). `labels` names each neuron
+of a whole layer (`x₁`, `ŷ`, four characters at most); `"bias": true` adds a `+1`
+unit at the top of a column, feeding the next layer and fed by nothing (not on the
+last layer). The lines are headless: the order of the layers says the way.
+
+**`"style": "blocks"`** is a paper's architecture figure — LeNet, ResNet's residual
+block, the Transformer: each layer a box in sequence with its `text` (`Conv 3×3, 64`),
+an arrow from each to the next, its output tensor (`shape`, `28×28×6`) beside it,
+and a fill per `type` (at most four, named by a key). A network runs across the
+page (`direction` `right`), and down when across does not fit; `down` and `up` (the
+Transformer reads from the bottom) can be asked for. Two more fields say what
+papers draw round the sequence:
+
+* **`skips`** — `{from, to, text}`: a connection that jumps over layers, ResNet's
+  identity shortcut or the Transformer's residual. It branches off the arrow leaving
+  `from`, runs clear of everything it bypasses, and lands on `to` (an `add` layer,
+  usually). Not to the next layer, which is joined already, and never backwards.
+* **`repeats`** — `{from, to, times, text}`: a block stacked `times` times, drawn once
+  inside a frame marked `×6`. Repeats never overlap, and a skip is inside a frame or
+  round it, never across its line.
+
+The text form is a model summary, as Keras's `summary()` prints one: in `neurons`,
+each layer's neurons and parameters (weights and biases, fully connected), and the
+total; in `blocks`, each layer's number, name, type and shape, then a line per skip
+(`2 → 4`) and repeat (`×6: layers 3-6`). Up to 16 layers, 6 skips and 3 repeats. A
+network that branches and joins in ways a sequence with skips cannot say (Inception's
+parallel towers) is a `flow`.
 
 ## A sequence diagram
 

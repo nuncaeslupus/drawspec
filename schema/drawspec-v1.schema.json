@@ -3557,6 +3557,100 @@
         "start"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "neuralnet",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "neuralnet"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "style": {
+          "type": "string",
+          "description": "`neurons` (the default) draws each layer as a column of circles, every neuron joined to every neuron of the next layer: the textbook's fully connected network. `blocks` draws each layer as a box in sequence, its tensor shape beside it, its fill by `type`, with `skips` and `repeats`: a paper's architecture figure.",
+          "enum": [
+            "neurons",
+            "blocks"
+          ]
+        },
+        "layers": {
+          "type": "array",
+          "description": "The layers, input first, 1 to 16 (at least 2 in `neurons`). Each is joined to the next in the order written.",
+          "items": {
+            "$ref": "#/$defs/neuralnet-layer"
+          },
+          "minItems": 1
+        },
+        "skips": {
+          "type": "array",
+          "description": "`blocks` only: connections that jump over layers — ResNet's identity shortcut, U-Net's copy — each drawn as a line bowed round the layers it bypasses, into the layer it feeds.",
+          "items": {
+            "$ref": "#/$defs/neuralnet-skip"
+          }
+        },
+        "repeats": {
+          "type": "array",
+          "description": "`blocks` only: runs of layers stacked several times, each drawn once inside a frame marked with how many times it stacks — the Transformer's `Nx`. Two repeats never overlap, and a skip is inside a repeat or outside it, never across its frame.",
+          "items": {
+            "$ref": "#/$defs/neuralnet-repeat"
+          }
+        },
+        "direction": {
+          "type": "string",
+          "description": "`blocks` only: which way the layers run — `right` (across the page), `down` or `up` (the Transformer's bottom-to-top). Left out, across, and down when across does not fit.",
+          "enum": [
+            "right",
+            "down",
+            "up"
+          ]
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "layers"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -5289,6 +5383,94 @@
       },
       "required": [
         "id"
+      ],
+      "additionalProperties": false
+    },
+    "neuralnet-layer": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "A handle for this layer, unique in the document, that a `blocks` network's `skips` and `repeats` name: `conv1`, `add`. Needed only by a layer they name."
+        },
+        "text": {
+          "type": "string",
+          "description": "The layer's name. In `neurons`, written under its column: `Input layer`, `Hidden 1`; may be left out. In `blocks`, required, and written in its box: `Conv 5x5, 6`, `Multi-head attention`."
+        },
+        "size": {
+          "type": "integer",
+          "description": "`neurons` only, and required there: how many neurons the layer holds. Up to 8 are drawn whole; a larger layer is drawn as its first three, a column of dots and its last two, with its size under it.",
+          "exclusiveMinimum": 0
+        },
+        "labels": {
+          "type": "array",
+          "description": "`neurons` only: a name inside each neuron, top to bottom — `x₁`, `x₂` — one per neuron, at most 4 characters each. Only on a layer drawn whole.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "bias": {
+          "type": "boolean",
+          "description": "`neurons` only: `true` draws a bias unit, `+1`, above the column, joined to every neuron of the next layer. Not on the last layer, which feeds nothing."
+        },
+        "type": {
+          "type": "string",
+          "description": "`blocks` only: what sort of layer this is — `conv`, `pool`, `dense`. Layers of one type share a fill, and a key names them; at most 4 types."
+        },
+        "shape": {
+          "type": "string",
+          "description": "`blocks` only: the tensor the layer puts out, written beside its box in the label size: `28x28x6`, `512`."
+        }
+      },
+      "additionalProperties": false
+    },
+    "neuralnet-repeat": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The id of the first layer of the repeated block."
+        },
+        "to": {
+          "type": "string",
+          "description": "The id of the last layer of the block; the same as `from` for one."
+        },
+        "times": {
+          "type": "integer",
+          "description": "How many times the block is stacked: `6`, drawn `×6` by its frame.",
+          "exclusiveMinimum": 1
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "times"
+      ],
+      "additionalProperties": false
+    },
+    "neuralnet-skip": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The id of the layer whose output the connection carries."
+        },
+        "to": {
+          "type": "string",
+          "description": "The id of a later layer the connection feeds — an `add` layer for a residual connection, a `concat` for a dense one. Not the next layer: that is joined already."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "from",
+        "to"
       ],
       "additionalProperties": false
     },

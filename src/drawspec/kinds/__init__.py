@@ -33,6 +33,7 @@ from drawspec.kinds.journey import journey_scene
 from drawspec.kinds.meter import meter_scene, meter_text
 from drawspec.kinds.mindmap import mindmap_scene
 from drawspec.kinds.network import network_scene, network_text
+from drawspec.kinds.neuralnet import neuralnet_scene, neuralnet_text
 from drawspec.kinds.numberline import numberline_scene
 from drawspec.kinds.packet import packet_scene, packet_text
 from drawspec.kinds.pert import pert_scene, pert_text
@@ -68,6 +69,7 @@ from drawspec.schema import (
     METER_KINDS,
     MINDMAP_KINDS,
     NETWORK_KINDS,
+    NEURALNET_KINDS,
     NUMBERLINE_KINDS,
     PACKET_KINDS,
     PERT_KINDS,
@@ -127,6 +129,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *PACKET_KINDS,
     *PERT_KINDS,
     *AUTOMATON_KINDS,
+    *NEURALNET_KINDS,
     "cycle",
 )
 
@@ -156,6 +159,7 @@ TEXT_FORMS: Final[dict[str, Callable[[Document, int, str], str]]] = {
     "lanes": graph_text,
     "pert": pert_text,
     "automaton": automaton_text,
+    "neuralnet": neuralnet_text,
 }
 
 #: The kinds `render --format text` draws, in the order the refusal lists them.
@@ -250,6 +254,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return pert_scene(document, theme, measurer)
     if document.kind in AUTOMATON_KINDS:
         return automaton_scene(document, theme, measurer)
+    if document.kind in NEURALNET_KINDS:
+        return neuralnet_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -287,6 +293,7 @@ __all__ = [
     "meter_scene",
     "mindmap_scene",
     "network_scene",
+    "neuralnet_scene",
     "numberline_scene",
     "outline",
     "packet_scene",

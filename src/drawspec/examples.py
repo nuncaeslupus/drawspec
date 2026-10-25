@@ -74,6 +74,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "packet": "a protocol header or a register as bit fields in rows, under a bit ruler",
     "pert": "a project network of activities, the schedule and critical path computed",
     "automaton": "a finite automaton (DFA, NFA, Mealy, Moore): circles, symbols on arcs",
+    "neuralnet": "a neural network's layers: columns of neurons fully joined, or boxes with shapes",
 }
 
 #: The smallest document of each kind that renders.
@@ -452,6 +453,15 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"from": "odd", "to": "even", "on": "1"},
             {"from": "even", "to": "even", "on": "0"},
             {"from": "odd", "to": "odd", "on": "0"},
+        ],
+    },
+    "neuralnet": {
+        "version": 1,
+        "kind": "neuralnet",
+        "layers": [
+            {"text": "Input", "size": 3},
+            {"text": "Hidden", "size": 4},
+            {"text": "Output", "size": 2},
         ],
     },
     "sunburst": {

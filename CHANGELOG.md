@@ -12,6 +12,27 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **A `neuralnet` kind.** A neural network's layers, in the two notations most figures
+  use. `neurons` (the default) is the textbook's fully connected figure (Nielsen,
+  NN-SVG's FCNN style): each layer a column of circles centred on the others, every
+  neuron joined by a headless line to every neuron of the next layer; a layer past
+  eight neurons is drawn as its first three, a column of dots and its last two, with
+  its size under its name; `labels` name the neurons of a whole layer and `bias` adds a
+  `+1` unit fed by nothing. `"style": "blocks"` is a paper's architecture figure
+  (LeNet-5, ResNet's residual block, the Transformer): a box per layer in sequence with
+  its output `shape` beside it and a fill per `type` (at most four, keyed), running
+  across the page, or down when across does not fit (`direction` `right`, `down`,
+  `up`); `skips` branch off the arrow after their layer and land on a later one, clear
+  of every box; `repeats` frame a block marked `×N`, its inner skips inside the frame.
+  Refused at their pointers: a field of the other style, a layer of neurons without
+  `size`, labels that do not match or fit, a bias on the last layer, ids that land
+  nowhere (the nearest offered), a skip backwards or to the next layer, overlapping
+  repeats, a skip across a frame, a fifth type, and `neurons`, `residual`,
+  `activation`, `color` with the reason. Its text form is a model summary: neurons and
+  parameters (weights and biases) per layer with the total, or each layer's type and
+  shape with its skips and repeats. Up to 16 layers, 6 skips and 3 repeats; five
+  references — Nielsen's MNIST network, a perceptron with bias units, LeNet-5, a
+  residual block and the Transformer's encoder.
 - **A `wardley` kind.** A Wardley map: what a user needs at the top, what that rests on
   below, each part placed across by how evolved it is — genesis, custom-built, product,
   commodity. No position is a coordinate: `evolution` is a stage by name, optionally
