@@ -73,6 +73,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "usecase": "who uses a system for what — UML actors, use cases, «include» and «extend»",
     "packet": "a protocol header or a register as bit fields in rows, under a bit ruler",
     "pert": "a project network of activities, the schedule and critical path computed",
+    "automaton": "a finite automaton (DFA, NFA, Mealy, Moore): circles, symbols on arcs",
 }
 
 #: The smallest document of each kind that renders.
@@ -437,6 +438,20 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"id": "B", "text": "Build", "duration": 5, "after": ["A"]},
             {"id": "C", "text": "Write docs", "duration": 2, "after": ["A"]},
             {"id": "D", "text": "Release", "duration": 1, "after": ["B", "C"]},
+        ],
+    },
+    "automaton": {
+        "version": 1,
+        "kind": "automaton",
+        "deterministic": True,
+        "start": "even",
+        "accepting": ["even"],
+        "states": [{"id": "even"}, {"id": "odd"}],
+        "transitions": [
+            {"from": "even", "to": "odd", "on": "1"},
+            {"from": "odd", "to": "even", "on": "1"},
+            {"from": "even", "to": "even", "on": "0"},
+            {"from": "odd", "to": "odd", "on": "0"},
         ],
     },
     "sunburst": {

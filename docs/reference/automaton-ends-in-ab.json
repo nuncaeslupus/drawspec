@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "kind": "automaton",
+  "title": "Strings over {a, b} that end in ab",
+  "description": "A nondeterministic finite automaton that guesses where the final ab begins: q0 loops on every symbol, and on an a it may also move to q1, which must then read b to reach the accepting q2.",
+  "start": "q0",
+  "accepting": ["q2"],
+  "states": [
+    {"id": "q0"},
+    {"id": "q1"},
+    {"id": "q2"}
+  ],
+  "transitions": [
+    {"from": "q0", "to": "q0", "on": "a"},
+    {"from": "q0", "to": "q0", "on": "b"},
+    {"from": "q0", "to": "q1", "on": "a"},
+    {"from": "q1", "to": "q2", "on": "b"}
+  ]
+}

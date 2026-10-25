@@ -134,6 +134,26 @@ against it would stop working. Everything below is about the *package*.
   relations; refusals for actor–actor associations, include from an actor, loops, and
   more, each at its pointer. No text form. The sequence kind's stick figure is now
   shared (`kinds.sequence.stick_figure`). Library, ATM and checkout references.
+- **An `automaton` kind.** A finite automaton as the theory-of-computation textbooks,
+  JFLAP, Graphviz's `fsm` example and TikZ's `automata` library draw it: states as circles
+  with their names inside (all the size of the widest), accepting states as double
+  circles, the start state entered by an arrow from nowhere (no initial dot). Each
+  transition reads one symbol (`on`) or is an empty move (`"epsilon": true`, labelled ε);
+  moves between the same two states merge into one arrow labelled `a, b`, a move to the
+  same state is a loop on the circle, and a pair of opposite moves is two arcs bowed
+  apart. A Mealy machine's `output` is drawn `a / 1` on its arrows, a Moore machine's
+  `q0 / 1` in its circles. Placed by the layered engine; the arcs are the kind's own —
+  straight where clear, otherwise curved round every circle they do not belong to — and
+  every label is set beside its own arc clear of every stroke, circle and label.
+  `"deterministic": true` refuses an ε-move and two moves on one symbol from one state,
+  at their pointers. Also refused: ids that land nowhere (with the nearest offered), a move
+  with neither or both of `on` and `epsilon`, `"on": "ε"`, a move written twice, half a
+  Mealy or Moore machine or both at once, names past 12 characters, and `initial`,
+  `final`, `alphabet`, `event`, `guard`, `label`, `role` with the reason. Its text form is
+  the transition table (→ start, * accepting; NFA cells as sets; 100 columns by default).
+  Up to 12 states and 36 transitions; five references — Wikipedia's DFA for binary
+  multiples of 3, an NFA for strings ending in ab, an ε-NFA for a*b*c*, a Mealy edge
+  detector and a Moore parity machine.
 - **A `pert` kind.** A project network drawn activity-on-node, as PMBOK and the
   project-management textbooks draw it: each activity a box of cells — early start,
   duration and early finish over its name, late start, float and late finish under it —

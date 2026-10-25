@@ -25,7 +25,7 @@ by name with a JSON pointer, so those mistakes cannot be expressed.
   including `render --format text`, the diagram as plain text for a terminal or a
   code block (`files`, `tree` and its bracket style, `sequence`, `gantt`, `timeline`, `board`, `stack`,
   `rag`, `meter`, `packet`, `timing`, `gitgraph`, `network`, `railroad`, `flow`, `states`,
-  `lanes`, `pert`).
+  `lanes`, `pert`, `automaton`).
 - [The theme reference](docs/theme.md): every key a theme may set.
 - [JSON Schema](schema/drawspec-v1.schema.json): published, versioned, and the
   same source of truth the validator uses.

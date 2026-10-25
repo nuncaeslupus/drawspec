@@ -829,6 +829,29 @@ PERT_DEPENDENCY_MAX: Final = 32
 #: (1, 4, 1): its expected duration is (optimistic + 4 x likely + pessimistic) / 6.
 PERT_ESTIMATES: Final = ("optimistic", "likely", "pessimistic")
 
+#: Finite automata as the theory-of-computation textbooks draw them: states as
+#: circles, accepting ones doubled, the start state entered by an arrow from
+#: nowhere, transitions labelled by the symbols they read (DFA, NFA, ε-NFA, and
+#: the Mealy and Moore transducers). Placed by the layered engine; the arcs are
+#: drawspec's own, curved round the circles they do not belong to.
+AUTOMATON_KINDS: Final = ("automaton",)
+
+#: The most states one automaton holds. Textbook figures run to three to eight;
+#: past twelve circles the reader traces a word through a maze, not a machine.
+AUTOMATON_STATE_MAX: Final = 12
+
+#: The most transitions, counted as written (one per symbol), before merging.
+AUTOMATON_TRANSITION_MAX: Final = 36
+
+#: The longest a state's name may be, in characters, its Moore output included.
+#: A circle grows with its name, and every circle is drawn the size of the
+#: widest: past this the machine wants boxes — a `states` diagram.
+AUTOMATON_NAME_MAX: Final = 12
+
+#: What an author may write for the empty move instead of `epsilon: true`, each
+#: refused so that ε is never mistaken for a symbol read from the input.
+AUTOMATON_EMPTY_SPELLINGS: Final = ("ε", "λ", "Λ", "eps", "epsilon", "lambda")
+
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
 #: into each other at the canvas width.
 NUMBERLINE_TICK_MAX: Final = 30
@@ -953,6 +976,10 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: `pert` is the thirty-second: activities joined finish-to-start with their
 #: schedule computed — a `gantt` places bars by times the author wrote, and a
 #: `flow` computes nothing.
+#: `automaton` is the thirty-third: a finite automaton as the textbooks draw it —
+#: circles, a doubled ring for an accepting state, an arrow from nowhere into the
+#: start, symbols on curved arcs — where a `states` diagram is UML's rounded
+#: boxes, a filled start dot and `event [guard] / action` labels.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -989,6 +1016,7 @@ KINDS: Final = (
     + USECASE_KINDS
     + WARDLEY_KINDS
     + PERT_KINDS
+    + AUTOMATON_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -1200,6 +1228,12 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # Set by the evidence: a textbook network is eight to fourteen activities.
     # The dependencies are counted with the activities (see `_pert_violations`).
     "pert": (("activities", PERT_ACTIVITY_MAX),),
+    # Set by the evidence: the textbook figures hold three to eight states and a
+    # dozen or so transitions. [3 states, 6 transitions; 4 and 7; 4 and 8]
+    "automaton": (
+        ("states", AUTOMATON_STATE_MAX),
+        ("transitions", AUTOMATON_TRANSITION_MAX),
+    ),
 }
 
 
@@ -3348,6 +3382,77 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "automaton-state": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description=(
+                "A handle for this state, unique in the document, that `start`, `accepting` "
+                "and each transition's `from` and `to` name: `q0`, `even`. Drawn in the "
+                "circle when there is no `text`."
+            ),
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description=(
+                "The name drawn in the circle, when it differs from the `id`: `q₀`, `S1`. One "
+                "line of at most 12 characters, its `output` included: every circle is drawn "
+                "the size of the widest name."
+            ),
+        ),
+        FieldSpec(
+            "output",
+            "string",
+            description=(
+                "A Moore machine's output in this state, drawn after its name as `q0 / 1`. "
+                "Give it on every state or none, and never with a transition's `output`."
+            ),
+        ),
+    ),
+    "automaton-transition": (
+        FieldSpec(
+            "from",
+            "string",
+            required=True,
+            description="The id of the state the move leaves.",
+        ),
+        FieldSpec(
+            "to",
+            "string",
+            required=True,
+            description=(
+                "The id of the state the move enters. The same id as `from` is drawn as a "
+                "loop on the circle."
+            ),
+        ),
+        FieldSpec(
+            "on",
+            "string",
+            description=(
+                "The input symbol the move reads: `0`, `a`, `coin`. One symbol per transition; "
+                "two transitions between the same two states are drawn as one arrow labelled "
+                "`a, b`. Leave it out of an empty move and write `epsilon` instead."
+            ),
+        ),
+        FieldSpec(
+            "epsilon",
+            "boolean",
+            description=(
+                "`true` makes this an empty move, taken without reading a symbol, labelled ε. "
+                "Not with `on`, and never in a `deterministic` automaton."
+            ),
+        ),
+        FieldSpec(
+            "output",
+            "string",
+            description=(
+                "A Mealy machine's output on this move, drawn after its symbol as `a / 1`. "
+                "Give it on every transition or none, and never with a state's `output`."
+            ),
+        ),
+    ),
     "sunburst-node": (
         _text(),
         FieldSpec(
@@ -4199,7 +4304,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the forty-five diagrams this is. It selects the fields that are "
+            "Which of the forty-six diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -5519,6 +5624,58 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    AUTOMATON_KINDS: (
+        FieldSpec(
+            "states",
+            "array",
+            required=True,
+            item_ref="automaton-state",
+            min_items=1,
+            description=(
+                "The states, 1 to 12, each a circle with its name inside, all the size of the "
+                "widest. Ranked left to right from `start` by the transitions; the order "
+                "written breaks ties and is the row order of the text form's table."
+            ),
+        ),
+        FieldSpec(
+            "start",
+            "string",
+            required=True,
+            description=(
+                "The id of the start state, entered by an arrow coming in from nowhere. "
+                "Exactly one."
+            ),
+        ),
+        FieldSpec(
+            "accepting",
+            "array",
+            item_kind="string",
+            description=(
+                "The ids of the accepting (final) states, each drawn as a double circle. May "
+                "include `start`; may be left out, as a Mealy or Moore machine often is."
+            ),
+        ),
+        FieldSpec(
+            "transitions",
+            "array",
+            item_ref="automaton-transition",
+            description=(
+                "The moves, each `from`, `to` and the symbol it reads `on` (or `epsilon`). "
+                "Several between the same two states, in the same direction, are drawn as "
+                "one arrow labelled `a, b`; a pair in opposite directions as two arcs bowed "
+                "apart; a move from a state to itself as a loop on its circle."
+            ),
+        ),
+        FieldSpec(
+            "deterministic",
+            "boolean",
+            description=(
+                "`true` says this is a DFA, and has drawspec hold it to that: no ε-move, and "
+                "no two moves from one state on the same symbol. A missing move is allowed — "
+                "the textbooks leave the dead state out."
+            ),
+        ),
+    ),
     PERT_KINDS: (
         FieldSpec(
             "activities",
@@ -6317,6 +6474,29 @@ class PertActivity:
 
 
 @dataclass(frozen=True)
+class AutomatonState:
+    """One state of an `automaton`: its handle, the name drawn in it, a Moore output."""
+
+    id: str
+    text: str
+    """The name in the circle: as written, or the id."""
+
+    output: str = ""
+
+
+@dataclass(frozen=True)
+class AutomatonTransition:
+    """One move of an `automaton`: from, to, the symbol it reads (empty for ε)."""
+
+    source: str
+    target: str
+    symbol: str = ""
+    epsilon: bool = False
+    output: str = ""
+    """A Mealy machine's output on this move, or empty."""
+
+
+@dataclass(frozen=True)
 class SunburstNode:
     """One sector of a `sunburst`, with the sectors nested inside it, in order."""
 
@@ -6775,6 +6955,21 @@ class Document:
     pert_finish: str = ""
     """A `pert` network's finish milestone's words, or empty for none."""
 
+    automaton_states: tuple[AutomatonState, ...] = ()
+    """An `automaton`'s states, in the order written."""
+
+    automaton_transitions: tuple[AutomatonTransition, ...] = ()
+    """An `automaton`'s moves, in the order written, one symbol each."""
+
+    automaton_start: str = ""
+    """The id of an `automaton`'s start state."""
+
+    automaton_accepting: tuple[str, ...] = ()
+    """The ids of an `automaton`'s accepting states."""
+
+    automaton_deterministic: bool = False
+    """Whether the author declared the automaton a DFA (checked by validation)."""
+
     packet_fields: tuple[PacketField, ...] = ()
     """A `packet`'s bit fields, in reading order: left to right, row after row."""
 
@@ -6878,6 +7073,7 @@ class Document:
             ("timing", TIMING_KINDS),
             ("gitgraph", GITGRAPH_KINDS),
             ("pert", PERT_KINDS),
+            ("automaton", AUTOMATON_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -7117,6 +7313,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_sunburst_refusal(violation) for violation in found]
     if kind in PERT_KINDS:
         found = [_pert_refusal(violation) for violation in found]
+    if kind in AUTOMATON_KINDS:
+        found = [_automaton_refusal(violation) for violation in found]
     if kind in PACKET_KINDS:
         found = [_packet_refusal(violation) for violation in found]
     if kind in WARDLEY_KINDS:
@@ -7457,6 +7655,14 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
         "Past twenty activities a network is searched, not followed. Draw an overview network "
         "with one activity per phase, and a network per phase carrying its detail."
     ),
+    ("automaton", "states"): (
+        "Past twelve states a reader traces a word through a maze, not a machine. Minimise "
+        "it, or draw the parts as separate automata and say in the caption how they join."
+    ),
+    ("automaton", "transitions"): (
+        "Past thirty-six moves the arcs are a weave. Merge symbols that do the same thing "
+        "into a class (`digit` for 0-9), or leave the dead state and its moves out."
+    ),
     ("meters", "bands"): (
         "Past five bands neighbouring tones blur: merge the bands the reader need not tell "
         "apart. Few's bullet graph uses two to five."
@@ -7764,6 +7970,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _sunburst_violations(document)
     if kind in PERT_KINDS:
         return _pert_violations(document)
+    if kind in AUTOMATON_KINDS:
+        return _automaton_violations(document)
     if kind in PACKET_KINDS:
         return _packet_violations(document)
     if kind in WARDLEY_KINDS:
@@ -14745,6 +14953,281 @@ def _pert_cycle(
     return None
 
 
+#: Why an automaton has no place for a field an author may reach for.
+AUTOMATON_REFUSED: Final = {
+    "initial": "the start state is the top-level `start`, the id of one state",
+    "final": "the accepting states are the top-level `accepting`, a list of state ids",
+    "accept": "the accepting states are the top-level `accepting`, a list of state ids",
+    "accepting": "the accepting states are the top-level `accepting`, a list of state ids",
+    "start": "the start state is the top-level `start`, the id of one state",
+    "symbol": "the symbol a move reads is `on`",
+    "input": "the symbol a move reads is `on`",
+    "event": (
+        "a move reads a symbol, `on`; an event with a guard and an action is a UML state "
+        "machine — the `states` kind"
+    ),
+    "label": (
+        "the arrow's label is built from `on` (or `epsilon`) and `output`; two moves between "
+        "the same states are merged into `a, b`"
+    ),
+    "symbols": (
+        "one symbol per transition, as `on`: write a transition for each, and drawspec merges "
+        "them into one arrow labelled `a, b`"
+    ),
+    "guard": "a finite automaton's move has no guard: it reads a symbol, `on`",
+    "action": "a move's output is `output`, drawn after its symbol as `a / 1` (a Mealy machine)",
+    "alphabet": (
+        "the alphabet is read from the transitions, in the order the symbols first appear: "
+        "every symbol is some move's `on`"
+    ),
+    "role": (
+        "an automaton draws every state as a circle and every accepting one doubled: being "
+        "the start or accepting is said by `start` and `accepting`"
+    ),
+    "nodes": "an automaton's circles are its `states`",
+    "edges": "an automaton's arrows are its `transitions`",
+    "groups": "an automaton has no composite states: a frame round states is the `states` kind",
+}
+
+
+def _automaton_refusal(violation: Violation) -> Violation:
+    """A structural refusal in an automaton, told what this kind means by it."""
+    name = violation.pointer.split("/")[-1]
+    unknown = "is not a known field" in violation.message or (
+        "is not" in violation.message and "field" in violation.message
+    )
+    if unknown and name in AUTOMATON_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {AUTOMATON_REFUSED[name]}.")
+    return violation
+
+
+def _automaton_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """What an automaton may not be: ids that do not land, moves that read nothing.
+
+    Exactly one start; every accepting id and every `from` and `to` a state; every
+    move reads one symbol or is an empty move, never both; a move written once; a
+    Mealy or a Moore machine, whole, never both; and a declared DFA with no ε-move and
+    no two moves from one state on one symbol.
+    """
+    found: list[Violation] = []
+    ids: dict[str, int] = {}
+    outputs: list[int] = []
+    for index, entry in enumerate(_listed(document, "states")):
+        if not isinstance(entry, dict):
+            continue
+        identifier = entry.get("id")
+        if isinstance(identifier, str):
+            if not identifier.strip():
+                found.append(
+                    Violation(
+                        _pointer("states", index, "id"),
+                        "a state needs an id — `q0` — for `start`, `accepting` and the "
+                        "transitions to name.",
+                    )
+                )
+            elif identifier in ids:
+                found.append(
+                    Violation(
+                        _pointer("states", index, "id"),
+                        f"{identifier!r} is already the id of state {ids[identifier]}: every "
+                        f"state needs its own, so a transition names one circle.",
+                    )
+                )
+            else:
+                ids[identifier] = index
+        text = entry.get("text", identifier)
+        output = entry.get("output")
+        if isinstance(output, str):
+            outputs.append(index)
+            if not output.strip():
+                found.append(
+                    Violation(
+                        _pointer("states", index, "output"),
+                        "a Moore output needs a value — `0`, `open` — or leave `output` out.",
+                    )
+                )
+        if isinstance(text, str):
+            where = _pointer("states", index, "text" if "text" in entry else "id")
+            name = f"{text} / {output}" if isinstance(output, str) else text
+            if "text" in entry and not text.strip():
+                found.append(Violation(where, "a state's name needs words, or leave `text` out."))
+            elif "\n" in text:
+                found.append(
+                    Violation(
+                        where,
+                        "a state's name is one line in its circle. Say what holds in it in "
+                        "the `caption`, or draw the machine as a `states` diagram, whose boxes "
+                        "take a lead and a detail.",
+                    )
+                )
+            elif len(name) > AUTOMATON_NAME_MAX:
+                found.append(
+                    Violation(
+                        where,
+                        f"{name!r} is {len(name)} characters, past the {AUTOMATON_NAME_MAX} a "
+                        f"circle holds: every state is drawn the size of the widest. Shorten "
+                        f"it to a handle (`q3`, `odd`) and say what it means in the caption, "
+                        f"or draw a `states` diagram.",
+                    )
+                )
+
+    states = list(_listed(document, "states"))
+    if outputs and len(outputs) < len([entry for entry in states if isinstance(entry, dict)]):
+        missing = next(
+            index
+            for index, entry in enumerate(states)
+            if isinstance(entry, dict) and index not in outputs
+        )
+        found.append(
+            Violation(
+                _pointer("states", missing),
+                "a Moore machine writes an output in every state: this one has none. Give it "
+                "an `output`, or take `output` off every state.",
+            )
+        )
+
+    def resolve(value: object, here: str, what: str) -> None:
+        if isinstance(value, str) and value not in ids:
+            close = get_close_matches(value, list(ids), n=1)
+            hint = f" Did you mean {close[0]!r}?" if close else ""
+            found.append(Violation(here, f"{value!r} {what} names no state.{hint}"))
+
+    resolve(document.get("start"), "/start", "as the start state")
+    seen_accepting: set[str] = set()
+    for position, value in enumerate(_listed(document, "accepting")):
+        here = _pointer("accepting", position)
+        if isinstance(value, str) and value in seen_accepting:
+            found.append(Violation(here, f"{value!r} is already accepting: list it once."))
+        else:
+            resolve(value, here, "as an accepting state")
+        if isinstance(value, str):
+            seen_accepting.add(value)
+
+    deterministic = document.get("deterministic") is True
+    written: dict[tuple[Any, ...], int] = {}
+    reads: dict[tuple[str, str], int] = {}
+    mealy: list[int] = []
+    moves = list(_listed(document, "transitions"))
+    for index, entry in enumerate(moves):
+        if not isinstance(entry, dict):
+            continue
+        here = _pointer("transitions", index)
+        resolve(entry.get("from"), f"{here}/from", "as `from`")
+        resolve(entry.get("to"), f"{here}/to", "as `to`")
+        symbol = entry.get("on")
+        empty = entry.get("epsilon") is True
+        if "output" in entry:
+            mealy.append(index)
+            output = entry.get("output")
+            if isinstance(output, str) and not output.strip():
+                found.append(
+                    Violation(
+                        f"{here}/output",
+                        "a Mealy output needs a value — `0`, `beep` — or leave `output` out.",
+                    )
+                )
+        if empty and "on" in entry:
+            found.append(
+                Violation(
+                    f"{here}/epsilon",
+                    "a move reads a symbol (`on`) or is an empty move (`epsilon: true`), not "
+                    "both. Keep one.",
+                )
+            )
+            continue
+        if not empty and "on" not in entry:
+            found.append(
+                Violation(
+                    here,
+                    "a move reads a symbol: give it `on` — `0`, `a` — or make it an empty move "
+                    "with `epsilon: true`.",
+                )
+            )
+            continue
+        if isinstance(symbol, str):
+            if not symbol.strip():
+                found.append(
+                    Violation(
+                        f"{here}/on",
+                        "a symbol needs a character. An empty move is `epsilon: true`.",
+                    )
+                )
+                continue
+            if symbol.strip() in AUTOMATON_EMPTY_SPELLINGS:
+                found.append(
+                    Violation(
+                        f"{here}/on",
+                        f"{symbol!r} reads as the empty move, which is not a symbol on the "
+                        f"input: write `epsilon: true` in place of `on`, and drawspec labels "
+                        f"it ε.",
+                    )
+                )
+                continue
+            if "\n" in symbol:
+                found.append(Violation(f"{here}/on", "a symbol is one line: drop the newline."))
+                continue
+        source, target = entry.get("from"), entry.get("to")
+        if not (isinstance(source, str) and isinstance(target, str)):
+            continue
+        read = "" if empty else symbol
+        if not isinstance(read, str):
+            continue
+        key = (source, target, read, empty)
+        if key in written:
+            found.append(
+                Violation(
+                    f"{here}/{'epsilon' if empty else 'on'}",
+                    f"this move is transition {written[key]} again ({source} to {target} "
+                    f"{'by ε' if empty else f'on {read!r}'}): write it once.",
+                )
+            )
+            continue
+        written[key] = index
+        if not deterministic:
+            continue
+        if empty:
+            found.append(
+                Violation(
+                    f"{here}/epsilon",
+                    "a deterministic automaton has no empty moves: each step reads a symbol. "
+                    "Remove the ε-move, or drop `deterministic` — this is an NFA.",
+                )
+            )
+            continue
+        if (source, read) in reads:
+            first = reads[(source, read)]
+            found.append(
+                Violation(
+                    f"{here}/on",
+                    f"{source!r} already moves on {read!r} (transition {first}): a "
+                    f"deterministic automaton has one move per state and symbol. Remove one, "
+                    f"or drop `deterministic` — this is an NFA.",
+                )
+            )
+            continue
+        reads[(source, read)] = index
+
+    dicts = [index for index, entry in enumerate(moves) if isinstance(entry, dict)]
+    if mealy and len(mealy) < len(dicts):
+        missing = next(index for index in dicts if index not in mealy)
+        found.append(
+            Violation(
+                _pointer("transitions", missing),
+                "a Mealy machine writes an output on every move: this one has none. Give it an "
+                "`output`, or take `output` off every transition.",
+            )
+        )
+    if mealy and outputs:
+        found.append(
+            Violation(
+                _pointer("states", outputs[0], "output"),
+                "a machine writes its outputs on its moves (Mealy) or in its states (Moore), not "
+                "both. Keep one.",
+            )
+        )
+    return found
+
+
 def _figure(value: float) -> str:
     """A number as an author wrote it: no float noise, no trailing zeros."""
     text = f"{round(value, 9):.9f}".rstrip("0").rstrip(".")
@@ -15532,6 +16015,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _gitgraph_document(document)
     if kind in PERT_KINDS:
         return _pert_document(document)
+    if kind in AUTOMATON_KINDS:
+        return _automaton_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -16462,6 +16947,41 @@ def _pert_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _automaton_document(document: Mapping[str, Any]) -> Document:
+    """A finite automaton: its states and moves in the order written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        automaton_states=tuple(
+            AutomatonState(
+                id=str(entry["id"]),
+                text=str(entry.get("text", entry["id"])),
+                output=str(entry.get("output", "")),
+            )
+            for entry in document["states"]
+        ),
+        automaton_transitions=tuple(
+            AutomatonTransition(
+                source=str(entry["from"]),
+                target=str(entry["to"]),
+                symbol=str(entry.get("on", "")),
+                epsilon=entry.get("epsilon") is True,
+                output=str(entry.get("output", "")),
+            )
+            for entry in document.get("transitions", ())
+        ),
+        automaton_start=str(document["start"]),
+        automaton_accepting=tuple(str(name) for name in document.get("accepting", ())),
+        automaton_deterministic=document.get("deterministic") is True,
+    )
+
+
 def _sunburst_node(entry: Mapping[str, Any]) -> SunburstNode:
     """One sunburst node and its subtree, built from the validated mapping."""
     return SunburstNode(
@@ -16976,6 +17496,11 @@ __all__ = [
     "ARGUMENT_POINT_MAX",
     "ARGUMENT_ROLES",
     "ARGUMENT_STANCES",
+    "AUTOMATON_EMPTY_SPELLINGS",
+    "AUTOMATON_KINDS",
+    "AUTOMATON_NAME_MAX",
+    "AUTOMATON_STATE_MAX",
+    "AUTOMATON_TRANSITION_MAX",
     "AXIS_ORDER",
     "BARMODEL_BAR_MAX",
     "BARMODEL_BRACE_MAX",
@@ -17146,6 +17671,8 @@ __all__ = [
     "WATERFALL_KINDS",
     "WATERFALL_ROLES",
     "ArgumentPoint",
+    "AutomatonState",
+    "AutomatonTransition",
     "Axis",
     "Band",
     "BoardColumn",

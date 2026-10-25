@@ -66,6 +66,7 @@ KIND_ORDER: tuple[str, ...] = (
     "pert",
     "entities",
     "states",
+    "automaton",
     "pie",
     "venn",
     "matrix",

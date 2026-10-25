@@ -13,6 +13,7 @@ from typing import Final
 from drawspec.charts import chart_scene
 from drawspec.errors import DrawspecError
 from drawspec.kinds.argument import argument_scene
+from drawspec.kinds.automaton import automaton_scene, automaton_text
 from drawspec.kinds.barmodel import barmodel_scene
 from drawspec.kinds.board import board_scene, board_text
 from drawspec.kinds.bracket import bracket_scene
@@ -51,6 +52,7 @@ from drawspec.kinds.waterfall import waterfall_scene
 from drawspec.scene import Scene
 from drawspec.schema import (
     ARGUMENT_KINDS,
+    AUTOMATON_KINDS,
     BARMODEL_KINDS,
     BOARD_KINDS,
     CHART_KINDS,
@@ -124,6 +126,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *USECASE_KINDS,
     *PACKET_KINDS,
     *PERT_KINDS,
+    *AUTOMATON_KINDS,
     "cycle",
 )
 
@@ -152,6 +155,7 @@ TEXT_FORMS: Final[dict[str, Callable[[Document, int, str], str]]] = {
     "states": graph_text,
     "lanes": graph_text,
     "pert": pert_text,
+    "automaton": automaton_text,
 }
 
 #: The kinds `render --format text` draws, in the order the refusal lists them.
@@ -244,6 +248,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return packet_scene(document, theme, measurer)
     if document.kind in PERT_KINDS:
         return pert_scene(document, theme, measurer)
+    if document.kind in AUTOMATON_KINDS:
+        return automaton_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -262,6 +268,7 @@ __all__ = [
     "TEXT_FORMS",
     "TEXT_KINDS",
     "argument_scene",
+    "automaton_scene",
     "barmodel_scene",
     "board_scene",
     "box_primitives",

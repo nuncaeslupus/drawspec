@@ -88,6 +88,7 @@ GOLDENS: Final = {
     "railroad": "railroad-json-number",
     "packet": "packet-ipv4",
     "pert": "pert-textbook",
+    "automaton": "automaton-epsilon-nfa",
 }
 
 #: Golden files beyond one per kind: a second style of a kind, held the same way.
@@ -97,6 +98,8 @@ MORE_GOLDENS: Final = (
     "meter-ward",
     "railroad-sql-select",
     "packet-vlan",
+    "automaton-edge-detector",
+    "automaton-moore-parity",
 )
 
 CHARSETS: Final = ("unicode", "ascii")
@@ -182,6 +185,11 @@ def _labels(document: Document) -> list[str]:
     elif document.kind == "pert":
         found += [activity.text for activity in document.pert_activities]
         found += [document.pert_start, document.pert_finish]
+    elif document.kind == "automaton":
+        found += [state.text for state in document.automaton_states]
+        found += [state.output for state in document.automaton_states]
+        found += [move.symbol for move in document.automaton_transitions]
+        found += [move.output for move in document.automaton_transitions]
     found.append(document.caption)
     return [line for label in found for line in plain(label).split("\n") if line.strip()]
 
@@ -538,9 +546,11 @@ def test_files_text_is_not_held_to_the_width() -> None:
     assert max(len(line) for line in drawn.splitlines()) > 40
 
 
-@pytest.mark.parametrize(("kind", "expected"), [("sequence", 100), ("lanes", 100), ("tree", 80)])
+@pytest.mark.parametrize(
+    ("kind", "expected"), [("sequence", 100), ("lanes", 100), ("automaton", 100), ("tree", 80)]
+)
 def test_default_width_is_per_kind(kind: str, expected: int) -> None:
-    """Sequences and lanes default to 100 columns, every other kind to 80."""
+    """Sequences, lanes and automata default to 100 columns; most kinds to 80."""
     assert default_width(kind) == expected
 
 
