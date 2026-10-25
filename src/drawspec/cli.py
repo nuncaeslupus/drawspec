@@ -104,7 +104,8 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         help=(
             "override the document's width; with --format text, the most terminal cells a "
-            f"line may take (default {DEFAULT_WIDTH}, or {WIDE_WIDTH} for lanes and sequence)"
+            f"line may take (default {DEFAULT_WIDTH}, or {WIDE_WIDTH} for lanes, sequence "
+            "and timing)"
         ),
     )
     render.add_argument("--height", type=float, help="override the document's height")

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "gitgraph",
+  "title": "Trunk-based development: branch for release",
+  "description": "Everyone commits to trunk; a release branch is cut late and never merged back. A bug fixed on trunk is cherry-picked to the release branch, which is tagged for each point release.",
+  "theme": "accent",
+  "branches": [
+    {"name": "trunk"},
+    {"name": "release/2.4", "from": "trunk"}
+  ],
+  "steps": [
+    {"on": "trunk", "text": "Cart v2"},
+    {"on": "trunk", "text": "Saved carts"},
+    {"on": "release/2.4", "text": "Cut 2.4", "tag": "v2.4.0"},
+    {"on": "trunk", "text": "Gift cards"},
+    {"on": "trunk", "id": "fix", "text": "Fix the VAT", "role": "emphasis"},
+    {"on": "trunk", "text": "Wish lists"},
+    {"on": "release/2.4", "pick": "fix", "tag": "v2.4.1"},
+    {"on": "trunk", "text": "Faster search"}
+  ]
+}

@@ -1532,6 +1532,119 @@ class SunburstStyle:
         return cls(weights=weights)
 
 
+#: The darkest a network diagram's bus or group wash may be: words are read on it.
+NETWORK_TONE_MAX: Final = 0.4
+
+
+@dataclass(frozen=True)
+class NetworkStyle:
+    """How a network diagram washes its buses and its groups' backdrops.
+
+    Both are the page's ink at part opacity, so they follow the page into dark
+    mode and print as greys. A bus's name and address are written on it, and a
+    group's hosts stand on its backdrop, so neither may be dark.
+    """
+
+    bus: float = 0.16
+    """How much ink fills a network's bus, behind its name and address."""
+
+    group: float = 0.07
+    """How much ink fills a group's backdrop, behind its hosts. Lighter than a bus,
+    so a group reads as ground and a bus as a thing."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> NetworkStyle:
+        _reject_unknown(mapping, ("bus", "group"), "[network]")
+        defaults = cls()
+        values = {}
+        for key in ("bus", "group"):
+            value = _number(
+                mapping.get(key, getattr(defaults, key)), f"[network] {key}", positive=False
+            )
+            if not 0.0 <= value <= NETWORK_TONE_MAX:
+                raise ThemeError(
+                    f"[network] {key}: expected a share of the ink from 0 to "
+                    f"{NETWORK_TONE_MAX:g}, got {value!r}; words are read on it"
+                )
+            values[key] = value
+        return cls(bus=values["bus"], group=values["group"])
+
+
+#: The most of a step a timing transition may take: past half, a step is all slant.
+TIMING_SLEW_MAX: Final = 0.5
+
+
+@dataclass(frozen=True)
+class TimingStyle:
+    """How a timing figure draws its edges, and whether its steps are ruled.
+
+    The author says what each signal does at each step; how steeply an edge is
+    drawn and whether the steps are ruled is house style, set once for a report.
+    """
+
+    slew: float = 0.15
+    """How much of a step a change of word on a bus, or into and out of unknown,
+    takes to cross — the slant of a datasheet's hexagon lanes. Capped at a few
+    units on a wide step, so a slow bus does not look like a ramp; 0 draws the
+    changes upright. A level's edge (a clock, a select line) is always upright."""
+
+    grid: bool = False
+    """Whether every step edge is ruled faintly down the figure, as WaveDrom does.
+    Off by default: the clock's own edges are the ruler a datasheet reads by, and
+    markers rule the edges that matter."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> TimingStyle:
+        _reject_unknown(mapping, ("slew", "grid"), "[timing]")
+        defaults = cls()
+        slew = _number(mapping.get("slew", defaults.slew), "[timing] slew", positive=False)
+        if not 0 <= slew <= TIMING_SLEW_MAX:
+            raise ThemeError(
+                f"[timing] slew: expected a share of a step from 0 to {TIMING_SLEW_MAX}, "
+                f"got {slew!r}"
+            )
+        grid = mapping.get("grid", defaults.grid)
+        if not isinstance(grid, bool):
+            raise ThemeError(f"[timing] grid: expected true or false, got {grid!r}")
+        return cls(slew=slew, grid=grid)
+
+
+@dataclass(frozen=True)
+class GitgraphStyle:
+    """What colour a git graph's branches take, if any.
+
+    A branch is told apart by its lane and the name at the head of it, so colour
+    is never what carries; it is the convention readers of Mermaid and of the
+    git-flow figures expect, and a theme may give it, one colour per lane.
+    """
+
+    colours: tuple[str, ...] = ()
+    """A colour per branch, in the order the branches are written, cycling past the
+    last; empty draws every lane in the page's ink. A lane's commits are filled with
+    its colour and its name is set on a faint wash of it; the lines stay ink, so a
+    lane's colour never has to carry a crossing."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> GitgraphStyle:
+        _reject_unknown(mapping, ("colours",), "[gitgraph]")
+        raw = mapping.get("colours", [])
+        if not isinstance(raw, list):
+            raise ThemeError(f"[gitgraph] colours: expected an array of colours, got {raw!r}")
+        colours = tuple(_colour(entry, "[gitgraph] colours") for entry in raw)
+        if "none" in colours:
+            raise ThemeError(
+                "[gitgraph] colours: 'none' is not a colour a commit can be drawn in. Leave "
+                "`colours` out to draw every lane in the page's ink."
+            )
+        return cls(colours=colours)
+
+    def colour_for(self, lane: int) -> str:
+        """The colour of the `lane`-th branch, or empty for the page's ink."""
+        if not self.colours:
+            return ""
+        return self.colours[lane % len(self.colours)]
+
+
 #: The fills an `against` box may take: a pattern faint enough to read words over.
 ARGUMENT_FILLS: Final = ("hatch", "dots", "cross", "grid")
 
@@ -2136,6 +2249,9 @@ _TOP_LEVEL_KEYS: Final = (
     "flow",
     "mindmap",
     "sunburst",
+    "network",
+    "timing",
+    "gitgraph",
     "argument",
     "familytree",
     "rag",
@@ -2176,6 +2292,10 @@ class Theme:
     pie: PieStyle = PieStyle()
     mindmap: MindmapStyle = MindmapStyle()
     sunburst: SunburstStyle = SunburstStyle()
+    network: NetworkStyle = NetworkStyle()
+
+    timing: TimingStyle = TimingStyle()
+    gitgraph: GitgraphStyle = GitgraphStyle()
     argument: ArgumentStyle = ArgumentStyle()
     familytree: FamilytreeStyle = FamilytreeStyle()
     rag: RagStyle = RagStyle()
@@ -2245,6 +2365,9 @@ class Theme:
             pie=PieStyle.from_mapping(_section(mapping, "pie")),
             mindmap=MindmapStyle.from_mapping(_section(mapping, "mindmap")),
             sunburst=SunburstStyle.from_mapping(_section(mapping, "sunburst")),
+            network=NetworkStyle.from_mapping(_section(mapping, "network")),
+            timing=TimingStyle.from_mapping(_section(mapping, "timing")),
+            gitgraph=GitgraphStyle.from_mapping(_section(mapping, "gitgraph")),
             argument=ArgumentStyle.from_mapping(_section(mapping, "argument")),
             familytree=FamilytreeStyle.from_mapping(_section(mapping, "familytree")),
             rag=RagStyle.from_mapping(_section(mapping, "rag")),
@@ -2296,6 +2419,7 @@ class Theme:
             *self.mark.colours,
             *self.files.colours.values(),
             *self.rag.colours,
+            *self.gitgraph.colours,
             *self.canvas.sheet_colours,
         }
         if self.files.label_ink:

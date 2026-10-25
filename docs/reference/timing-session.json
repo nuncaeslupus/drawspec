@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "kind": "timing",
+  "title": "A page request: what the browser and the server are doing",
+  "ticks": ["0 s", "", "2 s", "", "4 s", "", "6 s", "", "8 s", "", "10 s", ""],
+  "signals": [
+    {
+      "text": "Browser",
+      "lane": "state",
+      "states": ["Viewing", "Waiting", "Idle"],
+      "values": ["Idle", ".", "Waiting", ".", ".", ".", ".", ".", "Viewing", ".", ".", "Idle"]
+    },
+    {
+      "text": "HTTP",
+      "lane": "bus",
+      "values": ["z", "z", "GET /", ".", "z", "z", "200 OK", ".", "z", "z", "z", "z"]
+    },
+    {
+      "text": "Server",
+      "lane": "state",
+      "states": ["Sending", "Processing", "Idle"],
+      "values": ["Idle", ".", ".", ".", "Processing", ".", "Sending", ".", "Idle", ".", ".", "."]
+    }
+  ],
+  "markers": [
+    {"at": 2, "text": "click"},
+    {"at": 8, "text": "rendered"}
+  ],
+  "intervals": [
+    {"from": 2, "to": 8, "text": "response time < 6 s", "signal": "Browser"}
+  ]
+}
