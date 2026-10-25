@@ -629,6 +629,61 @@ NETWORK_GROUP_MAX: Final = 6
 #: storage array), and a person for a user's machine or a client. drawspec draws
 #: no device icons: a router is a host on two networks, and its name says so.
 NETWORK_HOST_ROLES: Final = ("step", "emphasis", "store", "person")
+#: Timing diagrams: signals over one shared time axis, a lane each — clock lines,
+#: digital levels, buses with labelled values, and named-state lanes (WaveDrom,
+#: PlantUML and UML timing diagrams, datasheet SPI and I²C figures). A layout
+#: family of its own; time is counted in equal steps, never in coordinates.
+TIMING_KINDS: Final = ("timing",)
+
+#: What a lane draws: `bit` levels (high, low, high impedance, unknown, clock
+#: pulses), a `bus` of labelled values, or a `state` lane of named states.
+TIMING_LANES: Final = ("bit", "bus", "state")
+
+#: The values a `bit` lane takes per step: low, high, high impedance, unknown,
+#: a positive pulse (high then low) and a negative one (low then high).
+TIMING_BIT_VALUES: Final = ("0", "1", "z", "x", "p", "n")
+
+#: The value that carries the step before it on, unchanged — a clock keeps
+#: pulsing, a bus keeps its word, a level holds.
+TIMING_HOLD: Final = "."
+
+#: The values a `bus` lane reserves: unknown and high impedance. Every other
+#: string is a word on the bus.
+TIMING_BUS_RESERVED: Final = ("x", "z")
+
+#: The most signals (lanes). Past twelve a datasheet figure is split by bus.
+TIMING_SIGNAL_MAX: Final = 12
+
+#: The most steps on the time axis. Past forty a step is too narrow for a clock
+#: pulse to read at the canvas width, and a word on a bus has no room.
+TIMING_STEP_MAX: Final = 40
+
+#: The most named states one `state` lane may hold. Past six its levels crowd.
+TIMING_STATE_MAX: Final = 6
+
+#: The most vertical markers, and the most measured intervals.
+TIMING_MARKER_MAX: Final = 8
+TIMING_INTERVAL_MAX: Final = 10
+#: Git graphs: commits on branches over time, with the forks, merges, tags and
+#: cherry-picks between them. A layout family of its own: one lane per branch,
+#: one place in time per step, in the order written — no coordinate is written.
+GITGRAPH_KINDS: Final = ("gitgraph",)
+
+#: The two ways time may run: across the page (the default) or down it, with the
+#: commit messages in a column beside the lanes, as `git log --graph` sets them.
+GITGRAPH_DIRECTIONS: Final = ("right", "down")
+
+#: The roles a branch or a step may take: an ordinary one, or the one the figure is
+#: about (heavier; at most two in a document, with everything else that is emphasis).
+GITGRAPH_ROLES: Final = ("step", "emphasis")
+
+#: The most branches, so the most lanes. Git-flow, the busiest workflow figure found
+#: (nvie 2010), draws five kinds of branch; eight leaves room for a second feature.
+GITGRAPH_BRANCH_MAX: Final = 8
+
+#: The most steps (commits, merges and cherry-picks). Across a 640-wide page a step
+#: takes a column, so thirty is already the fit limit for short labels.
+GITGRAPH_STEP_MAX: Final = 30
 
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
 #: into each other at the canvas width.
@@ -709,7 +764,13 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: `sunburst` is the twenty-fourth: a hierarchy as concentric rings of sectors,
 #: read from the middle outward — a `treemap` nests by area and a `mindmap`
 #: radiates, but neither splits a ring into its parent's sectors.
-#: `network` is the twenty-fifth: networks as buses with hosts hanging between
+#: `timing` is the twenty-fifth: signals against one shared time axis — a
+#: `gantt` lays intervals of work on time, but nothing draws a level, a clock or
+#: a bus changing from step to step.
+#: `gitgraph` is the twenty-sixth: commits on branches over time, forked and
+#: merged — a `gantt` has intervals, a `flow` has no lanes in time, and a
+#: `timeline` has one line.
+#: `network` is the twenty-seventh: networks as buses with hosts hanging between
 #: them — a `flow` joins boxes to boxes, and nothing else joins boxes to a bus.
 KINDS: Final = (
     GRAPH_KINDS
@@ -740,6 +801,8 @@ KINDS: Final = (
     + CLOCK_KINDS
     + SUNBURST_KINDS
     + NETWORK_KINDS
+    + TIMING_KINDS
+    + GITGRAPH_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -915,6 +978,18 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
         ("hosts", NETWORK_HOST_MAX),
         ("groups", NETWORK_GROUP_MAX),
     ),  # [3 networks, 10 hosts, 3 groups]
+    # Set by the evidence (NXP UM10204, TI SPI figures, UML timing): an SPI read is
+    # four signals over ~20 steps; the step cap is checked per signal's values in
+    # `_timing_violations`, since it is a length, not an array of objects.
+    "timing": (
+        ("signals", TIMING_SIGNAL_MAX),
+        ("signals/states", TIMING_STATE_MAX),
+        ("markers", TIMING_MARKER_MAX),
+        ("intervals", TIMING_INTERVAL_MAX),
+    ),  # [4 signals, 3 states, 3 markers, 5 intervals]
+    # Set by the originals: git-flow's five kinds of branch (nvie 2010) with room for
+    # more features, and a step per column across the page.
+    "gitgraph": (("branches", GITGRAPH_BRANCH_MAX), ("steps", GITGRAPH_STEP_MAX)),
 }
 
 
@@ -2746,6 +2821,110 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "timing-signal": (
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description=(
+                "The signal's name, drawn at the left of its lane: `SCLK`, `CS#`, `User`. "
+                "Unique in the figure — an interval names its signal by it."
+            ),
+        ),
+        FieldSpec(
+            "lane",
+            "string",
+            enum=TIMING_LANES,
+            description=(
+                "What the lane draws: `bit` (the default: levels and clock pulses), `bus` (a "
+                "word per value, in the hexagon lanes of a datasheet) or `state` (a line "
+                "stepping between the named `states`, UML's robust lifeline)."
+            ),
+        ),
+        FieldSpec(
+            "values",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=1,
+            description=(
+                "One string per time step, every signal the same length. A `bit` lane takes "
+                "`0`, `1`, `z` (high impedance), `x` (unknown), `p` (a clock pulse, high then "
+                "low) and `n` (low then high); a `bus` takes any word, with `x` and `z` "
+                "reserved; a `state` lane takes one of its `states`. `.` carries the step "
+                "before on: a clock keeps pulsing, a word holds without a new edge."
+            ),
+        ),
+        FieldSpec(
+            "states",
+            "array",
+            item_kind="string",
+            min_items=2,
+            description=(
+                "A `state` lane's named states, 2 to 6, top to bottom in the order written — "
+                "write the busiest or highest first. Required on a `state` lane, refused "
+                "elsewhere."
+            ),
+        ),
+        FieldSpec(
+            "group",
+            "string",
+            description=(
+                "The name of the group this signal is in — `Controller`, `Peripheral` — drawn once "
+                "over its signals. Signals in one group are written next to each other."
+            ),
+        ),
+    ),
+    "timing-marker": (
+        FieldSpec(
+            "at",
+            "number",
+            required=True,
+            description=(
+                "Where the marker stands, in steps from the start: `0` is the left edge, a "
+                "whole number is the edge between two steps, and a half is the middle of one "
+                "(where a clock pulse falls)."
+            ),
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description="The marker's name, over the figure: `S`, `Sr`, `P`, `sample`.",
+        ),
+    ),
+    "timing-interval": (
+        FieldSpec(
+            "from",
+            "number",
+            required=True,
+            description=(
+                "The edge the interval starts at, in steps (whole or half), as a marker's `at`."
+            ),
+        ),
+        FieldSpec(
+            "to",
+            "number",
+            required=True,
+            description="The edge it ends at, after `from`, in steps (whole or half).",
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description=(
+                "What the interval is, over its arrow: `tSU;STA`, `setup`, `100 ms`. A name, "
+                "not a measurement drawspec makes — the steps are not to scale in time."
+            ),
+        ),
+        FieldSpec(
+            "signal",
+            "string",
+            description=(
+                "The signal it is measured on, by its `text`: the arrow is drawn under that "
+                "lane. Left out, it goes under the last lane."
+            ),
+        ),
+    ),
     "sunburst-node": (
         _text(),
         FieldSpec(
@@ -2857,6 +3036,71 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
                 "host is in one group at most."
             ),
         ),
+    ),
+    "gitgraph-branch": (
+        FieldSpec(
+            "name",
+            "string",
+            required=True,
+            description=(
+                "The branch's name, as git spells it (`main`, `feature/login`): written at "
+                "the head of its lane and named by every step on it. Unique in the document."
+            ),
+        ),
+        FieldSpec(
+            "from",
+            "string",
+            description=(
+                "Where the branch forks: the name of another branch — it forks from that "
+                "branch's latest commit at the branch's first step — or the `id` of a commit "
+                "written before then. Left out, it is the first branch; the first branch "
+                "itself has none."
+            ),
+        ),
+        _role(GITGRAPH_ROLES, "step"),
+    ),
+    "gitgraph-step": (
+        FieldSpec(
+            "on",
+            "string",
+            required=True,
+            description=(
+                "The branch this commit is made on — one of `branches`. Steps are drawn in "
+                "the order written, one place in time each."
+            ),
+        ),
+        _text(required=False),
+        FieldSpec(
+            "id",
+            "string",
+            description=(
+                "A handle for this commit, unique in the document: what a `pick` or a "
+                "branch's `from` names. Drawn as the label when there is no `text` (a short "
+                "hash, `C2`)."
+            ),
+        ),
+        FieldSpec(
+            "merge",
+            "string",
+            description=(
+                "Makes this a merge commit: the name of the branch merged into `on`, at its "
+                "latest commit. The merged branch may carry on afterwards."
+            ),
+        ),
+        FieldSpec(
+            "pick",
+            "string",
+            description=(
+                "Makes this a cherry-pick: the `id` of an earlier commit on another branch, "
+                "copied onto `on`. Its label is the original's unless `text` says otherwise."
+            ),
+        ),
+        FieldSpec(
+            "tag",
+            "string",
+            description="A tag on this commit (`v1.0`), drawn as a tag beside it. Unique.",
+        ),
+        _role(GITGRAPH_ROLES, "step"),
     ),
     "treemap-group": (
         FieldSpec(
@@ -3333,7 +3577,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the thirty-eight diagrams this is. It selects the fields that are "
+            "Which of the forty diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -4381,6 +4625,47 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    TIMING_KINDS: (
+        FieldSpec(
+            "signals",
+            "array",
+            required=True,
+            item_ref="timing-signal",
+            min_items=1,
+            description=(
+                "The lanes, 1 to 12, top to bottom in the order written: each a `text`, a "
+                "`lane` and one value per step in `values`, every signal the same number of "
+                "steps (40 at most)."
+            ),
+        ),
+        FieldSpec(
+            "ticks",
+            "array",
+            item_kind="string",
+            description=(
+                "A name for each step, written under the figure — one per step, as many as "
+                "the values; an empty string leaves a step unnamed."
+            ),
+        ),
+        FieldSpec(
+            "markers",
+            "array",
+            item_ref="timing-marker",
+            description=(
+                "Vertical lines across every lane at an edge, up to 8, each named over the "
+                "figure: a START, a sample point."
+            ),
+        ),
+        FieldSpec(
+            "intervals",
+            "array",
+            item_ref="timing-interval",
+            description=(
+                "Named spans between two edges, up to 10, each an arrow under a signal's "
+                "lane: a setup time, a hold time, a timeout."
+            ),
+        ),
+    ),
     SUNBURST_KINDS: (
         FieldSpec(
             "centre",
@@ -4401,6 +4686,42 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
                 "each with optional `children` for the ring nested inside it. Nested up to "
                 "three rings, 150 sectors in all; every terminal sector takes an equal angle, "
                 "so there are no amounts."
+            ),
+        ),
+    ),
+    GITGRAPH_KINDS: (
+        FieldSpec(
+            "branches",
+            "array",
+            required=True,
+            item_ref="gitgraph-branch",
+            min_items=1,
+            description=(
+                "The branches, 1 to 8, one lane each in the order written: the first is the "
+                "trunk (`main`) and every other forks `from` another branch or a commit `id`; "
+                "the lane order need not be the order the branches were made."
+            ),
+        ),
+        FieldSpec(
+            "steps",
+            "array",
+            required=True,
+            item_ref="gitgraph-step",
+            min_items=1,
+            description=(
+                "The commits, 1 to 30, in the order they were made: each `on` a branch, and a "
+                "merge (`merge`) or a cherry-pick (`pick`) when it is one. Lanes, spacing and "
+                "the lines between commits are derived."
+            ),
+        ),
+        FieldSpec(
+            "direction",
+            "string",
+            enum=GITGRAPH_DIRECTIONS,
+            description=(
+                "Which way time runs: `right` (the default) across the page, each commit's "
+                "label under it; `down` the page, the labels in a column beside the lanes as "
+                "`git log --graph` sets them — the one for long commit messages."
             ),
         ),
     ),
@@ -5072,11 +5393,63 @@ class NetworkGroup:
 
 
 @dataclass(frozen=True)
+class TimingSignal:
+    """One lane of a `timing` figure: a name, what it draws, and a value per step."""
+
+    text: str
+    lane: str = "bit"
+    values: tuple[str, ...] = ()
+    states: tuple[str, ...] = ()
+    group: str = ""
+
+
+@dataclass(frozen=True)
+class TimingMarker:
+    """A vertical line across a `timing` figure at an edge, with its name."""
+
+    at: float
+    text: str = ""
+
+
+@dataclass(frozen=True)
+class TimingInterval:
+    """A named span between two edges, drawn as an arrow under a signal's lane."""
+
+    start: float
+    end: float
+    text: str
+    signal: str = ""
+
+
+@dataclass(frozen=True)
 class SunburstNode:
     """One sector of a `sunburst`, with the sectors nested inside it, in order."""
 
     text: str
     children: tuple[SunburstNode, ...] = ()
+
+
+@dataclass(frozen=True)
+class GitBranch:
+    """One branch of a `gitgraph`: a lane, and where it forks from."""
+
+    name: str
+    source: str = ""
+    """The `from` written: a branch name or a commit id; empty for the default."""
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class GitStep:
+    """One step of a `gitgraph`: a commit on a branch, a merge or a cherry-pick."""
+
+    on: str
+    text: str = ""
+    id: str = ""
+    merge: str = ""
+    pick: str = ""
+    tag: str = ""
+    role: str = "step"
 
 
 @dataclass(frozen=True)
@@ -5437,6 +5810,25 @@ class Document:
 
     host_groups: tuple[NetworkGroup, ...] = ()
     """A `network` diagram's groups, in the order written."""
+    timing_signals: tuple[TimingSignal, ...] = ()
+    """A `timing` figure's lanes, top to bottom, each a value per step."""
+
+    timing_ticks: tuple[str, ...] = ()
+    """A `timing` figure's step names, one per step, or none."""
+
+    timing_markers: tuple[TimingMarker, ...] = ()
+    """A `timing` figure's vertical markers, in the order written."""
+
+    timing_intervals: tuple[TimingInterval, ...] = ()
+    """A `timing` figure's named intervals, in the order written."""
+    git_branches: tuple[GitBranch, ...] = ()
+    """A `gitgraph`'s branches, one lane each in the order written."""
+
+    git_steps: tuple[GitStep, ...] = ()
+    """A `gitgraph`'s commits, merges and cherry-picks, in the order made."""
+
+    git_direction: str = "right"
+    """Which way a `gitgraph`'s time runs: `right` or `down`."""
 
     @property
     def family(self) -> str:
@@ -5470,6 +5862,8 @@ class Document:
             ("clock", CLOCK_KINDS),
             ("sunburst", SUNBURST_KINDS),
             ("network", NETWORK_KINDS),
+            ("timing", TIMING_KINDS),
+            ("gitgraph", GITGRAPH_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -5702,6 +6096,10 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_sunburst_refusal(violation) for violation in found]
     if kind in NETWORK_KINDS:
         found = [_network_refusal(violation) for violation in found]
+    if kind in TIMING_KINDS:
+        found = [_timing_refusal(violation) for violation in found]
+    if kind in GITGRAPH_KINDS:
+        found = [_gitgraph_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -5787,6 +6185,14 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
     ("clock", "clocks"): (
         "Past twelve faces a sheet is two sheets: split it by the skill each practises — "
         "o'clock and half past on one, quarters on the next."
+    ),
+    ("timing", "signals"): (
+        "Past twelve lanes a timing figure is searched, not read: split it by bus or by "
+        "phase, one figure each, on the same steps."
+    ),
+    ("signals", "states"): (
+        "Past six states the levels of one lane crowd: merge the states the reader need not "
+        "tell apart, or draw the machine as a `states` diagram."
     ),
     ("rag", "rows"): (
         "Past fifteen rows a status report is searched, not read: split it by programme or "
@@ -6084,6 +6490,10 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _sunburst_violations(document)
     if kind in NETWORK_KINDS:
         return _network_violations(document)
+    if kind in TIMING_KINDS:
+        return _timing_violations(document)
+    if kind in GITGRAPH_KINDS:
+        return _gitgraph_violations(document)
     if kind == "chart":
         return _chart_violations(document)
     if kind == "quadrant":
@@ -11055,6 +11465,612 @@ def _network_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a timing figure has no place for a field an author may reach for.
+TIMING_REFUSED: Final = {
+    "wave": (
+        'the values are an array, one string per step — `["p", ".", ".", "0"]` — '
+        "so a wrong one is pointed at by its step. Write them in `values`"
+    ),
+    "data": "a bus's words are its values: write each word in `values` at the step it starts",
+    "period": (
+        "time is counted in equal steps, so a clock is a `p` per step (or `p` then `.`): "
+        "there is no period to write"
+    ),
+    "time": (
+        "time is counted in steps, not seconds: the steps are not to scale. Name them with "
+        "`ticks`, and name a measured span with an `intervals` entry"
+    ),
+    "duration": (
+        "a span is named, not measured: write it as an `intervals` entry from one edge to another"
+    ),
+    "scale": "every step is the same width, decided by the canvas; there is no scale to set",
+    "edges": (
+        "a named span between two edges is an `intervals` entry; a line across every lane is a "
+        "`markers` entry. An arrow from one edge to an edge on another signal is not drawn"
+    ),
+    "edge": (
+        "a named span between two edges is an `intervals` entry; a line across every lane is a "
+        "`markers` entry. An arrow from one edge to an edge on another signal is not drawn"
+    ),
+    "role": (
+        "a lane is told by what it draws, its `lane`: `bit`, `bus` or `state`. There is no "
+        "emphasis to mark"
+    ),
+    "type": "what a lane draws is its `lane`: `bit`, `bus` or `state`",
+    "id": "a signal is named by its `text`, which an interval refers to",
+    "name": "a signal's name is its `text`",
+}
+
+
+def _timing_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a timing figure, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    unknown = "is not a known field" in violation.message or (
+        "is not" in violation.message and "field" in violation.message
+    )
+    if unknown and name in TIMING_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {TIMING_REFUSED[name]}.")
+    if (
+        len(parts) == 5
+        and parts[1] == "signals"
+        and parts[3] == "values"
+        and "expected string" in violation.message
+    ):
+        return Violation(
+            violation.pointer,
+            'a value is a string, one per step: write a level as `"0"` or `"1"`, in quotes, '
+            "and a word on a bus as its text.",
+        )
+    return violation
+
+
+def _timing_edge_problem(value: object, steps: int) -> str | None:
+    """Why `value` is not an edge on a `steps`-step axis, or None when it is one."""
+    if not isinstance(value, int | float) or isinstance(value, bool):
+        return None  # the structural pass has said so
+    if not math.isfinite(value):
+        return (
+            f"{value!r} is not a number of steps: an edge is from 0 (the left edge) to "
+            f"{steps} (the right), whole or half."
+        )
+    if value < 0 or value > steps:
+        return (
+            f"{_figure(float(value))} is off the axis: an edge is from 0 (the left edge) to "
+            f"{steps} (the right), in steps."
+        )
+    if not (float(value) * 2).is_integer():
+        return (
+            f"{_figure(float(value))} falls inside a step: an edge is a whole step (between "
+            f"two) or a half (where a clock pulse falls)."
+        )
+    return None
+
+
+def _timing_states(here: str, states: object, found: list[Violation]) -> list[str]:
+    """A state lane's named states, each checked: named, once, and not `.`."""
+    names: list[str] = []
+    if not isinstance(states, list):
+        return names
+    for position, state in enumerate(states):
+        if not isinstance(state, str):
+            continue
+        where = f"{here}/states/{position}"
+        if not state.strip():
+            found.append(Violation(where, "a state needs a name."))
+        elif state in names:
+            found.append(Violation(where, f"{state!r} is written twice: each state is one level."))
+        elif state == TIMING_HOLD:
+            found.append(Violation(where, "`.` carries a step on, so it cannot name a state."))
+        else:
+            names.append(state)
+    return names
+
+
+def _timing_values(
+    here: str, lane: object, values: list[Any], states: list[str] | None, found: list[Violation]
+) -> None:
+    """Every value of one lane: one its lane can draw, and no `.` with nothing before it."""
+    if len(values) > TIMING_STEP_MAX:
+        found.append(
+            Violation(
+                f"{here}/values/{TIMING_STEP_MAX}",
+                f"{len(values)} steps is past what one timing figure can be read at — "
+                f"{TIMING_STEP_MAX} at most. Draw the part the figure is about, and leave "
+                f"the idle time out.",
+            )
+        )
+    for step, value in enumerate(values):
+        if not isinstance(value, str):
+            continue
+        where = f"{here}/values/{step}"
+        if value == TIMING_HOLD:
+            if step == 0:
+                found.append(
+                    Violation(
+                        where,
+                        "`.` carries the step before on, and the first step has none: start "
+                        "with a value.",
+                    )
+                )
+            continue
+        if lane == "bit" and value not in TIMING_BIT_VALUES:
+            found.append(
+                Violation(
+                    where,
+                    f"{value!r} is not a level. A `bit` lane takes `0`, `1`, `z` (high "
+                    f"impedance), `x` (unknown), `p` and `n` (clock pulses) and `.` (as "
+                    f"before); for a word per step, set `lane` to `bus`.",
+                )
+            )
+        elif lane == "bus" and not value.strip():
+            found.append(
+                Violation(
+                    where,
+                    "an empty word is not a value: write `x` for unknown, `z` for high "
+                    "impedance, or `.` to hold the word before.",
+                )
+            )
+        elif lane == "state" and states is not None and value not in states:
+            found.append(
+                Violation(
+                    where,
+                    f"{value!r} is not one of this lane's states "
+                    f"({', '.join(states) or 'none'}); add it to `states`, or write `.` to "
+                    f"stay in the state before.",
+                )
+            )
+
+
+def _timing_signal(
+    index: int,
+    signal: Mapping[str, Any],
+    names: dict[str, int],
+    groups: dict[str, int],
+    previous_group: str | None,
+    found: list[Violation],
+) -> str | None:
+    """One signal's name, lane, states, group and values; its group, for the next."""
+    here = _pointer("signals", index)
+    text = signal.get("text")
+    if isinstance(text, str):
+        if not text.strip():
+            found.append(Violation(f"{here}/text", "a signal needs a name: its lane is blank."))
+        elif text in names:
+            found.append(
+                Violation(
+                    f"{here}/text",
+                    f"{text!r} names signal {names[text]} already: an interval refers to a "
+                    f"signal by its name, so each is written once.",
+                )
+            )
+        else:
+            names[text] = index
+    lane = signal.get("lane", "bit")
+    if lane == "state" and "states" not in signal:
+        found.append(
+            Violation(
+                f"{here}/states",
+                "a `state` lane needs its `states`, top to bottom: the levels its line steps "
+                "between.",
+            )
+        )
+    if lane != "state" and "states" in signal:
+        found.append(
+            Violation(
+                f"{here}/states",
+                f"a {lane!r} lane has no named states: its levels are fixed. Set `lane` to "
+                f"`state` to draw a line between named levels.",
+            )
+        )
+    states = _timing_states(here, signal.get("states"), found)
+    group = signal.get("group")
+    if isinstance(group, str):
+        if not group.strip():
+            found.append(Violation(f"{here}/group", "a group needs a name, or leave `group` out."))
+        elif group in groups and previous_group != group:
+            found.append(
+                Violation(
+                    f"{here}/group",
+                    f"the group {group!r} began at signal {groups[group]} and was left: write "
+                    f"a group's signals next to each other, so it is drawn once.",
+                )
+            )
+        else:
+            groups.setdefault(group, index)
+    values = signal.get("values")
+    if isinstance(values, list):
+        _timing_values(
+            here, lane, values, states if isinstance(signal.get("states"), list) else None, found
+        )
+    return group if isinstance(group, str) else None
+
+
+def _timing_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Every value a lane can draw, every lane one length, and every reference found."""
+    found: list[Violation] = []
+    names: dict[str, int] = {}
+    groups: dict[str, int] = {}
+    lengths: list[tuple[int, int]] = []
+    previous_group: str | None = None
+    for index, signal in enumerate(_listed(document, "signals")):
+        if not isinstance(signal, dict):
+            continue
+        previous_group = _timing_signal(index, signal, names, groups, previous_group, found)
+        if isinstance(signal.get("values"), list):
+            lengths.append((index, len(signal["values"])))
+    if not lengths:
+        return found
+    first, steps = lengths[0]
+    for index, length in lengths[1:]:
+        if length != steps:
+            found.append(
+                Violation(
+                    _pointer("signals", index, "values"),
+                    f"{length} steps, where signal {first} has {steps}: every lane runs the "
+                    f"whole axis, one value per step. Pad the shorter with `.` or `x`.",
+                )
+            )
+    ticks = document.get("ticks")
+    if isinstance(ticks, list) and len(ticks) != steps:
+        found.append(
+            Violation(
+                "/ticks",
+                f"{len(ticks)} ticks for {steps} steps: name each step once, an empty string "
+                f"for a step left unnamed.",
+            )
+        )
+    for index, marker in enumerate(_listed(document, "markers")):
+        if not isinstance(marker, dict):
+            continue
+        problem = _timing_edge_problem(marker.get("at"), steps)
+        if problem:
+            found.append(Violation(_pointer("markers", index, "at"), problem))
+        text = marker.get("text")
+        if isinstance(text, str) and text and not text.strip():
+            found.append(
+                Violation(_pointer("markers", index, "text"), "a blank name: leave `text` out.")
+            )
+    for index, interval in enumerate(_listed(document, "intervals")):
+        if isinstance(interval, dict):
+            found.extend(_timing_interval(index, interval, steps, names))
+    return found
+
+
+def _timing_interval(
+    index: int, interval: Mapping[str, Any], steps: int, names: Mapping[str, int]
+) -> list[Violation]:
+    """One interval: both edges on the axis, running forward, named, on a signal there is."""
+    found: list[Violation] = []
+    for end in ("from", "to"):
+        problem = _timing_edge_problem(interval.get(end), steps)
+        if problem:
+            found.append(Violation(_pointer("intervals", index, end), problem))
+    start, stop = interval.get("from"), interval.get("to")
+    numbers = all(
+        isinstance(value, int | float) and not isinstance(value, bool) for value in (start, stop)
+    )
+    if numbers and float(stop) <= float(start):  # type: ignore[arg-type]
+        found.append(
+            Violation(
+                _pointer("intervals", index, "to"),
+                f"an interval runs forward: `to` ({_figure(float(stop))}) must be after "  # type: ignore[arg-type]
+                f"`from` ({_figure(float(start))}).",  # type: ignore[arg-type]
+            )
+        )
+    text = interval.get("text")
+    if isinstance(text, str) and not text.strip():
+        found.append(Violation(_pointer("intervals", index, "text"), "an interval needs a name."))
+    signal = interval.get("signal")
+    if isinstance(signal, str) and signal not in names:
+        found.append(
+            Violation(
+                _pointer("intervals", index, "signal"),
+                f"{signal!r} is not a signal here; the signals are "
+                f"{', '.join(repr(name) for name in names) or 'none'}.",
+            )
+        )
+    return found
+
+
+#: Why a git graph has no place for a field an author may reach for.
+GITGRAPH_REFUSED: Final = {
+    "lane": (
+        "a branch's lane is its place in `branches`, in the order written; the lane's "
+        "position on the page is drawspec's"
+    ),
+    "column": "a step's place in time is its place in `steps`, in the order written",
+    "colour": "a branch's colour is the theme's, never the document's",
+    "parent": (
+        "a commit's parents are derived: the latest commit on its branch, and for a merge "
+        "the latest commit on the branch it merges"
+    ),
+    "parents": (
+        "a commit's parents are derived: the latest commit on its branch, and for a merge "
+        "the latest commit on the branch it merges"
+    ),
+    "branch": (
+        "a step names its branch with `on`; a new branch is declared once in `branches`, "
+        "with `from` saying where it forks"
+    ),
+    "checkout": ("there is no current branch to switch: every step says which branch it is `on`"),
+    "type": (
+        "a commit's kind is derived: `merge` makes a merge commit and `pick` a cherry-pick; "
+        "for the commit the figure is about, say `role: emphasis`"
+    ),
+    "date": (
+        "a git graph is an order, not a calendar: steps are evenly spaced in the order "
+        "written. For dates on an axis draw a `timeline`"
+    ),
+    "tags": "a commit takes one `tag`; a second tag on the same commit is a second release name",
+}
+
+
+def _gitgraph_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a git graph, told what this kind means by it."""
+    name = violation.pointer.split("/")[-1]
+    if "is not a known field" in violation.message and name in GITGRAPH_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {GITGRAPH_REFUSED[name]}.")
+    return violation
+
+
+def _gitgraph_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Names and handles that resolve, and a history git could have made.
+
+    The steps are replayed in order, as git would make them: a branch forks at its
+    first step from the latest commit on its `from`; a merge takes the latest commit
+    of the branch it names; a cherry-pick copies an earlier commit. A step that git
+    would refuse, or that would draw nothing new, is refused here, at its pointer.
+    """
+    found: list[Violation] = []
+    raw_branches = document.get("branches")
+    raw_steps = document.get("steps")
+    if not isinstance(raw_branches, list) or not isinstance(raw_steps, list):
+        return found
+    branches = [entry if isinstance(entry, dict) else {} for entry in raw_branches]
+    steps = [entry if isinstance(entry, dict) else {} for entry in raw_steps]
+
+    names: dict[str, int] = {}
+    for index, branch in enumerate(branches):
+        name = branch.get("name")
+        if not isinstance(name, str):
+            continue
+        if not name.strip():
+            found.append(Violation(f"/branches/{index}/name", "a branch needs a name."))
+        elif name in names:
+            found.append(
+                Violation(
+                    f"/branches/{index}/name",
+                    f"the branch {name!r} is declared twice (first at /branches/{names[name]}): "
+                    f"one lane per branch, so give the second its own name.",
+                )
+            )
+        else:
+            names[name] = index
+
+    ids: dict[str, int] = {}
+    tags: dict[str, int] = {}
+    for index, step in enumerate(steps):
+        for field_name in ("text", "tag"):
+            value = step.get(field_name)
+            if isinstance(value, str) and not value.strip():
+                found.append(
+                    Violation(
+                        f"/steps/{index}/{field_name}",
+                        f"an empty {field_name!r} draws nothing: leave the field out.",
+                    )
+                )
+        handle = step.get("id")
+        if isinstance(handle, str):
+            if not handle.strip():
+                found.append(Violation(f"/steps/{index}/id", "an empty 'id' names nothing."))
+            elif handle in ids:
+                found.append(
+                    Violation(
+                        f"/steps/{index}/id",
+                        f"the id {handle!r} is used twice (first at /steps/{ids[handle]}): a "
+                        f"commit's handle names one commit.",
+                    )
+                )
+            elif handle in names:
+                found.append(
+                    Violation(
+                        f"/steps/{index}/id",
+                        f"{handle!r} is already a branch's name, and a `from` names either: "
+                        f"give the commit another id.",
+                    )
+                )
+            else:
+                ids[handle] = index
+        tag = step.get("tag")
+        if isinstance(tag, str) and tag.strip():
+            if tag in tags:
+                found.append(
+                    Violation(
+                        f"/steps/{index}/tag",
+                        f"the tag {tag!r} is on two commits (first at /steps/{tags[tag]}): a "
+                        f"tag names one commit.",
+                    )
+                )
+            else:
+                tags[tag] = index
+        if "merge" in step and "pick" in step:
+            found.append(
+                Violation(
+                    f"/steps/{index}/pick",
+                    "a step is a merge or a cherry-pick, not both: write them as two steps.",
+                )
+            )
+    if found:
+        return found
+
+    known = ", ".join(repr(name) for name in names)
+    sources: dict[str, str] = {}
+    for index, branch in enumerate(branches):
+        name = branch.get("name")
+        source = branch.get("from")
+        if not isinstance(name, str):
+            continue
+        if index == 0:
+            if source is not None:
+                found.append(
+                    Violation(
+                        "/branches/0/from",
+                        "the first branch is the trunk, and forks from nothing: put the "
+                        "branch it forks from before it in `branches`.",
+                    )
+                )
+            continue
+        if source is None:
+            source = next(iter(names))
+        if not isinstance(source, str):
+            continue
+        if source == name:
+            found.append(Violation(f"/branches/{index}/from", "a branch cannot fork from itself."))
+        elif source not in names and source not in ids:
+            found.append(
+                Violation(
+                    f"/branches/{index}/from",
+                    f"{source!r} is neither a branch ({known}) nor a commit's `id`.",
+                )
+            )
+        else:
+            sources[name] = source
+    if found:
+        return found
+
+    # Replay the history, as git would make it.
+    tips: dict[str, int] = {}
+    ancestors: list[set[int]] = []
+    for index, step in enumerate(steps):
+        on = step.get("on")
+        here = f"/steps/{index}"
+        if not isinstance(on, str) or on not in names:
+            found.append(Violation(f"{here}/on", f"{on!r} is not one of the branches: {known}."))
+            return found
+        parents: list[int] = []
+        if on in tips:
+            parents.append(tips[on])
+        elif names[on] != 0:
+            source = sources[on]
+            if source in names:
+                if source not in tips:
+                    found.append(
+                        Violation(
+                            f"{here}/on",
+                            f"{on!r} forks from {source!r} at its first commit, and {source!r} "
+                            f"has no commit yet: commit on {source!r} first.",
+                        )
+                    )
+                    return found
+                parents.append(tips[source])
+            else:
+                if ids[source] >= index:
+                    found.append(
+                        Violation(
+                            f"/branches/{names[on]}/from",
+                            f"{on!r} forks from {source!r}, which is written after the "
+                            f"branch's first commit (/steps/{index}): a branch can only fork "
+                            f"from a commit that already exists.",
+                        )
+                    )
+                    return found
+                parents.append(ids[source])
+            if "merge" in step:
+                found.append(
+                    Violation(
+                        f"{here}/merge",
+                        f"this is {on!r}'s first commit, so the merge would only fast-forward "
+                        f"it: commit on {on!r} first, or merge into the branch it forks from.",
+                    )
+                )
+                return found
+        elif "merge" in step:
+            found.append(
+                Violation(
+                    f"{here}/merge",
+                    f"a merge needs a commit on {on!r} to merge into: commit on it first.",
+                )
+            )
+            return found
+        reach: set[int] = {index}
+        for parent in parents:
+            reach |= ancestors[parent]
+        merged = step.get("merge")
+        if isinstance(merged, str):
+            if merged not in names:
+                found.append(
+                    Violation(f"{here}/merge", f"{merged!r} is not one of the branches: {known}.")
+                )
+                return found
+            if merged == on:
+                found.append(Violation(f"{here}/merge", f"a branch cannot merge itself ({on!r})."))
+                return found
+            if merged not in tips:
+                found.append(
+                    Violation(
+                        f"{here}/merge",
+                        f"{merged!r} has no commit yet, so there is nothing to merge.",
+                    )
+                )
+                return found
+            if tips[merged] in reach:
+                found.append(
+                    Violation(
+                        f"{here}/merge",
+                        f"everything on {merged!r} is already in {on!r}: the merge would make "
+                        f"no change. Commit on {merged!r} first, or leave the merge out.",
+                    )
+                )
+                return found
+            reach |= ancestors[tips[merged]]
+        picked = step.get("pick")
+        if isinstance(picked, str):
+            if picked not in ids:
+                found.append(Violation(f"{here}/pick", f"{picked!r} is not any commit's `id`."))
+                return found
+            source_index = ids[picked]
+            if source_index >= index:
+                found.append(
+                    Violation(
+                        f"{here}/pick",
+                        f"{picked!r} is written after this step: a cherry-pick copies a commit "
+                        f"that already exists.",
+                    )
+                )
+                return found
+            if "merge" in steps[source_index]:
+                found.append(
+                    Violation(
+                        f"{here}/pick",
+                        f"{picked!r} is a merge commit, which git will not cherry-pick without "
+                        f"choosing a side: pick one of the commits it merged.",
+                    )
+                )
+                return found
+            if source_index in reach:
+                found.append(
+                    Violation(
+                        f"{here}/pick",
+                        f"{picked!r} is already in {on!r}'s history: picking it changes nothing.",
+                    )
+                )
+                return found
+        ancestors.append(reach)
+        tips[on] = index
+
+    for name, index in names.items():
+        if name not in tips:
+            found.append(
+                Violation(
+                    f"/branches/{index}",
+                    f"the branch {name!r} has no commit, so it has no lane to draw: commit on "
+                    f"it, or leave it out (a name on a commit is a `tag`).",
+                )
+            )
+    return found
+
+
 def _figure(value: float) -> str:
     """A number as an author wrote it: no float noise, no trailing zeros."""
     text = f"{round(value, 9):.9f}".rstrip("0").rstrip(".")
@@ -11828,6 +12844,10 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _sunburst_document(document)
     if kind in NETWORK_KINDS:
         return _network_document(document)
+    if kind in TIMING_KINDS:
+        return _timing_document(document)
+    if kind in GITGRAPH_KINDS:
+        return _gitgraph_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -12752,6 +13772,79 @@ def _network_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _gitgraph_document(document: Mapping[str, Any]) -> Document:
+    """A git graph: its branches and its steps, in the order written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        git_branches=tuple(
+            GitBranch(
+                name=str(entry["name"]),
+                source=str(entry.get("from", "")),
+                role=str(entry.get("role", "step")),
+            )
+            for entry in document["branches"]
+        ),
+        git_steps=tuple(
+            GitStep(
+                on=str(entry["on"]),
+                text=str(entry.get("text", "")),
+                id=str(entry.get("id", "")),
+                merge=str(entry.get("merge", "")),
+                pick=str(entry.get("pick", "")),
+                tag=str(entry.get("tag", "")),
+                role=str(entry.get("role", "step")),
+            )
+            for entry in document["steps"]
+        ),
+        git_direction=str(document.get("direction", "right")),
+    )
+
+
+def _timing_document(document: Mapping[str, Any]) -> Document:
+    """A timing figure: its lanes, step names, markers and intervals, as written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        timing_signals=tuple(
+            TimingSignal(
+                text=str(signal["text"]),
+                lane=str(signal.get("lane", "bit")),
+                values=tuple(str(value) for value in signal["values"]),
+                states=tuple(str(state) for state in signal.get("states", ())),
+                group=str(signal.get("group", "")),
+            )
+            for signal in document["signals"]
+        ),
+        timing_ticks=tuple(str(tick) for tick in document.get("ticks", ())),
+        timing_markers=tuple(
+            TimingMarker(at=float(marker["at"]), text=str(marker.get("text", "")))
+            for marker in document.get("markers", ())
+        ),
+        timing_intervals=tuple(
+            TimingInterval(
+                start=float(interval["from"]),
+                end=float(interval["to"]),
+                text=str(interval["text"]),
+                signal=str(interval.get("signal", "")),
+            )
+            for interval in document.get("intervals", ())
+        ),
+    )
+
+
 def _pie_document(document: Mapping[str, Any]) -> Document:
     """A pie: its parts in the order written, and the unit they are in."""
     return Document(
@@ -13049,6 +14142,11 @@ __all__ = [
     "FISHBONE_CAUSE_MAX",
     "FISHBONE_KINDS",
     "FRAGMENT_OPERATORS",
+    "GITGRAPH_BRANCH_MAX",
+    "GITGRAPH_DIRECTIONS",
+    "GITGRAPH_KINDS",
+    "GITGRAPH_ROLES",
+    "GITGRAPH_STEP_MAX",
     "GRAPH_EDGE_ROLES",
     "GRAPH_KINDS",
     "GRID_KINDS",
@@ -13119,6 +14217,16 @@ __all__ = [
     "SUNBURST_KINDS",
     "SUNBURST_NODE_MAX",
     "SUNBURST_RING_MAX",
+    "TIMING_BIT_VALUES",
+    "TIMING_BUS_RESERVED",
+    "TIMING_HOLD",
+    "TIMING_INTERVAL_MAX",
+    "TIMING_KINDS",
+    "TIMING_LANES",
+    "TIMING_MARKER_MAX",
+    "TIMING_SIGNAL_MAX",
+    "TIMING_STATE_MAX",
+    "TIMING_STEP_MAX",
     "TRANSITION_ROLES",
     "TREEMAP_KINDS",
     "TREEMAP_PART_ROLES",
@@ -13151,6 +14259,8 @@ __all__ = [
     "FamilyTwins",
     "FieldSpec",
     "Fragment",
+    "GitBranch",
+    "GitStep",
     "Group",
     "Item",
     "JourneyStage",
@@ -13180,6 +14290,9 @@ __all__ = [
     "Series",
     "Slice",
     "SunburstNode",
+    "TimingInterval",
+    "TimingMarker",
+    "TimingSignal",
     "TreemapGroup",
     "TreemapPart",
     "VennSet",

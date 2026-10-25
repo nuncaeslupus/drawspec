@@ -28,6 +28,7 @@ from drawspec.routing import (
     Route,
     edge_primitives,
     minimum_rank_gap,
+    off_borders,
     route_edges,
     separate_lanes,
     shaft_length,
@@ -821,3 +822,52 @@ def test_the_mesh_reference_draws_every_link_as_a_diagonal() -> None:
         assert match, f"not one straight segment: {d}"
         x0, y0, x1, y1 = map(float, match.groups())
         assert abs(x1 - x0) > 1 and abs(y1 - y0) > 1, f"not diagonal: {d}"
+
+
+FRAME = Obstacle("f", 0.0, 0.0, 300.0, 300.0)
+
+
+def _runs_on_border(route: Route, frame: Obstacle) -> list[int]:
+    """Indices of the middle runs within a clearance of one of `frame`'s borders."""
+    near = THEME.edge.clearance
+    found = []
+    for index, (first, second) in enumerate(route.segments[1:-1], start=1):
+        vertical = first[0] == second[0]
+        at = first[0] if vertical else first[1]
+        low, high = sorted((first[1], second[1]) if vertical else (first[0], second[0]))
+        start, end = (frame.y, frame.bottom) if vertical else (frame.x, frame.right)
+        edges = (frame.x, frame.right) if vertical else (frame.y, frame.bottom)
+        if min(high, end) > max(low, start) and any(abs(at - edge) < near for edge in edges):
+            found.append(index)
+    return found
+
+
+def test_a_run_on_the_border_of_a_frame_holding_both_ends_moves_inward() -> None:
+    a = Obstacle("a", 20.0, 20.0, 60.0, 30.0)
+    b = Obstacle("b", 20.0, 240.0, 60.0, 30.0)
+    route = Route("a", "b", "flow", ((80.0, 35.0), (298.0, 35.0), (298.0, 255.0), (80.0, 255.0)))
+    (moved,) = off_borders((route,), (FRAME,), (a, b), THEME)
+    assert _runs_on_border(moved, FRAME) == []
+    assert all(x < FRAME.right for x, _ in moved.points)
+
+
+def test_every_run_on_a_border_moves_off_it_not_only_the_first() -> None:
+    s = Obstacle("s", 400.0, 20.0, 40.0, 30.0)
+    t = Obstacle("t", 80.0, 400.0, 40.0, 30.0)
+    route = Route(
+        "s",
+        "t",
+        "flow",
+        (
+            (400.0, 35.0),
+            (302.0, 35.0),
+            (302.0, 200.0),
+            (350.0, 200.0),
+            (350.0, 302.0),
+            (100.0, 302.0),
+            (100.0, 400.0),
+        ),
+    )
+    assert _runs_on_border(route, FRAME) == [1, 4]
+    (moved,) = off_borders((route,), (FRAME,), (s, t), THEME)
+    assert _runs_on_border(moved, FRAME) == []

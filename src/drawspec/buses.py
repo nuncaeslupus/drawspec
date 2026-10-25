@@ -116,9 +116,7 @@ def _arranged(
     total = len(nets)
     # Each group's band of gaps, fixed by its members' topmost buses alone.
     bands = [
-        (min(nets[m][0] for m in members), max(nets[m][0] for m in members))
-        if members
-        else (0, -1)
+        (min(nets[m][0] for m in members), max(nets[m][0] for m in members)) if members else (0, -1)
         for members in groups
     ]
 
@@ -141,8 +139,7 @@ def _arranged(
             top, bottom = extent[host]
             # Nor does a host stack where it would stand on a stranger's backdrop.
             while column < len(columns) and any(
-                not (bottom < extent[other][0] or extent[other][1] < top)
-                or strangers(host, other)
+                not (bottom < extent[other][0] or extent[other][1] < top) or strangers(host, other)
                 for other in columns[column]
             ):
                 column += 1

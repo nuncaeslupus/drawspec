@@ -52,8 +52,9 @@ GOLDEN: Final = Path(__file__).resolve().parent / "golden" / "text"
 UPDATE: Final = bool(os.environ.get("DRAWSPEC_UPDATE_GOLDEN"))
 
 #: Reference documents that do not fit 80 columns, and the width each needs.
-#: Three sequences, and a board whose longest word is wider than a fifth of
-#: the line less the slice names. Each refuses at 80 rather than wrapping a word or running over.
+#: Three sequences, a board whose longest word is wider than a fifth of
+#: the line less the slice names, and an SPI read whose twenty steps take four
+#: columns each. Each refuses at 80 rather than wrapping a word or running over.
 WIDER: Final = {
     "sequence-async-export": 83,
     "sequence-dns": 93,
@@ -62,6 +63,7 @@ WIDER: Final = {
     # A network's bus names stand left of their buses, and every column holds a box.
     "network-office": 120,
     "network-three-tier": 136,
+    "timing-spi": 94,
 }
 
 
@@ -77,6 +79,8 @@ GOLDENS: Final = {
     "rag": "rag-refit",
     "meter": "meter-migration",
     "network": "network-nwdiag",
+    "timing": "timing-session",
+    "gitgraph": "gitgraph-gitflow",
 }
 
 #: Golden files beyond one per kind: a second style of a kind, held the same way.
@@ -148,6 +152,14 @@ def _labels(document: Document) -> list[str]:
         found += [host.text for host in document.hosts]
         found += [address for host in document.hosts for address in host.addresses]
         found += [group.text for group in document.host_groups]
+    elif document.kind == "timing":
+        for signal in document.timing_signals:
+            found += [signal.text, signal.group, *signal.states]
+            if signal.lane == "bus":
+                found += [value for value in signal.values if value not in (".", "x", "z")]
+        found += list(document.timing_ticks)
+        found += [marker.text for marker in document.timing_markers]
+        found += [interval.text for interval in document.timing_intervals]
     found.append(document.caption)
     return [line for label in found for line in plain(label).split("\n") if line.strip()]
 
