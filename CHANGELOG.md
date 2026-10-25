@@ -12,6 +12,17 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **A `gitgraph` kind.** Commits on branches over time — git-flow, trunk-based release
+  branches, Pro Git's hotfix — with forks, merges, tags and cherry-picks. The input is the
+  branches (each forking `from` a branch or a commit `id`) and the steps in the order made,
+  each `on` a branch, a `merge` or a `pick`; the history is replayed as git would make it,
+  so lanes, spacing and parents are derived and a merge that changes nothing, a pick
+  already in the history or a branch with no commit is refused at its pointer. A commit is
+  a dot, a merge a ring round one, a cherry-pick a dashed ring, an emphasised commit a
+  square; a fork turns just after its parent and a merge just before its commit, between
+  two steps. `direction: right` (labels under the dots) or `down` (messages in a column).
+  A `[gitgraph] colours` theme key colours the lanes' dots and names (`accent` sets one).
+  `--format text` draws it as `git log --graph` would. Budget: 8 branches, 30 steps.
 - **A `sunburst` kind.** A hierarchy drawn as concentric rings of sectors, each label read
   from the middle outward: a wheel of emotions, a taxonomy. The input is just a tree of
   `{text, children?}` with an optional `centre` hub — every terminal node takes an equal

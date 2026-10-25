@@ -318,6 +318,14 @@ How heavy a sunburst's three structural lines are.
 |---|---|---|
 | `weights` | `[0.006, 0.0035, 0.002]` | The width of a first-ring divider and the rim, a ring boundary and the hub circle, and a division two or more rings deep — each as a share of the wheel's radius, floored at a hairline so a small wheel keeps its lines, so the structure grows heavier on a wide wheel. Heaviest first; none heavier than the one before. |
 
+### `[gitgraph]`
+
+What colour a git graph's branches take, if any.
+
+| Key | Default | What it is |
+|---|---|---|
+| `colours` | `[]` | A colour per branch, in the order the branches are written, cycling past the last; empty draws every lane in the page's ink. A lane's commits are filled with its colour and its name is set on a faint wash of it; the lines stay ink, so a lane's colour never has to carry a crossing. |
+
 ### `[argument]`
 
 How an argument map says which way a point bears: its tag and its fill.

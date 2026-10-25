@@ -253,6 +253,13 @@ taper = [6.0, 3.0, 1.5]
 # Heaviest first; none heavier than the one before.
 weights = [0.006, 0.0035, 0.002]
 
+[gitgraph]
+# What colour a git graph's branches take: one per lane, in the order the branches
+# are written, cycling. Empty, as here, draws every lane in the page's ink: a lane
+# is told apart by its place and the name at its head, never by colour alone. A
+# colour fills the lane's commit dots and washes its name; the lines stay ink.
+colours = []
+
 [argument]
 # How an argument map shows which way a point bears, twice so greyscale holds: a
 # tag in the box's top margin, read aloud down a chain (claim, because, but, but),

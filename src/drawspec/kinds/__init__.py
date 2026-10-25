@@ -23,6 +23,7 @@ from drawspec.kinds.familytree import familytree_scene
 from drawspec.kinds.files import files_scene, files_text
 from drawspec.kinds.fishbone import fishbone_scene
 from drawspec.kinds.gantt import gantt_scene, gantt_text
+from drawspec.kinds.gitgraph import gitgraph_scene, gitgraph_text
 from drawspec.kinds.graph import DRAWN_KINDS, graph_scene
 from drawspec.kinds.graphtext import graph_text, tree_graph_text
 from drawspec.kinds.grid import grid_scene, stack_text, timeline_text
@@ -51,6 +52,7 @@ from drawspec.schema import (
     FILES_KINDS,
     FISHBONE_KINDS,
     GANTT_KINDS,
+    GITGRAPH_KINDS,
     GRID_KINDS,
     JOURNEY_KINDS,
     METER_KINDS,
@@ -99,6 +101,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *RAG_KINDS,
     *CLOCK_KINDS,
     *SUNBURST_KINDS,
+    *GITGRAPH_KINDS,
     "cycle",
 )
 
@@ -118,6 +121,7 @@ TEXT_FORMS: Final[dict[str, Callable[[Document, int, str], str]]] = {
     "stack": stack_text,
     "rag": rag_text,
     "meter": meter_text,
+    "gitgraph": gitgraph_text,
     "flow": graph_text,
     "states": graph_text,
     "lanes": graph_text,
@@ -197,6 +201,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return clock_scene(document, theme, measurer)
     if document.kind in SUNBURST_KINDS:
         return sunburst_scene(document, theme, measurer)
+    if document.kind in GITGRAPH_KINDS:
+        return gitgraph_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -224,6 +230,7 @@ __all__ = [
     "files_scene",
     "fishbone_scene",
     "gantt_scene",
+    "gitgraph_scene",
     "graph_scene",
     "journey_scene",
     "meter_scene",

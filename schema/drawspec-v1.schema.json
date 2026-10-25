@@ -2823,6 +2823,86 @@
         "nodes"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "gitgraph",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "gitgraph"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "branches": {
+          "type": "array",
+          "description": "The branches, 1 to 8, one lane each in the order written: the first is the trunk (`main`) and every other forks `from` an earlier one.",
+          "items": {
+            "$ref": "#/$defs/gitgraph-branch"
+          },
+          "minItems": 1
+        },
+        "steps": {
+          "type": "array",
+          "description": "The commits, 1 to 30, in the order they were made: each `on` a branch, and a merge (`merge`) or a cherry-pick (`pick`) when it is one. Lanes, spacing and the lines between commits are derived.",
+          "items": {
+            "$ref": "#/$defs/gitgraph-step"
+          },
+          "minItems": 1
+        },
+        "direction": {
+          "type": "string",
+          "description": "Which way time runs: `right` (the default) across the page, each commit's label under it; `down` the page, the labels in a column beside the lanes as `git log --graph` sets them — the one for long commit messages.",
+          "enum": [
+            "right",
+            "down"
+          ]
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "branches",
+        "steps"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -3892,6 +3972,72 @@
         "operator",
         "from",
         "to"
+      ],
+      "additionalProperties": false
+    },
+    "gitgraph-branch": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The branch's name, as git spells it (`main`, `feature/login`): written at the head of its lane and named by every step on it. Unique in the document."
+        },
+        "from": {
+          "type": "string",
+          "description": "Where the branch forks: the name of another branch — it forks from that branch's latest commit at the branch's first step — or the `id` of a commit written before then. Left out, it is the first branch; the first branch itself has none."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "step",
+            "emphasis"
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "gitgraph-step": {
+      "type": "object",
+      "properties": {
+        "on": {
+          "type": "string",
+          "description": "The branch this commit is made on — one of `branches`. Steps are drawn in the order written, one place in time each."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "id": {
+          "type": "string",
+          "description": "A handle for this commit, unique in the document: what a `pick` or a branch's `from` names. Drawn as the label when there is no `text` (a short hash, `C2`)."
+        },
+        "merge": {
+          "type": "string",
+          "description": "Makes this a merge commit: the name of the branch merged into `on`, at its latest commit. The merged branch may carry on afterwards."
+        },
+        "pick": {
+          "type": "string",
+          "description": "Makes this a cherry-pick: the `id` of an earlier commit on another branch, copied onto `on`. Its label is the original's unless `text` says otherwise."
+        },
+        "tag": {
+          "type": "string",
+          "description": "A tag on this commit (`v1.0`), drawn as a tag beside it. Unique."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "step",
+            "emphasis"
+          ]
+        }
+      },
+      "required": [
+        "on"
       ],
       "additionalProperties": false
     },

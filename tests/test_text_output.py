@@ -73,6 +73,7 @@ GOLDENS: Final = {
     "stack": "stack-decisions",
     "rag": "rag-refit",
     "meter": "meter-migration",
+    "gitgraph": "gitgraph-gitflow",
 }
 
 #: Golden files beyond one per kind: a second style of a kind, held the same way.

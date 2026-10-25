@@ -65,6 +65,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "rag": "workstreams or risks rated red, amber or green, in words and shapes — a status report",
     "clock": "analogue clock faces showing a time, for teaching it — quarter past, half past",
     "sunburst": "a hierarchy as concentric rings of sectors, read from the middle outward",
+    "gitgraph": "commits on branches over time, with forks, merges, tags and cherry-picks",
 }
 
 #: The smallest document of each kind that renders.
@@ -378,6 +379,16 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "version": 1,
         "kind": "clock",
         "clocks": [{"time": "3:15"}],
+    },
+    "gitgraph": {
+        "version": 1,
+        "kind": "gitgraph",
+        "branches": [{"name": "main"}, {"name": "feature", "from": "main"}],
+        "steps": [
+            {"on": "main", "text": "Initial commit"},
+            {"on": "feature", "text": "Add a feature"},
+            {"on": "main", "merge": "feature", "tag": "v1.0"},
+        ],
     },
     "sunburst": {
         "version": 1,
