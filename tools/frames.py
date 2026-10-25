@@ -11,7 +11,9 @@ The rule checked is the one a reader holds:
 
 * a frame that contains **neither** end of an edge is not entered at all;
 * a frame that contains **one** end is crossed exactly once, on the way in or out;
-* a frame that contains **both** is never left.
+* a frame that contains **both** is never left;
+* and no edge runs *along* a border, on top of the dashed line: crossing one
+  is done square on, or it reads as entering the frame lengthways.
 
 An edge that names the frame itself — it is about the whole container — lands on
 its border, and that frame is not asked about.
@@ -53,6 +55,10 @@ REFERENCE_DIR = Path(__file__).resolve().parents[1] / "docs" / "reference"
 #: route that runs along the border, or ends on it, is outside.
 TOLERANCE = 0.5
 
+#: How close to a border a run between two corners may be before it reads as
+#: drawn on top of it rather than beside it.
+ALONG = 3.0
+
 
 @dataclass(frozen=True)
 class Crossing:
@@ -63,8 +69,11 @@ class Crossing:
     frame: str
     times: int
     allowed: int
+    along: bool = False
 
     def __str__(self) -> str:
+        if self.along:
+            return f"{self.source} -> {self.target} runs along the border of frame {self.frame!r}"
         if self.allowed == 0 and self.times == 0:
             return f"{self.source} -> {self.target} leaves frame {self.frame!r}"
         return (
@@ -132,13 +141,35 @@ def border_crossings(points: Sequence[tuple[float, float]], frame: Frame) -> tup
     return times, bool(runs)
 
 
+def runs_along(points: Sequence[tuple[float, float]], frame: Frame) -> bool:
+    """Whether a run between two corners of a polyline lies on `frame`'s border.
+
+    The first and last runs are left out: they carry an endpoint, and an edge
+    that names the frame lands on its border on purpose.
+    """
+    for first, second in list(pairwise(points))[1:-1]:
+        vertical = abs(first[0] - second[0]) < 1e-6
+        at = first[0] if vertical else first[1]
+        low, high = sorted((first[1], second[1]) if vertical else (first[0], second[0]))
+        start, end = (frame.y, frame.bottom) if vertical else (frame.x, frame.right)
+        edges = (frame.x, frame.right) if vertical else (frame.y, frame.bottom)
+        if min(high, end) - max(low, start) > TOLERANCE and any(
+            abs(at - edge) < ALONG for edge in edges
+        ):
+            return True
+    return False
+
+
 def frame_crossings(drawing: GraphDrawing) -> list[Crossing]:
-    """Every edge that enters a frame it has no end in, or crosses one more than once."""
+    """Every edge that enters a frame it has no end in, crosses one too often, or runs along one."""
     found: list[Crossing] = []
     for route in drawing.routes:
         if len(route.points) < 2:
             continue
         for frame in drawing.frames:
+            if runs_along(route.points, frame):
+                found.append(Crossing(route.source, route.target, frame.id, 0, 0, along=True))
+                continue
             if frame.id in (route.source, route.target):
                 continue
             box = _interior(frame)
