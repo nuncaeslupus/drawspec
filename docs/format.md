@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-38 kinds. The machine-readable form of this page is the published
+43 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `packet` | **yes** | Which of the thirty-eight diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `packet`, `network`, `timing`, `gitgraph`, `railroad`, `usecase` | **yes** | Which of the forty-three diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -296,6 +296,32 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 |---|---|---|---|
 | `rows` | array of [rag-row](#rag-row-object), at least 1 | **yes** | The workstreams or risks, 1 to 15, in the order written: each a name, its `rag`, and optionally a `trend` and a `note`. |
 
+### `network`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `networks` | array of [network-segment](#network-segment-object), at least 1 | **yes** | The networks, 1 to 6, each a horizontal bus, drawn top to bottom in the order written. Write them in the order traffic meets them — the internet, the DMZ, the internal network, storage — so a host on two neighbours sits between them. |
+| `hosts` | array of [network-host](#network-host-object), at least 1 | **yes** | The hosts, 1 to 24, each a box under its topmost network with a line to every network it is on. The columns are drawspec's: ordered so no line crosses a bus it is not on, then as few and as close to the order written as that allows. |
+| `groups` | array of [network-group](#network-group-object), at least 1 | no | Optional: up to 6 sets of hosts drawn on a shaded backdrop, with an optional name — a cluster, a rack, a site. No host outside a group may stand inside it. |
+
+### `timing`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `signals` | array of [timing-signal](#timing-signal-object), at least 1 | **yes** | The lanes, 1 to 12, top to bottom in the order written: each a `text`, a `lane` and one value per step in `values`, every signal the same number of steps (40 at most). |
+| `ticks` | array of string | no | A name for each step, written under the figure — one per step, as many as the values; an empty string leaves a step unnamed. |
+| `markers` | array of [timing-marker](#timing-marker-object) | no | Vertical lines across every lane at an edge, up to 8, each named over the figure: a START, a sample point. |
+| `intervals` | array of [timing-interval](#timing-interval-object) | no | Named spans between two edges, up to 10, each an arrow under a signal's lane: a setup time, a hold time, a timeout. |
+
+### `usecase`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `systems` | array of [usecase-system](#usecase-system-object) | no | The systems whose boundaries hold the use cases, 0 to 3, each a frame with its name in the corner, stacked down the middle in the order written. Left out, the use cases stand with no boundary. |
+| `actors` | array of [usecase-actor](#usecase-actor-object), at least 1 | **yes** | Who or what uses the system, 1 to 8, each drawn as a stick figure with its name under it, outside every boundary: primary actors on the left, `supporting` ones on the right, a specialised actor above or below its parent. No coordinates; the order down each side is derived to keep lines from crossing. |
+| `usecases` | array of [usecase-case](#usecase-case-object), at least 1 | **yes** | What the actors do with the system, 1 to 15, each an ellipse inside its system's boundary. A use case that is included, that extends another or that specialises one stands a column to the right of it, three columns at most. |
+| `edges` | array of [usecase-edge](#usecase-edge-object), at least 1 | **yes** | The relations, up to 30: `association` between an actor and a use case, `include` and `extend` between use cases, `inherits` between two actors or two use cases. No labels: the role says what each line is. |
+
 ### `packet`
 
 | Field | Type | Required | What it is |
@@ -310,6 +336,21 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 |---|---|---|---|
 | `centre` | string | no | An optional hub label in the middle — the overall topic. Left out, the first ring fills the centre. |
 | `nodes` | array of [sunburst-node](#sunburst-node-object), at least 2 | **yes** | The first ring, 2 to 8, clockwise from twelve o'clock in the order written, each with optional `children` for the ring nested inside it. Nested up to three rings, 150 sectors in all; every terminal sector takes an equal angle, so there are no amounts. |
+
+### `gitgraph`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `branches` | array of [gitgraph-branch](#gitgraph-branch-object), at least 1 | **yes** | The branches, 1 to 8, one lane each in the order written: the first is the trunk (`main`) and every other forks `from` another branch or a commit `id`; the lane order need not be the order the branches were made. |
+| `steps` | array of [gitgraph-step](#gitgraph-step-object), at least 1 | **yes** | The commits, 1 to 30, in the order they were made: each `on` a branch, and a merge (`merge`) or a cherry-pick (`pick`) when it is one. Lanes, spacing and the lines between commits are derived. |
+| `direction` | string — one of `right`, `down` | no | Which way time runs: `right` (the default) across the page, each commit's label under it; `down` the page, the labels in a column beside the lanes as `git log --graph` sets them — the one for long commit messages. |
+
+### `railroad`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `rules` | array of [railroad-rule](#railroad-rule-object), at least 1 | **yes** | The grammar's rules, 1 to 12, drawn one under another in the order written, each a named track from entry to exit, at most 40 boxes on one track. |
+| `external` | array of string | no | Names a `rule` box may refer to that this document does not define — rules drawn elsewhere. Every other `rule` must name one of `rules`. |
 
 ### `mindmap`
 
@@ -396,6 +437,11 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `clock` | 12 `clocks` |
 | `sunburst` | 8 `nodes` |
 | `packet` | 40 `fields` |
+| `network` | 6 `networks`, 24 `hosts`, 6 `groups` |
+| `timing` | 12 `signals`, 6 `states` per signal, 8 `markers`, 10 `intervals` |
+| `gitgraph` | 8 `branches`, 30 `steps` |
+| `railroad` | 12 `rules` |
+| `usecase` | 8 `actors`, 15 `usecases`, 3 `systems`, 30 `edges` |
 
 ## Emphasis
 
@@ -884,11 +930,68 @@ name, so a misspelt key is an error at the point it was written.
 | `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the branch the map is about: bold, its line heavy all the way from the centre; at most two) or `note` (context, not content: faint, and so is everything under it). |
 | `branches` | array of [mindmap-branch](#mindmap-branch-object), at least 1 | no | The branches off this one, drawn top to bottom in the order written. At most three levels below the centre: a branch, a twig, a leaf. |
 
+### `timing-signal` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The signal's name, drawn at the left of its lane: `SCLK`, `CS#`, `User`. Unique in the figure — an interval names its signal by it. |
+| `lane` | string — one of `bit`, `bus`, `state` | no | What the lane draws: `bit` (the default: levels and clock pulses), `bus` (a word per value, in the hexagon lanes of a datasheet) or `state` (a line stepping between the named `states`, UML's robust lifeline). |
+| `values` | array of string, at least 1 | **yes** | One string per time step, every signal the same length. A `bit` lane takes `0`, `1`, `z` (high impedance), `x` (unknown), `p` (a clock pulse, high then low) and `n` (low then high); a `bus` takes any word, with `x` and `z` reserved; a `state` lane takes one of its `states`. `.` carries the step before on: a clock keeps pulsing, a word holds without a new edge. |
+| `states` | array of string, at least 2 | no | A `state` lane's named states, 2 to 6, top to bottom in the order written — write the busiest or highest first. Required on a `state` lane, refused elsewhere. |
+| `group` | string | no | The name of the group this signal is in — `Controller`, `Peripheral` — drawn once over its signals. Signals in one group are written next to each other. |
+
+### `timing-marker` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `at` | number | **yes** | Where the marker stands, in steps from the start: `0` is the left edge, a whole number is the edge between two steps, and a half is the middle of one (where a clock pulse falls). |
+| `text` | string | no | The marker's name, over the figure: `S`, `Sr`, `P`, `sample`. |
+
+### `timing-interval` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | number | **yes** | The edge the interval starts at, in steps (whole or half), as a marker's `at`. |
+| `to` | number | **yes** | The edge it ends at, after `from`, in steps (whole or half). |
+| `text` | string | **yes** | What the interval is, over its arrow: `tSU;STA`, `setup`, `100 ms`. A name, not a measurement drawspec makes — the steps are not to scale in time. |
+| `signal` | string | no | The signal it is measured on, by its `text`: the arrow is drawn under that lane. Left out, it goes under the last lane. |
+
+### `usecase-actor` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the actors, use cases and systems; what a relation's `from` and `to` name. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `supporting` | boolean | no | Whether this actor is a supporting (secondary) one — a bank, a payment service, a librarian who serves the borrower: drawn on the right of the boundary, primary actors on the left. Left out, it is derived: an actor whose every use case an actor written before it already has is supporting. An actor that `inherits` stands on its parent's side. |
+
+### `usecase-case` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the actors, use cases and systems; what a relation's `from` and `to` name. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `system` | string | no | The id of the system whose boundary this use case is drawn in. Needed when there are two or more `systems`; with one it may be left out, and with none there is no boundary to name. |
+
+### `usecase-system` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the actors, use cases and systems; what a use case's `system` names. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `usecase-edge` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | string | **yes** | An association's actor or use case (either way round); the base use case that `include`s; the use case that `extend`s; the specialised actor or use case that `inherits`. |
+| `to` | string | **yes** | The other end: the use case included, the use case extended, the general actor or use case inherited from. |
+| `role` | string — one of `association`, `include`, `extend`, `inherits` | no | `association` (the default: an actor takes part in a use case, a solid line with no head), `include` (the base always does the other: a dashed arrow «include» to it), `extend` (this one sometimes adds to the other: a dashed arrow «extend» to the base) or `inherits` (a kind of the other, actor to actor or use case to use case: a hollow triangle at the general end). |
+
 ### `packet-field` object
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `text` | string | no | The field's name, written inside it: `Version`, `Source Port`, `TXEN`. Required, except on a `reserved` field, which may be left blank. Where it will not fit across the field it is broken at a space onto two lines; failing that the author's `short` stands in, then the name or the `short` turned on its side, and last a letter, the name going to the key under the drawing. |
+| `text` | string | no | The field's name, written inside it: `Version`, `Source Port`, `TXEN`. Required, except on a `reserved` field, which may be left blank. Where it will not fit across the field it is broken at a space, then turned on its side, then replaced by `short`, and last by a number, the name going to the key under the drawing. |
 | `bits` | integer, greater than 0 | **yes** | How many bits wide the field is. Fields are laid end to end in the order written, left to right and row after row; one that crosses a row's end is split there and its continuation marked, so no field ever carries a position. |
 | `short` | string | no | The author's own abbreviation, used when the name will not fit across the field (`DF` for `Don't Fragment`); the key under the drawing spells it out. drawspec never abbreviates on its own. |
 | `holds` | string | no | What the field holds, written small under its name: a fixed value (`4`), a reset value (`0x00`), its access (`R/W`). Moved to the key when the field is too narrow for it. |
@@ -901,6 +1004,79 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `children` | array of [sunburst-node](#sunburst-node-object), at least 1 | no | The sectors nested inside this one — the next ring, drawn clockwise in the order written. At most three rings in all; leave it out of a node that ends the hierarchy. |
+
+### `network-segment` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the networks; what a host's attachment names. |
+| `text` | string | no | The network's name, written in bold at the left of its bus. Left out, the `id` is the name. |
+| `address` | string | no | The network's address, written on its bus after the name — `210.x.x.x/24`, `10.0.1.0/24`. Words, not parsed: drawspec checks nothing about it. |
+
+### `network-attachment` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `network` | string | **yes** | The id of a network this host is on. |
+| `address` | string | no | The host's address on that network, written beside its line where it meets the bus — `.1`, `10.0.1.10`. Optional. |
+
+### `network-host` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the hosts; what a group's `members` name. |
+| `text` | string | no | The words in the host's box. Left out, the `id` is the name. A newline makes the first line a lead over a detail — `db01` over `primary`. |
+| `role` | string — one of `step`, `emphasis`, `store`, `person` | no | `step` (the default box: a server, a router, a firewall, any device), `emphasis` (the host the diagram is about; at most two), `store` (a drum: a database, a storage array) or `person` (a user's machine, a client). No device icons: say what a box is in its words. |
+| `networks` | array of [network-attachment](#network-attachment-object), at least 1 | **yes** | The networks this host is on, each with an optional address. A host on two or more is drawn between them, joining them — a router, a firewall, a dual-homed server. Its line may cross no bus it is not on, so the column order is drawspec's; a set of attachments no order can draw is refused. |
+
+### `network-group` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | no | The group's name, at the top left of its backdrop. Optional. |
+| `members` | array of string, at least 1 | **yes** | The ids of the hosts drawn on this group's shaded backdrop, side by side. A host is in one group at most. |
+
+### `gitgraph-branch` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `name` | string | **yes** | The branch's name, as git spells it (`main`, `feature/login`): written at the head of its lane and named by every step on it. Unique in the document. |
+| `from` | string | no | Where the branch forks: the name of another branch — it forks from that branch's latest commit at the branch's first step — or the `id` of a commit written before then. Left out, it is the first branch; the first branch itself has none. |
+| `role` | string — one of `step`, `emphasis` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+
+### `gitgraph-step` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `on` | string | **yes** | The branch this commit is made on — one of `branches`. Steps are drawn in the order written, one place in time each. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `id` | string | no | A handle for this commit, unique in the document: what a `pick` or a branch's `from` names. Drawn as the label when there is no `text` (a short hash, `C2`). |
+| `merge` | string | no | Makes this a merge commit: the name of the branch merged into `on`, at its latest commit. The merged branch may carry on afterwards. |
+| `pick` | string | no | Makes this a cherry-pick: the `id` of an earlier commit on another branch, copied onto `on`. Its label is the original's unless `text` says otherwise. |
+| `tag` | string | no | A tag on this commit (`v1.0`), drawn as a tag beside it. Unique. |
+| `role` | string — one of `step`, `emphasis` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+
+### `railroad-rule` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `name` | string | **yes** | The rule's name, drawn above its track and referred to by `{"rule": name}` boxes. Unique in the document; one line, drawn exactly as written. |
+| `expr` | [railroad-item object](#railroad-item-object) | **yes** | What the rule matches, as one item: usually a `seq`. The track runs from an entry bar on the left to an exit bar on the right; a long top-level `seq` wraps onto further lines, a return track leading each line into the next. |
+
+### `railroad-item` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `terminal` | string | no | Literal text the input must contain, drawn in a rounded box in monospace, exactly as written: a keyword, a punctuation mark, an option. |
+| `rule` | string | no | The name of another rule, drawn in a square box: one of `rules`, or a name listed in `external` when it is defined elsewhere. |
+| `special` | string | no | A set described in words rather than spelt out, drawn in a dashed box: `any digit 1-9`, `any character but a quote`. |
+| `comment` | string | no | Words written on the track with no box, the line breaking for them — what a branch means, or a loop's separator in words. Matches nothing. |
+| `seq` | array of [railroad-item](#railroad-item-object), at least 2 | no | Items one after another, left to right. A rule's top-level `seq` wraps onto further lines when it is wider than the canvas. |
+| `choice` | array of [railroad-item](#railroad-item-object), at least 2 | no | Alternatives, 2 to 10, stacked one under another and rejoining. The first is drawn on the main line, so put the usual one first; an empty alternative is an `optional` round the choice. |
+| `optional` | [railroad-item object](#railroad-item-object) | no | An item that may be left out: drawn on the line, with a bypass over it. |
+| `repeat` | [railroad-item object](#railroad-item-object) | no | An item that may be repeated: drawn on the line, with a loop back under it. `min` says whether it may also be left out. |
+| `separator` | [railroad-item object](#railroad-item-object) | no | With `repeat` only: what comes between repetitions, drawn on the loop — a `terminal`, `rule`, `special` or `comment`, such as `{"terminal": ","}`. |
+| `min` | integer | no | With `repeat`, and required there: `1` for one or more, `0` for zero or more (the loop with a bypass over it). |
 
 ### `treemap-group` object
 

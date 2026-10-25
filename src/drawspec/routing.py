@@ -872,13 +872,142 @@ def route_edges(
         for index, connector in enumerate(connectors)
         if connector.source_port is not None or connector.target_port is not None
     }
-    return straighten(
+    settled = straighten(
         separate_lanes(tuple(routes), obstacles, theme, fences=fences),
         obstacles,
         theme,
         pinned=pinned,
         fences=fences,
     )
+    return off_borders(settled, anchors, obstacles, theme, fences=fences)
+
+
+def off_borders(
+    routes: Sequence[Route],
+    frames: Sequence[Obstacle],
+    obstacles: Sequence[Obstacle],
+    theme: Theme,
+    *,
+    fences: Sequence[Sequence[Obstacle]] = (),
+) -> tuple[Route, ...]:
+    """Every route with any run along a frame's border moved off it.
+
+    A frame is padded by about one lane, so the lane outside its outermost box
+    can be the frame's own border, and a route on it is drawn on top of the
+    dashed line: it reads as entering the frame lengthways, not as crossing it
+    (`flow-loops-town`'s *Car trips → Traffic*). A middle run that close to a
+    border moves outward — away from the frame — by the smallest step that keeps
+    the route clear, and inward only if outward has no room; its neighbours then
+    meet the border square on. A run that carries an endpoint is left alone: it
+    is where a box's edge leaves or arrives.
+    """
+    if not frames:
+        return tuple(routes)
+    near = theme.edge.clearance
+    # A full lane off first, so the run reads as beside the frame; half a lane
+    # only when nothing wider is clear.
+    steps = [theme.edge.lane_spacing * k / 2 for k in (2, 3, 4, 5, 6, 1)]
+    settled = list(routes)
+    for index, route in enumerate(settled):
+        walls = (*obstacles, *(fences[index] if index < len(fences) else ()))
+        for segment in range(1, len(route.points) - 2):
+            current = settled[index]
+            first, second = current.points[segment], current.points[segment + 1]
+            along = _along_border(first, second, frames, near)
+            if along is None:
+                continue
+            border, outward = along
+            at = first[0] if abs(first[0] - second[0]) < _TOLERANCE else first[1]
+            for sign in (outward, -outward):
+                moved = None
+                for step in steps:
+                    candidate = _shifted(current, segment, border + sign * step - at)
+                    if (
+                        candidate is not None
+                        and _is_clear(candidate, walls, theme)
+                        and _along_border(*candidate.segments[segment], frames, near) is None
+                        and not _new_border_runs(candidate, current, segment, frames, near)
+                        and not _adds_passes(candidate, current, frames)
+                        and not _lands_on_another(candidate, settled, index)
+                    ):
+                        moved = candidate
+                        break
+                if moved is not None:
+                    settled[index] = moved
+                    break
+    return tuple(settled)
+
+
+def _along_border(
+    first: tuple[float, float],
+    second: tuple[float, float],
+    frames: Sequence[Obstacle],
+    near: float,
+) -> tuple[float, float] | None:
+    """The frame border a run lies along, and which way is out of that frame.
+
+    `None` when the run is not within `near` of any border it overlaps.
+    """
+    vertical = abs(first[0] - second[0]) < _TOLERANCE
+    at = first[0] if vertical else first[1]
+    low, high = sorted((first[1], second[1]) if vertical else (first[0], second[0]))
+    for frame in frames:
+        start, end = (frame.y, frame.bottom) if vertical else (frame.x, frame.right)
+        if min(high, end) - max(low, start) <= _TOLERANCE:
+            continue
+        for edge, outward in (
+            ((frame.x, -1.0), (frame.right, 1.0))
+            if vertical
+            else ((frame.y, -1.0), (frame.bottom, 1.0))
+        ):
+            if abs(at - edge) < near:
+                return edge, outward
+    return None
+
+
+def _new_border_runs(
+    candidate: Route, current: Route, segment: int, frames: Sequence[Obstacle], near: float
+) -> bool:
+    """Whether moving `segment` left one of its two neighbours along a border it was not on.
+
+    A shift stretches the runs either side of the moved one, and a stretched run
+    can reach along a frame's edge. One that carries an endpoint cannot be moved
+    afterwards, so the shift is refused instead.
+    """
+    return any(
+        _along_border(*candidate.segments[side], frames, near) is not None
+        and _along_border(*current.segments[side], frames, near) is None
+        for side in (segment - 1, segment + 1)
+        if 0 <= side < len(candidate.segments)
+    )
+
+
+def _adds_passes(candidate: Route, current: Route, frames: Sequence[Obstacle]) -> bool:
+    """Whether a shifted route goes through some frame's border more often than before.
+
+    Moving a run off a frame that holds both of the route's ends would take the
+    route out of that frame and back in, and moving one off a frame it enters
+    could make it enter twice. Either is worse than the run on the border.
+    """
+    return any(_passes(candidate, frame) > _passes(current, frame) for frame in frames)
+
+
+def _passes(route: Route, frame: Obstacle) -> int:
+    """How many times `route` goes through `frame`'s border."""
+
+    def inside(point: tuple[float, float]) -> bool:
+        return (
+            frame.x + _TOLERANCE < point[0] < frame.right - _TOLERANCE
+            and frame.y + _TOLERANCE < point[1] < frame.bottom - _TOLERANCE
+        )
+
+    count = 0
+    for first, second in route.segments:
+        if inside(first) != inside(second):
+            count += 1
+        elif not inside(first) and frame.crosses(first, second):
+            count += 2
+    return count
 
 
 def _fences(

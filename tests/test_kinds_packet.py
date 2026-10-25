@@ -380,3 +380,18 @@ def test_a_kind_with_a_text_form_names_packet() -> None:
     )
     with pytest.raises(DrawspecError, match="`packet`"):
         render_text(document)
+
+
+def test_text_counts_wide_characters_in_terminal_cells() -> None:
+    from drawspec.textgrid import cells
+
+    document = packet(
+        {"text": "状态", "bits": 4},
+        {"text": "字", "bits": 1},
+        {"text": "Café", "bits": 11},
+        bits_per_row=16,
+    )
+    drawing = text(document)
+    rows = [line for line in drawing.splitlines() if line.startswith(("┌", "│", "└"))]
+    assert {cells(row) for row in rows} == {33}
+    assert "a  字" in drawing  # too wide to stand in one cell: keyed

@@ -41,9 +41,10 @@ DEFAULT_WIDTH: Final = 80
 #: Kinds drawn to a wider default, because their reference documents need it:
 #: participants and lanes sit side by side, so the width grows with their count.
 #: Measured in phase 2 of the text proposal — at 80, three of seven sequences
-#: and three of nine lanes are refused; at 100, one lanes document is.
+#: and three of nine lanes are refused; at 100, one lanes document is. A timing
+#: figure's steps run across the line, so its width grows with their count too.
 WIDE_WIDTH: Final = 100
-WIDE_KINDS: Final = frozenset({"lanes", "sequence"})
+WIDE_KINDS: Final = frozenset({"lanes", "sequence", "timing"})
 
 
 def default_width(kind: str) -> int:

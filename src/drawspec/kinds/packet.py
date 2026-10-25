@@ -629,6 +629,46 @@ def _lines(block: TextBlock, x: float, top: float) -> list[TextLine]:
 #: its flags: past it the row is taller than it is worth, and the name is keyed.
 TEXT_SIDE_MAX: Final = 5
 
+
+def _letters(text: str) -> list[str]:
+    """`text` a character to a line, a combining mark kept with its letter."""
+    found: list[str] = []
+    for character in text:
+        if found and cells(character) == 0:
+            found[-1] += character
+        else:
+            found.append(character)
+    return found
+
+
+def _stands(text: str, room: int) -> bool:
+    """Whether `text` may be stood on end, a letter to a line, in `room` cells."""
+    letters = _letters(text)
+    return (
+        " " not in text
+        and len(letters) <= TEXT_SIDE_MAX
+        and all(cells(letter) <= room for letter in letters)
+    )
+
+
+def _place(line: list[str], start: int, text: str) -> None:
+    """Write `text` into `line` from cell `start`, in terminal cells.
+
+    A wide character takes two cells, so the cell after it is emptied; a
+    combining mark joins the character before it and takes none.
+    """
+    at = start
+    for character in text:
+        width = cells(character)
+        if width == 0 and at > start:
+            line[at - 1] += character
+            continue
+        line[at] = character
+        if width == 2:
+            line[at + 1] = ""
+        at += max(width, 1)
+
+
 #: The glyphs a text packet is drawn in: a field's edge, a cut edge, a row's line.
 TEXT_GLYPHS: Final = {
     "unicode": {"edge": "│", "cut": "┆", "line": "─"},
@@ -722,10 +762,10 @@ def packet_text(document: Document, width: int, charset: str) -> str:
                 placement, lines = "across", found
             elif short and cells(short) <= room:
                 placement, lines = "short", [short]
-            elif " " not in name and len(name) <= TEXT_SIDE_MAX:
-                placement, lines, stood = "side", list(name), True
-            elif short and " " not in short and len(short) <= TEXT_SIDE_MAX:
-                placement, lines, stood = "short-side", list(short), True
+            elif _stands(name, room):
+                placement, lines, stood = "side", _letters(name), True
+            elif short and _stands(short, room):
+                placement, lines, stood = "short-side", _letters(short), True
             else:
                 placement = "marker"
         elif written.note:
@@ -848,9 +888,7 @@ def packet_text(document: Document, width: int, charset: str) -> str:
                     lines = []
             first = (heights[row] - len(lines)) // 2
             for offset, text in enumerate(lines):
-                placed = centred(text, room)
-                for cell, character in enumerate(placed):
-                    grid[first + offset][2 * piece.start + 1 + cell] = character
+                _place(grid[first + offset], 2 * piece.start + 1, centred(text, room))
         out.extend("".join(line) for line in grid)
         if numbering == "right" or row == rows - 1:
             out.append(line_between(row, -1))
