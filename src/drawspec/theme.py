@@ -1532,6 +1532,45 @@ class SunburstStyle:
         return cls(weights=weights)
 
 
+#: The most of a step a timing transition may take: past half, a step is all slant.
+TIMING_SLEW_MAX: Final = 0.5
+
+
+@dataclass(frozen=True)
+class TimingStyle:
+    """How a timing figure draws its edges, and whether its steps are ruled.
+
+    The author says what each signal does at each step; how steeply an edge is
+    drawn and whether the steps are ruled is house style, set once for a report.
+    """
+
+    slew: float = 0.15
+    """How much of a step a change of word on a bus, or into and out of unknown,
+    takes to cross — the slant of a datasheet's hexagon lanes. Capped at a few
+    units on a wide step, so a slow bus does not look like a ramp; 0 draws the
+    changes upright. A level's edge (a clock, a select line) is always upright."""
+
+    grid: bool = False
+    """Whether every step edge is ruled faintly down the figure, as WaveDrom does.
+    Off by default: the clock's own edges are the ruler a datasheet reads by, and
+    markers rule the edges that matter."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> TimingStyle:
+        _reject_unknown(mapping, ("slew", "grid"), "[timing]")
+        defaults = cls()
+        slew = _number(mapping.get("slew", defaults.slew), "[timing] slew", positive=False)
+        if not 0 <= slew <= TIMING_SLEW_MAX:
+            raise ThemeError(
+                f"[timing] slew: expected a share of a step from 0 to {TIMING_SLEW_MAX}, "
+                f"got {slew!r}"
+            )
+        grid = mapping.get("grid", defaults.grid)
+        if not isinstance(grid, bool):
+            raise ThemeError(f"[timing] grid: expected true or false, got {grid!r}")
+        return cls(slew=slew, grid=grid)
+
+
 #: The fills an `against` box may take: a pattern faint enough to read words over.
 ARGUMENT_FILLS: Final = ("hatch", "dots", "cross", "grid")
 
@@ -2136,6 +2175,7 @@ _TOP_LEVEL_KEYS: Final = (
     "flow",
     "mindmap",
     "sunburst",
+    "timing",
     "argument",
     "familytree",
     "rag",
@@ -2176,6 +2216,7 @@ class Theme:
     pie: PieStyle = PieStyle()
     mindmap: MindmapStyle = MindmapStyle()
     sunburst: SunburstStyle = SunburstStyle()
+    timing: TimingStyle = TimingStyle()
     argument: ArgumentStyle = ArgumentStyle()
     familytree: FamilytreeStyle = FamilytreeStyle()
     rag: RagStyle = RagStyle()
@@ -2245,6 +2286,7 @@ class Theme:
             pie=PieStyle.from_mapping(_section(mapping, "pie")),
             mindmap=MindmapStyle.from_mapping(_section(mapping, "mindmap")),
             sunburst=SunburstStyle.from_mapping(_section(mapping, "sunburst")),
+            timing=TimingStyle.from_mapping(_section(mapping, "timing")),
             argument=ArgumentStyle.from_mapping(_section(mapping, "argument")),
             familytree=FamilytreeStyle.from_mapping(_section(mapping, "familytree")),
             rag=RagStyle.from_mapping(_section(mapping, "rag")),

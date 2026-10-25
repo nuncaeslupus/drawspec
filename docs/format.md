@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-37 kinds. The machine-readable form of this page is the published
+38 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst` | **yes** | Which of the thirty-seven diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `timing` | **yes** | Which of the thirty-eight diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -296,6 +296,15 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 |---|---|---|---|
 | `rows` | array of [rag-row](#rag-row-object), at least 1 | **yes** | The workstreams or risks, 1 to 15, in the order written: each a name, its `rag`, and optionally a `trend` and a `note`. |
 
+### `timing`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `signals` | array of [timing-signal](#timing-signal-object), at least 1 | **yes** | The lanes, 1 to 12, top to bottom in the order written: each a `text`, a `lane` and one value per step in `values`, every signal the same number of steps (40 at most). |
+| `ticks` | array of string | no | A name for each step, written under the figure — one per step, as many as the values; an empty string leaves a step unnamed. |
+| `markers` | array of [timing-marker](#timing-marker-object) | no | Vertical lines across every lane at an edge, up to 8, each named over the figure: a START, a sample point. |
+| `intervals` | array of [timing-interval](#timing-interval-object) | no | Named spans between two edges, up to 10, each an arrow under a signal's lane: a setup time, a hold time, a timeout. |
+
 ### `sunburst`
 
 | Field | Type | Required | What it is |
@@ -387,6 +396,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `rag` | 15 `rows` |
 | `clock` | 12 `clocks` |
 | `sunburst` | 8 `nodes` |
+| `timing` | 12 `signals`, 6 `states` per signal, 8 `markers`, 10 `intervals` |
 
 ## Emphasis
 
@@ -874,6 +884,32 @@ name, so a misspelt key is an error at the point it was written.
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the branch the map is about: bold, its line heavy all the way from the centre; at most two) or `note` (context, not content: faint, and so is everything under it). |
 | `branches` | array of [mindmap-branch](#mindmap-branch-object), at least 1 | no | The branches off this one, drawn top to bottom in the order written. At most three levels below the centre: a branch, a twig, a leaf. |
+
+### `timing-signal` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The signal's name, drawn at the left of its lane: `SCLK`, `CS#`, `User`. Unique in the figure — an interval names its signal by it. |
+| `lane` | string — one of `bit`, `bus`, `state` | no | What the lane draws: `bit` (the default: levels and clock pulses), `bus` (a word per value, in the hexagon lanes of a datasheet) or `state` (a line stepping between the named `states`, UML's robust lifeline). |
+| `values` | array of string, at least 1 | **yes** | One string per time step, every signal the same length. A `bit` lane takes `0`, `1`, `z` (high impedance), `x` (unknown), `p` (a clock pulse, high then low) and `n` (low then high); a `bus` takes any word, with `x` and `z` reserved; a `state` lane takes one of its `states`. `.` carries the step before on: a clock keeps pulsing, a word holds without a new edge. |
+| `states` | array of string, at least 2 | no | A `state` lane's named states, 2 to 6, top to bottom in the order written — write the busiest or highest first. Required on a `state` lane, refused elsewhere. |
+| `group` | string | no | The name of the group this signal is in — `Controller`, `Peripheral` — drawn once over its signals. Signals in one group are written next to each other. |
+
+### `timing-marker` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `at` | number | **yes** | Where the marker stands, in steps from the start: `0` is the left edge, a whole number is the edge between two steps, and a half is the middle of one (where a clock pulse falls). |
+| `text` | string | no | The marker's name, over the figure: `S`, `Sr`, `P`, `sample`. |
+
+### `timing-interval` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | number | **yes** | The edge the interval starts at, in steps (whole or half), as a marker's `at`. |
+| `to` | number | **yes** | The edge it ends at, after `from`, in steps (whole or half). |
+| `text` | string | **yes** | What the interval is, over its arrow: `tSU;STA`, `setup`, `100 ms`. A name, not a measurement drawspec makes — the steps are not to scale in time. |
+| `signal` | string | no | The signal it is measured on, by its `text`: the arrow is drawn under that lane. Left out, it goes under the last lane. |
 
 ### `sunburst-node` object
 

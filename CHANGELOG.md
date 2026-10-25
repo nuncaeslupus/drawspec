@@ -12,6 +12,20 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **A `timing` kind.** Signals against one shared time axis, a lane each — the SPI and
+  I²C figures of a datasheet, a WaveDrom waveform, a UML timing diagram. Every signal is
+  a `text` and one value per step: a `bit` lane takes `0`, `1`, `z`, `x` and the clock
+  pulses `p` and `n` (so an edge can fall at half a step, as an I²C START does), a `bus`
+  lane any word, drawn in the datasheet's hexagons, and a `state` lane one of its named
+  `states`, UML's robust lifeline; `.` holds the step before. Values are an array, not a
+  WaveDrom string, so every refusal lands on its step (`/signals/2/values/7`). Signals
+  may be grouped; `markers` rule an edge across every lane, `intervals` name a span
+  between two edges with an arrow under a signal (`tSU;STA`), `ticks` name the steps. A
+  `[timing]` theme section sets the bus slant and an optional step grid. It has a text
+  form: three rows a lane, edges as box-drawing junctions, 100 columns by default. Up to
+  12 signals, 40 steps, 6 states a lane, 8 markers and 10 intervals; references for an
+  SPI read, I²C START/STOP and a page request's states.
+
 - **A `sunburst` kind.** A hierarchy drawn as concentric rings of sectors, each label read
   from the middle outward: a wheel of emotions, a taxonomy. The input is just a tree of
   `{text, children?}` with an optional `centre` hub — every terminal node takes an equal

@@ -609,6 +609,42 @@ SUNBURST_RING_MAX: Final = 8
 #: and anything the type cannot hold at the legible floor is refused by fit first.
 SUNBURST_NODE_MAX: Final = 150
 
+#: Timing diagrams: signals over one shared time axis, a lane each — clock lines,
+#: digital levels, buses with labelled values, and named-state lanes (WaveDrom,
+#: PlantUML and UML timing diagrams, datasheet SPI and I²C figures). A layout
+#: family of its own; time is counted in equal steps, never in coordinates.
+TIMING_KINDS: Final = ("timing",)
+
+#: What a lane draws: `bit` levels (high, low, high impedance, unknown, clock
+#: pulses), a `bus` of labelled values, or a `state` lane of named states.
+TIMING_LANES: Final = ("bit", "bus", "state")
+
+#: The values a `bit` lane takes per step: low, high, high impedance, unknown,
+#: a positive pulse (high then low) and a negative one (low then high).
+TIMING_BIT_VALUES: Final = ("0", "1", "z", "x", "p", "n")
+
+#: The value that carries the step before it on, unchanged — a clock keeps
+#: pulsing, a bus keeps its word, a level holds.
+TIMING_HOLD: Final = "."
+
+#: The values a `bus` lane reserves: unknown and high impedance. Every other
+#: string is a word on the bus.
+TIMING_BUS_RESERVED: Final = ("x", "z")
+
+#: The most signals (lanes). Past twelve a datasheet figure is split by bus.
+TIMING_SIGNAL_MAX: Final = 12
+
+#: The most steps on the time axis. Past forty a step is too narrow for a clock
+#: pulse to read at the canvas width, and a word on a bus has no room.
+TIMING_STEP_MAX: Final = 40
+
+#: The most named states one `state` lane may hold. Past six its levels crowd.
+TIMING_STATE_MAX: Final = 6
+
+#: The most vertical markers, and the most measured intervals.
+TIMING_MARKER_MAX: Final = 8
+TIMING_INTERVAL_MAX: Final = 10
+
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
 #: into each other at the canvas width.
 NUMBERLINE_TICK_MAX: Final = 30
@@ -688,6 +724,9 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: `sunburst` is the twenty-fourth: a hierarchy as concentric rings of sectors,
 #: read from the middle outward — a `treemap` nests by area and a `mindmap`
 #: radiates, but neither splits a ring into its parent's sectors.
+#: `timing` is the twenty-fifth: signals against one shared time axis — a
+#: `gantt` lays intervals of work on time, but nothing draws a level, a clock or
+#: a bus changing from step to step.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -716,6 +755,7 @@ KINDS: Final = (
     + RAG_KINDS
     + CLOCK_KINDS
     + SUNBURST_KINDS
+    + TIMING_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -884,6 +924,15 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # total across the rings is checked with the nodes (see `_sunburst_violations`),
     # since the nesting key is `children`, not `nodes`.
     "sunburst": (("nodes", SUNBURST_RING_MAX),),  # first ring; the total is _sunburst_violations
+    # Set by the evidence (NXP UM10204, TI SPI figures, UML timing): an SPI read is
+    # four signals over ~20 steps; the step cap is checked per signal's values in
+    # `_timing_violations`, since it is a length, not an array of objects.
+    "timing": (
+        ("signals", TIMING_SIGNAL_MAX),
+        ("signals/states", TIMING_STATE_MAX),
+        ("markers", TIMING_MARKER_MAX),
+        ("intervals", TIMING_INTERVAL_MAX),
+    ),  # [4 signals, 3 states, 3 markers, 5 intervals]
 }
 
 
@@ -2715,6 +2764,110 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "timing-signal": (
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description=(
+                "The signal's name, drawn at the left of its lane: `SCLK`, `CS#`, `User`. "
+                "Unique in the figure — an interval names its signal by it."
+            ),
+        ),
+        FieldSpec(
+            "lane",
+            "string",
+            enum=TIMING_LANES,
+            description=(
+                "What the lane draws: `bit` (the default: levels and clock pulses), `bus` (a "
+                "word per value, in the hexagon lanes of a datasheet) or `state` (a line "
+                "stepping between the named `states`, UML's robust lifeline)."
+            ),
+        ),
+        FieldSpec(
+            "values",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=1,
+            description=(
+                "One string per time step, every signal the same length. A `bit` lane takes "
+                "`0`, `1`, `z` (high impedance), `x` (unknown), `p` (a clock pulse, high then "
+                "low) and `n` (low then high); a `bus` takes any word, with `x` and `z` "
+                "reserved; a `state` lane takes one of its `states`. `.` carries the step "
+                "before on: a clock keeps pulsing, a word holds without a new edge."
+            ),
+        ),
+        FieldSpec(
+            "states",
+            "array",
+            item_kind="string",
+            min_items=2,
+            description=(
+                "A `state` lane's named states, 2 to 6, top to bottom in the order written — "
+                "write the busiest or highest first. Required on a `state` lane, refused "
+                "elsewhere."
+            ),
+        ),
+        FieldSpec(
+            "group",
+            "string",
+            description=(
+                "The name of the group this signal is in — `Controller`, `Peripheral` — drawn once "
+                "over its signals. Signals in one group are written next to each other."
+            ),
+        ),
+    ),
+    "timing-marker": (
+        FieldSpec(
+            "at",
+            "number",
+            required=True,
+            description=(
+                "Where the marker stands, in steps from the start: `0` is the left edge, a "
+                "whole number is the edge between two steps, and a half is the middle of one "
+                "(where a clock pulse falls)."
+            ),
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description="The marker's name, over the figure: `S`, `Sr`, `P`, `sample`.",
+        ),
+    ),
+    "timing-interval": (
+        FieldSpec(
+            "from",
+            "number",
+            required=True,
+            description=(
+                "The edge the interval starts at, in steps (whole or half), as a marker's `at`."
+            ),
+        ),
+        FieldSpec(
+            "to",
+            "number",
+            required=True,
+            description="The edge it ends at, after `from`, in steps (whole or half).",
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description=(
+                "What the interval is, over its arrow: `tSU;STA`, `setup`, `100 ms`. A name, "
+                "not a measurement drawspec makes — the steps are not to scale in time."
+            ),
+        ),
+        FieldSpec(
+            "signal",
+            "string",
+            description=(
+                "The signal it is measured on, by its `text`: the arrow is drawn under that "
+                "lane. Left out, it goes under the last lane."
+            ),
+        ),
+    ),
     "sunburst-node": (
         _text(),
         FieldSpec(
@@ -3204,7 +3357,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the thirty-seven diagrams this is. It selects the fields that are "
+            "Which of the thirty-eight diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -4216,6 +4369,47 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    TIMING_KINDS: (
+        FieldSpec(
+            "signals",
+            "array",
+            required=True,
+            item_ref="timing-signal",
+            min_items=1,
+            description=(
+                "The lanes, 1 to 12, top to bottom in the order written: each a `text`, a "
+                "`lane` and one value per step in `values`, every signal the same number of "
+                "steps (40 at most)."
+            ),
+        ),
+        FieldSpec(
+            "ticks",
+            "array",
+            item_kind="string",
+            description=(
+                "A name for each step, written under the figure — one per step, as many as "
+                "the values; an empty string leaves a step unnamed."
+            ),
+        ),
+        FieldSpec(
+            "markers",
+            "array",
+            item_ref="timing-marker",
+            description=(
+                "Vertical lines across every lane at an edge, up to 8, each named over the "
+                "figure: a START, a sample point."
+            ),
+        ),
+        FieldSpec(
+            "intervals",
+            "array",
+            item_ref="timing-interval",
+            description=(
+                "Named spans between two edges, up to 10, each an arrow under a signal's "
+                "lane: a setup time, a hold time, a timeout."
+            ),
+        ),
+    ),
     SUNBURST_KINDS: (
         FieldSpec(
             "centre",
@@ -4878,6 +5072,35 @@ class MindmapBranch:
 
 
 @dataclass(frozen=True)
+class TimingSignal:
+    """One lane of a `timing` figure: a name, what it draws, and a value per step."""
+
+    text: str
+    lane: str = "bit"
+    values: tuple[str, ...] = ()
+    states: tuple[str, ...] = ()
+    group: str = ""
+
+
+@dataclass(frozen=True)
+class TimingMarker:
+    """A vertical line across a `timing` figure at an edge, with its name."""
+
+    at: float
+    text: str = ""
+
+
+@dataclass(frozen=True)
+class TimingInterval:
+    """A named span between two edges, drawn as an arrow under a signal's lane."""
+
+    start: float
+    end: float
+    text: str
+    signal: str = ""
+
+
+@dataclass(frozen=True)
 class SunburstNode:
     """One sector of a `sunburst`, with the sectors nested inside it, in order."""
 
@@ -5235,6 +5458,18 @@ class Document:
     """A `sunburst`'s first ring, in the order written: clockwise from twelve o'clock,
     each node's `children` the ring nested inside it."""
 
+    timing_signals: tuple[TimingSignal, ...] = ()
+    """A `timing` figure's lanes, top to bottom, each a value per step."""
+
+    timing_ticks: tuple[str, ...] = ()
+    """A `timing` figure's step names, one per step, or none."""
+
+    timing_markers: tuple[TimingMarker, ...] = ()
+    """A `timing` figure's vertical markers, in the order written."""
+
+    timing_intervals: tuple[TimingInterval, ...] = ()
+    """A `timing` figure's named intervals, in the order written."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -5266,6 +5501,7 @@ class Document:
             ("rag", RAG_KINDS),
             ("clock", CLOCK_KINDS),
             ("sunburst", SUNBURST_KINDS),
+            ("timing", TIMING_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -5496,6 +5732,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_clock_refusal(violation) for violation in found]
     if kind in SUNBURST_KINDS:
         found = [_sunburst_refusal(violation) for violation in found]
+    if kind in TIMING_KINDS:
+        found = [_timing_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -5581,6 +5819,14 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
     ("clock", "clocks"): (
         "Past twelve faces a sheet is two sheets: split it by the skill each practises — "
         "o'clock and half past on one, quarters on the next."
+    ),
+    ("timing", "signals"): (
+        "Past twelve lanes a timing figure is searched, not read: split it by bus or by "
+        "phase, one figure each, on the same steps."
+    ),
+    ("signals", "states"): (
+        "Past six states the levels of one lane crowd: merge the states the reader need not "
+        "tell apart, or draw the machine as a `states` diagram."
     ),
     ("rag", "rows"): (
         "Past fifteen rows a status report is searched, not read: split it by programme or "
@@ -5876,6 +6122,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _clock_violations(document)
     if kind in SUNBURST_KINDS:
         return _sunburst_violations(document)
+    if kind in TIMING_KINDS:
+        return _timing_violations(document)
     if kind == "chart":
         return _chart_violations(document)
     if kind == "quadrant":
@@ -10615,6 +10863,309 @@ def _sunburst_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a timing figure has no place for a field an author may reach for.
+TIMING_REFUSED: Final = {
+    "wave": (
+        'the values are an array, one string per step — `["p", ".", ".", "0"]` — '
+        "so a wrong one is pointed at by its step. Write them in `values`"
+    ),
+    "data": "a bus's words are its values: write each word in `values` at the step it starts",
+    "period": (
+        "time is counted in equal steps, so a clock is a `p` per step (or `p` then `.`): "
+        "there is no period to write"
+    ),
+    "time": (
+        "time is counted in steps, not seconds: the steps are not to scale. Name them with "
+        "`ticks`, and name a measured span with an `intervals` entry"
+    ),
+    "duration": (
+        "a span is named, not measured: write it as an `intervals` entry from one edge to another"
+    ),
+    "scale": "every step is the same width, decided by the canvas; there is no scale to set",
+    "edges": (
+        "a named span between two edges is an `intervals` entry; a line across every lane is a "
+        "`markers` entry. An arrow from one edge to an edge on another signal is not drawn"
+    ),
+    "edge": (
+        "a named span between two edges is an `intervals` entry; a line across every lane is a "
+        "`markers` entry. An arrow from one edge to an edge on another signal is not drawn"
+    ),
+    "role": (
+        "a lane is told by what it draws, its `lane`: `bit`, `bus` or `state`. There is no "
+        "emphasis to mark"
+    ),
+    "type": "what a lane draws is its `lane`: `bit`, `bus` or `state`",
+    "id": "a signal is named by its `text`, which an interval refers to",
+    "name": "a signal's name is its `text`",
+}
+
+
+def _timing_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a timing figure, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    unknown = "is not a known field" in violation.message or (
+        "is not" in violation.message and "field" in violation.message
+    )
+    if unknown and name in TIMING_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {TIMING_REFUSED[name]}.")
+    if (
+        len(parts) == 5
+        and parts[1] == "signals"
+        and parts[3] == "values"
+        and "expected string" in violation.message
+    ):
+        return Violation(
+            violation.pointer,
+            'a value is a string, one per step: write a level as `"0"` or `"1"`, in quotes, '
+            "and a word on a bus as its text.",
+        )
+    return violation
+
+
+def _timing_edge_problem(value: object, steps: int) -> str | None:
+    """Why `value` is not an edge on a `steps`-step axis, or None when it is one."""
+    if not isinstance(value, int | float) or isinstance(value, bool):
+        return None  # the structural pass has said so
+    if value < 0 or value > steps:
+        return (
+            f"{_figure(float(value))} is off the axis: an edge is from 0 (the left edge) to "
+            f"{steps} (the right), in steps."
+        )
+    if float(value) * 2 != int(float(value) * 2):
+        return (
+            f"{_figure(float(value))} falls inside a step: an edge is a whole step (between "
+            f"two) or a half (where a clock pulse falls)."
+        )
+    return None
+
+
+def _timing_states(here: str, states: object, found: list[Violation]) -> list[str]:
+    """A state lane's named states, each checked: named, once, and not `.`."""
+    names: list[str] = []
+    if not isinstance(states, list):
+        return names
+    for position, state in enumerate(states):
+        if not isinstance(state, str):
+            continue
+        where = f"{here}/states/{position}"
+        if not state.strip():
+            found.append(Violation(where, "a state needs a name."))
+        elif state in names:
+            found.append(Violation(where, f"{state!r} is written twice: each state is one level."))
+        elif state == TIMING_HOLD:
+            found.append(Violation(where, "`.` carries a step on, so it cannot name a state."))
+        else:
+            names.append(state)
+    return names
+
+
+def _timing_values(
+    here: str, lane: object, values: list[Any], states: list[str] | None, found: list[Violation]
+) -> None:
+    """Every value of one lane: one its lane can draw, and no `.` with nothing before it."""
+    if len(values) > TIMING_STEP_MAX:
+        found.append(
+            Violation(
+                f"{here}/values/{TIMING_STEP_MAX}",
+                f"{len(values)} steps is past what one timing figure can be read at — "
+                f"{TIMING_STEP_MAX} at most. Draw the part the figure is about, and leave "
+                f"the idle time out.",
+            )
+        )
+    for step, value in enumerate(values):
+        if not isinstance(value, str):
+            continue
+        where = f"{here}/values/{step}"
+        if value == TIMING_HOLD:
+            if step == 0:
+                found.append(
+                    Violation(
+                        where,
+                        "`.` carries the step before on, and the first step has none: start "
+                        "with a value.",
+                    )
+                )
+            continue
+        if lane == "bit" and value not in TIMING_BIT_VALUES:
+            found.append(
+                Violation(
+                    where,
+                    f"{value!r} is not a level. A `bit` lane takes `0`, `1`, `z` (high "
+                    f"impedance), `x` (unknown), `p` and `n` (clock pulses) and `.` (as "
+                    f"before); for a word per step, set `lane` to `bus`.",
+                )
+            )
+        elif lane == "bus" and not value.strip():
+            found.append(
+                Violation(
+                    where,
+                    "an empty word is not a value: write `x` for unknown, `z` for high "
+                    "impedance, or `.` to hold the word before.",
+                )
+            )
+        elif lane == "state" and states is not None and value not in states:
+            found.append(
+                Violation(
+                    where,
+                    f"{value!r} is not one of this lane's states "
+                    f"({', '.join(states) or 'none'}); add it to `states`, or write `.` to "
+                    f"stay in the state before.",
+                )
+            )
+
+
+def _timing_signal(
+    index: int,
+    signal: Mapping[str, Any],
+    names: dict[str, int],
+    groups: dict[str, int],
+    previous_group: str | None,
+    found: list[Violation],
+) -> str | None:
+    """One signal's name, lane, states, group and values; its group, for the next."""
+    here = _pointer("signals", index)
+    text = signal.get("text")
+    if isinstance(text, str):
+        if not text.strip():
+            found.append(Violation(f"{here}/text", "a signal needs a name: its lane is blank."))
+        elif text in names:
+            found.append(
+                Violation(
+                    f"{here}/text",
+                    f"{text!r} names signal {names[text]} already: an interval refers to a "
+                    f"signal by its name, so each is written once.",
+                )
+            )
+        else:
+            names[text] = index
+    lane = signal.get("lane", "bit")
+    if lane == "state" and "states" not in signal:
+        found.append(
+            Violation(
+                f"{here}/states",
+                "a `state` lane needs its `states`, top to bottom: the levels its line steps "
+                "between.",
+            )
+        )
+    if lane != "state" and "states" in signal:
+        found.append(
+            Violation(
+                f"{here}/states",
+                f"a {lane!r} lane has no named states: its levels are fixed. Set `lane` to "
+                f"`state` to draw a line between named levels.",
+            )
+        )
+    states = _timing_states(here, signal.get("states"), found)
+    group = signal.get("group")
+    if isinstance(group, str):
+        if not group.strip():
+            found.append(Violation(f"{here}/group", "a group needs a name, or leave `group` out."))
+        elif group in groups and previous_group != group:
+            found.append(
+                Violation(
+                    f"{here}/group",
+                    f"the group {group!r} began at signal {groups[group]} and was left: write "
+                    f"a group's signals next to each other, so it is drawn once.",
+                )
+            )
+        else:
+            groups.setdefault(group, index)
+    values = signal.get("values")
+    if isinstance(values, list):
+        _timing_values(
+            here, lane, values, states if isinstance(signal.get("states"), list) else None, found
+        )
+    return group if isinstance(group, str) else None
+
+
+def _timing_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Every value a lane can draw, every lane one length, and every reference found."""
+    found: list[Violation] = []
+    names: dict[str, int] = {}
+    groups: dict[str, int] = {}
+    lengths: list[tuple[int, int]] = []
+    previous_group: str | None = None
+    for index, signal in enumerate(_listed(document, "signals")):
+        if not isinstance(signal, dict):
+            continue
+        previous_group = _timing_signal(index, signal, names, groups, previous_group, found)
+        if isinstance(signal.get("values"), list):
+            lengths.append((index, len(signal["values"])))
+    if not lengths:
+        return found
+    first, steps = lengths[0]
+    for index, length in lengths[1:]:
+        if length != steps:
+            found.append(
+                Violation(
+                    _pointer("signals", index, "values"),
+                    f"{length} steps, where signal {first} has {steps}: every lane runs the "
+                    f"whole axis, one value per step. Pad the shorter with `.` or `x`.",
+                )
+            )
+    ticks = document.get("ticks")
+    if isinstance(ticks, list) and len(ticks) != steps:
+        found.append(
+            Violation(
+                "/ticks",
+                f"{len(ticks)} ticks for {steps} steps: name each step once, an empty string "
+                f"for a step left unnamed.",
+            )
+        )
+    for index, marker in enumerate(_listed(document, "markers")):
+        if not isinstance(marker, dict):
+            continue
+        problem = _timing_edge_problem(marker.get("at"), steps)
+        if problem:
+            found.append(Violation(_pointer("markers", index, "at"), problem))
+        text = marker.get("text")
+        if isinstance(text, str) and text and not text.strip():
+            found.append(
+                Violation(_pointer("markers", index, "text"), "a blank name: leave `text` out.")
+            )
+    for index, interval in enumerate(_listed(document, "intervals")):
+        if isinstance(interval, dict):
+            found.extend(_timing_interval(index, interval, steps, names))
+    return found
+
+
+def _timing_interval(
+    index: int, interval: Mapping[str, Any], steps: int, names: Mapping[str, int]
+) -> list[Violation]:
+    """One interval: both edges on the axis, running forward, named, on a signal there is."""
+    found: list[Violation] = []
+    for end in ("from", "to"):
+        problem = _timing_edge_problem(interval.get(end), steps)
+        if problem:
+            found.append(Violation(_pointer("intervals", index, end), problem))
+    start, stop = interval.get("from"), interval.get("to")
+    numbers = all(
+        isinstance(value, int | float) and not isinstance(value, bool) for value in (start, stop)
+    )
+    if numbers and float(stop) <= float(start):  # type: ignore[arg-type]
+        found.append(
+            Violation(
+                _pointer("intervals", index, "to"),
+                f"an interval runs forward: `to` ({_figure(float(stop))}) must be after "  # type: ignore[arg-type]
+                f"`from` ({_figure(float(start))}).",  # type: ignore[arg-type]
+            )
+        )
+    text = interval.get("text")
+    if isinstance(text, str) and not text.strip():
+        found.append(Violation(_pointer("intervals", index, "text"), "an interval needs a name."))
+    signal = interval.get("signal")
+    if isinstance(signal, str) and signal not in names:
+        found.append(
+            Violation(
+                _pointer("intervals", index, "signal"),
+                f"{signal!r} is not a signal here; the signals are "
+                f"{', '.join(repr(name) for name in names) or 'none'}.",
+            )
+        )
+    return found
+
+
 def _figure(value: float) -> str:
     """A number as an author wrote it: no float noise, no trailing zeros."""
     text = f"{round(value, 9):.9f}".rstrip("0").rstrip(".")
@@ -11386,6 +11937,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _clock_document(document)
     if kind in SUNBURST_KINDS:
         return _sunburst_document(document)
+    if kind in TIMING_KINDS:
+        return _timing_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -12268,6 +12821,44 @@ def _sunburst_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _timing_document(document: Mapping[str, Any]) -> Document:
+    """A timing figure: its lanes, step names, markers and intervals, as written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        timing_signals=tuple(
+            TimingSignal(
+                text=str(signal["text"]),
+                lane=str(signal.get("lane", "bit")),
+                values=tuple(str(value) for value in signal["values"]),
+                states=tuple(str(state) for state in signal.get("states", ())),
+                group=str(signal.get("group", "")),
+            )
+            for signal in document["signals"]
+        ),
+        timing_ticks=tuple(str(tick) for tick in document.get("ticks", ())),
+        timing_markers=tuple(
+            TimingMarker(at=float(marker["at"]), text=str(marker.get("text", "")))
+            for marker in document.get("markers", ())
+        ),
+        timing_intervals=tuple(
+            TimingInterval(
+                start=float(interval["from"]),
+                end=float(interval["to"]),
+                text=str(interval["text"]),
+                signal=str(interval.get("signal", "")),
+            )
+            for interval in document.get("intervals", ())
+        ),
+    )
+
+
 def _pie_document(document: Mapping[str, Any]) -> Document:
     """A pie: its parts in the order written, and the unit they are in."""
     return Document(
@@ -12630,6 +13221,16 @@ __all__ = [
     "SUNBURST_KINDS",
     "SUNBURST_NODE_MAX",
     "SUNBURST_RING_MAX",
+    "TIMING_BIT_VALUES",
+    "TIMING_BUS_RESERVED",
+    "TIMING_HOLD",
+    "TIMING_INTERVAL_MAX",
+    "TIMING_KINDS",
+    "TIMING_LANES",
+    "TIMING_MARKER_MAX",
+    "TIMING_SIGNAL_MAX",
+    "TIMING_STATE_MAX",
+    "TIMING_STEP_MAX",
     "TRANSITION_ROLES",
     "TREEMAP_KINDS",
     "TREEMAP_PART_ROLES",
@@ -12688,6 +13289,9 @@ __all__ = [
     "Series",
     "Slice",
     "SunburstNode",
+    "TimingInterval",
+    "TimingMarker",
+    "TimingSignal",
     "TreemapGroup",
     "TreemapPart",
     "VennSet",

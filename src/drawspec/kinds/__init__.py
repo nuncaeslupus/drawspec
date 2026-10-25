@@ -36,6 +36,7 @@ from drawspec.kinds.sankey import sankey_scene
 from drawspec.kinds.sequence import sequence_scene, sequence_text
 from drawspec.kinds.shape import shape_scene
 from drawspec.kinds.sunburst import sunburst_scene
+from drawspec.kinds.timing import timing_scene, timing_text
 from drawspec.kinds.treemap import treemap_scene
 from drawspec.kinds.venn import venn_scene
 from drawspec.kinds.waterfall import waterfall_scene
@@ -62,6 +63,7 @@ from drawspec.schema import (
     SEQUENCE_KINDS,
     SHAPE_KINDS,
     SUNBURST_KINDS,
+    TIMING_KINDS,
     TREEMAP_KINDS,
     VENN_KINDS,
     WATERFALL_KINDS,
@@ -99,6 +101,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *RAG_KINDS,
     *CLOCK_KINDS,
     *SUNBURST_KINDS,
+    *TIMING_KINDS,
     "cycle",
 )
 
@@ -118,6 +121,7 @@ TEXT_FORMS: Final[dict[str, Callable[[Document, int, str], str]]] = {
     "stack": stack_text,
     "rag": rag_text,
     "meter": meter_text,
+    "timing": timing_text,
     "flow": graph_text,
     "states": graph_text,
     "lanes": graph_text,
@@ -197,6 +201,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return clock_scene(document, theme, measurer)
     if document.kind in SUNBURST_KINDS:
         return sunburst_scene(document, theme, measurer)
+    if document.kind in TIMING_KINDS:
+        return timing_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -239,6 +245,7 @@ __all__ = [
     "sunburst_scene",
     "text_for",
     "text_runs",
+    "timing_scene",
     "treemap_scene",
     "venn_scene",
     "waterfall_scene",
