@@ -2823,6 +2823,81 @@
         "nodes"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "packet",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "packet"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "bits_per_row": {
+          "type": "integer",
+          "description": "How many bits one row holds: 8, 16, 32 (the default: an RFC header's word) or 64. A field wider than what is left of its row is split across the rows."
+        },
+        "numbering": {
+          "type": "string",
+          "description": "Which end bit 0 is at. `left` (the default) is the RFC convention: the ruler counts 0 to 31 from the left of every word. `right` is a register's: the highest bit at the top left, counting down to bit 0 at the bottom right, each row with its own ruler — so the fields are still written in reading order, the highest bits first, and must fill whole rows.",
+          "enum": [
+            "left",
+            "right"
+          ]
+        },
+        "fields": {
+          "type": "array",
+          "description": "The bit fields, 1 to 40, in reading order: left to right, then row after row, each with its width in `bits`. Wrapped into rows of `bits_per_row`, 16 rows at most; a field that crosses a row's end is split and its continuation marked.",
+          "items": {
+            "$ref": "#/$defs/packet-field"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "fields"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -4469,6 +4544,45 @@
           ]
         }
       },
+      "additionalProperties": false
+    },
+    "packet-field": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The field's name, written inside it: `Version`, `Source Port`, `TXEN`. Required, except on a `reserved` field, which may be left blank. Where it will not fit across the field it is broken at a space onto two lines; failing that the author's `short` stands in, then the name or the `short` turned on its side, and last a letter, the name going to the key under the drawing."
+        },
+        "bits": {
+          "type": "integer",
+          "description": "How many bits wide the field is. Fields are laid end to end in the order written, left to right and row after row; one that crosses a row's end is split there and its continuation marked, so no field ever carries a position.",
+          "exclusiveMinimum": 0
+        },
+        "short": {
+          "type": "string",
+          "description": "The author's own abbreviation, used when the name will not fit across the field (`DF` for `Don't Fragment`); the key under the drawing spells it out. drawspec never abbreviates on its own."
+        },
+        "holds": {
+          "type": "string",
+          "description": "What the field holds, written small under its name: a fixed value (`4`), a reset value (`0x00`), its access (`R/W`). Moved to the key when the field is too narrow for it."
+        },
+        "note": {
+          "type": "string",
+          "description": "A sentence about the field, set in the key under the drawing beside its name, as an RFC lists its fields under the header."
+        },
+        "role": {
+          "type": "string",
+          "description": "`field` (the default), `reserved` (unused or reserved bits: hatched, and `text` may be left out) or `emphasis` (the field the diagram is about: a heavier outline and a bold name; at most two).",
+          "enum": [
+            "field",
+            "reserved",
+            "emphasis"
+          ]
+        }
+      },
+      "required": [
+        "bits"
+      ],
       "additionalProperties": false
     },
     "participant": {

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "packet",
+  "theme": "blueprint",
+  "title": "802.1Q tagged Ethernet header",
+  "description": "An Ethernet frame header carrying an IEEE 802.1Q VLAN tag, in 32-bit rows: both 48-bit addresses cross a row's end and are split there.",
+  "caption": "The 4-byte tag sits between the source address and the EtherType.",
+  "fields": [
+    {"text": "Destination MAC Address", "bits": 48},
+    {"text": "Source MAC Address", "bits": 48},
+    {"text": "Tag Protocol Identifier", "short": "TPID", "bits": 16, "holds": "0x8100"},
+    {"text": "Priority Code Point", "short": "PCP", "bits": 3},
+    {"text": "Drop Eligible", "short": "DEI", "bits": 1},
+    {"text": "VLAN Identifier", "bits": 12, "role": "emphasis"},
+    {"text": "EtherType", "bits": 16, "holds": "0x0800", "note": "The payload's protocol: 0x0800 is IPv4."}
+  ]
+}

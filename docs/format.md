@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-37 kinds. The machine-readable form of this page is the published
+38 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst` | **yes** | Which of the thirty-seven diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `packet` | **yes** | Which of the thirty-eight diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -296,6 +296,14 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 |---|---|---|---|
 | `rows` | array of [rag-row](#rag-row-object), at least 1 | **yes** | The workstreams or risks, 1 to 15, in the order written: each a name, its `rag`, and optionally a `trend` and a `note`. |
 
+### `packet`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `bits_per_row` | integer | no | How many bits one row holds: 8, 16, 32 (the default: an RFC header's word) or 64. A field wider than what is left of its row is split across the rows. |
+| `numbering` | string — one of `left`, `right` | no | Which end bit 0 is at. `left` (the default) is the RFC convention: the ruler counts 0 to 31 from the left of every word. `right` is a register's: the highest bit at the top left, counting down to bit 0 at the bottom right, each row with its own ruler — so the fields are still written in reading order, the highest bits first, and must fill whole rows. |
+| `fields` | array of [packet-field](#packet-field-object), at least 1 | **yes** | The bit fields, 1 to 40, in reading order: left to right, then row after row, each with its width in `bits`. Wrapped into rows of `bits_per_row`, 16 rows at most; a field that crosses a row's end is split and its continuation marked. |
+
 ### `sunburst`
 
 | Field | Type | Required | What it is |
@@ -387,6 +395,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `rag` | 15 `rows` |
 | `clock` | 12 `clocks` |
 | `sunburst` | 8 `nodes` |
+| `packet` | 40 `fields` |
 
 ## Emphasis
 
@@ -874,6 +883,17 @@ name, so a misspelt key is an error at the point it was written.
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the branch the map is about: bold, its line heavy all the way from the centre; at most two) or `note` (context, not content: faint, and so is everything under it). |
 | `branches` | array of [mindmap-branch](#mindmap-branch-object), at least 1 | no | The branches off this one, drawn top to bottom in the order written. At most three levels below the centre: a branch, a twig, a leaf. |
+
+### `packet-field` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | no | The field's name, written inside it: `Version`, `Source Port`, `TXEN`. Required, except on a `reserved` field, which may be left blank. Where it will not fit across the field it is broken at a space onto two lines; failing that the author's `short` stands in, then the name or the `short` turned on its side, and last a letter, the name going to the key under the drawing. |
+| `bits` | integer, greater than 0 | **yes** | How many bits wide the field is. Fields are laid end to end in the order written, left to right and row after row; one that crosses a row's end is split there and its continuation marked, so no field ever carries a position. |
+| `short` | string | no | The author's own abbreviation, used when the name will not fit across the field (`DF` for `Don't Fragment`); the key under the drawing spells it out. drawspec never abbreviates on its own. |
+| `holds` | string | no | What the field holds, written small under its name: a fixed value (`4`), a reset value (`0x00`), its access (`R/W`). Moved to the key when the field is too narrow for it. |
+| `note` | string | no | A sentence about the field, set in the key under the drawing beside its name, as an RFC lists its fields under the header. |
+| `role` | string — one of `field`, `reserved`, `emphasis` | no | `field` (the default), `reserved` (unused or reserved bits: hatched, and `text` may be left out) or `emphasis` (the field the diagram is about: a heavier outline and a bold name; at most two). |
 
 ### `sunburst-node` object
 

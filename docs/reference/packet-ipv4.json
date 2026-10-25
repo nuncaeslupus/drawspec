@@ -1,0 +1,26 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "packet",
+  "title": "Internet header format",
+  "description": "The IPv4 header of RFC 791, section 3.1: 32-bit words, bit 0 at the left, the three flag bits each named.",
+  "caption": "After RFC 791, section 3.1. One tick mark represents one bit position.",
+  "fields": [
+    {"text": "Version", "bits": 4, "holds": "4"},
+    {"text": "IHL", "bits": 4, "note": "Internet Header Length: the header's length in 32-bit words, at least 5."},
+    {"text": "Type of Service", "bits": 8},
+    {"text": "Total Length", "bits": 16},
+    {"text": "Identification", "bits": 16},
+    {"text": "Reserved", "short": "R", "bits": 1, "role": "reserved", "holds": "0", "note": "Must be zero."},
+    {"text": "Don't Fragment", "short": "DF", "bits": 1},
+    {"text": "More Fragments", "short": "MF", "bits": 1},
+    {"text": "Fragment Offset", "bits": 13},
+    {"text": "Time to Live", "bits": 8},
+    {"text": "Protocol", "bits": 8},
+    {"text": "Header Checksum", "bits": 16},
+    {"text": "Source Address", "bits": 32},
+    {"text": "Destination Address", "bits": 32},
+    {"text": "Options", "bits": 24, "note": "Variable length; the header ends on a 32-bit boundary."},
+    {"text": "Padding", "bits": 8, "role": "reserved"}
+  ]
+}

@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Thirty-four exist, and they fall into twenty-three families:
+fields are legal. Thirty-eight exist, and they fall into twenty-six families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -174,6 +174,8 @@ fields are legal. Thirty-four exist, and they fall into twenty-three families:
 | Gauge | `meter` | How far one amount is along its scale: a progress bar, a fundraising thermometer, a dial with named bands, a bullet graph — alone or a few to a panel. |
 | Status | `rag` | Things rated red, amber or green: workstreams or risks a row each, the rating a word and a shape (a colour only by the theme), a trend in words and a note — a highlight report, a risk register. |
 | Time | `clock` | A time of day on an analogue face, for teaching it: two hands placed by the time, the numerals the lesson uses, the time in words under it, how long since an earlier time shaded round the face. |
+| Wheel | `sunburst` | Things classified, read from the middle outward: a hierarchy as concentric rings of equal-angle sectors — an emotion wheel, a taxonomy. |
+| Bits | `packet` | Things packed into bits: a protocol header or a hardware register as fields in rows of a fixed width under a bit ruler, as an RFC or a datasheet draws them. |
 | Reasoning | `argument` | Things said for and against a claim: reasons, objections, rebuttals and evidence by stance, co-premises under one bracket (an argument map). |
 
 One worked document per kind lives in [`reference/`](reference), and `make
@@ -427,9 +429,9 @@ drawspec render plan.json --format text --width 100 --charset ascii
 ```
 
 It is a second emitter, not a picture of the SVG: each kind lays itself out on a
-character grid from its own rows and columns. Twelve kinds have a text form —
+character grid from its own rows and columns. Thirteen kinds have a text form —
 `files`, `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`,
-`meter` in every style, and the graph kinds `flow`, `states` and `lanes` — and
+`meter` in every style, `packet`, and the graph kinds `flow`, `states` and `lanes` — and
 every other kind refuses, naming them. The kinds whose message is an area, an
 angle or a curve never get one. A `meter` `dial` is a half-circle of cells with
 its needle in the stroke nearest the amount's angle and its bands in shades
@@ -2587,6 +2589,75 @@ for its numerals is a `FitError`. See [`reference/clock-quarters.json`](referenc
 (read and draw, answers hidden), [`reference/clock-roman.json`](reference/clock-roman.json)
 (Roman numerals to the minute, in words and digits) and
 [`reference/clock-journey.json`](reference/clock-journey.json) (how long between times).
+
+## A packet header or a register map
+
+An RFC draws a protocol header as a grid of 32-bit words with a bit ruler on top,
+each field a box as wide as its bits; a microcontroller datasheet draws a register
+the same way, bit 7 (or 31) at the left. The originals are ASCII art and hand-made
+tables, and the field that crosses a word's end is where they go wrong. That is
+`packet`:
+
+```json
+{
+  "version": 1,
+  "kind": "packet",
+  "title": "Internet header format",
+  "fields": [
+    {"text": "Version", "bits": 4, "holds": "4"},
+    {"text": "IHL", "bits": 4, "note": "The header's length in 32-bit words."},
+    {"text": "Type of Service", "bits": 8},
+    {"text": "Total Length", "bits": 16},
+    {"text": "Identification", "bits": 16},
+    {"text": "Reserved", "short": "R", "bits": 1, "role": "reserved"},
+    {"text": "Don't Fragment", "short": "DF", "bits": 1},
+    {"text": "More Fragments", "short": "MF", "bits": 1},
+    {"text": "Fragment Offset", "bits": 13}
+  ]
+}
+```
+
+**The fields are written in reading order, each with its width in `bits`, and nothing
+else places them.** They are laid end to end, left to right and row after row, in rows
+of `bits_per_row` (8, 16, 32 by default, or 64). A field that crosses a row's end is
+split there: its pieces sit in both rows, the edges where it was cut are dashed, and its
+name is written in the wider piece (and repeated in the other where it fits).
+
+**`numbering` says which end bit 0 is at.** `left`, the default, is the RFC's: one ruler
+over the first row counts 0 to 31 across every word. `right` is a register's: the highest
+bit at the top left, counting down to bit 0 at the bottom right, a ruler over every row.
+The fields are still written in reading order — the highest bits first — and must fill
+whole rows, so an unused stretch is written as a `reserved` field.
+
+**A name too long for its field is fitted, never shrunk or cut.** It is written across
+the field, broken onto two lines at a space if need be; failing that the author's own
+`short` (`DF`) stands in; then the name or the short is stood on its side, as RFC 793
+stands its flags; and last a letter keys it. The key under the drawing spells out every
+short and letter, carries each field's `note`, and takes a `holds` (a value, a reset
+value, an access, written small under the name) that will not fit its field — as an RFC
+lists its fields under the header. drawspec never abbreviates a name on its own.
+
+`role` is `field` (the default), `reserved` — hatched in the theme's `[packet]
+reserved_fill`, and the one field that may go without a name — or `emphasis`, outlined
+heavier and named in bold (two at most).
+
+It has a text form, two columns a bit, that is the RFC's own picture — `+-+-+` and `|`
+in ASCII, box drawing in unicode, a cut edge `:` (`┆`), a flag stood on end a letter to a
+line. A 64-bit row needs 129 columns: say `--width`.
+
+Refused, each at its pointer: a row of other than 8, 16, 32 or 64 bits; a field of no
+bits; `start`, `end`, `offset`, `position` and `range` (a field's place is derived from
+the widths before it); `name` and `label` (`text`); `value`, `attr`, `reset` and
+`access` (`holds`); `reserved: true` (`role`); `variable` (draw options or a payload as a
+row of known width and say so in its words); a name with a newline; a `short` no shorter
+than its name; a register (`right`) whose fields do not fill their last row. Budget: 40
+fields, 16 rows. See [`reference/packet-ipv4.json`](reference/packet-ipv4.json) (RFC 791),
+[`reference/packet-tcp.json`](reference/packet-tcp.json) (RFC 9293, the flags on end, in
+the accent theme), [`reference/packet-sreg.json`](reference/packet-sreg.json) (an AVR
+status register, numbered from the right),
+[`reference/packet-riscv.json`](reference/packet-riscv.json) (a RISC-V instruction
+format) and [`reference/packet-vlan.json`](reference/packet-vlan.json) (an 802.1Q
+Ethernet header whose addresses are split across rows, in the blueprint theme).
 
 ## Asking for a wide drawing instead of a tall one
 

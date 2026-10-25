@@ -253,6 +253,11 @@ taper = [6.0, 3.0, 1.5]
 # Heaviest first; none heavier than the one before.
 weights = [0.006, 0.0035, 0.002]
 
+[packet]
+# The pattern a reserved field of a header or a register is filled with, faint so
+# its name reads over it: the datasheet's greyed-out bits, said without colour.
+reserved_fill = "hatch"
+
 [argument]
 # How an argument map shows which way a point bears, twice so greyscale holds: a
 # tag in the box's top margin, read aloud down a chain (claim, because, but, but),
