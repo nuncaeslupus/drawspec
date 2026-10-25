@@ -8,7 +8,9 @@
 - CodeRabbit allows ~1 review/hour; queue `@coderabbitai review` an hour apart. Its "CodeRabbit" status posts success ("review skipped") on push, so it does not block merges.
 - #167 (pert) was merged on the owner's "go merging" without a CodeRabbit review.
 - Open owner questions: text widths (timing/railroad 100 cols), gitgraph lane colours, packet field names `holds`/`numbering`, network refuse vs draw hops, usecase FitError vs drawing through an ellipse, bracket root side, wardley/pert canvas width, pert "Float" vs "Slack".
-- Proposed next: an `automaton` kind (DFA/NFA: circles, double-circle accepting states, start arrow, symbol labels, ε). Waiting for the owner to choose a new kind vs a `states` style.
+- Owner answers applied: #169 network draws a hop over a bus instead of refusing; #170 gitgraph lane colours on by default, bracket `root` defaults to `right`; usecase already only refuses a canvas that cannot fit; pert keeps "Float"; text widths stay 100.
+- #171 new `automaton` kind (DFA/NFA/Mealy/Moore; text = transition table). Later ideas: circular placement for rings, optional "start" label, completeness/reachability checks for DFAs.
+- #167, #170 merged on the owner's "go merging" with our own review instead of CodeRabbit.
 
 ## 2026-10-14: text output
 - Barcodes, QR codes and pixel art were ruled out of scope. Text output was proposed instead (`docs/proposals/text.md`) and accepted.
