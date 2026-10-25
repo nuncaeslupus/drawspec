@@ -10,7 +10,9 @@
 # `currentColor`, so a diagram pasted into a page inherits that page's ink and
 # follows it into dark mode. That means colour carries no information at all,
 # which is why every pair of roles is separated by shape, dash pattern or stroke
-# weight instead — checked at load time, not at review time.
+# weight instead — checked at load time, not at review time. The one colour this
+# theme lays down is a git graph's lane fill (`[gitgraph]`), and only over what a
+# lane's place and name already say.
 #
 # One size per level. Four type sizes exist and no element may name its own.
 
@@ -283,10 +285,14 @@ grid = false
 
 [gitgraph]
 # What colour a git graph's branches take: one per lane, in the order the branches
-# are written, cycling. Empty, as here, draws every lane in the page's ink: a lane
-# is told apart by its place and the name at its head, never by colour alone. A
-# colour fills the lane's commit dots and washes its name; the lines stay ink.
-colours = []
+# are written, cycling — the convention readers of Mermaid and the git-flow figures
+# expect. A colour fills the lane's commit dots and washes its name; the lines and
+# the words stay ink, so a lane is still told apart by its place and the name at
+# its head, never by colour alone, and greyscale loses nothing. The trunk blue, then
+# green, ochre, purple; red comes late so it is not read as emphasis. Each reads at
+# 3:1 or better as a mark on white and on a dark page (#121212), so the drawing
+# holds in light and dark mode. Empty (`colours = []`) draws every lane in ink.
+colours = ["#2A6FC0", "#3E7A4A", "#B07A0C", "#8A4FB0", "#C0452A", "#7C8794"]
 
 [packet]
 # The pattern a reserved field of a header or a register is filled with, faint so

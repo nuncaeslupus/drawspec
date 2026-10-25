@@ -357,7 +357,7 @@ What colour a git graph's branches take, if any.
 
 | Key | Default | What it is |
 |---|---|---|
-| `colours` | `[]` | A colour per branch, in the order the branches are written, cycling past the last; empty draws every lane in the page's ink. A lane's commits are filled with its colour and its name is set on a faint wash of it; the lines stay ink, so a lane's colour never has to carry a crossing. |
+| `colours` | `["#2a6fc0", "#3e7a4a", "#b07a0c", "#8a4fb0", "#c0452a", "#7c8794"]` | A colour per branch, in the order the branches are written, cycling past the last; empty draws every lane in the page's ink. A lane's commits are filled with its colour and its name is set on a faint wash of it; the lines stay ink, so a lane's colour never has to carry a crossing. |
 
 ### `[packet]`
 

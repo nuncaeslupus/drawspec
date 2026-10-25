@@ -51,7 +51,7 @@ Pick by what the reader must **understand**, not by what it looks like.
 | The reader must understand… | Kind | Payload |
 |---|---|---|
 | How work moves, branches, merges or loops back; or a causal loop diagram | `flow` | `nodes` + `edges` (causal: `polarity` `+`/`-` on every edge, `delay`, named `loops`, R/B derived from the signs) |
-| A hierarchy: what belongs to or reports to what; a knockout bracket or a cladogram, leaves on one edge | `tree` (+ `"style": "bracket"`) | `nodes` + `edges`; a bracket: `root` `left` (cladogram, default)/`right` (tournament)/`middle` (two-sided), ≤ 16 leaves, inner `text` may be `""`, an edge `label` is the child's score or trait, `strong` edges heavy |
+| A hierarchy: what belongs to or reports to what; a knockout bracket or a cladogram, leaves on one edge | `tree` (+ `"style": "bracket"`) | `nodes` + `edges`; a bracket: `root` `right` (tournament, default)/`left` (cladogram: say it)/`middle` (two-sided), ≤ 16 leaves, inner `text` may be `""`, an edge `label` is the child's score or trait, `strong` edges heavy |
 | What a proposed change adds, changes or removes — one drawing, not before + after | `flow` or `tree` + `status` | `added`/`changed`/`removed` on nodes and edges; an edge touching a removed node is `removed`, one touching an added node `added` |
 | A loop that returns to where it started | `cycle` | `nodes` + `edges` closing the ring (+ `hub`: what it turns around, joined only by `aside`/`weak`/`link` spokes) |
 | Layers, each resting on the one below | `stack` | `items` |

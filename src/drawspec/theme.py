@@ -1702,16 +1702,26 @@ class TimingStyle:
         return cls(slew=slew, grid=grid)
 
 
+#: A git graph's lane colours unless a theme says otherwise: the trunk blue, then
+#: green, ochre, purple, red, grey. Each is a mid-tone at 3:1 or better against
+#: white and against `#121212`, so a dot reads as a mark on a light and a dark page.
+#: On a sheet whose ground they do not read on, a theme that left them as they are
+#: draws its lanes in ink instead (`_check_ground`); one that names its own is held
+#: to the ground like any other colour.
+GITGRAPH_COLOURS: Final = ("#2a6fc0", "#3e7a4a", "#b07a0c", "#8a4fb0", "#c0452a", "#7c8794")
+
+
 @dataclass(frozen=True)
 class GitgraphStyle:
     """What colour a git graph's branches take, if any.
 
     A branch is told apart by its lane and the name at the head of it, so colour
     is never what carries; it is the convention readers of Mermaid and of the
-    git-flow figures expect, and a theme may give it, one colour per lane.
+    git-flow figures expect, so it is on by default, one colour per lane, and a
+    theme may change the colours or turn them off.
     """
 
-    colours: tuple[str, ...] = ()
+    colours: tuple[str, ...] = GITGRAPH_COLOURS
     """A colour per branch, in the order the branches are written, cycling past the
     last; empty draws every lane in the page's ink. A lane's commits are filled with
     its colour and its name is set on a faint wash of it; the lines stay ink, so a
@@ -1720,7 +1730,7 @@ class GitgraphStyle:
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> GitgraphStyle:
         _reject_unknown(mapping, ("colours",), "[gitgraph]")
-        raw = mapping.get("colours", [])
+        raw = mapping.get("colours", list(GITGRAPH_COLOURS))
         if not isinstance(raw, list):
             raise ThemeError(f"[gitgraph] colours: expected an array of colours, got {raw!r}")
         colours = tuple(_colour(entry, "[gitgraph] colours") for entry in raw)
@@ -2516,6 +2526,7 @@ class Theme:
                 f"{LUMINANCE_DELTA}, or a reader printing in greyscale cannot tell them "
                 f"apart."
             )
+        theme = _lanes_for_ground(theme)
         _check_ground(theme)
         return theme
 
@@ -2656,6 +2667,23 @@ def _build_node_roles(declared: Mapping[str, Any]) -> dict[str, NodeRole]:
 def _build_edge_roles(declared: Mapping[str, Any]) -> dict[str, EdgeRole]:
     tables = _role_tables(declared, EDGE_ROLES, "edge_role")
     return {name: EdgeRole.from_mapping(name, table, EdgeRole()) for name, table in tables.items()}
+
+
+def _lanes_for_ground(theme: Theme) -> Theme:
+    """The default lane colours, dropped to ink on a ground they do not read on.
+
+    They are on by default for a white or a dark page. A sheet with a ground of its
+    own (a cyanotype, a brand's dark slide) that never mentioned a git graph should
+    not be refused for colours it did not choose, so its lanes are drawn in its ink:
+    a lane is told apart by its place and name anyway. Colours a theme names itself
+    are left for `_check_ground` to hold to the ground.
+    """
+    ground = theme.canvas.ground
+    if ground == "none" or theme.gitgraph.colours != GITGRAPH_COLOURS:
+        return theme
+    if all(contrast(colour, ground) >= GRAPHIC_CONTRAST for colour in GITGRAPH_COLOURS):
+        return theme
+    return replace(theme, gitgraph=GitgraphStyle(colours=()))
 
 
 def _check_ground(theme: Theme) -> None:

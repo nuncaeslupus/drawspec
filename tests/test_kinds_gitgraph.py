@@ -29,7 +29,14 @@ from drawspec.schema import (
     validate_document,
 )
 from drawspec.text import TextMeasurer
-from drawspec.theme import Theme, load_theme
+from drawspec.theme import (
+    GITGRAPH_COLOURS,
+    GRAPHIC_CONTRAST,
+    GitgraphStyle,
+    Theme,
+    contrast,
+    load_theme,
+)
 
 THEME = load_theme()
 MEASURER = TextMeasurer(THEME.font.stacks(), search_paths=[])
@@ -194,8 +201,60 @@ def test_a_colour_theme_fills_the_dots_and_washes_the_names() -> None:
     assert colours == set(theme.gitgraph.colours[:2])
     washed = [p for p in scene.primitives if isinstance(p, Rect) and p.fill_colour]
     assert len(washed) == 2 and all(p.fill_opacity < 1 for p in washed)
-    plain = drawn(graph()).scene
+    ink = load_theme({"version": 1, "gitgraph": {"colours": []}})
+    plain = drawn(graph(), ink).scene
     assert {p.fill_colour for p in plain.primitives if isinstance(p, Ellipse) and p.fill} == {
+        "currentColor"
+    }
+
+
+def test_the_default_theme_colours_each_lane() -> None:
+    """Lane colours are on by default, one per branch, cycling past the last."""
+    assert THEME.gitgraph.colours == GITGRAPH_COLOURS
+    assert GitgraphStyle.from_mapping({}).colours == GITGRAPH_COLOURS == GitgraphStyle().colours
+    assert len(set(GITGRAPH_COLOURS)) == len(GITGRAPH_COLOURS)
+    scene = drawn(graph()).scene
+    fills = {p.fill_colour for p in scene.primitives if isinstance(p, Ellipse) and p.fill}
+    assert fills == set(GITGRAPH_COLOURS[:2])
+    assert THEME.gitgraph.colour_for(len(GITGRAPH_COLOURS)) == GITGRAPH_COLOURS[0]
+
+
+@pytest.mark.parametrize("page", ["#FFFFFF", "#121212"])
+def test_the_default_lane_colours_read_as_marks_on_a_light_and_a_dark_page(page: str) -> None:
+    for colour in GITGRAPH_COLOURS:
+        assert contrast(colour, page) >= GRAPHIC_CONTRAST, colour
+
+
+def test_a_lane_is_told_apart_without_colour() -> None:
+    """Colour is paint only: the same places, names and lines with it or without."""
+    coloured = drawn(graph())
+    ink = drawn(graph(), load_theme({"version": 1, "gitgraph": {"colours": []}}))
+    assert len(set(coloured.lanes)) == len(coloured.lanes) == 2
+    assert (coloured.marks, coloured.lanes, coloured.texts, coloured.connectors) == (
+        ink.marks,
+        ink.lanes,
+        ink.texts,
+        ink.connectors,
+    )
+    lines = [p for p in coloured.scene.primitives if isinstance(p, ScenePath)]
+    assert lines and all(p.role in ("flow", "strong", "aside") for p in lines)
+
+
+def test_a_ground_the_default_lane_colours_do_not_read_on_draws_lanes_in_ink() -> None:
+    """A dark sheet that never named lane colours is not refused for the default's."""
+    navy = {"version": 1, "canvas": {"ground": "#0b2d52", "ink": "#ffffff"}}
+    assert load_theme(navy).gitgraph.colours == ()
+    light = {"version": 1, "canvas": {"ground": "#fbf7ee", "ink": "#222222"}}
+    assert load_theme(light).gitgraph.colours == GITGRAPH_COLOURS
+    with pytest.raises(ThemeError, match="ground"):
+        load_theme({**navy, "gitgraph": {"colours": ["#2A6FC0"]}})
+
+
+def test_the_blueprint_sheet_draws_its_lanes_in_ink() -> None:
+    blueprint = load_theme("blueprint")
+    assert blueprint.gitgraph.colours == ()
+    scene = drawn(graph(), blueprint).scene
+    assert {p.fill_colour for p in scene.primitives if isinstance(p, Ellipse) and p.fill} == {
         "currentColor"
     }
 
