@@ -65,6 +65,10 @@ PURPOSE: Final[Mapping[str, str]] = {
     "rag": "workstreams or risks rated red, amber or green, in words and shapes — a status report",
     "clock": "analogue clock faces showing a time, for teaching it — quarter past, half past",
     "sunburst": "a hierarchy as concentric rings of sectors, read from the middle outward",
+    "network": "networks as buses with the hosts on them between — a DMZ, an office LAN",
+    "timing": "signals over one time axis — clocks, levels, buses, states: an SPI figure",
+    "gitgraph": "commits on branches over time, with forks, merges, tags and cherry-picks",
+    "railroad": "a grammar's rules as syntax diagrams — tracks through keywords, choices and loops",
 }
 
 #: The smallest document of each kind that renders.
@@ -379,6 +383,37 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "kind": "clock",
         "clocks": [{"time": "3:15"}],
     },
+    "gitgraph": {
+        "version": 1,
+        "kind": "gitgraph",
+        "branches": [{"name": "main"}, {"name": "feature", "from": "main"}],
+        "steps": [
+            {"on": "main", "text": "Initial commit"},
+            {"on": "feature", "text": "Add a feature"},
+            {"on": "main", "merge": "feature", "tag": "v1.0"},
+        ],
+    },
+    "railroad": {
+        "version": 1,
+        "kind": "railroad",
+        "rules": [
+            {
+                "name": "list",
+                "expr": {
+                    "seq": [
+                        {"terminal": "["},
+                        {
+                            "repeat": {"rule": "item"},
+                            "separator": {"terminal": ","},
+                            "min": 0,
+                        },
+                        {"terminal": "]"},
+                    ]
+                },
+            }
+        ],
+        "external": ["item"],
+    },
     "sunburst": {
         "version": 1,
         "kind": "sunburst",
@@ -386,6 +421,32 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "nodes": [
             {"text": "Angry", "children": [{"text": "Hurt"}, {"text": "Mad"}]},
             {"text": "Happy", "children": [{"text": "Proud"}, {"text": "Playful"}]},
+        ],
+    },
+    "network": {
+        "version": 1,
+        "kind": "network",
+        "networks": [
+            {"id": "dmz", "address": "210.x.x.x/24"},
+            {"id": "internal", "address": "172.x.x.x/24"},
+        ],
+        "hosts": [
+            {
+                "id": "web01",
+                "networks": [
+                    {"network": "dmz", "address": ".1"},
+                    {"network": "internal", "address": ".1"},
+                ],
+            },
+            {"id": "db01", "role": "store", "networks": [{"network": "internal", "address": ".2"}]},
+        ],
+    },
+    "timing": {
+        "version": 1,
+        "kind": "timing",
+        "signals": [
+            {"text": "CLK", "values": ["p", ".", ".", "."]},
+            {"text": "DATA", "lane": "bus", "values": ["x", "A1", "B2", "z"]},
         ],
     },
     "rag": {

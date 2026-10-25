@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "kind": "timing",
+  "title": "I²C: a START, two bits, a STOP and the bus free time",
+  "signals": [
+    {"text": "SDA", "values": ["1", "p", "n", "1", "p", "0", "0", "n", "1", "1", "p", "0"]},
+    {"text": "SCL", "values": ["1", "1", "0", "1", "0", "1", "0", "1", "1", "1", "1", "p"]}
+  ],
+  "markers": [
+    {"at": 1.5, "text": "S"},
+    {"at": 7.5, "text": "P"},
+    {"at": 10.5, "text": "S"}
+  ],
+  "intervals": [
+    {"from": 7.5, "to": 10.5, "text": "tBUF", "signal": "SDA"},
+    {"from": 1.5, "to": 2, "text": "tHD;STA", "signal": "SCL"},
+    {"from": 3, "to": 4, "text": "tHIGH", "signal": "SCL"},
+    {"from": 4, "to": 5, "text": "tLOW", "signal": "SCL"},
+    {"from": 7, "to": 7.5, "text": "tSU;STO", "signal": "SCL"}
+  ],
+  "caption": "SDA changes while SCL is high only to start (S) or stop (P) a transfer."
+}

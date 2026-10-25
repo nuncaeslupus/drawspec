@@ -138,7 +138,7 @@ activation bars, arrows and spacing are worked out for you:
 
 Flow charts, sequence diagrams, state machines, ER and class diagrams, Gantt
 charts, swimlanes, mind maps, timelines, Venn, Sankey, treemaps, pie and bar
-charts, kanban boards, fishbone, family trees, file trees and more — one format
+charts, kanban boards, fishbone, family trees, file trees, timing diagrams, network diagrams and more — one format
 for all of them. Click a drawing to open it full size, or a kind's name for its
 source — the code is all here.
 
@@ -198,7 +198,7 @@ The full list: `flow` · `tree` · `cycle` · `stack` · `timeline` · `columns`
 `curve` · `files` · `states` · `sequence` · `lanes` · `entities` · `gantt` ·
 `board` · `fishbone` · `venn` · `journey` · `treemap` · `sankey` · `numberline` ·
 `barmodel` · `waterfall` · `pie` · `mindmap` · `argument` · `familytree` ·
-`meter` · `rag` · `clock` · `sunburst`. Each has an example in [`docs/reference`](https://github.com/nuncaeslupus/drawspec/tree/main/docs/reference),
+`meter` · `rag` · `clock` · `sunburst` · `timing` · `gitgraph` · `network` · `railroad`. Each has an example in [`docs/reference`](https://github.com/nuncaeslupus/drawspec/tree/main/docs/reference),
 and [the gallery](https://nuncaeslupus.github.io/drawspec/docs/gallery/)
 (`docs/gallery/index.html`) draws every one.
 
@@ -235,7 +235,7 @@ A typical loop: the model picks a kind, writes the JSON, calls
   version that follows `prefers-color-scheme`.
 - **PNG** on a light, dark or transparent background (`pip install 'drawspec[png]'`).
 - **Plain text** (box-drawing or ASCII) for many kinds, including flows, state
-  machines, sequences, Gantt charts and file trees.
+  machines, sequences, Gantt charts, syntax diagrams and file trees.
 - **Themes**: change one TOML file and every diagram in a project follows.
   `drawspec theme from site.css` builds one from your CSS or design tokens.
 - **Readable by design**: each kind has a size budget;
