@@ -5393,7 +5393,7 @@
           "type": "array",
           "description": "The branch's layers in order, 1 to 3, each with its `text` and `type` only: drawn as a tower beside the other branches.",
           "items": {
-            "$ref": "#/$defs/neuralnet-layer"
+            "$ref": "#/$defs/neuralnet-tower-layer"
           },
           "minItems": 1
         }
@@ -5496,6 +5496,23 @@
       "required": [
         "from",
         "to"
+      ],
+      "additionalProperties": false
+    },
+    "neuralnet-tower-layer": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "What the layer is, written in its box: `1x1 conv`, `3x3 max pool`."
+        },
+        "type": {
+          "type": "string",
+          "description": "What sort of layer this is, sharing a fill and the key with the rest."
+        }
+      },
+      "required": [
+        "text"
       ],
       "additionalProperties": false
     },

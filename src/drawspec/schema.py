@@ -3583,12 +3583,25 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "neuralnet-tower-layer": (
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description="What the layer is, written in its box: `1x1 conv`, `3x3 max pool`.",
+        ),
+        FieldSpec(
+            "type",
+            "string",
+            description="What sort of layer this is, sharing a fill and the key with the rest.",
+        ),
+    ),
     "neuralnet-branch": (
         FieldSpec(
             "layers",
             "array",
             required=True,
-            item_ref="neuralnet-layer",
+            item_ref="neuralnet-tower-layer",
             min_items=1,
             description=(
                 f"The branch's layers in order, 1 to {NEURALNET_TOWER_MAX}, each with its "
@@ -15408,31 +15421,14 @@ def _neuralnet_violations(document: Mapping[str, Any]) -> list[Violation]:
                         f"(`1x1 conv, 3x3 conv`).",
                     )
                 )
+            # A tower layer's fields are its own object's (`text` and `type`), so
+            # anything else is refused structurally, before this, at its pointer.
             for position, layer in enumerate(inner):
                 if not isinstance(layer, dict):
                     continue
                 spot = f"{where}/layers/{position}"
-                for name in ("id", "shape", "branches", "size", "labels", "bias"):
-                    if name in layer:
-                        found.append(
-                            Violation(
-                                f"{spot}/{name}",
-                                f"{name!r} is not drawn on a layer inside a branch: a tower "
-                                f"holds boxes with their `text` and `type` only. Nothing names "
-                                f"a layer inside branches, and a shape belongs on the layer "
-                                f"that joins them.",
-                            )
-                        )
                 text = layer.get("text")
-                if "text" not in layer:
-                    found.append(
-                        Violation(
-                            f"{spot}/text",
-                            "a block says what the layer is — `1x1 conv`, `3x3 max pool` — "
-                            "in `text`.",
-                        )
-                    )
-                elif isinstance(text, str) and not text.strip():
+                if isinstance(text, str) and not text.strip():
                     found.append(Violation(f"{spot}/text", "a layer's name needs words."))
                 typed(layer.get("type"), f"{spot}/type")
 

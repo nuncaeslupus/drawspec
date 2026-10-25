@@ -496,6 +496,13 @@ def test_a_tower_layer_has_a_text_and_a_type_only() -> None:
     ]
 
 
+def test_branches_never_nest() -> None:
+    document = inception()
+    inner = {"branches": [{"layers": [{"text": "a"}]}, {"layers": [{"text": "b"}]}]}
+    document["layers"][1]["branches"][0]["layers"][0].update(inner)
+    assert pointers(document) == ["/layers/1/branches/0/layers/0/branches"]
+
+
 def test_branch_and_tower_limits() -> None:
     document = inception()
     document["layers"][1]["branches"] = [{"layers": [{"text": f"t{n}"}]} for n in range(5)]
