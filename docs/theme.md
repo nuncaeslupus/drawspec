@@ -318,6 +318,14 @@ How heavy a sunburst's three structural lines are.
 |---|---|---|
 | `weights` | `[0.006, 0.0035, 0.002]` | The width of a first-ring divider and the rim, a ring boundary and the hub circle, and a division two or more rings deep — each as a share of the wheel's radius, floored at a hairline so a small wheel keeps its lines, so the structure grows heavier on a wide wheel. Heaviest first; none heavier than the one before. |
 
+### `[pert]`
+
+Whether a project network carries a key to its boxes' cells.
+
+| Key | Default | What it is |
+|---|---|---|
+| `key` | `true` | `true` draws a key under the network: one box with each cell named (`ES`, `Dur`, `EF`; `LS`, `Float`, `LF`), the unit the durations are in, and that the critical path is the heavy line. `false` leaves it out, and the unit, when there is one, is written under the network on its own. |
+
 ### `[argument]`
 
 How an argument map says which way a point bears: its tag and its fill.

@@ -73,6 +73,7 @@ GOLDENS: Final = {
     "stack": "stack-decisions",
     "rag": "rag-refit",
     "meter": "meter-migration",
+    "pert": "pert-textbook",
 }
 
 #: Golden files beyond one per kind: a second style of a kind, held the same way.
@@ -138,13 +139,16 @@ def _labels(document: Document) -> list[str]:
     elif document.kind == "meter":
         found += [meter.text for meter in document.meters]
         found += [band.text for meter in document.meters for band in meter.bands]
+    elif document.kind == "pert":
+        found += [activity.text for activity in document.pert_activities]
+        found += [document.pert_start, document.pert_finish]
     found.append(document.caption)
     return [line for label in found for line in plain(label).split("\n") if line.strip()]
 
 
 #: The kinds whose SVG wraps a label, and whose text form may therefore break
 #: one at spaces. Everywhere else a label must appear on one line, whole.
-WRAPPING: Final = ("sequence", "timeline", "board", "stack", "rag")
+WRAPPING: Final = ("sequence", "timeline", "board", "stack", "rag", "pert")
 
 
 # ---------------------------------------------------------------------------

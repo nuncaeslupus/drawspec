@@ -23,6 +23,19 @@ against it would stop working. Everything below is about the *package*.
   `[sunburst]` theme section and scaling with the wheel. Up to three rings and 150 sectors,
   with the full Willcox/Junto feelings wheel as a reference. `make docs`, `make schema` and
   the gallery pick it up.
+- **A `pert` kind.** A project network drawn activity-on-node, as PMBOK and the
+  project-management textbooks draw it: each activity a box of cells — early start,
+  duration and early finish over its name, late start, float and late finish under it —
+  an arrow for each finish-to-start dependency, and the critical path drawn heavy. The
+  author writes only `activities` (`id`, `text`, `duration`, `after`); drawspec runs the
+  forward and backward pass in exact arithmetic, so every time and float is computed and
+  none may be written. A loop is refused with its path (`A -> B -> C -> A`). Optional
+  `start`/`finish` milestones, a `unit`, and PERT three-point estimates (`optimistic`,
+  `likely`, `pessimistic`: (o + 4m + p) / 6). Placed by the layered engine across the page
+  (down it when across does not fit), with a key under it that the theme's `[pert] key`
+  turns off. Has a text form, a flow of boxes carrying the times. Up to 20 activities and
+  32 dependencies; the textbook exercise (critical path A-C-E-G-H, 15 weeks), a house
+  build and a three-point software release are the references.
 
 ### Fixed
 

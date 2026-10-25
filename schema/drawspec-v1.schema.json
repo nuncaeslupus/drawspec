@@ -2823,6 +2823,81 @@
         "nodes"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "pert",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "pert"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "activities": {
+          "type": "array",
+          "description": "The activities, 2 to 20, each an `id`, its `text`, a `duration` (or three PERT estimates) and the activities it comes `after`. Ranked left to right by those dependencies; every start, finish and float is computed, so none is written.",
+          "items": {
+            "$ref": "#/$defs/pert-activity"
+          },
+          "minItems": 2
+        },
+        "unit": {
+          "type": "string",
+          "description": "What the durations are in — `days`, `weeks` — written in the key under the network. The numbers count from 0, the start of the project."
+        },
+        "start": {
+          "type": "string",
+          "description": "A start milestone's words, `Start`: a node before every activity with no `after`, so the network begins at one point. Left out, none is drawn."
+        },
+        "finish": {
+          "type": "string",
+          "description": "A finish milestone's words, `Finish`: a node after every activity nothing waits for, carrying the project's duration. Left out, none is drawn."
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "activities"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -4491,6 +4566,47 @@
             "note",
             "actor"
           ]
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "pert-activity": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "A handle for this activity, unique in the document, that another activity's `after` names: `A`, `excavate`. Not drawn; the box shows `text`."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "duration": {
+          "type": "number",
+          "description": "How long the activity takes, in the document's `unit`: zero or more. Write this, or the three PERT estimates, not both."
+        },
+        "optimistic": {
+          "type": "number",
+          "description": "A PERT estimate: the shortest the activity could take. With `likely` and `pessimistic` in place of `duration`; the box carries the expected duration, (optimistic + 4 x likely + pessimistic) / 6."
+        },
+        "likely": {
+          "type": "number",
+          "description": "A PERT estimate: the most likely duration, no less than `optimistic` and no more than `pessimistic`."
+        },
+        "pessimistic": {
+          "type": "number",
+          "description": "A PERT estimate: the longest the activity could take."
+        },
+        "after": {
+          "type": "array",
+          "description": "The ids of the activities that must finish before this one starts (finish-to-start). Leave it out of an activity that can start at once. No circles: drawspec refuses a loop and names it.",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "required": [

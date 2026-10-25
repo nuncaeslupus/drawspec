@@ -65,6 +65,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "rag": "workstreams or risks rated red, amber or green, in words and shapes — a status report",
     "clock": "analogue clock faces showing a time, for teaching it — quarter past, half past",
     "sunburst": "a hierarchy as concentric rings of sectors, read from the middle outward",
+    "pert": "a project network of activities, the schedule and critical path computed",
 }
 
 #: The smallest document of each kind that renders.
@@ -378,6 +379,17 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "version": 1,
         "kind": "clock",
         "clocks": [{"time": "3:15"}],
+    },
+    "pert": {
+        "version": 1,
+        "kind": "pert",
+        "unit": "days",
+        "activities": [
+            {"id": "A", "text": "Design", "duration": 3},
+            {"id": "B", "text": "Build", "duration": 5, "after": ["A"]},
+            {"id": "C", "text": "Write docs", "duration": 2, "after": ["A"]},
+            {"id": "D", "text": "Release", "duration": 1, "after": ["B", "C"]},
+        ],
     },
     "sunburst": {
         "version": 1,

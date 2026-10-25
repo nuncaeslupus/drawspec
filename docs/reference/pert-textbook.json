@@ -1,0 +1,18 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "pert",
+  "title": "Milwaukee Paper: installing an air filter",
+  "description": "The operations-management textbook exercise: eight activities, A to H, whose critical path A-C-E-G-H takes 15 weeks, with 1 week of float on B and D and 6 on F.",
+  "unit": "weeks",
+  "activities": [
+    {"id": "A", "text": "A\nBuild internal components", "duration": 2},
+    {"id": "B", "text": "B\nModify roof and floor", "duration": 3},
+    {"id": "C", "text": "C\nConstruct collection stack", "duration": 2, "after": ["A"]},
+    {"id": "D", "text": "D\nPour concrete, install frame", "duration": 4, "after": ["A", "B"]},
+    {"id": "E", "text": "E\nBuild burner", "duration": 4, "after": ["C"]},
+    {"id": "F", "text": "F\nInstall control system", "duration": 3, "after": ["C"]},
+    {"id": "G", "text": "G\nInstall pollution device", "duration": 5, "after": ["D", "E"]},
+    {"id": "H", "text": "H\nInspect and test", "duration": 2, "after": ["F", "G"]}
+  ]
+}

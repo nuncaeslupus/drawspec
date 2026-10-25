@@ -1,0 +1,41 @@
+          #===========================#   +-----------------------+
+          # A                         #   | B                     |
+          # Build internal components #   | Modify roof and floor |
+          # ES=0 D=2 EF=2             #   | ES=0 D=3 EF=3         |
+          # LS=0 F=0 LF=2             #   | LS=1 F=1 LF=4         |
+          #=============#=========#===#   +-----------+-----------+
+                        #         |                   |
+                        v         v                   v
+#============================#   +------------------------------+
+# C                          #   | D                            |
+# Construct collection stack #   | Pour concrete, install frame |
+# ES=2 D=2 EF=4              #   | ES=3 D=4 EF=7                |
+# LS=2 F=0 LF=4              #   | LS=4 F=1 LF=8                |
+#=============#=============##   +---------------------+--------+
+              #             ++                         |
+              v              v                         |
+    #===============#       +------------------------+ |
+    # E             #       | F                      | |
+    # Build burner  #       | Install control system | |
+    # ES=4 D=4 EF=8 #       | ES=4 D=3 EF=7          | |
+    # LS=4 F=0 LF=8 #       | LS=10 F=6 LF=13        | |
+    #=======#=======#       +---------+--------------+ |
+            #                  ++     |                |
+            v                  v+-----+----------------+
+     #==========================#     |
+     # G                        #     |
+     # Install pollution device #     |
+     # ES=8 D=5 EF=13           #     |
+     # LS=8 F=0 LF=13           #     |
+     #===============#==========#     |
+                     #                |
+                     v                v
+                    #==================#
+                    # H                #
+                    # Inspect and test #
+                    # ES=13 D=2 EF=15  #
+                    # LS=13 F=0 LF=15  #
+                    #==================#
+
+ES/EF early start/finish, D duration, LS/LF late start/finish, F float. Heavy:
+the critical path, 15 weeks in all.

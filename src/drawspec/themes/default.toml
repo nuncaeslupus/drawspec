@@ -253,6 +253,13 @@ taper = [6.0, 3.0, 1.5]
 # Heaviest first; none heavier than the one before.
 weights = [0.006, 0.0035, 0.002]
 
+[pert]
+# Whether a project network carries a key under it: one box with each cell named
+# (ES, Dur, EF over the activity; LS, Float, LF under it), the unit the durations
+# are in, and that the heavy line is the critical path. A textbook figure wants
+# it; a team that reads these daily may not.
+key = true
+
 [argument]
 # How an argument map shows which way a point bears, twice so greyscale holds: a
 # tag in the box's top margin, read aloud down a chain (claim, because, but, but),
