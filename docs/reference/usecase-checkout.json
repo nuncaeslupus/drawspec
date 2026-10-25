@@ -1,0 +1,41 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "usecase",
+  "title": "Online shop checkout",
+  "description": "Two boundaries: the shop the customer checks out in, and the payment service it hands the card to.",
+  "systems": [
+    {"id": "shop", "text": "Web shop"},
+    {"id": "payments", "text": "Payment service"}
+  ],
+  "actors": [
+    {"id": "customer", "text": "Customer"},
+    {"id": "guest", "text": "Guest"},
+    {"id": "member", "text": "Registered customer"},
+    {"id": "bank", "text": "Card issuer", "supporting": true},
+    {"id": "warehouse", "text": "Warehouse", "supporting": true}
+  ],
+  "usecases": [
+    {"id": "basket", "text": "Review basket", "system": "shop"},
+    {"id": "checkout", "text": "Check out", "system": "shop"},
+    {"id": "address", "text": "Enter delivery address", "system": "shop"},
+    {"id": "voucher", "text": "Apply voucher", "system": "shop"},
+    {"id": "history", "text": "View order history", "system": "shop"},
+    {"id": "pay", "text": "Pay by card", "system": "payments"},
+    {"id": "secure", "text": "Verify with 3-D Secure", "system": "payments"}
+  ],
+  "edges": [
+    {"from": "customer", "to": "basket"},
+    {"from": "customer", "to": "checkout"},
+    {"from": "guest", "to": "customer", "role": "inherits"},
+    {"from": "member", "to": "customer", "role": "inherits"},
+    {"from": "member", "to": "history"},
+    {"from": "customer", "to": "pay"},
+    {"from": "checkout", "to": "address", "role": "include"},
+    {"from": "voucher", "to": "checkout", "role": "extend"},
+    {"from": "pay", "to": "secure", "role": "include"},
+    {"from": "bank", "to": "secure"},
+    {"from": "bank", "to": "pay"},
+    {"from": "warehouse", "to": "checkout"}
+  ]
+}

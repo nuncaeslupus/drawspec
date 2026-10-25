@@ -1,0 +1,29 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "network",
+  "title": "A three-tier web application",
+  "description": "The internet, a DMZ for the web tier, an internal network for the application tier and a storage network for the data tier, a firewall in front and each tier on the networks either side of it.",
+  "networks": [
+    {"id": "internet", "text": "Internet"},
+    {"id": "dmz", "text": "DMZ", "address": "203.0.113.0/24"},
+    {"id": "internal", "text": "Internal", "address": "10.0.1.0/24"},
+    {"id": "storage", "text": "Storage", "address": "10.0.2.0/24"}
+  ],
+  "hosts": [
+    {"id": "fw", "text": "fw01\nfirewall", "role": "emphasis", "networks": [{"network": "internet"}, {"network": "dmz", "address": ".1"}]},
+    {"id": "lb", "text": "lb01\nload balancer", "networks": [{"network": "dmz", "address": ".5"}]},
+    {"id": "web01", "networks": [{"network": "dmz", "address": ".11"}, {"network": "internal", "address": ".11"}]},
+    {"id": "web02", "networks": [{"network": "dmz", "address": ".12"}, {"network": "internal", "address": ".12"}]},
+    {"id": "app01", "networks": [{"network": "internal", "address": ".21"}]},
+    {"id": "app02", "networks": [{"network": "internal", "address": ".22"}]},
+    {"id": "db01", "text": "db01\nprimary", "role": "store", "networks": [{"network": "internal", "address": ".31"}, {"network": "storage", "address": ".31"}]},
+    {"id": "db02", "text": "db02\nreplica", "role": "store", "networks": [{"network": "internal", "address": ".32"}, {"network": "storage", "address": ".32"}]},
+    {"id": "backup", "text": "backup01", "role": "store", "networks": [{"network": "storage", "address": ".40"}]}
+  ],
+  "groups": [
+    {"text": "web tier", "members": ["web01", "web02"]},
+    {"text": "app tier", "members": ["app01", "app02"]},
+    {"text": "data tier", "members": ["db01", "db02"]}
+  ]
+}

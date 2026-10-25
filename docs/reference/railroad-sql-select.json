@@ -1,0 +1,54 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "railroad",
+  "title": "A simple SELECT",
+  "description": "A subset of SQLite's select-core and result-column syntax diagrams: one rule long enough to wrap onto several lines, with expr, table-or-subquery and ordering-term drawn elsewhere.",
+  "caption": "A subset of SQLite's SELECT syntax; the full diagrams are on sqlite.org.",
+  "external": ["expr", "table-or-subquery", "ordering-term"],
+  "rules": [
+    {
+      "name": "select-stmt",
+      "expr": {"seq": [
+        {"terminal": "SELECT"},
+        {"optional": {"choice": [{"terminal": "DISTINCT"}, {"terminal": "ALL"}]}},
+        {"repeat": {"rule": "result-column"}, "separator": {"terminal": ","}, "min": 1},
+        {"optional": {"seq": [
+          {"terminal": "FROM"},
+          {"repeat": {"rule": "table-or-subquery"}, "separator": {"terminal": ","}, "min": 1}
+        ]}},
+        {"optional": {"seq": [{"terminal": "WHERE"}, {"rule": "expr"}]}},
+        {"optional": {"seq": [
+          {"terminal": "GROUP"},
+          {"terminal": "BY"},
+          {"repeat": {"rule": "expr"}, "separator": {"terminal": ","}, "min": 1},
+          {"optional": {"seq": [{"terminal": "HAVING"}, {"rule": "expr"}]}}
+        ]}},
+        {"optional": {"seq": [
+          {"terminal": "ORDER"},
+          {"terminal": "BY"},
+          {"repeat": {"rule": "ordering-term"}, "separator": {"terminal": ","}, "min": 1}
+        ]}},
+        {"optional": {"seq": [
+          {"terminal": "LIMIT"},
+          {"rule": "expr"},
+          {"optional": {"seq": [{"terminal": "OFFSET"}, {"rule": "expr"}]}}
+        ]}}
+      ]}
+    },
+    {
+      "name": "result-column",
+      "expr": {"choice": [
+        {"seq": [
+          {"rule": "expr"},
+          {"optional": {"seq": [
+            {"optional": {"terminal": "AS"}},
+            {"special": "column alias"}
+          ]}}
+        ]},
+        {"terminal": "*"},
+        {"seq": [{"special": "table name"}, {"terminal": "."}, {"terminal": "*"}]}
+      ]}
+    }
+  ]
+}

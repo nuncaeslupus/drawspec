@@ -318,6 +318,32 @@ How heavy a sunburst's three structural lines are.
 |---|---|---|
 | `weights` | `[0.006, 0.0035, 0.002]` | The width of a first-ring divider and the rim, a ring boundary and the hub circle, and a division two or more rings deep — each as a share of the wheel's radius, floored at a hairline so a small wheel keeps its lines, so the structure grows heavier on a wide wheel. Heaviest first; none heavier than the one before. |
 
+### `[network]`
+
+How a network diagram washes its buses and its groups' backdrops.
+
+| Key | Default | What it is |
+|---|---|---|
+| `bus` | `0.16` | How much ink fills a network's bus, behind its name and address. |
+| `group` | `0.07` | How much ink fills a group's backdrop, behind its hosts. Lighter than a bus, so a group reads as ground and a bus as a thing. |
+
+### `[timing]`
+
+How a timing figure draws its edges, and whether its steps are ruled.
+
+| Key | Default | What it is |
+|---|---|---|
+| `slew` | `0.15` | How much of a step a change of word on a bus, or into and out of unknown, takes to cross — the slant of a datasheet's hexagon lanes. Capped at a few units on a wide step, so a slow bus does not look like a ramp; 0 draws the changes upright. A level's edge (a clock, a select line) is always upright. |
+| `grid` | `false` | Whether every step edge is ruled faintly down the figure, as WaveDrom does. Off by default: the clock's own edges are the ruler a datasheet reads by, and markers rule the edges that matter. |
+
+### `[gitgraph]`
+
+What colour a git graph's branches take, if any.
+
+| Key | Default | What it is |
+|---|---|---|
+| `colours` | `[]` | A colour per branch, in the order the branches are written, cycling past the last; empty draws every lane in the page's ink. A lane's commits are filled with its colour and its name is set on a faint wash of it; the lines stay ink, so a lane's colour never has to carry a crossing. |
+
 ### `[pert]`
 
 Whether a project network carries a key to its boxes' cells.

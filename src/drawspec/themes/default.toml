@@ -253,6 +253,29 @@ taper = [6.0, 3.0, 1.5]
 # Heaviest first; none heavier than the one before.
 weights = [0.006, 0.0035, 0.002]
 
+[network]
+# How a network diagram is washed, as shares of the page's ink: a network's bus,
+# with its name and address written on it, and a group's backdrop behind its
+# hosts — lighter, so a group reads as ground and a bus as a thing.
+bus = 0.16
+group = 0.07
+
+[timing]
+# How steeply a bus changes word, or a signal goes into or out of unknown, as a
+# share of a step (capped at a few units): the slant of a datasheet's hexagon
+# lanes. A level's edge — a clock, a select line — is always drawn upright.
+slew = 0.15
+# Whether each step edge is ruled faintly down the figure. Off: the clock's own
+# edges are the ruler, and `markers` rule the edges that matter.
+grid = false
+
+[gitgraph]
+# What colour a git graph's branches take: one per lane, in the order the branches
+# are written, cycling. Empty, as here, draws every lane in the page's ink: a lane
+# is told apart by its place and the name at its head, never by colour alone. A
+# colour fills the lane's commit dots and washes its name; the lines stay ink.
+colours = []
+
 [pert]
 # Whether a project network carries a key under it: one box with each cell named
 # (ES, Dur, EF over the activity; LS, Float, LF under it), the unit the durations
