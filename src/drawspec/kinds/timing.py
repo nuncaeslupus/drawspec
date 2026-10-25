@@ -257,23 +257,27 @@ def timing_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> 
             (start, baseline - extent.ascent, start + extent.width, baseline + extent.descent)
         )
 
+    margin = theme.canvas.margin
+
+    def kept(centre: float, half: float) -> float:
+        """`centre` moved so a label `2 * half` wide stays within the canvas and its margin."""
+        return max(-margin + half, min(centre, width + margin - half))
+
     # -- the marker names, packed into rows over the figure -------------------
     y = 0.0
     markers = document.timing_markers
     named = [marker for marker in markers if marker.text]
+    marker_centres = [kept(at(marker.at), wide(marker.text, label) / 2) for marker in named]
     marker_rows = _pack(
         [
-            (
-                at(marker.at) - wide(marker.text, label) / 2,
-                at(marker.at) + wide(marker.text, label) / 2,
-            )
-            for marker in named
+            (centre - wide(marker.text, label) / 2, centre + wide(marker.text, label) / 2)
+            for marker, centre in zip(named, marker_centres, strict=True)
         ],
         gap * 0.6,
     )
     row_height = small.height + unit * 2
-    for marker, row in zip(named, marker_rows, strict=True):
-        text_at(marker.text, at(marker.at), y + row * row_height + small.ascent, "label", "middle")
+    for marker, centre, row in zip(named, marker_centres, marker_rows, strict=True):
+        text_at(marker.text, centre, y + row * row_height + small.ascent, "label", "middle")
     if named:
         y += (max(marker_rows) + 1) * row_height + unit * 2
 
@@ -348,7 +352,7 @@ def timing_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> 
             for interval in mine:
                 a, b = at(interval.start), at(interval.end)
                 half = wide(interval.text, label) / 2
-                centre = (a + b) / 2
+                centre = kept((a + b) / 2, half)
                 extents.append((min(a + unit, centre - half), max(b - unit, centre + half)))
             rows = _pack(extents, unit * 1.5)
             span_height = small.height + unit * 7
@@ -357,7 +361,14 @@ def timing_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> 
                 a, b = at(interval.start), at(interval.end)
                 row_top = base + row * span_height
                 arrow_y = row_top + small.height + unit * 3
-                text_at(interval.text, (a + b) / 2, row_top + small.ascent, "label", "middle")
+                half = wide(interval.text, label) / 2
+                text_at(
+                    interval.text,
+                    kept((a + b) / 2, half),
+                    row_top + small.ascent,
+                    "label",
+                    "middle",
+                )
                 _arrow(a, b, arrow_y, theme, unit, primitives)
                 for x in (a, b):
                     primitives.append(Path(GUIDE_ROLE, points=((x, top), (x, arrow_y + unit * 2))))
@@ -401,8 +412,8 @@ def timing_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> 
             if not tick:
                 continue
             half = wide(tick, label) / 2
-            centre = at(position + 0.5)
-            if centre - half < previous + unit * 2 or centre + half > width + theme.canvas.margin:
+            centre = kept(at(position + 0.5), half)
+            if centre - half < previous + unit * 2 or 2 * half > width + 2 * margin:
                 raise FitError(
                     f"/ticks/{position}: the step name {tick!r} is {2 * half:.0f} units wide and "
                     f"a step is {step:.0f}, so it runs into the name beside it. Shorten it, name "

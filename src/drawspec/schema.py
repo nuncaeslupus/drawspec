@@ -10927,12 +10927,17 @@ def _timing_edge_problem(value: object, steps: int) -> str | None:
     """Why `value` is not an edge on a `steps`-step axis, or None when it is one."""
     if not isinstance(value, int | float) or isinstance(value, bool):
         return None  # the structural pass has said so
+    if not math.isfinite(value):
+        return (
+            f"{value!r} is not a number of steps: an edge is from 0 (the left edge) to "
+            f"{steps} (the right), whole or half."
+        )
     if value < 0 or value > steps:
         return (
             f"{_figure(float(value))} is off the axis: an edge is from 0 (the left edge) to "
             f"{steps} (the right), in steps."
         )
-    if float(value) * 2 != int(float(value) * 2):
+    if not (float(value) * 2).is_integer():
         return (
             f"{_figure(float(value))} falls inside a step: an edge is a whole step (between "
             f"two) or a half (where a clock pulse falls)."

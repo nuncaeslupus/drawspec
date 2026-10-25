@@ -310,3 +310,31 @@ def test_text_too_wide_is_refused_with_the_width_it_needs() -> None:
     document = parse_document(figure(signals=[{"text": "CLK", "values": ["p"] * 30}]))
     with pytest.raises(FitError, match=r"--width (\d+) or more"):
         render_text(document, width=60)
+
+
+# -- edges that are not numbers, and labels at the canvas's edges ------------------
+
+
+def test_a_nan_edge_is_a_located_violation_not_an_exception() -> None:
+    document = json.loads(
+        '{"version": 1, "kind": "timing",'
+        ' "signals": [{"text": "CLK", "values": ["p", ".", "."]}],'
+        ' "markers": [{"at": NaN}],'
+        ' "intervals": [{"from": NaN, "to": NaN, "text": "t"}]}'
+    )
+    found = pointers(document)
+    assert "/markers/0/at" in found
+    assert "/intervals/0/from" in found and "/intervals/0/to" in found
+
+
+def test_labels_near_the_left_edge_stay_on_the_canvas() -> None:
+    long = "a long name for the very first edge"
+    document = figure(
+        markers=[{"at": 0, "text": long}],
+        intervals=[{"from": 0, "to": 0.5, "text": long, "signal": "CLK"}],
+        ticks=["the first step's name", "", "", "", ""],
+    )
+    drawing = drawn(document)
+    margin = THEME.canvas.margin
+    for left, _, right, _ in drawing.texts:
+        assert left >= -margin - 0.01 and right <= drawing.scene.width + margin + 0.01

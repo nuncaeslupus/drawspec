@@ -55,7 +55,7 @@ usage: drawspec render [-h] [-o OUT] [--theme THEME] [--variant NAME=THEME]
 | `-o`, `--out` | Write here instead of stdout. |
 | `--theme` | A bundled theme name or a theme file. |
 | `--variant` | For svg: also draw the diagram in THEME, switched on by an ancestor's data-theme=NAME (and, for NAME dark, by prefers-color-scheme). Repeatable. --theme is the base and answers to light. |
-| `--width` | Override the document's width; with --format text, the most terminal cells a line may take (default 80, or 100 for lanes and sequence). |
+| `--width` | Override the document's width; with --format text, the most terminal cells a line may take (default 80, or 100 for lanes, sequence and timing). |
 | `--height` | Override the document's height. |
 | `--profile` | The embedding profile. One of `inline`, `standalone`. Default `inline`. |
 | `--format` | What to write: svg; png, a raster image of the standalone drawing; or text, the diagram as plain text for a code block or a terminal (files, tree, sequence, gantt, timeline, board, stack, rag, meter, timing, flow, states, lanes). Default: from the -o extension, else svg. One of `svg`, `png`, `text`. |

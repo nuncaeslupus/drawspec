@@ -474,7 +474,7 @@ than 3 times however the graph is arranged — render those as SVG. A `tree` wit
 cross-links or groups is drawn this way too; `bands` have no text form yet.
 
 * **`--width`** is in terminal cells: 80 by default, 100 for `lanes` and `sequence`,
-  whose parties sit side by side; any width you pass wins. An East Asian wide character
+  whose parties sit side by side, and for `timing`, whose steps run across the line; any width you pass wins. An East Asian wide character
   counts two. A drawing that does not fit is **refused** at the pointer of its
   widest thing, naming the width it needs — never cut short. A label the SVG would
   wrap (a card, a note, a message) is wrapped here too, at spaces only.
