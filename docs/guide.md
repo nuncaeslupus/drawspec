@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Thirty-four exist, and they fall into twenty-three families:
+fields are legal. Thirty-eight exist, and they fall into twenty-five families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -174,6 +174,8 @@ fields are legal. Thirty-four exist, and they fall into twenty-three families:
 | Gauge | `meter` | How far one amount is along its scale: a progress bar, a fundraising thermometer, a dial with named bands, a bullet graph — alone or a few to a panel. |
 | Status | `rag` | Things rated red, amber or green: workstreams or risks a row each, the rating a word and a shape (a colour only by the theme), a trend in words and a note — a highlight report, a risk register. |
 | Time | `clock` | A time of day on an analogue face, for teaching it: two hands placed by the time, the numerals the lesson uses, the time in words under it, how long since an earlier time shaded round the face. |
+| Wheel | `sunburst` | A hierarchy as concentric rings of sectors, read from the middle outward: a wheel of emotions, a taxonomy. |
+| Signal | `timing` | What several signals are at each step of one time axis: clock and level lanes, words on a bus, named states — a datasheet's SPI or I²C figure, a UML timing diagram. |
 | Reasoning | `argument` | Things said for and against a claim: reasons, objections, rebuttals and evidence by stance, co-premises under one bracket (an argument map). |
 
 One worked document per kind lives in [`reference/`](reference), and `make
@@ -427,9 +429,9 @@ drawspec render plan.json --format text --width 100 --charset ascii
 ```
 
 It is a second emitter, not a picture of the SVG: each kind lays itself out on a
-character grid from its own rows and columns. Twelve kinds have a text form —
+character grid from its own rows and columns. Thirteen kinds have a text form —
 `files`, `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`,
-`meter` in every style, and the graph kinds `flow`, `states` and `lanes` — and
+`meter` in every style, `timing`, and the graph kinds `flow`, `states` and `lanes` — and
 every other kind refuses, naming them. The kinds whose message is an area, an
 angle or a curve never get one. A `meter` `dial` is a half-circle of cells with
 its needle in the stroke nearest the amount's angle and its bands in shades
@@ -472,7 +474,7 @@ than 3 times however the graph is arranged — render those as SVG. A `tree` wit
 cross-links or groups is drawn this way too; `bands` have no text form yet.
 
 * **`--width`** is in terminal cells: 80 by default, 100 for `lanes` and `sequence`,
-  whose parties sit side by side; any width you pass wins. An East Asian wide character
+  whose parties sit side by side, and for `timing`, whose steps run across the line; any width you pass wins. An East Asian wide character
   counts two. A drawing that does not fit is **refused** at the pointer of its
   widest thing, naming the width it needs — never cut short. A label the SVG would
   wrap (a card, a note, a message) is wrapped here too, at spaces only.
@@ -2587,6 +2589,63 @@ for its numerals is a `FitError`. See [`reference/clock-quarters.json`](referenc
 (read and draw, answers hidden), [`reference/clock-roman.json`](reference/clock-roman.json)
 (Roman numerals to the minute, in words and digits) and
 [`reference/clock-journey.json`](reference/clock-journey.json) (how long between times).
+
+## A timing diagram: signals against one time axis
+
+A serial bus's datasheet draws its transfer as lanes under one time axis — the select
+line, the clock, the data out and the data back — so the edge that latches a bit lines up
+with the bit. WaveDrom, PlantUML and UML draw the same thing. That is `timing`:
+
+```json
+{
+  "version": 1,
+  "kind": "timing",
+  "signals": [
+    {"text": "CS#",  "values": ["1", "0", ".", ".", ".", "1"]},
+    {"text": "SCLK", "values": ["0", "n", ".", ".", ".", "0"]},
+    {"text": "MOSI", "lane": "bus", "values": ["z", "C1", "C0", "x", ".", "z"]},
+    {"text": "MISO", "lane": "bus", "values": ["z", "z", "z", "D1", "D0", "z"]}
+  ],
+  "intervals": [{"from": 1, "to": 1.5, "text": "tCSS", "signal": "CS#"}]
+}
+```
+
+Each of the 1 to 12 `signals` is a lane: a `text`, and **one value per step** in `values`,
+every lane the same number of steps (40 at most). The steps are equal and are not to scale
+in seconds. What a lane draws is its `lane`:
+
+* `bit` (the default) — a level: `0`, `1`, `z` (high impedance, the middle line), `x`
+  (unknown, hatched), and the two clock pulses, `p` (high then low) and `n` (low then
+  high). A pulse puts an edge at half a step, which is how SDA falls *while* SCL is high in
+  an I²C START.
+* `bus` — a word per value, in the hexagons a datasheet draws data in; `x` and `z` are
+  reserved. A word that does not fit the steps it holds for is refused at the step it was
+  written: hold it longer with `.`, or shorten it.
+* `state` — UML's robust lifeline: the lane's `states`, top to bottom in the order written,
+  and a line stepping between them.
+
+`.` carries the step before on: a clock keeps pulsing, a level holds, a word holds without
+a new edge (the same word written again is a new word). Values are an array rather than a
+WaveDrom string so that a wrong one is refused at its own step — `/signals/2/values/7`.
+
+A `group` name on consecutive signals draws it once over them (Controller, Peripheral).
+`markers` rule one edge across every lane, named over the figure (`S`, `P`); `intervals`
+name a span between two edges with an arrow under one signal's lane (`tSU;STA`, `tBUF`) —
+both take whole or half steps. `ticks` name each step under an axis; an empty string leaves
+a step unnamed. The theme's `[timing]` section sets how steeply a bus changes word
+(`slew`) and whether every step edge is ruled (`grid`).
+
+Refused, each at its pointer: a value the lane cannot draw (a number is told to quote it:
+`"0"`); `.` on the first step; lanes of different lengths; a state not declared; duplicate
+names; a group written apart; an edge off the axis or inside a step; an interval that runs
+backwards or names no signal; `ticks` that are not one per step; and by name, `wave`,
+`data`, `period`, `time`, `duration`, `edge`. Arrows from an edge on one signal to an edge
+on another are not drawn. Budget: 12 signals, 40 steps, 6 states a lane, 8 markers, 10
+intervals. It has a text form (three rows a lane, 100 columns by default). See
+[`reference/timing-spi.json`](reference/timing-spi.json) (an SPI mode 0 read),
+[`reference/timing-i2c.json`](reference/timing-i2c.json) (START, STOP and the timings
+between) and [`reference/timing-session.json`](reference/timing-session.json) (a page
+request as states over time).
 
 ## Asking for a wide drawing instead of a tall one
 
