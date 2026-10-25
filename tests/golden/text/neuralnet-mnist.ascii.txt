@@ -1,0 +1,9 @@
+Layer          Neurons   Parameters
+-----------------------------------
+Input layer        784
+Hidden layer        15       11,775
+Output layer        10          160
+
+11,935 parameters (weights and biases).
+
+Every neuron feeds every neuron of the next layer; large layers are cut.

@@ -1,0 +1,12 @@
+#   Layer                   Type        Output shape
+----------------------------------------------------
+1   Input embedding         embedding   n x 512
+2   + Positional encoding   embedding
+3   Multi-head attention    attention
+4   Add & norm              norm
+5   Feed forward            dense
+6   Add & norm              norm        n x 512
+
+skip: 2 -> 4
+skip: 4 -> 6
+x6: layers 3-6

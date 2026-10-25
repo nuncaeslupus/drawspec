@@ -68,6 +68,7 @@ the real originals each is checked against; a built one says so in its row.
 | 39 | [`packet.md`](packet.md) | `packet`: a protocol header or a register as bit fields in rows of a fixed width under a bit ruler, fields split across rows, names fitted or keyed (RFC header diagrams, register maps) — **built**, with a text form | M | owner request (kinds from Mermaid, PlantUML, WaveDrom, D2); originals P1–P6 in the proposal |
 | 40 | [`pert.md`](pert.md) | `pert`: a project network, activity on node — ES/EF/LS/LF and float computed by a forward and backward pass, the critical path drawn heavy, PERT three-point estimates — **built** | M | owner request; course notes and the textbook exercise as originals; the layered engine and router |
 | 41 | [`automaton.md`](automaton.md) | `automaton`: finite automata as the textbooks draw them — circles, double circles for accepting, an arrow from nowhere into the start, symbols on curved arcs merged into `a, b`, ε, loops, Mealy and Moore outputs; `deterministic` checked; the transition table as text — **built**, with a text form | M | owner request (a new kind, not a `states` style); originals Wikipedia DFA, Sipser via course notes, JFLAP, Graphviz `fsm`, TikZ `automata` found by search; the layered engine |
+| 42 | [`neuralnet.md`](neuralnet.md) | `neuralnet`: a neural network's layers in two notations — `neurons` (columns of circles fully joined, large layers cut with dots, bias units, labels) and `blocks` (boxes in sequence with shapes, fills by type and a key, skip connections, repeated blocks marked ×N); a model summary with parameters as text — **built**, with a text form | L | owner request; originals Nielsen ch. 1, NN-SVG, LeNet-5, ResNet's residual block, the Transformer's Figure 1, PlotNeuralNet found by search |
 
 ## Proposed: output formats
 
@@ -111,7 +112,7 @@ self-loop geometry that `flow` then either adopts or refuses.
   `AGENTS.md`'s kind table (a test enforces it); every refusal in the proposal as a test
   with its JSON pointer; `collisions.py` and `clipping.py` clean on the references.
 * **The README's count** ("more than 30 kinds") and the `kind` enum description (now
-  "forty-six diagrams") change with every new kind.
+  "forty-seven diagrams") change with every new kind.
 
 ## Decisions for the owner
 

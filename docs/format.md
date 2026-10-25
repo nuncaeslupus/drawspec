@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-46 kinds. The machine-readable form of this page is the published
+47 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `packet`, `network`, `timing`, `gitgraph`, `railroad`, `usecase`, `wardley`, `pert`, `automaton` | **yes** | Which of the forty-six diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `packet`, `network`, `timing`, `gitgraph`, `railroad`, `usecase`, `wardley`, `pert`, `automaton`, `neuralnet` | **yes** | Which of the forty-seven diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -377,6 +377,16 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `transitions` | array of [automaton-transition](#automaton-transition-object) | no | The moves, each `from`, `to` and the symbol it reads `on` (or `epsilon`). Several between the same two states, in the same direction, are drawn as one arrow labelled `a, b`; a pair in opposite directions as two arcs bowed apart; a move from a state to itself as a loop on its circle. |
 | `deterministic` | boolean | no | `true` says this is a DFA, and has drawspec hold it to that: no ε-move, and no two moves from one state on the same symbol. A missing move is allowed — the textbooks leave the dead state out. |
 
+### `neuralnet`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `style` | string — one of `neurons`, `blocks` | no | `neurons` (the default) draws each layer as a column of circles, every neuron joined to every neuron of the next layer: the textbook's fully connected network. `blocks` draws each layer as a box in sequence, its tensor shape beside it, its fill by `type`, with `skips` and `repeats`: a paper's architecture figure. |
+| `layers` | array of [neuralnet-layer](#neuralnet-layer-object), at least 1 | **yes** | The layers, input first, 1 to 16 (at least 2 in `neurons`). Each is joined to the next in the order written. |
+| `skips` | array of [neuralnet-skip](#neuralnet-skip-object) | no | `blocks` only: connections that jump over layers — ResNet's identity shortcut, U-Net's copy — each drawn as a line bowed round the layers it bypasses, into the layer it feeds. |
+| `repeats` | array of [neuralnet-repeat](#neuralnet-repeat-object) | no | `blocks` only: runs of layers stacked several times, each drawn once inside a frame marked with how many times it stacks — the Transformer's `Nx`. Two repeats never overlap, and a skip is inside a repeat or outside it, never across its frame. |
+| `direction` | string — one of `right`, `down`, `up` | no | `blocks` only: which way the layers run — `right` (across the page), `down` or `up` (the Transformer's bottom-to-top). Left out, across, and down when across does not fit. |
+
 ### `pert`
 
 | Field | Type | Required | What it is |
@@ -479,6 +489,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `wardley` | 24 `components`, 3 `anchors`, 6 `notes` |
 | `pert` | 20 `activities` |
 | `automaton` | 12 `states`, 36 `transitions` |
+| `neuralnet` | 16 `layers`, 6 `skips`, 3 `repeats` |
 
 A `tree` with `"style": "bracket"` counts its leaves instead: 16
 leaves, a sixteen-team knockout, in place of its 15 nodes.
@@ -1067,6 +1078,35 @@ name, so a misspelt key is an error at the point it was written.
 | `on` | string | no | The input symbol the move reads: `0`, `a`, `coin`. One symbol per transition; two transitions between the same two states are drawn as one arrow labelled `a, b`. Leave it out of an empty move and write `epsilon` instead. |
 | `epsilon` | boolean | no | `true` makes this an empty move, taken without reading a symbol, labelled ε. Not with `on`, and never in a `deterministic` automaton. |
 | `output` | string | no | A Mealy machine's output on this move, drawn after its symbol as `a / 1`. Give it on every transition or none, and never with a state's `output`. |
+
+### `neuralnet-layer` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | no | A handle for this layer, unique in the document, that a `blocks` network's `skips` and `repeats` name: `conv1`, `add`. Needed only by a layer they name. |
+| `text` | string | no | The layer's name. In `neurons`, written under its column: `Input layer`, `Hidden 1`; may be left out. In `blocks`, required, and written in its box: `Conv 5x5, 6`, `Multi-head attention`. |
+| `size` | integer, greater than 0 | no | `neurons` only, and required there: how many neurons the layer holds. Up to 8 are drawn whole; a larger layer is drawn as its first three, a column of dots and its last two, with its size under it. |
+| `labels` | array of string | no | `neurons` only: a name inside each neuron, top to bottom — `x₁`, `x₂` — one per neuron, at most 4 characters each. Only on a layer drawn whole. |
+| `bias` | boolean | no | `neurons` only: `true` draws a bias unit, `+1`, above the column, joined to every neuron of the next layer. Not on the last layer, which feeds nothing. |
+| `type` | string | no | `blocks` only: what sort of layer this is — `conv`, `pool`, `dense`. Layers of one type share a fill, and a key names them; at most 4 types. |
+| `shape` | string | no | `blocks` only: the tensor the layer puts out, written beside its box in the label size: `28x28x6`, `512`. |
+
+### `neuralnet-skip` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | string | **yes** | The id of the layer whose output the connection carries. |
+| `to` | string | **yes** | The id of a later layer the connection feeds — an `add` layer for a residual connection, a `concat` for a dense one. Not the next layer: that is joined already. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `neuralnet-repeat` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | string | **yes** | The id of the first layer of the repeated block. |
+| `to` | string | **yes** | The id of the last layer of the block; the same as `from` for one. |
+| `times` | integer, greater than 1 | **yes** | How many times the block is stacked: `6`, drawn `×6` by its frame. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 
 ### `sunburst-node` object
 

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "kind": "neuralnet",
+  "style": "blocks",
+  "direction": "down",
+  "title": "A residual block",
+  "description": "He et al.'s building block: two weight layers learn F(x), and the identity shortcut adds x back before the last ReLU.",
+  "layers": [
+    {"id": "x", "text": "x", "shape": "64-d"},
+    {"text": "Conv 3×3, 64", "type": "weight"},
+    {"text": "ReLU", "type": "activation"},
+    {"text": "Conv 3×3, 64", "type": "weight"},
+    {"id": "add", "text": "Add: F(x) + x", "type": "merge"},
+    {"text": "ReLU", "type": "activation", "shape": "64-d"}
+  ],
+  "skips": [{"from": "x", "to": "add", "text": "identity"}]
+}

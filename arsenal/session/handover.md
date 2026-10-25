@@ -1,6 +1,13 @@
 # Session Handover
 
-**Date**: 2026-10-25 · **Branch**: `ccr-a4057664-aeuenr` (+ `-<kind>` branches) · **PRs**: #157–#167 (all merged)
+**Date**: 2026-10-25 · **Branch**: `ccr-35a28282-dg4nbb` · **PRs**: #157–#172 merged; neuralnet PR open
+
+## 2026-10-25 (later): neuralnet
+- Owner asked for neural-network drawings. Task t-9dddc873 / issue #174; new `neuralnet` kind, one PR (`Closes #174`).
+  - `neurons` (default): columns of circles fully joined; >8 neurons cut with dots; `labels`, `bias`.
+  - `blocks`: boxes in sequence, `shape`, fills by `type` (≤4, keyed), `skips`, `repeats` (×N), `direction` right/down/up.
+  - Text form: model summary with parameter counts. Proposal and open owner questions in `docs/proposals/neuralnet.md`.
+- Not built: AlexNet-style 3D blocks, branching (Inception) — use `flow`.
 
 ## 2026-10-25: more kinds, frame-border fix
 - #157, #161: a route's middle run no longer lies along a frame border (`routing.off_borders`); `tools/frames.py` flags "runs along the border". Fixed `flow-loops-town` (the arrow the owner reported) and `states-brand-station`.
