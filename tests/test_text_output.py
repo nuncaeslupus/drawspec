@@ -52,13 +52,17 @@ GOLDEN: Final = Path(__file__).resolve().parent / "golden" / "text"
 UPDATE: Final = bool(os.environ.get("DRAWSPEC_UPDATE_GOLDEN"))
 
 #: Reference documents that do not fit 80 columns, and the width each needs.
-#: Three sequences, and a board whose longest word is wider than a fifth of
-#: the line less the slice names. Each refuses at 80 rather than wrapping a word or running over.
+#: Three sequences, a board whose longest word is wider than a fifth of the
+#: line less the slice names, and two brackets: a sixteen-team draw's five
+#: columns of names and scores, and a two-sided draw's nine. Each refuses at 80
+#: rather than wrapping a word or running over.
 WIDER: Final = {
     "sequence-async-export": 83,
     "sequence-dns": 93,
     "sequence-drain": 85,
     "board-onboarding": 88,
+    "tree-bracket-cup": 92,
+    "tree-bracket-quiz": 141,
 }
 
 

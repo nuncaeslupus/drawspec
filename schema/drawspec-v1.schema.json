@@ -186,6 +186,23 @@
             "$ref": "#/$defs/class"
           },
           "minItems": 1
+        },
+        "style": {
+          "type": "string",
+          "description": "`boxes` (the default) ranks boxed nodes down from the root. `bracket` draws a tournament bracket or a cladogram: every leaf on one outer edge, square elbows, and each inner node unboxed — its words (a match's winner, a clade's name) on its own line, or none (`\"text\": \"\"`). An edge's `label` is written on the child's line by the elbow: a score, a trait. Every node but the root has one parent and every inner node at least two children; at most 16 leaves, and no groups, bands, classes or node roles.",
+          "enum": [
+            "boxes",
+            "bracket"
+          ]
+        },
+        "root": {
+          "type": "string",
+          "description": "Only with `\"style\": \"bracket\"`: the edge the root stands at. `left` (the default) is a cladogram's, the leaves' names in a column at the right; `right` is a tournament read left to right, the champion last; `middle` is the two-sided draw, the root's first child's half on the left and its second's on the right, the final in the middle. A bracket reads across, so there is no top or bottom.",
+          "enum": [
+            "left",
+            "right",
+            "middle"
+          ]
         }
       },
       "required": [
