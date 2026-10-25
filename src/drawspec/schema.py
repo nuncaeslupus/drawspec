@@ -15478,7 +15478,10 @@ def _neuralnet_violations(document: Mapping[str, Any]) -> list[Violation]:
                 (
                     span
                     for span in spans
-                    if (span[0] <= first + 1 <= span[1]) != (span[0] <= last <= span[1])
+                    if first + 1 <= span[1]
+                    and span[0] <= last
+                    and not (span[0] <= first + 1 and last <= span[1])
+                    and not (first + 1 <= span[0] and span[1] <= last)
                 ),
                 None,
             )

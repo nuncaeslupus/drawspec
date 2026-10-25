@@ -358,6 +358,27 @@ def test_repeats_never_overlap_and_no_skip_crosses_a_frame() -> None:
     assert pointers(inside) == []
 
 
+def test_a_skip_round_a_whole_repeat_is_drawn_outside_its_frame() -> None:
+    document = blocks(
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        repeats=[{"from": "b", "to": "d", "times": 2}],
+        skips=[{"from": "a", "to": "e"}],
+    )
+    assert pointers(document) == []
+    svg = render(document, profile="standalone")
+    assert collisions(svg) == []
+    assert clipped(svg) == []
+    scene = _scene(document)
+    frame = next(p for p in scene.primitives if isinstance(p, Rect) and p.role == "group")
+    skip = next(p for p in scene.primitives if isinstance(p, Stroke) and len(p.points) == 4)
+    assert skip.points[0][0] < frame.x
+    assert min(y for _, y in skip.points) < frame.y
+
+
 def test_at_most_four_types() -> None:
     document = blocks("a", "b", "c", "d", "e")
     for index, layer in enumerate(document["layers"]):
