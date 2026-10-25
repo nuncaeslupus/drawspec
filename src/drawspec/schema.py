@@ -11200,19 +11200,27 @@ def _usecase_violations(document: Mapping[str, Any]) -> list[Violation]:
                 )
             )
 
-    # An actor written supporting against its parent's side.
+    # An actor written supporting against the side its parent stands on — the
+    # parent's written `supporting`, or the side derived for it.
+    entries = _listed(document, "actors")
+    declared: list[tuple[str, bool | None]] = []
+    for name, index in actors.items():
+        entry = entries[index]
+        value = entry.get("supporting") if isinstance(entry, dict) else None
+        declared.append((name, value if isinstance(value, bool) else None))
+    resolved = usecase_sides(declared, landed)
+    written_of = dict(declared)
     for child, parent in parents.items():
-        entries = _listed(document, "actors")
-        child_entry = entries[actors[child]]
-        parent_entry = entries[actors[parent]]
-        written = child_entry.get("supporting") if isinstance(child_entry, dict) else None
-        theirs = parent_entry.get("supporting") if isinstance(parent_entry, dict) else None
-        if isinstance(written, bool) and isinstance(theirs, bool) and written != theirs:
+        written = written_of.get(child)
+        if written is None:
+            continue
+        theirs = resolved.get(parent, "left")
+        if ("right" if written else "left") != theirs:
             found.append(
                 Violation(
                     _pointer("actors", actors[child], "supporting"),
-                    f"{child!r} inherits from {parent!r}, so it stands on its parent's side: "
-                    "leave `supporting` out of it.",
+                    f"{child!r} inherits from {parent!r}, which stands on the {theirs}, so it "
+                    "stands there too: leave `supporting` out of it.",
                 )
             )
 

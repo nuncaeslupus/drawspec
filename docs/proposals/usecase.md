@@ -14,15 +14,15 @@ which goal* and nothing about order.
 ## The originals
 
 Found by web search on 2026-10-25 and cited as the search results gave them. The
-pages were not opened here — outbound fetches are blocked in this environment — so what
-each shows is as the search result summarised it, and is worth a look before the PR
-merges.
+pages themselves were not opened page by page, so each "what it shows" is as the search
+result described it, and the reference redraws are built from that described content
+rather than traced from the figures.
 
 | # | Original | What it shows | What it asks of the design |
 |---|---|---|---|
 | U1 | The UML specification's *Use Cases* chapter (chapter 18 of UML 2.5: [OMG, UML 2.5 Beta 1](https://www.omg.org/spec/UML/2.5/Beta1/PDF); the chapter confirmed by [issue UML25-419](https://issues.omg.org/issues/UML25-419), on 18.1.3 *Extends*) | The notation itself: actors as stick figures, use cases as ellipses, the subject as a rectangle, associations, «include» and «extend» as dashed arrows, generalisation with a hollow triangle | The four relations and nothing else; an extending use case may extend more than one, and may itself be extended — so a chain of columns |
 | U2 | Stevens and Pooley, *Using UML*, the book's figures ([homepages.inf.ed.ac.uk/perdita/book/allfigsU.pdf](https://homepages.inf.ed.ac.uk/perdita/book/allfigsU.pdf)) | A library: *BookBorrower* and *Librarian*; *Borrow copy of book* «include» *Check for reservation*; *Refuse loan* «extend» *Borrow copy of book* | Include and extend out of the same base, in opposite directions; the redraw is `usecase-library.json` |
-| U3 | PlantUML's use case documentation ([plantuml.com/en/use-case-diagram](https://plantuml.com/en/use-case-diagram)) | `:actor:`, `(use case)`, `rectangle "System" { … }` as the boundary, `-|>` for generalisation, `.>` with `<<include>>` / `<<extend>>` | The input vocabulary an author already knows: ids, a boundary that holds use cases, the keyword as the relation's only label |
+| U3 | PlantUML's use case documentation ([plantuml.com/en/use-case-diagram](https://plantuml.com/en/use-case-diagram)) | `:actor:`, `(use case)`, `rectangle "System" { … }` as the boundary, `-\|>` for generalisation, `.>` with `<<include>>` / `<<extend>>` | The input vocabulary an author already knows: ids, a boundary that holds use cases, the keyword as the relation's only label |
 | U4 | TU Delft's *Software Systems* UML tutorial ([cese.ewi.tudelft.nl/…/use-case.html](https://cese.ewi.tudelft.nl/software-systems/part-2/tutorials/uml/use-case.html)) | A course diagram with `edit ..> authenticate : <<include>>` | Authentication as the shared included use case — the ATM reference's shape |
 | U5 | Microsoft's Visual Studio 2013 UML use case diagram reference ([learn.microsoft.com](https://learn.microsoft.com/sv-se/previous-versions/visualstudio/visual-studio-2013/dd409427(v=vs.120))) | The extend arrow's head is at the extended (base) use case | `extend` is written from the extension to the base, and the arrow points at the base |
 | U6 | A tutorial on the four relationships ([creately.com](https://creately.com/blog/diagrams/use-case-diagram-relationships/)) | A descendant actor inherits its ancestor's use cases and adds its own | Actor generalisation, the specialised actor with use cases of its own |

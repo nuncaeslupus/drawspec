@@ -389,3 +389,17 @@ def test_more_actors_than_the_budget_are_refused() -> None:
         document["actors"].append({"id": f"extra{index}", "text": f"Extra {index}"})
         document["edges"].append({"from": f"extra{index}", "to": "balance"})
     assert "kind of user" in refused_at(document, f"/actors/{USECASE_ACTOR_MAX}")
+
+
+def test_a_specialised_actor_written_against_its_parents_derived_side_is_refused() -> None:
+    document = atm()
+    document["actors"].append({"id": "vip", "text": "VIP", "supporting": True})
+    document["edges"].append({"from": "vip", "to": "customer", "role": "inherits"})
+    assert "stands on the left" in refused_at(document, "/actors/2/supporting")
+
+
+def test_a_specialised_actor_written_on_its_parents_side_is_accepted() -> None:
+    document = atm()
+    document["actors"].append({"id": "vip", "text": "VIP", "supporting": False})
+    document["edges"].append({"from": "vip", "to": "customer", "role": "inherits"})
+    assert violations(document) == []
