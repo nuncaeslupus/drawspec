@@ -65,6 +65,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "rag": "workstreams or risks rated red, amber or green, in words and shapes — a status report",
     "clock": "analogue clock faces showing a time, for teaching it — quarter past, half past",
     "sunburst": "a hierarchy as concentric rings of sectors, read from the middle outward",
+    "timing": "signals over one time axis — clocks, levels, buses, states: an SPI figure",
     "gitgraph": "commits on branches over time, with forks, merges, tags and cherry-picks",
 }
 
@@ -397,6 +398,14 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "nodes": [
             {"text": "Angry", "children": [{"text": "Hurt"}, {"text": "Mad"}]},
             {"text": "Happy", "children": [{"text": "Proud"}, {"text": "Playful"}]},
+        ],
+    },
+    "timing": {
+        "version": 1,
+        "kind": "timing",
+        "signals": [
+            {"text": "CLK", "values": ["p", ".", ".", "."]},
+            {"text": "DATA", "lane": "bus", "values": ["x", "A1", "B2", "z"]},
         ],
     },
     "rag": {

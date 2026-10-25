@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from frames import border_crossings, check, frame_crossings
+from frames import border_crossings, check, frame_crossings, runs_along
 
 from drawspec.errors import FitError
 from drawspec.kinds.containers import Frame
@@ -102,6 +102,22 @@ def test_border_crossings_counts_each_pass_through_the_border(
     points: list[tuple[float, float]], expected: tuple[int, bool]
 ) -> None:
     assert border_crossings(points, FRAME) == expected
+
+
+@pytest.mark.parametrize(
+    ("points", "expected"),
+    [
+        ([(150.0, 160.0), (100.0, 160.0), (100.0, 20.0), (50.0, 20.0)], True),
+        ([(150.0, 160.0), (112.0, 160.0), (112.0, 20.0), (50.0, 20.0)], False),
+        ([(100.0, 80.0), (100.0, 20.0)], False),
+        ([(150.0, 160.0), (98.0, 160.0), (98.0, 120.0), (50.0, 120.0)], False),
+    ],
+    ids=["on-the-border", "beside-it", "endpoint-run", "past-the-corner"],
+)
+def test_runs_along_finds_a_middle_run_on_a_border(
+    points: list[tuple[float, float]], expected: bool
+) -> None:
+    assert runs_along(points, FRAME) is expected
 
 
 def test_an_edge_between_two_outside_boxes_goes_round_nested_groups() -> None:

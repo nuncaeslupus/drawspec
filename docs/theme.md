@@ -318,6 +318,15 @@ How heavy a sunburst's three structural lines are.
 |---|---|---|
 | `weights` | `[0.006, 0.0035, 0.002]` | The width of a first-ring divider and the rim, a ring boundary and the hub circle, and a division two or more rings deep — each as a share of the wheel's radius, floored at a hairline so a small wheel keeps its lines, so the structure grows heavier on a wide wheel. Heaviest first; none heavier than the one before. |
 
+### `[timing]`
+
+How a timing figure draws its edges, and whether its steps are ruled.
+
+| Key | Default | What it is |
+|---|---|---|
+| `slew` | `0.15` | How much of a step a change of word on a bus, or into and out of unknown, takes to cross — the slant of a datasheet's hexagon lanes. Capped at a few units on a wide step, so a slow bus does not look like a ramp; 0 draws the changes upright. A level's edge (a clock, a select line) is always upright. |
+| `grid` | `false` | Whether every step edge is ruled faintly down the figure, as WaveDrom does. Off by default: the clock's own edges are the ruler a datasheet reads by, and markers rule the edges that matter. |
+
 ### `[gitgraph]`
 
 What colour a git graph's branches take, if any.
