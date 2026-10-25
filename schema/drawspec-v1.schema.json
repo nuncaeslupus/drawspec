@@ -2826,6 +2826,408 @@
     },
     {
       "type": "object",
+      "title": "network",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "network"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "networks": {
+          "type": "array",
+          "description": "The networks, 1 to 6, each a horizontal bus, drawn top to bottom in the order written. Write them in the order traffic meets them — the internet, the DMZ, the internal network, storage — so a host on two neighbours sits between them.",
+          "items": {
+            "$ref": "#/$defs/network-segment"
+          },
+          "minItems": 1
+        },
+        "hosts": {
+          "type": "array",
+          "description": "The hosts, 1 to 24, each a box under its topmost network with a line to every network it is on. The columns are drawspec's: ordered so no line crosses a bus it is not on, then as few and as close to the order written as that allows.",
+          "items": {
+            "$ref": "#/$defs/network-host"
+          },
+          "minItems": 1
+        },
+        "groups": {
+          "type": "array",
+          "description": "Optional: up to 6 sets of hosts drawn on a shaded backdrop, with an optional name — a cluster, a rack, a site. No host outside a group may stand inside it.",
+          "items": {
+            "$ref": "#/$defs/network-group"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "networks",
+        "hosts"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "timing",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "timing"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "signals": {
+          "type": "array",
+          "description": "The lanes, 1 to 12, top to bottom in the order written: each a `text`, a `lane` and one value per step in `values`, every signal the same number of steps (40 at most).",
+          "items": {
+            "$ref": "#/$defs/timing-signal"
+          },
+          "minItems": 1
+        },
+        "ticks": {
+          "type": "array",
+          "description": "A name for each step, written under the figure — one per step, as many as the values; an empty string leaves a step unnamed.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "markers": {
+          "type": "array",
+          "description": "Vertical lines across every lane at an edge, up to 8, each named over the figure: a START, a sample point.",
+          "items": {
+            "$ref": "#/$defs/timing-marker"
+          }
+        },
+        "intervals": {
+          "type": "array",
+          "description": "Named spans between two edges, up to 10, each an arrow under a signal's lane: a setup time, a hold time, a timeout.",
+          "items": {
+            "$ref": "#/$defs/timing-interval"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "signals"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "gitgraph",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "gitgraph"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "branches": {
+          "type": "array",
+          "description": "The branches, 1 to 8, one lane each in the order written: the first is the trunk (`main`) and every other forks `from` another branch or a commit `id`; the lane order need not be the order the branches were made.",
+          "items": {
+            "$ref": "#/$defs/gitgraph-branch"
+          },
+          "minItems": 1
+        },
+        "steps": {
+          "type": "array",
+          "description": "The commits, 1 to 30, in the order they were made: each `on` a branch, and a merge (`merge`) or a cherry-pick (`pick`) when it is one. Lanes, spacing and the lines between commits are derived.",
+          "items": {
+            "$ref": "#/$defs/gitgraph-step"
+          },
+          "minItems": 1
+        },
+        "direction": {
+          "type": "string",
+          "description": "Which way time runs: `right` (the default) across the page, each commit's label under it; `down` the page, the labels in a column beside the lanes as `git log --graph` sets them — the one for long commit messages.",
+          "enum": [
+            "right",
+            "down"
+          ]
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "branches",
+        "steps"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "railroad",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "railroad"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "rules": {
+          "type": "array",
+          "description": "The grammar's rules, 1 to 12, drawn one under another in the order written, each a named track from entry to exit, at most 40 boxes on one track.",
+          "items": {
+            "$ref": "#/$defs/railroad-rule"
+          },
+          "minItems": 1
+        },
+        "external": {
+          "type": "array",
+          "description": "Names a `rule` box may refer to that this document does not define — rules drawn elsewhere. Every other `rule` must name one of `rules`.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "rules"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "usecase",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "usecase"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "systems": {
+          "type": "array",
+          "description": "The systems whose boundaries hold the use cases, 0 to 3, each a frame with its name in the corner, stacked down the middle in the order written. Left out, the use cases stand with no boundary.",
+          "items": {
+            "$ref": "#/$defs/usecase-system"
+          }
+        },
+        "actors": {
+          "type": "array",
+          "description": "Who or what uses the system, 1 to 8, each drawn as a stick figure with its name under it, outside every boundary: primary actors on the left, `supporting` ones on the right, a specialised actor above or below its parent. No coordinates; the order down each side is derived to keep lines from crossing.",
+          "items": {
+            "$ref": "#/$defs/usecase-actor"
+          },
+          "minItems": 1
+        },
+        "usecases": {
+          "type": "array",
+          "description": "What the actors do with the system, 1 to 15, each an ellipse inside its system's boundary. A use case that is included, that extends another or that specialises one stands a column to the right of it, three columns at most.",
+          "items": {
+            "$ref": "#/$defs/usecase-case"
+          },
+          "minItems": 1
+        },
+        "edges": {
+          "type": "array",
+          "description": "The relations, up to 30: `association` between an actor and a use case, `include` and `extend` between use cases, `inherits` between two actors or two use cases. No labels: the role says what each line is.",
+          "items": {
+            "$ref": "#/$defs/usecase-edge"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "actors",
+        "usecases",
+        "edges"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
       "title": "wardley",
       "properties": {
         "$schema": {
@@ -3974,6 +4376,72 @@
       ],
       "additionalProperties": false
     },
+    "gitgraph-branch": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The branch's name, as git spells it (`main`, `feature/login`): written at the head of its lane and named by every step on it. Unique in the document."
+        },
+        "from": {
+          "type": "string",
+          "description": "Where the branch forks: the name of another branch — it forks from that branch's latest commit at the branch's first step — or the `id` of a commit written before then. Left out, it is the first branch; the first branch itself has none."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "step",
+            "emphasis"
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "gitgraph-step": {
+      "type": "object",
+      "properties": {
+        "on": {
+          "type": "string",
+          "description": "The branch this commit is made on — one of `branches`. Steps are drawn in the order written, one place in time each."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "id": {
+          "type": "string",
+          "description": "A handle for this commit, unique in the document: what a `pick` or a branch's `from` names. Drawn as the label when there is no `text` (a short hash, `C2`)."
+        },
+        "merge": {
+          "type": "string",
+          "description": "Makes this a merge commit: the name of the branch merged into `on`, at its latest commit. The merged branch may carry on afterwards."
+        },
+        "pick": {
+          "type": "string",
+          "description": "Makes this a cherry-pick: the `id` of an earlier commit on another branch, copied onto `on`. Its label is the original's unless `text` says otherwise."
+        },
+        "tag": {
+          "type": "string",
+          "description": "A tag on this commit (`v1.0`), drawn as a tag beside it. Unique."
+        },
+        "role": {
+          "type": "string",
+          "description": "The semantic role, which the theme resolves to an appearance. Defaults to 'step'.",
+          "enum": [
+            "step",
+            "emphasis"
+          ]
+        }
+      },
+      "required": [
+        "on"
+      ],
+      "additionalProperties": false
+    },
     "group": {
       "type": "object",
       "properties": {
@@ -4425,6 +4893,101 @@
       ],
       "additionalProperties": false
     },
+    "network-attachment": {
+      "type": "object",
+      "properties": {
+        "network": {
+          "type": "string",
+          "description": "The id of a network this host is on."
+        },
+        "address": {
+          "type": "string",
+          "description": "The host's address on that network, written beside its line where it meets the bus — `.1`, `10.0.1.10`. Optional."
+        }
+      },
+      "required": [
+        "network"
+      ],
+      "additionalProperties": false
+    },
+    "network-group": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The group's name, at the top left of its backdrop. Optional."
+        },
+        "members": {
+          "type": "array",
+          "description": "The ids of the hosts drawn on this group's shaded backdrop, side by side. A host is in one group at most.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "members"
+      ],
+      "additionalProperties": false
+    },
+    "network-host": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the hosts; what a group's `members` name."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words in the host's box. Left out, the `id` is the name. A newline makes the first line a lead over a detail — `db01` over `primary`."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default box: a server, a router, a firewall, any device), `emphasis` (the host the diagram is about; at most two), `store` (a drum: a database, a storage array) or `person` (a user's machine, a client). No device icons: say what a box is in its words.",
+          "enum": [
+            "step",
+            "emphasis",
+            "store",
+            "person"
+          ]
+        },
+        "networks": {
+          "type": "array",
+          "description": "The networks this host is on, each with an optional address. A host on two or more is drawn between them, joining them — a router, a firewall, a dual-homed server. Its line may cross no bus it is not on, so the column order is drawspec's; a set of attachments no order can draw is refused.",
+          "items": {
+            "$ref": "#/$defs/network-attachment"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "id",
+        "networks"
+      ],
+      "additionalProperties": false
+    },
+    "network-segment": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the networks; what a host's attachment names."
+        },
+        "text": {
+          "type": "string",
+          "description": "The network's name, written in bold at the left of its bus. Left out, the `id` is the name."
+        },
+        "address": {
+          "type": "string",
+          "description": "The network's address, written on its bus after the name — `210.x.x.x/24`, `10.0.1.0/24`. Words, not parsed: drawspec checks nothing about it."
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
     "node": {
       "type": "object",
       "properties": {
@@ -4697,6 +5260,78 @@
       "required": [
         "text",
         "rag"
+      ],
+      "additionalProperties": false
+    },
+    "railroad-item": {
+      "type": "object",
+      "properties": {
+        "terminal": {
+          "type": "string",
+          "description": "Literal text the input must contain, drawn in a rounded box in monospace, exactly as written: a keyword, a punctuation mark, an option."
+        },
+        "rule": {
+          "type": "string",
+          "description": "The name of another rule, drawn in a square box: one of `rules`, or a name listed in `external` when it is defined elsewhere."
+        },
+        "special": {
+          "type": "string",
+          "description": "A set described in words rather than spelt out, drawn in a dashed box: `any digit 1-9`, `any character but a quote`."
+        },
+        "comment": {
+          "type": "string",
+          "description": "Words written on the track with no box, the line breaking for them — what a branch means, or a loop's separator in words. Matches nothing."
+        },
+        "seq": {
+          "type": "array",
+          "description": "Items one after another, left to right. A rule's top-level `seq` wraps onto further lines when it is wider than the canvas.",
+          "items": {
+            "$ref": "#/$defs/railroad-item"
+          },
+          "minItems": 2
+        },
+        "choice": {
+          "type": "array",
+          "description": "Alternatives, 2 to 10, stacked one under another and rejoining. The first is drawn on the main line, so put the usual one first; an empty alternative is an `optional` round the choice.",
+          "items": {
+            "$ref": "#/$defs/railroad-item"
+          },
+          "minItems": 2
+        },
+        "optional": {
+          "$ref": "#/$defs/railroad-item",
+          "description": "An item that may be left out: drawn on the line, with a bypass over it."
+        },
+        "repeat": {
+          "$ref": "#/$defs/railroad-item",
+          "description": "An item that may be repeated: drawn on the line, with a loop back under it. `min` says whether it may also be left out."
+        },
+        "separator": {
+          "$ref": "#/$defs/railroad-item",
+          "description": "With `repeat` only: what comes between repetitions, drawn on the loop — a `terminal`, `rule`, `special` or `comment`, such as `{\"terminal\": \",\"}`."
+        },
+        "min": {
+          "type": "integer",
+          "description": "With `repeat`, and required there: `1` for one or more, `0` for zero or more (the loop with a bypass over it)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "railroad-rule": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The rule's name, drawn above its track and referred to by `{\"rule\": name}` boxes. Unique in the document; one line, drawn exactly as written."
+        },
+        "expr": {
+          "$ref": "#/$defs/railroad-item",
+          "description": "What the rule matches, as one item: usually a `seq`. The track runs from an entry bar on the left to an exit bar on the right; a long top-level `seq` wraps onto further lines, a return track leading each line into the next."
+        }
+      },
+      "required": [
+        "name",
+        "expr"
       ],
       "additionalProperties": false
     },
@@ -5161,6 +5796,93 @@
       ],
       "additionalProperties": false
     },
+    "timing-interval": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "number",
+          "description": "The edge the interval starts at, in steps (whole or half), as a marker's `at`."
+        },
+        "to": {
+          "type": "number",
+          "description": "The edge it ends at, after `from`, in steps (whole or half)."
+        },
+        "text": {
+          "type": "string",
+          "description": "What the interval is, over its arrow: `tSU;STA`, `setup`, `100 ms`. A name, not a measurement drawspec makes — the steps are not to scale in time."
+        },
+        "signal": {
+          "type": "string",
+          "description": "The signal it is measured on, by its `text`: the arrow is drawn under that lane. Left out, it goes under the last lane."
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "timing-marker": {
+      "type": "object",
+      "properties": {
+        "at": {
+          "type": "number",
+          "description": "Where the marker stands, in steps from the start: `0` is the left edge, a whole number is the edge between two steps, and a half is the middle of one (where a clock pulse falls)."
+        },
+        "text": {
+          "type": "string",
+          "description": "The marker's name, over the figure: `S`, `Sr`, `P`, `sample`."
+        }
+      },
+      "required": [
+        "at"
+      ],
+      "additionalProperties": false
+    },
+    "timing-signal": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The signal's name, drawn at the left of its lane: `SCLK`, `CS#`, `User`. Unique in the figure — an interval names its signal by it."
+        },
+        "lane": {
+          "type": "string",
+          "description": "What the lane draws: `bit` (the default: levels and clock pulses), `bus` (a word per value, in the hexagon lanes of a datasheet) or `state` (a line stepping between the named `states`, UML's robust lifeline).",
+          "enum": [
+            "bit",
+            "bus",
+            "state"
+          ]
+        },
+        "values": {
+          "type": "array",
+          "description": "One string per time step, every signal the same length. A `bit` lane takes `0`, `1`, `z` (high impedance), `x` (unknown), `p` (a clock pulse, high then low) and `n` (low then high); a `bus` takes any word, with `x` and `z` reserved; a `state` lane takes one of its `states`. `.` carries the step before on: a clock keeps pulsing, a word holds without a new edge.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "states": {
+          "type": "array",
+          "description": "A `state` lane's named states, 2 to 6, top to bottom in the order written — write the busiest or highest first. Required on a `state` lane, refused elsewhere.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2
+        },
+        "group": {
+          "type": "string",
+          "description": "The name of the group this signal is in — `Controller`, `Peripheral` — drawn once over its signals. Signals in one group are written next to each other."
+        }
+      },
+      "required": [
+        "text",
+        "values"
+      ],
+      "additionalProperties": false
+    },
     "transition": {
       "type": "object",
       "properties": {
@@ -5247,6 +5969,96 @@
       "required": [
         "text",
         "amount"
+      ],
+      "additionalProperties": false
+    },
+    "usecase-actor": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the actors, use cases and systems; what a relation's `from` and `to` name."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "supporting": {
+          "type": "boolean",
+          "description": "Whether this actor is a supporting (secondary) one — a bank, a payment service, a librarian who serves the borrower: drawn on the right of the boundary, primary actors on the left. Left out, it is derived: an actor whose every use case an actor written before it already has is supporting. An actor that `inherits` stands on its parent's side."
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "usecase-case": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the actors, use cases and systems; what a relation's `from` and `to` name."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "system": {
+          "type": "string",
+          "description": "The id of the system whose boundary this use case is drawn in. Needed when there are two or more `systems`; with one it may be left out, and with none there is no boundary to name."
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "usecase-edge": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "An association's actor or use case (either way round); the base use case that `include`s; the use case that `extend`s; the specialised actor or use case that `inherits`."
+        },
+        "to": {
+          "type": "string",
+          "description": "The other end: the use case included, the use case extended, the general actor or use case inherited from."
+        },
+        "role": {
+          "type": "string",
+          "description": "`association` (the default: an actor takes part in a use case, a solid line with no head), `include` (the base always does the other: a dashed arrow «include» to it), `extend` (this one sometimes adds to the other: a dashed arrow «extend» to the base) or `inherits` (a kind of the other, actor to actor or use case to use case: a hollow triangle at the general end).",
+          "enum": [
+            "association",
+            "include",
+            "extend",
+            "inherits"
+          ]
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    },
+    "usecase-system": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the actors, use cases and systems; what a use case's `system` names."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "id",
+        "text"
       ],
       "additionalProperties": false
     },

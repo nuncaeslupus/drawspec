@@ -380,6 +380,15 @@ def _drawing(
                     f"{component.text!r} evolves to {component.evolves!r}, too near to draw an "
                     f"arrow to it on a map {width:.0f} wide. Name a place further right."
                 )
+            for key, other in dots.items():
+                if key in (component.id, _ghost(component.id)):
+                    continue
+                if _distance((other.x, other.y), (reach, dot.y), tip) < radius + DAYLIGHT:
+                    raise FitError(
+                        f"{component.text!r} evolving to {component.evolves!r} would draw its "
+                        f"arrow through {other.text!r} on the same row. Sink one of them with "
+                        f"`depth`, or name a nearer place."
+                    )
             segments.append(((reach, dot.y), tip))
             primitives.extend(
                 edge_primitives(Route("", "", EVOLVE_ROLE, ((reach, dot.y), tip)), theme)

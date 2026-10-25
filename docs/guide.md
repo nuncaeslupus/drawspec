@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Thirty-eight exist, and they fall into twenty-seven families:
+fields are legal. Forty-three exist, and they fall into thirty-two families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -174,9 +174,14 @@ fields are legal. Thirty-eight exist, and they fall into twenty-seven families:
 | Gauge | `meter` | How far one amount is along its scale: a progress bar, a fundraising thermometer, a dial with named bands, a bullet graph — alone or a few to a panel. |
 | Status | `rag` | Things rated red, amber or green: workstreams or risks a row each, the rating a word and a shape (a colour only by the theme), a trend in words and a note — a highlight report, a risk register. |
 | Time | `clock` | A time of day on an analogue face, for teaching it: two hands placed by the time, the numerals the lesson uses, the time in words under it, how long since an earlier time shaded round the face. |
-| Reasoning | `argument` | Things said for and against a claim: reasons, objections, rebuttals and evidence by stance, co-premises under one bracket (an argument map). |
-| Wheel | `sunburst` | Things nested in things, read from the middle outward: a hierarchy as concentric rings of equal-angle sectors — a wheel of emotions, a taxonomy. |
+| Wheel | `sunburst` | A hierarchy as concentric rings of sectors, read from the middle outward: a wheel of emotions, a taxonomy. |
 | Strategy | `wardley` | Things a user needs, by how visible and how evolved each is: a value chain down the page against evolution across it, genesis to commodity, with what is moving and what holds it back (a Wardley map). |
+| Signal | `timing` | What several signals are at each step of one time axis: clock and level lanes, words on a bus, named states — a datasheet's SPI or I²C figure, a UML timing diagram. |
+| History | `gitgraph` | Commits on branches over time: lanes that fork and merge, with tags and cherry-picks — a git-flow figure, a release branch, a hotfix. |
+| Network | `network` | Which hosts are on which networks: each network a bus, each host a box joined to every network it is on, an address beside each line — a DMZ, an office LAN, a three-tier deployment (nwdiag). |
+| Syntax | `railroad` | What may follow what in a language: a grammar's rules as tracks from an entry to an exit, through keywords in rounded boxes, other rules in square ones, choices, bypasses and loops — the syntax diagrams of JSON.org and SQLite, or a command line's. |
+| Use | `usecase` | Who uses a system for what: actors as stick figures outside a boundary, the use cases inside it as ellipses, «include», «extend» and generalisation between them (a UML use case diagram). |
+| Reasoning | `argument` | Things said for and against a claim: reasons, objections, rebuttals and evidence by stance, co-premises under one bracket (an argument map). |
 
 One worked document per kind lives in [`reference/`](reference), and `make
 gallery` renders all of them onto one page. That page is the fastest way to see
@@ -280,6 +285,10 @@ with that* and nothing about which way.
 | `inherits` | `entities` only: this class is a kind of that one | a hollow triangle at the general end |
 | `realizes` | `entities` only: this class implements that interface | dashed, with a hollow triangle |
 | `async` | `sequence` messages only: sent without waiting for an answer | solid, with an open head |
+
+A `usecase` diagram has a vocabulary of its own — `association`, `include`, `extend`
+and `inherits` — drawn in the roles above: an association as `link`, «include» and
+«extend» as `weak` with the keyword written beside the arrow, `inherits` as itself.
 
 Both sets are drawn, one box per role, in
 [`reference/flow-node-roles.json`](reference/flow-node-roles.json) and
@@ -429,9 +438,10 @@ drawspec render plan.json --format text --width 100 --charset ascii
 ```
 
 It is a second emitter, not a picture of the SVG: each kind lays itself out on a
-character grid from its own rows and columns. Twelve kinds have a text form —
+character grid from its own rows and columns. Sixteen kinds have a text form —
 `files`, `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`,
-`meter` in every style, and the graph kinds `flow`, `states` and `lanes` — and
+`meter` in every style, `timing`, `gitgraph` (as `git log --graph` draws it),
+`network`, `railroad`, and the graph kinds `flow`, `states` and `lanes` — and
 every other kind refuses, naming them. The kinds whose message is an area, an
 angle or a curve never get one. A `meter` `dial` is a half-circle of cells with
 its needle in the stroke nearest the amount's angle and its bands in shades
@@ -474,7 +484,7 @@ than 3 times however the graph is arranged — render those as SVG. A `tree` wit
 cross-links or groups is drawn this way too; `bands` have no text form yet.
 
 * **`--width`** is in terminal cells: 80 by default, 100 for `lanes` and `sequence`,
-  whose parties sit side by side; any width you pass wins. An East Asian wide character
+  whose parties sit side by side, and for `timing`, whose steps run across the line; any width you pass wins. An East Asian wide character
   counts two. A drawing that does not fit is **refused** at the pointer of its
   widest thing, naming the width it needs — never cut short. A label the SVG would
   wrap (a card, a note, a message) is wrapped here too, at spaces only.
@@ -2589,6 +2599,227 @@ for its numerals is a `FitError`. See [`reference/clock-quarters.json`](referenc
 (read and draw, answers hidden), [`reference/clock-roman.json`](reference/clock-roman.json)
 (Roman numerals to the minute, in words and digits) and
 [`reference/clock-journey.json`](reference/clock-journey.json) (how long between times).
+
+## A timing diagram: signals against one time axis
+
+A serial bus's datasheet draws its transfer as lanes under one time axis — the select
+line, the clock, the data out and the data back — so the edge that latches a bit lines up
+with the bit. WaveDrom, PlantUML and UML draw the same thing. That is `timing`:
+
+```json
+{
+  "version": 1,
+  "kind": "timing",
+  "signals": [
+    {"text": "CS#",  "values": ["1", "0", ".", ".", ".", "1"]},
+    {"text": "SCLK", "values": ["0", "n", ".", ".", ".", "0"]},
+    {"text": "MOSI", "lane": "bus", "values": ["z", "C1", "C0", "x", ".", "z"]},
+    {"text": "MISO", "lane": "bus", "values": ["z", "z", "z", "D1", "D0", "z"]}
+  ],
+  "intervals": [{"from": 1, "to": 1.5, "text": "tCSS", "signal": "CS#"}]
+}
+```
+
+Each of the 1 to 12 `signals` is a lane: a `text`, and **one value per step** in `values`,
+every lane the same number of steps (40 at most). The steps are equal and are not to scale
+in seconds. What a lane draws is its `lane`:
+
+* `bit` (the default) — a level: `0`, `1`, `z` (high impedance, the middle line), `x`
+  (unknown, hatched), and the two clock pulses, `p` (high then low) and `n` (low then
+  high). A pulse puts an edge at half a step, which is how SDA falls *while* SCL is high in
+  an I²C START.
+* `bus` — a word per value, in the hexagons a datasheet draws data in; `x` and `z` are
+  reserved. A word that does not fit the steps it holds for is refused at the step it was
+  written: hold it longer with `.`, or shorten it.
+* `state` — UML's robust lifeline: the lane's `states`, top to bottom in the order written,
+  and a line stepping between them.
+
+`.` carries the step before on: a clock keeps pulsing, a level holds, a word holds without
+a new edge (the same word written again is a new word). Values are an array rather than a
+WaveDrom string so that a wrong one is refused at its own step — `/signals/2/values/7`.
+
+A `group` name on consecutive signals draws it once over them (Controller, Peripheral).
+`markers` rule one edge across every lane, named over the figure (`S`, `P`); `intervals`
+name a span between two edges with an arrow under one signal's lane (`tSU;STA`, `tBUF`) —
+both take whole or half steps. `ticks` name each step under an axis; an empty string leaves
+a step unnamed. The theme's `[timing]` section sets how steeply a bus changes word
+(`slew`) and whether every step edge is ruled (`grid`).
+
+Refused, each at its pointer: a value the lane cannot draw (a number is told to quote it:
+`"0"`); `.` on the first step; lanes of different lengths; a state not declared; duplicate
+names; a group written apart; an edge off the axis or inside a step; an interval that runs
+backwards or names no signal; `ticks` that are not one per step; and by name, `wave`,
+`data`, `period`, `time`, `duration`, `edge`. Arrows from an edge on one signal to an edge
+on another are not drawn. Budget: 12 signals, 40 steps, 6 states a lane, 8 markers, 10
+intervals. It has a text form (three rows a lane, 100 columns by default). See
+[`reference/timing-spi.json`](reference/timing-spi.json) (an SPI mode 0 read),
+[`reference/timing-i2c.json`](reference/timing-i2c.json) (START, STOP and the timings
+between) and [`reference/timing-session.json`](reference/timing-session.json) (a page
+request as states over time).
+
+## A git graph: branches, merges, tags and cherry-picks
+
+The figure every Git book, branching-model post and workflow page draws — commits as
+dots on lanes, one lane per branch, a branch forking off and merging back — is
+`gitgraph`. You write the branches and the commits in the order they were made; the
+lanes, the spacing and every line between them are drawspec's:
+
+```json
+{
+  "version": 1,
+  "kind": "gitgraph",
+  "branches": [{"name": "main"}, {"name": "feature", "from": "main"}],
+  "steps": [
+    {"on": "main", "text": "Initial commit"},
+    {"on": "feature", "text": "Add the form"},
+    {"on": "main", "text": "Fix a typo"},
+    {"on": "main", "merge": "feature", "tag": "v1.0"}
+  ]
+}
+```
+
+Each of the 1 to 8 `branches` is a lane, in the order written, named at its head. The
+first is the trunk; every other forks `from` a branch — at that branch's latest commit
+when its own first step comes — or from a commit's `id`, for a fork further back. Each
+of the 1 to 30 `steps` is a commit `on` a branch, with optional `text` (the message), an
+`id` (a handle, drawn when there is no `text` — `C2`, a short hash) and a `tag`. A step
+with `merge` names the branch it merges, at that branch's latest commit; one with `pick`
+names the `id` of a commit it copies, and takes its message unless it says otherwise.
+The history is replayed as git would make it, so the parents are never written.
+
+A commit is a dot, a merge a ring round a dot, a cherry-pick a dashed ring — a copy —
+and a step or a branch that is the point of the figure (`role: emphasis`, two at most)
+a square or a heavy lane. A fork leaves its parent just after it and a merge arrives
+just before the merge commit, turning in the gap between two steps, so no line runs
+under a label. `direction` is `right` (the default: labels under the dots, for short
+messages and ids) or `down` (the messages in a column beside the lanes, as `git log
+--graph` sets them, for sentences). The theme's `[gitgraph] colours` gives each lane a
+colour for its dots and the wash behind its name; the default theme draws them in ink,
+and `accent` in colour. `--format text` draws it oldest first, as `git log --graph`
+would.
+
+Refused, each at its pointer: a step `on` a branch that does not exist; a `merge` of the
+branch into itself, of a branch with no commit yet, or of one whose latest commit is
+already merged; a merge as a branch's first commit (it would only fast-forward); a
+`pick` of an unknown or later `id`, of a merge commit, or of a commit already in the
+branch's history; a branch with no commit; a `from` on the first branch, or one that
+names neither a branch nor an `id`; duplicate names, ids or tags; `lane`, `parents`,
+`type`, `branch`, `checkout`, `date`, `colour`. Budget: 8 branches, 30 steps. A label
+whose word will not fit its step is a `FitError` — `direction: down` is the remedy. See
+[`reference/gitgraph-hotfix.json`](reference/gitgraph-hotfix.json) (Pro Git's hotfix
+and iss53), [`reference/gitgraph-gitflow.json`](reference/gitgraph-gitflow.json)
+(git-flow, down the page) and
+[`reference/gitgraph-release-branch.json`](reference/gitgraph-release-branch.json)
+(trunk-based, a fix cherry-picked to a release branch).
+
+## A network diagram: hosts on networks
+
+Documentation of a deployment draws the same picture again and again: each network a
+horizontal bar, the servers hanging off it, the ones on two networks standing between
+them. PlantUML and blockdiag call it `nwdiag`. That is `network`:
+
+```json
+{
+  "version": 1,
+  "kind": "network",
+  "networks": [
+    {"id": "dmz", "address": "210.x.x.x/24"},
+    {"id": "internal", "address": "172.x.x.x/24"}
+  ],
+  "hosts": [
+    {"id": "web01", "networks": [{"network": "dmz", "address": ".1"}, {"network": "internal", "address": ".1"}]},
+    {"id": "web02", "networks": [{"network": "dmz", "address": ".2"}, {"network": "internal", "address": ".2"}]},
+    {"id": "db01", "role": "store", "networks": [{"network": "internal"}]}
+  ]
+}
+```
+
+`networks` are drawn top to bottom in the order written, so write them in the order
+traffic meets them. A host is a box under its topmost network with a line to every network
+it is on; `text` defaults to the `id`, and an `address` on an attachment is written beside
+the line where it meets the bus. `groups` put a shaded backdrop, with an optional name,
+behind a set of `members`.
+
+**The columns are drawspec's.** A host's line may cross no network it is not on — it would
+read as attached — so a host on `dmz` and `storage` has to stand outside `internal`'s hosts.
+drawspec orders the columns so that every line stays clear, then for the fewest columns,
+the shortest bars and the order written; hosts whose spans are apart stack in one column.
+When no order keeps a line clear, the document is refused at that host: put it on the
+network in between too, or reorder `networks` so the ones it joins are neighbours.
+
+**No device icons.** A host is `step` (a box: a server, a router, a firewall), `emphasis`,
+`store` (a drum: a database) or `person` (a client); its words say what it is. A router is
+a host on two networks, and the drawing shows it joining them. Budget: 6 networks, 24
+hosts, 6 groups. It draws as text too. See
+[`reference/network-nwdiag.json`](reference/network-nwdiag.json),
+[`reference/network-three-tier.json`](reference/network-three-tier.json) and
+[`reference/network-office.json`](reference/network-office.json).
+
+## A use case diagram
+
+Who uses a system for what — the first drawing of most requirements documents, and
+the one UML calls a use case diagram. That is `usecase`:
+
+```json
+{
+  "version": 1,
+  "kind": "usecase",
+  "title": "Cash machine",
+  "systems": [{"id": "atm", "text": "ATM"}],
+  "actors": [
+    {"id": "customer", "text": "Customer"},
+    {"id": "bank", "text": "Bank", "supporting": true}
+  ],
+  "usecases": [
+    {"id": "withdraw", "text": "Withdraw cash"},
+    {"id": "pin", "text": "Authenticate with PIN"},
+    {"id": "receipt", "text": "Print receipt"}
+  ],
+  "edges": [
+    {"from": "customer", "to": "withdraw"},
+    {"from": "bank", "to": "withdraw"},
+    {"from": "withdraw", "to": "pin", "role": "include"},
+    {"from": "receipt", "to": "withdraw", "role": "extend"}
+  ]
+}
+```
+
+Each of the 1 to 8 `actors` is a stick figure with its name under it, outside every
+boundary: primary actors on the left, supporting ones on the right. `supporting: true`
+says which an actor is — a bank behind a withdrawal, a payment service, a librarian who
+serves the borrower — and left out it is derived: an actor whose every use case an actor
+written before it already has is supporting. Each of the 1 to 15 `usecases` is an
+ellipse sized to its words, inside the frame of its `system` (needed when there are two
+or more `systems`; with one it may be left out; with none there is no frame). The
+frames are a `flow` group's, their names in the corner, stacked down the middle.
+
+The `edges` are the relations, and the role says what each is, so none takes words:
+`association` (the default) joins an actor and a use case with a plain line;
+`include` (the base always does the other) and `extend` (this one sometimes adds to the
+base) are dashed arrows named «include» and «extend», drawn from the base to the
+included use case and from the extension to the base; `inherits` says an actor or a use
+case is a kind of another, with a hollow triangle at the general end. Nothing carries a
+coordinate. A use case that is included, that extends another or that specialises one
+stands a column to the right of it; a specialised actor stands straight above or below
+its parent, on its side. The orders down each band are chosen so that **no line runs
+through an ellipse, a figure, a name or a boundary it does not belong to**: every line
+is straight, and only an association that no order can clear bends once, in a gap or
+just outside its boundary. The diagram has no text form.
+
+Refused, each at its pointer: an association between two actors (they meet through the
+use cases they share) or between two use cases (say `include`, `extend` or `inherits`);
+`include` or `extend` with an actor; `inherits` between an actor and a use case; a
+system as an end; a relation to itself, or a second one between the same two; a loop of
+include, extend and inherits; a chain of more than 3 columns; an include or extend
+between two systems; an actor that takes part in nothing; a system with no use case; an
+actor that inherits from two, or from one that itself inherits; `text` or `label` on a
+relation (the keyword is the role's), `side`, `x`, `y`, `column`, `role` on an actor or a
+use case, `nodes` and `groups`. Budget: 8 actors, 15 use cases, 3 systems, 30 relations.
+See [`reference/usecase-library.json`](reference/usecase-library.json) (include, extend
+and actor generalisation), [`reference/usecase-atm.json`](reference/usecase-atm.json) (a
+supporting actor whose lines pass the included use case) and
+[`reference/usecase-checkout.json`](reference/usecase-checkout.json) (two systems, two
+specialised actors).
 
 ## A Wardley map
 

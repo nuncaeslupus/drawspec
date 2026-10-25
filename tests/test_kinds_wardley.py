@@ -188,6 +188,16 @@ def test_evolution_arrow_and_inertia_are_drawn() -> None:
     assert 'stroke-dasharray="4 3"' in svg  # the evolution arrow
 
 
+def test_an_evolution_arrow_through_another_dot_is_a_fiterror() -> None:
+    document = tea()
+    component(document, "kettle")["evolution"] = "genesis"
+    component(document, "kettle")["evolves"] = "commodity"
+    document["components"].append({"id": "pot", "text": "Pot", "evolution": "product", "depth": 3})
+    component(document, "water")["needs"].append("pot")
+    with pytest.raises(FitError, match="through 'Pot'"):
+        drawn(document)
+
+
 def test_notes_are_numbered_beside_and_under_the_map() -> None:
     svg = render(tea(notes=[{"text": "Kettles are a commodity now.", "on": ["kettle"]}]))
     assert svg.count(">1<") == 2

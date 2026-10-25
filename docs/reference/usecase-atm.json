@@ -1,0 +1,36 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "usecase",
+  "title": "Cash machine",
+  "description": "A customer's transactions all authenticate first and are confirmed by the bank; a technician keeps the machine running.",
+  "systems": [{"id": "atm", "text": "ATM"}],
+  "actors": [
+    {"id": "customer", "text": "Customer"},
+    {"id": "technician", "text": "Technician"},
+    {"id": "bank", "text": "Bank", "supporting": true}
+  ],
+  "usecases": [
+    {"id": "balance", "text": "Check balance"},
+    {"id": "withdraw", "text": "Withdraw cash"},
+    {"id": "transfer", "text": "Transfer funds"},
+    {"id": "authenticate", "text": "Authenticate with PIN"},
+    {"id": "receipt", "text": "Print receipt"},
+    {"id": "refill", "text": "Refill cash"},
+    {"id": "diagnose", "text": "Run diagnostics"}
+  ],
+  "edges": [
+    {"from": "customer", "to": "balance"},
+    {"from": "customer", "to": "withdraw"},
+    {"from": "customer", "to": "transfer"},
+    {"from": "bank", "to": "withdraw"},
+    {"from": "bank", "to": "transfer"},
+    {"from": "bank", "to": "authenticate"},
+    {"from": "balance", "to": "authenticate", "role": "include"},
+    {"from": "withdraw", "to": "authenticate", "role": "include"},
+    {"from": "transfer", "to": "authenticate", "role": "include"},
+    {"from": "receipt", "to": "withdraw", "role": "extend"},
+    {"from": "technician", "to": "refill"},
+    {"from": "technician", "to": "diagnose"}
+  ]
+}

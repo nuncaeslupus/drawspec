@@ -333,6 +333,32 @@ The words on a Wardley map's two axes.
 | `chain` | `"Value chain"` | The value-chain axis's name, beside it. |
 | `evolution` | `"Evolution"` | The evolution axis's name, at its arrow's end. |
 
+### `[network]`
+
+How a network diagram washes its buses and its groups' backdrops.
+
+| Key | Default | What it is |
+|---|---|---|
+| `bus` | `0.16` | How much ink fills a network's bus, behind its name and address. |
+| `group` | `0.07` | How much ink fills a group's backdrop, behind its hosts. Lighter than a bus, so a group reads as ground and a bus as a thing. |
+
+### `[timing]`
+
+How a timing figure draws its edges, and whether its steps are ruled.
+
+| Key | Default | What it is |
+|---|---|---|
+| `slew` | `0.15` | How much of a step a change of word on a bus, or into and out of unknown, takes to cross — the slant of a datasheet's hexagon lanes. Capped at a few units on a wide step, so a slow bus does not look like a ramp; 0 draws the changes upright. A level's edge (a clock, a select line) is always upright. |
+| `grid` | `false` | Whether every step edge is ruled faintly down the figure, as WaveDrom does. Off by default: the clock's own edges are the ruler a datasheet reads by, and markers rule the edges that matter. |
+
+### `[gitgraph]`
+
+What colour a git graph's branches take, if any.
+
+| Key | Default | What it is |
+|---|---|---|
+| `colours` | `[]` | A colour per branch, in the order the branches are written, cycling past the last; empty draws every lane in the page's ink. A lane's commits are filled with its colour and its name is set on a faint wash of it; the lines stay ink, so a lane's colour never has to carry a crossing. |
+
 ### `[argument]`
 
 How an argument map says which way a point bears: its tag and its fill.
