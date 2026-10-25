@@ -2873,7 +2873,7 @@
         },
         "branches": {
           "type": "array",
-          "description": "The branches, 1 to 8, one lane each in the order written: the first is the trunk (`main`) and every other forks `from` an earlier one.",
+          "description": "The branches, 1 to 8, one lane each in the order written: the first is the trunk (`main`) and every other forks `from` another branch or a commit `id`; the lane order need not be the order the branches were made.",
           "items": {
             "$ref": "#/$defs/gitgraph-branch"
           },

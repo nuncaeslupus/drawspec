@@ -4341,7 +4341,8 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             min_items=1,
             description=(
                 "The branches, 1 to 8, one lane each in the order written: the first is the "
-                "trunk (`main`) and every other forks `from` an earlier one."
+                "trunk (`main`) and every other forks `from` another branch or a commit `id`; "
+                "the lane order need not be the order the branches were made."
             ),
         ),
         FieldSpec(

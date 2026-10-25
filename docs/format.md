@@ -307,7 +307,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `branches` | array of [gitgraph-branch](#gitgraph-branch-object), at least 1 | **yes** | The branches, 1 to 8, one lane each in the order written: the first is the trunk (`main`) and every other forks `from` an earlier one. |
+| `branches` | array of [gitgraph-branch](#gitgraph-branch-object), at least 1 | **yes** | The branches, 1 to 8, one lane each in the order written: the first is the trunk (`main`) and every other forks `from` another branch or a commit `id`; the lane order need not be the order the branches were made. |
 | `steps` | array of [gitgraph-step](#gitgraph-step-object), at least 1 | **yes** | The commits, 1 to 30, in the order they were made: each `on` a branch, and a merge (`merge`) or a cherry-pick (`pick`) when it is one. Lanes, spacing and the lines between commits are derived. |
 | `direction` | string — one of `right`, `down` | no | Which way time runs: `right` (the default) across the page, each commit's label under it; `down` the page, the labels in a column beside the lanes as `git log --graph` sets them — the one for long commit messages. |
 

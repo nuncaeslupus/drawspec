@@ -157,6 +157,27 @@ def test_a_pick_copies_its_original_label_and_draws_a_dashed_ring() -> None:
     assert any(isinstance(p, Ellipse) and p.role == "note" for p in scene.primitives)
 
 
+def test_a_pick_of_a_pick_keeps_the_original_label() -> None:
+    document = graph(
+        branches=[
+            {"name": "main"},
+            {"name": "release", "from": "main"},
+            {"name": "support", "from": "main"},
+        ],
+        steps=[
+            {"on": "main", "text": "Start"},
+            {"on": "release", "text": "Cut"},
+            {"on": "support", "text": "Branch"},
+            {"on": "main", "id": "fix", "text": "Fix the VAT"},
+            {"on": "release", "id": "copy", "pick": "fix"},
+            {"on": "support", "pick": "copy"},
+        ],
+    )
+    assert validate_document(document) == ()
+    commits = history(parse_document(document))
+    assert commits[-1].label == "Fix the VAT"
+
+
 def test_emphasis_is_a_square_mark_and_a_heavy_lane() -> None:
     document = graph()
     document["branches"][1]["role"] = "emphasis"

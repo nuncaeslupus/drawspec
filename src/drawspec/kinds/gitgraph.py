@@ -122,8 +122,9 @@ def history(document: Document) -> list[_Commit]:
         kind = "merge" if step.merge else "pick" if step.pick else "commit"
         label = step.text or step.id
         if step.pick and not step.text:
-            original = document.git_steps[ids[step.pick]]
-            label = original.text or original.id
+            # The original's label as already worked out, so a pick of a pick
+            # still carries the first commit's words.
+            label = commits[ids[step.pick]].label
         commits.append(
             _Commit(
                 index=index,
