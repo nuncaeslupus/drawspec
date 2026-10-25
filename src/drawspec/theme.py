@@ -1571,6 +1571,42 @@ class TimingStyle:
         return cls(slew=slew, grid=grid)
 
 
+@dataclass(frozen=True)
+class GitgraphStyle:
+    """What colour a git graph's branches take, if any.
+
+    A branch is told apart by its lane and the name at the head of it, so colour
+    is never what carries; it is the convention readers of Mermaid and of the
+    git-flow figures expect, and a theme may give it, one colour per lane.
+    """
+
+    colours: tuple[str, ...] = ()
+    """A colour per branch, in the order the branches are written, cycling past the
+    last; empty draws every lane in the page's ink. A lane's commits are filled with
+    its colour and its name is set on a faint wash of it; the lines stay ink, so a
+    lane's colour never has to carry a crossing."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> GitgraphStyle:
+        _reject_unknown(mapping, ("colours",), "[gitgraph]")
+        raw = mapping.get("colours", [])
+        if not isinstance(raw, list):
+            raise ThemeError(f"[gitgraph] colours: expected an array of colours, got {raw!r}")
+        colours = tuple(_colour(entry, "[gitgraph] colours") for entry in raw)
+        if "none" in colours:
+            raise ThemeError(
+                "[gitgraph] colours: 'none' is not a colour a commit can be drawn in. Leave "
+                "`colours` out to draw every lane in the page's ink."
+            )
+        return cls(colours=colours)
+
+    def colour_for(self, lane: int) -> str:
+        """The colour of the `lane`-th branch, or empty for the page's ink."""
+        if not self.colours:
+            return ""
+        return self.colours[lane % len(self.colours)]
+
+
 #: The fills an `against` box may take: a pattern faint enough to read words over.
 ARGUMENT_FILLS: Final = ("hatch", "dots", "cross", "grid")
 
@@ -2176,6 +2212,7 @@ _TOP_LEVEL_KEYS: Final = (
     "mindmap",
     "sunburst",
     "timing",
+    "gitgraph",
     "argument",
     "familytree",
     "rag",
@@ -2217,6 +2254,7 @@ class Theme:
     mindmap: MindmapStyle = MindmapStyle()
     sunburst: SunburstStyle = SunburstStyle()
     timing: TimingStyle = TimingStyle()
+    gitgraph: GitgraphStyle = GitgraphStyle()
     argument: ArgumentStyle = ArgumentStyle()
     familytree: FamilytreeStyle = FamilytreeStyle()
     rag: RagStyle = RagStyle()
@@ -2287,6 +2325,7 @@ class Theme:
             mindmap=MindmapStyle.from_mapping(_section(mapping, "mindmap")),
             sunburst=SunburstStyle.from_mapping(_section(mapping, "sunburst")),
             timing=TimingStyle.from_mapping(_section(mapping, "timing")),
+            gitgraph=GitgraphStyle.from_mapping(_section(mapping, "gitgraph")),
             argument=ArgumentStyle.from_mapping(_section(mapping, "argument")),
             familytree=FamilytreeStyle.from_mapping(_section(mapping, "familytree")),
             rag=RagStyle.from_mapping(_section(mapping, "rag")),
@@ -2338,6 +2377,7 @@ class Theme:
             *self.mark.colours,
             *self.files.colours.values(),
             *self.rag.colours,
+            *self.gitgraph.colours,
             *self.canvas.sheet_colours,
         }
         if self.files.label_ink:

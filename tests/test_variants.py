@@ -29,6 +29,7 @@ DARK_COLOURS: dict[str, Any] = {
     },
     "edge_role": {"strong": {"stroke": "#F08A70"}, "link": {"stroke": "#A9B3BF"}},
     "mark": {"colours": ["#F08A70", "#7FB0F0", "#86C28F", "#A9B3BF", "#A9B3BF"]},
+    "gitgraph": {"colours": ["#7FB0F0", "#86C28F", "#E8C060", "#C09AE0", "#F08A70", "#A9B3BF"]},
 }
 
 FLOW: dict[str, Any] = {

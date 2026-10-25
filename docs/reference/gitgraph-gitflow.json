@@ -1,0 +1,29 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "gitgraph",
+  "title": "Git-flow: a feature, a release and a hotfix",
+  "description": "The git-flow branching model: features branch from develop and merge back, a release branch is stabilised and merged to main and develop, and a hotfix branches from main's tag. After Vincent Driessen's 'A successful Git branching model'.",
+  "direction": "down",
+  "branches": [
+    {"name": "main"},
+    {"name": "hotfix/1.0.1", "from": "main"},
+    {"name": "release/1.1", "from": "develop"},
+    {"name": "develop", "from": "main"},
+    {"name": "feature/search", "from": "develop"}
+  ],
+  "steps": [
+    {"on": "main", "text": "Initial release", "tag": "1.0"},
+    {"on": "develop", "text": "Start the 1.1 cycle"},
+    {"on": "feature/search", "text": "Add a search box to the header"},
+    {"on": "hotfix/1.0.1", "text": "Fix the crash on an empty basket", "role": "emphasis"},
+    {"on": "feature/search", "text": "Rank results by relevance"},
+    {"on": "main", "merge": "hotfix/1.0.1", "text": "Merge hotfix 1.0.1", "tag": "1.0.1"},
+    {"on": "develop", "merge": "hotfix/1.0.1", "text": "Bring the fix into develop"},
+    {"on": "develop", "merge": "feature/search", "text": "Merge feature/search"},
+    {"on": "release/1.1", "text": "Bump the version to 1.1"},
+    {"on": "release/1.1", "text": "Fix a typo in the release notes"},
+    {"on": "main", "merge": "release/1.1", "text": "Release 1.1", "tag": "1.1"},
+    {"on": "develop", "merge": "release/1.1", "text": "Back-merge the release fixes"}
+  ]
+}

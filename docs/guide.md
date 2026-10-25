@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Thirty-eight exist, and they fall into twenty-five families:
+fields are legal. Thirty-nine exist, and they fall into twenty-six families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -176,6 +176,7 @@ fields are legal. Thirty-eight exist, and they fall into twenty-five families:
 | Time | `clock` | A time of day on an analogue face, for teaching it: two hands placed by the time, the numerals the lesson uses, the time in words under it, how long since an earlier time shaded round the face. |
 | Wheel | `sunburst` | A hierarchy as concentric rings of sectors, read from the middle outward: a wheel of emotions, a taxonomy. |
 | Signal | `timing` | What several signals are at each step of one time axis: clock and level lanes, words on a bus, named states — a datasheet's SPI or I²C figure, a UML timing diagram. |
+| History | `gitgraph` | Commits on branches over time: lanes that fork and merge, with tags and cherry-picks — a git-flow figure, a release branch, a hotfix. |
 | Reasoning | `argument` | Things said for and against a claim: reasons, objections, rebuttals and evidence by stance, co-premises under one bracket (an argument map). |
 
 One worked document per kind lives in [`reference/`](reference), and `make
@@ -429,9 +430,9 @@ drawspec render plan.json --format text --width 100 --charset ascii
 ```
 
 It is a second emitter, not a picture of the SVG: each kind lays itself out on a
-character grid from its own rows and columns. Thirteen kinds have a text form —
+character grid from its own rows and columns. Fourteen kinds have a text form —
 `files`, `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`,
-`meter` in every style, `timing`, and the graph kinds `flow`, `states` and `lanes` — and
+`meter` in every style, `timing`, `gitgraph` (as `git log --graph` draws it), and the graph kinds `flow`, `states` and `lanes` — and
 every other kind refuses, naming them. The kinds whose message is an area, an
 angle or a curve never get one. A `meter` `dial` is a half-circle of cells with
 its needle in the stroke nearest the amount's angle and its bands in shades
@@ -2646,6 +2647,61 @@ intervals. It has a text form (three rows a lane, 100 columns by default). See
 [`reference/timing-i2c.json`](reference/timing-i2c.json) (START, STOP and the timings
 between) and [`reference/timing-session.json`](reference/timing-session.json) (a page
 request as states over time).
+
+## A git graph: branches, merges, tags and cherry-picks
+
+The figure every Git book, branching-model post and workflow page draws — commits as
+dots on lanes, one lane per branch, a branch forking off and merging back — is
+`gitgraph`. You write the branches and the commits in the order they were made; the
+lanes, the spacing and every line between them are drawspec's:
+
+```json
+{
+  "version": 1,
+  "kind": "gitgraph",
+  "branches": [{"name": "main"}, {"name": "feature", "from": "main"}],
+  "steps": [
+    {"on": "main", "text": "Initial commit"},
+    {"on": "feature", "text": "Add the form"},
+    {"on": "main", "text": "Fix a typo"},
+    {"on": "main", "merge": "feature", "tag": "v1.0"}
+  ]
+}
+```
+
+Each of the 1 to 8 `branches` is a lane, in the order written, named at its head. The
+first is the trunk; every other forks `from` a branch — at that branch's latest commit
+when its own first step comes — or from a commit's `id`, for a fork further back. Each
+of the 1 to 30 `steps` is a commit `on` a branch, with optional `text` (the message), an
+`id` (a handle, drawn when there is no `text` — `C2`, a short hash) and a `tag`. A step
+with `merge` names the branch it merges, at that branch's latest commit; one with `pick`
+names the `id` of a commit it copies, and takes its message unless it says otherwise.
+The history is replayed as git would make it, so the parents are never written.
+
+A commit is a dot, a merge a ring round a dot, a cherry-pick a dashed ring — a copy —
+and a step or a branch that is the point of the figure (`role: emphasis`, two at most)
+a square or a heavy lane. A fork leaves its parent just after it and a merge arrives
+just before the merge commit, turning in the gap between two steps, so no line runs
+under a label. `direction` is `right` (the default: labels under the dots, for short
+messages and ids) or `down` (the messages in a column beside the lanes, as `git log
+--graph` sets them, for sentences). The theme's `[gitgraph] colours` gives each lane a
+colour for its dots and the wash behind its name; the default theme draws them in ink,
+and `accent` in colour. `--format text` draws it oldest first, as `git log --graph`
+would.
+
+Refused, each at its pointer: a step `on` a branch that does not exist; a `merge` of the
+branch into itself, of a branch with no commit yet, or of one whose latest commit is
+already merged; a merge as a branch's first commit (it would only fast-forward); a
+`pick` of an unknown or later `id`, of a merge commit, or of a commit already in the
+branch's history; a branch with no commit; a `from` on the first branch, or one that
+names neither a branch nor an `id`; duplicate names, ids or tags; `lane`, `parents`,
+`type`, `branch`, `checkout`, `date`, `colour`. Budget: 8 branches, 30 steps. A label
+whose word will not fit its step is a `FitError` — `direction: down` is the remedy. See
+[`reference/gitgraph-hotfix.json`](reference/gitgraph-hotfix.json) (Pro Git's hotfix
+and iss53), [`reference/gitgraph-gitflow.json`](reference/gitgraph-gitflow.json)
+(git-flow, down the page) and
+[`reference/gitgraph-release-branch.json`](reference/gitgraph-release-branch.json)
+(trunk-based, a fix cherry-picked to a release branch).
 
 ## Asking for a wide drawing instead of a tall one
 
