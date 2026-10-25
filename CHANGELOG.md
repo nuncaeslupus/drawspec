@@ -40,6 +40,21 @@ against it would stop working. Everything below is about the *package*.
   an unnamed leaf, groups, bands, classes and any node role but `"step"`. Three reference documents and
   `docs/proposals/tree-bracket.md`.
 
+- **A `packet` kind.** A protocol header or a hardware register as bit fields in rows of
+  8, 16, 32 (the default) or 64 bits, under a bit ruler: an RFC header, a datasheet's
+  register map. The input is the fields in reading order, each with its width in `bits` —
+  no positions. A field that crosses a row's end is split there, its cut edges dashed;
+  `numbering` puts bit 0 at the left (`left`, the RFC convention, one ruler) or at the
+  right (`right`, a register counting down from the top left, a ruler per row). A name too
+  long for its field is broken onto two lines, replaced by the author's `short`, stood on
+  its side (the RFC 793 flags) or keyed by a letter — never shrunk, never abbreviated by
+  drawspec; `holds` writes a value, a reset value or an access under the name; `note`s and
+  everything a cell could not say go to a key under the drawing. `reserved` fields are
+  hatched (`[packet] reserved_fill`), `emphasis` ones outlined heavier. Up to 40 fields and
+  16 rows. It has a text form, two columns a bit, that is the RFC's own ASCII picture
+  (`+-+-+` in ASCII, box drawing in unicode). References: the IPv4 and TCP headers, an AVR
+  status register, a RISC-V instruction format, and an 802.1Q-tagged Ethernet header.
+
 - **A `railroad` kind.** A grammar's rules as syntax (railroad) diagrams, as JSON.org and
   SQLite draw them: each rule a track from an entry bar to an exit bar through terminals
   (rounded, monospace), rule references (square) and described sets (`special`, dashed),

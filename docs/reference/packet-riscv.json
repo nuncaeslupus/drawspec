@@ -1,0 +1,16 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "packet",
+  "title": "RISC-V I-type instruction",
+  "description": "The I-type instruction format of the RISC-V base integer ISA, bit 31 at the left as the specification draws it, with the encoding of ADDI.",
+  "caption": "After the RISC-V Unprivileged ISA, the base instruction formats. The fields hold ADDI's encoding.",
+  "numbering": "right",
+  "fields": [
+    {"text": "imm[11:0]", "bits": 12, "holds": "immediate", "note": "Sign-extended to the register's width."},
+    {"text": "rs1", "bits": 5, "holds": "source"},
+    {"text": "funct3", "bits": 3, "holds": "000"},
+    {"text": "rd", "bits": 5, "holds": "dest"},
+    {"text": "opcode", "bits": 7, "holds": "0010011", "role": "emphasis"}
+  ]
+}

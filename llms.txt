@@ -1,7 +1,7 @@
 # drawspec
 
 > A declarative diagram format and renderer: you write a JSON document that says
-> what a diagram means, and drawspec decides every coordinate. Forty-three diagram
+> what a diagram means, and drawspec decides every coordinate. Forty-four diagram
 > kinds, themeable SVG output, no system dependencies. Built so that a language
 > model can produce correct diagrams without placing anything.
 
@@ -24,7 +24,7 @@ by name with a JSON pointer, so those mistakes cannot be expressed.
 - [The command line](docs/cli.md): every command, argument and exit code —
   including `render --format text`, the diagram as plain text for a terminal or a
   code block (`files`, `tree` and its bracket style, `sequence`, `gantt`, `timeline`, `board`, `stack`,
-  `rag`, `meter`, `timing`, `gitgraph`, `network`, `railroad`, `flow`, `states`,
+  `rag`, `meter`, `packet`, `timing`, `gitgraph`, `network`, `railroad`, `flow`, `states`,
   `lanes`, `pert`).
 - [The theme reference](docs/theme.md): every key a theme may set.
 - [JSON Schema](schema/drawspec-v1.schema.json): published, versioned, and the

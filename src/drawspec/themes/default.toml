@@ -288,6 +288,11 @@ grid = false
 # colour fills the lane's commit dots and washes its name; the lines stay ink.
 colours = []
 
+[packet]
+# The pattern a reserved field of a header or a register is filled with, faint so
+# its name reads over it: the datasheet's greyed-out bits, said without colour.
+reserved_fill = "hatch"
+
 [pert]
 # Whether a project network carries a key under it: one box with each cell named
 # (ES, Dur, EF over the activity; LS, Float, LF under it), the unit the durations

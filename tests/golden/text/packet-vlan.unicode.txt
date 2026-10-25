@@ -1,0 +1,22 @@
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+┌───────────────────────────────────────────────────────────────┐
+│                    Destination MAC Address                    ┆
+├───────────────────────────────┬───────────────────────────────┤
+┆    Destination MAC Address    │      Source MAC Address       ┆
+├───────────────────────────────┴───────────────────────────────┤
+┆                      Source MAC Address                       │
+├───────────────────────────────┬─────┬─┬───────────────────────┤
+│    Tag Protocol Identifier    │     │D│                       │
+│            0x8100             │ PCP │E│    VLAN Identifier    │
+│                               │     │I│                       │
+├───────────────────────────────┼─────┴─┴───────────────────────┘
+│           EtherType           │
+│            0x0800             │
+└───────────────────────────────┘
+
+PCP        Priority Code Point
+DEI        Drop Eligible
+EtherType  The payload's protocol: 0x0800 is IPv4.
+
+The 4-byte tag sits between the source address and the EtherType.

@@ -71,6 +71,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "gitgraph": "commits on branches over time, with forks, merges, tags and cherry-picks",
     "railroad": "a grammar's rules as syntax diagrams — tracks through keywords, choices and loops",
     "usecase": "who uses a system for what — UML actors, use cases, «include» and «extend»",
+    "packet": "a protocol header or a register as bit fields in rows, under a bit ruler",
     "pert": "a project network of activities, the schedule and critical path computed",
 }
 
@@ -416,6 +417,16 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             }
         ],
         "external": ["item"],
+    },
+    "packet": {
+        "version": 1,
+        "kind": "packet",
+        "bits_per_row": 16,
+        "fields": [
+            {"text": "Enable", "short": "EN", "bits": 1},
+            {"text": "Mode", "bits": 3},
+            {"text": "Count", "bits": 12},
+        ],
     },
     "pert": {
         "version": 1,

@@ -33,6 +33,7 @@ from drawspec.kinds.meter import meter_scene, meter_text
 from drawspec.kinds.mindmap import mindmap_scene
 from drawspec.kinds.network import network_scene, network_text
 from drawspec.kinds.numberline import numberline_scene
+from drawspec.kinds.packet import packet_scene, packet_text
 from drawspec.kinds.pert import pert_scene, pert_text
 from drawspec.kinds.pie import pie_scene
 from drawspec.kinds.rag import rag_scene, rag_text
@@ -66,6 +67,7 @@ from drawspec.schema import (
     MINDMAP_KINDS,
     NETWORK_KINDS,
     NUMBERLINE_KINDS,
+    PACKET_KINDS,
     PERT_KINDS,
     PIE_KINDS,
     RAG_KINDS,
@@ -120,6 +122,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *GITGRAPH_KINDS,
     *RAILROAD_KINDS,
     *USECASE_KINDS,
+    *PACKET_KINDS,
     *PERT_KINDS,
     "cycle",
 )
@@ -144,6 +147,7 @@ TEXT_FORMS: Final[dict[str, Callable[[Document, int, str], str]]] = {
     "timing": timing_text,
     "gitgraph": gitgraph_text,
     "railroad": railroad_text,
+    "packet": packet_text,
     "flow": graph_text,
     "states": graph_text,
     "lanes": graph_text,
@@ -236,6 +240,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return railroad_scene(document, theme, measurer)
     if document.kind in USECASE_KINDS:
         return usecase_scene(document, theme, measurer)
+    if document.kind in PACKET_KINDS:
+        return packet_scene(document, theme, measurer)
     if document.kind in PERT_KINDS:
         return pert_scene(document, theme, measurer)
     if document.kind == "cycle":
@@ -276,6 +282,7 @@ __all__ = [
     "network_scene",
     "numberline_scene",
     "outline",
+    "packet_scene",
     "pert_scene",
     "pie_scene",
     "rag_scene",
