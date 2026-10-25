@@ -43,6 +43,7 @@ from typing import Any, Final
 from drawspec.cli import OK, REFUSED, USAGE, build_parser
 from drawspec.emit import PROFILES
 from drawspec.schema import (
+    BRACKET_LEAVES_MAX,
     COMMON_FIELDS,
     DOCUMENT_VERSION,
     EMPHASIS_CAP,
@@ -316,6 +317,9 @@ def format_markdown() -> str:
                 for kind in KINDS
             ),
         ),
+        "",
+        f'A `tree` with `"style": "bracket"` counts its leaves instead: {BRACKET_LEAVES_MAX}',
+        "leaves, a sixteen-team knockout, in place of its 15 nodes.",
         "",
         "## Emphasis",
         "",

@@ -126,7 +126,7 @@ The ranking is by value to the widest set of readers first, then by smallest siz
 | 3 | Causal loop diagram | feature: `flow` + `polarity`/`delay`/`loops` | M | S | [`flow-loops.md`](../proposals/flow-loops.md) |
 | 4 | Argument map | new kind `argument` | M | M | [`argument.md`](../proposals/argument.md) |
 | 5 | Pedigree / family tree | new kind `pedigree` | M | L | [`familytree.md`](../proposals/familytree.md) |
-| 6 | Cladogram / bracket | feature: `tree` bracket style | M | S | — |
+| 6 | Cladogram / bracket | feature: `tree` bracket style | M | S | [`tree-bracket.md`](../proposals/tree-bracket.md) (built) |
 | 7 | Bar model | new kind `bars` | M | M | — (scope question 5) |
 | 8 | Waterfall | feature: `chart` `bridge` | M | S | — (already deferred; scope question 4) |
 | 9 | Service blueprint | feature: `lanes` + `lines` | S | S | — |

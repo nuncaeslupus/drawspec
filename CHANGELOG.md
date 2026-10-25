@@ -12,6 +12,18 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`tree` + `"style": "bracket"`: tournament brackets and cladograms.** Every leaf stands
+  on one outer edge, an inner node as far from it as its deepest leaf, joined by square
+  elbows; nodes are lines, not boxes. A node's words sit on its own line (a team, a
+  match's winner, a clade), an inner node may be unnamed (`"text": ""`), and an edge's
+  `label` is written by the elbow (a score, a trait); `strong` edges are drawn heavy.
+  `root` puts the root at the `left` (a cladogram, names past the tips), the `right` (a
+  tournament read left to right) or in the `middle` (a two-sided draw). Up to 16 leaves,
+  in place of a boxed tree's 15 nodes. `--format text` draws it too, in box-drawing
+  characters. Refused at their pointers: a second parent, a cycle, a node of one child,
+  an unnamed leaf, groups, bands, classes and any node role but `"step"`. Three reference documents and
+  `docs/proposals/tree-bracket.md`.
+
 - **A `railroad` kind.** A grammar's rules as syntax (railroad) diagrams, as JSON.org and
   SQLite draw them: each rule a track from an entry bar to an exit bar through terminals
   (rounded, monospace), rule references (square) and described sets (`special`, dashed),
