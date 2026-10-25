@@ -871,3 +871,13 @@ def test_every_run_on_a_border_moves_off_it_not_only_the_first() -> None:
     assert _runs_on_border(route, FRAME) == [1, 4]
     (moved,) = off_borders((route,), (FRAME,), (s, t), THEME)
     assert _runs_on_border(moved, FRAME) == []
+
+
+def test_a_shift_that_lays_a_neighbouring_run_along_a_border_is_refused() -> None:
+    s = Obstacle("s", 400.0, -15.0, 40.0, 30.0)
+    t = Obstacle("t", 200.0, 185.0, 40.0, 30.0)
+    wall = Obstacle("wall", 306.0, 50.0, 80.0, 100.0)
+    route = Route("s", "t", "flow", ((400.0, 0.0), (302.0, 0.0), (302.0, 200.0), (240.0, 200.0)))
+    (moved,) = off_borders((route,), (FRAME,), (s, t, wall), THEME)
+    first, second = moved.points[:2]
+    assert not (first[1] == second[1] == FRAME.y and min(first[0], second[0]) < FRAME.right)
