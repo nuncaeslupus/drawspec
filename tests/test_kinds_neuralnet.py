@@ -144,6 +144,14 @@ def test_a_large_layer_is_drawn_as_its_ends_with_dots_and_its_size() -> None:
     assert "784 neurons" in words
 
 
+def test_an_arrow_comes_into_each_input_and_leaves_each_output() -> None:
+    document = network(3, 4, 2)
+    document["layers"][0]["bias"] = True
+    _, _, marks, _, _ = neurons_drawing(parse_document(document), THEME, MEASURER)
+    arrows = [mark for mark in marks if isinstance(mark, Stroke) and mark.role == "flow"]
+    assert len(arrows) == 3 + 2  # the bias unit takes no input
+
+
 def test_lines_end_on_the_circles() -> None:
     neurons, links, _, _, _ = neurons_drawing(parse_document(network(2, 2)), THEME, MEASURER)
     radius = neurons[0].r
@@ -400,3 +408,111 @@ def test_a_field_an_author_reaches_for_is_refused_with_the_reason(field: str, wo
 def test_the_budget() -> None:
     document = blocks(*(f"l{index}" for index in range(NEURALNET_LAYER_MAX + 1)))
     assert pointers(document) == [f"/layers/{NEURALNET_LAYER_MAX}"]
+
+
+# -- branches -------------------------------------------------------------------
+
+
+def inception(**extra: Any) -> dict[str, Any]:
+    document: dict[str, Any] = {
+        "version": 1,
+        "kind": "neuralnet",
+        "style": "blocks",
+        "layers": [
+            {"id": "in", "text": "Input"},
+            {
+                "branches": [
+                    {"layers": [{"text": "first"}]},
+                    {"layers": [{"text": "1x1"}, {"text": "3x3"}]},
+                ]
+            },
+            {"id": "cat", "text": "Concat"},
+        ],
+    }
+    document.update(extra)
+    return document
+
+
+@pytest.mark.parametrize("direction", ["right", "down", "up"])
+def test_branches_render_clean_each_way(direction: str) -> None:
+    document = inception(direction=direction)
+    assert validate_document(document) == ()
+    svg = render(document, profile="standalone")
+    assert collisions(svg) == []
+    assert clipped(svg) == []
+
+
+def test_every_tower_is_fed_by_the_layer_before_and_feeds_the_layer_after() -> None:
+    scene = _scene(inception())
+    strokes = [p for p in scene.primitives if isinstance(p, Stroke)]
+    # Two fan-out lines, two joining lines, and one arrow inside the longer tower.
+    assert len(strokes) == 5
+
+
+def test_running_down_the_first_branch_is_on_the_left() -> None:
+    scene = _scene(inception(direction="down"))
+    lines = {line.spans[0].text: line.x for line in scene.primitives if hasattr(line, "spans")}
+    assert lines["first"] < lines["1x1"]
+
+
+def test_a_skip_may_go_round_a_set_of_branches() -> None:
+    document = inception(skips=[{"from": "in", "to": "cat"}])
+    document["layers"].append({"text": "After"})
+    document["skips"] = [{"from": "in", "to": "cat"}]
+    assert validate_document(document) == ()
+    assert collisions(render(document, profile="standalone")) == []
+
+
+def test_branches_are_numbered_in_the_text_form() -> None:
+    text = render_text(parse_document(inception()))
+    marks = [line.split()[0] for line in text.splitlines()[2:] if line.strip()]
+    assert marks == ["1", "2a", "2b1", "2b2", "3"]
+
+
+def test_branches_are_never_first_last_or_twice_in_a_row() -> None:
+    document = inception()
+    document["layers"] = document["layers"][1:]
+    assert pointers(document) == ["/layers/0/branches"]
+    twice = inception()
+    twice["layers"].insert(2, twice["layers"][1])
+    assert pointers(twice) == ["/layers/2/branches"]
+
+
+def test_a_set_of_branches_holds_branches_alone() -> None:
+    document = inception()
+    document["layers"][1]["text"] = "Inception"
+    assert pointers(document) == ["/layers/1/text"]
+    assert "joins them" in messages(document)
+
+
+def test_a_tower_layer_has_a_text_and_a_type_only() -> None:
+    document = inception()
+    tower = document["layers"][1]["branches"][1]["layers"]
+    tower[0]["id"] = "inner"
+    tower[1]["shape"] = "3"
+    assert sorted(pointers(document)) == [
+        "/layers/1/branches/1/layers/0/id",
+        "/layers/1/branches/1/layers/1/shape",
+    ]
+
+
+def test_branches_never_nest() -> None:
+    document = inception()
+    inner = {"branches": [{"layers": [{"text": "a"}]}, {"layers": [{"text": "b"}]}]}
+    document["layers"][1]["branches"][0]["layers"][0].update(inner)
+    assert pointers(document) == ["/layers/1/branches/0/layers/0/branches"]
+
+
+def test_branch_and_tower_limits() -> None:
+    document = inception()
+    document["layers"][1]["branches"] = [{"layers": [{"text": f"t{n}"}]} for n in range(5)]
+    assert pointers(document) == ["/layers/1/branches/4"]
+    tall = inception()
+    tall["layers"][1]["branches"][0]["layers"] = [{"text": f"l{n}"} for n in range(4)]
+    assert pointers(tall) == ["/layers/1/branches/0/layers/3"]
+
+
+def test_branches_are_refused_in_neurons() -> None:
+    document = network(2, 1)
+    document["layers"][0]["branches"] = [{"layers": [{"text": "a"}]}, {"layers": [{"text": "b"}]}]
+    assert pointers(document) == ["/layers/0/branches"]

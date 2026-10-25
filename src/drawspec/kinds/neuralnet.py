@@ -7,6 +7,7 @@ joined by a plain line to every neuron of the next layer. A layer larger than
 and its last two, joined like the rest, with its size written under its name —
 the 784 inputs of an MNIST network, as every textbook draws them. A bias unit is
 a circle marked `+1` at the top of its column, feeding the next layer only.
+An arrow comes into each input neuron and leaves each output neuron.
 
 **`blocks`** is a paper's architecture figure (LeNet, ResNet, the Transformer,
 PlotNeuralNet): each layer a box in sequence, an arrow from each to the next,
@@ -14,8 +15,11 @@ its output tensor written beside it, its fill taken by `type` with a key under
 the drawing. A skip connection leaves the top of its layer (the right side, when
 the network runs down or up), runs clear of every box and frame it bypasses, and
 comes back into the layer it feeds. A repeated block is drawn once, inside a frame
-marked `xN`. Nothing is placed by an engine: a sequence is a line, so the
-coordinates are computed along it and across it, then turned to the direction.
+marked `xN`. A set of branches (GoogLeNet's Inception module) is two to four
+towers stacked across the sequence, the arrow from the layer before splitting to
+each and every tower joining into the layer after. Nothing is placed by an
+engine: a sequence is a line, so the coordinates are computed along it and across
+it, then turned to the direction.
 
 The text form is a model summary: in `neurons`, a row per layer with its neurons
 and its parameters (weights and biases, computed); in `blocks`, a row per layer
@@ -76,6 +80,9 @@ COLUMN_MAX: Final = 150.0
 """The least and the most between two columns' centres; between the two, the
 columns spread to the canvas."""
 
+STUB: Final = 20.0
+"""How far the arrow into each input neuron, and out of each output neuron, reaches."""
+
 DOT: Final = 1.4
 """A dot's radius, in a cut layer's column of three."""
 
@@ -93,6 +100,12 @@ LANE_GAP: Final = 10.0
 
 FRAME_PAD: Final = 8.0
 """Between a repeated block's frame and what it holds."""
+
+TOWER_GAP: Final = 12.0
+"""Between two branches' towers, side by side."""
+
+FAN: Final = 10.0
+"""What a gap that splits into branches, or joins them, adds for the turn of its lines."""
 
 BLOCK_SHARE: Final = 0.3
 """The widest a block's box may be, as a share of the canvas."""
@@ -194,7 +207,8 @@ def neurons_drawing(
         + [(first + second) / 2 + NAME_GAP * unit for first, second in pairwise(spans)]
     )
     canvas = document.width if document.width else theme.canvas.width
-    left, right = spans[0] / 2, spans[-1] / 2
+    reach = radius + STUB * unit
+    left, right = max(spans[0] / 2, reach), max(spans[-1] / 2, reach)
     count = len(layers)
     gap = 0.0
     if count > 1:
@@ -258,7 +272,17 @@ def neurons_drawing(
                     )
                 )
 
+    # What goes in and what comes out, as Nielsen draws it: an arrow into each input
+    # neuron and one out of each output neuron. A bias unit takes no input.
     marks: list[Primitive] = list(dots)
+    if len(columns) > 1:
+        for neuron in columns[0]:
+            if neuron.index >= 0:
+                stub = ((neuron.cx - reach, neuron.cy), (neuron.cx - radius, neuron.cy))
+                marks.extend(edge_primitives(Route("", "", FLOW_ROLE, stub), theme))
+        for neuron in columns[-1]:
+            stub = ((neuron.cx + radius, neuron.cy), (neuron.cx + reach, neuron.cy))
+            marks.extend(edge_primitives(Route("", "", FLOW_ROLE, stub), theme))
     height = tallest * pitch
     has_names = any(names)
     has_notes = any(notes)
@@ -372,27 +396,61 @@ def _blocks_in(
     small = theme.scale["label"]
     across = direction == "right"
     limit = canvas * BLOCK_SHARE
-    if wrap:
-        arrows = (len(layers) - 1) * ARROW_MIN * unit
-        limit = min(limit, max((canvas - arrows) / len(layers), 0.0))
-    boxes = [
-        size_box(
-            layer.text,
-            theme=theme,
-            measurer=measurer,
-            role=BLOCK_ROLE,
-            max_width=limit,
+    head = theme.head_length_for(FLOW_ROLE)
+    inner = max(ARROW_MIN * unit, head + 12 * unit)  # the arrow between two boxes
+    # Every box drawn, a tower's included: (layer, its item, its tower or -1).
+    drawn = [
+        (part, index, tower)
+        for index, layer in enumerate(layers)
+        for tower, part in (
+            [(-1, layer)]
+            if not layer.branches
+            else [(tower, part) for tower, branch in enumerate(layer.branches) for part in branch]
         )
-        for layer in layers
+    ]
+    if wrap:
+        count = sum(max(map(len, layer.branches)) if layer.branches else 1 for layer in layers)
+        arrows = (count - 1) * ARROW_MIN * unit
+        limit = min(limit, max((canvas - arrows) / count, 0.0))
+    sized = [
+        size_box(part.text, theme=theme, measurer=measurer, role=BLOCK_ROLE, max_width=limit)
+        for part, _, _ in drawn
     ]
     if across:
-        tallest = max(box.height for box in boxes)
-        boxes = [box.resized(height=tallest) for box in boxes]
+        tallest = max(box.height for box in sized)
+        sized = [box.resized(height=tallest) for box in sized]
     else:
-        boxes = list(normalise(boxes))
-    # Each box's extent along the sequence and across it.
-    along = [box.width if across else box.height for box in boxes]
-    thick = [box.height if across else box.width for box in boxes]
+        sized = list(normalise(sized))
+
+    def run(box: Box) -> float:
+        return box.width if across else box.height
+
+    def depth(box: Box) -> float:
+        return box.height if across else box.width
+
+    # Each item's extent along the sequence and across it: a layer's box, or a set
+    # of branches' towers stacked across the sequence, as long as the longest.
+    along: list[float] = []
+    thick: list[float] = []
+    towers: dict[int, list[list[tuple[NeuralLayer, Box, float]]]] = {}
+    for index, layer in enumerate(layers):
+        mine = [
+            (part, box, tower)
+            for (part, item, tower), box in zip(drawn, sized, strict=True)
+            if item == index
+        ]
+        if not layer.branches:
+            along.append(run(mine[0][1]))
+            thick.append(depth(mine[0][1]))
+            continue
+        stacks: list[list[tuple[NeuralLayer, Box, float]]] = [[] for _ in layer.branches]
+        for part, box, tower in mine:
+            offset = sum(run(other) + inner for _, other, _ in stacks[tower])
+            stacks[tower].append((part, box, offset))
+        towers[index] = stacks
+        along.append(max(stack[-1][2] + run(stack[-1][1]) for stack in stacks))
+        side = max(depth(box) for _, box, _ in mine)
+        thick.append(len(stacks) * side + (len(stacks) - 1) * TOWER_GAP * unit)
     label_line = measurer.measure("", sans, small)
     label_height = label_line.ascent + label_line.descent
 
@@ -406,7 +464,7 @@ def _blocks_in(
     repeats = [(ids[span.source], ids[span.target], span) for span in document.neural_repeats]
     skips = [(ids[span.source], ids[span.target], span) for span in document.neural_skips]
     pad = FRAME_PAD * unit
-    head = theme.head_length_for(FLOW_ROLE)
+    fan = FAN * unit
 
     # Along the sequence: each gap holds an arrow, the overhang of the shapes on
     # either side when they lie along it, and the padding of a frame it enters or
@@ -415,16 +473,19 @@ def _blocks_in(
     lead = pad + head
     starts = {first for first, _, _ in repeats}
     ends = {last for _, last, _ in repeats}
+    # A frame that opens on a set of branches holds a skip's branch point and the
+    # turn of the split as well.
+    leads = {first: lead + (fan if first in towers else 0.0) for first in starts}
     positions = [0.0]
     for index in range(1, len(layers)):
-        gap = max(ARROW_MIN * unit, head + 12 * unit)
+        gap = inner + fan * ((index in towers) + (index - 1 in towers))
         if across:
             overhang = (
                 max(shapes[index - 1][0] - along[index - 1], 0) / 2
                 + max(shapes[index][0] - along[index], 0) / 2
             )
             gap = max(gap, overhang + LABEL_GAP * unit)
-        gap += pad * (index - 1 in ends) + lead * (index in starts)
+        gap += pad * (index - 1 in ends) + leads.get(index, 0.0)
         positions.append(positions[-1] + along[index - 1] + gap)
     centres = [position + size / 2 for position, size in zip(positions, along, strict=True)]
 
@@ -464,16 +525,29 @@ def _blocks_in(
     # Where each skip branches: mid-arrow, or just inside a frame the arrow enters
     # when the skip is inside it. Where it lands: spread over its box's edge, the
     # longer skips on the later side, so no lane runs across another's riser.
+    def split(index: int) -> float:
+        """Where the arrow into the set of branches at `index` turns to each tower."""
+        return positions[index] - head - 8 * unit
+
+    def join(index: int) -> float:
+        """Where the towers of the set at `index - 1` turn to join at `index`."""
+        return positions[index] - leads.get(index, 0.0) - head - 8 * unit
+
     branches: dict[int, float] = {}
     for index, (first, last, _) in enumerate(skips):
         start, end = positions[first] + along[first], positions[first + 1]
         if first in ends:
             start += pad
         inside = any(begin == first + 1 and last <= stop for begin, stop, _ in repeats)
-        if inside:
+        if inside and first + 1 in towers:
+            branches[index] = end - leads[first + 1] + pad / 2
+        elif inside:
             branches[index] = end - head - pad / 2
         else:
-            branches[index] = (start + end - (lead if first + 1 in starts else 0.0)) / 2
+            end -= leads.get(first + 1, 0.0)
+            if first + 1 in towers and first + 1 not in starts:
+                end = split(first + 1)
+            branches[index] = (start + end) / 2
     ports: dict[int, float] = {}
     for place in range(len(layers)):
         arriving = sorted(
@@ -494,24 +568,55 @@ def _blocks_in(
         (x0, y0), (x1, y1) = turned(u0, v0), turned(u1, v1)
         return (min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
 
-    placed: list[Box] = []
-    for index, box in enumerate(boxes):
-        left, top, _, _ = rect(
-            positions[index], positions[index] + along[index], -thick[index] / 2, thick[index] / 2
-        )
-        placed.append(box.moved_to(left, top))
+    def middle_of(index: int, tower: int) -> float:
+        """A tower's centre across the sequence: the first branch at the top, or the left."""
+        count = len(towers[index])
+        side = (thick[index] - (count - 1) * TOWER_GAP * unit) / count
+        place = tower if across else count - 1 - tower  # down the page v runs right to left
+        return -thick[index] / 2 + side / 2 + place * (side + TOWER_GAP * unit)
 
+    placed: list[tuple[NeuralLayer, Box]] = []
     strokes: list[tuple[str, tuple[Point, ...]]] = []
-    for index in range(1, len(layers)):
-        strokes.append(
-            (
-                FLOW_ROLE,
-                (
-                    turned(positions[index - 1] + along[index - 1], 0.0),
-                    turned(positions[index], 0.0),
-                ),
+
+    def arrow(*points: tuple[float, float]) -> None:
+        kept = [points[0], *(b for a, b in pairwise(points) if b != a)]
+        strokes.append((FLOW_ROLE, tuple(turned(u, v) for u, v in kept)))
+
+    for index, layer in enumerate(layers):
+        if index not in towers:
+            box = sized[[item for _, item, _ in drawn].index(index)]
+            left, top, _, _ = rect(
+                positions[index],
+                positions[index] + along[index],
+                -thick[index] / 2,
+                thick[index] / 2,
             )
-        )
+            placed.append((layer, box.moved_to(left, top)))
+            continue
+        for tower, stack in enumerate(towers[index]):
+            v = middle_of(index, tower)
+            for (part, box, offset), after in zip(stack, [*stack[1:], None], strict=True):
+                u = positions[index] + offset
+                left, top, _, _ = rect(u, u + run(box), v - depth(box) / 2, v + depth(box) / 2)
+                placed.append((part, box.moved_to(left, top)))
+                if after is not None:
+                    arrow((u + run(box), v), (positions[index] + after[2], v))
+
+    for index in range(1, len(layers)):
+        out, into = positions[index - 1] + along[index - 1], positions[index]
+        if index in towers:
+            turn = split(index)
+            for tower in range(len(towers[index])):
+                v = middle_of(index, tower)
+                arrow((out, 0.0), (turn, 0.0), (turn, v), (into, v))
+        elif index - 1 in towers:
+            turn = join(index)
+            for tower, stack in enumerate(towers[index - 1]):
+                v = middle_of(index - 1, tower)
+                end = positions[index - 1] + stack[-1][2] + run(stack[-1][1])
+                arrow((end, v), (turn, v), (turn, 0.0), (into, 0.0))
+        else:
+            arrow((out, 0.0), (into, 0.0))
     for index, (_, last, _) in enumerate(skips):
         lane = lane_of[index]
         out, back = branches[index], ports[index]
@@ -582,7 +687,9 @@ def _blocks_in(
     frames: list[Bounds] = []
     for index, (first, last, span) in enumerate(repeats):
         low, high = frame_of[index]
-        frames.append(rect(positions[first] - lead, positions[last] + along[last] + pad, low, high))
+        frames.append(
+            rect(positions[first] - leads[first], positions[last] + along[last] + pad, low, high)
+        )
         label(
             repeat_mark(span.times, span.text),
             (positions[first] + positions[last] + along[last]) / 2,
@@ -592,14 +699,14 @@ def _blocks_in(
 
     # The key of the types, under the drawing.
     types: list[str] = []
-    for layer in layers:
-        if layer.type and layer.type not in types:
-            types.append(layer.type)
+    for part, _, _ in drawn:
+        if part.type and part.type not in types:
+            types.append(part.type)
     fills = {kind: theme.classes.fill_for(index) for index, kind in enumerate(types)}
 
     xs: list[float] = []
     ys: list[float] = []
-    for box in placed:
+    for _, box in placed:
         xs += [box.x, box.x + box.width]
         ys += [box.y, box.y + box.height]
     for bounds in [*frames, *(text.bounds for text in texts)]:
@@ -629,7 +736,7 @@ def _blocks_in(
         primitives.extend(
             edge_primitives(Route("", "", role, tuple(moved(point) for point in points)), theme)
         )
-    for layer, box in zip(layers, placed, strict=True):
+    for layer, box in placed:
         box = box.moved_to(box.x + dx, box.y + dy)
         parts = box_primitives(box, theme, measurer)
         if layer.type:
@@ -676,7 +783,8 @@ def neuralnet_text(document: Document, width: int, charset: str) -> str:
 
     `neurons`: each layer's name, its neurons (`+ bias` when a bias unit is drawn)
     and its parameters, fully connected to the layer before — weights and biases —
-    then the total. `blocks`: each layer's number, name, type and output shape, then
+    then the total. `blocks`: each layer's number, name, type and output shape (a
+    branch's layers numbered `3a`, `3b1`, `3b2`), then
     a line per skip (`2 → 4`, by row number) and per repeated block (`x6: layers 3-6`).
 
     Raises:
@@ -690,23 +798,39 @@ def neuralnet_text(document: Document, width: int, charset: str) -> str:
         for index, layer in enumerate(layers)
     ]
     rows: list[list[str]]
+    where: list[tuple[str, str]]  # each row's pointer and name, for a refusal
     right: set[int]
     if blocks:
+        # A set of branches is a row per layer of each tower, numbered `3a`, `3b1`, `3b2`.
+        entries: list[tuple[str, NeuralLayer, str]] = []
+        for index, layer in enumerate(layers):
+            if not layer.branches:
+                entries.append((str(index + 1), layer, f"/layers/{index}"))
+                continue
+            for tower, branch in enumerate(layer.branches):
+                for step, part in enumerate(branch):
+                    mark = f"{index + 1}{chr(ord('a') + tower)}"
+                    if len(branch) > 1:
+                        mark += str(step + 1)
+                    entries.append((mark, part, f"/layers/{index}/branches/{tower}/layers/{step}"))
         heads = ["#", "Layer"]
-        typed = any(layer.type for layer in layers)
-        shaped = any(layer.shape for layer in layers)
+        typed = any(part.type for _, part, _ in entries)
+        shaped = any(part.shape for _, part, _ in entries)
         if typed:
             heads.append("Type")
         if shaped:
             heads.append("Output shape")
         rows = []
-        for index, layer in enumerate(layers):
-            row = [str(index + 1), names[index]]
+        where = []
+        for mark, part, pointer in entries:
+            name = spelt(part.text, charset, f"{pointer}/text")
+            row = [mark, name]
             if typed:
-                row.append(spelt(layer.type, charset, f"/layers/{index}/type"))
+                row.append(spelt(part.type, charset, f"{pointer}/type"))
             if shaped:
-                row.append(spelt(layer.shape, charset, f"/layers/{index}/shape"))
+                row.append(spelt(part.shape, charset, f"{pointer}/shape"))
             rows.append(row)
+            where.append((pointer, name))
         right = {0}
     else:
         heads = ["Layer", "Neurons", "Parameters"]
@@ -719,6 +843,7 @@ def neuralnet_text(document: Document, width: int, charset: str) -> str:
             ]
             for index, layer in enumerate(layers)
         ]
+        where = [(f"/layers/{index}", name) for index, name in enumerate(names)]
         right = {1, 2}
     sizes = [max(cells(row[column]) for row in [heads, *rows]) for column in range(len(heads))]
     rule = TEXT_RULE[charset]
@@ -734,8 +859,8 @@ def neuralnet_text(document: Document, width: int, charset: str) -> str:
 
     lines: list[Drawn] = [Drawn(drawn(heads), "/layers", "the heading")]
     lines.append(Drawn(rule * max(cells(drawn(row).rstrip()) for row in [heads, *rows])))
-    for index, row in enumerate(rows):
-        lines.append(Drawn(drawn(row), f"/layers/{index}", f"the row of {names[index]!r}"))
+    for row, (pointer, name) in zip(rows, where, strict=True):
+        lines.append(Drawn(drawn(row), pointer, f"the row of {name!r}"))
     if not blocks and len(layers) > 1:
         total = sum(parameters(layers))
         lines.append(Drawn(""))

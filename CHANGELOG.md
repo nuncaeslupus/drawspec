@@ -12,6 +12,14 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`neuralnet`: Inception branches, and arrows in and out.** In `blocks`, an entry
+  `{"branches": [{"layers": [...]}, ...]}` draws two to four parallel towers of one to
+  three layers, split from the layer before and joined by the layer after —
+  GoogLeNet's Inception module (a new reference). Refused with the reason: branches
+  first or last, two sets in a row, nesting, a tower layer with an `id` or `shape`,
+  and more than four branches or three layers in one. The text form numbers a
+  branch's layers `2a`, `2b1`, `2b2`. In `neurons`, an arrow now comes into each
+  input neuron and leaves each output neuron, as Nielsen draws them.
 - **A `neuralnet` kind.** A neural network's layers, in the two notations most figures
   use. `neurons` (the default) is the textbook's fully connected figure (Nielsen,
   NN-SVG's FCNN style): each layer a column of circles centred on the others, every

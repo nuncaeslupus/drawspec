@@ -16,8 +16,9 @@ of a network, in order — at two zoom levels. So one kind, two styles:
 
 Not built, and why: AlexNet-style 3D blocks (a picture of tensor volumes, whose sizes
 the reader cannot compare: the 2D strip says the same in words), and arbitrary
-branching (Inception's towers, an encoder–decoder's cross-attention): a graph of
-operators is a `flow`, which already routes one.
+branching (an encoder–decoder's cross-attention, branches inside branches): a graph of
+operators is a `flow`, which already routes one. Inception's towers were added later at
+the owner's request — see the answers below.
 
 ## The originals
 
@@ -75,9 +76,17 @@ said of each is what the search results and their excerpts show.
   parameters are computed (weights and biases of each fully connected layer).
 * **Budget**: 16 layers, 6 skips, 3 repeats.
 
-## Questions for the owner
+## Owner answers (task `t-0327828e`, issue #176)
 
-* Should `neurons` draw arrows into the inputs and out of the outputs (Nielsen draws
-  an output arrow; NN-SVG draws none)? Not drawn now.
-* Should `blocks` gain branches (two parallel paths joined by a `concat`)? Refused now;
-  a `flow` draws it.
+* **Arrows in and out: yes.** `neurons` draws an arrow into each input neuron (not a
+  bias unit) and out of each output neuron.
+* **Branches: yes, as Inception needs them**, and other branching may stay refused.
+  An entry `{"branches": [{"layers": [...]}, ...]}` draws 2–4 towers of 1–3 layers
+  between the layer before (the split) and the layer after (the join), as GoogLeNet's
+  Figure 2(b) (Szegedy et al., 2015, "Going deeper with convolutions": previous layer;
+  1×1 conv; 1×1 then 3×3; 1×1 then 5×5; 3×3 max pool then 1×1; filter concatenation —
+  from the paper's well-known figure, not opened from this session). This is
+  `docs/reference/neuralnet-inception.json`. Still refused, each with the reason:
+  branches first or last (nothing to split from or join at), two sets in a row,
+  nesting, more than 4 branches or 3 layers in one, and ids or shapes inside a tower.
+  A skip may still go round a set of branches (Inception-ResNet's shortcut).

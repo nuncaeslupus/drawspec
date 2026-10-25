@@ -103,6 +103,7 @@ MORE_GOLDENS: Final = (
     "automaton-moore-parity",
     "neuralnet-lenet",
     "neuralnet-transformer-encoder",
+    "neuralnet-inception",
 )
 
 CHARSETS: Final = ("unicode", "ascii")
@@ -195,6 +196,12 @@ def _labels(document: Document) -> list[str]:
         found += [move.output for move in document.automaton_transitions]
     elif document.kind == "neuralnet":
         found += [layer.text for layer in document.neural_layers]
+        found += [
+            part.text
+            for layer in document.neural_layers
+            for branch in layer.branches
+            for part in branch
+        ]
         found += [layer.type for layer in document.neural_layers]
         found += [layer.shape for layer in document.neural_layers]
     found.append(document.caption)

@@ -5386,6 +5386,23 @@
       ],
       "additionalProperties": false
     },
+    "neuralnet-branch": {
+      "type": "object",
+      "properties": {
+        "layers": {
+          "type": "array",
+          "description": "The branch's layers in order, 1 to 3, each with its `text` and `type` only: drawn as a tower beside the other branches.",
+          "items": {
+            "$ref": "#/$defs/neuralnet-tower-layer"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "layers"
+      ],
+      "additionalProperties": false
+    },
     "neuralnet-layer": {
       "type": "object",
       "properties": {
@@ -5420,6 +5437,14 @@
         "shape": {
           "type": "string",
           "description": "`blocks` only: the tensor the layer puts out, written beside its box in the label size: `28x28x6`, `512`."
+        },
+        "branches": {
+          "type": "array",
+          "description": "`blocks` only: in place of a layer, 2 to 4 parallel branches, each a tower of layers, split from the layer before and joined by the layer after (a `concat`) — GoogLeNet's Inception module. Such an entry holds `branches` alone; never first or last, and never two in a row.",
+          "items": {
+            "$ref": "#/$defs/neuralnet-branch"
+          },
+          "minItems": 2
         }
       },
       "additionalProperties": false
@@ -5471,6 +5496,23 @@
       "required": [
         "from",
         "to"
+      ],
+      "additionalProperties": false
+    },
+    "neuralnet-tower-layer": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "What the layer is, written in its box: `1x1 conv`, `3x3 max pool`."
+        },
+        "type": {
+          "type": "string",
+          "description": "What sort of layer this is, sharing a fill and the key with the rest."
+        }
+      },
+      "required": [
+        "text"
       ],
       "additionalProperties": false
     },
