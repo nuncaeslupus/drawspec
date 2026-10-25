@@ -33,8 +33,9 @@ against it would stop working. Everything below is about the *package*.
   elbows; nodes are lines, not boxes. A node's words sit on its own line (a team, a
   match's winner, a clade), an inner node may be unnamed (`"text": ""`), and an edge's
   `label` is written by the elbow (a score, a trait); `strong` edges are drawn heavy.
-  `root` puts the root at the `left` (a cladogram, names past the tips), the `right` (a
-  tournament read left to right) or in the `middle` (a two-sided draw). Up to 16 leaves,
+  `root` puts the root at the `right` (the default: a tournament read left to right, the
+  final on the right), the `left` (a cladogram, names past the tips) or in the `middle`
+  (a two-sided draw). Up to 16 leaves,
   in place of a boxed tree's 15 nodes. `--format text` draws it too, in box-drawing
   characters. Refused at their pointers: a second parent, a cycle, a node of one child,
   an unnamed leaf, groups, bands, classes and any node role but `"step"`. Three reference documents and
@@ -76,9 +77,12 @@ against it would stop working. Everything below is about the *package*.
   per-attachment address (`.1`) beside the line where it meets the bus. A host on two
   networks stands between them and joins them. The input has no coordinates — `networks`,
   `hosts` with their attachments, optional `groups` drawn as a shaded backdrop — and the
-  column order is derived so that no line crosses a bus it is not on (a document where no
-  order manages it is refused at the host), then for the fewest columns, the shortest
-  buses and the order written; hosts whose spans are apart stack in one column. Host roles
+  column order is derived so that no line crosses a bus it is not on, then for the fewest
+  columns, the shortest buses and the order written; hosts whose spans are apart stack in
+  one column. Where no order keeps a line clear, the line *hops* that bus — a half circle
+  over the bar, the wiring diagram's mark for a crossing that does not join — rather than
+  the document being refused, and the order with the fewest hops wins; the text form
+  breaks the bus round the line (`━╸│╺━`, against a join's `━┿━`). Host roles
   reuse the existing shapes (`store` a drum, `person` a client, `emphasis`), with no
   device icons. A `[network]` theme section sets the bus and group washes. It has a text
   form (`--format text`): buses as heavy rules, the same columns. Up to 6 networks, 24
@@ -108,7 +112,10 @@ against it would stop working. Everything below is about the *package*.
   a dot, a merge a ring round one, a cherry-pick a dashed ring, an emphasised commit a
   square; a fork turns just after its parent and a merge just before its commit, between
   two steps. `direction: right` (labels under the dots) or `down` (messages in a column).
-  A `[gitgraph] colours` theme key colours the lanes' dots and names (`accent` sets one).
+  A `[gitgraph] colours` theme key colours the lanes' dots and names, on by default (six
+  mid-tones legible on a light and a dark page; the lines and words stay ink). `accent`
+  sets its own, `blueprint` and any ground they do not read on draw the lanes in ink,
+  and `colours = []` turns them off.
   `--format text` draws it as `git log --graph` would. Budget: 8 branches, 30 steps.
 - **A `sunburst` kind.** A hierarchy drawn as concentric rings of sectors, each label read
   from the middle outward: a wheel of emotions, a taxonomy. The input is just a tree of

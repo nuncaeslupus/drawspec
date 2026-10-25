@@ -2,9 +2,11 @@
 
 The kind's promises: networks are drawn top to bottom in the order written; a host
 is a box under its topmost network with a line to every network it is on, and no
-line crosses a bus it is not on; hosts whose spans are apart share a column; an
-address sits beside its line; a group's backdrop holds only its members; and what
-cannot be drawn that way is refused at its pointer before any layout runs.
+line crosses a bus it is not on when any order allows it — where none does, the
+line hops the bus, and the order with the fewest hops wins; hosts whose spans are
+apart share a column; an address sits beside its line; a group's backdrop holds
+only its members; and what cannot be drawn that way is refused at its pointer
+before any layout runs.
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ from drawspec import render, render_text
 from drawspec.buses import arrange
 from drawspec.errors import FitError, ThemeError
 from drawspec.kinds.network import NetworkDrawing, network_drawing
+from drawspec.scene import Path as ScenePath
 from drawspec.scene import TextLine
 from drawspec.schema import NETWORK_HOST_MAX, parse_document, validate_document
 from drawspec.text import TextMeasurer
@@ -67,6 +70,18 @@ def violations(document: dict[str, Any]) -> dict[str, str]:
     return {violation.pointer: violation.message for violation in validate_document(document)}
 
 
+def tangled() -> dict[str, Any]:
+    """Five networks no column order lets every line stand clear of: one hop."""
+    return diagram(
+        networks=[{"id": name} for name in ("n0", "n1", "n2", "n3", "n4")],
+        hosts=[
+            {"id": "a", "networks": attach("n1", "n3")},
+            {"id": "b", "networks": attach("n1", "n2", "n4")},
+            {"id": "c", "networks": attach("n0", "n2", "n3")},
+        ],
+    )
+
+
 def no_line_crosses_a_foreign_bus(document: dict[str, Any], drawing: NetworkDrawing) -> None:
     on = {host["id"]: {item["network"] for item in host["networks"]} for host in document["hosts"]}
     for host, x, top, bottom in drawing.lines:
@@ -88,7 +103,9 @@ def test_every_reference_validates_renders_and_keeps_its_lines_clear(path: Path)
     document = json.loads(path.read_text(encoding="utf-8"))
     assert validate_document(document) == ()
     assert render(document).startswith("<svg")
-    no_line_crosses_a_foreign_bus(document, drawn(document))
+    drawing = drawn(document)
+    no_line_crosses_a_foreign_bus(document, drawing)
+    assert drawing.hops == ()
 
 
 # -- the layout ---------------------------------------------------------------
@@ -136,7 +153,10 @@ def test_a_host_that_skips_a_network_stands_outside_its_bus() -> None:
         ],
     )
     assert validate_document(document) == ()
-    no_line_crosses_a_foreign_bus(document, drawn(document))
+    drawing = drawn(document)
+    no_line_crosses_a_foreign_bus(document, drawing)
+    # An order with no hop exists, so it is the one drawn.
+    assert drawing.hops == () and drawing.arrangement.crossings == ()
 
 
 def test_hosts_whose_spans_are_apart_share_a_column() -> None:
@@ -192,20 +212,65 @@ def test_too_many_hosts_for_the_canvas_is_a_fit_error() -> None:
 # -- refusals -----------------------------------------------------------------
 
 
-def test_a_line_no_order_keeps_clear_is_refused_at_the_host() -> None:
-    names = ["n0", "n1", "n2", "n3", "n4"]
-    document = diagram(
-        networks=[{"id": name} for name in names],
-        hosts=[
-            {"id": "a", "networks": attach("n1", "n3")},
-            {"id": "b", "networks": attach("n1", "n2", "n4")},
-            {"id": "c", "networks": attach("n0", "n2", "n3")},
-        ],
+def test_a_line_no_order_keeps_clear_is_drawn_with_a_hop_not_refused() -> None:
+    document = tangled()
+    assert validate_document(document) == ()
+    assert render(document).startswith("<svg")
+    drawing = drawn(document)
+    # Every order needs one hop at least, and the one drawn needs no more.
+    assert len(drawing.arrangement.crossings) == 1
+    assert [(host, network) for host, network, _ in drawing.hops] == [("b", "n3")]
+
+
+def test_the_hop_is_drawn_where_the_line_crosses_the_bus() -> None:
+    drawing = drawn(tangled())
+    ((host, network, (x0, y0, x1, y1)),) = drawing.hops
+    bus = drawing.buses[network]
+    line_x = next(x for name, x, _, _ in drawing.lines if name == host)
+    # The half circle starts on the line, bulges right, and clears the bar above and below.
+    assert x0 == pytest.approx(line_x) and x1 > x0
+    assert bus[0] <= x0 and x1 <= bus[2]
+    assert y0 < bus[1] and bus[3] < y1
+    # The straight lengths of the line stop at the hop: none touches the bar.
+    lengths = [(top, bottom) for name, x, top, bottom in drawing.lines if name == host]
+    assert any(bottom == pytest.approx(y0) for _, bottom in lengths)
+    assert any(top == pytest.approx(y1) for top, _ in lengths)
+    no_line_crosses_a_foreign_bus(tangled(), drawing)
+    # And the scene holds the curve: a path of the line's that bends out to x1.
+    paths = [p for p in drawing.scene.primitives if isinstance(p, ScenePath)]
+    assert any(
+        any(abs(px - x1) < 1e-6 for px, _ in path.points)
+        and any(abs(px - x0) < 1e-6 for px, _ in path.points)
+        for path in paths
     )
-    found = violations(document)
-    pointer = next(pointer for pointer in found if pointer.startswith("/hosts/"))
-    assert pointer.endswith("/networks")
-    assert "which it is not on" in found[pointer]
+
+
+def test_a_bus_name_is_set_clear_of_a_hop_over_it() -> None:
+    # A name long enough to run over the hop, were it set at the bus's left end.
+    name = "storage network for the backups"
+    document = tangled()
+    document["networks"][3]["text"] = name
+    drawing = drawn(document)
+    ((_, network, (x0, _, x1, _)),) = drawing.hops
+    bus = drawing.buses[network]
+    (line,) = (
+        primitive
+        for primitive in drawing.scene.primitives
+        if isinstance(primitive, TextLine) and primitive.spans[0].text == name
+    )
+    wide = MEASURER.measure(name, line.spans[0].font, THEME.scale["body"]).width
+    assert bus[1] < line.y < bus[3]
+    assert line.x > x1 or line.x + wide < x0
+    assert line.x + wide < bus[2]
+
+
+def test_an_order_without_a_hop_is_preferred_and_hops_are_fewest() -> None:
+    # Written so the first order hops: `skip` between the two hosts on `b`.
+    arrangement = arrange(3, [[1], [0, 2], [1], [0]])
+    assert arrangement.crossings == ()
+    # Where every order hops, the fewest hops win.
+    tangle = [[1, 3], [1, 2, 4], [0, 2, 3]]
+    assert len(arrange(5, tangle).crossings) == 1
 
 
 def test_unknown_networks_and_members_are_refused_with_a_suggestion() -> None:
@@ -271,6 +336,15 @@ def test_the_theme_sets_the_washes_and_refuses_a_dark_one() -> None:
         load_theme({"version": 1, "network": {"bus": 0.9}})
     with pytest.raises(ThemeError):
         load_theme({"version": 1, "network": {"shade": 0.1}})
+
+
+def test_the_text_form_draws_a_hop_as_a_gap_not_a_junction() -> None:
+    text = render_text(parse_document(tangled()))
+    row = next(line for line in text.splitlines() if line.startswith("n3"))
+    assert "╸│╺" in row and "┿" not in row
+    ascii_text = render_text(parse_document(tangled()), charset="ascii")
+    row = next(line for line in ascii_text.splitlines() if line.startswith("n3"))
+    assert "= | =" in row
 
 
 def test_the_text_form_draws_buses_hosts_and_addresses() -> None:

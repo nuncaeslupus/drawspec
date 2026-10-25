@@ -85,9 +85,10 @@ not a figure).
   elbow is square. Its words sit on that line at its own end. An edge's `label` sits on
   the child's line by the elbow: the score in that match, or the trait a lineage gained.
   An inner node's `text` may be `""`: a bare junction, a cladogram's ancestor.
-* **`root`** — `left` (the default, the cladogram's way round: a short root at the left,
-  the names in one column past the tips), `right` (a tournament read left to right, the
-  champion's line at the end, each name on its line), or `middle` (the two-sided draw:
+* **`root`** — `right` (the default, since a bracket is most often a draw: a tournament
+  read left to right, the champion's line at the end, each name on its line), `left` (the
+  cladogram's way round: a short root at the left, the names in one column past the
+  tips), or `middle` (the two-sided draw:
   the root's first child's half on the left, its second mirrored on the right, the root's
   words over a short stub where they meet). **No top or bottom**: a bracket reads
   across, a row per leaf, and turning it would need the names rotated or wrapped.

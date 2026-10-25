@@ -65,6 +65,7 @@ def cladogram(**extra: Any) -> dict[str, Any]:
         "version": 1,
         "kind": "tree",
         "style": "bracket",
+        "root": "left",
         "nodes": [
             {"id": "root", "text": ""},
             {"id": "x", "text": ""},
@@ -127,6 +128,18 @@ def test_a_tournament_reads_left_to_right_to_the_champion() -> None:
     # The root's line runs on to the right of its elbow: the champion's.
     assert drawing.lines["final"][1][0] > final
     assert "final" in drawing.words
+
+
+def test_a_bracket_with_no_root_is_a_tournament_with_the_final_on_the_right() -> None:
+    """A bracket is most often a draw, so `root` defaults to `right`."""
+    unsaid = knockout()
+    del unsaid["root"]
+    assert parse_document(unsaid).bracket_root == "right"
+    assert drawn(unsaid).lines == drawn(knockout()).lines
+    plain = cladogram()
+    del plain["root"]
+    drawing = drawn(plain)
+    assert drawing.lines["root"][0][0] > drawing.lines["fish"][0][0]
 
 
 def test_a_cladogram_puts_the_root_left_and_the_names_past_the_tips() -> None:

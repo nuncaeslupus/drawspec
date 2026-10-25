@@ -7,10 +7,15 @@ two networks stands between them and joins them: a router, a firewall, a web
 server with a public and a private side.
 
 **The columns are derived, never written.** `drawspec.buses` orders them so no
-host's line crosses a bus it is not on (the schema refuses a document where no
-order manages it), then for the fewest columns, the shortest buses and the order
-nearest the one written. Hosts whose spans are apart share a column, one above
-the other, as nwdiag stacks them.
+host's line crosses a bus it is not on, then for the fewest columns, the shortest
+buses and the order nearest the one written. Hosts whose spans are apart share a
+column, one above the other, as nwdiag stacks them.
+
+**Where no order keeps a line clear, the line hops the bus.** It stops short of
+the bar and jumps it in a half circle to the right, the wiring diagram's mark
+for two lines that cross without joining, and goes on down: the bar is not
+touched by a straight end, so nothing reads as attached. The order chosen is the
+one with the fewest hops, and a bus's name is set clear of every hop over it.
 
 **Every box is one width**, the widest host's, and every box under one bus one
 height, so a row of servers reads as a row. A host's shape is its role's — a box,
@@ -27,6 +32,7 @@ band of its own above the boxes so no line runs through the words.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field, replace
 from typing import Final
 
@@ -107,7 +113,12 @@ class NetworkDrawing:
     """Each network's bus, by id: left, top, right, bottom."""
 
     lines: tuple[tuple[str, float, float, float], ...] = ()
-    """Each line drawn: the host's id, its x, and its top and bottom y."""
+    """Each straight length of line drawn: the host's id, its x, and its top and
+    bottom y. A line that hops a bus is two lengths, one either side of the hop."""
+
+    hops: tuple[tuple[str, str, Bounds], ...] = ()
+    """Each hop drawn: the host's id, the network it jumps, and the half circle's
+    bounds — from the line's x out to the right, from above the bar to below it."""
 
     groups: tuple[Bounds, ...] = ()
     """Each group's backdrop."""
@@ -137,15 +148,9 @@ def network_drawing(document: Document, theme: Theme, measurer: TextMeasurer) ->
 
     Raises:
         FitError: the columns are wider than the canvas even with every box at
-            its narrowest, or a host's line would cross a bus it is not on.
+            its narrowest.
     """
     arrangement = topology(document)
-    if arrangement.crossings:
-        host, network = arrangement.crossings[0]
-        raise FitError(
-            f"host {document.hosts[host].id!r}'s line would cross network "
-            f"{document.networks[network].id!r}, which it is not on, in every column order."
-        )
     last: FitError | None = None
     for box_max in BOX_WIDTHS:
         try:
@@ -225,6 +230,24 @@ def _drawn(
 
     bus_blocks = [bus_block(position) for position in range(count)]
     bar_height = max(block.height for block in bus_blocks) + 2 * bar_pad
+    # A hop clears the bar by a label's pad above and below, so its ends are
+    # plainly not on it.
+    hop_radius = bar_height / 2 + label_pad
+    crossed = set(arrangement.crossings)
+    hopped: list[list[int]] = [[] for _ in range(count)]
+    for host_at, network_at in arrangement.crossings:
+        hopped[network_at].append(column_of[host_at])
+
+    def name_start(position: int, x0: float, middle: list[float]) -> tuple[float, int | None]:
+        """Where a bus's name starts, clear of every hop over the bus, and the
+        column of the last hop it was moved past."""
+        start, past = x0 + bar_inset, None
+        wide = bus_blocks[position].width
+        for column in sorted(set(hopped[position])):
+            x = middle[column]
+            if start - label_pad < x + hop_radius + label_pad and x - label_pad < start + wide:
+                start, past = x + hop_radius + bar_inset, column
+        return start, past
 
     group_blocks = [
         wrap(group.text, 1e6, measurer, theme=theme, level="label", lead=False)
@@ -261,14 +284,19 @@ def _drawn(
         return edges
 
     # A bus is long enough for its name: the last column it spans grows.
-    for _ in range(count + 1):
+    # A name set past a hop needs the length past the hop.
+    for _ in range(2 * count + 2):
         edge = lefts()
+        middle = [edge[column] + width[column] / 2 for column in range(len(columns))]
         grown = False
         for position, (first, final) in enumerate(arrangement.extents):
             length = edge[final] + width[final] - edge[first] + 2 * overhang
-            needed = bus_blocks[position].width + 2 * bar_inset
+            x0 = edge[first] - overhang
+            start, past = name_start(position, x0, middle)
+            needed = start - x0 + bus_blocks[position].width + bar_inset
             if needed > length + 1e-6:
-                width[final] += needed - length
+                # A hop in the last column moves by half of what that column grows.
+                width[final] += (needed - length) * (2 if past == final else 1)
                 grown = True
         if not grown:
             break
@@ -371,10 +399,12 @@ def _drawn(
         )
         block = bus_blocks[position]
         top = y0 + (bar_height - block.height) / 2
-        words.extend(_lines(block, x0 + bar_inset, top, "body", BUS_ROLE))
+        start, _ = name_start(position, x0, centre)
+        words.extend(_lines(block, start, top, "body", BUS_ROLE))
 
     box_bounds: dict[str, Bounds] = {}
     drawn_lines: list[tuple[str, float, float, float]] = []
+    hop_bounds: list[tuple[str, str, Bounds]] = []
     for position, host in enumerate(hosts):
         x = centre[column_of[position]]
         first, final = nets[position][0], nets[position][-1]
@@ -385,9 +415,21 @@ def _drawn(
         lines.append(Path(LINE_ROLE, points=((x, y0), (x, box.y))))
         drawn_lines.append((host.id, x, y0, box.y))
         if final > first:
+            y_from = box.y + box.height
+            points = [(x, y_from)]
+            for network in range(first + 1, final):
+                if (position, network) not in crossed:
+                    continue
+                mid = bar_top[network] + bar_height / 2
+                over, under = mid - hop_radius, mid + hop_radius
+                drawn_lines.append((host.id, x, y_from, over))
+                points.extend(_hop(x, mid, hop_radius))
+                hop_bounds.append((host.id, networks[network].id, (x, over, x + hop_radius, under)))
+                y_from = under
             y1 = bar_top[final]
-            lines.append(Path(LINE_ROLE, points=((x, box.y + box.height), (x, y1))))
-            drawn_lines.append((host.id, x, box.y + box.height, y1))
+            points.append((x, y1))
+            lines.append(Path(LINE_ROLE, points=tuple(points)))
+            drawn_lines.append((host.id, x, y_from, y1))
         for network, address in zip(nets[position], host.addresses, strict=True):
             if not address:
                 continue
@@ -422,9 +464,26 @@ def _drawn(
         boxes=box_bounds,
         buses=bus_bounds,
         lines=tuple(drawn_lines),
+        hops=tuple(hop_bounds),
         groups=tuple(group_bounds),
         texts=tuple(texts),
     )
+
+
+#: How many straight pieces a hop's half circle is drawn in: the scene holds
+#: polylines only, and at a hop's size twelve read as a curve.
+HOP_SEGMENTS: Final = 12
+
+
+def _hop(x: float, mid: float, radius: float) -> list[tuple[float, float]]:
+    """A half circle from above `mid` to below it, bulging right of `x`."""
+    return [
+        (
+            x + radius * math.cos(math.pi * (step / HOP_SEGMENTS - 0.5)),
+            mid + radius * math.sin(math.pi * (step / HOP_SEGMENTS - 0.5)),
+        )
+        for step in range(HOP_SEGMENTS + 1)
+    ]
 
 
 def _lines(block: TextBlock, x: float, top: float, level: str, role: str) -> list[TextLine]:
@@ -468,6 +527,14 @@ TEXT_BUS: Final = {
     "ascii": ("=", "+", "+", "+"),
 }
 
+#: A hop per charset: the bus stops a cell short either side and the line runs
+#: on through the gap, so no junction glyph is drawn — a joined line is `┿`,
+#: a hopped one `╸│╺`.
+TEXT_HOP: Final = {
+    "unicode": ("╸", "│", "╺"),
+    "ascii": (" ", "|", " "),
+}
+
 #: A group's frame per charset: corners clockwise from top left, across, down.
 TEXT_FRAME: Final = {
     "unicode": ("┌", "┐", "┘", "└", "┄", "┆"),
@@ -480,7 +547,9 @@ def network_text(document: Document, width: int, charset: str) -> str:
 
     Each bus is a heavy rule with its name and address to its left; each host a
     box under its topmost bus, joined to every bus it is on by a light line, the
-    junction on the bus showing which way the line goes. An address sits beside
+    junction on the bus showing which way the line goes. A line that must cross
+    a bus it is not on hops it: the rule breaks a cell either side and the line
+    runs through the gap with no junction, `━╸│╺━` against a join's `━┿━`. An address sits beside
     its line next to the bus, on the box's side. A group is a dashed frame round
     its hosts with its name in the top edge.
 
@@ -499,6 +568,7 @@ def network_text(document: Document, width: int, charset: str) -> str:
     columns = arrangement.columns
     column_of = arrangement.column_of
     rule, down, up, through = TEXT_BUS[charset]
+    hop_left, hop_line, hop_right = TEXT_HOP[charset]
     corner_tl, corner_tr, corner_br, corner_bl, across, upright = TEXT_FRAME[charset]
 
     words = [
@@ -608,6 +678,7 @@ def network_text(document: Document, width: int, charset: str) -> str:
             row += 1  # a row of line with the addresses over the next bus
 
     grid = Grid(charset)
+    hops = {(bus_row[network], middle[column_of[host]]) for host, network in arrangement.crossings}
 
     # Lines, boxes and addresses.
     joins: dict[tuple[int, int], set[str]] = {}
@@ -668,7 +739,13 @@ def network_text(document: Document, width: int, charset: str) -> str:
         for x in range(x0, x1 + 1):
             way = joins.get((y, x), set())
             glyph = rule
-            if way == {"down"}:
+            if (y, x) in hops:
+                glyph = hop_line
+            elif (y, x + 1) in hops:
+                glyph = hop_left
+            elif (y, x - 1) in hops:
+                glyph = hop_right
+            elif way == {"down"}:
                 glyph = down
             elif way == {"up"}:
                 glyph = up

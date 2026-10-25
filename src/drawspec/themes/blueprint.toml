@@ -27,3 +27,10 @@ accent = "#ffb547"
 pattern = "grid"
 border = "zoned"
 title_block = true
+
+# A git graph's lanes stay in the sheet's ink: the one warm colour here marks the
+# sheet, never the drawing, and the default theme's lane colours are mid-tones made
+# for a white or a dark page, too dark to read on cyanotype blue. A lane is told
+# apart by its place and its name either way.
+[gitgraph]
+colours = []

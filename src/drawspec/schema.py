@@ -3542,8 +3542,9 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             description=(
                 "The networks this host is on, each with an optional address. A host on two "
                 "or more is drawn between them, joining them — a router, a firewall, a "
-                "dual-homed server. Its line may cross no bus it is not on, so the column "
-                "order is drawspec's; a set of attachments no order can draw is refused."
+                "dual-homed server. The column order is drawspec's, chosen so the line "
+                "crosses no bus it is not on; where no order manages that, the line hops "
+                "over the bus, a jump that does not join it, and the fewest hops win."
             ),
         ),
     ),
@@ -4432,9 +4433,9 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             "string",
             enum=BRACKET_ROOTS,
             description=(
-                'Only with `"style": "bracket"`: the edge the root stands at. `left` '
-                "(the default) is a cladogram's, the leaves' names in a column at the right; "
-                "`right` is a tournament read left to right, the champion last; `middle` "
+                'Only with `"style": "bracket"`: the edge the root stands at. `right` '
+                "(the default) is a tournament read left to right, the champion last; `left` "
+                "is a cladogram's, the leaves' names in a column at the right; `middle` "
                 "is the two-sided draw, the root's first child's half on the left and its "
                 "second's on the right, the final in the middle. A bracket reads across, "
                 "so there is no top or bottom."
@@ -5367,8 +5368,9 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             min_items=1,
             description=(
                 "The hosts, 1 to 24, each a box under its topmost network with a line to every "
-                "network it is on. The columns are drawspec's: ordered so no line crosses a bus "
-                "it is not on, then as few and as close to the order written as that allows."
+                "network it is on. The columns are drawspec's: ordered for the fewest lines "
+                "hopping over a bus they are not on (usually none), then as few and as close to "
+                "the order written as that allows."
             ),
         ),
         FieldSpec(
@@ -6921,7 +6923,7 @@ class Document:
     tree_style: str = "boxes"
     """How a `tree` is drawn: `boxes`, or `bracket` (leaves on one edge, square elbows)."""
 
-    bracket_root: str = "left"
+    bracket_root: str = "right"
     """Which edge a bracket's root stands at: `left`, `right` or `middle`."""
 
     meter_style: str = "bar"
@@ -12728,8 +12730,8 @@ def _sunburst_violations(document: Mapping[str, Any]) -> list[Violation]:
 #: Why a network diagram has no place for a field an author may reach for.
 NETWORK_REFUSED: Final = {
     "column": (
-        "a host's column is drawspec's: chosen so no line crosses a bus it is not on, then "
-        "as few columns and as close to the order written as that allows"
+        "a host's column is drawspec's: chosen for the fewest lines hopping over a bus they "
+        "are not on, then as few columns and as close to the order written as that allows"
     ),
     "order": (
         "the networks are drawn in the order written and the columns are derived from the "
@@ -12784,12 +12786,13 @@ def _network_refusal(violation: Violation) -> Violation:
 
 
 def _network_violations(document: Mapping[str, Any]) -> list[Violation]:
-    """Ids that land, no empty bus, groups that hold, and lines that cross no bus.
+    """Ids that land, no empty bus, and groups that hold.
 
-    The last is the kind's one hard question: a host on two networks that are not
-    neighbours must stand outside every bus between them. `drawspec.buses` looks
-    for a column order where every host does; when it finds none the document is
-    refused here, at the host, before any layout runs.
+    A host on two networks that are not neighbours stands outside every bus
+    between them when some column order lets it; when none does, its line hops
+    over that bus in the drawing, which is not a fault of the document. What no
+    order can draw honestly is a group's backdrop free of a stranger's box, and
+    that is refused here, at the group, before any layout runs.
     """
     from drawspec.buses import arrange
 
@@ -12925,23 +12928,9 @@ def _network_violations(document: Mapping[str, Any]) -> list[Violation]:
     if len(networks) > NETWORK_MAX or len(attached) > NETWORK_HOST_MAX:
         return found  # the budget refuses it, and the search would be slow for nothing
 
-    names = list(networks)
     arrangement = arrange(len(networks), attached, members)
-    for host, network in arrangement.crossings[:1]:
-        on = sorted(attached[host])
-        found.append(
-            Violation(
-                _pointer("hosts", host, "networks"),
-                f"this host is on {names[on[0]]!r} and {names[on[-1]]!r}, so its line passes "
-                f"{names[network]!r}, which it is not on — and in no column order does it stand "
-                f"clear of the hosts on {names[network]!r}. Put it on {names[network]!r} too, "
-                f"move {names[network]!r} in `networks` so the ones it joins are neighbours, or "
-                f"split the diagram.",
-            )
-        )
     named = {index: identifier for identifier, index in hosts.items()}
-    clashes = [clash for clash in arrangement.clashes if not arrangement.crossings]
-    for group, other in clashes[:1]:
+    for group, other in arrangement.clashes[:1]:
         if other >= 0:
             message = (
                 f"no column order keeps this group's hosts together without host "
@@ -16029,7 +16018,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         values=bool(document.get("values", True)),
         rise=bool(document.get("rise", False)),
         tree_style=str(document.get("style", "boxes")) if kind == "tree" else "boxes",
-        bracket_root=str(document.get("root", "left")) if kind == "tree" else "left",
+        bracket_root=str(document.get("root", "right")) if kind == "tree" else "right",
         theme=str(document.get("theme", "")),
         nodes=tuple(
             Node(
