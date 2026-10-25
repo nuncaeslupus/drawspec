@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-43 kinds. The machine-readable form of this page is the published
+44 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `network`, `timing`, `gitgraph`, `railroad`, `usecase`, `pert` | **yes** | Which of the forty-three diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `network`, `timing`, `gitgraph`, `railroad`, `usecase`, `wardley`, `pert` | **yes** | Which of the forty-four diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -351,6 +351,14 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `rules` | array of [railroad-rule](#railroad-rule-object), at least 1 | **yes** | The grammar's rules, 1 to 12, drawn one under another in the order written, each a named track from entry to exit, at most 40 boxes on one track. |
 | `external` | array of string | no | Names a `rule` box may refer to that this document does not define — rules drawn elsewhere. Every other `rule` must name one of `rules`. |
 
+### `wardley`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `anchors` | array of [wardley-anchor](#wardley-anchor-object), at least 1 | **yes** | The users or needs the map is anchored on, 1 to 3, across the top: each names the components it needs. Everything on the map hangs from an anchor. |
+| `components` | array of [wardley-component](#wardley-component-object), at least 1 | **yes** | The value chain, 1 to 24: each a name, a named `evolution` stage and what it `needs`. Its row is derived — below everything that needs it — and its place across is its stage; neither is a coordinate. |
+| `notes` | array of [wardley-note](#wardley-note-object) | no | Up to 6 numbered notes, each about one or more anchors or components: the number is set beside each, the words under the map. |
+
 ### `pert`
 
 | Field | Type | Required | What it is |
@@ -449,6 +457,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `gitgraph` | 8 `branches`, 30 `steps` |
 | `railroad` | 12 `rules` |
 | `usecase` | 8 `actors`, 15 `usecases`, 3 `systems`, 30 `edges` |
+| `wardley` | 24 `components`, 3 `anchors`, 6 `notes` |
 | `pert` | 20 `activities` |
 
 A `tree` with `"style": "bracket"` counts its leaves instead: 16
@@ -1089,6 +1098,33 @@ name, so a misspelt key is an error at the point it was written.
 | `repeat` | [railroad-item object](#railroad-item-object) | no | An item that may be repeated: drawn on the line, with a loop back under it. `min` says whether it may also be left out. |
 | `separator` | [railroad-item object](#railroad-item-object) | no | With `repeat` only: what comes between repetitions, drawn on the loop — a `terminal`, `rule`, `special` or `comment`, such as `{"terminal": ","}`. |
 | `min` | integer | no | With `repeat`, and required there: `1` for one or more, `0` for zero or more (the loop with a bypass over it). |
+
+### `wardley-anchor` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the anchors and components; nothing needs an anchor. |
+| `text` | string | **yes** | The name, on one line, set beside its dot (an anchor's in bold). May carry inline spans — `code` and **bold** — because those are semantic, not typographic. A newline is refused: put the detail in a numbered `note`. |
+| `needs` | array of string, at least 1 | **yes** | The ids of the components this user or need depends on directly — the top of the value chain. The anchor is drawn above them, across the top row. |
+
+### `wardley-component` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the anchors and components; what a `needs` names. |
+| `text` | string | **yes** | The name, on one line, set beside its dot (an anchor's in bold). May carry inline spans — `code` and **bold** — because those are semantic, not typographic. A newline is refused: put the detail in a numbered `note`. |
+| `evolution` | string — one of `early genesis`, `genesis`, `late genesis`, `early custom`, `custom`, `late custom`, `early product`, `product`, `late product`, `early commodity`, `commodity`, `late commodity` | **yes** | How evolved this component is, by name: `genesis`, `custom` (custom-built), `product` (+rental) or `commodity` (+utility), optionally `early` or `late` in the stage (`late product`). Twelve places, left to right; never a number. |
+| `needs` | array of string | no | The ids of the components this one depends on. Each is drawn below it — lower in the value chain, less visible — joined by a straight line. |
+| `depth` | integer, greater than 0 | no | Which row of the value chain this sits on, the anchors being row 0. Left out, it is one row below the lowest thing that needs it; set it only to sink a component further, never above what needs it. |
+| `evolves` | string — one of `early genesis`, `genesis`, `late genesis`, `early custom`, `custom`, `late custom`, `early product`, `product`, `late product`, `early commodity`, `commodity`, `late commodity` | no | Where this component is heading: a place further right, in the same words as `evolution`. Drawn as a dashed arrow to a dashed circle on the same row. |
+| `inertia` | boolean | no | Something resists this component's evolution — an investment, a habit, a regulation. Drawn as a heavy bar on its right, the way it would move. |
+
+### `wardley-note` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `on` | array of string, at least 1 | **yes** | The ids of the anchors or components this note is about. Each is marked with the note's number, and the note is written out, numbered, under the map. |
 
 ### `treemap-group` object
 

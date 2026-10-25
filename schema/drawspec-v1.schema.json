@@ -3245,6 +3245,85 @@
     },
     {
       "type": "object",
+      "title": "wardley",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "wardley"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "anchors": {
+          "type": "array",
+          "description": "The users or needs the map is anchored on, 1 to 3, across the top: each names the components it needs. Everything on the map hangs from an anchor.",
+          "items": {
+            "$ref": "#/$defs/wardley-anchor"
+          },
+          "minItems": 1
+        },
+        "components": {
+          "type": "array",
+          "description": "The value chain, 1 to 24: each a name, a named `evolution` stage and what it `needs`. Its row is derived — below everything that needs it — and its place across is its stage; neither is a coordinate.",
+          "items": {
+            "$ref": "#/$defs/wardley-component"
+          },
+          "minItems": 1
+        },
+        "notes": {
+          "type": "array",
+          "description": "Up to 6 numbered notes, each about one or more anchors or components: the number is set beside each, the words under the map.",
+          "items": {
+            "$ref": "#/$defs/wardley-note"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "anchors",
+        "components"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
       "title": "pert",
       "properties": {
         "$schema": {
@@ -6139,6 +6218,126 @@
       "required": [
         "id",
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "wardley-anchor": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the anchors and components; nothing needs an anchor."
+        },
+        "text": {
+          "type": "string",
+          "description": "The name, on one line, set beside its dot (an anchor's in bold). May carry inline spans — `code` and **bold** — because those are semantic, not typographic. A newline is refused: put the detail in a numbered `note`."
+        },
+        "needs": {
+          "type": "array",
+          "description": "The ids of the components this user or need depends on directly — the top of the value chain. The anchor is drawn above them, across the top row.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "needs"
+      ],
+      "additionalProperties": false
+    },
+    "wardley-component": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the anchors and components; what a `needs` names."
+        },
+        "text": {
+          "type": "string",
+          "description": "The name, on one line, set beside its dot (an anchor's in bold). May carry inline spans — `code` and **bold** — because those are semantic, not typographic. A newline is refused: put the detail in a numbered `note`."
+        },
+        "evolution": {
+          "type": "string",
+          "description": "How evolved this component is, by name: `genesis`, `custom` (custom-built), `product` (+rental) or `commodity` (+utility), optionally `early` or `late` in the stage (`late product`). Twelve places, left to right; never a number.",
+          "enum": [
+            "early genesis",
+            "genesis",
+            "late genesis",
+            "early custom",
+            "custom",
+            "late custom",
+            "early product",
+            "product",
+            "late product",
+            "early commodity",
+            "commodity",
+            "late commodity"
+          ]
+        },
+        "needs": {
+          "type": "array",
+          "description": "The ids of the components this one depends on. Each is drawn below it — lower in the value chain, less visible — joined by a straight line.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "depth": {
+          "type": "integer",
+          "description": "Which row of the value chain this sits on, the anchors being row 0. Left out, it is one row below the lowest thing that needs it; set it only to sink a component further, never above what needs it.",
+          "exclusiveMinimum": 0
+        },
+        "evolves": {
+          "type": "string",
+          "description": "Where this component is heading: a place further right, in the same words as `evolution`. Drawn as a dashed arrow to a dashed circle on the same row.",
+          "enum": [
+            "early genesis",
+            "genesis",
+            "late genesis",
+            "early custom",
+            "custom",
+            "late custom",
+            "early product",
+            "product",
+            "late product",
+            "early commodity",
+            "commodity",
+            "late commodity"
+          ]
+        },
+        "inertia": {
+          "type": "boolean",
+          "description": "Something resists this component's evolution — an investment, a habit, a regulation. Drawn as a heavy bar on its right, the way it would move."
+        }
+      },
+      "required": [
+        "id",
+        "text",
+        "evolution"
+      ],
+      "additionalProperties": false
+    },
+    "wardley-note": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "on": {
+          "type": "array",
+          "description": "The ids of the anchors or components this note is about. Each is marked with the note's number, and the note is written out, numbered, under the map.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "text",
+        "on"
       ],
       "additionalProperties": false
     },

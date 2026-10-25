@@ -1,9 +1,8 @@
 # Coverage: drawspec against diagram-design's 44 types
 
 Status: **survey** — the input to the proposals beside this page, not a decision. Every
-proposed feature and kind is now built; wardley is deferred (see
-[`README.md`](README.md#deferred-not-proposed)), and waterfall, deferred here, was
-built once originals were found ([`waterfall.md`](waterfall.md)).
+proposed feature and kind is now built; wardley and waterfall, deferred here, were
+built once originals were found ([`wardley.md`](wardley.md), [`waterfall.md`](waterfall.md)).
 
 diagram-design is a prompt pack: 44 reference files, each telling a
 model how to hand-write the SVG for one diagram type, with pixel budgets and a verifier
@@ -72,8 +71,8 @@ Four answers, the same ones `kinds-wanted.md` uses:
 | treemap | new kind | `treemap` → [`treemap.md`](treemap.md) |
 | uml-class | new kind | merged into `entities` → [`entities.md`](entities.md) |
 | venn | new kind | `venn` → [`venn.md`](venn.md) |
-| wardley | feature, not proposed | `scatter`/`quadrant` would need edges between positions. One niche strategy artefact; wait for an original |
-| waterfall | feature, not proposed | `chart` would need a `bridge` mark (running total). Plausible, but charting-adjacent; wait for an original |
+| wardley | feature, not proposed | `scatter`/`quadrant` would need edges between positions. One niche strategy artefact; wait for an original — since built as its own kind, `wardley` → [`wardley.md`](wardley.md) |
+| waterfall | feature, not proposed | `chart` would need a `bridge` mark (running total). Plausible, but charting-adjacent; wait for an original — since built as its own kind, `waterfall` → [`waterfall.md`](waterfall.md) |
 
 **Tally:** 21 covered, 5 features (3 proposed), 14 types → 11 new kinds, 4 out of scope.
 

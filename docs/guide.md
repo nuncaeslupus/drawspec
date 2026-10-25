@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Forty-two exist, and they fall into thirty-one families:
+fields are legal. Forty-three exist, and they fall into thirty-two families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -176,6 +176,7 @@ fields are legal. Forty-two exist, and they fall into thirty-one families:
 | Status | `rag` | Things rated red, amber or green: workstreams or risks a row each, the rating a word and a shape (a colour only by the theme), a trend in words and a note — a highlight report, a risk register. |
 | Time | `clock` | A time of day on an analogue face, for teaching it: two hands placed by the time, the numerals the lesson uses, the time in words under it, how long since an earlier time shaded round the face. |
 | Wheel | `sunburst` | A hierarchy as concentric rings of sectors, read from the middle outward: a wheel of emotions, a taxonomy. |
+| Strategy | `wardley` | Things a user needs, by how visible and how evolved each is: a value chain down the page against evolution across it, genesis to commodity, with what is moving and what holds it back (a Wardley map). |
 | Signal | `timing` | What several signals are at each step of one time axis: clock and level lanes, words on a bus, named states — a datasheet's SPI or I²C figure, a UML timing diagram. |
 | History | `gitgraph` | Commits on branches over time: lanes that fork and merge, with tags and cherry-picks — a git-flow figure, a release branch, a hotfix. |
 | Network | `network` | Which hosts are on which networks: each network a bus, each host a box joined to every network it is on, an address beside each line — a DMZ, an office LAN, a three-tier deployment (nwdiag). |
@@ -2941,6 +2942,58 @@ with a root of other than two children; `root` without the bracket style. See
 with scores), [`reference/tree-bracket-primates.json`](reference/tree-bracket-primates.json)
 (a primate cladogram) and [`reference/tree-bracket-quiz.json`](reference/tree-bracket-quiz.json)
 (a two-sided draw).
+
+## A Wardley map
+
+A Wardley map puts what a user needs at the top and everything it rests on below, each
+part placed across the page by how evolved it is — from genesis (new, uncertain) through
+custom-built and product to commodity (standard, a utility). It is how a team decides what
+to build, what to buy and what to rent. That is `wardley`:
+
+```json
+{
+  "version": 1,
+  "kind": "wardley",
+  "anchors": [{"id": "customer", "text": "Customer", "needs": ["tea"]}],
+  "components": [
+    {"id": "tea", "text": "Cup of tea", "evolution": "product", "needs": ["water"]},
+    {"id": "water", "text": "Hot water", "evolution": "commodity", "needs": ["kettle"]},
+    {"id": "kettle", "text": "Kettle", "evolution": "custom", "evolves": "product", "inertia": true}
+  ]
+}
+```
+
+**Nothing is a coordinate.** The tools Wardley maps are usually drawn with ask for two
+numbers between 0 and 1 per component, and a pixel offset per label; drawspec asks for
+neither. **Across** is `evolution`, a stage by name — `genesis`, `custom`, `product` or
+`commodity` — optionally `early` or `late` in it (`late product`): twelve named places,
+left to right. **Down** is derived from `needs`: the 1 to 3 `anchors` (the users, or their
+needs) are the top row, and each component sits one row below the lowest thing that needs
+it, so every line runs down and the most visible parts are nearest the user. `depth` sinks
+a component further (a row number, the anchors being row 0); it can never lift one above
+what needs it.
+
+Dependencies are straight lines, as Wardley draws them. `evolves` names a place further
+right: a dashed arrow to a dashed circle on the same row. `inertia` puts a heavy bar on the
+component's right, the way it would move. Up to 6 `notes`, each `{text, on}`, are numbered:
+the number is set beside each thing it is `on`, and the words under the map. Each name is
+set beside its dot in the nearest place clear of every dot, line and other name; two parts
+on one row and one place sit side by side; a dot in the way of a line slides along its
+place to let it by; a crowded map is drawn taller; and a name with nowhere to go is a
+`FitError` that says what to move. The stage names and the axis words are the theme's
+`[wardley]` section, for a house's wording or a translation.
+
+Refused, each at its pointer: a number for `evolution` or `evolves` (name the place); an
+`evolves` that is not further right; a component nothing needs (a map hangs from its
+anchors); a `needs` that names an anchor, itself, nothing, or the same thing twice;
+components that need each other in a loop; a `depth` above what needs it; a chain more
+than 8 rows deep; a name with a newline (put the detail in a note); `visibility`,
+`maturity`, `position`, `at`, `stage`, `label`, `role` and `edges`. Budget: 24 components,
+3 anchors, 6 notes. There is no text form: a map is a plane, and a character grid cannot
+hold its positions. See [`reference/wardley-tea-shop.json`](reference/wardley-tea-shop.json)
+(Wardley's first teaching map), [`reference/wardley-photo-service.json`](reference/wardley-photo-service.json)
+(a component moving to utility) and [`reference/wardley-council-service.json`](reference/wardley-council-service.json)
+(a public service's build, buy or share).
 
 ## Asking for a wide drawing instead of a tall one
 

@@ -138,12 +138,12 @@ Write the smallest document of that kind that renders, to stdout. Pipe it straig
 
 ```
 usage: drawspec example [-h]
-                        {flow,tree,cycle,stack,timeline,columns,matrix,pyramid,rings,funnel,chart,quadrant,scatter,curve,files,states,sequence,lanes,entities,gantt,board,fishbone,venn,journey,treemap,sankey,numberline,barmodel,waterfall,pie,mindmap,argument,familytree,meter,rag,clock,sunburst,network,timing,gitgraph,railroad,usecase,pert}
+                        {flow,tree,cycle,stack,timeline,columns,matrix,pyramid,rings,funnel,chart,quadrant,scatter,curve,files,states,sequence,lanes,entities,gantt,board,fishbone,venn,journey,treemap,sankey,numberline,barmodel,waterfall,pie,mindmap,argument,familytree,meter,rag,clock,sunburst,network,timing,gitgraph,railroad,usecase,wardley,pert}
 ```
 
 | Argument | What it does |
 |---|---|
-| `kind` | Which kind to write. One of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `network`, `timing`, `gitgraph`, `railroad`, `usecase`, `pert`. |
+| `kind` | Which kind to write. One of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `network`, `timing`, `gitgraph`, `railroad`, `usecase`, `wardley`, `pert`. |
 
 ### `drawspec mcp`
 
