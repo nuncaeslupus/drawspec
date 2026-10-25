@@ -1,0 +1,17 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "network",
+  "title": "Web servers in a DMZ",
+  "description": "nwdiag's own first example: two web servers on the DMZ and the internal network, two databases on the internal network only.",
+  "networks": [
+    {"id": "dmz", "address": "210.x.x.x/24"},
+    {"id": "internal", "address": "172.x.x.x/24"}
+  ],
+  "hosts": [
+    {"id": "web01", "networks": [{"network": "dmz", "address": ".1"}, {"network": "internal", "address": ".1"}]},
+    {"id": "web02", "networks": [{"network": "dmz", "address": ".2"}, {"network": "internal", "address": ".2"}]},
+    {"id": "db01", "role": "store", "networks": [{"network": "internal"}]},
+    {"id": "db02", "role": "store", "networks": [{"network": "internal"}]}
+  ]
+}

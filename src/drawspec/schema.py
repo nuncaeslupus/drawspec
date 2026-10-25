@@ -34,7 +34,7 @@ from __future__ import annotations
 import json
 import math
 import re
-from collections.abc import Mapping, Sequence, Set
+from collections.abc import Iterator, Mapping, Sequence, Set
 from dataclasses import dataclass, replace
 from difflib import get_close_matches
 from pathlib import Path
@@ -609,6 +609,110 @@ SUNBURST_RING_MAX: Final = 8
 #: and anything the type cannot hold at the legible floor is refused by fit first.
 SUNBURST_NODE_MAX: Final = 150
 
+#: Network diagrams in the nwdiag style: networks as horizontal buses in the order
+#: written, hosts as boxes in columns, each dropping a line to every bus it is on.
+#: A layout family of its own; the column order is derived (`drawspec.buses`).
+NETWORK_KINDS: Final = ("network",)
+
+#: The most networks (buses). Past six the hosts between them are a rack drawing.
+NETWORK_MAX: Final = 6
+
+#: The most hosts. Past two dozen boxes a network diagram is an inventory: draw an
+#: overview with one host per role and a diagram per segment.
+NETWORK_HOST_MAX: Final = 24
+
+#: The most groups (shaded backdrops behind hosts).
+NETWORK_GROUP_MAX: Final = 6
+
+#: The roles a host may take: the default box (a server, a router, any device),
+#: the host the diagram is about, a drum for where data rests (a database, a
+#: storage array), and a person for a user's machine or a client. drawspec draws
+#: no device icons: a router is a host on two networks, and its name says so.
+NETWORK_HOST_ROLES: Final = ("step", "emphasis", "store", "person")
+#: Timing diagrams: signals over one shared time axis, a lane each — clock lines,
+#: digital levels, buses with labelled values, and named-state lanes (WaveDrom,
+#: PlantUML and UML timing diagrams, datasheet SPI and I²C figures). A layout
+#: family of its own; time is counted in equal steps, never in coordinates.
+TIMING_KINDS: Final = ("timing",)
+
+#: What a lane draws: `bit` levels (high, low, high impedance, unknown, clock
+#: pulses), a `bus` of labelled values, or a `state` lane of named states.
+TIMING_LANES: Final = ("bit", "bus", "state")
+
+#: The values a `bit` lane takes per step: low, high, high impedance, unknown,
+#: a positive pulse (high then low) and a negative one (low then high).
+TIMING_BIT_VALUES: Final = ("0", "1", "z", "x", "p", "n")
+
+#: The value that carries the step before it on, unchanged — a clock keeps
+#: pulsing, a bus keeps its word, a level holds.
+TIMING_HOLD: Final = "."
+
+#: The values a `bus` lane reserves: unknown and high impedance. Every other
+#: string is a word on the bus.
+TIMING_BUS_RESERVED: Final = ("x", "z")
+
+#: The most signals (lanes). Past twelve a datasheet figure is split by bus.
+TIMING_SIGNAL_MAX: Final = 12
+
+#: The most steps on the time axis. Past forty a step is too narrow for a clock
+#: pulse to read at the canvas width, and a word on a bus has no room.
+TIMING_STEP_MAX: Final = 40
+
+#: The most named states one `state` lane may hold. Past six its levels crowd.
+TIMING_STATE_MAX: Final = 6
+
+#: The most vertical markers, and the most measured intervals.
+TIMING_MARKER_MAX: Final = 8
+TIMING_INTERVAL_MAX: Final = 10
+#: Git graphs: commits on branches over time, with the forks, merges, tags and
+#: cherry-picks between them. A layout family of its own: one lane per branch,
+#: one place in time per step, in the order written — no coordinate is written.
+GITGRAPH_KINDS: Final = ("gitgraph",)
+
+#: The two ways time may run: across the page (the default) or down it, with the
+#: commit messages in a column beside the lanes, as `git log --graph` sets them.
+GITGRAPH_DIRECTIONS: Final = ("right", "down")
+
+#: The roles a branch or a step may take: an ordinary one, or the one the figure is
+#: about (heavier; at most two in a document, with everything else that is emphasis).
+GITGRAPH_ROLES: Final = ("step", "emphasis")
+
+#: The most branches, so the most lanes. Git-flow, the busiest workflow figure found
+#: (nvie 2010), draws five kinds of branch; eight leaves room for a second feature.
+GITGRAPH_BRANCH_MAX: Final = 8
+
+#: The most steps (commits, merges and cherry-picks). Across a 640-wide page a step
+#: takes a column, so thirty is already the fit limit for short labels.
+GITGRAPH_STEP_MAX: Final = 30
+
+#: Railroad (syntax) diagrams: a grammar's named rules, each a track from an entry
+#: to an exit through terminals, rule references, choices, bypasses and loops. A
+#: layout family of its own; the input is an expression tree per rule and every
+#: position is derived from it, a long sequence wrapping onto further lines.
+RAILROAD_KINDS: Final = ("railroad",)
+
+#: What an item on a railroad track can be: the four boxes and words, then the
+#: four ways of combining items. Every item says exactly one of these.
+RAILROAD_BOXES: Final = ("terminal", "rule", "special", "comment")
+RAILROAD_COMBINERS: Final = ("seq", "choice", "optional", "repeat")
+RAILROAD_SHAPES: Final = RAILROAD_BOXES + RAILROAD_COMBINERS
+
+#: The most rules one document draws, one under another. Past a dozen a grammar
+#: is a reference manual, and a figure per group of rules reads better.
+RAILROAD_RULE_MAX: Final = 12
+
+#: The most boxes (terminals, rule references, specials, comments) on one rule's
+#: track. SQLite's busiest figures carry about forty; past that a rule is factored
+#: into named sub-rules, which is what SQLite's own documentation does.
+RAILROAD_BOX_MAX: Final = 40
+
+#: The most branches one choice stacks. JSON.org's escape choice has nine.
+RAILROAD_BRANCH_MAX: Final = 10
+
+#: How deeply items may nest inside one another. Past this the track is a maze of
+#: bypasses; the inner part reads better as a rule of its own.
+RAILROAD_DEPTH_MAX: Final = 8
+
 #: Use case diagrams: actors outside a system's boundary, the use cases inside it
 #: as ellipses, joined by associations, with «include», «extend» and
 #: generalisation between them. A layout family of its own: actors stand on the
@@ -723,7 +827,18 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: `sunburst` is the twenty-fourth: a hierarchy as concentric rings of sectors,
 #: read from the middle outward — a `treemap` nests by area and a `mindmap`
 #: radiates, but neither splits a ring into its parent's sectors.
-#: `usecase` is the twenty-fifth: who uses a system for what — actors outside a
+#: `timing` is the twenty-fifth: signals against one shared time axis — a
+#: `gantt` lays intervals of work on time, but nothing draws a level, a clock or
+#: a bus changing from step to step.
+#: `gitgraph` is the twenty-sixth: commits on branches over time, forked and
+#: merged — a `gantt` has intervals, a `flow` has no lanes in time, and a
+#: `timeline` has one line.
+#: `network` is the twenty-seventh: networks as buses with hosts hanging between
+#: them — a `flow` joins boxes to boxes, and nothing else joins boxes to a bus.
+#: `railroad` is the twenty-eighth: a grammar's rules as tracks through terminals,
+#: choices and loops — a `flow` routes arbitrary edges between boxes, but nothing
+#: else derives a syntax diagram's branches and bypasses from an expression.
+#: `usecase` is the twenty-ninth: who uses a system for what — actors outside a
 #: boundary, use cases inside it. A `flow` has no boundary its edges must cross
 #: once, and no actor drawn as the stick figure a reader looks for.
 KINDS: Final = (
@@ -754,6 +869,10 @@ KINDS: Final = (
     + RAG_KINDS
     + CLOCK_KINDS
     + SUNBURST_KINDS
+    + NETWORK_KINDS
+    + TIMING_KINDS
+    + GITGRAPH_KINDS
+    + RAILROAD_KINDS
     + USECASE_KINDS
 )
 
@@ -923,6 +1042,28 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # total across the rings is checked with the nodes (see `_sunburst_violations`),
     # since the nesting key is `children`, not `nodes`.
     "sunburst": (("nodes", SUNBURST_RING_MAX),),  # first ring; the total is _sunburst_violations
+    # Set by the proposal: nwdiag's and PlantUML's own examples hold two or three
+    # networks and four to ten hosts; past these the drawing is an inventory.
+    "network": (
+        ("networks", NETWORK_MAX),
+        ("hosts", NETWORK_HOST_MAX),
+        ("groups", NETWORK_GROUP_MAX),
+    ),  # [3 networks, 10 hosts, 3 groups]
+    # Set by the evidence (NXP UM10204, TI SPI figures, UML timing): an SPI read is
+    # four signals over ~20 steps; the step cap is checked per signal's values in
+    # `_timing_violations`, since it is a length, not an array of objects.
+    "timing": (
+        ("signals", TIMING_SIGNAL_MAX),
+        ("signals/states", TIMING_STATE_MAX),
+        ("markers", TIMING_MARKER_MAX),
+        ("intervals", TIMING_INTERVAL_MAX),
+    ),  # [4 signals, 3 states, 3 markers, 5 intervals]
+    # Set by the originals: git-flow's five kinds of branch (nvie 2010) with room for
+    # more features, and a step per column across the page.
+    "gitgraph": (("branches", GITGRAPH_BRANCH_MAX), ("steps", GITGRAPH_STEP_MAX)),
+    # Proposal: a dozen rules, forty boxes on one track (SQLite's busiest). The
+    # boxes are counted per rule with the items (see `_railroad_violations`).
+    "railroad": (("rules", RAILROAD_RULE_MAX),),
     # Set by the originals: the textbook figures hold three to six actors and a dozen
     # use cases in one or two boundaries.
     "usecase": (
@@ -2762,6 +2903,110 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "timing-signal": (
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description=(
+                "The signal's name, drawn at the left of its lane: `SCLK`, `CS#`, `User`. "
+                "Unique in the figure — an interval names its signal by it."
+            ),
+        ),
+        FieldSpec(
+            "lane",
+            "string",
+            enum=TIMING_LANES,
+            description=(
+                "What the lane draws: `bit` (the default: levels and clock pulses), `bus` (a "
+                "word per value, in the hexagon lanes of a datasheet) or `state` (a line "
+                "stepping between the named `states`, UML's robust lifeline)."
+            ),
+        ),
+        FieldSpec(
+            "values",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=1,
+            description=(
+                "One string per time step, every signal the same length. A `bit` lane takes "
+                "`0`, `1`, `z` (high impedance), `x` (unknown), `p` (a clock pulse, high then "
+                "low) and `n` (low then high); a `bus` takes any word, with `x` and `z` "
+                "reserved; a `state` lane takes one of its `states`. `.` carries the step "
+                "before on: a clock keeps pulsing, a word holds without a new edge."
+            ),
+        ),
+        FieldSpec(
+            "states",
+            "array",
+            item_kind="string",
+            min_items=2,
+            description=(
+                "A `state` lane's named states, 2 to 6, top to bottom in the order written — "
+                "write the busiest or highest first. Required on a `state` lane, refused "
+                "elsewhere."
+            ),
+        ),
+        FieldSpec(
+            "group",
+            "string",
+            description=(
+                "The name of the group this signal is in — `Controller`, `Peripheral` — drawn once "
+                "over its signals. Signals in one group are written next to each other."
+            ),
+        ),
+    ),
+    "timing-marker": (
+        FieldSpec(
+            "at",
+            "number",
+            required=True,
+            description=(
+                "Where the marker stands, in steps from the start: `0` is the left edge, a "
+                "whole number is the edge between two steps, and a half is the middle of one "
+                "(where a clock pulse falls)."
+            ),
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description="The marker's name, over the figure: `S`, `Sr`, `P`, `sample`.",
+        ),
+    ),
+    "timing-interval": (
+        FieldSpec(
+            "from",
+            "number",
+            required=True,
+            description=(
+                "The edge the interval starts at, in steps (whole or half), as a marker's `at`."
+            ),
+        ),
+        FieldSpec(
+            "to",
+            "number",
+            required=True,
+            description="The edge it ends at, after `from`, in steps (whole or half).",
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            required=True,
+            description=(
+                "What the interval is, over its arrow: `tSU;STA`, `setup`, `100 ms`. A name, "
+                "not a measurement drawspec makes — the steps are not to scale in time."
+            ),
+        ),
+        FieldSpec(
+            "signal",
+            "string",
+            description=(
+                "The signal it is measured on, by its `text`: the arrow is drawn under that "
+                "lane. Left out, it goes under the last lane."
+            ),
+        ),
+    ),
     "usecase-actor": (
         FieldSpec(
             "id",
@@ -2861,6 +3106,278 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
                 "The sectors nested inside this one — the next ring, drawn clockwise in the "
                 "order written. At most three rings in all; leave it out of a node that ends "
                 "the hierarchy."
+            ),
+        ),
+    ),
+    "network-segment": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the networks; what a host's attachment names.",
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description=(
+                "The network's name, written in bold at the left of its bus. Left out, the "
+                "`id` is the name."
+            ),
+        ),
+        FieldSpec(
+            "address",
+            "string",
+            description=(
+                "The network's address, written on its bus after the name — `210.x.x.x/24`, "
+                "`10.0.1.0/24`. Words, not parsed: drawspec checks nothing about it."
+            ),
+        ),
+    ),
+    "network-attachment": (
+        FieldSpec(
+            "network",
+            "string",
+            required=True,
+            description="The id of a network this host is on.",
+        ),
+        FieldSpec(
+            "address",
+            "string",
+            description=(
+                "The host's address on that network, written beside its line where it meets "
+                "the bus — `.1`, `10.0.1.10`. Optional."
+            ),
+        ),
+    ),
+    "network-host": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description="Unique among the hosts; what a group's `members` name.",
+        ),
+        FieldSpec(
+            "text",
+            "string",
+            description=(
+                "The words in the host's box. Left out, the `id` is the name. A newline makes "
+                "the first line a lead over a detail — `db01` over `primary`."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=NETWORK_HOST_ROLES,
+            description=(
+                "`step` (the default box: a server, a router, a firewall, any device), "
+                "`emphasis` (the host the diagram is about; at most two), `store` (a drum: a "
+                "database, a storage array) or `person` (a user's machine, a client). No "
+                "device icons: say what a box is in its words."
+            ),
+        ),
+        FieldSpec(
+            "networks",
+            "array",
+            required=True,
+            item_ref="network-attachment",
+            min_items=1,
+            description=(
+                "The networks this host is on, each with an optional address. A host on two "
+                "or more is drawn between them, joining them — a router, a firewall, a "
+                "dual-homed server. Its line may cross no bus it is not on, so the column "
+                "order is drawspec's; a set of attachments no order can draw is refused."
+            ),
+        ),
+    ),
+    "network-group": (
+        FieldSpec(
+            "text",
+            "string",
+            description="The group's name, at the top left of its backdrop. Optional.",
+        ),
+        FieldSpec(
+            "members",
+            "array",
+            required=True,
+            item_kind="string",
+            min_items=1,
+            description=(
+                "The ids of the hosts drawn on this group's shaded backdrop, side by side. A "
+                "host is in one group at most."
+            ),
+        ),
+    ),
+    "gitgraph-branch": (
+        FieldSpec(
+            "name",
+            "string",
+            required=True,
+            description=(
+                "The branch's name, as git spells it (`main`, `feature/login`): written at "
+                "the head of its lane and named by every step on it. Unique in the document."
+            ),
+        ),
+        FieldSpec(
+            "from",
+            "string",
+            description=(
+                "Where the branch forks: the name of another branch — it forks from that "
+                "branch's latest commit at the branch's first step — or the `id` of a commit "
+                "written before then. Left out, it is the first branch; the first branch "
+                "itself has none."
+            ),
+        ),
+        _role(GITGRAPH_ROLES, "step"),
+    ),
+    "gitgraph-step": (
+        FieldSpec(
+            "on",
+            "string",
+            required=True,
+            description=(
+                "The branch this commit is made on — one of `branches`. Steps are drawn in "
+                "the order written, one place in time each."
+            ),
+        ),
+        _text(required=False),
+        FieldSpec(
+            "id",
+            "string",
+            description=(
+                "A handle for this commit, unique in the document: what a `pick` or a "
+                "branch's `from` names. Drawn as the label when there is no `text` (a short "
+                "hash, `C2`)."
+            ),
+        ),
+        FieldSpec(
+            "merge",
+            "string",
+            description=(
+                "Makes this a merge commit: the name of the branch merged into `on`, at its "
+                "latest commit. The merged branch may carry on afterwards."
+            ),
+        ),
+        FieldSpec(
+            "pick",
+            "string",
+            description=(
+                "Makes this a cherry-pick: the `id` of an earlier commit on another branch, "
+                "copied onto `on`. Its label is the original's unless `text` says otherwise."
+            ),
+        ),
+        FieldSpec(
+            "tag",
+            "string",
+            description="A tag on this commit (`v1.0`), drawn as a tag beside it. Unique.",
+        ),
+        _role(GITGRAPH_ROLES, "step"),
+    ),
+    "railroad-rule": (
+        FieldSpec(
+            "name",
+            "string",
+            required=True,
+            description=(
+                'The rule\'s name, drawn above its track and referred to by `{"rule": name}` '
+                "boxes. Unique in the document; one line, drawn exactly as written."
+            ),
+        ),
+        FieldSpec(
+            "expr",
+            "object",
+            required=True,
+            ref="railroad-item",
+            description=(
+                "What the rule matches, as one item: usually a `seq`. The track runs from an "
+                "entry bar on the left to an exit bar on the right; a long top-level `seq` "
+                "wraps onto further lines, a return track leading each line into the next."
+            ),
+        ),
+    ),
+    "railroad-item": (
+        FieldSpec(
+            "terminal",
+            "string",
+            description=(
+                "Literal text the input must contain, drawn in a rounded box in monospace, "
+                "exactly as written: a keyword, a punctuation mark, an option."
+            ),
+        ),
+        FieldSpec(
+            "rule",
+            "string",
+            description=(
+                "The name of another rule, drawn in a square box: one of `rules`, or a name "
+                "listed in `external` when it is defined elsewhere."
+            ),
+        ),
+        FieldSpec(
+            "special",
+            "string",
+            description=(
+                "A set described in words rather than spelt out, drawn in a dashed box: "
+                "`any digit 1-9`, `any character but a quote`."
+            ),
+        ),
+        FieldSpec(
+            "comment",
+            "string",
+            description=(
+                "Words written on the track with no box, the line breaking for them — what "
+                "a branch means, or a loop's separator in words. Matches nothing."
+            ),
+        ),
+        FieldSpec(
+            "seq",
+            "array",
+            item_ref="railroad-item",
+            min_items=2,
+            description=(
+                "Items one after another, left to right. A rule's top-level `seq` wraps onto "
+                "further lines when it is wider than the canvas."
+            ),
+        ),
+        FieldSpec(
+            "choice",
+            "array",
+            item_ref="railroad-item",
+            min_items=2,
+            description=(
+                "Alternatives, 2 to 10, stacked one under another and rejoining. The first "
+                "is drawn on the main line, so put the usual one first; an empty alternative "
+                "is an `optional` round the choice."
+            ),
+        ),
+        FieldSpec(
+            "optional",
+            "object",
+            ref="railroad-item",
+            description="An item that may be left out: drawn on the line, with a bypass over it.",
+        ),
+        FieldSpec(
+            "repeat",
+            "object",
+            ref="railroad-item",
+            description=(
+                "An item that may be repeated: drawn on the line, with a loop back under it. "
+                "`min` says whether it may also be left out."
+            ),
+        ),
+        FieldSpec(
+            "separator",
+            "object",
+            ref="railroad-item",
+            description=(
+                "With `repeat` only: what comes between repetitions, drawn on the loop — a "
+                '`terminal`, `rule`, `special` or `comment`, such as `{"terminal": ","}`.'
+            ),
+        ),
+        FieldSpec(
+            "min",
+            "integer",
+            description=(
+                "With `repeat`, and required there: `1` for one or more, `0` for zero or "
+                "more (the loop with a bypass over it)."
             ),
         ),
     ),
@@ -3339,7 +3856,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the thirty-eight diagrams this is. It selects the fields that are "
+            "Which of the forty-two diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -4351,6 +4868,83 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    NETWORK_KINDS: (
+        FieldSpec(
+            "networks",
+            "array",
+            required=True,
+            item_ref="network-segment",
+            min_items=1,
+            description=(
+                "The networks, 1 to 6, each a horizontal bus, drawn top to bottom in the order "
+                "written. Write them in the order traffic meets them — the internet, the DMZ, "
+                "the internal network, storage — so a host on two neighbours sits between them."
+            ),
+        ),
+        FieldSpec(
+            "hosts",
+            "array",
+            required=True,
+            item_ref="network-host",
+            min_items=1,
+            description=(
+                "The hosts, 1 to 24, each a box under its topmost network with a line to every "
+                "network it is on. The columns are drawspec's: ordered so no line crosses a bus "
+                "it is not on, then as few and as close to the order written as that allows."
+            ),
+        ),
+        FieldSpec(
+            "groups",
+            "array",
+            item_ref="network-group",
+            min_items=1,
+            description=(
+                "Optional: up to 6 sets of hosts drawn on a shaded backdrop, with an optional "
+                "name — a cluster, a rack, a site. No host outside a group may stand inside it."
+            ),
+        ),
+    ),
+    TIMING_KINDS: (
+        FieldSpec(
+            "signals",
+            "array",
+            required=True,
+            item_ref="timing-signal",
+            min_items=1,
+            description=(
+                "The lanes, 1 to 12, top to bottom in the order written: each a `text`, a "
+                "`lane` and one value per step in `values`, every signal the same number of "
+                "steps (40 at most)."
+            ),
+        ),
+        FieldSpec(
+            "ticks",
+            "array",
+            item_kind="string",
+            description=(
+                "A name for each step, written under the figure — one per step, as many as "
+                "the values; an empty string leaves a step unnamed."
+            ),
+        ),
+        FieldSpec(
+            "markers",
+            "array",
+            item_ref="timing-marker",
+            description=(
+                "Vertical lines across every lane at an edge, up to 8, each named over the "
+                "figure: a START, a sample point."
+            ),
+        ),
+        FieldSpec(
+            "intervals",
+            "array",
+            item_ref="timing-interval",
+            description=(
+                "Named spans between two edges, up to 10, each an arrow under a signal's "
+                "lane: a setup time, a hold time, a timeout."
+            ),
+        ),
+    ),
     USECASE_KINDS: (
         FieldSpec(
             "systems",
@@ -4422,6 +5016,64 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
                 "each with optional `children` for the ring nested inside it. Nested up to "
                 "three rings, 150 sectors in all; every terminal sector takes an equal angle, "
                 "so there are no amounts."
+            ),
+        ),
+    ),
+    GITGRAPH_KINDS: (
+        FieldSpec(
+            "branches",
+            "array",
+            required=True,
+            item_ref="gitgraph-branch",
+            min_items=1,
+            description=(
+                "The branches, 1 to 8, one lane each in the order written: the first is the "
+                "trunk (`main`) and every other forks `from` another branch or a commit `id`; "
+                "the lane order need not be the order the branches were made."
+            ),
+        ),
+        FieldSpec(
+            "steps",
+            "array",
+            required=True,
+            item_ref="gitgraph-step",
+            min_items=1,
+            description=(
+                "The commits, 1 to 30, in the order they were made: each `on` a branch, and a "
+                "merge (`merge`) or a cherry-pick (`pick`) when it is one. Lanes, spacing and "
+                "the lines between commits are derived."
+            ),
+        ),
+        FieldSpec(
+            "direction",
+            "string",
+            enum=GITGRAPH_DIRECTIONS,
+            description=(
+                "Which way time runs: `right` (the default) across the page, each commit's "
+                "label under it; `down` the page, the labels in a column beside the lanes as "
+                "`git log --graph` sets them — the one for long commit messages."
+            ),
+        ),
+    ),
+    RAILROAD_KINDS: (
+        FieldSpec(
+            "rules",
+            "array",
+            required=True,
+            item_ref="railroad-rule",
+            min_items=1,
+            description=(
+                "The grammar's rules, 1 to 12, drawn one under another in the order written, "
+                "each a named track from entry to exit, at most 40 boxes on one track."
+            ),
+        ),
+        FieldSpec(
+            "external",
+            "array",
+            item_kind="string",
+            description=(
+                "Names a `rule` box may refer to that this document does not define — rules "
+                "drawn elsewhere. Every other `rule` must name one of `rules`."
             ),
         ),
     ),
@@ -5064,6 +5716,64 @@ class MindmapBranch:
 
 
 @dataclass(frozen=True)
+class NetworkSegment:
+    """One network of a `network` diagram: a bus, its name and its address."""
+
+    id: str
+    text: str
+    address: str = ""
+
+
+@dataclass(frozen=True)
+class NetworkHost:
+    """One host of a `network` diagram, and the networks it is on, in network order."""
+
+    id: str
+    text: str
+    role: str = "step"
+    networks: tuple[str, ...] = ()
+    addresses: tuple[str, ...] = ()
+    """The host's address on each of its `networks`, in the same order; may be empty."""
+
+
+@dataclass(frozen=True)
+class NetworkGroup:
+    """A set of hosts drawn on one shaded backdrop."""
+
+    text: str
+    members: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class TimingSignal:
+    """One lane of a `timing` figure: a name, what it draws, and a value per step."""
+
+    text: str
+    lane: str = "bit"
+    values: tuple[str, ...] = ()
+    states: tuple[str, ...] = ()
+    group: str = ""
+
+
+@dataclass(frozen=True)
+class TimingMarker:
+    """A vertical line across a `timing` figure at an edge, with its name."""
+
+    at: float
+    text: str = ""
+
+
+@dataclass(frozen=True)
+class TimingInterval:
+    """A named span between two edges, drawn as an arrow under a signal's lane."""
+
+    start: float
+    end: float
+    text: str
+    signal: str = ""
+
+
+@dataclass(frozen=True)
 class UsecaseActor:
     """One actor of a `usecase` diagram: a stick figure outside every boundary."""
 
@@ -5105,6 +5815,62 @@ class SunburstNode:
 
     text: str
     children: tuple[SunburstNode, ...] = ()
+
+
+@dataclass(frozen=True)
+class GitBranch:
+    """One branch of a `gitgraph`: a lane, and where it forks from."""
+
+    name: str
+    source: str = ""
+    """The `from` written: a branch name or a commit id; empty for the default."""
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class GitStep:
+    """One step of a `gitgraph`: a commit on a branch, a merge or a cherry-pick."""
+
+    on: str
+    text: str = ""
+    id: str = ""
+    merge: str = ""
+    pick: str = ""
+    tag: str = ""
+    role: str = "step"
+
+
+@dataclass(frozen=True)
+class RailroadItem:
+    """One item on a railroad track: a box, a comment, or a combination of items."""
+
+    shape: str
+    """One of `RAILROAD_SHAPES`."""
+
+    text: str = ""
+    """A box's or a comment's words, exactly as written."""
+
+    items: tuple[RailroadItem, ...] = ()
+    """A `seq`'s or a `choice`'s items, in order; the one item an `optional` or a
+    `repeat` holds."""
+
+    separator: RailroadItem | None = None
+    """A `repeat`'s separator, drawn on its loop."""
+
+    min: int = 1
+    """A `repeat`'s least count: 0 or 1."""
+
+    pointer: str = ""
+    """Where the item was written, so a refusal at layout time can say."""
+
+
+@dataclass(frozen=True)
+class RailroadRule:
+    """One named rule of a `railroad` grammar and what it matches."""
+
+    name: str
+    expr: RailroadItem
+    pointer: str = ""
 
 
 @dataclass(frozen=True)
@@ -5469,6 +6235,40 @@ class Document:
     usecase_edges: tuple[UsecaseEdge, ...] = ()
     """A `usecase` diagram's relations, in the order written."""
 
+    railroad_rules: tuple[RailroadRule, ...] = ()
+    """A `railroad` grammar's rules, in the order written: drawn top to bottom."""
+
+    railroad_external: tuple[str, ...] = ()
+    """Rule names a `railroad` refers to but defines elsewhere."""
+
+    networks: tuple[NetworkSegment, ...] = ()
+    """A `network` diagram's buses, top to bottom in the order written."""
+
+    hosts: tuple[NetworkHost, ...] = ()
+    """A `network` diagram's hosts, in the order written."""
+
+    host_groups: tuple[NetworkGroup, ...] = ()
+    """A `network` diagram's groups, in the order written."""
+    timing_signals: tuple[TimingSignal, ...] = ()
+    """A `timing` figure's lanes, top to bottom, each a value per step."""
+
+    timing_ticks: tuple[str, ...] = ()
+    """A `timing` figure's step names, one per step, or none."""
+
+    timing_markers: tuple[TimingMarker, ...] = ()
+    """A `timing` figure's vertical markers, in the order written."""
+
+    timing_intervals: tuple[TimingInterval, ...] = ()
+    """A `timing` figure's named intervals, in the order written."""
+    git_branches: tuple[GitBranch, ...] = ()
+    """A `gitgraph`'s branches, one lane each in the order written."""
+
+    git_steps: tuple[GitStep, ...] = ()
+    """A `gitgraph`'s commits, merges and cherry-picks, in the order made."""
+
+    git_direction: str = "right"
+    """Which way a `gitgraph`'s time runs: `right` or `down`."""
+
     @property
     def family(self) -> str:
         """Which rendering family this document's kind belongs to."""
@@ -5501,6 +6301,10 @@ class Document:
             ("clock", CLOCK_KINDS),
             ("sunburst", SUNBURST_KINDS),
             ("usecase", USECASE_KINDS),
+            ("railroad", RAILROAD_KINDS),
+            ("network", NETWORK_KINDS),
+            ("timing", TIMING_KINDS),
+            ("gitgraph", GITGRAPH_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -5678,6 +6482,13 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
             found.append(too_deep)
             return tuple(found)
 
+    if kind in RAILROAD_KINDS:
+        # `railroad-item` is self-referential too: cap the nesting before recursing.
+        nested = _railroad_too_deep(document)
+        if nested is not None:
+            found.append(nested)
+            return tuple(found)
+
     _check_object(document, fields_for(kind), "", found)
 
     version = document.get("version")
@@ -5733,6 +6544,14 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_sunburst_refusal(violation) for violation in found]
     if kind in USECASE_KINDS:
         found = [_usecase_refusal(violation) for violation in found]
+    if kind in RAILROAD_KINDS:
+        found = [_railroad_refusal(violation) for violation in found]
+    if kind in NETWORK_KINDS:
+        found = [_network_refusal(violation) for violation in found]
+    if kind in TIMING_KINDS:
+        found = [_timing_refusal(violation) for violation in found]
+    if kind in GITGRAPH_KINDS:
+        found = [_gitgraph_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
     found.extend(_readability_violations(document, kind))
@@ -5818,6 +6637,14 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
     ("clock", "clocks"): (
         "Past twelve faces a sheet is two sheets: split it by the skill each practises — "
         "o'clock and half past on one, quarters on the next."
+    ),
+    ("timing", "signals"): (
+        "Past twelve lanes a timing figure is searched, not read: split it by bus or by "
+        "phase, one figure each, on the same steps."
+    ),
+    ("signals", "states"): (
+        "Past six states the levels of one lane crowd: merge the states the reader need not "
+        "tell apart, or draw the machine as a `states` diagram."
     ),
     ("rag", "rows"): (
         "Past fifteen rows a status report is searched, not read: split it by programme or "
@@ -6128,6 +6955,14 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _sunburst_violations(document)
     if kind in USECASE_KINDS:
         return _usecase_violations(document)
+    if kind in RAILROAD_KINDS:
+        return _railroad_violations(document)
+    if kind in NETWORK_KINDS:
+        return _network_violations(document)
+    if kind in TIMING_KINDS:
+        return _timing_violations(document)
+    if kind in GITGRAPH_KINDS:
+        return _gitgraph_violations(document)
     if kind == "chart":
         return _chart_violations(document)
     if kind == "quadrant":
@@ -10867,6 +11702,1147 @@ def _sunburst_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a network diagram has no place for a field an author may reach for.
+NETWORK_REFUSED: Final = {
+    "column": (
+        "a host's column is drawspec's: chosen so no line crosses a bus it is not on, then "
+        "as few columns and as close to the order written as that allows"
+    ),
+    "order": (
+        "the networks are drawn in the order written and the columns are derived from the "
+        "attachments; reorder the `networks` array to move a bus"
+    ),
+    "icon": (
+        "drawspec draws no device icons: a host is a box (`store` a drum, `person` a client), "
+        "and its words say what it is — `fw01 (firewall)`"
+    ),
+    "shape": (
+        "a host's shape comes from its `role`: `step` a box, `store` a drum, `person` a client"
+    ),
+    "edges": (
+        "a network diagram joins hosts to buses, not hosts to hosts: put both hosts on a "
+        "network. For links between boxes, draw a `flow`"
+    ),
+    "color": "appearance is the theme's: a network's bus is drawn the same as every other",
+    "colour": "appearance is the theme's: a network's bus is drawn the same as every other",
+}
+
+#: What a device role an author may reach for is, in drawspec's vocabulary.
+NETWORK_ROLE_HINTS: Final = {
+    "router": "a router is a host on two networks: leave the role out and name it",
+    "firewall": "a firewall is a host on the networks it divides: leave the role out and name it",
+    "switch": "a switch is the network itself: make it one of the `networks`",
+    "server": "a server is the default box: leave the role out",
+    "database": "a database is `store`, drawn as a drum",
+    "storage": "a storage array is `store`, drawn as a drum",
+    "cloud": "the internet is a network: make it the first of the `networks`",
+    "internet": "the internet is a network: make it the first of the `networks`",
+    "client": "a user's machine is `person`",
+    "user": "a user's machine is `person`",
+}
+
+
+def _network_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a network diagram, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    if "is not a known field" in violation.message and name in NETWORK_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {NETWORK_REFUSED[name]}.")
+    if name == "role" and "is not one of" in violation.message:
+        value = violation.message.split(" is not one of", 1)[0].strip("'\"")
+        hint = NETWORK_ROLE_HINTS.get(value.lower())
+        if hint:
+            return Violation(
+                violation.pointer,
+                f"{value!r} is not a host role ({', '.join(NETWORK_HOST_ROLES)}): {hint}. "
+                f"drawspec draws no device icons.",
+            )
+    return violation
+
+
+def _network_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Ids that land, no empty bus, groups that hold, and lines that cross no bus.
+
+    The last is the kind's one hard question: a host on two networks that are not
+    neighbours must stand outside every bus between them. `drawspec.buses` looks
+    for a column order where every host does; when it finds none the document is
+    refused here, at the host, before any layout runs.
+    """
+    from drawspec.buses import arrange
+
+    found: list[Violation] = []
+    networks: dict[str, int] = {}
+    # Whether every entry is whole enough to arrange: a network skipped here keeps
+    # its slot, so a host on a later one would name an index past the count.
+    whole = True
+    for index, entry in enumerate(_listed(document, "networks")):
+        if not isinstance(entry, dict):
+            whole = False
+            continue
+        identifier = entry.get("id")
+        text = entry.get("text")
+        if isinstance(text, str) and not text.strip():
+            found.append(Violation(_pointer("networks", index, "text"), "a network needs a name."))
+        if not isinstance(identifier, str):
+            whole = False
+            continue
+        if identifier in networks:
+            found.append(
+                Violation(_pointer("networks", index, "id"), f"duplicate network id {identifier!r}")
+            )
+            whole = False
+            continue
+        networks[identifier] = index
+
+    hosts: dict[str, int] = {}
+    attached: list[list[int]] = []
+    used: set[int] = set()
+    for index, entry in enumerate(_listed(document, "hosts")):
+        if not isinstance(entry, dict):
+            whole = False
+            continue
+        identifier = entry.get("id")
+        text = entry.get("text")
+        if isinstance(text, str) and not text.strip():
+            found.append(Violation(_pointer("hosts", index, "text"), "a host needs a name."))
+        if isinstance(identifier, str):
+            if identifier in hosts or identifier in networks:
+                what = "host" if identifier in hosts else "network"
+                found.append(
+                    Violation(
+                        _pointer("hosts", index, "id"),
+                        f"{identifier!r} is already the id of a {what}: every id names one thing.",
+                    )
+                )
+            else:
+                hosts[identifier] = index
+        on: list[int] = []
+        for position, item in enumerate(_listed(entry, "networks")):
+            if not isinstance(item, dict) or not isinstance(item.get("network"), str):
+                whole = False
+                continue
+            name = item["network"]
+            pointer = _pointer("hosts", index, "networks", position, "network")
+            if name not in networks:
+                found.append(
+                    Violation(
+                        pointer, f"{name!r} is not the id of any network" + _closest(name, networks)
+                    )
+                )
+                whole = False
+                continue
+            if networks[name] in on:
+                found.append(
+                    Violation(
+                        pointer,
+                        f"this host is on {name!r} already: one line per network. Two addresses "
+                        f"on one network go in one `address`, `.1, .2`.",
+                    )
+                )
+                continue
+            on.append(networks[name])
+        if not on:
+            whole = False
+        used.update(on)
+        attached.append(on)
+
+    for name, index in networks.items():
+        if index not in used and whole:
+            found.append(
+                Violation(
+                    _pointer("networks", index),
+                    f"no host is on {name!r}: an empty bus says nothing. Put a host on it, or "
+                    f"leave it out.",
+                )
+            )
+
+    members: list[list[int]] = []
+    owner: dict[str, int] = {}
+    for index, entry in enumerate(_listed(document, "groups")):
+        if not isinstance(entry, dict):
+            whole = False
+            continue
+        text = entry.get("text")
+        if isinstance(text, str) and not text.strip():
+            found.append(
+                Violation(
+                    _pointer("groups", index, "text"),
+                    "a group's name needs words, or leave `text` out.",
+                )
+            )
+        listed: list[int] = []
+        for position, member in enumerate(_listed(entry, "members")):
+            if not isinstance(member, str):
+                whole = False
+                continue
+            pointer = _pointer("groups", index, "members", position)
+            if member not in hosts:
+                found.append(
+                    Violation(
+                        pointer, f"{member!r} is not the id of any host" + _closest(member, hosts)
+                    )
+                )
+                whole = False
+                continue
+            if member in owner:
+                where = "this group" if owner[member] == index else f"group {owner[member]}"
+                found.append(
+                    Violation(
+                        pointer,
+                        f"{member!r} is in {where} already: a host stands on one backdrop.",
+                    )
+                )
+                continue
+            owner[member] = index
+            listed.append(hosts[member])
+        members.append(listed)
+
+    if found or not whole or not attached or len(hosts) != len(attached):
+        return found
+    if len(networks) > NETWORK_MAX or len(attached) > NETWORK_HOST_MAX:
+        return found  # the budget refuses it, and the search would be slow for nothing
+
+    names = list(networks)
+    arrangement = arrange(len(networks), attached, members)
+    for host, network in arrangement.crossings[:1]:
+        on = sorted(attached[host])
+        found.append(
+            Violation(
+                _pointer("hosts", host, "networks"),
+                f"this host is on {names[on[0]]!r} and {names[on[-1]]!r}, so its line passes "
+                f"{names[network]!r}, which it is not on — and in no column order does it stand "
+                f"clear of the hosts on {names[network]!r}. Put it on {names[network]!r} too, "
+                f"move {names[network]!r} in `networks` so the ones it joins are neighbours, or "
+                f"split the diagram.",
+            )
+        )
+    named = {index: identifier for identifier, index in hosts.items()}
+    clashes = [clash for clash in arrangement.clashes if not arrangement.crossings]
+    for group, other in clashes[:1]:
+        if other >= 0:
+            message = (
+                f"no column order keeps this group's hosts together without host "
+                f"{named[other]!r} standing on its backdrop too. Add it to the group, or group "
+                f"fewer."
+            )
+        else:
+            message = (
+                f"no column order keeps this group's backdrop clear of group {-1 - other}'s. "
+                f"Merge the two, or group fewer hosts."
+            )
+        found.append(Violation(_pointer("groups", group, "members"), message))
+    return found
+
+
+#: Why a timing figure has no place for a field an author may reach for.
+TIMING_REFUSED: Final = {
+    "wave": (
+        'the values are an array, one string per step — `["p", ".", ".", "0"]` — '
+        "so a wrong one is pointed at by its step. Write them in `values`"
+    ),
+    "data": "a bus's words are its values: write each word in `values` at the step it starts",
+    "period": (
+        "time is counted in equal steps, so a clock is a `p` per step (or `p` then `.`): "
+        "there is no period to write"
+    ),
+    "time": (
+        "time is counted in steps, not seconds: the steps are not to scale. Name them with "
+        "`ticks`, and name a measured span with an `intervals` entry"
+    ),
+    "duration": (
+        "a span is named, not measured: write it as an `intervals` entry from one edge to another"
+    ),
+    "scale": "every step is the same width, decided by the canvas; there is no scale to set",
+    "edges": (
+        "a named span between two edges is an `intervals` entry; a line across every lane is a "
+        "`markers` entry. An arrow from one edge to an edge on another signal is not drawn"
+    ),
+    "edge": (
+        "a named span between two edges is an `intervals` entry; a line across every lane is a "
+        "`markers` entry. An arrow from one edge to an edge on another signal is not drawn"
+    ),
+    "role": (
+        "a lane is told by what it draws, its `lane`: `bit`, `bus` or `state`. There is no "
+        "emphasis to mark"
+    ),
+    "type": "what a lane draws is its `lane`: `bit`, `bus` or `state`",
+    "id": "a signal is named by its `text`, which an interval refers to",
+    "name": "a signal's name is its `text`",
+}
+
+
+def _timing_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a timing figure, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    unknown = "is not a known field" in violation.message or (
+        "is not" in violation.message and "field" in violation.message
+    )
+    if unknown and name in TIMING_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {TIMING_REFUSED[name]}.")
+    if (
+        len(parts) == 5
+        and parts[1] == "signals"
+        and parts[3] == "values"
+        and "expected string" in violation.message
+    ):
+        return Violation(
+            violation.pointer,
+            'a value is a string, one per step: write a level as `"0"` or `"1"`, in quotes, '
+            "and a word on a bus as its text.",
+        )
+    return violation
+
+
+def _timing_edge_problem(value: object, steps: int) -> str | None:
+    """Why `value` is not an edge on a `steps`-step axis, or None when it is one."""
+    if not isinstance(value, int | float) or isinstance(value, bool):
+        return None  # the structural pass has said so
+    if not math.isfinite(value):
+        return (
+            f"{value!r} is not a number of steps: an edge is from 0 (the left edge) to "
+            f"{steps} (the right), whole or half."
+        )
+    if value < 0 or value > steps:
+        return (
+            f"{_figure(float(value))} is off the axis: an edge is from 0 (the left edge) to "
+            f"{steps} (the right), in steps."
+        )
+    if not (float(value) * 2).is_integer():
+        return (
+            f"{_figure(float(value))} falls inside a step: an edge is a whole step (between "
+            f"two) or a half (where a clock pulse falls)."
+        )
+    return None
+
+
+def _timing_states(here: str, states: object, found: list[Violation]) -> list[str]:
+    """A state lane's named states, each checked: named, once, and not `.`."""
+    names: list[str] = []
+    if not isinstance(states, list):
+        return names
+    for position, state in enumerate(states):
+        if not isinstance(state, str):
+            continue
+        where = f"{here}/states/{position}"
+        if not state.strip():
+            found.append(Violation(where, "a state needs a name."))
+        elif state in names:
+            found.append(Violation(where, f"{state!r} is written twice: each state is one level."))
+        elif state == TIMING_HOLD:
+            found.append(Violation(where, "`.` carries a step on, so it cannot name a state."))
+        else:
+            names.append(state)
+    return names
+
+
+def _timing_values(
+    here: str, lane: object, values: list[Any], states: list[str] | None, found: list[Violation]
+) -> None:
+    """Every value of one lane: one its lane can draw, and no `.` with nothing before it."""
+    if len(values) > TIMING_STEP_MAX:
+        found.append(
+            Violation(
+                f"{here}/values/{TIMING_STEP_MAX}",
+                f"{len(values)} steps is past what one timing figure can be read at — "
+                f"{TIMING_STEP_MAX} at most. Draw the part the figure is about, and leave "
+                f"the idle time out.",
+            )
+        )
+    for step, value in enumerate(values):
+        if not isinstance(value, str):
+            continue
+        where = f"{here}/values/{step}"
+        if value == TIMING_HOLD:
+            if step == 0:
+                found.append(
+                    Violation(
+                        where,
+                        "`.` carries the step before on, and the first step has none: start "
+                        "with a value.",
+                    )
+                )
+            continue
+        if lane == "bit" and value not in TIMING_BIT_VALUES:
+            found.append(
+                Violation(
+                    where,
+                    f"{value!r} is not a level. A `bit` lane takes `0`, `1`, `z` (high "
+                    f"impedance), `x` (unknown), `p` and `n` (clock pulses) and `.` (as "
+                    f"before); for a word per step, set `lane` to `bus`.",
+                )
+            )
+        elif lane == "bus" and not value.strip():
+            found.append(
+                Violation(
+                    where,
+                    "an empty word is not a value: write `x` for unknown, `z` for high "
+                    "impedance, or `.` to hold the word before.",
+                )
+            )
+        elif lane == "state" and states is not None and value not in states:
+            found.append(
+                Violation(
+                    where,
+                    f"{value!r} is not one of this lane's states "
+                    f"({', '.join(states) or 'none'}); add it to `states`, or write `.` to "
+                    f"stay in the state before.",
+                )
+            )
+
+
+def _timing_signal(
+    index: int,
+    signal: Mapping[str, Any],
+    names: dict[str, int],
+    groups: dict[str, int],
+    previous_group: str | None,
+    found: list[Violation],
+) -> str | None:
+    """One signal's name, lane, states, group and values; its group, for the next."""
+    here = _pointer("signals", index)
+    text = signal.get("text")
+    if isinstance(text, str):
+        if not text.strip():
+            found.append(Violation(f"{here}/text", "a signal needs a name: its lane is blank."))
+        elif text in names:
+            found.append(
+                Violation(
+                    f"{here}/text",
+                    f"{text!r} names signal {names[text]} already: an interval refers to a "
+                    f"signal by its name, so each is written once.",
+                )
+            )
+        else:
+            names[text] = index
+    lane = signal.get("lane", "bit")
+    if lane == "state" and "states" not in signal:
+        found.append(
+            Violation(
+                f"{here}/states",
+                "a `state` lane needs its `states`, top to bottom: the levels its line steps "
+                "between.",
+            )
+        )
+    if lane != "state" and "states" in signal:
+        found.append(
+            Violation(
+                f"{here}/states",
+                f"a {lane!r} lane has no named states: its levels are fixed. Set `lane` to "
+                f"`state` to draw a line between named levels.",
+            )
+        )
+    states = _timing_states(here, signal.get("states"), found)
+    group = signal.get("group")
+    if isinstance(group, str):
+        if not group.strip():
+            found.append(Violation(f"{here}/group", "a group needs a name, or leave `group` out."))
+        elif group in groups and previous_group != group:
+            found.append(
+                Violation(
+                    f"{here}/group",
+                    f"the group {group!r} began at signal {groups[group]} and was left: write "
+                    f"a group's signals next to each other, so it is drawn once.",
+                )
+            )
+        else:
+            groups.setdefault(group, index)
+    values = signal.get("values")
+    if isinstance(values, list):
+        _timing_values(
+            here, lane, values, states if isinstance(signal.get("states"), list) else None, found
+        )
+    return group if isinstance(group, str) else None
+
+
+def _timing_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Every value a lane can draw, every lane one length, and every reference found."""
+    found: list[Violation] = []
+    names: dict[str, int] = {}
+    groups: dict[str, int] = {}
+    lengths: list[tuple[int, int]] = []
+    previous_group: str | None = None
+    for index, signal in enumerate(_listed(document, "signals")):
+        if not isinstance(signal, dict):
+            continue
+        previous_group = _timing_signal(index, signal, names, groups, previous_group, found)
+        if isinstance(signal.get("values"), list):
+            lengths.append((index, len(signal["values"])))
+    if not lengths:
+        return found
+    first, steps = lengths[0]
+    for index, length in lengths[1:]:
+        if length != steps:
+            found.append(
+                Violation(
+                    _pointer("signals", index, "values"),
+                    f"{length} steps, where signal {first} has {steps}: every lane runs the "
+                    f"whole axis, one value per step. Pad the shorter with `.` or `x`.",
+                )
+            )
+    ticks = document.get("ticks")
+    if isinstance(ticks, list) and len(ticks) != steps:
+        found.append(
+            Violation(
+                "/ticks",
+                f"{len(ticks)} ticks for {steps} steps: name each step once, an empty string "
+                f"for a step left unnamed.",
+            )
+        )
+    for index, marker in enumerate(_listed(document, "markers")):
+        if not isinstance(marker, dict):
+            continue
+        problem = _timing_edge_problem(marker.get("at"), steps)
+        if problem:
+            found.append(Violation(_pointer("markers", index, "at"), problem))
+        text = marker.get("text")
+        if isinstance(text, str) and text and not text.strip():
+            found.append(
+                Violation(_pointer("markers", index, "text"), "a blank name: leave `text` out.")
+            )
+    for index, interval in enumerate(_listed(document, "intervals")):
+        if isinstance(interval, dict):
+            found.extend(_timing_interval(index, interval, steps, names))
+    return found
+
+
+def _timing_interval(
+    index: int, interval: Mapping[str, Any], steps: int, names: Mapping[str, int]
+) -> list[Violation]:
+    """One interval: both edges on the axis, running forward, named, on a signal there is."""
+    found: list[Violation] = []
+    for end in ("from", "to"):
+        problem = _timing_edge_problem(interval.get(end), steps)
+        if problem:
+            found.append(Violation(_pointer("intervals", index, end), problem))
+    start, stop = interval.get("from"), interval.get("to")
+    numbers = all(
+        isinstance(value, int | float) and not isinstance(value, bool) for value in (start, stop)
+    )
+    if numbers and float(stop) <= float(start):  # type: ignore[arg-type]
+        found.append(
+            Violation(
+                _pointer("intervals", index, "to"),
+                f"an interval runs forward: `to` ({_figure(float(stop))}) must be after "  # type: ignore[arg-type]
+                f"`from` ({_figure(float(start))}).",  # type: ignore[arg-type]
+            )
+        )
+    text = interval.get("text")
+    if isinstance(text, str) and not text.strip():
+        found.append(Violation(_pointer("intervals", index, "text"), "an interval needs a name."))
+    signal = interval.get("signal")
+    if isinstance(signal, str) and signal not in names:
+        found.append(
+            Violation(
+                _pointer("intervals", index, "signal"),
+                f"{signal!r} is not a signal here; the signals are "
+                f"{', '.join(repr(name) for name in names) or 'none'}.",
+            )
+        )
+    return found
+
+
+#: Why a git graph has no place for a field an author may reach for.
+GITGRAPH_REFUSED: Final = {
+    "lane": (
+        "a branch's lane is its place in `branches`, in the order written; the lane's "
+        "position on the page is drawspec's"
+    ),
+    "column": "a step's place in time is its place in `steps`, in the order written",
+    "colour": "a branch's colour is the theme's, never the document's",
+    "parent": (
+        "a commit's parents are derived: the latest commit on its branch, and for a merge "
+        "the latest commit on the branch it merges"
+    ),
+    "parents": (
+        "a commit's parents are derived: the latest commit on its branch, and for a merge "
+        "the latest commit on the branch it merges"
+    ),
+    "branch": (
+        "a step names its branch with `on`; a new branch is declared once in `branches`, "
+        "with `from` saying where it forks"
+    ),
+    "checkout": ("there is no current branch to switch: every step says which branch it is `on`"),
+    "type": (
+        "a commit's kind is derived: `merge` makes a merge commit and `pick` a cherry-pick; "
+        "for the commit the figure is about, say `role: emphasis`"
+    ),
+    "date": (
+        "a git graph is an order, not a calendar: steps are evenly spaced in the order "
+        "written. For dates on an axis draw a `timeline`"
+    ),
+    "tags": "a commit takes one `tag`; a second tag on the same commit is a second release name",
+}
+
+
+def _gitgraph_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a git graph, told what this kind means by it."""
+    name = violation.pointer.split("/")[-1]
+    if "is not a known field" in violation.message and name in GITGRAPH_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {GITGRAPH_REFUSED[name]}.")
+    return violation
+
+
+def _gitgraph_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Names and handles that resolve, and a history git could have made.
+
+    The steps are replayed in order, as git would make them: a branch forks at its
+    first step from the latest commit on its `from`; a merge takes the latest commit
+    of the branch it names; a cherry-pick copies an earlier commit. A step that git
+    would refuse, or that would draw nothing new, is refused here, at its pointer.
+    """
+    found: list[Violation] = []
+    raw_branches = document.get("branches")
+    raw_steps = document.get("steps")
+    if not isinstance(raw_branches, list) or not isinstance(raw_steps, list):
+        return found
+    branches = [entry if isinstance(entry, dict) else {} for entry in raw_branches]
+    steps = [entry if isinstance(entry, dict) else {} for entry in raw_steps]
+
+    names: dict[str, int] = {}
+    for index, branch in enumerate(branches):
+        name = branch.get("name")
+        if not isinstance(name, str):
+            continue
+        if not name.strip():
+            found.append(Violation(f"/branches/{index}/name", "a branch needs a name."))
+        elif name in names:
+            found.append(
+                Violation(
+                    f"/branches/{index}/name",
+                    f"the branch {name!r} is declared twice (first at /branches/{names[name]}): "
+                    f"one lane per branch, so give the second its own name.",
+                )
+            )
+        else:
+            names[name] = index
+
+    ids: dict[str, int] = {}
+    tags: dict[str, int] = {}
+    for index, step in enumerate(steps):
+        for field_name in ("text", "tag"):
+            value = step.get(field_name)
+            if isinstance(value, str) and not value.strip():
+                found.append(
+                    Violation(
+                        f"/steps/{index}/{field_name}",
+                        f"an empty {field_name!r} draws nothing: leave the field out.",
+                    )
+                )
+        handle = step.get("id")
+        if isinstance(handle, str):
+            if not handle.strip():
+                found.append(Violation(f"/steps/{index}/id", "an empty 'id' names nothing."))
+            elif handle in ids:
+                found.append(
+                    Violation(
+                        f"/steps/{index}/id",
+                        f"the id {handle!r} is used twice (first at /steps/{ids[handle]}): a "
+                        f"commit's handle names one commit.",
+                    )
+                )
+            elif handle in names:
+                found.append(
+                    Violation(
+                        f"/steps/{index}/id",
+                        f"{handle!r} is already a branch's name, and a `from` names either: "
+                        f"give the commit another id.",
+                    )
+                )
+            else:
+                ids[handle] = index
+        tag = step.get("tag")
+        if isinstance(tag, str) and tag.strip():
+            if tag in tags:
+                found.append(
+                    Violation(
+                        f"/steps/{index}/tag",
+                        f"the tag {tag!r} is on two commits (first at /steps/{tags[tag]}): a "
+                        f"tag names one commit.",
+                    )
+                )
+            else:
+                tags[tag] = index
+        if "merge" in step and "pick" in step:
+            found.append(
+                Violation(
+                    f"/steps/{index}/pick",
+                    "a step is a merge or a cherry-pick, not both: write them as two steps.",
+                )
+            )
+    if found:
+        return found
+
+    known = ", ".join(repr(name) for name in names)
+    sources: dict[str, str] = {}
+    for index, branch in enumerate(branches):
+        name = branch.get("name")
+        source = branch.get("from")
+        if not isinstance(name, str):
+            continue
+        if index == 0:
+            if source is not None:
+                found.append(
+                    Violation(
+                        "/branches/0/from",
+                        "the first branch is the trunk, and forks from nothing: put the "
+                        "branch it forks from before it in `branches`.",
+                    )
+                )
+            continue
+        if source is None:
+            source = next(iter(names))
+        if not isinstance(source, str):
+            continue
+        if source == name:
+            found.append(Violation(f"/branches/{index}/from", "a branch cannot fork from itself."))
+        elif source not in names and source not in ids:
+            found.append(
+                Violation(
+                    f"/branches/{index}/from",
+                    f"{source!r} is neither a branch ({known}) nor a commit's `id`.",
+                )
+            )
+        else:
+            sources[name] = source
+    if found:
+        return found
+
+    # Replay the history, as git would make it.
+    tips: dict[str, int] = {}
+    ancestors: list[set[int]] = []
+    for index, step in enumerate(steps):
+        on = step.get("on")
+        here = f"/steps/{index}"
+        if not isinstance(on, str) or on not in names:
+            found.append(Violation(f"{here}/on", f"{on!r} is not one of the branches: {known}."))
+            return found
+        parents: list[int] = []
+        if on in tips:
+            parents.append(tips[on])
+        elif names[on] != 0:
+            source = sources[on]
+            if source in names:
+                if source not in tips:
+                    found.append(
+                        Violation(
+                            f"{here}/on",
+                            f"{on!r} forks from {source!r} at its first commit, and {source!r} "
+                            f"has no commit yet: commit on {source!r} first.",
+                        )
+                    )
+                    return found
+                parents.append(tips[source])
+            else:
+                if ids[source] >= index:
+                    found.append(
+                        Violation(
+                            f"/branches/{names[on]}/from",
+                            f"{on!r} forks from {source!r}, which is written after the "
+                            f"branch's first commit (/steps/{index}): a branch can only fork "
+                            f"from a commit that already exists.",
+                        )
+                    )
+                    return found
+                parents.append(ids[source])
+            if "merge" in step:
+                found.append(
+                    Violation(
+                        f"{here}/merge",
+                        f"this is {on!r}'s first commit, so the merge would only fast-forward "
+                        f"it: commit on {on!r} first, or merge into the branch it forks from.",
+                    )
+                )
+                return found
+        elif "merge" in step:
+            found.append(
+                Violation(
+                    f"{here}/merge",
+                    f"a merge needs a commit on {on!r} to merge into: commit on it first.",
+                )
+            )
+            return found
+        reach: set[int] = {index}
+        for parent in parents:
+            reach |= ancestors[parent]
+        merged = step.get("merge")
+        if isinstance(merged, str):
+            if merged not in names:
+                found.append(
+                    Violation(f"{here}/merge", f"{merged!r} is not one of the branches: {known}.")
+                )
+                return found
+            if merged == on:
+                found.append(Violation(f"{here}/merge", f"a branch cannot merge itself ({on!r})."))
+                return found
+            if merged not in tips:
+                found.append(
+                    Violation(
+                        f"{here}/merge",
+                        f"{merged!r} has no commit yet, so there is nothing to merge.",
+                    )
+                )
+                return found
+            if tips[merged] in reach:
+                found.append(
+                    Violation(
+                        f"{here}/merge",
+                        f"everything on {merged!r} is already in {on!r}: the merge would make "
+                        f"no change. Commit on {merged!r} first, or leave the merge out.",
+                    )
+                )
+                return found
+            reach |= ancestors[tips[merged]]
+        picked = step.get("pick")
+        if isinstance(picked, str):
+            if picked not in ids:
+                found.append(Violation(f"{here}/pick", f"{picked!r} is not any commit's `id`."))
+                return found
+            source_index = ids[picked]
+            if source_index >= index:
+                found.append(
+                    Violation(
+                        f"{here}/pick",
+                        f"{picked!r} is written after this step: a cherry-pick copies a commit "
+                        f"that already exists.",
+                    )
+                )
+                return found
+            if "merge" in steps[source_index]:
+                found.append(
+                    Violation(
+                        f"{here}/pick",
+                        f"{picked!r} is a merge commit, which git will not cherry-pick without "
+                        f"choosing a side: pick one of the commits it merged.",
+                    )
+                )
+                return found
+            if source_index in reach:
+                found.append(
+                    Violation(
+                        f"{here}/pick",
+                        f"{picked!r} is already in {on!r}'s history: picking it changes nothing.",
+                    )
+                )
+                return found
+        ancestors.append(reach)
+        tips[on] = index
+
+    for name, index in names.items():
+        if name not in tips:
+            found.append(
+                Violation(
+                    f"/branches/{index}",
+                    f"the branch {name!r} has no commit, so it has no lane to draw: commit on "
+                    f"it, or leave it out (a name on a commit is a `tag`).",
+                )
+            )
+    return found
+
+
+#: Why a railroad has no place for a field an author may reach for.
+RAILROAD_REFUSED: Final = {
+    "text": (
+        "a box's words go in `terminal`, `rule` or `special` — which of the three says how it "
+        "is drawn — and words on the track with no box in `comment`"
+    ),
+    "name": 'only a rule has a name; inside a track, refer to a rule with `{"rule": name}`',
+    "max": (
+        "a loop is drawn the same whatever its most, so a count is never drawn: say it in a "
+        "`comment` as the `separator`, or write the item that many times in a `seq`"
+    ),
+    "times": (
+        "a loop is drawn the same whatever its count: write the item that many times in a "
+        "`seq`, or say it in a `comment`"
+    ),
+    "count": (
+        "a loop is drawn the same whatever its count: write the item that many times in a "
+        "`seq`, or say it in a `comment`"
+    ),
+    "default": (
+        "the first branch of a `choice` is the one drawn on the main line: put the usual one first"
+    ),
+    "index": (
+        "the first branch of a `choice` is the one drawn on the main line: put the usual one first"
+    ),
+    "skip": "an alternative that matches nothing is an `optional` round the `choice`",
+    "empty": "an alternative that matches nothing is an `optional` round the `choice`",
+    "role": (
+        "an item is drawn by what it is — a terminal rounded, a rule square, a special dashed: "
+        "say `terminal`, `rule` or `special` instead"
+    ),
+    "id": "nothing refers to an item: a rule is referred to by its `name`",
+    "edges": (
+        "a track's lines are derived from `seq`, `choice`, `optional` and `repeat`; arbitrary "
+        "lines between boxes are a `flow`"
+    ),
+    "nodes": "a grammar is written as `rules`, each an `expr`",
+}
+
+
+def _railroad_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a railroad, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    if "is not a known field" in violation.message and name in RAILROAD_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {RAILROAD_REFUSED[name]}.")
+    if name == "seq" and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a 'seq' of fewer than 2 items is that item: write it on its own.",
+        )
+    if name == "choice" and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a 'choice' needs 2 alternatives at least; one is that item on its own, and one "
+            "that may be left out is an 'optional'.",
+        )
+    return violation
+
+
+def _railroad_children(entry: Mapping[str, Any], pointer: str) -> Iterator[tuple[object, str]]:
+    """Every item directly inside `entry`, with its pointer."""
+    for key in ("seq", "choice"):
+        value = entry.get(key)
+        if isinstance(value, list):
+            for index, element in enumerate(value):
+                yield element, f"{pointer}/{key}/{index}"
+    for key in ("optional", "repeat", "separator"):
+        value = entry.get(key)
+        if isinstance(value, dict):
+            yield value, f"{pointer}/{key}"
+
+
+def _railroad_too_deep(document: Mapping[str, Any]) -> Violation | None:
+    """The first item nested past `RAILROAD_DEPTH_MAX`, found without recursion.
+
+    As `_sunburst_too_deep`: `railroad-item` refers to itself, the structural pass
+    recurses once per level, and a pathologically deep document must come back as
+    a located violation rather than a `RecursionError`.
+    """
+    rules = document.get("rules")
+    if not isinstance(rules, list):
+        return None
+    stack: list[tuple[object, str, int]] = [
+        (rule.get("expr"), f"/rules/{index}/expr", 1)
+        for index, rule in enumerate(rules)
+        if isinstance(rule, dict)
+    ]
+    while stack:
+        entry, pointer, depth = stack.pop()
+        if not isinstance(entry, dict):
+            continue
+        if depth > RAILROAD_DEPTH_MAX:
+            return Violation(
+                pointer,
+                f"items nested {depth} deep are past what one track can be followed at — "
+                f"{RAILROAD_DEPTH_MAX} at most. Make the inner part a rule of its own and "
+                f'refer to it with {{"rule": name}}.',
+            )
+        stack.extend(
+            (child, where, depth + 1) for child, where in _railroad_children(entry, pointer)
+        )
+    return None
+
+
+def _railroad_words(value: object, pointer: str, what: str, found: list[Violation]) -> None:
+    """A box's, a comment's or a name's words: present, and on one line."""
+    if not isinstance(value, str):
+        return
+    if not value.strip():
+        found.append(Violation(pointer, f"{what} needs words: an empty one is a blank box."))
+    elif "\n" in value:
+        found.append(
+            Violation(
+                pointer,
+                f"{what} is one line on a track: a newline has nowhere to go. Shorten it, or "
+                f"split it into two items in a 'seq'.",
+            )
+        )
+
+
+def _railroad_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """Each item one thing, its fields its own, every rule it names defined, and the caps."""
+    found: list[Violation] = []
+    rules = document.get("rules")
+    if not isinstance(rules, list):
+        return found
+
+    defined: dict[str, int] = {}
+    for index, rule in enumerate(rules):
+        if not isinstance(rule, dict):
+            continue
+        name = rule.get("name")
+        _railroad_words(name, f"/rules/{index}/name", "a rule's name", found)
+        if isinstance(name, str) and name.strip():
+            if name in defined:
+                found.append(
+                    Violation(
+                        f"/rules/{index}/name",
+                        f"a rule named {name!r} is already defined at /rules/{defined[name]}: "
+                        f"each rule is drawn once, so merge the two with a 'choice'.",
+                    )
+                )
+            else:
+                defined[name] = index
+
+    external: dict[str, int] = {}
+    listed = document.get("external")
+    if isinstance(listed, list):
+        for index, name in enumerate(listed):
+            if not isinstance(name, str):
+                continue
+            pointer = f"/external/{index}"
+            _railroad_words(name, pointer, "an external rule's name", found)
+            if name in defined:
+                found.append(
+                    Violation(
+                        pointer,
+                        f"{name!r} is defined in this document, at /rules/{defined[name]}, so it "
+                        f"is not external: take it out of 'external'.",
+                    )
+                )
+            elif name in external:
+                found.append(Violation(pointer, f"{name!r} is listed twice in 'external'."))
+            else:
+                external[name] = index
+
+    used: set[str] = set()
+    known = sorted({*defined, *external})
+
+    def check(entry: object, pointer: str, counter: list[int]) -> None:
+        if not isinstance(entry, dict):
+            return
+        shapes = [shape for shape in RAILROAD_SHAPES if shape in entry]
+        if not shapes:
+            found.append(
+                Violation(
+                    pointer,
+                    "an item needs to say what it is: one of "
+                    + ", ".join(f"'{shape}'" for shape in RAILROAD_SHAPES)
+                    + ".",
+                )
+            )
+            return
+        if len(shapes) > 1:
+            found.append(
+                Violation(
+                    f"{pointer}/{shapes[1]}",
+                    f"an item is one thing, and this one says both {shapes[0]!r} and "
+                    f"{shapes[1]!r}. Put them one after the other in a 'seq', or one inside "
+                    f"the other.",
+                )
+            )
+            return
+        shape = shapes[0]
+        if shape != "repeat":
+            for key in ("separator", "min"):
+                if key in entry:
+                    found.append(
+                        Violation(
+                            f"{pointer}/{key}",
+                            f"{key!r} belongs to a 'repeat', and this item is a {shape!r}.",
+                        )
+                    )
+        if shape in RAILROAD_BOXES:
+            counter[0] += 1
+            words = {
+                "terminal": "a terminal",
+                "rule": "a rule box",
+                "special": "a special box",
+                "comment": "a comment",
+            }[shape]
+            _railroad_words(entry[shape], f"{pointer}/{shape}", words, found)
+            if shape == "rule" and isinstance(entry[shape], str) and entry[shape].strip():
+                target = entry[shape]
+                used.add(target)
+                if target not in defined and target not in external:
+                    close = get_close_matches(target, known, n=1)
+                    hint = f" Did you mean {close[0]!r}?" if close else ""
+                    found.append(
+                        Violation(
+                            f"{pointer}/rule",
+                            f"no rule is named {target!r}: define it in 'rules', or list it in "
+                            f"'external' if it is drawn elsewhere.{hint}",
+                        )
+                    )
+            return
+        branches = entry["choice"] if shape == "choice" else None
+        if isinstance(branches, list) and len(branches) > RAILROAD_BRANCH_MAX:
+            found.append(
+                Violation(
+                    f"{pointer}/choice",
+                    f"{len(branches)} alternatives are past what one choice can be read at — "
+                    f"{RAILROAD_BRANCH_MAX} at most. Group some under a rule of their own.",
+                )
+            )
+        if shape == "optional" and isinstance(entry["optional"], dict):
+            inner = entry["optional"]
+            if "optional" in inner or (inner.get("repeat") is not None and inner.get("min") == 0):
+                found.append(
+                    Violation(
+                        f"{pointer}/optional",
+                        "this is already optional: a second bypass round it draws nothing new. "
+                        "Take one away.",
+                    )
+                )
+        if shape == "repeat":
+            if "min" not in entry:
+                found.append(
+                    Violation(
+                        f"{pointer}/min",
+                        "a 'repeat' needs 'min': 1 for one or more, 0 for zero or more (a loop "
+                        "that may also be skipped).",
+                    )
+                )
+            elif isinstance(entry["min"], int) and entry["min"] not in (0, 1):
+                found.append(
+                    Violation(
+                        f"{pointer}/min",
+                        f"'min' is 0 or 1, not {entry['min']!r}: a loop is drawn the same "
+                        f"whatever its count. Write the item that many times in a 'seq' before "
+                        f"a repeat with min 0.",
+                    )
+                )
+            separator = entry.get("separator")
+            if isinstance(separator, dict) and any(key in separator for key in RAILROAD_COMBINERS):
+                found.append(
+                    Violation(
+                        f"{pointer}/separator",
+                        "a separator is one box or a comment — a 'terminal', 'rule', 'special' "
+                        "or 'comment' — because it is read backwards along the loop. Make a "
+                        "longer one a rule of its own.",
+                    )
+                )
+        for child, where in _railroad_children(entry, pointer):
+            check(child, where, counter)
+
+    for index, rule in enumerate(rules):
+        if not isinstance(rule, dict):
+            continue
+        counter = [0]
+        check(rule.get("expr"), f"/rules/{index}/expr", counter)
+        if counter[0] > RAILROAD_BOX_MAX:
+            found.append(
+                Violation(
+                    f"/rules/{index}/expr",
+                    f"{counter[0]} boxes on one track is past what one rule can be read at — "
+                    f"{RAILROAD_BOX_MAX} at most. Factor part of it into a rule of its own, "
+                    f"as SQLite's diagrams do.",
+                )
+            )
+
+    for name, index in external.items():
+        if name not in used:
+            found.append(
+                Violation(
+                    f"/external/{index}",
+                    f"no rule box refers to {name!r}, so listing it says nothing: take it out.",
+                )
+            )
+    return found
+
+
 #: Why a use case diagram has no place for a field an author may reach for.
 USECASE_REFUSED: Final = {
     "text": (
@@ -12056,6 +14032,14 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _sunburst_document(document)
     if kind in USECASE_KINDS:
         return _usecase_document(document)
+    if kind in RAILROAD_KINDS:
+        return _railroad_document(document)
+    if kind in NETWORK_KINDS:
+        return _network_document(document)
+    if kind in TIMING_KINDS:
+        return _timing_document(document)
+    if kind in GITGRAPH_KINDS:
+        return _gitgraph_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -12938,6 +14922,168 @@ def _sunburst_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _network_document(document: Mapping[str, Any]) -> Document:
+    """A network diagram: its buses, its hosts and its groups, in the order written."""
+    order = {entry["id"]: index for index, entry in enumerate(document["networks"])}
+
+    def host(entry: Mapping[str, Any]) -> NetworkHost:
+        attached = sorted(entry["networks"], key=lambda item: order[item["network"]])
+        return NetworkHost(
+            id=str(entry["id"]),
+            text=str(entry.get("text", entry["id"])),
+            role=str(entry.get("role", "step")),
+            networks=tuple(str(item["network"]) for item in attached),
+            addresses=tuple(str(item.get("address", "")) for item in attached),
+        )
+
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        networks=tuple(
+            NetworkSegment(
+                id=str(entry["id"]),
+                text=str(entry.get("text", entry["id"])),
+                address=str(entry.get("address", "")),
+            )
+            for entry in document["networks"]
+        ),
+        hosts=tuple(host(entry) for entry in document["hosts"]),
+        host_groups=tuple(
+            NetworkGroup(
+                text=str(entry.get("text", "")),
+                members=tuple(str(member) for member in entry["members"]),
+            )
+            for entry in document.get("groups", ())
+        ),
+    )
+
+
+def _gitgraph_document(document: Mapping[str, Any]) -> Document:
+    """A git graph: its branches and its steps, in the order written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        git_branches=tuple(
+            GitBranch(
+                name=str(entry["name"]),
+                source=str(entry.get("from", "")),
+                role=str(entry.get("role", "step")),
+            )
+            for entry in document["branches"]
+        ),
+        git_steps=tuple(
+            GitStep(
+                on=str(entry["on"]),
+                text=str(entry.get("text", "")),
+                id=str(entry.get("id", "")),
+                merge=str(entry.get("merge", "")),
+                pick=str(entry.get("pick", "")),
+                tag=str(entry.get("tag", "")),
+                role=str(entry.get("role", "step")),
+            )
+            for entry in document["steps"]
+        ),
+        git_direction=str(document.get("direction", "right")),
+    )
+
+
+def _timing_document(document: Mapping[str, Any]) -> Document:
+    """A timing figure: its lanes, step names, markers and intervals, as written."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        timing_signals=tuple(
+            TimingSignal(
+                text=str(signal["text"]),
+                lane=str(signal.get("lane", "bit")),
+                values=tuple(str(value) for value in signal["values"]),
+                states=tuple(str(state) for state in signal.get("states", ())),
+                group=str(signal.get("group", "")),
+            )
+            for signal in document["signals"]
+        ),
+        timing_ticks=tuple(str(tick) for tick in document.get("ticks", ())),
+        timing_markers=tuple(
+            TimingMarker(at=float(marker["at"]), text=str(marker.get("text", "")))
+            for marker in document.get("markers", ())
+        ),
+        timing_intervals=tuple(
+            TimingInterval(
+                start=float(interval["from"]),
+                end=float(interval["to"]),
+                text=str(interval["text"]),
+                signal=str(interval.get("signal", "")),
+            )
+            for interval in document.get("intervals", ())
+        ),
+    )
+
+
+def _railroad_item(entry: Mapping[str, Any], pointer: str) -> RailroadItem:
+    """One railroad item and everything inside it, built from the validated mapping."""
+    shape = next(shape for shape in RAILROAD_SHAPES if shape in entry)
+    if shape in RAILROAD_BOXES:
+        return RailroadItem(shape=shape, text=str(entry[shape]), pointer=pointer)
+    if shape in ("seq", "choice"):
+        return RailroadItem(
+            shape=shape,
+            items=tuple(
+                _railroad_item(child, f"{pointer}/{shape}/{index}")
+                for index, child in enumerate(entry[shape])
+            ),
+            pointer=pointer,
+        )
+    separator = entry.get("separator")
+    return RailroadItem(
+        shape=shape,
+        items=(_railroad_item(entry[shape], f"{pointer}/{shape}"),),
+        separator=_railroad_item(separator, f"{pointer}/separator") if separator else None,
+        min=int(entry.get("min", 1)),
+        pointer=pointer,
+    )
+
+
+def _railroad_document(document: Mapping[str, Any]) -> Document:
+    """A railroad grammar: its rules in the order written, and the names it borrows."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        railroad_rules=tuple(
+            RailroadRule(
+                name=str(rule["name"]),
+                expr=_railroad_item(rule["expr"], f"/rules/{index}/expr"),
+                pointer=f"/rules/{index}",
+            )
+            for index, rule in enumerate(document["rules"])
+        ),
+        railroad_external=tuple(str(name) for name in document.get("external", ())),
+    )
+
+
 def _pie_document(document: Mapping[str, Any]) -> Document:
     """A pie: its parts in the order written, and the unit they are in."""
     return Document(
@@ -13268,6 +15414,11 @@ __all__ = [
     "FISHBONE_CAUSE_MAX",
     "FISHBONE_KINDS",
     "FRAGMENT_OPERATORS",
+    "GITGRAPH_BRANCH_MAX",
+    "GITGRAPH_DIRECTIONS",
+    "GITGRAPH_KINDS",
+    "GITGRAPH_ROLES",
+    "GITGRAPH_STEP_MAX",
     "GRAPH_EDGE_ROLES",
     "GRAPH_KINDS",
     "GRID_KINDS",
@@ -13296,6 +15447,11 @@ __all__ = [
     "MINDMAP_KINDS",
     "MINDMAP_NODE_MAX",
     "MINDMAP_ROLES",
+    "NETWORK_GROUP_MAX",
+    "NETWORK_HOST_MAX",
+    "NETWORK_HOST_ROLES",
+    "NETWORK_KINDS",
+    "NETWORK_MAX",
     "NUMBERLINE_KINDS",
     "NUMBERLINE_POINT_MAX",
     "NUMBERLINE_RANGE_MAX",
@@ -13315,6 +15471,14 @@ __all__ = [
     "RAG_ROW_MAX",
     "RAG_TRENDS",
     "RAG_VALUES",
+    "RAILROAD_BOXES",
+    "RAILROAD_BOX_MAX",
+    "RAILROAD_BRANCH_MAX",
+    "RAILROAD_COMBINERS",
+    "RAILROAD_DEPTH_MAX",
+    "RAILROAD_KINDS",
+    "RAILROAD_RULE_MAX",
+    "RAILROAD_SHAPES",
     "REGION_ROLES",
     "REJECTED_FIELDS",
     "SANKEY_BAND",
@@ -13333,6 +15497,16 @@ __all__ = [
     "SUNBURST_KINDS",
     "SUNBURST_NODE_MAX",
     "SUNBURST_RING_MAX",
+    "TIMING_BIT_VALUES",
+    "TIMING_BUS_RESERVED",
+    "TIMING_HOLD",
+    "TIMING_INTERVAL_MAX",
+    "TIMING_KINDS",
+    "TIMING_LANES",
+    "TIMING_MARKER_MAX",
+    "TIMING_SIGNAL_MAX",
+    "TIMING_STATE_MAX",
+    "TIMING_STEP_MAX",
     "TRANSITION_ROLES",
     "TREEMAP_KINDS",
     "TREEMAP_PART_ROLES",
@@ -13373,6 +15547,8 @@ __all__ = [
     "FamilyTwins",
     "FieldSpec",
     "Fragment",
+    "GitBranch",
+    "GitStep",
     "Group",
     "Item",
     "JourneyStage",
@@ -13383,6 +15559,9 @@ __all__ = [
     "ModelBar",
     "ModelBrace",
     "ModelPart",
+    "NetworkGroup",
+    "NetworkHost",
+    "NetworkSegment",
     "Node",
     "NodeClass",
     "NumberAxis",
@@ -13392,6 +15571,8 @@ __all__ = [
     "PiePart",
     "Position",
     "RagRow",
+    "RailroadItem",
+    "RailroadRule",
     "Region",
     "Relation",
     "SankeyFlow",
@@ -13399,6 +15580,9 @@ __all__ = [
     "Series",
     "Slice",
     "SunburstNode",
+    "TimingInterval",
+    "TimingMarker",
+    "TimingSignal",
     "TreemapGroup",
     "TreemapPart",
     "UseCase",

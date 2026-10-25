@@ -12,6 +12,61 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **A `railroad` kind.** A grammar's rules as syntax (railroad) diagrams, as JSON.org and
+  SQLite draw them: each rule a track from an entry bar to an exit bar through terminals
+  (rounded, monospace), rule references (square) and described sets (`special`, dashed),
+  with comments on the line. The input is an expression tree per rule — `seq`, `choice`
+  (the first alternative on the main line), `optional` (a bypass over it) and `repeat`
+  (a loop under it, `min` 0 or 1, with an optional one-box `separator`) — and every turn
+  is a quarter circle of one radius, derived. A rule wider than the canvas wraps between
+  the items of its top-level sequence, a return track leading each line into the next;
+  an item too wide on a line of its own is refused at its pointer. Every `rule` box must
+  name a defined rule or one listed in `external`, with a suggestion for a misspelling.
+  Up to 12 rules, 40 boxes a rule, 10 alternatives a choice, 8 levels of nesting.
+  `render --format text` draws the same track in box-drawing characters or ASCII.
+  References: JSON's number, string and value figures, a SQLite SELECT subset, and a
+  command line.
+
+- **A `network` kind.** Network diagrams in the nwdiag style: each network a horizontal
+  bus with its name and address on it, top to bottom in the order written; each host a
+  box under its topmost network with a straight line to every network it is on, a
+  per-attachment address (`.1`) beside the line where it meets the bus. A host on two
+  networks stands between them and joins them. The input has no coordinates — `networks`,
+  `hosts` with their attachments, optional `groups` drawn as a shaded backdrop — and the
+  column order is derived so that no line crosses a bus it is not on (a document where no
+  order manages it is refused at the host), then for the fewest columns, the shortest
+  buses and the order written; hosts whose spans are apart stack in one column. Host roles
+  reuse the existing shapes (`store` a drum, `person` a client, `emphasis`), with no
+  device icons. A `[network]` theme section sets the bus and group washes. It has a text
+  form (`--format text`): buses as heavy rules, the same columns. Up to 6 networks, 24
+  hosts and 6 groups; three reference documents (nwdiag's own DMZ example, a three-tier
+  web application, a small office LAN on the blueprint theme).
+
+- **A `timing` kind.** Signals against one shared time axis, a lane each — the SPI and
+  I²C figures of a datasheet, a WaveDrom waveform, a UML timing diagram. Every signal is
+  a `text` and one value per step: a `bit` lane takes `0`, `1`, `z`, `x` and the clock
+  pulses `p` and `n` (so an edge can fall at half a step, as an I²C START does), a `bus`
+  lane any word, drawn in the datasheet's hexagons, and a `state` lane one of its named
+  `states`, UML's robust lifeline; `.` holds the step before. Values are an array, not a
+  WaveDrom string, so every refusal lands on its step (`/signals/2/values/7`). Signals
+  may be grouped; `markers` rule an edge across every lane, `intervals` name a span
+  between two edges with an arrow under a signal (`tSU;STA`), `ticks` name the steps. A
+  `[timing]` theme section sets the bus slant and an optional step grid. It has a text
+  form: three rows a lane, edges as box-drawing junctions, 100 columns by default. Up to
+  12 signals, 40 steps, 6 states a lane, 8 markers and 10 intervals; references for an
+  SPI read, I²C START/STOP and a page request's states.
+
+- **A `gitgraph` kind.** Commits on branches over time — git-flow, trunk-based release
+  branches, Pro Git's hotfix — with forks, merges, tags and cherry-picks. The input is the
+  branches (each forking `from` a branch or a commit `id`) and the steps in the order made,
+  each `on` a branch, a `merge` or a `pick`; the history is replayed as git would make it,
+  so lanes, spacing and parents are derived and a merge that changes nothing, a pick
+  already in the history or a branch with no commit is refused at its pointer. A commit is
+  a dot, a merge a ring round one, a cherry-pick a dashed ring, an emphasised commit a
+  square; a fork turns just after its parent and a merge just before its commit, between
+  two steps. `direction: right` (labels under the dots) or `down` (messages in a column).
+  A `[gitgraph] colours` theme key colours the lanes' dots and names (`accent` sets one).
+  `--format text` draws it as `git log --graph` would. Budget: 8 branches, 30 steps.
 - **A `sunburst` kind.** A hierarchy drawn as concentric rings of sectors, each label read
   from the middle outward: a wheel of emotions, a taxonomy. The input is just a tree of
   `{text, children?}` with an optional `centre` hub — every terminal node takes an equal
@@ -36,6 +91,14 @@ against it would stop working. Everything below is about the *package*.
   relations; refusals for actor–actor associations, include from an actor, loops, and
   more, each at its pointer. No text form. The sequence kind's stick figure is now
   shared (`kinds.sequence.stick_figure`). Library, ATM and checkout references.
+
+### Fixed
+
+- **An edge no longer runs along a frame's border.** A frame is padded by about one lane, so
+  the lane outside its outermost box could be the frame's own border, and a route on it was
+  drawn on top of the dashed line — it read as entering the frame lengthways
+  (`flow-loops-town`, `states-brand-station`). Such a run now moves a lane outward, and its
+  neighbours cross the border square on. `tools/frames.py` reports any run left along a border.
 
 ## [0.4.3] — 2026-10-20
 

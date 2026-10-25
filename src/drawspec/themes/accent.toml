@@ -100,3 +100,10 @@ pdf = "#C0452A"
 red_colour = "#C0452A"
 amber_colour = "#D9A21B"
 green_colour = "#3E7A4A"
+
+# A git graph's lanes, as Mermaid and the git-flow figures colour them: the trunk
+# blue, then green, amber, purple; the accent red comes late so it is not read as
+# emphasis. Only ever the fill of a dot and the wash behind a name, both of which
+# the lane's place already says.
+[gitgraph]
+colours = ["#2A6FC0", "#3E7A4A", "#D9A21B", "#8A4FB0", "#C0452A", "#7C8794"]

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "railroad",
+  "title": "The render command",
+  "description": "A command line as a syntax diagram: drawspec render's options in any order, then the document.",
+  "rules": [
+    {
+      "name": "drawspec render",
+      "expr": {"seq": [
+        {"terminal": "drawspec"},
+        {"terminal": "render"},
+        {"repeat": {"choice": [
+          {"seq": [{"terminal": "-o"}, {"special": "output file"}]},
+          {"seq": [{"terminal": "--format"}, {"rule": "format"}]},
+          {"seq": [{"terminal": "--theme"}, {"special": "name or file"}]},
+          {"seq": [{"terminal": "--width"}, {"special": "number"}]},
+          {"seq": [{"terminal": "--profile"}, {"rule": "profile"}]}
+        ]}, "separator": {"comment": "in any order"}, "min": 0},
+        {"special": "document.json"}
+      ]}
+    },
+    {
+      "name": "format",
+      "expr": {"choice": [
+        {"terminal": "svg"},
+        {"terminal": "png"},
+        {"terminal": "text"}
+      ]}
+    },
+    {
+      "name": "profile",
+      "expr": {"choice": [
+        {"terminal": "inline"},
+        {"terminal": "standalone"}
+      ]}
+    }
+  ]
+}

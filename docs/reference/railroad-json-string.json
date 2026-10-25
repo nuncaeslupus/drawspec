@@ -1,0 +1,34 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "railroad",
+  "title": "A JSON string",
+  "description": "The string rule of the JSON grammar, as JSON.org draws it: characters between quotation marks, each a code point or an escape, every escape named beside it.",
+  "caption": "After the string figure on json.org.",
+  "rules": [
+    {
+      "name": "string",
+      "expr": {"seq": [
+        {"terminal": "\""},
+        {"repeat": {"choice": [
+          {"special": "any code point except \" or \\ or a control character"},
+          {"seq": [
+            {"terminal": "\\"},
+            {"choice": [
+              {"seq": [{"terminal": "\""}, {"comment": "quotation mark"}]},
+              {"seq": [{"terminal": "\\"}, {"comment": "reverse solidus"}]},
+              {"seq": [{"terminal": "/"}, {"comment": "solidus"}]},
+              {"seq": [{"terminal": "b"}, {"comment": "backspace"}]},
+              {"seq": [{"terminal": "f"}, {"comment": "form feed"}]},
+              {"seq": [{"terminal": "n"}, {"comment": "line feed"}]},
+              {"seq": [{"terminal": "r"}, {"comment": "carriage return"}]},
+              {"seq": [{"terminal": "t"}, {"comment": "horizontal tab"}]},
+              {"seq": [{"terminal": "u"}, {"special": "4 hex digits"}]}
+            ]}
+          ]}
+        ]}, "min": 0},
+        {"terminal": "\""}
+      ]}
+    }
+  ]
+}
