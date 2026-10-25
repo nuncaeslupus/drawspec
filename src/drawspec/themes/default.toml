@@ -293,6 +293,13 @@ colours = []
 # its name reads over it: the datasheet's greyed-out bits, said without colour.
 reserved_fill = "hatch"
 
+[pert]
+# Whether a project network carries a key under it: one box with each cell named
+# (ES, Dur, EF over the activity; LS, Float, LF under it), the unit the durations
+# are in, and that the heavy line is the critical path. A textbook figure wants
+# it; a team that reads these daily may not.
+key = true
+
 [argument]
 # How an argument map shows which way a point bears, twice so greyscale holds: a
 # tag in the box's top margin, read aloud down a chain (claim, because, but, but),

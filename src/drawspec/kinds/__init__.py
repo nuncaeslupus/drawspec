@@ -34,6 +34,7 @@ from drawspec.kinds.mindmap import mindmap_scene
 from drawspec.kinds.network import network_scene, network_text
 from drawspec.kinds.numberline import numberline_scene
 from drawspec.kinds.packet import packet_scene, packet_text
+from drawspec.kinds.pert import pert_scene, pert_text
 from drawspec.kinds.pie import pie_scene
 from drawspec.kinds.rag import rag_scene, rag_text
 from drawspec.kinds.railroad import railroad_scene, railroad_text
@@ -67,6 +68,7 @@ from drawspec.schema import (
     NETWORK_KINDS,
     NUMBERLINE_KINDS,
     PACKET_KINDS,
+    PERT_KINDS,
     PIE_KINDS,
     RAG_KINDS,
     RAILROAD_KINDS,
@@ -121,6 +123,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *RAILROAD_KINDS,
     *USECASE_KINDS,
     *PACKET_KINDS,
+    *PERT_KINDS,
     "cycle",
 )
 
@@ -148,6 +151,7 @@ TEXT_FORMS: Final[dict[str, Callable[[Document, int, str], str]]] = {
     "flow": graph_text,
     "states": graph_text,
     "lanes": graph_text,
+    "pert": pert_text,
 }
 
 #: The kinds `render --format text` draws, in the order the refusal lists them.
@@ -238,6 +242,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return usecase_scene(document, theme, measurer)
     if document.kind in PACKET_KINDS:
         return packet_scene(document, theme, measurer)
+    if document.kind in PERT_KINDS:
+        return pert_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -277,6 +283,7 @@ __all__ = [
     "numberline_scene",
     "outline",
     "packet_scene",
+    "pert_scene",
     "pie_scene",
     "rag_scene",
     "railroad_scene",

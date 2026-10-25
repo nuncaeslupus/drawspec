@@ -367,6 +367,14 @@ How a packet marks its reserved bits.
 |---|---|---|
 | `reserved_fill` | `"hatch"` | The pattern a reserved field is filled with; every other field is plain. The patterns are drawn faint, so a reserved field's name stays readable over it. |
 
+### `[pert]`
+
+Whether a project network carries a key to its boxes' cells.
+
+| Key | Default | What it is |
+|---|---|---|
+| `key` | `true` | `true` draws a key under the network: one box with each cell named (`ES`, `Dur`, `EF`; `LS`, `Float`, `LF`), the unit the durations are in, and that the critical path is the heavy line. `false` leaves it out, and the unit, when there is one, is written under the network on its own. |
+
 ### `[argument]`
 
 How an argument map says which way a point bears: its tag and its fill.

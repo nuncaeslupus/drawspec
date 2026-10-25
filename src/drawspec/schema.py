@@ -37,6 +37,7 @@ import re
 from collections.abc import Iterator, Mapping, Sequence, Set
 from dataclasses import dataclass, replace
 from difflib import get_close_matches
+from fractions import Fraction
 from pathlib import Path
 from typing import Any, Final
 
@@ -809,6 +810,25 @@ WARDLEY_NOTE_MAX: Final = 6
 #: chain is a stack of dependencies, not a picture of what is visible.
 WARDLEY_DEPTH_MAX: Final = 8
 
+#: Project network diagrams: activities as boxes of their computed times, joined
+#: finish-to-start, the critical path drawn heavy (activity on node, the
+#: precedence diagram method). Placed by the layered engine like a `flow`; every
+#: number in a box — early and late start and finish, float — is drawspec's,
+#: computed by a forward and a backward pass, never written.
+PERT_KINDS: Final = ("pert",)
+
+#: The most activities one network holds. Textbook exercises run to a dozen or
+#: so; past twenty the boxes are searched for rather than read along a path.
+PERT_ACTIVITY_MAX: Final = 20
+
+#: The most dependencies (entries in every `after` together). Past this the
+#: lines between ranks are a weave, not a network.
+PERT_DEPENDENCY_MAX: Final = 32
+
+#: The three estimates of a PERT activity, in the order the formula weighs them
+#: (1, 4, 1): its expected duration is (optimistic + 4 x likely + pessimistic) / 6.
+PERT_ESTIMATES: Final = ("optimistic", "likely", "pessimistic")
+
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
 #: into each other at the canvas width.
 NUMBERLINE_TICK_MAX: Final = 30
@@ -930,6 +950,9 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: `packet` is the thirty-first: bit fields in rows of a fixed width under a bit
 #: ruler — a `barmodel` sizes parts by amount and a `stack` by words, but neither
 #: wraps a field across a row boundary at a bit position.
+#: `pert` is the thirty-second: activities joined finish-to-start with their
+#: schedule computed — a `gantt` places bars by times the author wrote, and a
+#: `flow` computes nothing.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -965,6 +988,7 @@ KINDS: Final = (
     + RAILROAD_KINDS
     + USECASE_KINDS
     + WARDLEY_KINDS
+    + PERT_KINDS
 )
 
 #: The readability budget: per kind, the most entries each counted array may
@@ -1173,6 +1197,9 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
         ("anchors", WARDLEY_ANCHOR_MAX),
         ("notes", WARDLEY_NOTE_MAX),
     ),
+    # Set by the evidence: a textbook network is eight to fourteen activities.
+    # The dependencies are counted with the activities (see `_pert_violations`).
+    "pert": (("activities", PERT_ACTIVITY_MAX),),
 }
 
 
@@ -3269,6 +3296,58 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "pert-activity": (
+        FieldSpec(
+            "id",
+            "string",
+            required=True,
+            description=(
+                "A handle for this activity, unique in the document, that another activity's "
+                "`after` names: `A`, `excavate`. Not drawn; the box shows `text`."
+            ),
+        ),
+        _text(),
+        FieldSpec(
+            "duration",
+            "number",
+            description=(
+                "How long the activity takes, in the document's `unit`: zero or more. Write "
+                "this, or the three PERT estimates, not both."
+            ),
+        ),
+        FieldSpec(
+            "optimistic",
+            "number",
+            description=(
+                "A PERT estimate: the shortest the activity could take. With `likely` and "
+                "`pessimistic` in place of `duration`; the box carries the expected duration, "
+                "(optimistic + 4 x likely + pessimistic) / 6."
+            ),
+        ),
+        FieldSpec(
+            "likely",
+            "number",
+            description=(
+                "A PERT estimate: the most likely duration, no less than `optimistic` and no "
+                "more than `pessimistic`."
+            ),
+        ),
+        FieldSpec(
+            "pessimistic",
+            "number",
+            description="A PERT estimate: the longest the activity could take.",
+        ),
+        FieldSpec(
+            "after",
+            "array",
+            item_kind="string",
+            description=(
+                "The ids of the activities that must finish before this one starts "
+                "(finish-to-start). Leave it out of an activity that can start at once. No "
+                "circles: drawspec refuses a loop and names it."
+            ),
+        ),
+    ),
     "sunburst-node": (
         _text(),
         FieldSpec(
@@ -4120,7 +4199,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the forty-four diagrams this is. It selects the fields that are "
+            "Which of the forty-five diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -5440,6 +5519,44 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    PERT_KINDS: (
+        FieldSpec(
+            "activities",
+            "array",
+            required=True,
+            item_ref="pert-activity",
+            min_items=2,
+            description=(
+                "The activities, 2 to 20, each an `id`, its `text`, a `duration` (or three PERT "
+                "estimates) and the activities it comes `after`. Ranked left to right by those "
+                "dependencies; every start, finish and float is computed, so none is written."
+            ),
+        ),
+        FieldSpec(
+            "unit",
+            "string",
+            description=(
+                "What the durations are in — `days`, `weeks` — written in the key under the "
+                "network. The numbers count from 0, the start of the project."
+            ),
+        ),
+        FieldSpec(
+            "start",
+            "string",
+            description=(
+                "A start milestone's words, `Start`: a node before every activity with no "
+                "`after`, so the network begins at one point. Left out, none is drawn."
+            ),
+        ),
+        FieldSpec(
+            "finish",
+            "string",
+            description=(
+                "A finish milestone's words, `Finish`: a node after every activity nothing "
+                "waits for, carrying the project's duration. Left out, none is drawn."
+            ),
+        ),
+    ),
     MINDMAP_KINDS: (
         FieldSpec(
             "centre",
@@ -6185,6 +6302,21 @@ class PacketField:
 
 
 @dataclass(frozen=True)
+class PertActivity:
+    """One activity of a `pert` network: its words, how long it takes, what it waits for."""
+
+    id: str
+    text: str
+    duration: Fraction
+    """The duration the schedule is computed from: as written, or the PERT expected
+    duration of the three estimates. Exact, so a float of zero is zero."""
+
+    after: tuple[str, ...] = ()
+    estimates: tuple[Fraction, Fraction, Fraction] | None = None
+    """The optimistic, likely and pessimistic estimates, when the author wrote them."""
+
+
+@dataclass(frozen=True)
 class SunburstNode:
     """One sector of a `sunburst`, with the sectors nested inside it, in order."""
 
@@ -6634,6 +6766,15 @@ class Document:
     """A `sunburst`'s first ring, in the order written: clockwise from twelve o'clock,
     each node's `children` the ring nested inside it."""
 
+    pert_activities: tuple[PertActivity, ...] = ()
+    """A `pert` network's activities, in the order written: the tie-breaker within a rank."""
+
+    pert_start: str = ""
+    """A `pert` network's start milestone's words, or empty for none."""
+
+    pert_finish: str = ""
+    """A `pert` network's finish milestone's words, or empty for none."""
+
     packet_fields: tuple[PacketField, ...] = ()
     """A `packet`'s bit fields, in reading order: left to right, row after row."""
 
@@ -6736,6 +6877,7 @@ class Document:
             ("network", NETWORK_KINDS),
             ("timing", TIMING_KINDS),
             ("gitgraph", GITGRAPH_KINDS),
+            ("pert", PERT_KINDS),
         ):
             if self.kind in kinds:
                 return name
@@ -6973,6 +7115,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_clock_refusal(violation) for violation in found]
     if kind in SUNBURST_KINDS:
         found = [_sunburst_refusal(violation) for violation in found]
+    if kind in PERT_KINDS:
+        found = [_pert_refusal(violation) for violation in found]
     if kind in PACKET_KINDS:
         found = [_packet_refusal(violation) for violation in found]
     if kind in WARDLEY_KINDS:
@@ -7309,6 +7453,10 @@ BUDGET_ADVICE: Final[Mapping[tuple[str, str], str]] = {
         "Past fifteen rows a status report is searched, not read: split it by programme or "
         "directorate, one report each, or put the green rows in a table beside it."
     ),
+    ("pert", "activities"): (
+        "Past twenty activities a network is searched, not followed. Draw an overview network "
+        "with one activity per phase, and a network per phase carrying its detail."
+    ),
     ("meters", "bands"): (
         "Past five bands neighbouring tones blur: merge the bands the reader need not tell "
         "apart. Few's bullet graph uses two to five."
@@ -7614,6 +7762,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _clock_violations(document)
     if kind in SUNBURST_KINDS:
         return _sunburst_violations(document)
+    if kind in PERT_KINDS:
+        return _pert_violations(document)
     if kind in PACKET_KINDS:
         return _packet_violations(document)
     if kind in WARDLEY_KINDS:
@@ -14326,6 +14476,275 @@ def _packet_field_violations(entry: Mapping[str, Any], here: str) -> list[Violat
     return found
 
 
+#: Why a pert activity is computed rather than written, said once.
+_PERT_COMPUTED: Final = (
+    "computed by drawspec's forward and backward pass from the durations and `after`, and "
+    "drawn in the box; it is never written"
+)
+
+#: Why a pert network has no place for a field an author may reach for.
+PERT_REFUSED: Final = {
+    **{
+        name: f"an activity's {words} is {_PERT_COMPUTED}"
+        for name, words in (
+            ("es", "early start"),
+            ("ef", "early finish"),
+            ("ls", "late start"),
+            ("lf", "late finish"),
+            ("start", "start"),
+            ("end", "finish"),
+            ("finish", "finish"),
+        )
+    },
+    "float": f"float (slack) is {_PERT_COMPUTED}",
+    "slack": f"float (slack) is {_PERT_COMPUTED}",
+    "critical": (
+        "the critical path is computed — every activity with no float — and drawn heavy; it "
+        "is never marked by hand"
+    ),
+    "role": (
+        "the critical path is computed and drawn heavy, and nothing else in a network is "
+        "marked: an activity takes `id`, `text`, a duration and `after`"
+    ),
+    "lag": (
+        "every dependency is finish-to-start with no lag. A wait between two activities is an "
+        "activity of its own — `Concrete cures`, with its duration"
+    ),
+    "type": (
+        "every dependency is finish-to-start: the next starts when this one finishes. Start-"
+        "to-start and finish-to-finish links are not drawn"
+    ),
+    "before": "write each dependency once, on the later activity, as `after`",
+    "successors": "write each dependency once, on the later activity, as `after`",
+    "predecessors": "the activities this one waits for are `after`",
+    "dependencies": "the activities this one waits for are `after`",
+    "depends_on": "the activities this one waits for are `after`",
+    "edges": (
+        "a network's arrows are each activity's `after` list: the dependencies are written on "
+        "the activities, so no arrow can name an activity that is not there"
+    ),
+    "nodes": "a network's boxes are its `activities`",
+    "most_likely": "the most likely estimate is `likely`",
+    "expected": (
+        "the expected duration is computed from the three estimates, (optimistic + 4 x likely "
+        "+ pessimistic) / 6. Write the three, or a plain `duration`"
+    ),
+}
+
+
+def _pert_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a pert network, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    unknown = "is not a known field" in violation.message or (
+        "is not" in violation.message and "field" in violation.message
+    )
+    if unknown and name in PERT_REFUSED:
+        return Violation(violation.pointer, f"{name!r}: {PERT_REFUSED[name]}.")
+    if parts[1:] == ["activities"] and "needs at least" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a network needs at least 2 activities: one activity is its own critical path, "
+            "which a sentence says better.",
+        )
+    return violation
+
+
+def _pert_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """What a network may not be: ids that do not land, durations that are not one, a loop.
+
+    Each activity has one duration — written, or the three PERT estimates in order —
+    its `after` names other activities once each, the dependencies stay within the
+    budget, and following them never comes back to where it began.
+    """
+    found: list[Violation] = []
+    for name in ("start", "finish"):
+        value = document.get(name)
+        if isinstance(value, str) and not value.strip():
+            found.append(
+                Violation(
+                    _pointer(name),
+                    f"a {name} milestone needs words — `{name.capitalize()}` — or leave "
+                    f"`{name}` out.",
+                )
+            )
+    ids: dict[str, int] = {}
+    for index, entry in enumerate(_listed(document, "activities")):
+        if not isinstance(entry, dict):
+            continue
+        identifier = entry.get("id")
+        if isinstance(identifier, str):
+            if identifier in ids:
+                found.append(
+                    Violation(
+                        _pointer("activities", index, "id"),
+                        f"{identifier!r} is already the id of activity {ids[identifier]}: "
+                        f"every activity needs its own, so `after` names one box.",
+                    )
+                )
+            else:
+                ids[identifier] = index
+        text = entry.get("text")
+        if isinstance(text, str) and not text.strip():
+            found.append(
+                Violation(
+                    _pointer("activities", index, "text"),
+                    "an activity needs words: an empty box is a step nobody can do.",
+                )
+            )
+        found.extend(_pert_duration_violations(entry, index))
+
+    graph: dict[str, list[tuple[str, int]]] = {}
+    count = 0
+    for index, entry in enumerate(_listed(document, "activities")):
+        if not isinstance(entry, dict) or not isinstance(entry.get("id"), str):
+            continue
+        identifier = entry["id"]
+        seen: set[str] = set()
+        for position, before in enumerate(_listed(entry, "after")):
+            if not isinstance(before, str):
+                continue
+            count += 1
+            here = _pointer("activities", index, "after", position)
+            if before == identifier:
+                found.append(Violation(here, f"{identifier!r} cannot wait for itself to finish."))
+            elif before in seen:
+                found.append(
+                    Violation(here, f"{before!r} is already in this `after`: list it once.")
+                )
+            elif before not in ids:
+                close = get_close_matches(before, list(ids), n=1)
+                hint = f" Did you mean {close[0]!r}?" if close else ""
+                found.append(
+                    Violation(here, f"{before!r} names no activity in this network.{hint}")
+                )
+            else:
+                graph.setdefault(before, []).append((identifier, position))
+            seen.add(before)
+    if count > PERT_DEPENDENCY_MAX:
+        found.append(
+            Violation(
+                "/activities",
+                f"{count} dependencies is past what one network can be read at — "
+                f"{PERT_DEPENDENCY_MAX} at most, counted across every `after`. Split it into "
+                f"an overview network of phases and a network per phase.",
+            )
+        )
+    if found:
+        return found
+    looped = _pert_cycle(list(ids), graph)
+    if looped:
+        path, position = looped
+        return [
+            Violation(
+                _pointer("activities", ids[path[-1]], "after", position),
+                f"the dependencies go round in a circle ({' -> '.join(path)}): "
+                f"{path[0]!r} would have to finish before it could start, so the network has "
+                f"no schedule. Remove one of these `after` entries.",
+            )
+        ]
+    return found
+
+
+def _pert_duration_violations(entry: Mapping[str, Any], index: int) -> list[Violation]:
+    """One activity's duration: written, or three PERT estimates in order; never negative."""
+    given = [name for name in PERT_ESTIMATES if name in entry]
+    if "duration" in entry and given:
+        return [
+            Violation(
+                _pointer("activities", index, given[0]),
+                "an activity takes a `duration` or the three PERT estimates, not both: the "
+                "estimates are how the duration is found. Keep one.",
+            )
+        ]
+    if "duration" not in entry and not given:
+        return [
+            Violation(
+                _pointer("activities", index),
+                "an activity needs a `duration`, or `optimistic`, `likely` and `pessimistic` "
+                "for a PERT estimate: without one it has no place in the schedule.",
+            )
+        ]
+    if given and len(given) < len(PERT_ESTIMATES):
+        missing = [name for name in PERT_ESTIMATES if name not in entry]
+        return [
+            Violation(
+                _pointer("activities", index, missing[0]),
+                f"{missing[0]!r} is required with {', '.join(repr(name) for name in given)}: a "
+                f"PERT estimate is all three, or write a plain `duration`.",
+            )
+        ]
+    found: list[Violation] = []
+    for name in ("duration", *PERT_ESTIMATES):
+        value = entry.get(name)
+        if not _is_number(value):
+            continue
+        value = float(value)  # type: ignore[arg-type]
+        if not math.isfinite(value) or value < 0:
+            found.append(
+                Violation(
+                    _pointer("activities", index, name),
+                    f"{_figure(value) if math.isfinite(value) else value} is not a length of "
+                    f"time: a duration is zero (a milestone) or more.",
+                )
+            )
+    if found or not given:
+        return found
+    low, likely, high = (entry[name] for name in PERT_ESTIMATES)
+    if not all(_is_number(value) for value in (low, likely, high)):
+        return found
+    if likely < low:
+        found.append(
+            Violation(
+                _pointer("activities", index, "likely"),
+                f"the likely duration {_figure(likely)} is shorter than the optimistic "
+                f"{_figure(low)}: the estimates run optimistic <= likely <= pessimistic.",
+            )
+        )
+    elif high < likely:
+        found.append(
+            Violation(
+                _pointer("activities", index, "pessimistic"),
+                f"the pessimistic duration {_figure(high)} is shorter than the likely "
+                f"{_figure(likely)}: the estimates run optimistic <= likely <= pessimistic.",
+            )
+        )
+    return found
+
+
+def _pert_cycle(
+    ids: Sequence[str], graph: Mapping[str, Sequence[tuple[str, int]]]
+) -> tuple[list[str], int] | None:
+    """The first loop in the dependencies, as a path that ends where it began.
+
+    Returned with the position, in the last activity's `after`, of the entry that
+    closes it — where the refusal points. Iterative, so a long chain cannot
+    overflow the stack.
+    """
+    state: dict[str, int] = {}
+    for root in ids:
+        if root in state:
+            continue
+        state[root] = 1
+        trail = [root]
+        stack = [iter(graph.get(root, ()))]
+        while stack:
+            step = next(stack[-1], None)
+            if step is None:
+                stack.pop()
+                state[trail.pop()] = 2
+                continue
+            later, position = step
+            if state.get(later) == 1:
+                begin = trail.index(later)
+                return [*trail[begin:], later], position
+            if later not in state:
+                state[later] = 1
+                trail.append(later)
+                stack.append(iter(graph.get(later, ())))
+    return None
+
+
 def _figure(value: float) -> str:
     """A number as an author wrote it: no float noise, no trailing zeros."""
     text = f"{round(value, 9):.9f}".rstrip("0").rstrip(".")
@@ -15111,6 +15530,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _timing_document(document)
     if kind in GITGRAPH_KINDS:
         return _gitgraph_document(document)
+    if kind in PERT_KINDS:
+        return _pert_document(document)
     return Document(
         kind=kind,
         version=DOCUMENT_VERSION,
@@ -15998,6 +16419,49 @@ def _packet_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _exact(value: object) -> Fraction:
+    """A validated number as an exact fraction: `0.1` is a tenth, not its float."""
+    if isinstance(value, float):
+        return Fraction(repr(value))
+    return Fraction(int(value))  # type: ignore[call-overload]
+
+
+def _pert_activity(entry: Mapping[str, Any]) -> PertActivity:
+    """One activity, its duration exact: as written, or (o + 4m + p) / 6."""
+    estimates: tuple[Fraction, Fraction, Fraction] | None = None
+    if "duration" in entry:
+        duration = _exact(entry["duration"])
+    else:
+        low, likely, high = (_exact(entry[name]) for name in PERT_ESTIMATES)
+        estimates = (low, likely, high)
+        duration = (low + 4 * likely + high) / 6
+    return PertActivity(
+        id=str(entry["id"]),
+        text=str(entry["text"]),
+        duration=duration,
+        after=tuple(str(name) for name in entry.get("after", ())),
+        estimates=estimates,
+    )
+
+
+def _pert_document(document: Mapping[str, Any]) -> Document:
+    """A project network: its activities in the order written, and its milestones."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        unit=str(document.get("unit", "")),
+        pert_activities=tuple(_pert_activity(entry) for entry in document["activities"]),
+        pert_start=str(document.get("start", "")),
+        pert_finish=str(document.get("finish", "")),
+    )
+
+
 def _sunburst_node(entry: Mapping[str, Any]) -> SunburstNode:
     """One sunburst node and its subtree, built from the validated mapping."""
     return SunburstNode(
@@ -16604,6 +17068,10 @@ __all__ = [
     "PACKET_ROW_DEFAULT",
     "PACKET_ROW_MAX",
     "PARTICIPANT_ROLES",
+    "PERT_ACTIVITY_MAX",
+    "PERT_DEPENDENCY_MAX",
+    "PERT_ESTIMATES",
+    "PERT_KINDS",
     "PIE_KINDS",
     "PIE_PART_MAX",
     "PIE_PERCENT_TOLERANCE",
@@ -16720,6 +17188,7 @@ __all__ = [
     "NumberPoint",
     "NumberRange",
     "PacketField",
+    "PertActivity",
     "Phase",
     "PiePart",
     "Position",

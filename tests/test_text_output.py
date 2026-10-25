@@ -87,6 +87,7 @@ GOLDENS: Final = {
     "gitgraph": "gitgraph-gitflow",
     "railroad": "railroad-json-number",
     "packet": "packet-ipv4",
+    "pert": "pert-textbook",
 }
 
 #: Golden files beyond one per kind: a second style of a kind, held the same way.
@@ -178,6 +179,9 @@ def _labels(document: Document) -> list[str]:
     elif document.kind == "railroad":
         found += [rule.name for rule in document.railroad_rules]
         found += [word for rule in document.railroad_rules for word in _railroad_words(rule.expr)]
+    elif document.kind == "pert":
+        found += [activity.text for activity in document.pert_activities]
+        found += [document.pert_start, document.pert_finish]
     found.append(document.caption)
     return [line for label in found for line in plain(label).split("\n") if line.strip()]
 
@@ -192,7 +196,7 @@ def _railroad_words(item: RailroadItem) -> list[str]:
 
 #: The kinds whose SVG wraps a label, and whose text form may therefore break
 #: one at spaces. Everywhere else a label must appear on one line, whole.
-WRAPPING: Final = ("sequence", "timeline", "board", "stack", "rag", "network", "packet")
+WRAPPING: Final = ("sequence", "timeline", "board", "stack", "rag", "network", "packet", "pert")
 
 
 # ---------------------------------------------------------------------------

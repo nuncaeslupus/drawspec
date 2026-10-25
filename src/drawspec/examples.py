@@ -72,6 +72,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "railroad": "a grammar's rules as syntax diagrams — tracks through keywords, choices and loops",
     "usecase": "who uses a system for what — UML actors, use cases, «include» and «extend»",
     "packet": "a protocol header or a register as bit fields in rows, under a bit ruler",
+    "pert": "a project network of activities, the schedule and critical path computed",
 }
 
 #: The smallest document of each kind that renders.
@@ -425,6 +426,17 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"text": "Enable", "short": "EN", "bits": 1},
             {"text": "Mode", "bits": 3},
             {"text": "Count", "bits": 12},
+        ],
+    },
+    "pert": {
+        "version": 1,
+        "kind": "pert",
+        "unit": "days",
+        "activities": [
+            {"id": "A", "text": "Design", "duration": 3},
+            {"id": "B", "text": "Build", "duration": 5, "after": ["A"]},
+            {"id": "C", "text": "Write docs", "duration": 2, "after": ["A"]},
+            {"id": "D", "text": "Release", "duration": 1, "after": ["B", "C"]},
         ],
     },
     "sunburst": {

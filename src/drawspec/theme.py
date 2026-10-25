@@ -1491,6 +1491,31 @@ class MindmapStyle:
         return cls(boxes=boxes, taper=taper)
 
 
+@dataclass(frozen=True)
+class PertStyle:
+    """Whether a project network carries a key to its boxes' cells.
+
+    The author says what the activities are and what each waits for; whether the
+    page explains which corner holds which time is house style — a textbook
+    teaching the layout wants it on every figure, a team that reads them daily
+    does not — so it is set once for every network in a report.
+    """
+
+    key: bool = True
+    """`true` draws a key under the network: one box with each cell named (`ES`,
+    `Dur`, `EF`; `LS`, `Float`, `LF`), the unit the durations are in, and that the
+    critical path is the heavy line. `false` leaves it out, and the unit, when
+    there is one, is written under the network on its own."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> PertStyle:
+        _reject_unknown(mapping, ("key",), "[pert]")
+        key = mapping.get("key", cls().key)
+        if not isinstance(key, bool):
+            raise ThemeError(f"[pert] key: expected true or false, got {key!r}")
+        return cls(key=key)
+
+
 #: How many line weights a sunburst is given: first-ring divider, ring boundary, deep.
 SUNBURST_WEIGHTS: Final = 3
 
@@ -2350,6 +2375,7 @@ _TOP_LEVEL_KEYS: Final = (
     "timing",
     "gitgraph",
     "packet",
+    "pert",
     "argument",
     "familytree",
     "rag",
@@ -2396,6 +2422,7 @@ class Theme:
     timing: TimingStyle = TimingStyle()
     gitgraph: GitgraphStyle = GitgraphStyle()
     packet: PacketStyle = PacketStyle()
+    pert: PertStyle = PertStyle()
     argument: ArgumentStyle = ArgumentStyle()
     familytree: FamilytreeStyle = FamilytreeStyle()
     rag: RagStyle = RagStyle()
@@ -2470,6 +2497,7 @@ class Theme:
             timing=TimingStyle.from_mapping(_section(mapping, "timing")),
             gitgraph=GitgraphStyle.from_mapping(_section(mapping, "gitgraph")),
             packet=PacketStyle.from_mapping(_section(mapping, "packet")),
+            pert=PertStyle.from_mapping(_section(mapping, "pert")),
             argument=ArgumentStyle.from_mapping(_section(mapping, "argument")),
             familytree=FamilytreeStyle.from_mapping(_section(mapping, "familytree")),
             rag=RagStyle.from_mapping(_section(mapping, "rag")),

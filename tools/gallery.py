@@ -63,6 +63,7 @@ KIND_ORDER: tuple[str, ...] = (
     "tree",
     "mindmap",
     "gantt",
+    "pert",
     "entities",
     "states",
     "pie",

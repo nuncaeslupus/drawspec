@@ -159,6 +159,7 @@ fields are legal. Forty-four exist, and they fall into thirty-three families:
 | Exchange | `sequence` | Things said in order: messages between a fixed set of participants, read down the page. |
 | Model | `entities` | Things with fields, and how they relate: an ER model, a database schema, a class diagram. |
 | Plan | `gantt` | Things that take time: one row per task, each an interval, with phases, milestones and what waits on what. |
+| Network | `pert` | What waits on what in a project, the times computed: activities as boxes of their early and late start and finish and their float, the critical path drawn heavy (PERT, CPM). |
 | Board | `board` | Things sorted, not joined: cards in columns — a kanban board, a retrospective, a story map sliced into releases. |
 | Cause | `fishbone` | Things that led to one effect: causes by category on bones slanting into a spine — a root-cause (Ishikawa) diagram. |
 | Overlap | `venn` | Things that share: two or three sets as equal circles (four as equal ellipses), each region named by the sets it is in. |
@@ -439,10 +440,11 @@ drawspec render plan.json --format text --width 100 --charset ascii
 ```
 
 It is a second emitter, not a picture of the SVG: each kind lays itself out on a
-character grid from its own rows and columns. Seventeen kinds have a text form —
+character grid from its own rows and columns. Eighteen kinds have a text form —
 `files`, `tree` (a bracket too), `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`,
 `meter` in every style, `timing`, `gitgraph` (as `git log --graph` draws it),
-`network`, `railroad`, `packet`, and the graph kinds `flow`, `states` and `lanes` — and
+`network`, `railroad`, `packet`, the graph kinds `flow`, `states` and `lanes`, and
+`pert`, drawn as a flow of boxes that each carry the activity's times — and
 every other kind refuses, naming them. The kinds whose message is an area, an
 angle or a curve never get one. A `meter` `dial` is a half-circle of cells with
 its needle in the stroke nearest the amount's angle and its bands in shades
@@ -1656,6 +1658,62 @@ and 8 iterations a task. See
 [`reference/gantt-upgrade.json`](reference/gantt-upgrade.json),
 [`reference/gantt-semester.json`](reference/gantt-semester.json) and
 [`reference/gantt-life-cycles.json`](reference/gantt-life-cycles.json).
+
+## A project network
+
+A `gantt` draws work at times you already know. A **project network** is how those
+times are found: each activity a box, an arrow for each *this cannot start until that
+finishes*, and from the durations alone the earliest and latest each can start, how
+much slack it has, and which chain of activities sets the end date — the critical path
+method, drawn activity-on-node as PMBOK and the textbooks draw it. That is `pert`:
+
+```json
+{
+  "version": 1,
+  "kind": "pert",
+  "unit": "days",
+  "activities": [
+    {"id": "A", "text": "Design", "duration": 3},
+    {"id": "B", "text": "Build", "duration": 5, "after": ["A"]},
+    {"id": "C", "text": "Write docs", "duration": 2, "after": ["A"]},
+    {"id": "D", "text": "Release", "duration": 1, "after": ["B", "C"]}
+  ]
+}
+```
+
+**Every number in a box is drawspec's.** The author writes each activity's
+`duration` and what it comes `after`; a forward pass sets each early start (ES) to
+the latest early finish before it, a backward pass sets each late finish (LF) to the
+earliest late start after it, and float is LS − ES. Each box is the textbook layout:
+ES, duration and EF along the top, the name in the middle, LS, float and LF along
+the bottom. Times count from 0, the start of the project, so an activity of 3 that
+starts at 0 finishes at 3. The arithmetic is exact, so a float of zero is zero.
+
+**The critical path is computed, and drawn heavy** — every activity with no float,
+and the arrows between two of them that leave no gap — in weight, not colour, so it
+survives greyscale. A key under the network names the cells, gives the project's
+length in the `unit`, and says what heavy means; the theme's `[pert] key` turns it
+off. `start` and `finish` add milestones: a pill before every activity that waits
+for nothing and after every one nothing waits for, the finish carrying the
+project's length.
+
+An activity may give **three PERT estimates** instead of a duration —
+`optimistic`, `likely` and `pessimistic` — and its box carries the expected
+duration, (o + 4m + p) / 6, to two places. The network is placed by the layered
+engine, read across the page, and down it when across does not fit the width. As
+text it is a flow of boxes, each the name and its two rows of times.
+
+Refused, each at its pointer: an ES, EF, LS, LF, `float`, `slack` or `critical`
+(computed); a `role` (the critical path is the only mark); a `lag` or a link `type`
+(every dependency is finish-to-start — a wait is an activity of its own); `before`
+or `predecessors` (the field is `after`); an `after` naming an unknown activity, the
+activity itself or one twice; a `duration` with estimates, estimates without all
+three, or out of order; a negative duration; and a loop, refused with its path —
+`A -> B -> C -> A`. Budget: 20 activities and 32 dependencies. See
+[`reference/pert-textbook.json`](reference/pert-textbook.json) (the textbook
+exercise, its critical path A-C-E-G-H in 15 weeks),
+[`reference/pert-house.json`](reference/pert-house.json) and
+[`reference/pert-release.json`](reference/pert-release.json).
 
 ## A board
 

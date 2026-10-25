@@ -200,7 +200,7 @@ The full list: `flow` · `tree` · `cycle` · `stack` · `timeline` · `columns`
 `board` · `fishbone` · `venn` · `journey` · `treemap` · `sankey` · `numberline` ·
 `barmodel` · `waterfall` · `pie` · `mindmap` · `argument` · `familytree` ·
 `meter` · `rag` · `clock` · `sunburst` · `timing` · `gitgraph` · `network` · `railroad` · `usecase` ·
-`wardley` · `packet`. Each has an example in [`docs/reference`](https://github.com/nuncaeslupus/drawspec/tree/main/docs/reference),
+`wardley` · `packet` · `pert`. Each has an example in [`docs/reference`](https://github.com/nuncaeslupus/drawspec/tree/main/docs/reference),
 and [the gallery](https://nuncaeslupus.github.io/drawspec/docs/gallery/)
 (`docs/gallery/index.html`) draws every one.
 

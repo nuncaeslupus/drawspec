@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-44 kinds. The machine-readable form of this page is the published
+45 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `packet`, `network`, `timing`, `gitgraph`, `railroad`, `usecase`, `wardley` | **yes** | Which of the forty-four diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `packet`, `network`, `timing`, `gitgraph`, `railroad`, `usecase`, `wardley`, `pert` | **yes** | Which of the forty-five diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -367,6 +367,15 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `components` | array of [wardley-component](#wardley-component-object), at least 1 | **yes** | The value chain, 1 to 24: each a name, a named `evolution` stage and what it `needs`. Its row is derived — below everything that needs it — and its place across is its stage; neither is a coordinate. |
 | `notes` | array of [wardley-note](#wardley-note-object) | no | Up to 6 numbered notes, each about one or more anchors or components: the number is set beside each, the words under the map. |
 
+### `pert`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `activities` | array of [pert-activity](#pert-activity-object), at least 2 | **yes** | The activities, 2 to 20, each an `id`, its `text`, a `duration` (or three PERT estimates) and the activities it comes `after`. Ranked left to right by those dependencies; every start, finish and float is computed, so none is written. |
+| `unit` | string | no | What the durations are in — `days`, `weeks` — written in the key under the network. The numbers count from 0, the start of the project. |
+| `start` | string | no | A start milestone's words, `Start`: a node before every activity with no `after`, so the network begins at one point. Left out, none is drawn. |
+| `finish` | string | no | A finish milestone's words, `Finish`: a node after every activity nothing waits for, carrying the project's duration. Left out, none is drawn. |
+
 ### `mindmap`
 
 | Field | Type | Required | What it is |
@@ -458,6 +467,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `railroad` | 12 `rules` |
 | `usecase` | 8 `actors`, 15 `usecases`, 3 `systems`, 30 `edges` |
 | `wardley` | 24 `components`, 3 `anchors`, 6 `notes` |
+| `pert` | 20 `activities` |
 
 A `tree` with `"style": "bracket"` counts its leaves instead: 16
 leaves, a sixteen-team knockout, in place of its 15 nodes.
@@ -1016,6 +1026,18 @@ name, so a misspelt key is an error at the point it was written.
 | `holds` | string | no | What the field holds, written small under its name: a fixed value (`4`), a reset value (`0x00`), its access (`R/W`). Moved to the key when the field is too narrow for it. |
 | `note` | string | no | A sentence about the field, set in the key under the drawing beside its name, as an RFC lists its fields under the header. |
 | `role` | string — one of `field`, `reserved`, `emphasis` | no | `field` (the default), `reserved` (unused or reserved bits: hatched, and `text` may be left out) or `emphasis` (the field the diagram is about: a heavier outline and a bold name; at most two). |
+
+### `pert-activity` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | A handle for this activity, unique in the document, that another activity's `after` names: `A`, `excavate`. Not drawn; the box shows `text`. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `duration` | number | no | How long the activity takes, in the document's `unit`: zero or more. Write this, or the three PERT estimates, not both. |
+| `optimistic` | number | no | A PERT estimate: the shortest the activity could take. With `likely` and `pessimistic` in place of `duration`; the box carries the expected duration, (optimistic + 4 x likely + pessimistic) / 6. |
+| `likely` | number | no | A PERT estimate: the most likely duration, no less than `optimistic` and no more than `pessimistic`. |
+| `pessimistic` | number | no | A PERT estimate: the longest the activity could take. |
+| `after` | array of string | no | The ids of the activities that must finish before this one starts (finish-to-start). Leave it out of an activity that can start at once. No circles: drawspec refuses a loop and names it. |
 
 ### `sunburst-node` object
 
