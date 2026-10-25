@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Forty exist, and they fall into twenty-nine families:
+fields are legal. Forty-one exist, and they fall into thirty families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -178,6 +178,7 @@ fields are legal. Forty exist, and they fall into twenty-nine families:
 | Signal | `timing` | What several signals are at each step of one time axis: clock and level lanes, words on a bus, named states — a datasheet's SPI or I²C figure, a UML timing diagram. |
 | History | `gitgraph` | Commits on branches over time: lanes that fork and merge, with tags and cherry-picks — a git-flow figure, a release branch, a hotfix. |
 | Network | `network` | Which hosts are on which networks: each network a bus, each host a box joined to every network it is on, an address beside each line — a DMZ, an office LAN, a three-tier deployment (nwdiag). |
+| Syntax | `railroad` | What may follow what in a language: a grammar's rules as tracks from an entry to an exit, through keywords in rounded boxes, other rules in square ones, choices, bypasses and loops — the syntax diagrams of JSON.org and SQLite, or a command line's. |
 | Reasoning | `argument` | Things said for and against a claim: reasons, objections, rebuttals and evidence by stance, co-premises under one bracket (an argument map). |
 
 One worked document per kind lives in [`reference/`](reference), and `make
@@ -431,9 +432,10 @@ drawspec render plan.json --format text --width 100 --charset ascii
 ```
 
 It is a second emitter, not a picture of the SVG: each kind lays itself out on a
-character grid from its own rows and columns. Fifteen kinds have a text form —
+character grid from its own rows and columns. Sixteen kinds have a text form —
 `files`, `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`,
-`meter` in every style, `timing`, `gitgraph` (as `git log --graph` draws it), `network`, and the graph kinds `flow`, `states` and `lanes` — and
+`meter` in every style, `timing`, `gitgraph` (as `git log --graph` draws it),
+`network`, `railroad`, and the graph kinds `flow`, `states` and `lanes` — and
 every other kind refuses, naming them. The kinds whose message is an area, an
 angle or a curve never get one. A `meter` `dial` is a half-circle of cells with
 its needle in the stroke nearest the amount's angle and its bands in shades

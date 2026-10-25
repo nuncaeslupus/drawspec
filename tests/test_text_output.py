@@ -38,7 +38,7 @@ from drawspec.examples import EXAMPLES
 from drawspec.filetree import rows, text
 from drawspec.kinds import TEXT_KINDS
 from drawspec.kinds.graphtext import GRAPH_TEXT_KINDS
-from drawspec.schema import Document, load_document, parse_document
+from drawspec.schema import Document, RailroadItem, load_document, parse_document
 from drawspec.textgrid import cells, default_width, plain
 
 REFERENCE: Final = Path(__file__).resolve().parent.parent / "docs" / "reference"
@@ -81,10 +81,11 @@ GOLDENS: Final = {
     "network": "network-nwdiag",
     "timing": "timing-session",
     "gitgraph": "gitgraph-gitflow",
+    "railroad": "railroad-json-number",
 }
 
 #: Golden files beyond one per kind: a second style of a kind, held the same way.
-MORE_GOLDENS: Final = ("meter-appeal", "meter-library", "meter-ward")
+MORE_GOLDENS: Final = ("meter-appeal", "meter-library", "meter-ward", "railroad-sql-select")
 
 CHARSETS: Final = ("unicode", "ascii")
 
@@ -160,8 +161,19 @@ def _labels(document: Document) -> list[str]:
         found += list(document.timing_ticks)
         found += [marker.text for marker in document.timing_markers]
         found += [interval.text for interval in document.timing_intervals]
+    elif document.kind == "railroad":
+        found += [rule.name for rule in document.railroad_rules]
+        found += [word for rule in document.railroad_rules for word in _railroad_words(rule.expr)]
     found.append(document.caption)
     return [line for label in found for line in plain(label).split("\n") if line.strip()]
+
+
+def _railroad_words(item: RailroadItem) -> list[str]:
+    """Every box's and comment's words on a railroad track."""
+    found = [item.text] if item.text else []
+    for child in (*item.items, *([item.separator] if item.separator else [])):
+        found += _railroad_words(child)
+    return found
 
 
 #: The kinds whose SVG wraps a label, and whose text form may therefore break

@@ -68,6 +68,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "network": "networks as buses with the hosts on them between — a DMZ, an office LAN",
     "timing": "signals over one time axis — clocks, levels, buses, states: an SPI figure",
     "gitgraph": "commits on branches over time, with forks, merges, tags and cherry-picks",
+    "railroad": "a grammar's rules as syntax diagrams — tracks through keywords, choices and loops",
 }
 
 #: The smallest document of each kind that renders.
@@ -391,6 +392,27 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"on": "feature", "text": "Add a feature"},
             {"on": "main", "merge": "feature", "tag": "v1.0"},
         ],
+    },
+    "railroad": {
+        "version": 1,
+        "kind": "railroad",
+        "rules": [
+            {
+                "name": "list",
+                "expr": {
+                    "seq": [
+                        {"terminal": "["},
+                        {
+                            "repeat": {"rule": "item"},
+                            "separator": {"terminal": ","},
+                            "min": 0,
+                        },
+                        {"terminal": "]"},
+                    ]
+                },
+            }
+        ],
+        "external": ["item"],
     },
     "sunburst": {
         "version": 1,

@@ -12,6 +12,21 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **A `railroad` kind.** A grammar's rules as syntax (railroad) diagrams, as JSON.org and
+  SQLite draw them: each rule a track from an entry bar to an exit bar through terminals
+  (rounded, monospace), rule references (square) and described sets (`special`, dashed),
+  with comments on the line. The input is an expression tree per rule — `seq`, `choice`
+  (the first alternative on the main line), `optional` (a bypass over it) and `repeat`
+  (a loop under it, `min` 0 or 1, with an optional one-box `separator`) — and every turn
+  is a quarter circle of one radius, derived. A rule wider than the canvas wraps between
+  the items of its top-level sequence, a return track leading each line into the next;
+  an item too wide on a line of its own is refused at its pointer. Every `rule` box must
+  name a defined rule or one listed in `external`, with a suggestion for a misspelling.
+  Up to 12 rules, 40 boxes a rule, 10 alternatives a choice, 8 levels of nesting.
+  `render --format text` draws the same track in box-drawing characters or ASCII.
+  References: JSON's number, string and value figures, a SQLite SELECT subset, and a
+  command line.
+
 - **A `network` kind.** Network diagrams in the nwdiag style: each network a horizontal
   bus with its name and address on it, top to bottom in the order written; each host a
   box under its topmost network with a straight line to every network it is on, a
