@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "kind": "automaton",
+  "title": "An ε-NFA for a*b*c*",
+  "description": "A nondeterministic finite automaton with empty moves that accepts any number of a's, then any number of b's, then any number of c's: it reads a's in q0, moves to q1 without reading anything, reads b's there, and moves on to q2 for the c's.",
+  "start": "q0",
+  "accepting": ["q2"],
+  "states": [
+    {"id": "q0"},
+    {"id": "q1"},
+    {"id": "q2"}
+  ],
+  "transitions": [
+    {"from": "q0", "to": "q0", "on": "a"},
+    {"from": "q0", "to": "q1", "epsilon": true},
+    {"from": "q1", "to": "q1", "on": "b"},
+    {"from": "q1", "to": "q2", "epsilon": true},
+    {"from": "q2", "to": "q2", "on": "c"}
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "kind": "automaton",
+  "title": "A Moore machine for the parity of the 1s",
+  "description": "A Moore machine whose output, written in each state, is the parity of the 1s it has read so far: 0 while it has seen an even number of 1s, 1 while an odd number.",
+  "deterministic": true,
+  "start": "even",
+  "states": [
+    {"id": "even", "output": "0"},
+    {"id": "odd", "output": "1"}
+  ],
+  "transitions": [
+    {"from": "even", "to": "even", "on": "0"},
+    {"from": "even", "to": "odd", "on": "1"},
+    {"from": "odd", "to": "odd", "on": "0"},
+    {"from": "odd", "to": "even", "on": "1"}
+  ]
+}

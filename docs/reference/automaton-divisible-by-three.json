@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "kind": "automaton",
+  "title": "Binary numbers divisible by three",
+  "description": "A deterministic finite automaton that reads a binary number from its most significant bit and accepts it when it is a multiple of 3. Each state is the remainder so far: reading a bit doubles the number and adds the bit.",
+  "deterministic": true,
+  "start": "S0",
+  "accepting": ["S0"],
+  "states": [
+    {"id": "S0"},
+    {"id": "S1"},
+    {"id": "S2"}
+  ],
+  "transitions": [
+    {"from": "S0", "to": "S0", "on": "0"},
+    {"from": "S0", "to": "S1", "on": "1"},
+    {"from": "S1", "to": "S2", "on": "0"},
+    {"from": "S1", "to": "S0", "on": "1"},
+    {"from": "S2", "to": "S1", "on": "0"},
+    {"from": "S2", "to": "S2", "on": "1"}
+  ],
+  "caption": "Each state is the remainder of the number read so far, divided by 3."
+}

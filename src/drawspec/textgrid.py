@@ -43,8 +43,9 @@ DEFAULT_WIDTH: Final = 80
 #: Measured in phase 2 of the text proposal — at 80, three of seven sequences
 #: and three of nine lanes are refused; at 100, one lanes document is. A timing
 #: figure's steps run across the line, so its width grows with their count too.
+#: An automaton's transition table grows a column per symbol.
 WIDE_WIDTH: Final = 100
-WIDE_KINDS: Final = frozenset({"lanes", "sequence", "timing"})
+WIDE_KINDS: Final = frozenset({"automaton", "lanes", "sequence", "timing"})
 
 
 def default_width(kind: str) -> int:

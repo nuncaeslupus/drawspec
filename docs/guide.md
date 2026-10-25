@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Forty-four exist, and they fall into thirty-three families:
+fields are legal. Forty-six exist, and they fall into thirty-five families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -155,11 +155,12 @@ fields are legal. Forty-four exist, and they fall into thirty-three families:
 | Shape | `pyramid`, `rings`, `funnel` | Things in a proportion: levels narrowing to an apex, scopes nested inside scopes, stages narrowing to an outcome. |
 | Plot | `chart`, `quadrant`, `scatter`, `curve` | Things with numbers: series against axes, items placed in a plane, points by two measured values, a named shape with labelled waypoints. |
 | Listing | `files` | Things in folders: a directory tree from its paths, drawn with pictures or as `tree`-style text (see [Plain text](#plain-text-for-a-terminal-or-a-code-block)). |
+| Automaton | `automaton` | A finite automaton as the theory textbooks draw it: states as circles, accepting ones doubled, an arrow from nowhere into the start, symbols on the arcs (DFA, NFA, ε-NFA, Mealy, Moore). |
 | Machine | `states` | Things that change state: the conditions something can be in, and the events that move it between them. |
 | Exchange | `sequence` | Things said in order: messages between a fixed set of participants, read down the page. |
 | Model | `entities` | Things with fields, and how they relate: an ER model, a database schema, a class diagram. |
 | Plan | `gantt` | Things that take time: one row per task, each an interval, with phases, milestones and what waits on what. |
-| Network | `pert` | What waits on what in a project, the times computed: activities as boxes of their early and late start and finish and their float, the critical path drawn heavy (PERT, CPM). |
+| Project | `pert` | What waits on what in a project, the times computed: activities as boxes of their early and late start and finish and their float, the critical path drawn heavy (PERT, CPM). |
 | Board | `board` | Things sorted, not joined: cards in columns — a kanban board, a retrospective, a story map sliced into releases. |
 | Cause | `fishbone` | Things that led to one effect: causes by category on bones slanting into a spine — a root-cause (Ishikawa) diagram. |
 | Overlap | `venn` | Things that share: two or three sets as equal circles (four as equal ellipses), each region named by the sets it is in. |
@@ -440,11 +441,12 @@ drawspec render plan.json --format text --width 100 --charset ascii
 ```
 
 It is a second emitter, not a picture of the SVG: each kind lays itself out on a
-character grid from its own rows and columns. Eighteen kinds have a text form —
+character grid from its own rows and columns. Nineteen kinds have a text form —
 `files`, `tree` (a bracket too), `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`,
 `meter` in every style, `timing`, `gitgraph` (as `git log --graph` draws it),
-`network`, `railroad`, `packet`, the graph kinds `flow`, `states` and `lanes`, and
-`pert`, drawn as a flow of boxes that each carry the activity's times — and
+`network`, `railroad`, `packet`, the graph kinds `flow`, `states` and `lanes`,
+`pert`, drawn as a flow of boxes that each carry the activity's times, and
+`automaton`, drawn as its transition table (100 columns by default) — and
 every other kind refuses, naming them. The kinds whose message is an area, an
 angle or a curve never get one. A `meter` `dial` is a half-circle of cells with
 its needle in the stroke nearest the amount's angle and its bands in shades
@@ -1249,6 +1251,89 @@ loop on a group, or a third loop on one state. See
 [`reference/states-breaker.json`](reference/states-breaker.json),
 [`reference/states-invoice.json`](reference/states-invoice.json) and
 [`reference/states-ticket.json`](reference/states-ticket.json).
+
+## A finite automaton
+
+A `states` diagram is UML's: rounded boxes, a filled dot for the start, transitions
+labelled `event [guard] / action`. The theory of computation draws a machine
+differently, and the difference is the notation a student is examined on: each state
+a **circle** with its name inside, an accepting state a **double circle**, the start
+state entered by **an arrow from nowhere**, and each arc labelled by the **symbol**
+it reads. That is `automaton` — a DFA, an NFA (ε-moves too), or a Mealy or Moore
+transducer, as Sipser, JFLAP, Graphviz's `fsm` and TikZ's `automata` library draw it:
+
+```json
+{
+  "version": 1,
+  "kind": "automaton",
+  "deterministic": true,
+  "start": "S0",
+  "accepting": ["S0"],
+  "states": [{"id": "S0"}, {"id": "S1"}, {"id": "S2"}],
+  "transitions": [
+    {"from": "S0", "to": "S0", "on": "0"},
+    {"from": "S0", "to": "S1", "on": "1"},
+    {"from": "S1", "to": "S2", "on": "0"},
+    {"from": "S1", "to": "S0", "on": "1"},
+    {"from": "S2", "to": "S1", "on": "0"},
+    {"from": "S2", "to": "S2", "on": "1"}
+  ]
+}
+```
+
+**One symbol per transition.** Write a transition for each symbol; two between the
+same states in the same direction are drawn as **one arrow labelled `a, b`**. An
+empty move is `"epsilon": true` in place of `on`, and is labelled ε — `"on": "ε"` (or
+`λ`, `eps`) is refused, so the empty move is never mistaken for a symbol on the
+input. A move to the same state is a **loop** on the circle, above or below it where
+the arrows leave room; a pair of moves in opposite directions is **two arcs bowed
+apart**, each to the left of the way it travels, so they never lie on one another.
+
+**Outputs.** A Mealy machine writes an `output` on every transition, drawn
+`a / 1`; a Moore machine an `output` in every state, drawn `q0 / 1` in the circle.
+One or the other, whole: an output on some moves but not others, or on both states
+and moves, is refused.
+
+**`"deterministic": true`** says the machine is a DFA and has drawspec hold it to
+that: an ε-move is refused at its `epsilon`, a second move from one state on one
+symbol at its `on`, naming the first. A missing move is allowed — the textbooks leave
+the dead state out. Every circle is the size of the widest name (one line, at most
+12 characters, its Moore output included: past that it wants boxes, a `states`
+diagram). The machine is placed by the layered engine from the start state, read
+across the page (down it when across does not fit); every arc is straight when
+nothing is in its way, and curved round any circle it does not belong to, and every
+label is set beside its own arc clear of every line.
+
+As text, `render --format text` prints the **transition table** — a row per state, a
+column per symbol (ε last), `→` marking the start and `*` each accepting state; an
+NFA's cells are sets (`{q0, q1}`, `∅`), a DFA's a state or `—`; a Mealy cell says
+`q1 / 1`, and a Moore table ends in an `output` column:
+
+```
+      │ 0    1
+──────┼────────
+→* S0 │ S0   S1
+   S1 │ S2   S0
+   S2 │ S1   S2
+
+→ start state, * accepting.
+```
+
+Refused, each at its pointer: a `start`, an `accepting` id, a `from` or a `to` that
+names no state (with the nearest id offered); a duplicate id; a move with neither
+`on` nor `epsilon`, or both; a move written twice; `initial`, `final` (the fields are
+`start` and `accepting`), `alphabet` (read from the moves), `event`, `guard`,
+`label` and `symbol` (a move reads `on`), and a state `role`. Budget: 12 states and
+36 transitions. See
+[`reference/automaton-divisible-by-three.json`](reference/automaton-divisible-by-three.json)
+(binary numbers divisible by 3, Wikipedia's DFA),
+[`reference/automaton-ends-in-ab.json`](reference/automaton-ends-in-ab.json) (an
+NFA), [`reference/automaton-epsilon-nfa.json`](reference/automaton-epsilon-nfa.json)
+(a\*b\*c\* with ε-moves),
+[`reference/automaton-edge-detector.json`](reference/automaton-edge-detector.json)
+(a Mealy machine) and
+[`reference/automaton-moore-parity.json`](reference/automaton-moore-parity.json) (a
+Moore machine).
 
 ## A sequence diagram
 

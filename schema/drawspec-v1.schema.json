@@ -3471,6 +3471,92 @@
         "activities"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "automaton",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "automaton"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "states": {
+          "type": "array",
+          "description": "The states, 1 to 12, each a circle with its name inside, all the size of the widest. Ranked left to right from `start` by the transitions; the order written breaks ties and is the row order of the text form's table.",
+          "items": {
+            "$ref": "#/$defs/automaton-state"
+          },
+          "minItems": 1
+        },
+        "start": {
+          "type": "string",
+          "description": "The id of the start state, entered by an arrow coming in from nowhere. Exactly one."
+        },
+        "accepting": {
+          "type": "array",
+          "description": "The ids of the accepting (final) states, each drawn as a double circle. May include `start`; may be left out, as a Mealy or Moore machine often is.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "transitions": {
+          "type": "array",
+          "description": "The moves, each `from`, `to` and the symbol it reads `on` (or `epsilon`). Several between the same two states, in the same direction, are drawn as one arrow labelled `a, b`; a pair in opposite directions as two arcs bowed apart; a move from a state to itself as a loop on its circle.",
+          "items": {
+            "$ref": "#/$defs/automaton-transition"
+          }
+        },
+        "deterministic": {
+          "type": "boolean",
+          "description": "`true` says this is a DFA, and has drawspec hold it to that: no ε-move, and no two moves from one state on the same symbol. A missing move is allowed — the textbooks leave the dead state out."
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "states",
+        "start"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -3520,6 +3606,57 @@
         "text",
         "on",
         "stance"
+      ],
+      "additionalProperties": false
+    },
+    "automaton-state": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "A handle for this state, unique in the document, that `start`, `accepting` and each transition's `from` and `to` name: `q0`, `even`. Drawn in the circle when there is no `text`."
+        },
+        "text": {
+          "type": "string",
+          "description": "The name drawn in the circle, when it differs from the `id`: `q₀`, `S1`. One line of at most 12 characters, its `output` included: every circle is drawn the size of the widest name."
+        },
+        "output": {
+          "type": "string",
+          "description": "A Moore machine's output in this state, drawn after its name as `q0 / 1`. Give it on every state or none, and never with a transition's `output`."
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "automaton-transition": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "The id of the state the move leaves."
+        },
+        "to": {
+          "type": "string",
+          "description": "The id of the state the move enters. The same id as `from` is drawn as a loop on the circle."
+        },
+        "on": {
+          "type": "string",
+          "description": "The input symbol the move reads: `0`, `a`, `coin`. One symbol per transition; two transitions between the same two states are drawn as one arrow labelled `a, b`. Leave it out of an empty move and write `epsilon` instead."
+        },
+        "epsilon": {
+          "type": "boolean",
+          "description": "`true` makes this an empty move, taken without reading a symbol, labelled ε. Not with `on`, and never in a `deterministic` automaton."
+        },
+        "output": {
+          "type": "string",
+          "description": "A Mealy machine's output on this move, drawn after its symbol as `a / 1`. Give it on every transition or none, and never with a state's `output`."
+        }
+      },
+      "required": [
+        "from",
+        "to"
       ],
       "additionalProperties": false
     },

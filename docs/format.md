@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-45 kinds. The machine-readable form of this page is the published
+46 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `packet`, `network`, `timing`, `gitgraph`, `railroad`, `usecase`, `wardley`, `pert` | **yes** | Which of the forty-five diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `packet`, `network`, `timing`, `gitgraph`, `railroad`, `usecase`, `wardley`, `pert`, `automaton` | **yes** | Which of the forty-six diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -367,6 +367,16 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `components` | array of [wardley-component](#wardley-component-object), at least 1 | **yes** | The value chain, 1 to 24: each a name, a named `evolution` stage and what it `needs`. Its row is derived — below everything that needs it — and its place across is its stage; neither is a coordinate. |
 | `notes` | array of [wardley-note](#wardley-note-object) | no | Up to 6 numbered notes, each about one or more anchors or components: the number is set beside each, the words under the map. |
 
+### `automaton`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `states` | array of [automaton-state](#automaton-state-object), at least 1 | **yes** | The states, 1 to 12, each a circle with its name inside, all the size of the widest. Ranked left to right from `start` by the transitions; the order written breaks ties and is the row order of the text form's table. |
+| `start` | string | **yes** | The id of the start state, entered by an arrow coming in from nowhere. Exactly one. |
+| `accepting` | array of string | no | The ids of the accepting (final) states, each drawn as a double circle. May include `start`; may be left out, as a Mealy or Moore machine often is. |
+| `transitions` | array of [automaton-transition](#automaton-transition-object) | no | The moves, each `from`, `to` and the symbol it reads `on` (or `epsilon`). Several between the same two states, in the same direction, are drawn as one arrow labelled `a, b`; a pair in opposite directions as two arcs bowed apart; a move from a state to itself as a loop on its circle. |
+| `deterministic` | boolean | no | `true` says this is a DFA, and has drawspec hold it to that: no ε-move, and no two moves from one state on the same symbol. A missing move is allowed — the textbooks leave the dead state out. |
+
 ### `pert`
 
 | Field | Type | Required | What it is |
@@ -468,6 +478,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `usecase` | 8 `actors`, 15 `usecases`, 3 `systems`, 30 `edges` |
 | `wardley` | 24 `components`, 3 `anchors`, 6 `notes` |
 | `pert` | 20 `activities` |
+| `automaton` | 12 `states`, 36 `transitions` |
 
 A `tree` with `"style": "bracket"` counts its leaves instead: 16
 leaves, a sixteen-team knockout, in place of its 15 nodes.
@@ -1038,6 +1049,24 @@ name, so a misspelt key is an error at the point it was written.
 | `likely` | number | no | A PERT estimate: the most likely duration, no less than `optimistic` and no more than `pessimistic`. |
 | `pessimistic` | number | no | A PERT estimate: the longest the activity could take. |
 | `after` | array of string | no | The ids of the activities that must finish before this one starts (finish-to-start). Leave it out of an activity that can start at once. No circles: drawspec refuses a loop and names it. |
+
+### `automaton-state` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | A handle for this state, unique in the document, that `start`, `accepting` and each transition's `from` and `to` name: `q0`, `even`. Drawn in the circle when there is no `text`. |
+| `text` | string | no | The name drawn in the circle, when it differs from the `id`: `q₀`, `S1`. One line of at most 12 characters, its `output` included: every circle is drawn the size of the widest name. |
+| `output` | string | no | A Moore machine's output in this state, drawn after its name as `q0 / 1`. Give it on every state or none, and never with a transition's `output`. |
+
+### `automaton-transition` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | string | **yes** | The id of the state the move leaves. |
+| `to` | string | **yes** | The id of the state the move enters. The same id as `from` is drawn as a loop on the circle. |
+| `on` | string | no | The input symbol the move reads: `0`, `a`, `coin`. One symbol per transition; two transitions between the same two states are drawn as one arrow labelled `a, b`. Leave it out of an empty move and write `epsilon` instead. |
+| `epsilon` | boolean | no | `true` makes this an empty move, taken without reading a symbol, labelled ε. Not with `on`, and never in a `deterministic` automaton. |
+| `output` | string | no | A Mealy machine's output on this move, drawn after its symbol as `a / 1`. Give it on every transition or none, and never with a state's `output`. |
 
 ### `sunburst-node` object
 
