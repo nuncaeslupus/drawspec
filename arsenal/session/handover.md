@@ -1,6 +1,14 @@
 # Session Handover
 
-**Date**: 2026-10-14 · **Branch**: `ccr-9e7e50b9-yx501p` · **PRs**: #117, #120, #121, #122, #123 (all merged)
+**Date**: 2026-10-25 · **Branch**: `ccr-a4057664-aeuenr` (+ `-<kind>` branches) · **PRs**: #157–#167 (all merged)
+
+## 2026-10-25: more kinds, frame-border fix
+- #157, #161: a route's middle run no longer lies along a frame border (`routing.off_borders`); `tools/frames.py` flags "runs along the border". Fixed `flow-loops-town` (the arrow the owner reported) and `states-brand-station`.
+- New kinds, one PR each, evidence in `docs/proposals/<kind>.md`: timing #158, gitgraph #159, packet #160, network #162, railroad #163, usecase #164, tree `bracket` style #165, wardley #166, pert #167.
+- CodeRabbit allows ~1 review/hour; queue `@coderabbitai review` an hour apart. Its "CodeRabbit" status posts success ("review skipped") on push, so it does not block merges.
+- #167 (pert) was merged on the owner's "go merging" without a CodeRabbit review.
+- Open owner questions: text widths (timing/railroad 100 cols), gitgraph lane colours, packet field names `holds`/`numbering`, network refuse vs draw hops, usecase FitError vs drawing through an ellipse, bracket root side, wardley/pert canvas width, pert "Float" vs "Slack".
+- Proposed next: an `automaton` kind (DFA/NFA: circles, double-circle accepting states, start arrow, symbol labels, ε). Waiting for the owner to choose a new kind vs a `states` style.
 
 ## 2026-10-14: text output
 - Barcodes, QR codes and pixel art were ruled out of scope. Text output was proposed instead (`docs/proposals/text.md`) and accepted.
