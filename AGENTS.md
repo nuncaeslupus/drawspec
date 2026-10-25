@@ -91,9 +91,10 @@ Pick by what the reader must **understand**, not by what it looks like.
 | Workstreams or risks rated red, amber or green: a highlight report, a risk register, a board paper's status list | `rag` | 1–15 `rows`, each `text` (a newline adds a caption: an owner), `rag` (`red`/`amber`/`green`; the theme draws a word and a shape, never colour alone) (+ `trend` `better`/`same`/`worse`, written in words; `note`) |
 | A time on an analogue clock, for teaching it: o'clock to the nearest minute, a worksheet, how long between two times | `clock` | 1–12 `clocks`, each `time` `H:MM` (0:00–23:59; none = a face to draw on; no seconds, no dates) (+ `text`, `since` shading the time passed); `numerals` `arabic`/`roman`/`quarters`/`none`, `readout` `words`/`digits`/`both`/`none` |
 | A hierarchy as concentric rings, read from the middle outward: a wheel of emotions, a taxonomy (a sunburst) | `sunburst` | 2–8 `nodes`, each `text` (+ `children`, nested ≤ 3 rings, ≤ 150 in all), clockwise from twelve; optional `centre` hub; every terminal sector an equal angle, so no amounts, no `angle`/`weight` |
+| Who uses a system for what: the actors outside it and the goals they reach with it (a UML use case diagram) | `usecase` | 1–8 `actors` (stick figures; `supporting: true` stands on the right, else derived), 1–15 `usecases` (ellipses, each in its `system`; 0–3 `systems` as frames) + `edges`: `association` actor–use case (default), `include`/`extend` use case → use case, `inherits` actor→actor or use case→use case; no coordinates, no labels on relations |
 
 `flow` vs `tree`: a tree is a hierarchy and takes one edge per child; a flow may branch, merge and loop back. `flow` vs `cycle`: a `cycle` must close a ring through **every** node, and is refused if it does not.
-`flow` vs `states`: a box something *is in*, re-entered, labelled by events, is a state. `flow` vs `sequence`: the same few participants talking in turn, in order, is a sequence. `flow` vs `lanes`: same document; when *who hands off to whom* matters, say `lanes`.
+`flow` vs `states`: a box something *is in*, re-entered, labelled by events, is a state. `flow` vs `usecase`: *who* reaches *which goal* with a system, outside a boundary, is a use case diagram; the steps of reaching one are a `flow` or a `sequence`. `flow` vs `sequence`: the same few participants talking in turn, in order, is a sequence. `flow` vs `lanes`: same document; when *who hands off to whom* matters, say `lanes`.
 `tree` vs `mindmap`: a tree ranks from a root (*this first*); a mind map's main branches are peers round a centre. Links across branches make a concept map: a `flow`. `tree` vs `argument`: when each box is *for* or *against* the one above, it is an argument. `tree` vs `familytree`: a child of two parents is a family tree; one person's ancestors only is a `tree`. `sunburst` vs `treemap`/`mindmap`: a sunburst nests a hierarchy into equal-angle rings read outward (a wheel); a `treemap` nests it by *area* for amounts, a `mindmap` radiates it as peer branches with no rings. `timeline` vs `numberline`: *when* things happened, in order, is a timeline; where values sit on one measured or named scale, and whether a range's ends are in it, is a number line; one amount read against its scale, with a target or named bands, is a `meter`.
 
 **Keep it readable.** Each kind has a budget ([`docs/format.md`](docs/format.md#the-readability-budget); a `flow`: 15 nodes, 16 edges).
@@ -101,8 +102,7 @@ Past it a document is refused even though it would fit: split it into an **overv
 
 ## Roles
 
-A role is semantic. The theme turns it into a shape and a weight — you never
-name either.
+A role is semantic. The theme turns it into a shape and a weight — you never name either.
 
 **Nodes** — `start`, `step` (default), `decision`, `terminal`, `emphasis`, `note`, `group`;
 `io` (data in/out), `subroutine` (defined elsewhere), `store` (database, queue), `person` (a human, C4) in `flow`/`tree`/`lanes`.

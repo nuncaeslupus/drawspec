@@ -506,7 +506,7 @@ class _Layout:
             placed: Box = box.moved_to(xs[position] - box.width / 2, heads_bottom - box.height)
             primitives.extend(box_primitives(placed, theme, self.measurer))
             if position in self.actors:
-                primitives.extend(_stick_figure(xs[position], placed.y - FIGURE_GAP * unit, unit))
+                primitives.extend(stick_figure(xs[position], placed.y - FIGURE_GAP * unit, unit))
 
         # Rows, top to bottom.
         fragments = list(enumerate(document.fragments))
@@ -770,7 +770,7 @@ class _Layout:
         return text + 2 * TAB_PAD * self.unit + TAB_CUT * self.unit
 
 
-def _stick_figure(x: float, bottom: float, unit: float) -> list[Primitive]:
+def stick_figure(x: float, bottom: float, unit: float) -> list[Primitive]:
     """UML's actor, standing on `bottom` and centred on `x`: a round head, a body,
     arms out level a little below the neck, and two legs from the hip."""
     head = FIGURE_HEAD * unit
@@ -1227,4 +1227,5 @@ __all__ = [
     "sequence_drawing",
     "sequence_scene",
     "sequence_text",
+    "stick_figure",
 ]

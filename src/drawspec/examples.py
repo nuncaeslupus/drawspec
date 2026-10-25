@@ -65,6 +65,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "rag": "workstreams or risks rated red, amber or green, in words and shapes — a status report",
     "clock": "analogue clock faces showing a time, for teaching it — quarter past, half past",
     "sunburst": "a hierarchy as concentric rings of sectors, read from the middle outward",
+    "usecase": "who uses a system for what — UML actors, use cases, «include» and «extend»",
 }
 
 #: The smallest document of each kind that renders.
@@ -387,6 +388,14 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"text": "Angry", "children": [{"text": "Hurt"}, {"text": "Mad"}]},
             {"text": "Happy", "children": [{"text": "Proud"}, {"text": "Playful"}]},
         ],
+    },
+    "usecase": {
+        "version": 1,
+        "kind": "usecase",
+        "systems": [{"id": "atm", "text": "ATM"}],
+        "actors": [{"id": "customer", "text": "Customer"}],
+        "usecases": [{"id": "withdraw", "text": "Withdraw cash"}],
+        "edges": [{"from": "customer", "to": "withdraw"}],
     },
     "rag": {
         "version": 1,
