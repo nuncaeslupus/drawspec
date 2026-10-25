@@ -3998,7 +3998,7 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
                 "`label` is written on the child's line by the elbow: a score, a trait. "
                 "Every node but the root has one parent and every inner node at least two "
                 f"children; at most {BRACKET_LEAVES_MAX} leaves, and no groups, bands, "
-                "classes or node roles."
+                "classes, and no node role but `step`."
             ),
         ),
         FieldSpec(

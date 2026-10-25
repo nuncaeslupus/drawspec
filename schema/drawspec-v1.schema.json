@@ -189,7 +189,7 @@
         },
         "style": {
           "type": "string",
-          "description": "`boxes` (the default) ranks boxed nodes down from the root. `bracket` draws a tournament bracket or a cladogram: every leaf on one outer edge, square elbows, and each inner node unboxed — its words (a match's winner, a clade's name) on its own line, or none (`\"text\": \"\"`). An edge's `label` is written on the child's line by the elbow: a score, a trait. Every node but the root has one parent and every inner node at least two children; at most 16 leaves, and no groups, bands, classes or node roles.",
+          "description": "`boxes` (the default) ranks boxed nodes down from the root. `bracket` draws a tournament bracket or a cladogram: every leaf on one outer edge, square elbows, and each inner node unboxed — its words (a match's winner, a clade's name) on its own line, or none (`\"text\": \"\"`). An edge's `label` is written on the child's line by the elbow: a score, a trait. Every node but the root has one parent and every inner node at least two children; at most 16 leaves, and no groups, bands, classes, and no node role but `step`.",
           "enum": [
             "boxes",
             "bracket"

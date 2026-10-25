@@ -2876,8 +2876,8 @@ a 16-team draw needs about 92 columns.
 
 Refused, each at its pointer: a second parent, a cycle, a second root, an edge to itself;
 an inner node of one child (a match has two sides); an unnamed leaf; words or a label on
-two lines; `groups`, `bands`, `classes`, and a node's `class`, `status`, `actor` or
-`role` (a bracket has no boxes); an edge role but `flow` and `strong`; `"root": "middle"`
+two lines; `groups`, `bands`, `classes`, and a node's `class`, `status` or `actor`,
+or a `role` other than `"step"` (a bracket has no boxes); an edge role but `flow` and `strong`; `"root": "middle"`
 with a root of other than two children; `root` without the bracket style. See
 [`reference/tree-bracket-cup.json`](reference/tree-bracket-cup.json) (a sixteen-team cup
 with scores), [`reference/tree-bracket-primates.json`](reference/tree-bracket-primates.json)

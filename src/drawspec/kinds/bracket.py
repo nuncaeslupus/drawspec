@@ -481,6 +481,10 @@ def bracket_text(document: Document, width: int, charset: str) -> str:
         rows[tree.root] = min(rows[child] for child in root.children)
     top_row = min(rows.values()) - (2 if middle else 0)
     total = (2 * centre + 1) if middle else reach + 1 + ((names + 2) if past else 0)
+    # The final's words, centred over the middle: where they start, and room to end.
+    root_start = max(0, centre - cells(root_words) // 2)
+    if middle and root_words:
+        total = max(total, root_start + cells(root_words))
     height = max(rows.values()) - top_row + 1
     links = [[0] * total for _ in range(height)]
     strong = [[False] * total for _ in range(height)]
@@ -505,8 +509,25 @@ def bracket_text(document: Document, width: int, charset: str) -> str:
                 links[row - top_row][column] |= _N
 
     def put(row: int, column: int, text: str) -> None:
-        for offset, character in enumerate(text):
-            glyphs[row - top_row][column + offset] = character
+        """`text` from `column`, by terminal cells: a wide character takes two (the
+        second left empty), and a mark that takes none stays on the one before it."""
+        line = glyphs[row - top_row]
+        at, pending = column, ""
+        for character in text:
+            width = cells(character)
+            if width == 0:
+                if at > column:
+                    line[at - 1] = (line[at - 1] or "") + character
+                else:
+                    pending += character  # a leading mark: it goes on the first character
+                continue
+            line[at] = pending + character
+            pending = ""
+            for extra in range(1, width):
+                line[at + extra] = ""
+            at += width
+        if pending:
+            line[column] = pending + (line[column] or " ")
 
     def inline(row: int, own_at: int, side: int, text: str) -> None:
         """Words on a line by its own elbow: the elbow, a dash, then ` words `."""
@@ -522,7 +543,7 @@ def bracket_text(document: Document, width: int, charset: str) -> str:
             if middle:
                 climb(centre, row - 1, row)
                 if root_words:
-                    put(row - 2, max(0, centre - cells(root_words) // 2), root_words)
+                    put(row - 2, root_start, root_words)
                 continue
             own_at = x(side, centre)
             run(row, own_at, x(side, reach), heavy)

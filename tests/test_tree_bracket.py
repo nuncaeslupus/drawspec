@@ -21,6 +21,7 @@ from drawspec.errors import FitError
 from drawspec.kinds.bracket import BracketDrawing, bracket_drawing
 from drawspec.schema import BRACKET_LEAVES_MAX, load_document, parse_document, validate_document
 from drawspec.text import TextMeasurer
+from drawspec.textgrid import cells
 from drawspec.theme import load_theme
 
 THEME = load_theme()
@@ -378,3 +379,23 @@ def test_a_long_final_name_in_the_middle_stays_clear_of_the_elbows() -> None:
         assert not words[0] <= elbow <= words[2]
     text = render_text(parse_document(document), width=200)
     assert "Ash, champions of the whole county league" in text
+
+
+@pytest.mark.parametrize("name", ["東京タワー", "école", "​Zero", "́Mark"])
+def test_text_names_are_placed_by_terminal_cells(name: str) -> None:
+    """A wide name takes two cells a character and a mark none, so the elbows still line up."""
+    document = knockout()
+    document["nodes"][3]["text"] = name
+    lines = render_text(parse_document(document), width=200).splitlines()
+    corner = cells(lines[0][: lines[0].index("┐")])
+    assert corner == cells(lines[2][: lines[2].index("┘")])
+    assert corner == cells(lines[1][: lines[1].index("├")])
+    assert name.lstrip("​́") in lines[0]
+
+
+def test_text_a_long_final_name_in_the_middle_widens_the_drawing() -> None:
+    """The final's words start where they are centred and the grid grows to hold them."""
+    document = knockout(root="middle")
+    document["nodes"][0]["text"] = "A final name far wider than the whole of this small draw"
+    lines = render_text(parse_document(document), width=200).splitlines()
+    assert lines[0].strip() == document["nodes"][0]["text"]

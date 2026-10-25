@@ -110,7 +110,7 @@ Each at its pointer, with what to do instead.
 * An inner node of one child (`/nodes/<i>`): a match has two sides.
 * An unnamed leaf (`/nodes/<i>/text`): only an inner node may go unnamed.
 * Words or a label on two lines (`…/text`, `…/label`).
-* `groups`, `bands`, `classes`; a node's `class`, `status`, `actor` or `role`; an edge's
+* `groups`, `bands`, `classes`; a node's `class`, `status` or `actor`, or a `role` other than `"step"`; an edge's
   `status`, or a role other than `flow` and `strong` — a bracket has no boxes for any of
   them.
 * `"root": "middle"` with a root of other than two children (`/root`).

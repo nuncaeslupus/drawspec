@@ -21,7 +21,7 @@ against it would stop working. Everything below is about the *package*.
   tournament read left to right) or in the `middle` (a two-sided draw). Up to 16 leaves,
   in place of a boxed tree's 15 nodes. `--format text` draws it too, in box-drawing
   characters. Refused at their pointers: a second parent, a cycle, a node of one child,
-  an unnamed leaf, groups, bands, classes and node roles. Three reference documents and
+  an unnamed leaf, groups, bands, classes and any node role but `"step"`. Three reference documents and
   `docs/proposals/tree-bracket.md`.
 
 - **A `railroad` kind.** A grammar's rules as syntax (railroad) diagrams, as JSON.org and

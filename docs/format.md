@@ -62,7 +62,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `style` | string — one of `boxes`, `bracket` | no | `boxes` (the default) ranks boxed nodes down from the root. `bracket` draws a tournament bracket or a cladogram: every leaf on one outer edge, square elbows, and each inner node unboxed — its words (a match's winner, a clade's name) on its own line, or none (`"text": ""`). An edge's `label` is written on the child's line by the elbow: a score, a trait. Every node but the root has one parent and every inner node at least two children; at most 16 leaves, and no groups, bands, classes or node roles. |
+| `style` | string — one of `boxes`, `bracket` | no | `boxes` (the default) ranks boxed nodes down from the root. `bracket` draws a tournament bracket or a cladogram: every leaf on one outer edge, square elbows, and each inner node unboxed — its words (a match's winner, a clade's name) on its own line, or none (`"text": ""`). An edge's `label` is written on the child's line by the elbow: a score, a trait. Every node but the root has one parent and every inner node at least two children; at most 16 leaves, and no groups, bands, classes, and no node role but `step`. |
 | `root` | string — one of `left`, `right`, `middle` | no | Only with `"style": "bracket"`: the edge the root stands at. `left` (the default) is a cladogram's, the leaves' names in a column at the right; `right` is a tournament read left to right, the champion last; `middle` is the two-sided draw, the root's first child's half on the left and its second's on the right, the final in the middle. A bracket reads across, so there is no top or bottom. |
 
 ### `flow`
