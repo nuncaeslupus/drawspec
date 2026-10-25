@@ -10893,26 +10893,31 @@ def _network_violations(document: Mapping[str, Any]) -> list[Violation]:
 
     found: list[Violation] = []
     networks: dict[str, int] = {}
+    # Whether every entry is whole enough to arrange: a network skipped here keeps
+    # its slot, so a host on a later one would name an index past the count.
+    whole = True
     for index, entry in enumerate(_listed(document, "networks")):
         if not isinstance(entry, dict):
+            whole = False
             continue
         identifier = entry.get("id")
         text = entry.get("text")
         if isinstance(text, str) and not text.strip():
             found.append(Violation(_pointer("networks", index, "text"), "a network needs a name."))
         if not isinstance(identifier, str):
+            whole = False
             continue
         if identifier in networks:
             found.append(
                 Violation(_pointer("networks", index, "id"), f"duplicate network id {identifier!r}")
             )
+            whole = False
             continue
         networks[identifier] = index
 
     hosts: dict[str, int] = {}
     attached: list[list[int]] = []
     used: set[int] = set()
-    whole = True
     for index, entry in enumerate(_listed(document, "hosts")):
         if not isinstance(entry, dict):
             whole = False
@@ -11032,12 +11037,14 @@ def _network_violations(document: Mapping[str, Any]) -> list[Violation]:
                 f"split the diagram.",
             )
         )
+    named = {index: identifier for identifier, index in hosts.items()}
     clashes = [clash for clash in arrangement.clashes if not arrangement.crossings]
     for group, other in clashes[:1]:
         if other >= 0:
             message = (
                 f"no column order keeps this group's hosts together without host "
-                f"{other} standing on its backdrop too. Add it to the group, or group fewer."
+                f"{named[other]!r} standing on its backdrop too. Add it to the group, or group "
+                f"fewer."
             )
         else:
             message = (

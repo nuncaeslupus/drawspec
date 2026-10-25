@@ -15,11 +15,11 @@ one with no such crossing; when none exists the document is refused (by
 `drawspec.schema`, at the host's pointer), rather than drawn with a hop over the
 bus that a reader would have to be told about.
 
-**Hosts share a column when their spans cannot touch.** A host's box sits just
-under its topmost bus and its line reaches down to its lowest, so two hosts whose
-vertical extents are apart — one on `dmz`, one under `storage` — stack in one
-column, as nwdiag stacks them. Two on one bus never share: each meets the bus at
-its own point.
+**Hosts share a column when their spans cannot touch** and neither would stand
+on the other's group's backdrop. A host's box sits just under its topmost bus
+and its line reaches down to its lowest, so two hosts whose vertical extents are
+apart — one on `dmz`, one under `storage` — stack in one column, as nwdiag stacks
+them. Two on one bus never share: each meets the bus at its own point.
 
 **Ties go to the order written.** Among orders with no crossing, fewer columns
 win, then shorter buses, then the order nearest the one the author wrote.
@@ -114,6 +114,23 @@ def _arranged(
         for member in members:
             owner.setdefault(member, index)
     total = len(nets)
+    # Each group's band of gaps, fixed by its members' topmost buses alone.
+    bands = [
+        (min(nets[m][0] for m in members), max(nets[m][0] for m in members))
+        if members
+        else (0, -1)
+        for members in groups
+    ]
+
+    def strangers(first: int, second: int) -> bool:
+        """Whether one of two hosts would stand on the other's group's backdrop."""
+        for one, two in ((first, second), (second, first)):
+            group = owner.get(one)
+            if group is not None and owner.get(two) != group:
+                low, high = bands[group]
+                if low <= nets[two][0] <= high:
+                    return True
+        return False
 
     def place(order: Sequence[int]) -> list[int]:
         columns: list[list[int]] = []
@@ -122,8 +139,10 @@ def _arranged(
         for host in order:
             column = max(last[network] for network in nets[host]) + 1
             top, bottom = extent[host]
+            # Nor does a host stack where it would stand on a stranger's backdrop.
             while column < len(columns) and any(
                 not (bottom < extent[other][0] or extent[other][1] < top)
+                or strangers(host, other)
                 for other in columns[column]
             ):
                 column += 1

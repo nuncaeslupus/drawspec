@@ -10,6 +10,7 @@ cannot be drawn that way is refused at its pointer before any layout runs.
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -279,3 +280,32 @@ def test_the_text_form_draws_buses_hosts_and_addresses() -> None:
     assert "┷" in text and "┯" in text
     ascii_text = render_text(parse_document(diagram()), charset="ascii")
     assert all(ord(character) < 128 for character in ascii_text)
+
+
+def test_a_network_without_an_id_is_a_violation_not_a_crash() -> None:
+    document = {
+        "version": 1,
+        "kind": "network",
+        "networks": [{"text": "DMZ"}, {"id": "lan"}],
+        "hosts": [{"id": "h", "networks": [{"network": "lan"}]}],
+    }
+    assert "/networks/0/id" in violations(document)
+
+
+def test_a_host_stacks_only_with_its_own_group() -> None:
+    arrangement = arrange(3, [[2], [1], [0]], [[2, 0]])
+    assert arrangement.clashes == ()
+    assert arrangement.column_of[1] != arrangement.column_of[0]
+
+
+def test_a_group_clash_names_the_stranger_by_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    import drawspec.buses
+
+    real = drawspec.buses.arrange
+
+    def clashing(*arguments: Any) -> Any:
+        return replace(real(*arguments), clashes=((0, 2),))
+
+    monkeypatch.setattr(drawspec.buses, "arrange", clashing)
+    found = violations(diagram(groups=[{"members": ["web01", "web02"]}]))
+    assert "'db01'" in found["/groups/0/members"]
