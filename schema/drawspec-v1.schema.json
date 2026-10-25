@@ -2823,6 +2823,86 @@
         "nodes"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "network",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "network"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "networks": {
+          "type": "array",
+          "description": "The networks, 1 to 6, each a horizontal bus, drawn top to bottom in the order written. Write them in the order traffic meets them — the internet, the DMZ, the internal network, storage — so a host on two neighbours sits between them.",
+          "items": {
+            "$ref": "#/$defs/network-segment"
+          },
+          "minItems": 1
+        },
+        "hosts": {
+          "type": "array",
+          "description": "The hosts, 1 to 24, each a box under its topmost network with a line to every network it is on. The columns are drawspec's: ordered so no line crosses a bus it is not on, then as few and as close to the order written as that allows.",
+          "items": {
+            "$ref": "#/$defs/network-host"
+          },
+          "minItems": 1
+        },
+        "groups": {
+          "type": "array",
+          "description": "Optional: up to 6 sets of hosts drawn on a shaded backdrop, with an optional name — a cluster, a rack, a site. No host outside a group may stand inside it.",
+          "items": {
+            "$ref": "#/$defs/network-group"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "networks",
+        "hosts"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -4343,6 +4423,101 @@
       },
       "required": [
         "text"
+      ],
+      "additionalProperties": false
+    },
+    "network-attachment": {
+      "type": "object",
+      "properties": {
+        "network": {
+          "type": "string",
+          "description": "The id of a network this host is on."
+        },
+        "address": {
+          "type": "string",
+          "description": "The host's address on that network, written beside its line where it meets the bus — `.1`, `10.0.1.10`. Optional."
+        }
+      },
+      "required": [
+        "network"
+      ],
+      "additionalProperties": false
+    },
+    "network-group": {
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "The group's name, at the top left of its backdrop. Optional."
+        },
+        "members": {
+          "type": "array",
+          "description": "The ids of the hosts drawn on this group's shaded backdrop, side by side. A host is in one group at most.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "members"
+      ],
+      "additionalProperties": false
+    },
+    "network-host": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the hosts; what a group's `members` name."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words in the host's box. Left out, the `id` is the name. A newline makes the first line a lead over a detail — `db01` over `primary`."
+        },
+        "role": {
+          "type": "string",
+          "description": "`step` (the default box: a server, a router, a firewall, any device), `emphasis` (the host the diagram is about; at most two), `store` (a drum: a database, a storage array) or `person` (a user's machine, a client). No device icons: say what a box is in its words.",
+          "enum": [
+            "step",
+            "emphasis",
+            "store",
+            "person"
+          ]
+        },
+        "networks": {
+          "type": "array",
+          "description": "The networks this host is on, each with an optional address. A host on two or more is drawn between them, joining them — a router, a firewall, a dual-homed server. Its line may cross no bus it is not on, so the column order is drawspec's; a set of attachments no order can draw is refused.",
+          "items": {
+            "$ref": "#/$defs/network-attachment"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "id",
+        "networks"
+      ],
+      "additionalProperties": false
+    },
+    "network-segment": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the networks; what a host's attachment names."
+        },
+        "text": {
+          "type": "string",
+          "description": "The network's name, written in bold at the left of its bus. Left out, the `id` is the name."
+        },
+        "address": {
+          "type": "string",
+          "description": "The network's address, written on its bus after the name — `210.x.x.x/24`, `10.0.1.0/24`. Words, not parsed: drawspec checks nothing about it."
+        }
+      },
+      "required": [
+        "id"
       ],
       "additionalProperties": false
     },

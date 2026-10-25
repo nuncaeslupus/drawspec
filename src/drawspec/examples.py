@@ -65,6 +65,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "rag": "workstreams or risks rated red, amber or green, in words and shapes — a status report",
     "clock": "analogue clock faces showing a time, for teaching it — quarter past, half past",
     "sunburst": "a hierarchy as concentric rings of sectors, read from the middle outward",
+    "network": "networks as buses with the hosts on them between — a DMZ, an office LAN",
 }
 
 #: The smallest document of each kind that renders.
@@ -386,6 +387,24 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "nodes": [
             {"text": "Angry", "children": [{"text": "Hurt"}, {"text": "Mad"}]},
             {"text": "Happy", "children": [{"text": "Proud"}, {"text": "Playful"}]},
+        ],
+    },
+    "network": {
+        "version": 1,
+        "kind": "network",
+        "networks": [
+            {"id": "dmz", "address": "210.x.x.x/24"},
+            {"id": "internal", "address": "172.x.x.x/24"},
+        ],
+        "hosts": [
+            {
+                "id": "web01",
+                "networks": [
+                    {"network": "dmz", "address": ".1"},
+                    {"network": "internal", "address": ".1"},
+                ],
+            },
+            {"id": "db01", "role": "store", "networks": [{"network": "internal", "address": ".2"}]},
         ],
     },
     "rag": {

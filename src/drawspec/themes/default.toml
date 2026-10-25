@@ -253,6 +253,13 @@ taper = [6.0, 3.0, 1.5]
 # Heaviest first; none heavier than the one before.
 weights = [0.006, 0.0035, 0.002]
 
+[network]
+# How a network diagram is washed, as shares of the page's ink: a network's bus,
+# with its name and address written on it, and a group's backdrop behind its
+# hosts — lighter, so a group reads as ground and a bus as a thing.
+bus = 0.16
+group = 0.07
+
 [argument]
 # How an argument map shows which way a point bears, twice so greyscale holds: a
 # tag in the box's top margin, read aloud down a chain (claim, because, but, but),

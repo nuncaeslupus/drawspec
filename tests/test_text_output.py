@@ -59,6 +59,9 @@ WIDER: Final = {
     "sequence-dns": 93,
     "sequence-drain": 85,
     "board-onboarding": 88,
+    # A network's bus names stand left of their buses, and every column holds a box.
+    "network-office": 120,
+    "network-three-tier": 136,
 }
 
 
@@ -73,6 +76,7 @@ GOLDENS: Final = {
     "stack": "stack-decisions",
     "rag": "rag-refit",
     "meter": "meter-migration",
+    "network": "network-nwdiag",
 }
 
 #: Golden files beyond one per kind: a second style of a kind, held the same way.
@@ -138,13 +142,19 @@ def _labels(document: Document) -> list[str]:
     elif document.kind == "meter":
         found += [meter.text for meter in document.meters]
         found += [band.text for meter in document.meters for band in meter.bands]
+    elif document.kind == "network":
+        found += [network.text for network in document.networks]
+        found += [network.address for network in document.networks]
+        found += [host.text for host in document.hosts]
+        found += [address for host in document.hosts for address in host.addresses]
+        found += [group.text for group in document.host_groups]
     found.append(document.caption)
     return [line for label in found for line in plain(label).split("\n") if line.strip()]
 
 
 #: The kinds whose SVG wraps a label, and whose text form may therefore break
 #: one at spaces. Everywhere else a label must appear on one line, whole.
-WRAPPING: Final = ("sequence", "timeline", "board", "stack", "rag")
+WRAPPING: Final = ("sequence", "timeline", "board", "stack", "rag", "network")
 
 
 # ---------------------------------------------------------------------------

@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-37 kinds. The machine-readable form of this page is the published
+38 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst` | **yes** | Which of the thirty-seven diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `network` | **yes** | Which of the thirty-eight diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -296,6 +296,14 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 |---|---|---|---|
 | `rows` | array of [rag-row](#rag-row-object), at least 1 | **yes** | The workstreams or risks, 1 to 15, in the order written: each a name, its `rag`, and optionally a `trend` and a `note`. |
 
+### `network`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `networks` | array of [network-segment](#network-segment-object), at least 1 | **yes** | The networks, 1 to 6, each a horizontal bus, drawn top to bottom in the order written. Write them in the order traffic meets them — the internet, the DMZ, the internal network, storage — so a host on two neighbours sits between them. |
+| `hosts` | array of [network-host](#network-host-object), at least 1 | **yes** | The hosts, 1 to 24, each a box under its topmost network with a line to every network it is on. The columns are drawspec's: ordered so no line crosses a bus it is not on, then as few and as close to the order written as that allows. |
+| `groups` | array of [network-group](#network-group-object), at least 1 | no | Optional: up to 6 sets of hosts drawn on a shaded backdrop, with an optional name — a cluster, a rack, a site. No host outside a group may stand inside it. |
+
 ### `sunburst`
 
 | Field | Type | Required | What it is |
@@ -387,6 +395,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `rag` | 15 `rows` |
 | `clock` | 12 `clocks` |
 | `sunburst` | 8 `nodes` |
+| `network` | 6 `networks`, 24 `hosts`, 6 `groups` |
 
 ## Emphasis
 
@@ -881,6 +890,37 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `children` | array of [sunburst-node](#sunburst-node-object), at least 1 | no | The sectors nested inside this one — the next ring, drawn clockwise in the order written. At most three rings in all; leave it out of a node that ends the hierarchy. |
+
+### `network-segment` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the networks; what a host's attachment names. |
+| `text` | string | no | The network's name, written in bold at the left of its bus. Left out, the `id` is the name. |
+| `address` | string | no | The network's address, written on its bus after the name — `210.x.x.x/24`, `10.0.1.0/24`. Words, not parsed: drawspec checks nothing about it. |
+
+### `network-attachment` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `network` | string | **yes** | The id of a network this host is on. |
+| `address` | string | no | The host's address on that network, written beside its line where it meets the bus — `.1`, `10.0.1.10`. Optional. |
+
+### `network-host` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the hosts; what a group's `members` name. |
+| `text` | string | no | The words in the host's box. Left out, the `id` is the name. A newline makes the first line a lead over a detail — `db01` over `primary`. |
+| `role` | string — one of `step`, `emphasis`, `store`, `person` | no | `step` (the default box: a server, a router, a firewall, any device), `emphasis` (the host the diagram is about; at most two), `store` (a drum: a database, a storage array) or `person` (a user's machine, a client). No device icons: say what a box is in its words. |
+| `networks` | array of [network-attachment](#network-attachment-object), at least 1 | **yes** | The networks this host is on, each with an optional address. A host on two or more is drawn between them, joining them — a router, a firewall, a dual-homed server. Its line may cross no bus it is not on, so the column order is drawspec's; a set of attachments no order can draw is refused. |
+
+### `network-group` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | no | The group's name, at the top left of its backdrop. Optional. |
+| `members` | array of string, at least 1 | **yes** | The ids of the hosts drawn on this group's shaded backdrop, side by side. A host is in one group at most. |
 
 ### `treemap-group` object
 

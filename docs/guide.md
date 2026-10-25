@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Thirty-four exist, and they fall into twenty-three families:
+fields are legal. Thirty-eight exist, and these are the families they fall into:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -174,6 +174,7 @@ fields are legal. Thirty-four exist, and they fall into twenty-three families:
 | Gauge | `meter` | How far one amount is along its scale: a progress bar, a fundraising thermometer, a dial with named bands, a bullet graph — alone or a few to a panel. |
 | Status | `rag` | Things rated red, amber or green: workstreams or risks a row each, the rating a word and a shape (a colour only by the theme), a trend in words and a note — a highlight report, a risk register. |
 | Time | `clock` | A time of day on an analogue face, for teaching it: two hands placed by the time, the numerals the lesson uses, the time in words under it, how long since an earlier time shaded round the face. |
+| Network | `network` | Which hosts are on which networks: each network a bus, each host a box joined to every network it is on, an address beside each line — a DMZ, an office LAN, a three-tier deployment (nwdiag). |
 | Reasoning | `argument` | Things said for and against a claim: reasons, objections, rebuttals and evidence by stance, co-premises under one bracket (an argument map). |
 
 One worked document per kind lives in [`reference/`](reference), and `make
@@ -429,7 +430,7 @@ drawspec render plan.json --format text --width 100 --charset ascii
 It is a second emitter, not a picture of the SVG: each kind lays itself out on a
 character grid from its own rows and columns. Twelve kinds have a text form —
 `files`, `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`,
-`meter` in every style, and the graph kinds `flow`, `states` and `lanes` — and
+`meter` in every style, `network`, and the graph kinds `flow`, `states` and `lanes` — and
 every other kind refuses, naming them. The kinds whose message is an area, an
 angle or a curve never get one. A `meter` `dial` is a half-circle of cells with
 its needle in the stroke nearest the amount's angle and its bands in shades
@@ -2587,6 +2588,49 @@ for its numerals is a `FitError`. See [`reference/clock-quarters.json`](referenc
 (read and draw, answers hidden), [`reference/clock-roman.json`](reference/clock-roman.json)
 (Roman numerals to the minute, in words and digits) and
 [`reference/clock-journey.json`](reference/clock-journey.json) (how long between times).
+
+## A network diagram: hosts on networks
+
+Documentation of a deployment draws the same picture again and again: each network a
+horizontal bar, the servers hanging off it, the ones on two networks standing between
+them. PlantUML and blockdiag call it `nwdiag`. That is `network`:
+
+```json
+{
+  "version": 1,
+  "kind": "network",
+  "networks": [
+    {"id": "dmz", "address": "210.x.x.x/24"},
+    {"id": "internal", "address": "172.x.x.x/24"}
+  ],
+  "hosts": [
+    {"id": "web01", "networks": [{"network": "dmz", "address": ".1"}, {"network": "internal", "address": ".1"}]},
+    {"id": "web02", "networks": [{"network": "dmz", "address": ".2"}, {"network": "internal", "address": ".2"}]},
+    {"id": "db01", "role": "store", "networks": [{"network": "internal"}]}
+  ]
+}
+```
+
+`networks` are drawn top to bottom in the order written, so write them in the order
+traffic meets them. A host is a box under its topmost network with a line to every network
+it is on; `text` defaults to the `id`, and an `address` on an attachment is written beside
+the line where it meets the bus. `groups` put a shaded backdrop, with an optional name,
+behind a set of `members`.
+
+**The columns are drawspec's.** A host's line may cross no network it is not on — it would
+read as attached — so a host on `dmz` and `storage` has to stand outside `internal`'s hosts.
+drawspec orders the columns so that every line stays clear, then for the fewest columns,
+the shortest bars and the order written; hosts whose spans are apart stack in one column.
+When no order keeps a line clear, the document is refused at that host: put it on the
+network in between too, or reorder `networks` so the ones it joins are neighbours.
+
+**No device icons.** A host is `step` (a box: a server, a router, a firewall), `emphasis`,
+`store` (a drum: a database) or `person` (a client); its words say what it is. A router is
+a host on two networks, and the drawing shows it joining them. Budget: 6 networks, 24
+hosts, 6 groups. It draws as text too. See
+[`reference/network-nwdiag.json`](reference/network-nwdiag.json),
+[`reference/network-three-tier.json`](reference/network-three-tier.json) and
+[`reference/network-office.json`](reference/network-office.json).
 
 ## Asking for a wide drawing instead of a tall one
 

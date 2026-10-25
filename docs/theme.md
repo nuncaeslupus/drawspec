@@ -318,6 +318,15 @@ How heavy a sunburst's three structural lines are.
 |---|---|---|
 | `weights` | `[0.006, 0.0035, 0.002]` | The width of a first-ring divider and the rim, a ring boundary and the hub circle, and a division two or more rings deep — each as a share of the wheel's radius, floored at a hairline so a small wheel keeps its lines, so the structure grows heavier on a wide wheel. Heaviest first; none heavier than the one before. |
 
+### `[network]`
+
+How a network diagram washes its buses and its groups' backdrops.
+
+| Key | Default | What it is |
+|---|---|---|
+| `bus` | `0.16` | How much ink fills a network's bus, behind its name and address. |
+| `group` | `0.07` | How much ink fills a group's backdrop, behind its hosts. Lighter than a bus, so a group reads as ground and a bus as a thing. |
+
 ### `[argument]`
 
 How an argument map says which way a point bears: its tag and its fill.
