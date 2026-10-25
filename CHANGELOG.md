@@ -12,6 +12,18 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`tree` + `"style": "bracket"`: tournament brackets and cladograms.** Every leaf stands
+  on one outer edge, an inner node as far from it as its deepest leaf, joined by square
+  elbows; nodes are lines, not boxes. A node's words sit on its own line (a team, a
+  match's winner, a clade), an inner node may be unnamed (`"text": ""`), and an edge's
+  `label` is written by the elbow (a score, a trait); `strong` edges are drawn heavy.
+  `root` puts the root at the `left` (a cladogram, names past the tips), the `right` (a
+  tournament read left to right) or in the `middle` (a two-sided draw). Up to 16 leaves,
+  in place of a boxed tree's 15 nodes. `--format text` draws it too, in box-drawing
+  characters. Refused at their pointers: a second parent, a cycle, a node of one child,
+  an unnamed leaf, groups, bands, classes and any node role but `"step"`. Three reference documents and
+  `docs/proposals/tree-bracket.md`.
+
 - **A `packet` kind.** A protocol header or a hardware register as bit fields in rows of
   8, 16, 32 (the default) or 64 bits, under a bit ruler: an RFC header, a datasheet's
   register map. The input is the fields in reading order, each with its width in `bits` —

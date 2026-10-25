@@ -56,6 +56,7 @@ from typing import Final
 
 from drawspec.errors import DrawspecError
 from drawspec.filetree import STATUS_MARKS
+from drawspec.kinds.bracket import bracket_text
 from drawspec.kinds.graph import _with_pseudo_states, tree_text
 from drawspec.kinds.lanes import acyclic, ranked
 from drawspec.layout import LayeredEngine, LayoutEdge, LayoutNode, Spacing, rank_nodes
@@ -273,6 +274,8 @@ def tree_graph_text(document: Document, width: int, charset: str) -> str:
     A tree with a cross-link, a cycle or groups is a graph a guide cannot draw,
     so it is routed like a flow instead of refused.
     """
+    if document.tree_style == "bracket":
+        return bracket_text(document, width, charset)
     if _guided(document):
         return tree_text(document, width, charset)
     return graph_text(document, width, charset)

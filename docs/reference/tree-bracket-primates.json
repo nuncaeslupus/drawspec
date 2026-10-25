@@ -1,0 +1,161 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "tree",
+  "title": "How the living primates are related",
+  "description": "A cladogram of ten living primate groups: lemurs and lorises on one branch, tarsiers, monkeys and apes on the other, with the apes and the great apes named at the splits they begin at.",
+  "caption": "Each split is a common ancestor. The order down the page ranks nothing.",
+  "style": "bracket",
+  "nodes": [
+    {
+      "id": "primates",
+      "text": ""
+    },
+    {
+      "id": "strep",
+      "text": ""
+    },
+    {
+      "id": "haplo",
+      "text": ""
+    },
+    {
+      "id": "anthro",
+      "text": ""
+    },
+    {
+      "id": "catarr",
+      "text": ""
+    },
+    {
+      "id": "apes",
+      "text": "Apes"
+    },
+    {
+      "id": "great",
+      "text": "Great apes"
+    },
+    {
+      "id": "african",
+      "text": ""
+    },
+    {
+      "id": "homin",
+      "text": ""
+    },
+    {
+      "id": "lemurs",
+      "text": "Lemurs"
+    },
+    {
+      "id": "lorises",
+      "text": "Lorises"
+    },
+    {
+      "id": "tarsiers",
+      "text": "Tarsiers"
+    },
+    {
+      "id": "nwm",
+      "text": "New World monkeys"
+    },
+    {
+      "id": "owm",
+      "text": "Old World monkeys"
+    },
+    {
+      "id": "gibbons",
+      "text": "Gibbons"
+    },
+    {
+      "id": "orangutans",
+      "text": "Orangutans"
+    },
+    {
+      "id": "gorillas",
+      "text": "Gorillas"
+    },
+    {
+      "id": "chimps",
+      "text": "Chimpanzees"
+    },
+    {
+      "id": "humans",
+      "text": "Humans"
+    }
+  ],
+  "edges": [
+    {
+      "from": "primates",
+      "to": "strep"
+    },
+    {
+      "from": "primates",
+      "to": "haplo"
+    },
+    {
+      "from": "strep",
+      "to": "lemurs"
+    },
+    {
+      "from": "strep",
+      "to": "lorises"
+    },
+    {
+      "from": "haplo",
+      "to": "tarsiers"
+    },
+    {
+      "from": "haplo",
+      "to": "anthro"
+    },
+    {
+      "from": "anthro",
+      "to": "nwm"
+    },
+    {
+      "from": "anthro",
+      "to": "catarr"
+    },
+    {
+      "from": "catarr",
+      "to": "owm"
+    },
+    {
+      "from": "catarr",
+      "to": "apes"
+    },
+    {
+      "from": "apes",
+      "to": "gibbons"
+    },
+    {
+      "from": "apes",
+      "to": "great"
+    },
+    {
+      "from": "great",
+      "to": "orangutans"
+    },
+    {
+      "from": "great",
+      "to": "african"
+    },
+    {
+      "from": "african",
+      "to": "gorillas"
+    },
+    {
+      "from": "african",
+      "to": "homin"
+    },
+    {
+      "from": "homin",
+      "to": "chimps"
+    },
+    {
+      "from": "homin",
+      "to": "humans"
+    }
+  ]
+}

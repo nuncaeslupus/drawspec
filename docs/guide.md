@@ -150,7 +150,7 @@ fields are legal. Forty-three exist, and they fall into thirty-two families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
-| Graph | `flow`, `tree`, `cycle`, `lanes` | Things connected to other things: a process, a hierarchy, a loop that comes round again, a process drawn in one strip per party, a causal loop diagram. |
+| Graph | `flow`, `tree`, `cycle`, `lanes` | Things connected to other things: a process, a hierarchy, a tournament bracket or a cladogram, a loop that comes round again, a process drawn in one strip per party, a causal loop diagram. |
 | Grid | `stack`, `timeline`, `columns`, `matrix` | Things in an arrangement: layers, events in order, side-by-side comparison, rows against columns. |
 | Shape | `pyramid`, `rings`, `funnel` | Things in a proportion: levels narrowing to an apex, scopes nested inside scopes, stages narrowing to an outcome. |
 | Plot | `chart`, `quadrant`, `scatter`, `curve` | Things with numbers: series against axes, items placed in a plane, points by two measured values, a named shape with labelled waypoints. |
@@ -439,7 +439,7 @@ drawspec render plan.json --format text --width 100 --charset ascii
 
 It is a second emitter, not a picture of the SVG: each kind lays itself out on a
 character grid from its own rows and columns. Seventeen kinds have a text form —
-`files`, `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`,
+`files`, `tree` (a bracket too), `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`,
 `meter` in every style, `timing`, `gitgraph` (as `git log --graph` draws it),
 `network`, `railroad`, `packet`, and the graph kinds `flow`, `states` and `lanes` — and
 every other kind refuses, naming them. The kinds whose message is an area, an
@@ -2820,6 +2820,70 @@ and actor generalisation), [`reference/usecase-atm.json`](reference/usecase-atm.
 supporting actor whose lines pass the included use case) and
 [`reference/usecase-checkout.json`](reference/usecase-checkout.json) (two systems, two
 specialised actors).
+
+## A bracket: tournaments and cladograms
+
+A knockout draw and a cladogram are the same figure: every team, or every taxon, in one
+column on the outer edge, joined pairwise by square elbows into a root — the champion, or
+the common ancestor. A boxed `tree` ranks down from its root and boxes every node; this
+one puts the leaves on one line and draws every node as a line. It is a `tree` with
+`"style": "bracket"`:
+
+```json
+{
+  "version": 1,
+  "kind": "tree",
+  "style": "bracket",
+  "root": "right",
+  "nodes": [
+    {"id": "final", "text": "Ash"},
+    {"id": "s1", "text": "Ash"}, {"id": "s2", "text": "Elm"},
+    {"id": "a", "text": "Ash"}, {"id": "b", "text": "Beech"},
+    {"id": "c", "text": "Cedar"}, {"id": "e", "text": "Elm"}
+  ],
+  "edges": [
+    {"from": "final", "to": "s1", "label": "2", "role": "strong"},
+    {"from": "final", "to": "s2", "label": "1"},
+    {"from": "s1", "to": "a", "label": "3", "role": "strong"},
+    {"from": "s1", "to": "b", "label": "0"},
+    {"from": "s2", "to": "c", "label": "1"},
+    {"from": "s2", "to": "e", "label": "2"}
+  ]
+}
+```
+
+The edges run from a match (or a split) to what feeds it, as in any `tree`, and siblings
+read in their edges' order. **Placement is drawspec's**: a leaf is on the outer edge, an
+inner node as far from it as its deepest leaf is below it — so a round of a knockout is
+one column, and a ladder cladogram climbs one step per split — on the row halfway between
+its first and last child. A node's words sit on its own line at its own end: a team's
+name, a match's winner, a clade's name. An inner node's `text` may be `""`, a bare
+junction: a cladogram's common ancestor. An edge's `label` is written on the child's line
+by the elbow it feeds — the score in that match, or the trait a lineage gained — and a
+`strong` edge is drawn heavy, for the champion's run or the lineage the lesson is about.
+
+`root` says where the root stands. `left` (the default) is a cladogram's: a short root at
+the left, the leaves' names in one column past the tips at the right. `right` reads as a
+tournament, from the first round to the champion's line at the end, each name on its
+line. `middle` is the two-sided draw: the root's first child's half on the left, its
+second mirrored on the right, the final where they meet and the root's words above it.
+There is no top or bottom: a bracket reads across, one row per leaf.
+
+The budget is **16 leaves**, a sixteen-team knockout (31 nodes, past a boxed tree's 15).
+A 64-team draw is printed as four regions of sixteen and the regions' winners, and that
+is the split to make. In text (`--format text`) the same layout is drawn on cells, leaves
+two rows apart, the elbows in box-drawing characters and the words inline on their lines;
+a 16-team draw needs about 92 columns.
+
+Refused, each at its pointer: a second parent, a cycle, a second root, an edge to itself;
+an inner node of one child (a match has two sides); an unnamed leaf; words or a label on
+two lines; `groups`, `bands`, `classes`, and a node's `class`, `status` or `actor`,
+or a `role` other than `"step"` (a bracket has no boxes); an edge role but `flow` and `strong`; `"root": "middle"`
+with a root of other than two children; `root` without the bracket style. See
+[`reference/tree-bracket-cup.json`](reference/tree-bracket-cup.json) (a sixteen-team cup
+with scores), [`reference/tree-bracket-primates.json`](reference/tree-bracket-primates.json)
+(a primate cladogram) and [`reference/tree-bracket-quiz.json`](reference/tree-bracket-quiz.json)
+(a two-sided draw).
 
 ## A packet header or a register map
 

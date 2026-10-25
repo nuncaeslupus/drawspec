@@ -15,6 +15,7 @@ from drawspec.errors import DrawspecError
 from drawspec.kinds.argument import argument_scene
 from drawspec.kinds.barmodel import barmodel_scene
 from drawspec.kinds.board import board_scene, board_text
+from drawspec.kinds.bracket import bracket_scene
 from drawspec.kinds.clock import clock_scene
 from drawspec.kinds.common import box_primitives, captioned, outline, text_runs
 from drawspec.kinds.cycle import cycle_scene
@@ -235,6 +236,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
+    if document.kind == "tree" and document.tree_style == "bracket":
+        return bracket_scene(document, theme, measurer)
     if document.kind in DRAWN_KINDS:
         return graph_scene(document, theme, measurer)
     raise DrawspecError(
@@ -251,6 +254,7 @@ __all__ = [
     "barmodel_scene",
     "board_scene",
     "box_primitives",
+    "bracket_scene",
     "captioned",
     "clock_scene",
     "cycle_scene",
