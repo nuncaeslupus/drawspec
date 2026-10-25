@@ -200,7 +200,7 @@ The full list: `flow` · `tree` · `cycle` · `stack` · `timeline` · `columns`
 `board` · `fishbone` · `venn` · `journey` · `treemap` · `sankey` · `numberline` ·
 `barmodel` · `waterfall` · `pie` · `mindmap` · `argument` · `familytree` ·
 `meter` · `rag` · `clock` · `sunburst` · `timing` · `gitgraph` · `network` · `railroad` · `usecase` ·
-`wardley`. Each has an example in [`docs/reference`](https://github.com/nuncaeslupus/drawspec/tree/main/docs/reference),
+`wardley` · `packet`. Each has an example in [`docs/reference`](https://github.com/nuncaeslupus/drawspec/tree/main/docs/reference),
 and [the gallery](https://nuncaeslupus.github.io/drawspec/docs/gallery/)
 (`docs/gallery/index.html`) draws every one.
 
@@ -237,7 +237,8 @@ A typical loop: the model picks a kind, writes the JSON, calls
   version that follows `prefers-color-scheme`.
 - **PNG** on a light, dark or transparent background (`pip install 'drawspec[png]'`).
 - **Plain text** (box-drawing or ASCII) for many kinds, including flows, state
-  machines, sequences, Gantt charts, syntax diagrams and file trees.
+  machines, sequences, Gantt charts, syntax diagrams, file trees and packet headers
+  (as an RFC draws them).
 - **Themes**: change one TOML file and every diagram in a project follows.
   `drawspec theme from site.css` builds one from your CSS or design tokens.
 - **Readable by design**: each kind has a size budget;

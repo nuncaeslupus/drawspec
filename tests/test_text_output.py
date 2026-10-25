@@ -86,10 +86,17 @@ GOLDENS: Final = {
     "timing": "timing-session",
     "gitgraph": "gitgraph-gitflow",
     "railroad": "railroad-json-number",
+    "packet": "packet-ipv4",
 }
 
 #: Golden files beyond one per kind: a second style of a kind, held the same way.
-MORE_GOLDENS: Final = ("meter-appeal", "meter-library", "meter-ward", "railroad-sql-select")
+MORE_GOLDENS: Final = (
+    "meter-appeal",
+    "meter-library",
+    "meter-ward",
+    "railroad-sql-select",
+    "packet-vlan",
+)
 
 CHARSETS: Final = ("unicode", "ascii")
 
@@ -151,6 +158,9 @@ def _labels(document: Document) -> list[str]:
     elif document.kind == "meter":
         found += [meter.text for meter in document.meters]
         found += [band.text for meter in document.meters for band in meter.bands]
+    elif document.kind == "packet":
+        found += [field.text for field in document.packet_fields]
+        found += [field.note for field in document.packet_fields]
     elif document.kind == "network":
         found += [network.text for network in document.networks]
         found += [network.address for network in document.networks]
@@ -182,7 +192,7 @@ def _railroad_words(item: RailroadItem) -> list[str]:
 
 #: The kinds whose SVG wraps a label, and whose text form may therefore break
 #: one at spaces. Everywhere else a label must appear on one line, whole.
-WRAPPING: Final = ("sequence", "timeline", "board", "stack", "rag", "network")
+WRAPPING: Final = ("sequence", "timeline", "board", "stack", "rag", "network", "packet")
 
 
 # ---------------------------------------------------------------------------
@@ -203,6 +213,13 @@ def test_every_label_is_said_verbatim(name: str) -> None:
     """Nothing truncated: a label whole on a line, or — where the SVG wraps — every word."""
     document = FIXTURES[name]
     drawn = _drawn(name, "unicode")
+    if document.kind == "packet":
+        # A packet stands a short name on end, a letter to a line, as RFC 793
+        # writes its flags: read the columns too.
+        rows = drawn.splitlines()
+        reach = max(len(row) for row in rows)
+        columns = ["".join(row.ljust(reach)[at] for row in rows) for at in range(reach)]
+        drawn = "\n".join([drawn, *columns])
     for label in _labels(document):
         if document.kind in WRAPPING or document.kind == "files":
             missing = [word for word in label.split() if word not in drawn]

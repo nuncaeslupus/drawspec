@@ -609,6 +609,35 @@ SUNBURST_RING_MAX: Final = 8
 #: and anything the type cannot hold at the legible floor is refused by fit first.
 SUNBURST_NODE_MAX: Final = 150
 
+#: Packet diagrams: a protocol header or a hardware register as bit fields laid
+#: out in rows of a fixed width, a bit ruler over them. A layout family of its own:
+#: a field's place is the sum of the widths written before it, never a position.
+PACKET_KINDS: Final = ("packet",)
+
+#: The row widths a packet may be drawn at, in bits. A word of a protocol header is
+#: 32 bits; a register is 8, 16, 32 or 64. Nothing else lines up with a byte.
+PACKET_ROW_BITS: Final = (8, 16, 32, 64)
+
+#: The row width when none is written: the RFC header's 32-bit word.
+PACKET_ROW_DEFAULT: Final = 32
+
+#: Which end of a row bit 0 is at. `left` is the RFC convention (bit 0 is the first
+#: bit sent, at the left of each 32-bit word); `right` is a datasheet register's
+#: (the highest bit at the left, bit 0 at the right).
+PACKET_NUMBERINGS: Final = ("left", "right")
+
+#: What a field may be: an ordinary field, a reserved one (hatched), or the one or
+#: two the diagram is about (heavier, bold).
+PACKET_ROLES: Final = ("field", "reserved", "emphasis")
+
+#: The most fields in one packet. A TCP header with every flag is eighteen; past
+#: forty a register map is searched, not read.
+PACKET_FIELD_MAX: Final = 40
+
+#: The most rows one packet may run to. Sixteen 32-bit words is a 64-byte header,
+#: longer than any header a reader takes in at once.
+PACKET_ROW_MAX: Final = 16
+
 #: Network diagrams in the nwdiag style: networks as horizontal buses in the order
 #: written, hosts as boxes in columns, each dropping a line to every bus it is on.
 #: A layout family of its own; the column order is derived (`drawspec.buses`).
@@ -898,6 +927,9 @@ AXIS_ORDER: Final = ("horizontal", "vertical")
 #: `wardley` is the thirtieth: components placed by value chain and evolution,
 #: joined by what they need — a `quadrant` places things but joins nothing, and
 #: a `flow` joins things but places them by its own layout, not by a stage.
+#: `packet` is the thirty-first: bit fields in rows of a fixed width under a bit
+#: ruler — a `barmodel` sizes parts by amount and a `stack` by words, but neither
+#: wraps a field across a row boundary at a bit position.
 KINDS: Final = (
     GRAPH_KINDS
     + GRID_KINDS
@@ -926,6 +958,7 @@ KINDS: Final = (
     + RAG_KINDS
     + CLOCK_KINDS
     + SUNBURST_KINDS
+    + PACKET_KINDS
     + NETWORK_KINDS
     + TIMING_KINDS
     + GITGRAPH_KINDS
@@ -1100,6 +1133,9 @@ READABILITY_BUDGET: Final[Mapping[str, tuple[tuple[str, int], ...]]] = {
     # total across the rings is checked with the nodes (see `_sunburst_violations`),
     # since the nesting key is `children`, not `nodes`.
     "sunburst": (("nodes", SUNBURST_RING_MAX),),  # first ring; the total is _sunburst_violations
+    # Set by the references: a TCP header with every flag is 18 fields. The rows
+    # (16) are counted from the widths, in `_packet_violations`.
+    "packet": (("fields", PACKET_FIELD_MAX),),
     # Set by the proposal: nwdiag's and PlantUML's own examples hold two or three
     # networks and four to ten hosts; past these the drawing is an inventory.
     "network": (
@@ -3173,6 +3209,66 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    "packet-field": (
+        FieldSpec(
+            "text",
+            "string",
+            description=(
+                "The field's name, written inside it: `Version`, `Source Port`, `TXEN`. "
+                "Required, except on a `reserved` field, which may be left blank. Where it "
+                "will not fit across the field it is broken at a space, then turned on its "
+                "side, then replaced by `short`, and last by a number, the name going to the "
+                "key under the drawing."
+            ),
+        ),
+        FieldSpec(
+            "bits",
+            "integer",
+            required=True,
+            exclusive_minimum=0,
+            description=(
+                "How many bits wide the field is. Fields are laid end to end in the order "
+                "written, left to right and row after row; one that crosses a row's end is "
+                "split there and its continuation marked, so no field ever carries a position."
+            ),
+        ),
+        FieldSpec(
+            "short",
+            "string",
+            description=(
+                "The author's own abbreviation, used when the name will not fit across the "
+                "field (`DF` for `Don't Fragment`); the key under the drawing spells it out. "
+                "drawspec never abbreviates on its own."
+            ),
+        ),
+        FieldSpec(
+            "holds",
+            "string",
+            description=(
+                "What the field holds, written small under its name: a fixed value (`4`), a "
+                "reset value (`0x00`), its access (`R/W`). Moved to the key when the field is "
+                "too narrow for it."
+            ),
+        ),
+        FieldSpec(
+            "note",
+            "string",
+            description=(
+                "A sentence about the field, set in the key under the drawing beside its name, "
+                "as an RFC lists its fields under the header."
+            ),
+        ),
+        FieldSpec(
+            "role",
+            "string",
+            enum=PACKET_ROLES,
+            description=(
+                "`field` (the default), `reserved` (unused or reserved bits: hatched, and "
+                "`text` may be left out) or `emphasis` (the field the diagram is about: a "
+                "heavier outline and a bold name; at most two)."
+            ),
+        ),
+    ),
     "sunburst-node": (
         _text(),
         FieldSpec(
@@ -4024,7 +4120,7 @@ COMMON_FIELDS: Final = (
         required=True,
         enum=KINDS,
         description=(
-            "Which of the forty-three diagrams this is. It selects the fields that are "
+            "Which of the forty-four diagrams this is. It selects the fields that are "
             "legal below, so it is the first thing to get right."
         ),
     ),
@@ -5194,6 +5290,41 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    PACKET_KINDS: (
+        FieldSpec(
+            "bits_per_row",
+            "integer",
+            description=(
+                "How many bits one row holds: 8, 16, 32 (the default: an RFC header's word) "
+                "or 64. A field wider than what is left of its row is split across the rows."
+            ),
+        ),
+        FieldSpec(
+            "numbering",
+            "string",
+            enum=PACKET_NUMBERINGS,
+            description=(
+                "Which end bit 0 is at. `left` (the default) is the RFC convention: the ruler "
+                "counts 0 to 31 from the left of every word. `right` is a register's: the "
+                "highest bit at the top left, counting down to bit 0 at the bottom right, each "
+                "row with its own ruler — so the fields are still written in reading order, "
+                "the highest bits first, and must fill whole rows."
+            ),
+        ),
+        FieldSpec(
+            "fields",
+            "array",
+            required=True,
+            item_ref="packet-field",
+            min_items=1,
+            description=(
+                "The bit fields, 1 to 40, in reading order: left to right, then row after row, "
+                "each with its width in `bits`. Wrapped into rows of `bits_per_row`, 16 rows "
+                "at most; a field that crosses a row's end is split and its continuation "
+                "marked."
+            ),
+        ),
+    ),
     SUNBURST_KINDS: (
         FieldSpec(
             "centre",
@@ -6042,6 +6173,18 @@ class UsecaseEdge:
 
 
 @dataclass(frozen=True)
+class PacketField:
+    """One bit field of a `packet`, in reading order: its name and its width."""
+
+    bits: int
+    text: str = ""
+    short: str = ""
+    holds: str = ""
+    note: str = ""
+    role: str = "field"
+
+
+@dataclass(frozen=True)
 class SunburstNode:
     """One sector of a `sunburst`, with the sectors nested inside it, in order."""
 
@@ -6491,6 +6634,15 @@ class Document:
     """A `sunburst`'s first ring, in the order written: clockwise from twelve o'clock,
     each node's `children` the ring nested inside it."""
 
+    packet_fields: tuple[PacketField, ...] = ()
+    """A `packet`'s bit fields, in reading order: left to right, row after row."""
+
+    packet_row_bits: int = 32
+    """How many bits one row of a `packet` holds."""
+
+    packet_numbering: str = "left"
+    """Which end of a `packet`'s rows bit 0 is at."""
+
     wardley_anchors: tuple[WardleyAnchor, ...] = ()
     """A `wardley` map's users or needs, across the top in the order written."""
 
@@ -6577,6 +6729,7 @@ class Document:
             ("rag", RAG_KINDS),
             ("clock", CLOCK_KINDS),
             ("sunburst", SUNBURST_KINDS),
+            ("packet", PACKET_KINDS),
             ("wardley", WARDLEY_KINDS),
             ("usecase", USECASE_KINDS),
             ("railroad", RAILROAD_KINDS),
@@ -6820,6 +6973,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_clock_refusal(violation) for violation in found]
     if kind in SUNBURST_KINDS:
         found = [_sunburst_refusal(violation) for violation in found]
+    if kind in PACKET_KINDS:
+        found = [_packet_refusal(violation) for violation in found]
     if kind in WARDLEY_KINDS:
         found = [_wardley_refusal(violation) for violation in found]
     if kind == "tree":
@@ -7459,6 +7614,8 @@ def _referential_violations(document: Mapping[str, Any], kind: str) -> list[Viol
         return _clock_violations(document)
     if kind in SUNBURST_KINDS:
         return _sunburst_violations(document)
+    if kind in PACKET_KINDS:
+        return _packet_violations(document)
     if kind in WARDLEY_KINDS:
         return _wardley_violations(document)
     if kind in USECASE_KINDS:
@@ -14010,6 +14167,165 @@ def _wardley_violations(document: Mapping[str, Any]) -> list[Violation]:
     return found
 
 
+#: Why a packet has no place for a field an author may reach for.
+PACKET_REFUSED: Final = {
+    "start": (
+        "a field starts where the one before it ends: write the fields in order, each with "
+        "its width in `bits`"
+    ),
+    "end": "a field ends where its `bits` take it, counted from where the one before it ended",
+    "offset": "a field's offset is the sum of the widths written before it, never written",
+    "position": "a field's position is the sum of the widths written before it, never written",
+    "range": (
+        "a field is its width in `bits`, in order; a bit range such as `0-3` is a position, "
+        "which drawspec derives"
+    ),
+    "length": "a field's width is `bits`",
+    "size": "a field's width is `bits`; the type size is the theme's",
+    "name": "a field's name is `text`",
+    "label": "a field's name is `text`",
+    "attr": "what a field holds — a fixed value, a reset value, its access — is `holds`",
+    "value": "what a field holds — a fixed value, a reset value, its access — is `holds`",
+    "reset": "a reset value is what the field `holds`: write it there (`0x00`)",
+    "access": "a field's access is what it `holds`: write it there (`R/W`)",
+    "reserved": 'a reserved field is `"role": "reserved"`',
+    "type": 'a reserved field is `"role": "reserved"`; anything else is an ordinary field',
+    "rotate": (
+        "a name is turned on its side by drawspec, only when it will not fit across its field"
+    ),
+    "lanes": "the rows are `bits_per_row` wide, and as many as the fields fill",
+    "vspace": "a row's height is measured from the words in it",
+    "hspace": "the drawing is the canvas's width; a bit is its share of the row",
+    "bits_per_row": "`bits_per_row` is the document's, at the top: every row is as wide",
+    "numbering": "`numbering` is the document's, at the top: every row counts the same way",
+    "colour": "a field is told by its name and its role; a reserved one is hatched by the theme",
+    "edges": "a packet is a row of fields side by side; there is nothing to connect",
+    "variable": (
+        "a packet draws fields of a known width. Draw a variable-length field (options, the "
+        "payload) as a whole row and say so in its words: `Options (variable)`"
+    ),
+}
+
+#: The packet's own top-level fields: refused by name only inside a field.
+_PACKET_TOP: Final = ("bits_per_row", "numbering")
+
+
+def _packet_refusal(violation: Violation) -> Violation:
+    """A structural refusal in a packet, told what this kind means by it."""
+    parts = violation.pointer.split("/")
+    name = parts[-1]
+    unknown = "is not" in violation.message and "field" in violation.message
+    top = len(parts) == 2 and name in _PACKET_TOP
+    if unknown and name in PACKET_REFUSED and not top:
+        return Violation(violation.pointer, f"{name!r}: {PACKET_REFUSED[name]}.")
+    if name == "bits" and len(parts) == 4 and "greater than" in violation.message:
+        return Violation(
+            violation.pointer,
+            "a field is at least one bit wide; a field of no bits is not drawn — leave it out.",
+        )
+    return violation
+
+
+def _packet_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """The row width, every field's words, the row cap, and whole rows for a register."""
+    found: list[Violation] = []
+    row = document.get("bits_per_row", PACKET_ROW_DEFAULT)
+    if not isinstance(row, int) or isinstance(row, bool):
+        row = PACKET_ROW_DEFAULT
+    elif row not in PACKET_ROW_BITS:
+        found.append(
+            Violation(
+                "/bits_per_row",
+                f"a row of {row} bits does not line up with a byte: draw it at "
+                f"{', '.join(str(bits) for bits in PACKET_ROW_BITS[:-1])} or "
+                f"{PACKET_ROW_BITS[-1]} bits.",
+            )
+        )
+        row = PACKET_ROW_DEFAULT
+    total = 0
+    for index, entry in enumerate(_listed(document, "fields")):
+        if not isinstance(entry, dict):
+            continue
+        found.extend(_packet_field_violations(entry, _pointer("fields", index)))
+        bits = entry.get("bits")
+        if isinstance(bits, int) and not isinstance(bits, bool) and bits > 0:
+            total += bits
+    rows = -(-total // row)
+    if rows > PACKET_ROW_MAX:
+        found.append(
+            Violation(
+                "/fields",
+                f"{total} bits make {rows} rows of {row}, past what one packet can be read at — "
+                f"{PACKET_ROW_MAX} rows at most. Split it: the header in one drawing, each "
+                f"long part (options, a payload) in its own.",
+            )
+        )
+    if document.get("numbering") == "right" and total % row:
+        found.append(
+            Violation(
+                "/fields",
+                f"the fields add up to {total} bits, which is not a whole number of "
+                f"{row}-bit rows. A register numbered from the right counts down to bit 0 at "
+                f"the end of its last row, so its fields must fill every row: add the "
+                f"{row - total % row} missing bits, as a reserved field if they are unused.",
+            )
+        )
+    return found
+
+
+def _packet_field_violations(entry: Mapping[str, Any], here: str) -> list[Violation]:
+    """One field's words: a name unless reserved, one line, and a `short` that is shorter."""
+    found: list[Violation] = []
+    text = entry.get("text")
+    if "text" not in entry and entry.get("role") != "reserved":
+        found.append(
+            Violation(
+                f"{here}/text",
+                "a field needs its name in `text`. Only a reserved field "
+                '(`"role": "reserved"`) may be left blank.',
+            )
+        )
+    if isinstance(text, str) and not text.strip():
+        found.append(
+            Violation(
+                f"{here}/text",
+                "a field's name needs words; leave `text` out of a blank reserved field.",
+            )
+        )
+    if isinstance(text, str) and "\n" in text:
+        found.append(
+            Violation(
+                f"{here}/text",
+                "a field's name is one line; drawspec breaks it at spaces when the field is "
+                "narrow. Put a second thought in `note`.",
+            )
+        )
+    for name in ("short", "holds", "note"):
+        value = entry.get(name)
+        if isinstance(value, str) and not value.strip():
+            found.append(
+                Violation(f"{here}/{name}", f"an empty {name!r} says nothing: leave it out.")
+            )
+    short = entry.get("short")
+    if isinstance(short, str) and short.strip():
+        if not isinstance(text, str) or not text.strip():
+            found.append(
+                Violation(
+                    f"{here}/short",
+                    "a `short` abbreviates the field's `text`, and this field has none.",
+                )
+            )
+        elif len(short) >= len(text):
+            found.append(
+                Violation(
+                    f"{here}/short",
+                    f"{short!r} is no shorter than {text!r}: a `short` is the abbreviation "
+                    f"drawn when the name will not fit, so it must be shorter.",
+                )
+            )
+    return found
+
+
 def _figure(value: float) -> str:
     """A number as an author wrote it: no float noise, no trailing zeros."""
     text = f"{round(value, 9):.9f}".rstrip("0").rstrip(".")
@@ -14781,6 +15097,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         return _clock_document(document)
     if kind in SUNBURST_KINDS:
         return _sunburst_document(document)
+    if kind in PACKET_KINDS:
+        return _packet_document(document)
     if kind in WARDLEY_KINDS:
         return _wardley_document(document)
     if kind in USECASE_KINDS:
@@ -15653,6 +15971,33 @@ def _mindmap_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _packet_document(document: Mapping[str, Any]) -> Document:
+    """A packet: its row width, its numbering and its fields, in reading order."""
+    return Document(
+        kind=str(document["kind"]),
+        title=str(document.get("title", "")),
+        description=str(document.get("description", "")),
+        caption=str(document.get("caption", "")),
+        width=_optional_number(document.get("width")),
+        height=_optional_number(document.get("height")),
+        height_binding=bool(document.get("height_binding", False)),
+        theme=str(document.get("theme", "")),
+        packet_row_bits=int(document.get("bits_per_row", PACKET_ROW_DEFAULT)),
+        packet_numbering=str(document.get("numbering", "left")),
+        packet_fields=tuple(
+            PacketField(
+                bits=int(entry["bits"]),
+                text=str(entry.get("text", "")),
+                short=str(entry.get("short", "")),
+                holds=str(entry.get("holds", "")),
+                note=str(entry.get("note", "")),
+                role=str(entry.get("role", "field")),
+            )
+            for entry in document["fields"]
+        ),
+    )
+
+
 def _sunburst_node(entry: Mapping[str, Any]) -> SunburstNode:
     """One sunburst node and its subtree, built from the validated mapping."""
     return SunburstNode(
@@ -16251,6 +16596,13 @@ __all__ = [
     "NUMBERLINE_ROLES",
     "NUMBERLINE_TICK_MAX",
     "OBJECTS",
+    "PACKET_FIELD_MAX",
+    "PACKET_KINDS",
+    "PACKET_NUMBERINGS",
+    "PACKET_ROLES",
+    "PACKET_ROW_BITS",
+    "PACKET_ROW_DEFAULT",
+    "PACKET_ROW_MAX",
     "PARTICIPANT_ROLES",
     "PIE_KINDS",
     "PIE_PART_MAX",
@@ -16367,6 +16719,7 @@ __all__ = [
     "NumberAxis",
     "NumberPoint",
     "NumberRange",
+    "PacketField",
     "Phase",
     "PiePart",
     "Position",

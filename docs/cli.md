@@ -58,7 +58,7 @@ usage: drawspec render [-h] [-o OUT] [--theme THEME] [--variant NAME=THEME]
 | `--width` | Override the document's width; with --format text, the most terminal cells a line may take (default 80, or 100 for lanes, sequence and timing). |
 | `--height` | Override the document's height. |
 | `--profile` | The embedding profile. One of `inline`, `standalone`. Default `inline`. |
-| `--format` | What to write: svg; png, a raster image of the standalone drawing; or text, the diagram as plain text for a code block or a terminal (files, tree, sequence, gantt, timeline, board, stack, rag, meter, network, timing, gitgraph, railroad, flow, states, lanes). Default: from the -o extension, else svg. One of `svg`, `png`, `text`. |
+| `--format` | What to write: svg; png, a raster image of the standalone drawing; or text, the diagram as plain text for a code block or a terminal (files, tree, sequence, gantt, timeline, board, stack, rag, meter, network, timing, gitgraph, railroad, packet, flow, states, lanes). Default: from the -o extension, else svg. One of `svg`, `png`, `text`. |
 | `--charset` | For text: box-drawing characters, or ASCII only (default unicode). One of `unicode`, `ascii`. |
 | `--scale` | For png: pixels per SVG unit, at most 8 (default 2). |
 | `--background` | For png: theme ink on white, light ink on near-black, or no page (default light). One of `light`, `dark`, `transparent`. |
@@ -138,12 +138,12 @@ Write the smallest document of that kind that renders, to stdout. Pipe it straig
 
 ```
 usage: drawspec example [-h]
-                        {flow,tree,cycle,stack,timeline,columns,matrix,pyramid,rings,funnel,chart,quadrant,scatter,curve,files,states,sequence,lanes,entities,gantt,board,fishbone,venn,journey,treemap,sankey,numberline,barmodel,waterfall,pie,mindmap,argument,familytree,meter,rag,clock,sunburst,network,timing,gitgraph,railroad,usecase,wardley}
+                        {flow,tree,cycle,stack,timeline,columns,matrix,pyramid,rings,funnel,chart,quadrant,scatter,curve,files,states,sequence,lanes,entities,gantt,board,fishbone,venn,journey,treemap,sankey,numberline,barmodel,waterfall,pie,mindmap,argument,familytree,meter,rag,clock,sunburst,packet,network,timing,gitgraph,railroad,usecase,wardley}
 ```
 
 | Argument | What it does |
 |---|---|
-| `kind` | Which kind to write. One of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `network`, `timing`, `gitgraph`, `railroad`, `usecase`, `wardley`. |
+| `kind` | Which kind to write. One of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `packet`, `network`, `timing`, `gitgraph`, `railroad`, `usecase`, `wardley`. |
 
 ### `drawspec mcp`
 

@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-43 kinds. The machine-readable form of this page is the published
+44 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `network`, `timing`, `gitgraph`, `railroad`, `usecase`, `wardley` | **yes** | Which of the forty-three diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `packet`, `network`, `timing`, `gitgraph`, `railroad`, `usecase`, `wardley` | **yes** | Which of the forty-four diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -329,6 +329,14 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `usecases` | array of [usecase-case](#usecase-case-object), at least 1 | **yes** | What the actors do with the system, 1 to 15, each an ellipse inside its system's boundary. A use case that is included, that extends another or that specialises one stands a column to the right of it, three columns at most. |
 | `edges` | array of [usecase-edge](#usecase-edge-object), at least 1 | **yes** | The relations, up to 30: `association` between an actor and a use case, `include` and `extend` between use cases, `inherits` between two actors or two use cases. No labels: the role says what each line is. |
 
+### `packet`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `bits_per_row` | integer | no | How many bits one row holds: 8, 16, 32 (the default: an RFC header's word) or 64. A field wider than what is left of its row is split across the rows. |
+| `numbering` | string — one of `left`, `right` | no | Which end bit 0 is at. `left` (the default) is the RFC convention: the ruler counts 0 to 31 from the left of every word. `right` is a register's: the highest bit at the top left, counting down to bit 0 at the bottom right, each row with its own ruler — so the fields are still written in reading order, the highest bits first, and must fill whole rows. |
+| `fields` | array of [packet-field](#packet-field-object), at least 1 | **yes** | The bit fields, 1 to 40, in reading order: left to right, then row after row, each with its width in `bits`. Wrapped into rows of `bits_per_row`, 16 rows at most; a field that crosses a row's end is split and its continuation marked. |
+
 ### `sunburst`
 
 | Field | Type | Required | What it is |
@@ -443,6 +451,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `rag` | 15 `rows` |
 | `clock` | 12 `clocks` |
 | `sunburst` | 8 `nodes` |
+| `packet` | 40 `fields` |
 | `network` | 6 `networks`, 24 `hosts`, 6 `groups` |
 | `timing` | 12 `signals`, 6 `states` per signal, 8 `markers`, 10 `intervals` |
 | `gitgraph` | 8 `branches`, 30 `steps` |
@@ -996,6 +1005,17 @@ name, so a misspelt key is an error at the point it was written.
 | `from` | string | **yes** | An association's actor or use case (either way round); the base use case that `include`s; the use case that `extend`s; the specialised actor or use case that `inherits`. |
 | `to` | string | **yes** | The other end: the use case included, the use case extended, the general actor or use case inherited from. |
 | `role` | string — one of `association`, `include`, `extend`, `inherits` | no | `association` (the default: an actor takes part in a use case, a solid line with no head), `include` (the base always does the other: a dashed arrow «include» to it), `extend` (this one sometimes adds to the other: a dashed arrow «extend» to the base) or `inherits` (a kind of the other, actor to actor or use case to use case: a hollow triangle at the general end). |
+
+### `packet-field` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | no | The field's name, written inside it: `Version`, `Source Port`, `TXEN`. Required, except on a `reserved` field, which may be left blank. Where it will not fit across the field it is broken at a space, then turned on its side, then replaced by `short`, and last by a number, the name going to the key under the drawing. |
+| `bits` | integer, greater than 0 | **yes** | How many bits wide the field is. Fields are laid end to end in the order written, left to right and row after row; one that crosses a row's end is split there and its continuation marked, so no field ever carries a position. |
+| `short` | string | no | The author's own abbreviation, used when the name will not fit across the field (`DF` for `Don't Fragment`); the key under the drawing spells it out. drawspec never abbreviates on its own. |
+| `holds` | string | no | What the field holds, written small under its name: a fixed value (`4`), a reset value (`0x00`), its access (`R/W`). Moved to the key when the field is too narrow for it. |
+| `note` | string | no | A sentence about the field, set in the key under the drawing beside its name, as an RFC lists its fields under the header. |
+| `role` | string — one of `field`, `reserved`, `emphasis` | no | `field` (the default), `reserved` (unused or reserved bits: hatched, and `text` may be left out) or `emphasis` (the field the diagram is about: a heavier outline and a bold name; at most two). |
 
 ### `sunburst-node` object
 

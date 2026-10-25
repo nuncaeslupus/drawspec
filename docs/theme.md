@@ -359,6 +359,14 @@ What colour a git graph's branches take, if any.
 |---|---|---|
 | `colours` | `[]` | A colour per branch, in the order the branches are written, cycling past the last; empty draws every lane in the page's ink. A lane's commits are filled with its colour and its name is set on a faint wash of it; the lines stay ink, so a lane's colour never has to carry a crossing. |
 
+### `[packet]`
+
+How a packet marks its reserved bits.
+
+| Key | Default | What it is |
+|---|---|---|
+| `reserved_fill` | `"hatch"` | The pattern a reserved field is filled with; every other field is plain. The patterns are drawn faint, so a reserved field's name stays readable over it. |
+
 ### `[argument]`
 
 How an argument map says which way a point bears: its tag and its fill.

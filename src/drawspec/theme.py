@@ -1713,6 +1713,34 @@ class GitgraphStyle:
         return self.colours[lane % len(self.colours)]
 
 
+#: The fills a reserved packet field may take: a pattern faint enough to read over.
+PACKET_FILLS: Final = ("hatch", "dots", "cross", "grid")
+
+
+@dataclass(frozen=True)
+class PacketStyle:
+    """How a packet marks its reserved bits.
+
+    The author says a field is `reserved`; the pattern that greys it out is house
+    style, set once for every header and register in a report.
+    """
+
+    reserved_fill: str = "hatch"
+    """The pattern a reserved field is filled with; every other field is plain. The
+    patterns are drawn faint, so a reserved field's name stays readable over it."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> PacketStyle:
+        _reject_unknown(mapping, ("reserved_fill",), "[packet]")
+        return cls(
+            reserved_fill=_choice(
+                mapping.get("reserved_fill", cls().reserved_fill),
+                PACKET_FILLS,
+                "[packet] reserved_fill",
+            )
+        )
+
+
 #: The fills an `against` box may take: a pattern faint enough to read words over.
 ARGUMENT_FILLS: Final = ("hatch", "dots", "cross", "grid")
 
@@ -2321,6 +2349,7 @@ _TOP_LEVEL_KEYS: Final = (
     "network",
     "timing",
     "gitgraph",
+    "packet",
     "argument",
     "familytree",
     "rag",
@@ -2366,6 +2395,7 @@ class Theme:
 
     timing: TimingStyle = TimingStyle()
     gitgraph: GitgraphStyle = GitgraphStyle()
+    packet: PacketStyle = PacketStyle()
     argument: ArgumentStyle = ArgumentStyle()
     familytree: FamilytreeStyle = FamilytreeStyle()
     rag: RagStyle = RagStyle()
@@ -2439,6 +2469,7 @@ class Theme:
             network=NetworkStyle.from_mapping(_section(mapping, "network")),
             timing=TimingStyle.from_mapping(_section(mapping, "timing")),
             gitgraph=GitgraphStyle.from_mapping(_section(mapping, "gitgraph")),
+            packet=PacketStyle.from_mapping(_section(mapping, "packet")),
             argument=ArgumentStyle.from_mapping(_section(mapping, "argument")),
             familytree=FamilytreeStyle.from_mapping(_section(mapping, "familytree")),
             rag=RagStyle.from_mapping(_section(mapping, "rag")),
