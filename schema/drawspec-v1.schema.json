@@ -2823,6 +2823,76 @@
         "nodes"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "railroad",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "railroad"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "rules": {
+          "type": "array",
+          "description": "The grammar's rules, 1 to 12, drawn one under another in the order written, each a named track from entry to exit, at most 40 boxes on one track.",
+          "items": {
+            "$ref": "#/$defs/railroad-rule"
+          },
+          "minItems": 1
+        },
+        "external": {
+          "type": "array",
+          "description": "Names a `rule` box may refer to that this document does not define — rules drawn elsewhere. Every other `rule` must name one of `rules`.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "rules"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -4618,6 +4688,78 @@
       "required": [
         "text",
         "rag"
+      ],
+      "additionalProperties": false
+    },
+    "railroad-item": {
+      "type": "object",
+      "properties": {
+        "terminal": {
+          "type": "string",
+          "description": "Literal text the input must contain, drawn in a rounded box in monospace, exactly as written: a keyword, a punctuation mark, an option."
+        },
+        "rule": {
+          "type": "string",
+          "description": "The name of another rule, drawn in a square box: one of `rules`, or a name listed in `external` when it is defined elsewhere."
+        },
+        "special": {
+          "type": "string",
+          "description": "A set described in words rather than spelt out, drawn in a dashed box: `any digit 1-9`, `any character but a quote`."
+        },
+        "comment": {
+          "type": "string",
+          "description": "Words written on the track with no box, the line breaking for them — what a branch means, or a loop's separator in words. Matches nothing."
+        },
+        "seq": {
+          "type": "array",
+          "description": "Items one after another, left to right. A rule's top-level `seq` wraps onto further lines when it is wider than the canvas.",
+          "items": {
+            "$ref": "#/$defs/railroad-item"
+          },
+          "minItems": 2
+        },
+        "choice": {
+          "type": "array",
+          "description": "Alternatives, 2 to 10, stacked one under another and rejoining. The first is drawn on the main line, so put the usual one first; an empty alternative is an `optional` round the choice.",
+          "items": {
+            "$ref": "#/$defs/railroad-item"
+          },
+          "minItems": 2
+        },
+        "optional": {
+          "$ref": "#/$defs/railroad-item",
+          "description": "An item that may be left out: drawn on the line, with a bypass over it."
+        },
+        "repeat": {
+          "$ref": "#/$defs/railroad-item",
+          "description": "An item that may be repeated: drawn on the line, with a loop back under it. `min` says whether it may also be left out."
+        },
+        "separator": {
+          "$ref": "#/$defs/railroad-item",
+          "description": "With `repeat` only: what comes between repetitions, drawn on the loop — a `terminal`, `rule`, `special` or `comment`, such as `{\"terminal\": \",\"}`."
+        },
+        "min": {
+          "type": "integer",
+          "description": "With `repeat`, and required there: `1` for one or more, `0` for zero or more (the loop with a bypass over it)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "railroad-rule": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The rule's name, drawn above its track and referred to by `{\"rule\": name}` boxes. Unique in the document; one line, drawn exactly as written."
+        },
+        "expr": {
+          "$ref": "#/$defs/railroad-item",
+          "description": "What the rule matches, as one item: usually a `seq`. The track runs from an entry bar on the left to an exit bar on the right; a long top-level `seq` wraps onto further lines, a return track leading each line into the next."
+        }
+      },
+      "required": [
+        "name",
+        "expr"
       ],
       "additionalProperties": false
     },

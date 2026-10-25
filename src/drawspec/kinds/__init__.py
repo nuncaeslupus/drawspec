@@ -32,6 +32,7 @@ from drawspec.kinds.mindmap import mindmap_scene
 from drawspec.kinds.numberline import numberline_scene
 from drawspec.kinds.pie import pie_scene
 from drawspec.kinds.rag import rag_scene, rag_text
+from drawspec.kinds.railroad import railroad_scene, railroad_text
 from drawspec.kinds.sankey import sankey_scene
 from drawspec.kinds.sequence import sequence_scene, sequence_text
 from drawspec.kinds.shape import shape_scene
@@ -58,6 +59,7 @@ from drawspec.schema import (
     NUMBERLINE_KINDS,
     PIE_KINDS,
     RAG_KINDS,
+    RAILROAD_KINDS,
     SANKEY_KINDS,
     SEQUENCE_KINDS,
     SHAPE_KINDS,
@@ -99,6 +101,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *RAG_KINDS,
     *CLOCK_KINDS,
     *SUNBURST_KINDS,
+    *RAILROAD_KINDS,
     "cycle",
 )
 
@@ -118,6 +121,7 @@ TEXT_FORMS: Final[dict[str, Callable[[Document, int, str], str]]] = {
     "stack": stack_text,
     "rag": rag_text,
     "meter": meter_text,
+    "railroad": railroad_text,
     "flow": graph_text,
     "states": graph_text,
     "lanes": graph_text,
@@ -197,6 +201,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return clock_scene(document, theme, measurer)
     if document.kind in SUNBURST_KINDS:
         return sunburst_scene(document, theme, measurer)
+    if document.kind in RAILROAD_KINDS:
+        return railroad_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -232,6 +238,7 @@ __all__ = [
     "outline",
     "pie_scene",
     "rag_scene",
+    "railroad_scene",
     "sankey_scene",
     "scene_for",
     "sequence_scene",

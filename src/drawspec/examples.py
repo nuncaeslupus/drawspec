@@ -65,6 +65,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "rag": "workstreams or risks rated red, amber or green, in words and shapes — a status report",
     "clock": "analogue clock faces showing a time, for teaching it — quarter past, half past",
     "sunburst": "a hierarchy as concentric rings of sectors, read from the middle outward",
+    "railroad": "a grammar's rules as syntax diagrams — tracks through keywords, choices and loops",
 }
 
 #: The smallest document of each kind that renders.
@@ -378,6 +379,27 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "version": 1,
         "kind": "clock",
         "clocks": [{"time": "3:15"}],
+    },
+    "railroad": {
+        "version": 1,
+        "kind": "railroad",
+        "rules": [
+            {
+                "name": "list",
+                "expr": {
+                    "seq": [
+                        {"terminal": "["},
+                        {
+                            "repeat": {"rule": "item"},
+                            "separator": {"terminal": ","},
+                            "min": 0,
+                        },
+                        {"terminal": "]"},
+                    ]
+                },
+            }
+        ],
+        "external": ["item"],
     },
     "sunburst": {
         "version": 1,

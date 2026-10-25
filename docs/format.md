@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-37 kinds. The machine-readable form of this page is the published
+38 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst` | **yes** | Which of the thirty-seven diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `railroad` | **yes** | Which of the thirty-eight diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -303,6 +303,13 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `centre` | string | no | An optional hub label in the middle — the overall topic. Left out, the first ring fills the centre. |
 | `nodes` | array of [sunburst-node](#sunburst-node-object), at least 2 | **yes** | The first ring, 2 to 8, clockwise from twelve o'clock in the order written, each with optional `children` for the ring nested inside it. Nested up to three rings, 150 sectors in all; every terminal sector takes an equal angle, so there are no amounts. |
 
+### `railroad`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `rules` | array of [railroad-rule](#railroad-rule-object), at least 1 | **yes** | The grammar's rules, 1 to 12, drawn one under another in the order written, each a named track from entry to exit, at most 40 boxes on one track. |
+| `external` | array of string | no | Names a `rule` box may refer to that this document does not define — rules drawn elsewhere. Every other `rule` must name one of `rules`. |
+
 ### `mindmap`
 
 | Field | Type | Required | What it is |
@@ -387,6 +394,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `rag` | 15 `rows` |
 | `clock` | 12 `clocks` |
 | `sunburst` | 8 `nodes` |
+| `railroad` | 12 `rules` |
 
 ## Emphasis
 
@@ -881,6 +889,28 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `children` | array of [sunburst-node](#sunburst-node-object), at least 1 | no | The sectors nested inside this one — the next ring, drawn clockwise in the order written. At most three rings in all; leave it out of a node that ends the hierarchy. |
+
+### `railroad-rule` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `name` | string | **yes** | The rule's name, drawn above its track and referred to by `{"rule": name}` boxes. Unique in the document; one line, drawn exactly as written. |
+| `expr` | [railroad-item object](#railroad-item-object) | **yes** | What the rule matches, as one item: usually a `seq`. The track runs from an entry bar on the left to an exit bar on the right; a long top-level `seq` wraps onto further lines, a return track leading each line into the next. |
+
+### `railroad-item` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `terminal` | string | no | Literal text the input must contain, drawn in a rounded box in monospace, exactly as written: a keyword, a punctuation mark, an option. |
+| `rule` | string | no | The name of another rule, drawn in a square box: one of `rules`, or a name listed in `external` when it is defined elsewhere. |
+| `special` | string | no | A set described in words rather than spelt out, drawn in a dashed box: `any digit 1-9`, `any character but a quote`. |
+| `comment` | string | no | Words written on the track with no box, the line breaking for them — what a branch means, or a loop's separator in words. Matches nothing. |
+| `seq` | array of [railroad-item](#railroad-item-object), at least 2 | no | Items one after another, left to right. A rule's top-level `seq` wraps onto further lines when it is wider than the canvas. |
+| `choice` | array of [railroad-item](#railroad-item-object), at least 2 | no | Alternatives, 2 to 10, stacked one under another and rejoining. The first is drawn on the main line, so put the usual one first; an empty alternative is an `optional` round the choice. |
+| `optional` | [railroad-item object](#railroad-item-object) | no | An item that may be left out: drawn on the line, with a bypass over it. |
+| `repeat` | [railroad-item object](#railroad-item-object) | no | An item that may be repeated: drawn on the line, with a loop back under it. `min` says whether it may also be left out. |
+| `separator` | [railroad-item object](#railroad-item-object) | no | With `repeat` only: what comes between repetitions, drawn on the loop — a `terminal`, `rule`, `special` or `comment`, such as `{"terminal": ","}`. |
+| `min` | integer | no | With `repeat`, and required there: `1` for one or more, `0` for zero or more (the loop with a bypass over it). |
 
 ### `treemap-group` object
 

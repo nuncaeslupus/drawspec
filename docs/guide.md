@@ -174,6 +174,7 @@ fields are legal. Thirty-four exist, and they fall into twenty-three families:
 | Gauge | `meter` | How far one amount is along its scale: a progress bar, a fundraising thermometer, a dial with named bands, a bullet graph — alone or a few to a panel. |
 | Status | `rag` | Things rated red, amber or green: workstreams or risks a row each, the rating a word and a shape (a colour only by the theme), a trend in words and a note — a highlight report, a risk register. |
 | Time | `clock` | A time of day on an analogue face, for teaching it: two hands placed by the time, the numerals the lesson uses, the time in words under it, how long since an earlier time shaded round the face. |
+| Syntax | `railroad` | What may follow what in a language: a grammar's rules as tracks from an entry to an exit, through keywords in rounded boxes, other rules in square ones, choices, bypasses and loops — the syntax diagrams of JSON.org and SQLite, or a command line's. |
 | Reasoning | `argument` | Things said for and against a claim: reasons, objections, rebuttals and evidence by stance, co-premises under one bracket (an argument map). |
 
 One worked document per kind lives in [`reference/`](reference), and `make
@@ -427,9 +428,10 @@ drawspec render plan.json --format text --width 100 --charset ascii
 ```
 
 It is a second emitter, not a picture of the SVG: each kind lays itself out on a
-character grid from its own rows and columns. Twelve kinds have a text form —
+character grid from its own rows and columns. Thirteen kinds have a text form —
 `files`, `tree`, `sequence`, `gantt`, `timeline`, `board`, `stack`, `rag`,
-`meter` in every style, and the graph kinds `flow`, `states` and `lanes` — and
+`meter` in every style, `railroad`, and the graph kinds `flow`, `states` and
+`lanes` — and
 every other kind refuses, naming them. The kinds whose message is an area, an
 angle or a curve never get one. A `meter` `dial` is a half-circle of cells with
 its needle in the stroke nearest the amount's angle and its bands in shades
