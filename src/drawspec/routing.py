@@ -926,6 +926,7 @@ def off_borders(
                         candidate is not None
                         and _is_clear(candidate, walls, theme)
                         and _along_border(*candidate.segments[segment], frames, near) is None
+                        and not _new_border_runs(candidate, current, segment, frames, near)
                         and not _adds_passes(candidate, current, frames)
                         and not _lands_on_another(candidate, settled, index)
                     ):
@@ -962,6 +963,23 @@ def _along_border(
             if abs(at - edge) < near:
                 return edge, outward
     return None
+
+
+def _new_border_runs(
+    candidate: Route, current: Route, segment: int, frames: Sequence[Obstacle], near: float
+) -> bool:
+    """Whether moving `segment` left one of its two neighbours along a border it was not on.
+
+    A shift stretches the runs either side of the moved one, and a stretched run
+    can reach along a frame's edge. One that carries an endpoint cannot be moved
+    afterwards, so the shift is refused instead.
+    """
+    return any(
+        _along_border(*candidate.segments[side], frames, near) is not None
+        and _along_border(*current.segments[side], frames, near) is None
+        for side in (segment - 1, segment + 1)
+        if 0 <= side < len(candidate.segments)
+    )
 
 
 def _adds_passes(candidate: Route, current: Route, frames: Sequence[Obstacle]) -> bool:
