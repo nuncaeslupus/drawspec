@@ -308,7 +308,7 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | Field | Type | Required | What it is |
 |---|---|---|---|
 | `networks` | array of [network-segment](#network-segment-object), at least 1 | **yes** | The networks, 1 to 6, each a horizontal bus, drawn top to bottom in the order written. Write them in the order traffic meets them — the internet, the DMZ, the internal network, storage — so a host on two neighbours sits between them. |
-| `hosts` | array of [network-host](#network-host-object), at least 1 | **yes** | The hosts, 1 to 24, each a box under its topmost network with a line to every network it is on. The columns are drawspec's: ordered so no line crosses a bus it is not on, then as few and as close to the order written as that allows. |
+| `hosts` | array of [network-host](#network-host-object), at least 1 | **yes** | The hosts, 1 to 24, each a box under its topmost network with a line to every network it is on. The columns are drawspec's: ordered for the fewest lines hopping over a bus they are not on (usually none), then as few and as close to the order written as that allows. |
 | `groups` | array of [network-group](#network-group-object), at least 1 | no | Optional: up to 6 sets of hosts drawn on a shaded backdrop, with an optional name — a cluster, a rack, a site. No host outside a group may stand inside it. |
 
 ### `timing`
@@ -1068,7 +1068,7 @@ name, so a misspelt key is an error at the point it was written.
 | `id` | string | **yes** | Unique among the hosts; what a group's `members` name. |
 | `text` | string | no | The words in the host's box. Left out, the `id` is the name. A newline makes the first line a lead over a detail — `db01` over `primary`. |
 | `role` | string — one of `step`, `emphasis`, `store`, `person` | no | `step` (the default box: a server, a router, a firewall, any device), `emphasis` (the host the diagram is about; at most two), `store` (a drum: a database, a storage array) or `person` (a user's machine, a client). No device icons: say what a box is in its words. |
-| `networks` | array of [network-attachment](#network-attachment-object), at least 1 | **yes** | The networks this host is on, each with an optional address. A host on two or more is drawn between them, joining them — a router, a firewall, a dual-homed server. Its line may cross no bus it is not on, so the column order is drawspec's; a set of attachments no order can draw is refused. |
+| `networks` | array of [network-attachment](#network-attachment-object), at least 1 | **yes** | The networks this host is on, each with an optional address. A host on two or more is drawn between them, joining them — a router, a firewall, a dual-homed server. The column order is drawspec's, chosen so the line crosses no bus it is not on; where no order manages that, the line hops over the bus, a jump that does not join it, and the fewest hops win. |
 
 ### `network-group` object
 

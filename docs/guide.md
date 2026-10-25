@@ -2799,12 +2799,15 @@ it is on; `text` defaults to the `id`, and an `address` on an attachment is writ
 the line where it meets the bus. `groups` put a shaded backdrop, with an optional name,
 behind a set of `members`.
 
-**The columns are drawspec's.** A host's line may cross no network it is not on — it would
-read as attached — so a host on `dmz` and `storage` has to stand outside `internal`'s hosts.
+**The columns are drawspec's.** A host's line through a network it is not on would read as
+attached, so a host on `dmz` and `storage` stands outside `internal`'s hosts when it can.
 drawspec orders the columns so that every line stays clear, then for the fewest columns,
 the shortest bars and the order written; hosts whose spans are apart stack in one column.
-When no order keeps a line clear, the document is refused at that host: put it on the
-network in between too, or reorder `networks` so the ones it joins are neighbours.
+When no order keeps a line clear, the line **hops** the bus it is not on — a half circle
+over the bar, as a wiring diagram marks two lines that cross without joining — and the
+order with the fewest hops is drawn. In text the bus breaks round the line, `━╸│╺━`,
+where a join is `━┿━`. To lose a hop, put the host on the network in between too, or
+reorder `networks` so the ones it joins are neighbours.
 
 **No device icons.** A host is `step` (a box: a server, a router, a firewall), `emphasis`,
 `store` (a drum: a database) or `person` (a client); its words say what it is. A router is
