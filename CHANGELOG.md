@@ -12,6 +12,22 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **A `wardley` kind.** A Wardley map: what a user needs at the top, what that rests on
+  below, each part placed across by how evolved it is — genesis, custom-built, product,
+  commodity. No position is a coordinate: `evolution` is a stage by name, optionally
+  `early` or `late` in it (twelve named places), and the row is derived from `needs`, one
+  below the lowest thing that needs it (`depth` sinks a part further, never above what
+  needs it). Straight dependency lines; `evolves` draws a dashed arrow to a dashed circle
+  further right; `inertia` a heavy bar on the right; up to 6 numbered `notes` marked
+  beside what they are about and written out under the map. Names are placed clear of
+  every dot, line and other name by a small search, a dot in a line's way slides along its
+  place, a crowded map is drawn taller, and a name with nowhere to go is refused. A
+  component nothing needs, a loop, an `evolves` that is not further right, and a numeric
+  `evolution` are refused at their pointers. The axis words are a `[wardley]` theme
+  section. No text form. Three references — Wardley's tea shop, an online photo service,
+  a council's build, buy or share — and `make docs`, `make schema` and the gallery pick it
+  up.
+
 - **`tree` + `"style": "bracket"`: tournament brackets and cladograms.** Every leaf stands
   on one outer edge, an inner node as far from it as its deepest leaf, joined by square
   elbows; nodes are lines, not boxes. A node's words sit on its own line (a team, a

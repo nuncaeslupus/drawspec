@@ -114,6 +114,7 @@ from drawspec.theme import (
     TimingStyle,
     TitleStyle,
     TypeScale,
+    WardleyStyle,
     load_theme,
 )
 
@@ -564,6 +565,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "pie": PieStyle,
     "mindmap": MindmapStyle,
     "sunburst": SunburstStyle,
+    "wardley": WardleyStyle,
     "network": NetworkStyle,
     "timing": TimingStyle,
     "gitgraph": GitgraphStyle,

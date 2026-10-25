@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "kind": "wardley",
+  "title": "Reporting a missed bin collection",
+  "description": "A council's build, buy or share map for one service: what a resident and the waste team each need, and how evolved each part is. Only the part no one else has is built; the rest is bought or shared.",
+  "anchors": [
+    { "id": "resident", "text": "Resident", "needs": ["report", "updates"] },
+    { "id": "team", "text": "Waste team", "needs": ["cases"] }
+  ],
+  "components": [
+    { "id": "report", "text": "Report a missed bin", "evolution": "early product", "needs": ["form", "address"] },
+    { "id": "updates", "text": "Progress updates", "evolution": "late product", "needs": ["notify"] },
+    { "id": "cases", "text": "Case handling", "evolution": "early custom", "needs": ["crm", "rounds"] },
+    { "id": "form", "text": "Online form", "evolution": "late product", "needs": ["hosting"] },
+    { "id": "address", "text": "Address lookup", "evolution": "early commodity" },
+    { "id": "rounds", "text": "Collection rounds", "evolution": "late genesis", "needs": ["hosting"] },
+    { "id": "crm", "text": "Council CRM", "evolution": "late custom", "needs": ["hosting"], "evolves": "product", "inertia": true },
+    { "id": "notify", "text": "Notifications", "evolution": "commodity" },
+    { "id": "hosting", "text": "Cloud hosting", "evolution": "late commodity" }
+  ],
+  "notes": [
+    { "text": "Build: no product knows our rounds.", "on": ["rounds"] },
+    { "text": "Share: a national notification service, not a build.", "on": ["notify"] },
+    { "text": "A ten-year contract holds the CRM back.", "on": ["crm"] }
+  ]
+}

@@ -304,14 +304,14 @@ def test_document_with_a_future_version_raises_documenterror() -> None:
 
 def test_document_with_unknown_kind_raises_documenterror() -> None:
     with pytest.raises(DocumentError) as error:
-        parse_document(flow_document(kind="wardley"))
+        parse_document(flow_document(kind="radar"))
     assert "mindmap" in str(error.value)
     assert all(kind in str(error.value) for kind in KINDS)
 
 
 def test_document_with_unknown_kind_does_not_report_payload_fields() -> None:
     """Without a kind, nothing is known about which payload is legal."""
-    violations = validate_document(flow_document(kind="wardley"))
+    violations = validate_document(flow_document(kind="radar"))
     assert [violation.pointer for violation in violations] == ["/kind"]
 
 
@@ -388,7 +388,7 @@ def test_published_schema_matches_the_runtime_validator() -> None:
         ("forbidden field on an edge", _with(flow_document(), "edges", 0, dx=2)),
         ("missing version", _without(flow_document(), "version")),
         ("future version", flow_document(version=2)),
-        ("unknown kind", flow_document(kind="wardley")),
+        ("unknown kind", flow_document(kind="radar")),
         ("node role outside the vocabulary", _with(flow_document(), "nodes", 0, role="swimlane")),
         ("edge role outside the vocabulary", _with(flow_document(), "edges", 0, role="calls")),
         ("node missing its text", _without_key(flow_document(), "nodes", 0, "text")),

@@ -64,6 +64,7 @@ the real originals each is checked against; a built one says so in its row.
 | 34 | [`network.md`](network.md) | `network`: networks as buses, hosts hanging between them with an address per attachment, columns derived so no line crosses a bus it is not on (nwdiag) — **built** | M | owner request; published nwdiag / PlantUML examples; text form |
 | 35 | [`railroad.md`](railroad.md) | `railroad`: a grammar's rules as syntax diagrams — terminals, rule references, choices, bypasses and loops on a track derived from an expression tree, long rules wrapped (JSON.org, SQLite) — **built**, with a text form | M | owner request (kinds borrowed from similar tools); originals: JSON.org, SQLite, Wirth |
 | 36 | [`usecase.md`](usecase.md) | `usecase`: UML use case diagrams — actors outside one or more system boundaries, use cases as ellipses inside, «include», «extend» and generalisation; sides, columns and orders derived, straight lines through nothing — **built** | M | owner request (kinds borrowed from Mermaid, PlantUML, D2); originals U1–U6 in the proposal; the `sequence` stick figure and the `flow` group frame |
+| 38 | [`wardley.md`](wardley.md) | `wardley`: a value chain against evolution — stages by name, rows derived from `needs`, straight lines, evolution arrows, inertia, numbered notes (the Wardley map) — **built** | M | owner request lifted the deferral; originals WM1–WM5 found by search |
 
 ## Proposed: output formats
 
@@ -83,14 +84,11 @@ Fields on an existing kind, each asked for by a real figure filed as an issue.
 
 ## Deferred, not proposed
 
-The survey's one remaining *feature* verdict is left unbuilt on purpose, until a real
-original asks for it (the *find the originals* rule below), not for size. Waterfall was
-deferred here too until the round-2 corpus found four originals (W1–W4); it is now
-built, as [`waterfall.md`](waterfall.md).
-
-| Type | Would be | Why deferred |
-|---|---|---|
-| wardley | `scatter`/`quadrant` + edges between positions | One niche strategy artefact; it needs routed edges on a numeric plane, which no chart kind has. Not small, and no original yet. |
+Nothing from the survey is deferred now. Waterfall was deferred here until the round-2
+corpus found four originals (W1–W4); it is built, as [`waterfall.md`](waterfall.md).
+Wardley was deferred for want of an original until the owner asked for it and five were
+found by search (WM1–WM5); it is built as its own kind, not as a `quadrant` feature, as
+[`wardley.md`](wardley.md).
 
 Also declined in the survey and not revisited: fan-in badges on `flow` (a count the
 reader can see), dumbbell bars, polar, radar and bubble charts (charting).
@@ -110,7 +108,7 @@ self-loop geometry that `flow` then either adopts or refuses.
   `AGENTS.md`'s kind table (a test enforces it); every refusal in the proposal as a test
   with its JSON pointer; `collisions.py` and `clipping.py` clean on the references.
 * **The README's count** ("more than 30 kinds") and the `kind` enum description (now
-  "forty-two diagrams") change with every new kind.
+  "forty-three diagrams") change with every new kind.
 
 ## Decisions for the owner
 
