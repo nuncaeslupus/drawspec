@@ -1532,6 +1532,74 @@ class SunburstStyle:
         return cls(weights=weights)
 
 
+#: The words a Wardley map's axes carry, in the order they are checked.
+WARDLEY_WORDS: Final = (
+    "genesis",
+    "custom",
+    "product",
+    "commodity",
+    "visible",
+    "invisible",
+    "chain",
+    "evolution",
+)
+
+
+@dataclass(frozen=True)
+class WardleyStyle:
+    """The words on a Wardley map's two axes.
+
+    The author names a stage (`product`); what is written under the axis is house
+    wording, set once for every map in a report — Wardley's own, a translation, or
+    a team's (*Commodity* or *Utility*).
+    """
+
+    genesis: str = "Genesis"
+    """The first stage's name, under the leftmost quarter of the evolution axis."""
+
+    custom: str = "Custom-built"
+    """The second stage's name: what `custom` is written as."""
+
+    product: str = "Product (+rental)"
+    """The third stage's name: what `product` is written as."""
+
+    commodity: str = "Commodity (+utility)"
+    """The fourth stage's name, under the rightmost quarter."""
+
+    visible: str = "Visible"
+    """Written at the top of the value-chain axis, by the anchors."""
+
+    invisible: str = "Invisible"
+    """Written at the bottom of the value-chain axis."""
+
+    chain: str = "Value chain"
+    """The value-chain axis's name, beside it."""
+
+    evolution: str = "Evolution"
+    """The evolution axis's name, at its arrow's end."""
+
+    def stage(self, name: str) -> str:
+        return str(getattr(self, name))
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> WardleyStyle:
+        _reject_unknown(mapping, WARDLEY_WORDS, "[wardley]")
+        defaults = cls()
+        values: dict[str, str] = {}
+        for key in WARDLEY_WORDS:
+            value = mapping.get(key, getattr(defaults, key))
+            if not isinstance(value, str) or not value.strip() or "\n" in value:
+                raise ThemeError(f"[wardley] {key}: expected a word or a few, got {value!r}")
+            values[key] = value
+        stages = [values[key] for key in WARDLEY_WORDS[:4]]
+        if len(set(stages)) != len(stages):
+            raise ThemeError(
+                f"[wardley] genesis, custom, product, commodity: {stages!r} repeat a name; "
+                f"the four stages are told apart by their names."
+            )
+        return cls(**values)
+
+
 #: The darkest a network diagram's bus or group wash may be: words are read on it.
 NETWORK_TONE_MAX: Final = 0.4
 
@@ -2277,6 +2345,7 @@ _TOP_LEVEL_KEYS: Final = (
     "flow",
     "mindmap",
     "sunburst",
+    "wardley",
     "network",
     "timing",
     "gitgraph",
@@ -2321,6 +2390,7 @@ class Theme:
     pie: PieStyle = PieStyle()
     mindmap: MindmapStyle = MindmapStyle()
     sunburst: SunburstStyle = SunburstStyle()
+    wardley: WardleyStyle = WardleyStyle()
     network: NetworkStyle = NetworkStyle()
 
     timing: TimingStyle = TimingStyle()
@@ -2395,6 +2465,7 @@ class Theme:
             pie=PieStyle.from_mapping(_section(mapping, "pie")),
             mindmap=MindmapStyle.from_mapping(_section(mapping, "mindmap")),
             sunburst=SunburstStyle.from_mapping(_section(mapping, "sunburst")),
+            wardley=WardleyStyle.from_mapping(_section(mapping, "wardley")),
             network=NetworkStyle.from_mapping(_section(mapping, "network")),
             timing=TimingStyle.from_mapping(_section(mapping, "timing")),
             gitgraph=GitgraphStyle.from_mapping(_section(mapping, "gitgraph")),

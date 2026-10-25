@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "kind": "wardley",
+  "title": "A tea shop",
+  "description": "Simon Wardley's first teaching map: what a tea shop's customers need, and how evolved each part of making it is. The kettle is heading for product, held back by an owner who sees no gain in changing it.",
+  "anchors": [
+    { "id": "business", "text": "Business", "needs": ["cup-of-tea"] },
+    { "id": "public", "text": "Public", "needs": ["cup-of-tea"] }
+  ],
+  "components": [
+    { "id": "cup-of-tea", "text": "Cup of tea", "evolution": "product", "needs": ["cup", "tea", "hot-water"] },
+    { "id": "cup", "text": "Cup", "evolution": "commodity" },
+    { "id": "tea", "text": "Tea", "evolution": "late product" },
+    { "id": "hot-water", "text": "Hot water", "evolution": "late commodity", "needs": ["water", "kettle"] },
+    { "id": "water", "text": "Water", "evolution": "late commodity" },
+    { "id": "kettle", "text": "Kettle", "evolution": "custom", "needs": ["power"], "evolves": "product", "inertia": true },
+    { "id": "power", "text": "Power", "evolution": "late commodity" }
+  ],
+  "notes": [
+    { "text": "A standard kettle would do; the owner sees no gain in changing (inertia).", "on": ["kettle"] }
+  ]
+}

@@ -65,6 +65,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "rag": "workstreams or risks rated red, amber or green, in words and shapes — a status report",
     "clock": "analogue clock faces showing a time, for teaching it — quarter past, half past",
     "sunburst": "a hierarchy as concentric rings of sectors, read from the middle outward",
+    "wardley": "a Wardley map — components by value chain and evolution, joined by what they need",
     "network": "networks as buses with the hosts on them between — a DMZ, an office LAN",
     "timing": "signals over one time axis — clocks, levels, buses, states: an SPI figure",
     "gitgraph": "commits on branches over time, with forks, merges, tags and cherry-picks",
@@ -433,6 +434,15 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
         "nodes": [
             {"text": "Angry", "children": [{"text": "Hurt"}, {"text": "Mad"}]},
             {"text": "Happy", "children": [{"text": "Proud"}, {"text": "Playful"}]},
+        ],
+    },
+    "wardley": {
+        "version": 1,
+        "kind": "wardley",
+        "anchors": [{"id": "customer", "text": "Customer", "needs": ["tea"]}],
+        "components": [
+            {"id": "tea", "text": "Cup of tea", "evolution": "product", "needs": ["water"]},
+            {"id": "water", "text": "Hot water", "evolution": "commodity"},
         ],
     },
     "network": {

@@ -45,6 +45,7 @@ from drawspec.kinds.timing import timing_scene, timing_text
 from drawspec.kinds.treemap import treemap_scene
 from drawspec.kinds.usecase import usecase_scene
 from drawspec.kinds.venn import venn_scene
+from drawspec.kinds.wardley import wardley_scene
 from drawspec.kinds.waterfall import waterfall_scene
 from drawspec.scene import Scene
 from drawspec.schema import (
@@ -77,6 +78,7 @@ from drawspec.schema import (
     TREEMAP_KINDS,
     USECASE_KINDS,
     VENN_KINDS,
+    WARDLEY_KINDS,
     WATERFALL_KINDS,
     Document,
 )
@@ -112,6 +114,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *RAG_KINDS,
     *CLOCK_KINDS,
     *SUNBURST_KINDS,
+    *WARDLEY_KINDS,
     *NETWORK_KINDS,
     *TIMING_KINDS,
     *GITGRAPH_KINDS,
@@ -221,6 +224,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return clock_scene(document, theme, measurer)
     if document.kind in SUNBURST_KINDS:
         return sunburst_scene(document, theme, measurer)
+    if document.kind in WARDLEY_KINDS:
+        return wardley_scene(document, theme, measurer)
     if document.kind in NETWORK_KINDS:
         return network_scene(document, theme, measurer)
     if document.kind in TIMING_KINDS:
@@ -286,5 +291,6 @@ __all__ = [
     "treemap_scene",
     "usecase_scene",
     "venn_scene",
+    "wardley_scene",
     "waterfall_scene",
 ]
