@@ -4328,9 +4328,9 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             "string",
             enum=BRACKET_ROOTS,
             description=(
-                'Only with `"style": "bracket"`: the edge the root stands at. `left` '
-                "(the default) is a cladogram's, the leaves' names in a column at the right; "
-                "`right` is a tournament read left to right, the champion last; `middle` "
+                'Only with `"style": "bracket"`: the edge the root stands at. `right` '
+                "(the default) is a tournament read left to right, the champion last; `left` "
+                "is a cladogram's, the leaves' names in a column at the right; `middle` "
                 "is the two-sided draw, the root's first child's half on the left and its "
                 "second's on the right, the final in the middle. A bracket reads across, "
                 "so there is no top or bottom."
@@ -6743,7 +6743,7 @@ class Document:
     tree_style: str = "boxes"
     """How a `tree` is drawn: `boxes`, or `bracket` (leaves on one edge, square elbows)."""
 
-    bracket_root: str = "left"
+    bracket_root: str = "right"
     """Which edge a bracket's root stands at: `left`, `right` or `middle`."""
 
     meter_style: str = "bar"
@@ -15533,7 +15533,7 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         values=bool(document.get("values", True)),
         rise=bool(document.get("rise", False)),
         tree_style=str(document.get("style", "boxes")) if kind == "tree" else "boxes",
-        bracket_root=str(document.get("root", "left")) if kind == "tree" else "left",
+        bracket_root=str(document.get("root", "right")) if kind == "tree" else "right",
         theme=str(document.get("theme", "")),
         nodes=tuple(
             Node(

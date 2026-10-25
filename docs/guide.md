@@ -2753,8 +2753,10 @@ just before the merge commit, turning in the gap between two steps, so no line r
 under a label. `direction` is `right` (the default: labels under the dots, for short
 messages and ids) or `down` (the messages in a column beside the lanes, as `git log
 --graph` sets them, for sentences). The theme's `[gitgraph] colours` gives each lane a
-colour for its dots and the wash behind its name; the default theme draws them in ink,
-and `accent` in colour. `--format text` draws it oldest first, as `git log --graph`
+colour for its dots and the wash behind its name. The default theme colours them —
+blue for the trunk, then green, ochre, purple, red, grey, each legible on a light and a
+dark page — while the lines and words stay ink, so a lane is still told by its place and
+name; `colours = []` draws every lane in ink, as `blueprint` does on its sheet. `--format text` draws it oldest first, as `git log --graph`
 would.
 
 Refused, each at its pointer: a step `on` a branch that does not exist; a `merge` of the
@@ -2924,10 +2926,11 @@ junction: a cladogram's common ancestor. An edge's `label` is written on the chi
 by the elbow it feeds — the score in that match, or the trait a lineage gained — and a
 `strong` edge is drawn heavy, for the champion's run or the lineage the lesson is about.
 
-`root` says where the root stands. `left` (the default) is a cladogram's: a short root at
-the left, the leaves' names in one column past the tips at the right. `right` reads as a
-tournament, from the first round to the champion's line at the end, each name on its
-line. `middle` is the two-sided draw: the root's first child's half on the left, its
+`root` says where the root stands. `right` (the default, since a bracket is most often a
+draw) reads as a tournament, from the first round on the left to the champion's line at
+the end, each name on its line. `left` is a cladogram's: a short root at the left, the
+leaves' names in one column past the tips at the right — say `"root": "left"` for one.
+`middle` is the two-sided draw: the root's first child's half on the left, its
 second mirrored on the right, the final where they meet and the root's words above it.
 There is no top or bottom: a bracket reads across, one row per leaf.
 

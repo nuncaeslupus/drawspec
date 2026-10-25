@@ -6,6 +6,7 @@
   "description": "A cladogram of ten living primate groups: lemurs and lorises on one branch, tarsiers, monkeys and apes on the other, with the apes and the great apes named at the splits they begin at.",
   "caption": "Each split is a common ancestor. The order down the page ranks nothing.",
   "style": "bracket",
+  "root": "left",
   "nodes": [
     {
       "id": "primates",

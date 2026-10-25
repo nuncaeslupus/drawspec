@@ -70,9 +70,13 @@ commit (above it across the page, before the message down it). Branch names head
 lanes in boxes, a dashed guide running to where the lane starts; down the page, long names
 are staggered over two rows so the lanes stay close.
 
-**Colour is the theme's.** `[gitgraph] colours` (empty in the default theme) gives each lane
-a colour for its dots and a faint wash behind its name, as G3 and Mermaid colour lanes;
-the lines stay ink, so colour never carries a crossing alone. `accent` sets one.
+**Colour is the theme's, and on by default.** `[gitgraph] colours` gives each lane a
+colour for its dots and a faint wash behind its name, as G3 and Mermaid colour lanes;
+the lines stay ink, so colour never carries a crossing alone. The default theme sets six
+mid-tones (blue, green, ochre, purple, red, grey), each 3:1 or better on white and on
+`#121212`; `accent` sets its own; `blueprint` sets `[]`, lanes in the sheet's ink, and a
+theme with a ground of its own that the default colours do not read on falls back to ink
+too, unless it names colours of its own.
 
 **Text output, yes** — it is the figure `git log --graph` already prints: a row per step,
 oldest first, lanes as columns two cells apart, the fork on its own row after the parent
