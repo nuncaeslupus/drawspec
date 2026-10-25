@@ -58,6 +58,13 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 |---|---|---|---|
 | `classes` | array of [class](#class-object), at least 1 | no | The classes the boxes are sorted into, each `{id, text}`: 1 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team. |
 
+### `tree`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `style` | string — one of `boxes`, `bracket` | no | `boxes` (the default) ranks boxed nodes down from the root. `bracket` draws a tournament bracket or a cladogram: every leaf on one outer edge, square elbows, and each inner node unboxed — its words (a match's winner, a clade's name) on its own line, or none (`"text": ""`). An edge's `label` is written on the child's line by the elbow: a score, a trait. Every node but the root has one parent and every inner node at least two children; at most 16 leaves, and no groups, bands, classes, and no node role but `step`. |
+| `root` | string — one of `left`, `right`, `middle` | no | Only with `"style": "bracket"`: the edge the root stands at. `left` (the default) is a cladogram's, the leaves' names in a column at the right; `right` is a tournament read left to right, the champion last; `middle` is the two-sided draw, the root's first child's half on the left and its second's on the right, the final in the middle. A bracket reads across, so there is no top or bottom. |
+
 ### `flow`
 
 | Field | Type | Required | What it is |
@@ -443,6 +450,9 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `railroad` | 12 `rules` |
 | `usecase` | 8 `actors`, 15 `usecases`, 3 `systems`, 30 `edges` |
 | `pert` | 20 `activities` |
+
+A `tree` with `"style": "bracket"` counts its leaves instead: 16
+leaves, a sixteen-team knockout, in place of its 15 nodes.
 
 ## Emphasis
 

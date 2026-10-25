@@ -54,7 +54,10 @@ def test_no_reference_document_is_past_its_budget(path: Path) -> None:
     """The gallery is the evidence the numbers were set from, so it must all pass."""
     document = json.loads(path.read_text(encoding="utf-8"))
     for name, limit in READABILITY_BUDGET[document["kind"]]:
+        if document.get("style") == "bracket" and name == "nodes":
+            continue  # a bracket counts its leaves instead, as `validate_document` does
         assert len(document.get(name, ())) <= limit, (path.stem, name)
+    assert validate_document(document) == (), path.stem
 
 
 def test_a_flow_at_its_budget_is_accepted() -> None:

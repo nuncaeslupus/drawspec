@@ -777,6 +777,28 @@ NUMBERLINE_TICK_MAX: Final = 30
 #: set in the monospace face, the way `tree` prints it.
 FILES_STYLES: Final = ("icons", "plain", "unicode", "ascii")
 
+#: How a `tree` is drawn. `boxes` (the default) ranks boxes down from the root
+#: and joins them with arrows; `bracket` is a tournament bracket or a cladogram:
+#: every leaf on one outer edge, square elbows, and the inner nodes unboxed — a
+#: winner's name on its line, or nothing at all.
+TREE_STYLES: Final = ("boxes", "bracket")
+
+#: Which edge a bracket's root stands at. `left` is a cladogram's (the common
+#: ancestor at the left, the taxa in a column at the right); `right` is a
+#: tournament read left to right, the champion at the end; `middle` is the
+#: two-sided draw, half the field on each side and the final in the middle.
+BRACKET_ROOTS: Final = ("left", "right", "middle")
+
+#: The most leaves one bracket holds: a sixteen-team knockout. The NCAA's 64-team
+#: draw is printed as four regions of sixteen and a final four, which is the
+#: split this says to make. With no node of one child, sixteen leaves are at most
+#: thirty-one nodes, which replaces a boxed tree's fifteen.
+BRACKET_LEAVES_MAX: Final = 16
+
+#: The edge roles a bracket draws: an ordinary line, and a heavy one for the path
+#: the reader follows (the champion's run, the lineage the lesson is about).
+BRACKET_EDGE_ROLES: Final = ("flow", "strong")
+
 #: How a series may be drawn. `line` is the default and was the only one until
 #: the corpus asked for the others; `area` is a line whose fill reaches the
 #: baseline, and `bar` is a column per point. Closed, like every other
@@ -4042,6 +4064,36 @@ KIND_PAYLOADS: Final[Mapping[tuple[str, ...], tuple[FieldSpec, ...]]] = {
             ),
         ),
     ),
+    ("tree",): (
+        FieldSpec(
+            "style",
+            "string",
+            enum=TREE_STYLES,
+            description=(
+                "`boxes` (the default) ranks boxed nodes down from the root. `bracket` draws "
+                "a tournament bracket or a cladogram: every leaf on one outer edge, square "
+                "elbows, and each inner node unboxed — its words (a match's winner, a "
+                'clade\'s name) on its own line, or none (`"text": ""`). An edge\'s '
+                "`label` is written on the child's line by the elbow: a score, a trait. "
+                "Every node but the root has one parent and every inner node at least two "
+                f"children; at most {BRACKET_LEAVES_MAX} leaves, and no groups, bands, "
+                "classes, and no node role but `step`."
+            ),
+        ),
+        FieldSpec(
+            "root",
+            "string",
+            enum=BRACKET_ROOTS,
+            description=(
+                'Only with `"style": "bracket"`: the edge the root stands at. `left` '
+                "(the default) is a cladogram's, the leaves' names in a column at the right; "
+                "`right` is a tournament read left to right, the champion last; `middle` "
+                "is the two-sided draw, the root's first child's half on the left and its "
+                "second's on the right, the final in the middle. A bracket reads across, "
+                "so there is no top or bottom."
+            ),
+        ),
+    ),
     ("flow",): (
         FieldSpec(
             "loops",
@@ -6333,6 +6385,12 @@ class Document:
     couples: tuple[FamilyCouple, ...] = ()
     """A `familytree`'s couples, in the order written: each person's in marriage order."""
 
+    tree_style: str = "boxes"
+    """How a `tree` is drawn: `boxes`, or `bracket` (leaves on one edge, square elbows)."""
+
+    bracket_root: str = "left"
+    """Which edge a bracket's root stands at: `left`, `right` or `middle`."""
+
     meter_style: str = "bar"
     """How a `meter` document's meters are drawn: one style for the panel."""
 
@@ -6684,6 +6742,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_clock_refusal(violation) for violation in found]
     if kind in SUNBURST_KINDS:
         found = [_sunburst_refusal(violation) for violation in found]
+    if kind == "tree":
+        found = [_tree_refusal(violation, document) for violation in found]
     if kind in PERT_KINDS:
         found = [_pert_refusal(violation) for violation in found]
     if kind in USECASE_KINDS:
@@ -6698,9 +6758,231 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
         found = [_gitgraph_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
     found.extend(_referential_violations(document, kind))
+    if kind == "tree":
+        found.extend(_bracket_violations(document))
     found.extend(_readability_violations(document, kind))
     found.extend(_emphasis_violations(document))
     return tuple(found)
+
+
+def _tree_refusal(violation: Violation, document: Mapping[str, Any]) -> Violation:
+    """A bracket's `root` at the top or bottom, told why a bracket only reads across."""
+    root = document.get("root")
+    if violation.pointer == "/root" and root in ("top", "bottom", "up", "down"):
+        return Violation(
+            "/root",
+            f"{root!r}: a bracket reads across, each leaf's name on a row of its own, so its "
+            "root stands at the `left`, the `right` or in the `middle`. A tree read down the "
+            'page is the boxed one: drop `"style": "bracket"`.',
+        )
+    return violation
+
+
+#: Why a bracket refuses what a boxed tree takes, by the field's name.
+BRACKET_REFUSED: Final[Mapping[str, str]] = {
+    "groups": (
+        "a bracket has no boxes to frame: its nodes are lines. Name a part of the draw in an "
+        "inner node's words (a region, a clade), or draw it as boxes without the bracket style."
+    ),
+    "bands": (
+        "a bracket has no boxes for a band to run beside. Say what runs alongside in the "
+        "`caption`, or draw it as boxes without the bracket style."
+    ),
+    "classes": (
+        "a bracket has no boxes to fill, so a class would have nothing to mark. Name the "
+        "grouping in an inner node's words, or draw it as boxes without the bracket style."
+    ),
+    "class": "a bracket's node is a line, with no box for a class's fill. Drop it.",
+    "status": (
+        "a bracket's node is a line, with no box for a change's mark. Draw the change as two "
+        "brackets, or as boxes without the bracket style."
+    ),
+    "actor": (
+        "a bracket's node is one line of words, with no box for an actor's lead. Write who "
+        "into the node's `text`."
+    ),
+    "role": (
+        "a bracket's node is a line of words, with no box for a role to shape. To mark the "
+        'path the reader should follow, give its edges `"role": "strong"`.'
+    ),
+}
+
+
+def _bracket_violations(document: Mapping[str, Any]) -> list[Violation]:
+    """A tree drawn as a bracket: one root, one parent each, no node of one child.
+
+    The boxed tree draws any graph its edges make, cross-links included. A bracket
+    places every node from its leaves, so the edges must be a tree, rooted once,
+    and each inner node a match or a split of at least two.
+    """
+    if document.get("style", "boxes") != "bracket":
+        if "root" in document:
+            return [
+                Violation(
+                    "/root",
+                    "`root` says which edge a bracket's root stands at, and this tree is drawn "
+                    'as boxes ranked down from its root. Say `"style": "bracket"`, or drop it.',
+                )
+            ]
+        return []
+    found: list[Violation] = []
+    for name in ("groups", "bands", "classes"):
+        if name in document:
+            found.append(Violation(f"/{name}", BRACKET_REFUSED[name]))
+    ids: dict[str, int] = {}
+    texts: dict[str, str] = {}
+    for index, node in enumerate(_listed(document, "nodes")):
+        if not isinstance(node, dict):
+            continue
+        for name in ("class", "status", "actor"):
+            if name in node:
+                found.append(Violation(_pointer("nodes", index, name), BRACKET_REFUSED[name]))
+        if node.get("role", "step") != "step":
+            found.append(Violation(_pointer("nodes", index, "role"), BRACKET_REFUSED["role"]))
+        text = node.get("text")
+        if isinstance(text, str) and "\n" in text.strip():
+            found.append(
+                Violation(
+                    _pointer("nodes", index, "text"),
+                    "a bracket's node is one line of words on its line: a team, a taxon, a "
+                    "winner. Join the text into one line, or put the detail in the caption.",
+                )
+            )
+        identifier = node.get("id")
+        if isinstance(identifier, str) and identifier not in ids:
+            ids[identifier] = index
+            texts[identifier] = text if isinstance(text, str) else ""
+    parent: dict[str, str] = {}
+    children: dict[str, list[str]] = {identifier: [] for identifier in ids}
+    for index, edge in enumerate(_listed(document, "edges")):
+        if not isinstance(edge, dict):
+            continue
+        if "status" in edge:
+            found.append(Violation(_pointer("edges", index, "status"), BRACKET_REFUSED["status"]))
+        role = edge.get("role", "flow")
+        if isinstance(role, str) and role not in BRACKET_EDGE_ROLES:
+            found.append(
+                Violation(
+                    _pointer("edges", index, "role"),
+                    f"{role!r}: a bracket's lines are all one line, square elbows to the next "
+                    'round, so an edge is `"flow"` (the default) or `"strong"`, the heavy '
+                    "path the reader follows.",
+                )
+            )
+        label = edge.get("label")
+        if isinstance(label, str) and "\n" in label.strip():
+            found.append(
+                Violation(
+                    _pointer("edges", index, "label"),
+                    "an edge's label is written on one line beside the elbow: a score, a "
+                    "trait. Join it into one line.",
+                )
+            )
+        source, target = edge.get("from"), edge.get("to")
+        if not isinstance(source, str) or not isinstance(target, str):
+            continue
+        if source not in ids or target not in ids:
+            continue  # reported by the graph checks
+        if source == target:
+            found.append(
+                Violation(
+                    _pointer("edges", index, "to"),
+                    f"{target!r} joins itself, and a bracket only joins a node to the match "
+                    "or the split it feeds. Drop the edge.",
+                )
+            )
+        elif target in parent:
+            found.append(
+                Violation(
+                    _pointer("edges", index, "to"),
+                    f"{target!r} already hangs from {parent[target]!r}, and in a bracket each "
+                    "node feeds one match or one split. A team in two matches is two "
+                    "entries, and a hybrid of two lineages is a network, not a tree: draw "
+                    "that as boxes without the bracket style.",
+                )
+            )
+        else:
+            parent[target] = source
+            children[source].append(target)
+    if not ids:
+        return found
+    roots = [identifier for identifier in ids if identifier not in parent]
+    if not roots:
+        found.append(
+            Violation(
+                "/edges",
+                "every node hangs from another, so the edges make a cycle and the bracket has "
+                "no root: no final, no common ancestor. Drop the edge into the root.",
+            )
+        )
+        return found
+    if len(roots) > 1:
+        found.append(
+            Violation(
+                _pointer("nodes", ids[roots[1]]),
+                f"{roots[1]!r} hangs from nothing, and neither does {roots[0]!r}: a bracket "
+                "has one root, the final or the common ancestor, and every other node feeds "
+                "into it. Add the edge that joins them, or draw two brackets.",
+            )
+        )
+        return found
+    reached: set[str] = set()
+    stack = [roots[0]]
+    while stack:
+        identifier = stack.pop()
+        if identifier not in reached:
+            reached.add(identifier)
+            stack.extend(children[identifier])
+    for identifier, index in ids.items():
+        if identifier not in reached:
+            found.append(
+                Violation(
+                    _pointer("nodes", index),
+                    f"{identifier!r} is on a cycle of edges that never reaches the root "
+                    f"{roots[0]!r}. Drop the edge that closes the cycle.",
+                )
+            )
+            return found
+    for identifier, kids in children.items():
+        if len(kids) == 1:
+            found.append(
+                Violation(
+                    _pointer("nodes", ids[identifier]),
+                    f"{identifier!r} has one child, {kids[0]!r}: a match has two sides and a "
+                    "split at least two branches, so a node of one is the same line twice. "
+                    "Drop it and join its child to its parent, or give it its other side.",
+                )
+            )
+    leaves = [identifier for identifier, kids in children.items() if not kids]
+    for identifier in leaves:
+        if not texts[identifier].strip():
+            found.append(
+                Violation(
+                    _pointer("nodes", ids[identifier], "text"),
+                    f"{identifier!r} is a leaf, and the leaves are what a bracket is of: the "
+                    "teams, the taxa. Only an inner node may go unnamed.",
+                )
+            )
+    if len(leaves) > BRACKET_LEAVES_MAX:
+        found.append(
+            Violation(
+                _pointer("nodes", ids[leaves[BRACKET_LEAVES_MAX]]),
+                f"{len(leaves)} leaves are past what one bracket can be read at — "
+                f"{BRACKET_LEAVES_MAX} at most. Split it as a 64-team draw is printed: one "
+                "bracket per region of sixteen, and one more for the regions' winners. The "
+                "budget is not a canvas size, so a larger top-level 'width' does not lift it.",
+            )
+        )
+    if document.get("root") == "middle" and len(children[roots[0]]) != 2:
+        found.append(
+            Violation(
+                "/root",
+                f"a two-sided bracket puts the root's first child's half on the left and its "
+                f"second's on the right, and {roots[0]!r} has {len(children[roots[0]])} "
+                'children. Give it two, or say `"root": "left"` or `"right"`.',
+            )
+        )
+    return found
 
 
 def _edge_role_refusal(violation: Violation, document: Mapping[str, Any], kind: str) -> Violation:
@@ -6886,6 +7168,8 @@ def _readability_violations(document: Mapping[str, Any], kind: str) -> list[Viol
     """
     found: list[Violation] = []
     for name, limit in READABILITY_BUDGET.get(kind, ()):
+        if kind == "tree" and name == "nodes" and document.get("style") == "bracket":
+            continue  # a bracket counts its leaves instead: see `BRACKET_LEAVES_MAX`
         if "/" in name:
             found.extend(_nested_budget(document, name, limit))
             continue
@@ -14472,6 +14756,8 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         height_binding=bool(document.get("height_binding", False)),
         values=bool(document.get("values", True)),
         rise=bool(document.get("rise", False)),
+        tree_style=str(document.get("style", "boxes")) if kind == "tree" else "boxes",
+        bracket_root=str(document.get("root", "left")) if kind == "tree" else "left",
         theme=str(document.get("theme", "")),
         nodes=tuple(
             Node(

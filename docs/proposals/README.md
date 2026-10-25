@@ -64,7 +64,7 @@ the real originals each is checked against; a built one says so in its row.
 | 34 | [`network.md`](network.md) | `network`: networks as buses, hosts hanging between them with an address per attachment, columns derived so no line crosses a bus it is not on (nwdiag) — **built** | M | owner request; published nwdiag / PlantUML examples; text form |
 | 35 | [`railroad.md`](railroad.md) | `railroad`: a grammar's rules as syntax diagrams — terminals, rule references, choices, bypasses and loops on a track derived from an expression tree, long rules wrapped (JSON.org, SQLite) — **built**, with a text form | M | owner request (kinds borrowed from similar tools); originals: JSON.org, SQLite, Wirth |
 | 36 | [`usecase.md`](usecase.md) | `usecase`: UML use case diagrams — actors outside one or more system boundaries, use cases as ellipses inside, «include», «extend» and generalisation; sides, columns and orders derived, straight lines through nothing — **built** | M | owner request (kinds borrowed from Mermaid, PlantUML, D2); originals U1–U6 in the proposal; the `sequence` stick figure and the `flow` group frame |
-| 37 | [`pert.md`](pert.md) | `pert`: a project network, activity on node — ES/EF/LS/LF and float computed by a forward and backward pass, the critical path drawn heavy, PERT three-point estimates — **built** | M | owner request; course notes and the textbook exercise as originals; the layered engine and router |
+| 38 | [`pert.md`](pert.md) | `pert`: a project network, activity on node — ES/EF/LS/LF and float computed by a forward and backward pass, the critical path drawn heavy, PERT three-point estimates — **built** | M | owner request; course notes and the textbook exercise as originals; the layered engine and router |
 
 ## Proposed: output formats
 
@@ -80,6 +80,7 @@ Fields on an existing kind, each asked for by a real figure filed as an issue.
 |---:|---|---|:-:|---|
 | 30 | [`entities-centre.md`](entities-centre.md) | `entities` + `centre`: a star schema, the fact table in the middle and its dimensions round it — **built** | S | `flow`'s radial placement; issue #135 (one original) |
 | 31 | [`gantt-events-iterations.md`](gantt-events-iterations.md) | `gantt` + `events` and `iterations` on a task: lanes of a life-cycle comparison on one axis, deliveries and loops per row — **built** | S | issue #131 (one original) |
+| 37 | [`tree-bracket.md`](tree-bracket.md) | `tree` + `"style": "bracket"`: tournament brackets and cladograms, leaves on one edge, square elbows, root `left`/`right`/`middle`, text output too — **built** | S | survey rank 6; published originals (World Cup, NCAA, OpenStax primates) |
 
 ## Deferred, not proposed
 
