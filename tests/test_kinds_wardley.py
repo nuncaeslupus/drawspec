@@ -312,19 +312,17 @@ def test_edges_are_refused_for_needs() -> None:
 
 
 def test_the_component_budget_is_enforced() -> None:
+    """A flat map, one past the budget: refused by the budget, at the first entry past it."""
     count = WARDLEY_COMPONENT_MAX + 1
+    idents = [f"c{index}" for index in range(count)]
     document = {
         "version": 1,
         "kind": "wardley",
-        "anchors": [{"id": "user", "text": "User", "needs": ["c0"]}],
+        "anchors": [{"id": "user", "text": "User", "needs": idents}],
         "components": [
-            {
-                "id": f"c{index}",
-                "text": f"Part {index}",
-                "evolution": "product",
-                **({"needs": [f"c{index + 1}"]} if index + 1 < count else {}),
-            }
-            for index in range(count)
+            {"id": ident, "text": f"Part {ident}", "evolution": "product"} for ident in idents
         ],
     }
-    assert "/components" in refusals(document)
+    found = refusals(document)
+    assert f"/components/{WARDLEY_COMPONENT_MAX}" in found
+    assert "past what one wardley can be read at" in found[f"/components/{WARDLEY_COMPONENT_MAX}"]

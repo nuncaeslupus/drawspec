@@ -72,7 +72,7 @@ Four answers, the same ones `kinds-wanted.md` uses:
 | uml-class | new kind | merged into `entities` → [`entities.md`](entities.md) |
 | venn | new kind | `venn` → [`venn.md`](venn.md) |
 | wardley | feature, not proposed | `scatter`/`quadrant` would need edges between positions. One niche strategy artefact; wait for an original — since built as its own kind, `wardley` → [`wardley.md`](wardley.md) |
-| waterfall | feature, not proposed | `chart` would need a `bridge` mark (running total). Plausible, but charting-adjacent; wait for an original |
+| waterfall | feature, not proposed | `chart` would need a `bridge` mark (running total). Plausible, but charting-adjacent; wait for an original — since built as its own kind, `waterfall` → [`waterfall.md`](waterfall.md) |
 
 **Tally:** 21 covered, 5 features (3 proposed), 14 types → 11 new kinds, 4 out of scope.
 
