@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Forty-six exist, and they fall into thirty-six families:
+fields are legal. Forty-six exist, and they fall into thirty-five families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -160,7 +160,7 @@ fields are legal. Forty-six exist, and they fall into thirty-six families:
 | Exchange | `sequence` | Things said in order: messages between a fixed set of participants, read down the page. |
 | Model | `entities` | Things with fields, and how they relate: an ER model, a database schema, a class diagram. |
 | Plan | `gantt` | Things that take time: one row per task, each an interval, with phases, milestones and what waits on what. |
-| Network | `pert` | What waits on what in a project, the times computed: activities as boxes of their early and late start and finish and their float, the critical path drawn heavy (PERT, CPM). |
+| Project | `pert` | What waits on what in a project, the times computed: activities as boxes of their early and late start and finish and their float, the critical path drawn heavy (PERT, CPM). |
 | Board | `board` | Things sorted, not joined: cards in columns — a kanban board, a retrospective, a story map sliced into releases. |
 | Cause | `fishbone` | Things that led to one effect: causes by category on bones slanting into a spine — a root-cause (Ishikawa) diagram. |
 | Overlap | `venn` | Things that share: two or three sets as equal circles (four as equal ellipses), each region named by the sets it is in. |

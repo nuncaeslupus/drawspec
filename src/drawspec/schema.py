@@ -850,7 +850,10 @@ AUTOMATON_NAME_MAX: Final = 12
 
 #: What an author may write for the empty move instead of `epsilon: true`, each
 #: refused so that ε is never mistaken for a symbol read from the input.
-AUTOMATON_EMPTY_SPELLINGS: Final = ("ε", "λ", "Λ", "eps", "epsilon", "lambda")
+#: Compared case-insensitively (`casefold`), so `Epsilon`, `EPS` and `Λ` are caught too;
+#: `ϵ` is the lunate epsilon (U+03F5) some keyboards and LaTeX's `\epsilon` produce.
+AUTOMATON_EMPTY_SPELLINGS: Final = ("ε", "ϵ", "λ", "eps", "epsilon", "lambda")
+_AUTOMATON_EMPTY: Final = frozenset(word.casefold() for word in AUTOMATON_EMPTY_SPELLINGS)
 
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
 #: into each other at the canvas width.
@@ -15142,7 +15145,7 @@ def _automaton_violations(document: Mapping[str, Any]) -> list[Violation]:
                     )
                 )
                 continue
-            if symbol.strip() in AUTOMATON_EMPTY_SPELLINGS:
+            if symbol.strip().casefold() in _AUTOMATON_EMPTY:
                 found.append(
                     Violation(
                         f"{here}/on",

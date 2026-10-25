@@ -397,7 +397,9 @@ def test_a_move_reads_a_symbol_or_is_an_empty_move() -> None:
     assert pointers(both) == ["/transitions/0/epsilon"]
 
 
-@pytest.mark.parametrize("spelling", ["ε", "λ", "eps", "epsilon", ""])
+@pytest.mark.parametrize(
+    "spelling", ["ε", "λ", "eps", "epsilon", "", "Epsilon", "EPS", "Lambda", "Λ", "ϵ", " ε "]
+)
 def test_epsilon_is_never_written_as_a_symbol(spelling: str) -> None:
     document = machine(transitions=[{"from": "q0", "to": "q1", "on": spelling}])
     assert pointers(document) == ["/transitions/0/on"]
