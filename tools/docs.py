@@ -110,6 +110,7 @@ from drawspec.theme import (
     SunburstStyle,
     TitleStyle,
     TypeScale,
+    WardleyStyle,
     load_theme,
 )
 
@@ -557,6 +558,7 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "pie": PieStyle,
     "mindmap": MindmapStyle,
     "sunburst": SunburstStyle,
+    "wardley": WardleyStyle,
     "argument": ArgumentStyle,
     "familytree": FamilytreeStyle,
     "rag": RagStyle,

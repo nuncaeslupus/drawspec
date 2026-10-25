@@ -59,6 +59,7 @@ the real originals each is checked against; a built one says so in its row.
 | 28 | [`clock.md`](clock.md) | `clock`: analogue faces showing a time, for teaching it — hands by the time, numerals, the time in words, `since` shaded — **built** | S | round-2 corpus section 12 (C1–C5) |
 | 27 | [`rag.md`](rag.md) | `rag`: workstreams or risks rated red, amber or green, each a word and a shape, the trend in words — **built** | S | round-2 corpus section 11 (R1–R6); `status` was taken, so the field is `rag` |
 | 30 | [`sunburst.md`](sunburst.md) | `sunburst`: a hierarchy as concentric rings of sectors, read from the middle outward, labels rotated and stepped to fit (the emotion wheel) — **built** | M | owner request; equal-angle leaves, 3 rings, optional hub |
+| 32 | [`wardley.md`](wardley.md) | `wardley`: a value chain against evolution — stages by name, rows derived from `needs`, straight lines, evolution arrows, inertia, numbered notes (the Wardley map) — **built** | M | owner request lifted the deferral; originals WM1–WM5 found by search |
 
 ## Proposed: output formats
 
@@ -77,14 +78,11 @@ Fields on an existing kind, each asked for by a real figure filed as an issue.
 
 ## Deferred, not proposed
 
-The survey's one remaining *feature* verdict is left unbuilt on purpose, until a real
-original asks for it (the *find the originals* rule below), not for size. Waterfall was
-deferred here too until the round-2 corpus found four originals (W1–W4); it is now
-built, as [`waterfall.md`](waterfall.md).
-
-| Type | Would be | Why deferred |
-|---|---|---|
-| wardley | `scatter`/`quadrant` + edges between positions | One niche strategy artefact; it needs routed edges on a numeric plane, which no chart kind has. Not small, and no original yet. |
+Nothing from the survey is deferred now. Waterfall was deferred here until the round-2
+corpus found four originals (W1–W4); it is built, as [`waterfall.md`](waterfall.md).
+Wardley was deferred for want of an original until the owner asked for it and five were
+found by search (WM1–WM5); it is built as its own kind, not as a `quadrant` feature, as
+[`wardley.md`](wardley.md).
 
 Also declined in the survey and not revisited: fan-in badges on `flow` (a count the
 reader can see), dumbbell bars, polar, radar and bubble charts (charting).
@@ -104,7 +102,7 @@ self-loop geometry that `flow` then either adopts or refuses.
   `AGENTS.md`'s kind table (a test enforces it); every refusal in the proposal as a test
   with its JSON pointer; `collisions.py` and `clipping.py` clean on the references.
 * **The README's count** ("more than 30 kinds") and the `kind` enum description (now
-  "thirty-seven diagrams") change with every new kind.
+  "thirty-eight diagrams") change with every new kind.
 
 ## Decisions for the owner
 

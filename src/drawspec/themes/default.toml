@@ -253,6 +253,18 @@ taper = [6.0, 3.0, 1.5]
 # Heaviest first; none heavier than the one before.
 weights = [0.006, 0.0035, 0.002]
 
+[wardley]
+# The words on a Wardley map's axes. The author names a stage (`product`); this is
+# what is written under it — Wardley's own words, or a house's or a translation.
+genesis = "Genesis"
+custom = "Custom-built"
+product = "Product (+rental)"
+commodity = "Commodity (+utility)"
+visible = "Visible"
+invisible = "Invisible"
+chain = "Value chain"
+evolution = "Evolution"
+
 [argument]
 # How an argument map shows which way a point bears, twice so greyscale holds: a
 # tag in the box's top margin, read aloud down a chain (claim, because, but, but),
