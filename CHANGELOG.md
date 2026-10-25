@@ -76,9 +76,12 @@ against it would stop working. Everything below is about the *package*.
   per-attachment address (`.1`) beside the line where it meets the bus. A host on two
   networks stands between them and joins them. The input has no coordinates — `networks`,
   `hosts` with their attachments, optional `groups` drawn as a shaded backdrop — and the
-  column order is derived so that no line crosses a bus it is not on (a document where no
-  order manages it is refused at the host), then for the fewest columns, the shortest
-  buses and the order written; hosts whose spans are apart stack in one column. Host roles
+  column order is derived so that no line crosses a bus it is not on, then for the fewest
+  columns, the shortest buses and the order written; hosts whose spans are apart stack in
+  one column. Where no order keeps a line clear, the line *hops* that bus — a half circle
+  over the bar, the wiring diagram's mark for a crossing that does not join — rather than
+  the document being refused, and the order with the fewest hops wins; the text form
+  breaks the bus round the line (`━╸│╺━`, against a join's `━┿━`). Host roles
   reuse the existing shapes (`store` a drum, `person` a client, `emphasis`), with no
   device icons. A `[network]` theme section sets the bus and group washes. It has a text
   form (`--format text`): buses as heavy rules, the same columns. Up to 6 networks, 24

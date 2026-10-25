@@ -73,17 +73,22 @@ with groups in 1 and 2; none needs a host-to-host link, a coordinate or an icon 
 - **`groups`** list `members`; each is a shaded backdrop behind them with its name at the
   top left, in a band of its own so no line runs through the words.
 
-**The columns are derived.** A host's line may cross no bus it is not on — it would read
-as attached. `drawspec.buses` searches the column order (every order up to seven hosts, a
-local search from four starting orders past that) for one where every line stays clear,
-then for the fewest columns, the shortest buses and the order nearest the one written.
+**The columns are derived.** A host's line through a bus it is not on would read as
+attached. `drawspec.buses` searches the column order (every order up to seven hosts, a
+local search from four starting orders past that) for the fewest such crossings — usually
+none — then for the fewest columns, the shortest buses and the order nearest the one
+written.
 Hosts whose vertical spans are apart stack in one column, as nwdiag stacks them. A bus
 runs from its first host's column to its last, and is long enough for its name.
 
-**No hop over a bus.** When no order keeps a line clear, the document is refused at the
-host, with what to do: put it on the network in between too, reorder `networks` so the
-ones it joins are neighbours, or split the diagram. A drawn jump would be one more thing
-a reader has to be told about.
+**A hop where a line must cross a bus.** When no order keeps a line clear, the line
+crosses the bus with a hop: it stops short of the bar, jumps it in a half circle to the
+right, and goes on — the wiring diagram's mark for two lines that cross without joining,
+which reads as *not on this network* without a legend. The order with the fewest hops
+wins, and a bus's name is set clear of any hop over it. (This was first built refusing
+such a document at the host; the owner's call was that a diagram that can be useful is
+drawn. The refusal's advice still loses a hop: put the host on the network in between
+too, or reorder `networks` so the ones it joins are neighbours.)
 
 ## What it refuses
 
@@ -94,8 +99,8 @@ a reader has to be told about.
 - `edges`: hosts are joined through networks; links between boxes are a `flow`.
 - A network no host is on, a host on the same network twice, an unknown network or member
   id (with a *did you mean*), a host in two groups, an empty name.
-- A host whose line no column order keeps clear of a bus it is not on, and a group no
-  order keeps free of a stranger's box — both at their pointer.
+- A group no column order keeps free of a stranger's box, at its pointer. A host whose
+  line no order keeps clear of a bus is not refused: the line hops the bus.
 
 ## The limits
 
@@ -108,6 +113,8 @@ the boxes (long names wrap) before it is refused by fit.
 
 It has a text form: buses as heavy rules with their names to the left (`━━┯━━`), hosts as
 boxes in the same columns as the SVG, addresses beside the lines, groups as dashed frames.
+A hop is the bus broken a cell either side of the line, `━╸│╺━` (`= | =` in ASCII): no
+junction glyph, so it cannot be read as a join (`━┿━`).
 nwdiag's own example fits 80 columns; the three-tier and office references are wider and
 refuse at 80 naming the width they need.
 

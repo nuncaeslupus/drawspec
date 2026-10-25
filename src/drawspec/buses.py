@@ -7,13 +7,14 @@ on; a bus runs from its leftmost host's column to its rightmost. Nothing else is
 decided by an author, so the one real decision — the order of the columns — is
 made here, from the attachments alone, and it is the same on every render.
 
-**A host's line may cross no bus it is not on.** A host on `dmz` and `storage`
-whose line passed through `internal` would read as attached to it, which is a
-wrong network diagram, not an untidy one. So a host that skips a bus must stand
-outside that bus's span: to its left or to its right. The order is searched for
-one with no such crossing; when none exists the document is refused (by
-`drawspec.schema`, at the host's pointer), rather than drawn with a hop over the
-bus that a reader would have to be told about.
+**A host's line crosses as few buses it is not on as can be.** A host on `dmz`
+and `storage` whose line passed straight through `internal` would read as
+attached to it, which is a wrong network diagram, not an untidy one. So a host
+that skips a bus stands outside that bus's span, to its left or to its right,
+whenever some order lets it. When no order does, the line still crosses — and
+the drawing shows a hop there, the small jump a wiring diagram draws where two
+lines cross without joining — and the order chosen is the one with the fewest
+hops. A diagram that is useful is drawn rather than refused.
 
 **Hosts share a column when their spans cannot touch** and neither would stand
 on the other's group's backdrop. A host's box sits just under its topmost bus
@@ -21,12 +22,14 @@ and its line reaches down to its lowest, so two hosts whose vertical extents are
 apart — one on `dmz`, one under `storage` — stack in one column, as nwdiag stacks
 them. Two on one bus never share: each meets the bus at its own point.
 
-**Ties go to the order written.** Among orders with no crossing, fewer columns
-win, then shorter buses, then the order nearest the one the author wrote.
+**Ties go to the order written.** Among orders with the fewest hops, fewer
+columns win, then shorter buses, then the order nearest the one the author wrote.
 
 **A group is a backdrop behind its hosts**, so it must hold no host outside it:
-an order that leaves a stranger's box inside a group's rectangle counts the same
-as a crossing.
+an order that leaves a stranger's box inside a group's rectangle is a clash,
+and a clash costs more than any number of hops: a hop can be drawn honestly, a
+backdrop over a stranger cannot, so the schema refuses a document no order
+draws without one.
 
 Pure functions on integers, so the schema can refuse what cannot be drawn
 before any layout runs, and the text form can read the same columns the SVG
@@ -48,7 +51,7 @@ EXHAUSTIVE_MAX: Final = 7
 #: How many improving passes the local search may make before it stops.
 PASSES_MAX: Final = 40
 
-Score = tuple[int, int, int, int]
+Score = tuple[int, int, int, int, int]
 
 
 @dataclass(frozen=True)
@@ -65,7 +68,7 @@ class Arrangement:
     """Each network's first and last column, by network index."""
 
     crossings: tuple[tuple[int, int], ...]
-    """Every (host, network) whose line would cross a bus it is not on."""
+    """Every (host, network) whose line crosses a bus it is not on: a hop drawn."""
 
     clashes: tuple[tuple[int, int], ...]
     """Every (group, host) where a host outside the group sits in its backdrop,
@@ -203,7 +206,7 @@ def _arranged(
             )
             for column in range(width)
         )
-        score = (len(crossings) + len(clashes), width, length, moved)
+        score = (len(clashes), len(crossings), width, length, moved)
         return score, Arrangement(
             columns=columns,
             column_of=tuple(column_of),

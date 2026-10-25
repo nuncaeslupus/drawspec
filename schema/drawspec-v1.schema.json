@@ -2973,7 +2973,7 @@
         },
         "hosts": {
           "type": "array",
-          "description": "The hosts, 1 to 24, each a box under its topmost network with a line to every network it is on. The columns are drawspec's: ordered so no line crosses a bus it is not on, then as few and as close to the order written as that allows.",
+          "description": "The hosts, 1 to 24, each a box under its topmost network with a line to every network it is on. The columns are drawspec's: ordered for the fewest lines hopping over a bus they are not on (usually none), then as few and as close to the order written as that allows.",
           "items": {
             "$ref": "#/$defs/network-host"
           },
@@ -5121,7 +5121,7 @@
         },
         "networks": {
           "type": "array",
-          "description": "The networks this host is on, each with an optional address. A host on two or more is drawn between them, joining them — a router, a firewall, a dual-homed server. Its line may cross no bus it is not on, so the column order is drawspec's; a set of attachments no order can draw is refused.",
+          "description": "The networks this host is on, each with an optional address. A host on two or more is drawn between them, joining them — a router, a firewall, a dual-homed server. The column order is drawspec's, chosen so the line crosses no bus it is not on; where no order manages that, the line hops over the bus, a jump that does not join it, and the fewest hops win.",
           "items": {
             "$ref": "#/$defs/network-attachment"
           },
