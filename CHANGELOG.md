@@ -24,6 +24,14 @@ against it would stop working. Everything below is about the *package*.
   with the full Willcox/Junto feelings wheel as a reference. `make docs`, `make schema` and
   the gallery pick it up.
 
+### Fixed
+
+- **An edge no longer runs along a frame's border.** A frame is padded by about one lane, so
+  the lane outside its outermost box could be the frame's own border, and a route on it was
+  drawn on top of the dashed line — it read as entering the frame lengthways
+  (`flow-loops-town`, `states-brand-station`). Such a run now moves a lane outward, and its
+  neighbours cross the border square on. `tools/frames.py` reports any run left along a border.
+
 ## [0.4.3] — 2026-10-20
 
 ### Changed
