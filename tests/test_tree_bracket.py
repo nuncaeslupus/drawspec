@@ -367,3 +367,14 @@ def test_a_bracket_of_sixteen_is_past_the_boxed_tree_s_node_budget() -> None:
     boxed = json.loads(path.read_text(encoding="utf-8"))
     del boxed["style"], boxed["root"]
     assert "/nodes/15" in pointers(boxed)
+
+
+def test_a_long_final_name_in_the_middle_stays_clear_of_the_elbows() -> None:
+    document = knockout(root="middle")
+    document["nodes"][0]["text"] = "Ash, champions of the whole county league"
+    drawing = drawn(document)
+    words = drawing.words["final"]
+    for elbow in (drawing.lines["s1"][0][0], drawing.lines["s2"][0][0]):
+        assert not words[0] <= elbow <= words[2]
+    text = render_text(parse_document(document), width=200)
+    assert "Ash, champions of the whole county league" in text

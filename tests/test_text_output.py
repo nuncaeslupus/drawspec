@@ -38,7 +38,7 @@ from drawspec.examples import EXAMPLES
 from drawspec.filetree import rows, text
 from drawspec.kinds import TEXT_KINDS
 from drawspec.kinds.graphtext import GRAPH_TEXT_KINDS
-from drawspec.schema import Document, load_document, parse_document
+from drawspec.schema import Document, RailroadItem, load_document, parse_document
 from drawspec.textgrid import cells, default_width, plain
 
 REFERENCE: Final = Path(__file__).resolve().parent.parent / "docs" / "reference"
@@ -53,9 +53,10 @@ UPDATE: Final = bool(os.environ.get("DRAWSPEC_UPDATE_GOLDEN"))
 
 #: Reference documents that do not fit 80 columns, and the width each needs.
 #: Three sequences, a board whose longest word is wider than a fifth of the
-#: line less the slice names, and two brackets: a sixteen-team draw's five
-#: columns of names and scores, and a two-sided draw's nine. Each refuses at 80
-#: rather than wrapping a word or running over.
+#: line less the slice names, an SPI read whose twenty steps take four columns
+#: each, two networks, and two brackets: a sixteen-team draw's five columns of
+#: names and scores, and a two-sided draw's nine. Each refuses at 80 rather than
+#: wrapping a word or running over.
 WIDER: Final = {
     "sequence-async-export": 83,
     "sequence-dns": 93,
@@ -63,6 +64,10 @@ WIDER: Final = {
     "board-onboarding": 88,
     "tree-bracket-cup": 92,
     "tree-bracket-quiz": 141,
+    # A network's bus names stand left of their buses, and every column holds a box.
+    "network-office": 120,
+    "network-three-tier": 136,
+    "timing-spi": 94,
 }
 
 
@@ -77,10 +82,14 @@ GOLDENS: Final = {
     "stack": "stack-decisions",
     "rag": "rag-refit",
     "meter": "meter-migration",
+    "network": "network-nwdiag",
+    "timing": "timing-session",
+    "gitgraph": "gitgraph-gitflow",
+    "railroad": "railroad-json-number",
 }
 
 #: Golden files beyond one per kind: a second style of a kind, held the same way.
-MORE_GOLDENS: Final = ("meter-appeal", "meter-library", "meter-ward")
+MORE_GOLDENS: Final = ("meter-appeal", "meter-library", "meter-ward", "railroad-sql-select")
 
 CHARSETS: Final = ("unicode", "ascii")
 
@@ -142,13 +151,38 @@ def _labels(document: Document) -> list[str]:
     elif document.kind == "meter":
         found += [meter.text for meter in document.meters]
         found += [band.text for meter in document.meters for band in meter.bands]
+    elif document.kind == "network":
+        found += [network.text for network in document.networks]
+        found += [network.address for network in document.networks]
+        found += [host.text for host in document.hosts]
+        found += [address for host in document.hosts for address in host.addresses]
+        found += [group.text for group in document.host_groups]
+    elif document.kind == "timing":
+        for signal in document.timing_signals:
+            found += [signal.text, signal.group, *signal.states]
+            if signal.lane == "bus":
+                found += [value for value in signal.values if value not in (".", "x", "z")]
+        found += list(document.timing_ticks)
+        found += [marker.text for marker in document.timing_markers]
+        found += [interval.text for interval in document.timing_intervals]
+    elif document.kind == "railroad":
+        found += [rule.name for rule in document.railroad_rules]
+        found += [word for rule in document.railroad_rules for word in _railroad_words(rule.expr)]
     found.append(document.caption)
     return [line for label in found for line in plain(label).split("\n") if line.strip()]
 
 
+def _railroad_words(item: RailroadItem) -> list[str]:
+    """Every box's and comment's words on a railroad track."""
+    found = [item.text] if item.text else []
+    for child in (*item.items, *([item.separator] if item.separator else [])):
+        found += _railroad_words(child)
+    return found
+
+
 #: The kinds whose SVG wraps a label, and whose text form may therefore break
 #: one at spaces. Everywhere else a label must appear on one line, whole.
-WRAPPING: Final = ("sequence", "timeline", "board", "stack", "rag")
+WRAPPING: Final = ("sequence", "timeline", "board", "stack", "rag", "network")
 
 
 # ---------------------------------------------------------------------------

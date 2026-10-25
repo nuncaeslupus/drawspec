@@ -236,10 +236,15 @@ def bracket_drawing(document: Document, theme: Theme, measurer: TextMeasurer) ->
     for identifier, node in nodes.items():
         if identifier != tree.root:
             width_of[node.height] = max(width_of[node.height], on_line(identifier))
+    root_words = words[tree.root]
+    if middle and root_words is not None:
+        # The final's words are centred over the middle: the last column on each side
+        # is wide enough that they never reach the elbows before it.
+        last = tree.height - 1
+        width_of[last] = max(width_of[last], root_words.width / 2 + PAD * unit * 2)
     columns = [0.0]
     for height in range(tree.height):
         columns.append(columns[-1] + width_of[height])
-    root_words = words[tree.root]
     stub = max(STUB * unit, (root_words.width + PAD * unit * 2) if root_words else 0.0)
     reach = columns[-1] + (0.0 if middle else stub)
     centre = columns[-1]
@@ -453,10 +458,13 @@ def bracket_text(document: Document, width: int, charset: str) -> str:
     for identifier, node in nodes.items():
         if identifier != tree.root:
             width_of[node.height] = max(width_of[node.height], need(identifier))
+    root_words = words[tree.root]
+    if middle and root_words:
+        # The final's words are centred over the middle, clear of the elbows before it.
+        width_of[tree.height - 1] = max(width_of[tree.height - 1], cells(root_words) // 2 + 3)
     columns = [0]
     for height in range(tree.height):
         columns.append(columns[-1] + width_of[height])
-    root_words = words[tree.root]
     stub = max(3, cells(root_words) + 5 if root_words else 0)
     centre = columns[-1]
     names = max((cells(words[i]) for i, n in nodes.items() if not n.children), default=0)

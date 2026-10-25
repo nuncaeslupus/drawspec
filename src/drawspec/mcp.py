@@ -231,7 +231,7 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
                     "description": (
                         "Override the document's width, e.g. `640`. With format `text`, the "
                         f"most terminal cells a line may take (default {DEFAULT_WIDTH}, or "
-                        f"{WIDE_WIDTH} for `lanes` and `sequence`)."
+                        f"{WIDE_WIDTH} for `lanes`, `sequence` and `timing`)."
                     ),
                 },
                 "height": {

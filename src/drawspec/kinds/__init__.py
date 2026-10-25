@@ -24,20 +24,25 @@ from drawspec.kinds.familytree import familytree_scene
 from drawspec.kinds.files import files_scene, files_text
 from drawspec.kinds.fishbone import fishbone_scene
 from drawspec.kinds.gantt import gantt_scene, gantt_text
+from drawspec.kinds.gitgraph import gitgraph_scene, gitgraph_text
 from drawspec.kinds.graph import DRAWN_KINDS, graph_scene
 from drawspec.kinds.graphtext import graph_text, tree_graph_text
 from drawspec.kinds.grid import grid_scene, stack_text, timeline_text
 from drawspec.kinds.journey import journey_scene
 from drawspec.kinds.meter import meter_scene, meter_text
 from drawspec.kinds.mindmap import mindmap_scene
+from drawspec.kinds.network import network_scene, network_text
 from drawspec.kinds.numberline import numberline_scene
 from drawspec.kinds.pie import pie_scene
 from drawspec.kinds.rag import rag_scene, rag_text
+from drawspec.kinds.railroad import railroad_scene, railroad_text
 from drawspec.kinds.sankey import sankey_scene
 from drawspec.kinds.sequence import sequence_scene, sequence_text
 from drawspec.kinds.shape import shape_scene
 from drawspec.kinds.sunburst import sunburst_scene
+from drawspec.kinds.timing import timing_scene, timing_text
 from drawspec.kinds.treemap import treemap_scene
+from drawspec.kinds.usecase import usecase_scene
 from drawspec.kinds.venn import venn_scene
 from drawspec.kinds.waterfall import waterfall_scene
 from drawspec.scene import Scene
@@ -52,18 +57,23 @@ from drawspec.schema import (
     FILES_KINDS,
     FISHBONE_KINDS,
     GANTT_KINDS,
+    GITGRAPH_KINDS,
     GRID_KINDS,
     JOURNEY_KINDS,
     METER_KINDS,
     MINDMAP_KINDS,
+    NETWORK_KINDS,
     NUMBERLINE_KINDS,
     PIE_KINDS,
     RAG_KINDS,
+    RAILROAD_KINDS,
     SANKEY_KINDS,
     SEQUENCE_KINDS,
     SHAPE_KINDS,
     SUNBURST_KINDS,
+    TIMING_KINDS,
     TREEMAP_KINDS,
+    USECASE_KINDS,
     VENN_KINDS,
     WATERFALL_KINDS,
     Document,
@@ -100,6 +110,11 @@ IMPLEMENTED: tuple[str, ...] = (
     *RAG_KINDS,
     *CLOCK_KINDS,
     *SUNBURST_KINDS,
+    *NETWORK_KINDS,
+    *TIMING_KINDS,
+    *GITGRAPH_KINDS,
+    *RAILROAD_KINDS,
+    *USECASE_KINDS,
     "cycle",
 )
 
@@ -119,6 +134,10 @@ TEXT_FORMS: Final[dict[str, Callable[[Document, int, str], str]]] = {
     "stack": stack_text,
     "rag": rag_text,
     "meter": meter_text,
+    "network": network_text,
+    "timing": timing_text,
+    "gitgraph": gitgraph_text,
+    "railroad": railroad_text,
     "flow": graph_text,
     "states": graph_text,
     "lanes": graph_text,
@@ -198,6 +217,16 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return clock_scene(document, theme, measurer)
     if document.kind in SUNBURST_KINDS:
         return sunburst_scene(document, theme, measurer)
+    if document.kind in NETWORK_KINDS:
+        return network_scene(document, theme, measurer)
+    if document.kind in TIMING_KINDS:
+        return timing_scene(document, theme, measurer)
+    if document.kind in GITGRAPH_KINDS:
+        return gitgraph_scene(document, theme, measurer)
+    if document.kind in RAILROAD_KINDS:
+        return railroad_scene(document, theme, measurer)
+    if document.kind in USECASE_KINDS:
+        return usecase_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -228,14 +257,17 @@ __all__ = [
     "files_scene",
     "fishbone_scene",
     "gantt_scene",
+    "gitgraph_scene",
     "graph_scene",
     "journey_scene",
     "meter_scene",
     "mindmap_scene",
+    "network_scene",
     "numberline_scene",
     "outline",
     "pie_scene",
     "rag_scene",
+    "railroad_scene",
     "sankey_scene",
     "scene_for",
     "sequence_scene",
@@ -243,7 +275,9 @@ __all__ = [
     "sunburst_scene",
     "text_for",
     "text_runs",
+    "timing_scene",
     "treemap_scene",
+    "usecase_scene",
     "venn_scene",
     "waterfall_scene",
 ]
