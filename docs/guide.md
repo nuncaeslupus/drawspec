@@ -1362,7 +1362,8 @@ drawn as its first three, a column of dots and its last two, joined like the res
 with its size written under its name (`784 neurons`). `labels` names each neuron
 of a whole layer (`x₁`, `ŷ`, four characters at most); `"bias": true` adds a `+1`
 unit at the top of a column, feeding the next layer and fed by nothing (not on the
-last layer). The lines are headless: the order of the layers says the way.
+last layer). The lines between neurons are headless; an arrow comes into each input
+neuron and leaves each output neuron, so the way through reads at a glance.
 
 **`"style": "blocks"`** is a paper's architecture figure — LeNet, ResNet's residual
 block, the Transformer: each layer a box in sequence with its `text` (`Conv 3×3, 64`),
@@ -1379,13 +1380,19 @@ papers draw round the sequence:
 * **`repeats`** — `{from, to, times, text}`: a block stacked `times` times, drawn once
   inside a frame marked `×6`. Repeats never overlap, and a skip is inside a frame or
   round it, never across its line.
+* **`branches`** — in place of a layer, `{"branches": [{"layers": [...]}, ...]}`: two to
+  four parallel towers of one to three layers each, split from the layer before and
+  joined by the layer after (a `Filter concatenation`) — GoogLeNet's Inception module.
+  A tower's layers carry `text` and `type` only; a set of branches is never first or
+  last, never two in a row, and nothing names a layer inside one.
 
 The text form is a model summary, as Keras's `summary()` prints one: in `neurons`,
 each layer's neurons and parameters (weights and biases, fully connected), and the
 total; in `blocks`, each layer's number, name, type and shape, then a line per skip
-(`2 → 4`) and repeat (`×6: layers 3-6`). Up to 16 layers, 6 skips and 3 repeats. A
-network that branches and joins in ways a sequence with skips cannot say (Inception's
-parallel towers) is a `flow`.
+(`2 → 4`) and repeat (`×6: layers 3-6`), a branch's layers numbered `2a`, `2b1`,
+`2b2`. Up to 16 layers, 6 skips and 3 repeats. A network that branches and joins in
+other ways — branches inside branches, a split that never joins, an encoder feeding a
+decoder's every layer — is a `flow`.
 
 ## A sequence diagram
 

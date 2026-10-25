@@ -1090,6 +1090,13 @@ name, so a misspelt key is an error at the point it was written.
 | `bias` | boolean | no | `neurons` only: `true` draws a bias unit, `+1`, above the column, joined to every neuron of the next layer. Not on the last layer, which feeds nothing. |
 | `type` | string | no | `blocks` only: what sort of layer this is — `conv`, `pool`, `dense`. Layers of one type share a fill, and a key names them; at most 4 types. |
 | `shape` | string | no | `blocks` only: the tensor the layer puts out, written beside its box in the label size: `28x28x6`, `512`. |
+| `branches` | array of [neuralnet-branch](#neuralnet-branch-object), at least 2 | no | `blocks` only: in place of a layer, 2 to 4 parallel branches, each a tower of layers, split from the layer before and joined by the layer after (a `concat`) — GoogLeNet's Inception module. Such an entry holds `branches` alone; never first or last, and never two in a row. |
+
+### `neuralnet-branch` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `layers` | array of [neuralnet-layer](#neuralnet-layer-object), at least 1 | **yes** | The branch's layers in order, 1 to 3, each with its `text` and `type` only: drawn as a tower beside the other branches. |
 
 ### `neuralnet-skip` object
 

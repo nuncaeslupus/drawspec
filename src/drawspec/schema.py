@@ -888,6 +888,11 @@ NEURALNET_LABEL_MAX: Final = 4
 
 #: The most skip connections and repeated blocks a `blocks` network carries.
 NEURALNET_SKIP_MAX: Final = 6
+
+#: The most branches a set splits into, and the most layers in one branch: GoogLeNet's
+#: Inception module is four towers of one or two layers.
+NEURALNET_BRANCH_MAX: Final = 4
+NEURALNET_TOWER_MAX: Final = 3
 NEURALNET_REPEAT_MAX: Final = 3
 
 #: The most ticks a step may cut the axis into. Past thirty the numbers crowd
@@ -3563,6 +3568,31 @@ OBJECTS: Final[Mapping[str, tuple[FieldSpec, ...]]] = {
             description=(
                 "`blocks` only: the tensor the layer puts out, written beside its box in the "
                 "label size: `28x28x6`, `512`."
+            ),
+        ),
+        FieldSpec(
+            "branches",
+            "array",
+            item_ref="neuralnet-branch",
+            min_items=2,
+            description=(
+                f"`blocks` only: in place of a layer, 2 to {NEURALNET_BRANCH_MAX} parallel "
+                "branches, each a tower of layers, split from the layer before and joined by "
+                "the layer after (a `concat`) — GoogLeNet's Inception module. Such an entry "
+                "holds `branches` alone; never first or last, and never two in a row."
+            ),
+        ),
+    ),
+    "neuralnet-branch": (
+        FieldSpec(
+            "layers",
+            "array",
+            required=True,
+            item_ref="neuralnet-layer",
+            min_items=1,
+            description=(
+                f"The branch's layers in order, 1 to {NEURALNET_TOWER_MAX}, each with its "
+                "`text` and `type` only: drawn as a tower beside the other branches."
             ),
         ),
     ),
@@ -6704,6 +6734,9 @@ class NeuralLayer:
 
     shape: str = ""
     """A `blocks` layer's output tensor, as written, or empty."""
+
+    branches: tuple[tuple[NeuralLayer, ...], ...] = ()
+    """A set of branches' towers, each its layers in order; empty for a layer."""
 
 
 @dataclass(frozen=True)
@@ -15256,6 +15289,7 @@ _NEURALNET_STYLE_FIELDS: Final = {
     "skips": "blocks",
     "repeats": "blocks",
     "direction": "blocks",
+    "branches": "blocks",
 }
 
 
@@ -15306,10 +15340,112 @@ def _neuralnet_violations(document: Mapping[str, Any]) -> list[Violation]:
         )
     ids: dict[str, int] = {}
     types: list[str] = []
+
+    def typed(kind: object, pointer: str) -> None:
+        if style != "blocks" or not isinstance(kind, str) or kind in types:
+            return
+        types.append(kind)
+        if len(types) > CLASSES_MAX:
+            found.append(
+                Violation(
+                    pointer,
+                    f"{kind!r} is a {len(types)}th type, past the {CLASSES_MAX} fills a "
+                    f"key tells apart. Merge types the reader need not tell apart "
+                    f"(`norm` into `conv`), or leave `type` off the minor layers.",
+                )
+            )
+
+    def branched(entry: Mapping[str, Any], here: str, index: int) -> None:
+        """A set of branches: its place in the sequence, its towers, their layers."""
+        for name in sorted(set(entry) - {"branches"}):
+            found.append(
+                Violation(
+                    f"{here}/{name}",
+                    f"{name!r}: a set of branches is drawn as its towers alone. Name what they "
+                    f"compute in the layer after them, which joins them (`Filter concat`).",
+                )
+            )
+        if index == 0 or index == len(layers) - 1:
+            found.append(
+                Violation(
+                    f"{here}/branches",
+                    "branches split from the layer before them and join at the layer after "
+                    "them, so they are never first or last. Add the layer they split from or "
+                    "the one that joins them (a `concat`).",
+                )
+            )
+        elif isinstance(layers[index - 1], dict) and "branches" in layers[index - 1]:
+            found.append(
+                Violation(
+                    f"{here}/branches",
+                    "two sets of branches in a row would join in nothing: put the layer that "
+                    "joins the first set (a `concat`, an `add`) between them.",
+                )
+            )
+        towers = entry.get("branches")
+        if not isinstance(towers, list):
+            return
+        if len(towers) > NEURALNET_BRANCH_MAX:
+            found.append(
+                Violation(
+                    f"{here}/branches/{NEURALNET_BRANCH_MAX}",
+                    f"{len(towers)} branches, past the {NEURALNET_BRANCH_MAX} an Inception "
+                    f"module holds and a reader follows side by side. Draw the wider split "
+                    f"as a `flow`.",
+                )
+            )
+        for tower, branch in enumerate(towers):
+            if not isinstance(branch, dict):
+                continue
+            inner = list(_listed(branch, "layers"))
+            where = f"{here}/branches/{tower}"
+            if len(inner) > NEURALNET_TOWER_MAX:
+                found.append(
+                    Violation(
+                        f"{where}/layers/{NEURALNET_TOWER_MAX}",
+                        f"a branch of {len(inner)} layers, past the {NEURALNET_TOWER_MAX} a "
+                        f"tower holds beside the others. Fold its layers into fewer boxes "
+                        f"(`1x1 conv, 3x3 conv`).",
+                    )
+                )
+            for position, layer in enumerate(inner):
+                if not isinstance(layer, dict):
+                    continue
+                spot = f"{where}/layers/{position}"
+                for name in ("id", "shape", "branches", "size", "labels", "bias"):
+                    if name in layer:
+                        found.append(
+                            Violation(
+                                f"{spot}/{name}",
+                                f"{name!r} is not drawn on a layer inside a branch: a tower "
+                                f"holds boxes with their `text` and `type` only. Nothing names "
+                                f"a layer inside branches, and a shape belongs on the layer "
+                                f"that joins them.",
+                            )
+                        )
+                text = layer.get("text")
+                if "text" not in layer:
+                    found.append(
+                        Violation(
+                            f"{spot}/text",
+                            "a block says what the layer is — `1x1 conv`, `3x3 max pool` — "
+                            "in `text`.",
+                        )
+                    )
+                elif isinstance(text, str) and not text.strip():
+                    found.append(Violation(f"{spot}/text", "a layer's name needs words."))
+                typed(layer.get("type"), f"{spot}/type")
+
     for index, entry in enumerate(layers):
         if not isinstance(entry, dict):
             continue
         here = _pointer("layers", index)
+        if "branches" in entry:
+            if style == "blocks":
+                branched(entry, here, index)
+            else:
+                found.append(wrong_style(f"{here}/branches", "branches"))
+            continue
         for name in ("size", "labels", "bias", "type", "shape"):
             if name in entry and _NEURALNET_STYLE_FIELDS[name] != style:
                 found.append(wrong_style(f"{here}/{name}", name))
@@ -15388,18 +15524,7 @@ def _neuralnet_violations(document: Mapping[str, Any]) -> list[Violation]:
                         "bias belongs to the layer it is drawn beside, feeding the next.",
                     )
                 )
-        kind = entry.get("type")
-        if style == "blocks" and isinstance(kind, str) and kind not in types:
-            types.append(kind)
-            if len(types) > CLASSES_MAX:
-                found.append(
-                    Violation(
-                        f"{here}/type",
-                        f"{kind!r} is a {len(types)}th type, past the {CLASSES_MAX} fills a "
-                        f"key tells apart. Merge types the reader need not tell apart "
-                        f"(`norm` into `conv`), or leave `type` off the minor layers.",
-                    )
-                )
+        typed(entry.get("type"), f"{here}/type")
 
     if style != "blocks":
         return found
@@ -17529,6 +17654,23 @@ def _automaton_document(document: Mapping[str, Any]) -> Document:
     )
 
 
+def _neural_layer(entry: Mapping[str, Any]) -> NeuralLayer:
+    """One layer, or a set of branches with its towers' layers, from the validated mapping."""
+    return NeuralLayer(
+        id=str(entry.get("id", "")),
+        text=str(entry.get("text", "")),
+        size=int(entry.get("size", 0)),
+        labels=tuple(str(label) for label in entry.get("labels", ())),
+        bias=entry.get("bias") is True,
+        type=str(entry.get("type", "")),
+        shape=str(entry.get("shape", "")),
+        branches=tuple(
+            tuple(_neural_layer(layer) for layer in branch["layers"])
+            for branch in entry.get("branches", ())
+        ),
+    )
+
+
 def _neuralnet_document(document: Mapping[str, Any]) -> Document:
     """A neural network: its layers in order, and a `blocks` network's spans."""
 
@@ -17550,18 +17692,7 @@ def _neuralnet_document(document: Mapping[str, Any]) -> Document:
         height_binding=bool(document.get("height_binding", False)),
         theme=str(document.get("theme", "")),
         neural_style=str(document.get("style", "neurons")),
-        neural_layers=tuple(
-            NeuralLayer(
-                id=str(entry.get("id", "")),
-                text=str(entry.get("text", "")),
-                size=int(entry.get("size", 0)),
-                labels=tuple(str(label) for label in entry.get("labels", ())),
-                bias=entry.get("bias") is True,
-                type=str(entry.get("type", "")),
-                shape=str(entry.get("shape", "")),
-            )
-            for entry in document["layers"]
-        ),
+        neural_layers=tuple(_neural_layer(entry) for entry in document["layers"]),
         neural_skips=tuple(span(entry) for entry in document.get("skips", ())),
         neural_repeats=tuple(span(entry) for entry in document.get("repeats", ())),
         neural_direction=str(document.get("direction", "")),
@@ -18165,6 +18296,7 @@ __all__ = [
     "NETWORK_HOST_ROLES",
     "NETWORK_KINDS",
     "NETWORK_MAX",
+    "NEURALNET_BRANCH_MAX",
     "NEURALNET_DIRECTIONS",
     "NEURALNET_KINDS",
     "NEURALNET_LABEL_MAX",
@@ -18173,6 +18305,7 @@ __all__ = [
     "NEURALNET_REPEAT_MAX",
     "NEURALNET_SKIP_MAX",
     "NEURALNET_STYLES",
+    "NEURALNET_TOWER_MAX",
     "NUMBERLINE_KINDS",
     "NUMBERLINE_POINT_MAX",
     "NUMBERLINE_RANGE_MAX",
