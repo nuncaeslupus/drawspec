@@ -925,7 +925,8 @@ def off_borders(
                     if (
                         candidate is not None
                         and _is_clear(candidate, walls, theme)
-                        and not _on_a_border(candidate, frames, near)
+                        and _along_border(*candidate.segments[segment], frames, near) is None
+                        and not _adds_passes(candidate, current, frames)
                         and not _lands_on_another(candidate, settled, index)
                     ):
                         moved = candidate
@@ -963,12 +964,32 @@ def _along_border(
     return None
 
 
-def _on_a_border(route: Route, frames: Sequence[Obstacle], near: float) -> bool:
-    """Whether any middle run of `route` lies along a frame's border."""
-    return any(
-        _along_border(first, second, frames, near) is not None
-        for first, second in route.segments[1:-1]
-    )
+def _adds_passes(candidate: Route, current: Route, frames: Sequence[Obstacle]) -> bool:
+    """Whether a shifted route goes through some frame's border more often than before.
+
+    Moving a run off a frame that holds both of the route's ends would take the
+    route out of that frame and back in, and moving one off a frame it enters
+    could make it enter twice. Either is worse than the run on the border.
+    """
+    return any(_passes(candidate, frame) > _passes(current, frame) for frame in frames)
+
+
+def _passes(route: Route, frame: Obstacle) -> int:
+    """How many times `route` goes through `frame`'s border."""
+
+    def inside(point: tuple[float, float]) -> bool:
+        return (
+            frame.x + _TOLERANCE < point[0] < frame.right - _TOLERANCE
+            and frame.y + _TOLERANCE < point[1] < frame.bottom - _TOLERANCE
+        )
+
+    count = 0
+    for first, second in route.segments:
+        if inside(first) != inside(second):
+            count += 1
+        elif not inside(first) and frame.crosses(first, second):
+            count += 2
+    return count
 
 
 def _fences(
