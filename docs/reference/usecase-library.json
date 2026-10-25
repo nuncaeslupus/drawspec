@@ -1,0 +1,36 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "usecase",
+  "title": "Library loans",
+  "description": "A borrower and a librarian round the loans system: borrowing always checks for a reservation, and is sometimes refused.",
+  "systems": [{"id": "library", "text": "Library system"}],
+  "actors": [
+    {"id": "borrower", "text": "Book borrower"},
+    {"id": "staff", "text": "Staff member"},
+    {"id": "librarian", "text": "Librarian", "supporting": true}
+  ],
+  "usecases": [
+    {"id": "browse", "text": "Browse catalogue"},
+    {"id": "reserve", "text": "Reserve a book"},
+    {"id": "borrow", "text": "Borrow copy of book"},
+    {"id": "return", "text": "Return copy of book"},
+    {"id": "journal", "text": "Borrow journal"},
+    {"id": "check", "text": "Check for reservation"},
+    {"id": "refuse", "text": "Refuse loan"},
+    {"id": "catalogue", "text": "Update catalogue"}
+  ],
+  "edges": [
+    {"from": "borrower", "to": "browse"},
+    {"from": "borrower", "to": "reserve"},
+    {"from": "borrower", "to": "borrow"},
+    {"from": "borrower", "to": "return"},
+    {"from": "staff", "to": "borrower", "role": "inherits"},
+    {"from": "staff", "to": "journal"},
+    {"from": "librarian", "to": "borrow"},
+    {"from": "librarian", "to": "return"},
+    {"from": "librarian", "to": "catalogue", "role": "association"},
+    {"from": "borrow", "to": "check", "role": "include"},
+    {"from": "refuse", "to": "borrow", "role": "extend"}
+  ]
+}

@@ -78,6 +78,19 @@ against it would stop working. Everything below is about the *package*.
   `[sunburst]` theme section and scaling with the wheel. Up to three rings and 150 sectors,
   with the full Willcox/Junto feelings wheel as a reference. `make docs`, `make schema` and
   the gallery pick it up.
+- **A `usecase` kind.** A UML use case diagram: actors as stick figures outside one or
+  more system boundaries (a `flow` group's frame, stacked down the middle), use cases as
+  ellipses inside them, and the relations `association`, `include`, `extend` and
+  `inherits` — «include» and «extend» dashed and named, generalisation with a hollow
+  triangle. No coordinates: primary actors stand left and supporting ones right
+  (`supporting`, or derived from who already has each use case), a use case that is
+  included, extends or specialises stands a column right of its base, a specialised
+  actor above or below its parent, and the orders down each band are chosen so that no
+  straight line runs through an ellipse, a figure, a name or a foreign boundary — one
+  that no order clears bends once, in a gap. Budget 8 actors, 15 use cases, 3 systems, 30
+  relations; refusals for actor–actor associations, include from an actor, loops, and
+  more, each at its pointer. No text form. The sequence kind's stick figure is now
+  shared (`kinds.sequence.stick_figure`). Library, ATM and checkout references.
 
 ### Fixed
 

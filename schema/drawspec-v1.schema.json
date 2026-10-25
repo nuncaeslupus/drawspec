@@ -3137,6 +3137,94 @@
         "rules"
       ],
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "title": "usecase",
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "description": "Optional, and only for editors: the URL of this schema."
+        },
+        "version": {
+          "const": 1
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "usecase"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "description": "The diagram's accessible name."
+        },
+        "description": {
+          "type": "string",
+          "description": "The diagram's accessible description."
+        },
+        "caption": {
+          "type": "string",
+          "description": "A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element."
+        },
+        "width": {
+          "type": "number",
+          "description": "Overrides the theme's canvas width. Binding.",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "description": "Advisory unless height_binding is true.",
+          "exclusiveMinimum": 0
+        },
+        "height_binding": {
+          "type": "boolean",
+          "description": "Makes height a constraint rather than a hint."
+        },
+        "theme": {
+          "type": "string",
+          "description": "A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it."
+        },
+        "systems": {
+          "type": "array",
+          "description": "The systems whose boundaries hold the use cases, 0 to 3, each a frame with its name in the corner, stacked down the middle in the order written. Left out, the use cases stand with no boundary.",
+          "items": {
+            "$ref": "#/$defs/usecase-system"
+          }
+        },
+        "actors": {
+          "type": "array",
+          "description": "Who or what uses the system, 1 to 8, each drawn as a stick figure with its name under it, outside every boundary: primary actors on the left, `supporting` ones on the right, a specialised actor above or below its parent. No coordinates; the order down each side is derived to keep lines from crossing.",
+          "items": {
+            "$ref": "#/$defs/usecase-actor"
+          },
+          "minItems": 1
+        },
+        "usecases": {
+          "type": "array",
+          "description": "What the actors do with the system, 1 to 15, each an ellipse inside its system's boundary. A use case that is included, that extends another or that specialises one stands a column to the right of it, three columns at most.",
+          "items": {
+            "$ref": "#/$defs/usecase-case"
+          },
+          "minItems": 1
+        },
+        "edges": {
+          "type": "array",
+          "description": "The relations, up to 30: `association` between an actor and a use case, `include` and `extend` between use cases, `inherits` between two actors or two use cases. No labels: the role says what each line is.",
+          "items": {
+            "$ref": "#/$defs/usecase-edge"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "version",
+        "kind",
+        "actors",
+        "usecases",
+        "edges"
+      ],
+      "additionalProperties": false
     }
   ],
   "$defs": {
@@ -5802,6 +5890,96 @@
       "required": [
         "text",
         "amount"
+      ],
+      "additionalProperties": false
+    },
+    "usecase-actor": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the actors, use cases and systems; what a relation's `from` and `to` name."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "supporting": {
+          "type": "boolean",
+          "description": "Whether this actor is a supporting (secondary) one — a bank, a payment service, a librarian who serves the borrower: drawn on the right of the boundary, primary actors on the left. Left out, it is derived: an actor whose every use case an actor written before it already has is supporting. An actor that `inherits` stands on its parent's side."
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "usecase-case": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the actors, use cases and systems; what a relation's `from` and `to` name."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        },
+        "system": {
+          "type": "string",
+          "description": "The id of the system whose boundary this use case is drawn in. Needed when there are two or more `systems`; with one it may be left out, and with none there is no boundary to name."
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "additionalProperties": false
+    },
+    "usecase-edge": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "An association's actor or use case (either way round); the base use case that `include`s; the use case that `extend`s; the specialised actor or use case that `inherits`."
+        },
+        "to": {
+          "type": "string",
+          "description": "The other end: the use case included, the use case extended, the general actor or use case inherited from."
+        },
+        "role": {
+          "type": "string",
+          "description": "`association` (the default: an actor takes part in a use case, a solid line with no head), `include` (the base always does the other: a dashed arrow «include» to it), `extend` (this one sometimes adds to the other: a dashed arrow «extend» to the base) or `inherits` (a kind of the other, actor to actor or use case to use case: a hollow triangle at the general end).",
+          "enum": [
+            "association",
+            "include",
+            "extend",
+            "inherits"
+          ]
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    },
+    "usecase-system": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique among the actors, use cases and systems; what a use case's `system` names."
+        },
+        "text": {
+          "type": "string",
+          "description": "The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line."
+        }
+      },
+      "required": [
+        "id",
+        "text"
       ],
       "additionalProperties": false
     },

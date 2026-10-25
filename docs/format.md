@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-41 kinds. The machine-readable form of this page is the published
+42 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,7 +28,7 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `network`, `timing`, `gitgraph`, `railroad` | **yes** | Which of the forty-one diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `network`, `timing`, `gitgraph`, `railroad`, `usecase` | **yes** | Which of the forty-two diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
@@ -313,6 +313,15 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `markers` | array of [timing-marker](#timing-marker-object) | no | Vertical lines across every lane at an edge, up to 8, each named over the figure: a START, a sample point. |
 | `intervals` | array of [timing-interval](#timing-interval-object) | no | Named spans between two edges, up to 10, each an arrow under a signal's lane: a setup time, a hold time, a timeout. |
 
+### `usecase`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `systems` | array of [usecase-system](#usecase-system-object) | no | The systems whose boundaries hold the use cases, 0 to 3, each a frame with its name in the corner, stacked down the middle in the order written. Left out, the use cases stand with no boundary. |
+| `actors` | array of [usecase-actor](#usecase-actor-object), at least 1 | **yes** | Who or what uses the system, 1 to 8, each drawn as a stick figure with its name under it, outside every boundary: primary actors on the left, `supporting` ones on the right, a specialised actor above or below its parent. No coordinates; the order down each side is derived to keep lines from crossing. |
+| `usecases` | array of [usecase-case](#usecase-case-object), at least 1 | **yes** | What the actors do with the system, 1 to 15, each an ellipse inside its system's boundary. A use case that is included, that extends another or that specialises one stands a column to the right of it, three columns at most. |
+| `edges` | array of [usecase-edge](#usecase-edge-object), at least 1 | **yes** | The relations, up to 30: `association` between an actor and a use case, `include` and `extend` between use cases, `inherits` between two actors or two use cases. No labels: the role says what each line is. |
+
 ### `sunburst`
 
 | Field | Type | Required | What it is |
@@ -423,6 +432,7 @@ largest reference document of its kind, so nothing in the gallery is refused.
 | `timing` | 12 `signals`, 6 `states` per signal, 8 `markers`, 10 `intervals` |
 | `gitgraph` | 8 `branches`, 30 `steps` |
 | `railroad` | 12 `rules` |
+| `usecase` | 8 `actors`, 15 `usecases`, 3 `systems`, 30 `edges` |
 
 ## Emphasis
 
@@ -936,6 +946,37 @@ name, so a misspelt key is an error at the point it was written.
 | `to` | number | **yes** | The edge it ends at, after `from`, in steps (whole or half). |
 | `text` | string | **yes** | What the interval is, over its arrow: `tSU;STA`, `setup`, `100 ms`. A name, not a measurement drawspec makes — the steps are not to scale in time. |
 | `signal` | string | no | The signal it is measured on, by its `text`: the arrow is drawn under that lane. Left out, it goes under the last lane. |
+
+### `usecase-actor` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the actors, use cases and systems; what a relation's `from` and `to` name. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `supporting` | boolean | no | Whether this actor is a supporting (secondary) one — a bank, a payment service, a librarian who serves the borrower: drawn on the right of the boundary, primary actors on the left. Left out, it is derived: an actor whose every use case an actor written before it already has is supporting. An actor that `inherits` stands on its parent's side. |
+
+### `usecase-case` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the actors, use cases and systems; what a relation's `from` and `to` name. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `system` | string | no | The id of the system whose boundary this use case is drawn in. Needed when there are two or more `systems`; with one it may be left out, and with none there is no boundary to name. |
+
+### `usecase-system` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the actors, use cases and systems; what a use case's `system` names. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `usecase-edge` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | string | **yes** | An association's actor or use case (either way round); the base use case that `include`s; the use case that `extend`s; the specialised actor or use case that `inherits`. |
+| `to` | string | **yes** | The other end: the use case included, the use case extended, the general actor or use case inherited from. |
+| `role` | string — one of `association`, `include`, `extend`, `inherits` | no | `association` (the default: an actor takes part in a use case, a solid line with no head), `include` (the base always does the other: a dashed arrow «include» to it), `extend` (this one sometimes adds to the other: a dashed arrow «extend» to the base) or `inherits` (a kind of the other, actor to actor or use case to use case: a hollow triangle at the general end). |
 
 ### `sunburst-node` object
 

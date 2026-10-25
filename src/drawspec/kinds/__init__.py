@@ -41,6 +41,7 @@ from drawspec.kinds.shape import shape_scene
 from drawspec.kinds.sunburst import sunburst_scene
 from drawspec.kinds.timing import timing_scene, timing_text
 from drawspec.kinds.treemap import treemap_scene
+from drawspec.kinds.usecase import usecase_scene
 from drawspec.kinds.venn import venn_scene
 from drawspec.kinds.waterfall import waterfall_scene
 from drawspec.scene import Scene
@@ -71,6 +72,7 @@ from drawspec.schema import (
     SUNBURST_KINDS,
     TIMING_KINDS,
     TREEMAP_KINDS,
+    USECASE_KINDS,
     VENN_KINDS,
     WATERFALL_KINDS,
     Document,
@@ -111,6 +113,7 @@ IMPLEMENTED: tuple[str, ...] = (
     *TIMING_KINDS,
     *GITGRAPH_KINDS,
     *RAILROAD_KINDS,
+    *USECASE_KINDS,
     "cycle",
 )
 
@@ -221,6 +224,8 @@ def _drawn(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         return gitgraph_scene(document, theme, measurer)
     if document.kind in RAILROAD_KINDS:
         return railroad_scene(document, theme, measurer)
+    if document.kind in USECASE_KINDS:
+        return usecase_scene(document, theme, measurer)
     if document.kind == "cycle":
         # A cycle is a parametric template, not a graph layout — see D-1.
         return cycle_scene(document, theme, measurer)
@@ -268,6 +273,7 @@ __all__ = [
     "text_runs",
     "timing_scene",
     "treemap_scene",
+    "usecase_scene",
     "venn_scene",
     "waterfall_scene",
 ]

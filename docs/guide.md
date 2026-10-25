@@ -146,7 +146,7 @@ are typing it*, rather than after a render.
 ## Choosing a kind
 
 The `kind` is the first thing to get right, because it decides which other
-fields are legal. Forty-one exist, and they fall into thirty families:
+fields are legal. Forty-two exist, and they fall into thirty-one families:
 
 | Family | Kinds | What they are for |
 |---|---|---|
@@ -179,6 +179,7 @@ fields are legal. Forty-one exist, and they fall into thirty families:
 | History | `gitgraph` | Commits on branches over time: lanes that fork and merge, with tags and cherry-picks — a git-flow figure, a release branch, a hotfix. |
 | Network | `network` | Which hosts are on which networks: each network a bus, each host a box joined to every network it is on, an address beside each line — a DMZ, an office LAN, a three-tier deployment (nwdiag). |
 | Syntax | `railroad` | What may follow what in a language: a grammar's rules as tracks from an entry to an exit, through keywords in rounded boxes, other rules in square ones, choices, bypasses and loops — the syntax diagrams of JSON.org and SQLite, or a command line's. |
+| Use | `usecase` | Who uses a system for what: actors as stick figures outside a boundary, the use cases inside it as ellipses, «include», «extend» and generalisation between them (a UML use case diagram). |
 | Reasoning | `argument` | Things said for and against a claim: reasons, objections, rebuttals and evidence by stance, co-premises under one bracket (an argument map). |
 
 One worked document per kind lives in [`reference/`](reference), and `make
@@ -283,6 +284,10 @@ with that* and nothing about which way.
 | `inherits` | `entities` only: this class is a kind of that one | a hollow triangle at the general end |
 | `realizes` | `entities` only: this class implements that interface | dashed, with a hollow triangle |
 | `async` | `sequence` messages only: sent without waiting for an answer | solid, with an open head |
+
+A `usecase` diagram has a vocabulary of its own — `association`, `include`, `extend`
+and `inherits` — drawn in the roles above: an association as `link`, «include» and
+«extend» as `weak` with the keyword written beside the arrow, `inherits` as itself.
 
 Both sets are drawn, one box per role, in
 [`reference/flow-node-roles.json`](reference/flow-node-roles.json) and
@@ -2748,6 +2753,72 @@ hosts, 6 groups. It draws as text too. See
 [`reference/network-nwdiag.json`](reference/network-nwdiag.json),
 [`reference/network-three-tier.json`](reference/network-three-tier.json) and
 [`reference/network-office.json`](reference/network-office.json).
+
+## A use case diagram
+
+Who uses a system for what — the first drawing of most requirements documents, and
+the one UML calls a use case diagram. That is `usecase`:
+
+```json
+{
+  "version": 1,
+  "kind": "usecase",
+  "title": "Cash machine",
+  "systems": [{"id": "atm", "text": "ATM"}],
+  "actors": [
+    {"id": "customer", "text": "Customer"},
+    {"id": "bank", "text": "Bank", "supporting": true}
+  ],
+  "usecases": [
+    {"id": "withdraw", "text": "Withdraw cash"},
+    {"id": "pin", "text": "Authenticate with PIN"},
+    {"id": "receipt", "text": "Print receipt"}
+  ],
+  "edges": [
+    {"from": "customer", "to": "withdraw"},
+    {"from": "bank", "to": "withdraw"},
+    {"from": "withdraw", "to": "pin", "role": "include"},
+    {"from": "receipt", "to": "withdraw", "role": "extend"}
+  ]
+}
+```
+
+Each of the 1 to 8 `actors` is a stick figure with its name under it, outside every
+boundary: primary actors on the left, supporting ones on the right. `supporting: true`
+says which an actor is — a bank behind a withdrawal, a payment service, a librarian who
+serves the borrower — and left out it is derived: an actor whose every use case an actor
+written before it already has is supporting. Each of the 1 to 15 `usecases` is an
+ellipse sized to its words, inside the frame of its `system` (needed when there are two
+or more `systems`; with one it may be left out; with none there is no frame). The
+frames are a `flow` group's, their names in the corner, stacked down the middle.
+
+The `edges` are the relations, and the role says what each is, so none takes words:
+`association` (the default) joins an actor and a use case with a plain line;
+`include` (the base always does the other) and `extend` (this one sometimes adds to the
+base) are dashed arrows named «include» and «extend», drawn from the base to the
+included use case and from the extension to the base; `inherits` says an actor or a use
+case is a kind of another, with a hollow triangle at the general end. Nothing carries a
+coordinate. A use case that is included, that extends another or that specialises one
+stands a column to the right of it; a specialised actor stands straight above or below
+its parent, on its side. The orders down each band are chosen so that **no line runs
+through an ellipse, a figure, a name or a boundary it does not belong to**: every line
+is straight, and only an association that no order can clear bends once, in a gap or
+just outside its boundary. The diagram has no text form.
+
+Refused, each at its pointer: an association between two actors (they meet through the
+use cases they share) or between two use cases (say `include`, `extend` or `inherits`);
+`include` or `extend` with an actor; `inherits` between an actor and a use case; a
+system as an end; a relation to itself, or a second one between the same two; a loop of
+include, extend and inherits; a chain of more than 3 columns; an include or extend
+between two systems; an actor that takes part in nothing; a system with no use case; an
+actor that inherits from two, or from one that itself inherits; `text` or `label` on a
+relation (the keyword is the role's), `side`, `x`, `y`, `column`, `role` on an actor or a
+use case, `nodes` and `groups`. Budget: 8 actors, 15 use cases, 3 systems, 30 relations.
+See [`reference/usecase-library.json`](reference/usecase-library.json) (include, extend
+and actor generalisation), [`reference/usecase-atm.json`](reference/usecase-atm.json) (a
+supporting actor whose lines pass the included use case) and
+[`reference/usecase-checkout.json`](reference/usecase-checkout.json) (two systems, two
+specialised actors).
 
 ## Asking for a wide drawing instead of a tall one
 

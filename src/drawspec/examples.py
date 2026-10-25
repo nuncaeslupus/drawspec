@@ -69,6 +69,7 @@ PURPOSE: Final[Mapping[str, str]] = {
     "timing": "signals over one time axis — clocks, levels, buses, states: an SPI figure",
     "gitgraph": "commits on branches over time, with forks, merges, tags and cherry-picks",
     "railroad": "a grammar's rules as syntax diagrams — tracks through keywords, choices and loops",
+    "usecase": "who uses a system for what — UML actors, use cases, «include» and «extend»",
 }
 
 #: The smallest document of each kind that renders.
@@ -448,6 +449,14 @@ EXAMPLES: Final[Mapping[str, Mapping[str, Any]]] = {
             {"text": "CLK", "values": ["p", ".", ".", "."]},
             {"text": "DATA", "lane": "bus", "values": ["x", "A1", "B2", "z"]},
         ],
+    },
+    "usecase": {
+        "version": 1,
+        "kind": "usecase",
+        "systems": [{"id": "atm", "text": "ATM"}],
+        "actors": [{"id": "customer", "text": "Customer"}],
+        "usecases": [{"id": "withdraw", "text": "Withdraw cash"}],
+        "edges": [{"from": "customer", "to": "withdraw"}],
     },
     "rag": {
         "version": 1,

@@ -63,6 +63,7 @@ the real originals each is checked against; a built one says so in its row.
 | 33 | [`gitgraph.md`](gitgraph.md) | `gitgraph`: commits on branches over time — forks, merges, tags, cherry-picks; lanes and parents derived from the order written (git-flow, trunk-based, Pro Git) — **built** | M | owner request; four published originals; text form like `git log --graph` |
 | 34 | [`network.md`](network.md) | `network`: networks as buses, hosts hanging between them with an address per attachment, columns derived so no line crosses a bus it is not on (nwdiag) — **built** | M | owner request; published nwdiag / PlantUML examples; text form |
 | 35 | [`railroad.md`](railroad.md) | `railroad`: a grammar's rules as syntax diagrams — terminals, rule references, choices, bypasses and loops on a track derived from an expression tree, long rules wrapped (JSON.org, SQLite) — **built**, with a text form | M | owner request (kinds borrowed from similar tools); originals: JSON.org, SQLite, Wirth |
+| 36 | [`usecase.md`](usecase.md) | `usecase`: UML use case diagrams — actors outside one or more system boundaries, use cases as ellipses inside, «include», «extend» and generalisation; sides, columns and orders derived, straight lines through nothing — **built** | M | owner request (kinds borrowed from Mermaid, PlantUML, D2); originals U1–U6 in the proposal; the `sequence` stick figure and the `flow` group frame |
 
 ## Proposed: output formats
 
@@ -108,7 +109,7 @@ self-loop geometry that `flow` then either adopts or refuses.
   `AGENTS.md`'s kind table (a test enforces it); every refusal in the proposal as a test
   with its JSON pointer; `collisions.py` and `clipping.py` clean on the references.
 * **The README's count** ("more than 30 kinds") and the `kind` enum description (now
-  "forty-one diagrams") change with every new kind.
+  "forty-two diagrams") change with every new kind.
 
 ## Decisions for the owner
 
