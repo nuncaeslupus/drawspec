@@ -37,7 +37,7 @@ from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
 from drawspec.kinds.common import box_primitives, painted
 from drawspec.legend import SWATCH_ROLE, Entry, height_of, primitives_for
-from drawspec.routing import Route, edge_primitives
+from drawspec.routing import Route, arrow_run, edge_primitives
 from drawspec.scene import Ellipse, Primitive, Rect, Scene, TextLine, TextRun, TextSpan
 from drawspec.schema import NEURALNET_NEURONS_SHOWN, Document, NeuralLayer
 from drawspec.text.measure import TextMeasurer
@@ -465,6 +465,7 @@ def _blocks_in(
     skips = [(ids[span.source], ids[span.target], span) for span in document.neural_skips]
     pad = FRAME_PAD * unit
     fan = FAN * unit
+    approach = arrow_run(theme, FLOW_ROLE)  # the run into a box after a turn
 
     # Along the sequence: each gap holds an arrow, the overhang of the shapes on
     # either side when they lie along it, and the padding of a frame it enters or
@@ -516,7 +517,7 @@ def _blocks_in(
         # A skip branches off the arrow leaving its `from`, so its lane runs over
         # the layers after it, up to the one it feeds.
         first, last, _ = skips[index]
-        lane = min(near[first + 1 : last + 1]) - LANE_GAP * unit
+        lane = min(near[first + 1 : last + 1]) - max(LANE_GAP * unit, approach)
         lane_of[index] = lane
         taken = lane - (skip_labels[index][1] + LABEL_GAP * unit if skip_labels[index][1] else 0.0)
         for place in range(first + 1, last + 1):
@@ -527,11 +528,11 @@ def _blocks_in(
     # longer skips on the later side, so no lane runs across another's riser.
     def split(index: int) -> float:
         """Where the arrow into the set of branches at `index` turns to each tower."""
-        return positions[index] - head - 8 * unit
+        return positions[index] - approach
 
     def join(index: int) -> float:
         """Where the towers of the set at `index - 1` turn to join at `index`."""
-        return positions[index] - leads.get(index, 0.0) - head - 8 * unit
+        return positions[index] - leads.get(index, 0.0) - approach
 
     branches: dict[int, float] = {}
     for index, (first, last, _) in enumerate(skips):

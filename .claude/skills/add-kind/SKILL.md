@@ -59,6 +59,7 @@ collision tool cannot see a figure that is correct but ugly.
 ```bash
 uv run drawspec render docs/reference/<kind>-<name>.json -o /tmp/<name>.svg
 uv run python tools/collisions.py /tmp/<name>.svg     # 0 collision(s)
+uv run python tools/arrows.py /tmp/<name>.svg        # 0 short arrow(s)
 uv run pytest tests/test_kinds_<kind>.py -q
 ```
 
@@ -102,6 +103,9 @@ uv run pytest -q
   `tests/test_schema.py` after `make schema` before believing the failure.
 - **A fresh virtual environment has no `pytest`.** `uv sync --all-extras`
   installs the dev extras the suite needs.
+- **An arrow that turns just before a box reads as a blot.** Its head then sits on
+  the corner with no line behind it; give every turning arrow
+  `routing.arrow_run(theme, role)` of straight run into the box.
 - **CodeRabbit allows about one review an hour.** A rate-limited request says
   when the next is free; ask again then, or review the diff yourself as
   `CLAUDE.md` says.

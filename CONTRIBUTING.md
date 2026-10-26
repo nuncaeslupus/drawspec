@@ -60,12 +60,13 @@ and uploads it as a workflow artifact named `gallery-pr-<number>` (kept 14
 days). A reviewer can download it from the run's summary page and open the SVGs
 of the kinds a change touched without checking the branch out.
 
-## Two checkers worth running on anything that touches layout
+## Checkers worth running on anything that touches layout
 
 ```bash
 uv run python tools/collisions.py docs/gallery   # does a line cross a word
 uv run python tools/clipping.py  docs/gallery    # is every word on the page
 uv run python tools/frames.py    docs/gallery    # does an edge cut through a frame
+uv run python tools/arrows.py    docs/gallery    # does an arrow arrive with a line
 ```
 
 All should report zero. They answer different questions and none implies another
