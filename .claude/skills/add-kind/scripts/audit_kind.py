@@ -72,6 +72,12 @@ def spelt(number: int) -> str:
     return TENS[tens] + (f"-{UNITS[units]}" if units else "")
 
 
+def _drawn_line(graph: str) -> str:
+    """The `DRAWN_KINDS` declaration in `kinds/graph.py`, or empty."""
+    found = re.search(r"^DRAWN_KINDS: Final = \([^)]*\)", graph, re.M)
+    return found.group(0) if found else ""
+
+
 def read(root: Path, name: str) -> str:
     path = root / name
     return path.read_text(encoding="utf-8") if path.is_file() else ""
@@ -88,6 +94,9 @@ def audit(root: Path, kind: str) -> tuple[list[str], list[str]]:
     if not found:
         return [f'src/drawspec/schema.py: no `*_KINDS: Final = ("{kind}", ...)` constant'], []
     const = found.group(1)
+    # A kind with no proposal of its own predates the rules this audit enforces;
+    # what those rules added is reported for it, not failed.
+    proposed = (root / "docs/proposals" / f"{kind}.md").is_file()
     # A kind in a family of its own is wired at every point below; one sharing an
     # older family (`flow` and `tree` in GRAPH_KINDS) is wired through it instead.
     alone = found.group(2).count('"') == 2
@@ -97,7 +106,11 @@ def audit(root: Path, kind: str) -> tuple[list[str], list[str]]:
             (rf'^    "{kind}": \(', f'READABILITY_BUDGET entry `"{kind}": (...)`'),
             (rf"^    {const}: \(", f"KIND_PAYLOADS entry `{const}: (...)`"),
             (rf'\("{kind}", {const}\)', f'Document.family entry `("{kind}", {const})`'),
-            (rf"if kind in {const}:", f"a validation or parse dispatch on {const}"),
+            (rf"if kind in {const}:", f"a validation dispatch on {const}"),
+            (
+                rf"if kind in {const}:\n\s+return _{kind}_document\(document\)",
+                f"the parse dispatch `return _{kind}_document(document)`",
+            ),
         ],
         "src/drawspec/kinds/__init__.py": [
             (rf"\*{const},", f"`*{const}` in IMPLEMENTED"),
@@ -116,18 +129,32 @@ def audit(root: Path, kind: str) -> tuple[list[str], list[str]]:
     if not alone:
         thin.append(f"{const} is a shared family: its wiring is the family's, not checked here")
         code = {"src/drawspec/examples.py": code["src/drawspec/examples.py"]}
+        # The graph family reaches its renderer through DRAWN_KINDS, so a member
+        # missing from it is never drawn; a kind of its own dispatch says so by name.
+        if (
+            const == "GRAPH_KINDS"
+            and f'"{kind}"' not in _drawn_line(graph)
+            and not re.search(
+                rf'document\.kind == "{kind}":', read(root, "src/drawspec/kinds/__init__.py")
+            )
+        ):
+            missing.append(f'src/drawspec/kinds/graph.py: "{kind}" not in DRAWN_KINDS')
         code["tools/gallery.py"] = [(rf'^    "{kind}",$', "a KIND_ORDER entry")]
     for name, checks in code.items():
         text = read(root, name)
         for pattern, what in checks:
             if not re.search(pattern, text, re.M):
-                missing.append(f"{name}: {what}")
+                older = not proposed and "parse dispatch" in what
+                (thin if older else missing).append(f"{name}: {what}")
 
     references = sorted((root / "docs/reference").glob(f"{kind}-*.json"))
     if not references:
         missing.append(f"docs/reference/{kind}-*.json: no reference document")
     elif len(references) < 3:
-        thin.append(f"docs/reference: {len(references)} reference(s); three or more show the range")
+        # A new kind ships three; some kinds of shared families predate the rule.
+        (missing if alone and proposed else thin).append(
+            f"docs/reference: {len(references)} reference(s); a kind needs three or more"
+        )
     for path in references:
         if not (root / "docs/gallery" / f"{path.stem}.svg").is_file():
             missing.append(f"docs/gallery/{path.stem}.svg: not drawn (run `make gallery`)")
@@ -140,7 +167,7 @@ def audit(root: Path, kind: str) -> tuple[list[str], list[str]]:
             if path.name != "test_text_output.py"
         )
         (thin if tested else missing).append(f"tests/test_kinds_{kind}.py: no test file")
-    if not (root / "docs/proposals" / f"{kind}.md").is_file():
+    if not proposed:
         thin.append(f"docs/proposals/{kind}.md: no proposal with the originals")
 
     texts = read(root, "src/drawspec/kinds/__init__.py")
