@@ -45,6 +45,13 @@ UNITS = [
 TENS = ["_", "_", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
 
 #: Documents that describe every kind, so each must name a new one.
+#: Kinds of a family of their own that predate the rules this audit enforces,
+#: each named, so their gaps are reported without failing — and a new kind is
+#: never exempt by accident: `files` parses through its own builder and has two
+#: references; `entities` and `states` refuse nothing of their own; `fishbone`,
+#: `lanes` and `rag` have no referential checks of their own.
+GRANDFATHERED = frozenset({"entities", "files", "fishbone", "lanes", "rag", "states"})
+
 DOCUMENTS = (
     "README.md",
     "docs/guide.md",
@@ -94,9 +101,8 @@ def audit(root: Path, kind: str) -> tuple[list[str], list[str]]:
     if not found:
         return [f'src/drawspec/schema.py: no `*_KINDS: Final = ("{kind}", ...)` constant'], []
     const = found.group(1)
-    # A kind with no proposal of its own predates the rules this audit enforces;
-    # what those rules added is reported for it, not failed.
     proposed = (root / "docs/proposals" / f"{kind}.md").is_file()
+    grandfathered = kind in GRANDFATHERED
     # A kind in a family of its own is wired at every point below; one sharing an
     # older family (`flow` and `tree` in GRAPH_KINDS) is wired through it instead.
     alone = found.group(2).count('"') == 2
@@ -106,7 +112,14 @@ def audit(root: Path, kind: str) -> tuple[list[str], list[str]]:
             (rf'^    "{kind}": \(', f'READABILITY_BUDGET entry `"{kind}": (...)`'),
             (rf"^    {const}: \(", f"KIND_PAYLOADS entry `{const}: (...)`"),
             (rf'\("{kind}", {const}\)', f'Document.family entry `("{kind}", {const})`'),
-            (rf"if kind in {const}:", f"a validation dispatch on {const}"),
+            (
+                rf"if kind in {const}:\n\s+return _\w+_violations\(document\)",
+                f"a validation dispatch on {const} (`_referential_violations`)",
+            ),
+            (
+                rf"if kind in {const}:\n\s+found = \[_\w+_refusal\(",
+                f"a refusal hook on {const} (`validate_document`)",
+            ),
             (
                 rf"if kind in {const}:\n\s+return _{kind}_document\(document\)",
                 f"the parse dispatch `return _{kind}_document(document)`",
@@ -144,15 +157,14 @@ def audit(root: Path, kind: str) -> tuple[list[str], list[str]]:
         text = read(root, name)
         for pattern, what in checks:
             if not re.search(pattern, text, re.M):
-                older = not proposed and "parse dispatch" in what
-                (thin if older else missing).append(f"{name}: {what}")
+                (thin if grandfathered else missing).append(f"{name}: {what}")
 
     references = sorted((root / "docs/reference").glob(f"{kind}-*.json"))
     if not references:
         missing.append(f"docs/reference/{kind}-*.json: no reference document")
     elif len(references) < 3:
         # A new kind ships three; some kinds of shared families predate the rule.
-        (missing if alone and proposed else thin).append(
+        (missing if alone and not grandfathered else thin).append(
             f"docs/reference: {len(references)} reference(s); a kind needs three or more"
         )
     for path in references:
