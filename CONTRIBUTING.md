@@ -66,7 +66,7 @@ of the kinds a change touched without checking the branch out.
 uv run python tools/collisions.py docs/gallery   # does a line cross a word
 uv run python tools/clipping.py  docs/gallery    # is every word on the page
 uv run python tools/frames.py    docs/gallery    # does an edge cut through a frame
-uv run python tools/arrows.py    docs/gallery    # does an arrow arrive with a line
+uv run python tools/arrows.py    docs/gallery    # does an arrow arrive with a line, clear of branches
 ```
 
 All should report zero. They answer different questions and none implies another

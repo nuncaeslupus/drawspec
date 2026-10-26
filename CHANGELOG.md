@@ -215,6 +215,12 @@ against it would stop working. Everything below is about the *package*.
   `neuralnet` skips and branches and `gantt` dependencies use it. `tools/arrows.py`
   measures every drawn arrow, and a test holds every reference to a run of at least
   one and a half heads (the owner's two reported figures to two).
+- **A skip no longer leaves an arrow just behind its head.** A `neuralnet` skip or
+  branch left the block's input arrow about one and a half heads before its point, so
+  the branch read as part of the head and ran nearer the box than the arrow's own
+  shaft. It now leaves at least an `arrow_run` back, and the gap before a branching
+  layer grows to fit. `tools/arrows.py` reports any line leaving an arrow's last run
+  less than two heads behind its point, and a test holds every reference to it.
 - **An edge no longer runs along a frame's border.** A frame is padded by about one lane, so
   the lane outside its outermost box could be the frame's own border, and a route on it was
   drawn on top of the dashed line — it read as entering the frame lengthways

@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 
 import pytest
-from arrows import RATIO, short_arrows
+from arrows import JUNCTION, RATIO, crowded_junctions, short_arrows
 
 from drawspec import render
 from drawspec.routing import arrow_run
@@ -26,6 +26,12 @@ REFERENCES = sorted(REFERENCE.glob("*.json"))
 def test_no_reference_arrow_is_all_head(path: Path) -> None:
     document = json.loads(path.read_text(encoding="utf-8"))
     assert [str(arrow) for arrow in short_arrows(render(document))] == []
+
+
+@pytest.mark.parametrize("path", REFERENCES, ids=lambda path: path.stem)
+def test_no_reference_branch_leaves_an_arrow_behind_its_head(path: Path) -> None:
+    document = json.loads(path.read_text(encoding="utf-8"))
+    assert [str(junction) for junction in crowded_junctions(render(document))] == []
 
 
 @pytest.mark.parametrize(
@@ -53,3 +59,16 @@ def test_the_checker_finds_a_blot() -> None:
 
     assert len(short_arrows(drawing(9.0))) == 1
     assert short_arrows(drawing(8.0 * RATIO + 1)) == []
+
+
+def test_the_checker_finds_a_branch_behind_a_head() -> None:
+    """A line leaving an arrow's run one head behind its point is reported; two are not."""
+    arrow = '<path d="M 0 0 L 100 0" stroke="black"/>'
+    head = '<polygon points="100,0 92,-4 92,4" fill="currentColor"/>'
+
+    def drawing(behind: float) -> str:
+        branch = f'<path d="M {92 - behind} 0 L {92 - behind} 40" stroke="black"/>'
+        return f'<svg xmlns="http://www.w3.org/2000/svg">{arrow}{head}{branch}</svg>'
+
+    assert len(crowded_junctions(drawing(1.0))) == 1
+    assert crowded_junctions(drawing(8.0 * JUNCTION - 8 + 1)) == []

@@ -469,17 +469,22 @@ def _blocks_in(
 
     # Along the sequence: each gap holds an arrow, the overhang of the shapes on
     # either side when they lie along it, and the padding of a frame it enters or
-    # leaves. A frame's leading padding holds an arrow head as well, so a skip
-    # inside the frame can branch off the arrow entering it before the head.
-    lead = pad + head
+    # leaves. A frame's leading padding holds a whole arrow run, so a skip inside
+    # the frame can branch off the arrow entering it a run before the box.
+    lead = pad + approach
     starts = {first for first, _, _ in repeats}
     ends = {last for _, last, _ in repeats}
-    # A frame that opens on a set of branches holds a skip's branch point and the
-    # turn of the split as well.
+    # A frame that opens on a set of branches holds the split's turn as well.
     leads = {first: lead + (fan if first in towers else 0.0) for first in starts}
+    # Where a skip branches off an arrow, the junction keeps a whole arrow run
+    # before the box ahead (and before a split's turn), and a fan's length after
+    # the box behind, so the head never sits on the junction.
+    branching = {first + 1 for first, _, _ in skips}
     positions = [0.0]
     for index in range(1, len(layers)):
         gap = inner + fan * ((index in towers) + (index - 1 in towers))
+        if index in branching:
+            gap = max(gap, approach + fan * (1 + (index in towers)))
         if across:
             overhang = (
                 max(shapes[index - 1][0] - along[index - 1], 0) / 2
@@ -540,15 +545,12 @@ def _blocks_in(
         if first in ends:
             start += pad
         inside = any(begin == first + 1 and last <= stop for begin, stop, _ in repeats)
-        if inside and first + 1 in towers:
-            branches[index] = end - leads[first + 1] + pad / 2
-        elif inside:
-            branches[index] = end - head - pad / 2
+        turn = end - approach - (fan if first + 1 in towers else 0.0)
+        if inside or first + 1 not in starts:
+            branches[index] = turn  # a run before the box (or the split), inside any frame
         else:
-            end -= leads.get(first + 1, 0.0)
-            if first + 1 in towers and first + 1 not in starts:
-                end = split(first + 1)
-            branches[index] = (start + end) / 2
+            # Round a frame that opens on the next layer: before the frame's edge.
+            branches[index] = (start + end - leads[first + 1]) / 2
     ports: dict[int, float] = {}
     for place in range(len(layers)):
         arriving = sorted(
