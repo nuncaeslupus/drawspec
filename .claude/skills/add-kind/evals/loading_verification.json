@@ -1,0 +1,17 @@
+{
+  "skill": "add-kind",
+  "canary": "add-kind-loaded-2026-10-26-fb4653f5-017474c33acb767a",
+  "negative_control": "A new kind may ship its gallery images and documentation in a follow-up pull request after the code merges.",
+  "load_prompts": [
+    "Add a kind for neural network diagrams to drawspec.",
+    "What about sequence diagrams for git branching? Add a task and implement it.",
+    "Give the tree kind a new bracket style.",
+    "The pert kind needs a text form; add one."
+  ],
+  "no_load_prompts": [
+    "Draw our checkout flow as a drawspec flow chart.",
+    "Make me a Gantt chart of the release plan with drawspec.",
+    "Why does this flow document fail validation?",
+    "Publish drawspec 0.2.0 to PyPI."
+  ]
+}
