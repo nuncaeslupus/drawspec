@@ -46,11 +46,19 @@ TENS = ["_", "_", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eig
 
 #: Documents that describe every kind, so each must name a new one.
 #: Kinds of a family of their own that predate the rules this audit enforces,
-#: each named, so their gaps are reported without failing — and a new kind is
-#: never exempt by accident: `files` parses through its own builder and has two
-#: references; `entities` and `states` refuse nothing of their own; `fishbone`,
-#: `lanes` and `rag` have no referential checks of their own.
-GRANDFATHERED = frozenset({"entities", "files", "fishbone", "lanes", "rag", "states"})
+#: each with the gaps it is allowed (words of the check's description), so those
+#: are reported without failing while any other gap still fails — and a new
+#: kind is never exempt by accident: `files` parses through its own builder and
+#: has two references; `entities` and `states` refuse nothing of their own;
+#: `fishbone`, `lanes` and `rag` have no referential checks of their own.
+GRANDFATHERED: dict[str, tuple[str, ...]] = {
+    "entities": ("a refusal hook",),
+    "files": ("a validation dispatch", "a refusal hook", "the parse dispatch", "reference(s)"),
+    "fishbone": ("a validation dispatch",),
+    "lanes": ("a validation dispatch",),
+    "rag": ("a validation dispatch",),
+    "states": ("a refusal hook",),
+}
 
 DOCUMENTS = (
     "README.md",
@@ -102,7 +110,10 @@ def audit(root: Path, kind: str) -> tuple[list[str], list[str]]:
         return [f'src/drawspec/schema.py: no `*_KINDS: Final = ("{kind}", ...)` constant'], []
     const = found.group(1)
     proposed = (root / "docs/proposals" / f"{kind}.md").is_file()
-    grandfathered = kind in GRANDFATHERED
+    allowed = GRANDFATHERED.get(kind, ())
+
+    def grandfathered(what: str) -> bool:
+        return any(gap in what for gap in allowed)
     # A kind in a family of its own is wired at every point below; one sharing an
     # older family (`flow` and `tree` in GRAPH_KINDS) is wired through it instead.
     alone = found.group(2).count('"') == 2
@@ -157,16 +168,15 @@ def audit(root: Path, kind: str) -> tuple[list[str], list[str]]:
         text = read(root, name)
         for pattern, what in checks:
             if not re.search(pattern, text, re.M):
-                (thin if grandfathered else missing).append(f"{name}: {what}")
+                (thin if grandfathered(what) else missing).append(f"{name}: {what}")
 
     references = sorted((root / "docs/reference").glob(f"{kind}-*.json"))
     if not references:
         missing.append(f"docs/reference/{kind}-*.json: no reference document")
     elif len(references) < 3:
         # A new kind ships three; some kinds of shared families predate the rule.
-        (missing if alone and not grandfathered else thin).append(
-            f"docs/reference: {len(references)} reference(s); a kind needs three or more"
-        )
+        found = f"docs/reference: {len(references)} reference(s); a kind needs three or more"
+        (missing if alone and not grandfathered(found) else thin).append(found)
     for path in references:
         if not (root / "docs/gallery" / f"{path.stem}.svg").is_file():
             missing.append(f"docs/gallery/{path.stem}.svg: not drawn (run `make gallery`)")

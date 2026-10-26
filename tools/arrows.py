@@ -59,12 +59,13 @@ class ShortArrow:
     tip: tuple[float, float]
     run: float
     head: float
+    ratio: float = RATIO
 
     def __str__(self) -> str:
         x, y = self.tip
         return (
             f"arrow into ({x:.1f}, {y:.1f}): {self.run:.1f} of line after its last turn "
-            f"for a {self.head:.1f} head (wants {RATIO * self.head:.1f})"
+            f"for a {self.head:.1f} head (wants {self.ratio * self.head:.1f})"
         )
 
 
@@ -165,7 +166,7 @@ def short_arrows(svg: str, *, ratio: float = RATIO) -> list[ShortArrow]:
             continue
         _, tip, length = arrow
         if length > 0 and run + tip < ratio * length - 1e-6:
-            found.append(ShortArrow(points[-1], run + tip, length))
+            found.append(ShortArrow(points[-1], run + tip, length, ratio))
     return found
 
 
@@ -184,7 +185,14 @@ def crowded_junctions(svg: str, *, ratio: float = JUNCTION) -> list[CrowdedJunct
         if arrow is None:
             continue
         (ax, ay), tip, length = arrow
-        start, end = points[-2], points[-1]
+        end = points[-1]
+        # The whole last straight run, back across any points along it.
+        start = points[-2]
+        for point in reversed(points[:-2]):
+            if math.dist(point, start) >= TOUCH:
+                if not _touches(start, [point, end]):
+                    break
+                start = point
         for other in lines:
             if other is points:
                 continue

@@ -72,3 +72,19 @@ def test_the_checker_finds_a_branch_behind_a_head() -> None:
 
     assert len(crowded_junctions(drawing(1.0))) == 1
     assert crowded_junctions(drawing(8.0 * JUNCTION - 8 + 1)) == []
+
+
+def test_the_checker_reads_the_whole_last_run() -> None:
+    """A run drawn in two collinear pieces is one run: a branch on its far piece counts."""
+    arrow = '<path d="M 0 40 L 0 0 L 90 0 L 96 0 L 100 0" stroke="black"/>'
+    head = '<polygon points="100,0 92,-4 92,4" fill="currentColor"/>'
+    branch = '<path d="M 93 0 L 93 40" stroke="black"/>'
+    drawing = f'<svg xmlns="http://www.w3.org/2000/svg">{arrow}{head}{branch}</svg>'
+    assert len(crowded_junctions(drawing)) == 1
+
+
+def test_a_finding_names_the_ratio_it_failed() -> None:
+    head = '<polygon points="100,50 92,46 92,54" fill="currentColor"/>'
+    line = '<path d="M 0 0 L 86 0 L 86 50 L 100 50" stroke="black"/>'
+    drawing = f'<svg xmlns="http://www.w3.org/2000/svg">{line}{head}</svg>'
+    assert "wants 16.0" in str(short_arrows(drawing, ratio=2.0)[0])
