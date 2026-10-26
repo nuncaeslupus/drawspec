@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 
 from drawspec.charts import AXIS_ROLE, FURNITURE_ROLE, TARGET_TICKS, Scale, _nice_step, _ticks
 from drawspec.errors import FitError
-from drawspec.routing import Route, edge_primitives, end_marker
+from drawspec.routing import Route, arrow_run, edge_primitives, end_marker
 from drawspec.scene import Ellipse, Path, Polygon, Primitive, Scene, TextLine, TextSpan
 from drawspec.schema import Axis, Document, Task, _figure
 from drawspec.text.measure import TextMeasurer
@@ -184,7 +184,12 @@ def gantt_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
 
     # The plot: what is left once the column, the gap a route turns back in, and
     # the gutter for the last tick's label and a route's run out are paid for.
-    run = theme.widest_head + RUN * unit
+    # The gutter holds a dependency's run back into a task's start: a turn-back
+    # lane sits `lead` before it, and `lead` is at least the arrow's run.
+    run = max(
+        theme.widest_head + RUN * unit,
+        max((arrow_run(theme, role) for role in theme.edge_roles), default=0.0),
+    )
     out = OUT * unit
     low, high = _range(document)
     ticks, names = _ticks_for(axis, low, high)
@@ -379,7 +384,7 @@ def gantt_drawing(document: Document, theme: Theme, measurer: TextMeasurer) -> G
             rows,
             order[edge.source] < order[edge.target],
             out=out,
-            lead=theme.head_length_for(edge.role) + RUN * unit,
+            lead=max(theme.head_length_for(edge.role) + RUN * unit, arrow_run(theme, edge.role)),
             inset=OUT * unit,
         )
         others = [box for name, box in shapes.items() if name not in (edge.source, edge.target)]

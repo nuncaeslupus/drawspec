@@ -8,8 +8,9 @@ same pull request updates everything that describes it — never a follow-up:
 - `AGENTS.md` (its kind table and guidance), `llms.txt`, `CHANGELOG.md` (Unreleased)
 - the gallery (`make gallery`, commit the result) and `docs/proposals/README.md`'s row
 
-Before opening the PR, grep the docs for the kind's name and for any number or list
-the change made stale.
+Before opening the PR, run `python3 .claude/skills/add-kind/scripts/audit_kind.py <kind>`
+(exit 0 means every registration point and document names it), then grep the docs for
+any other number or list the change made stale. The `add-kind` skill holds the procedure.
 
 <!-- claude-arsenal: auto-managed -->
 ## Reviewing and merging

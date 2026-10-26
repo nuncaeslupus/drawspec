@@ -2,6 +2,10 @@
 
 **Date**: 2026-10-25 · **Branch**: `ccr-35a28282-dg4nbb` · **PRs**: #157–#172 merged; #175 merged; #176 follow-up PR open
 
+## 2026-10-26: add-kind skill
+- #177 merged (Inception branches, arrows in and out). Docs were complete for both PRs.
+- New project skill `.claude/skills/add-kind/` (built to skill-workshop's rules, loaded from `nuncaeslupus/claude-arsenal`): the procedure for a new kind or a kind's new style/field/text form, a registration-points reference, and `scripts/audit_kind.py <kind>`, which fails when a kind is missing from any registration point, document or count word. `CLAUDE.md` now points at it.
+
 ## 2026-10-25 (later): neuralnet
 - Owner asked for neural-network drawings. Task t-9dddc873 / issue #174; new `neuralnet` kind, one PR (`Closes #174`).
   - `neurons` (default): columns of circles fully joined; >8 neurons cut with dots; `labels`, `bias`.

@@ -719,6 +719,74 @@ def route_edges(
             box and keeps a visible shaft. The last one is a statement about the
             arrangement rather than about the router — see `minimum_rank_gap`.
     """
+
+    def attempt(shaft: bool) -> tuple[Route, ...] | None:
+        try:
+            return _routed(
+                connectors,
+                obstacles,
+                theme,
+                direction=direction,
+                anchors=anchors,
+                dividers=dividers,
+                shaft=shaft,
+            )
+        except LayoutError:
+            return None
+
+    # A shaft as long as the head before every last turn is what an arrow should
+    # have (`head_room`). Asking for it everywhere can push a route in a tight
+    # gap onto a worse corner, so where the result still has a short arrow the
+    # shorter floor is tried too, and the drawing whose worst arrow is longer wins.
+    full = attempt(True)
+    if full is not None and _worst_approach(full, theme) >= 2.0:
+        return full
+    short = attempt(False)
+    if short is None:
+        if full is None:
+            # Raise the refusal itself: the shorter floor's is the honest one.
+            return _routed(
+                connectors,
+                obstacles,
+                theme,
+                direction=direction,
+                anchors=anchors,
+                dividers=dividers,
+                shaft=False,
+            )
+        return full
+    if full is None or _worst_approach(short, theme) > _worst_approach(full, theme):
+        return short
+    return full
+
+
+def _worst_approach(routes: Sequence[Route], theme: Theme) -> float:
+    """The shortest straight run into a head after a turn, in that head's lengths.
+
+    Infinite when no headed route turns. Two means the head and as much shaft
+    again: what `arrow_run` asks for.
+    """
+    worst = math.inf
+    for route in routes:
+        role = theme.role_for(route.role)
+        if getattr(role, "head", "none") == "none" or len(route.points) < 3:
+            continue
+        first, second = route.points[-2], route.points[-1]
+        worst = min(worst, math.dist(first, second) / theme.head_length_for(route.role))
+    return worst
+
+
+def _routed(
+    connectors: Sequence[Connector],
+    obstacles: Sequence[Obstacle],
+    theme: Theme,
+    *,
+    direction: str = "down",
+    anchors: Sequence[Obstacle] = (),
+    dividers: Mapping[str, tuple[tuple[str, float], ...]] = MappingProxyType({}),
+    shaft: bool = True,
+) -> tuple[Route, ...]:
+    """`route_edges` at one length of approach: see `head_room`."""
     boxes: dict[str, Obstacle] = {}
     for box in (*obstacles, *anchors):
         if box.id in boxes:
@@ -771,7 +839,9 @@ def route_edges(
     fractions = _clear_frame_ports(
         connectors, boxes, sides, fractions, {box.id for box in anchors}, channel * 2, dividers
     )
-    reaches = _shared_reaches(connectors, boxes, sides, fractions, obstacles, lanes, theme)
+    reaches = _shared_reaches(
+        connectors, boxes, sides, fractions, obstacles, lanes, theme, shaft=shaft
+    )
     approaches: dict[int, tuple[_Approach, _Approach]] = {}
     for index, side_pair in sides.items():
         connector = connectors[index]
@@ -785,6 +855,7 @@ def route_edges(
                 obstacles,
                 lanes,
                 theme,
+                shaft=shaft,
                 reaches=(
                     reaches[(connector.source, side_pair[0])],
                     reaches[(connector.target, side_pair[1])],
@@ -798,6 +869,7 @@ def route_edges(
                 obstacles,
                 lanes,
                 theme,
+                shaft=shaft,
             ),
         )
     grid = _build_grid(approaches, obstacles, lanes, theme.edge.clearance)
@@ -1544,6 +1616,8 @@ def _shared_reaches(
     obstacles: Sequence[Obstacle],
     lanes: tuple[set[float], set[float]],
     theme: Theme,
+    *,
+    shaft: bool = True,
 ) -> dict[tuple[str, str], float]:
     """One reach per box side, so the edges leaving it together turn together.
 
@@ -1571,7 +1645,7 @@ def _shared_reaches(
             (connector.target, target_side, fractions[index][1]),
         ):
             box = boxes[identifier]
-            reach = _reach(_port(box, side, fraction), side, obstacles, lanes, theme)
+            reach = _reach(_port(box, side, fraction), side, obstacles, lanes, theme, shaft=shaft)
             key = (identifier, side)
             shared[key] = min(shared.get(key, reach), reach)
     return shared
@@ -1587,6 +1661,7 @@ def _approach(
     theme: Theme,
     *,
     reaches: tuple[float, float] | None = None,
+    shaft: bool = True,
 ) -> _Approach:
     """Anchors on the shapes, stub ends out on the channel lane.
 
@@ -1610,8 +1685,8 @@ def _approach(
         reaches
         if reaches is not None
         else (
-            _reach(source_port, source_side, obstacles, lanes, theme),
-            _reach(target_port, target_side, obstacles, lanes, theme),
+            _reach(source_port, source_side, obstacles, lanes, theme, shaft=shaft),
+            _reach(target_port, target_side, obstacles, lanes, theme, shaft=shaft),
         )
     )
     return _Approach(
@@ -1632,6 +1707,8 @@ def _reach(
     obstacles: Sequence[Obstacle],
     lanes: tuple[set[float], set[float]],
     theme: Theme,
+    *,
+    shaft: bool = True,
 ) -> float:
     """How far out of `port` the stub goes: to the first lane, or to half the room.
 
@@ -1660,18 +1737,36 @@ def _reach(
         # frame, whose border is outside every box the lanes were drawn from.
         # The stub used to run to infinity there and no route could be found;
         # one lane's width out is where the lane outside a box would have been.
-        return max(theme.edge.lane_spacing, head_room(theme))
-    return min(max(min(ahead, default=room), min(head_room(theme), room)), room)
+        return max(theme.edge.lane_spacing, head_room(theme, shaft=shaft))
+    return min(max(min(ahead, default=room), min(head_room(theme, shaft=shaft), room)), room)
 
 
-def head_room(theme: Theme) -> float:
+def arrow_run(theme: Theme, role: str) -> float:
+    """The straight run an arrow in `role` should have after its last turn.
+
+    Its head, a shaft as long as the head, and the clearance that keeps the
+    corner visibly behind both. Shorter, and an arrow that turns just before
+    it arrives is all head: it reads as a blot on the corner. Every kind that
+    draws its own turning arrows keeps this much run into the box.
+    """
+    return 2 * theme.head_length_for(role) + theme.edge.clearance
+
+
+def head_room(theme: Theme, *, shaft: bool = True) -> float:
     """The straight run an end treatment needs before the route may turn.
 
     A head is drawn on the last `head_length` of the route, so a turn that close
-    to the border leaves it nothing to sit on. The clearance on top is what keeps
-    the corner visibly *behind* the head rather than touching it.
+    to the border leaves it nothing to sit on; a turn a clearance behind the head
+    leaves a head with almost no line, which reads as a blot on the corner rather
+    than an arrow arriving. So the run holds the widest head, a shaft as long as
+    an ordinary head, and the clearance that keeps the corner visibly behind both.
+
+    When the boxes are too close for that, `shaft=False` asks for the head and
+    the clearance alone: `route_edges` tries the full run first, and routes with
+    the shorter one too when an arrow still came out short, keeping whichever
+    drawing's shortest arrow is longer.
     """
-    return theme.widest_head + theme.edge.clearance
+    return theme.widest_head + (theme.edge.head_length if shaft else 0.0) + theme.edge.clearance
 
 
 def _usable_gap(theme: Theme) -> float:
@@ -3120,6 +3215,7 @@ __all__ = [
     "Loop",
     "Obstacle",
     "Route",
+    "arrow_run",
     "claimed_sides",
     "edge_primitives",
     "end_marker",

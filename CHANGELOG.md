@@ -206,6 +206,21 @@ against it would stop working. Everything below is about the *package*.
 
 ### Fixed
 
+- **An arrow that turns a corner no longer arrives with almost no line.** The router
+  kept only the head and a clearance between a route's last turn and the box, so an
+  arrow turning just before it arrived was all head: a blot on the corner. It now asks
+  for a shaft as long as a head as well, and where the boxes are too close for that it
+  routes both ways and keeps the drawing whose shortest arrow is longer.
+  `routing.arrow_run` is that run for kinds that draw their own turning arrows:
+  `neuralnet` skips and branches and `gantt` dependencies use it. `tools/arrows.py`
+  measures every drawn arrow, and a test holds every reference to a run of at least
+  one and a half heads (the owner's two reported figures to two).
+- **A skip no longer leaves an arrow just behind its head.** A `neuralnet` skip or
+  branch left the block's input arrow about one and a half heads before its point, so
+  the branch read as part of the head and ran nearer the box than the arrow's own
+  shaft. It now leaves at least an `arrow_run` back, and the gap before a branching
+  layer grows to fit. `tools/arrows.py` reports any line leaving an arrow's last run
+  less than two heads behind its point, and a test holds every reference to it.
 - **An edge no longer runs along a frame's border.** A frame is padded by about one lane, so
   the lane outside its outermost box could be the frame's own border, and a route on it was
   drawn on top of the dashed line — it read as entering the frame lengthways
