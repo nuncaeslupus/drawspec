@@ -1,0 +1,130 @@
+{
+  "generated_by": "scripts/sync_sections.py",
+  "note": "Generated. Run `make sync-sections` after adding or re-filing a skill.",
+  "sections": [
+    {
+      "name": "core",
+      "default": true,
+      "core": true,
+      "blurb": "the bundle itself — installer, queue engine, and the skills the protocol names",
+      "skills": [
+        {
+          "name": "github",
+          "description": "Applies commit and PR conventions, then polls review bots and CI until the PR can merge. Use when the user commits, opens a PR or handles review feedback. Not for judging a diff."
+        },
+        {
+          "name": "init",
+          "description": "Installs or refreshes claude-arsenal/ in a host repo, or adds a workspace. Use when the user wants the arsenal set up, updated or a workspace added. Not for queueing tasks."
+        },
+        {
+          "name": "queue-add",
+          "description": "Adds a task to the claude-arsenal queue. Use when the user wants a new task queued. Not for editing existing tasks."
+        },
+        {
+          "name": "queue-next",
+          "description": "Claims the next unblocked queue task and runs the worker loop, optionally scoped by tag, workspace or title. Use when the user wants to resume work. Not for adding tasks."
+        },
+        {
+          "name": "queue-status",
+          "description": "Reports queue counts and flags missing gates, handles and broken deps. Use when the user asks how the queue stands. Not for changing task status."
+        },
+        {
+          "name": "session-end",
+          "description": "Wraps up a session — optional handoff, skill-update proposals from repeated errors, a PR audit. Use when the user signals the job is done. Not for mid-job checkpoints."
+        }
+      ]
+    },
+    {
+      "name": "android",
+      "default": false,
+      "core": false,
+      "blurb": "diagnosing Android devices from the bugreports they produce",
+      "skills": [
+        {
+          "name": "bugreport",
+          "description": "Reads Android bugreports (dumpstate .txt or .zip) through a byte-offset index — device summary, ranked checkup, section lookup, merged timeline, redacted copies, report diffs. Use when the user has a bugreport to read or diagnose. Not for live-device adb sessions or logcat-only files."
+        }
+      ]
+    },
+    {
+      "name": "extract",
+      "default": false,
+      "core": false,
+      "blurb": "structured data out of artifacts you did not produce",
+      "skills": [
+        {
+          "name": "har",
+          "description": "Records, searches, filters and redacts HAR captures and turns them into scrapers. Use when the user has or needs a HAR capture. Not for non-capture JSON or HTML."
+        }
+      ]
+    },
+    {
+      "name": "python",
+      "default": false,
+      "core": false,
+      "blurb": "the Python toolchain — coverage, mutation, dependency and release skills",
+      "skills": [
+        {
+          "name": "coverage-gaps",
+          "description": "Ranks the most valuable missing tests from coverage.py's coverage.json. Use when the user asks which tests are missing. Not for non-Python code."
+        },
+        {
+          "name": "dep-upgrade",
+          "description": "Upgrades a uv project's dependencies behind pip-audit and tests. Use when the user wants dependencies upgraded or vuln-checked. Not for adding one (uv add)."
+        },
+        {
+          "name": "mutmut-report",
+          "description": "Triages surviving mutmut mutants and reports the test fixes worth making. Use when the user asks which mutants survived. Not for running mutmut or coverage (coverage-gaps)."
+        },
+        {
+          "name": "pin-check",
+          "description": "Reverts a line, runs the scoped test and reports whether it pins the behaviour. Use when the user asks if a test catches a change. Not for mutation scoring."
+        },
+        {
+          "name": "pypi-release",
+          "description": "Runs the PyPI release runbook — build, twine check, version bump, tag, upload. Use when the user wants a Python package published. Not for project scaffolding."
+        },
+        {
+          "name": "python-bootstrap",
+          "description": "Scaffolds or retrofits a Python project with uv, ruff, strict mypy and a standard Makefile. Use when the user sets up Python tooling. Not for publishing."
+        }
+      ]
+    },
+    {
+      "name": "workflow",
+      "default": true,
+      "core": false,
+      "blurb": "the spec → design → execute → review → ship discipline",
+      "skills": [
+        {
+          "name": "design",
+          "description": "Turns an approved spec into contracts, risks and a gated task plan. Use when the user plans how to build scoped work. Not for investigation (specify)."
+        },
+        {
+          "name": "execution",
+          "description": "Implements a planned task test-first, through to a merge-ready PR. Use when the user is building what a plan describes. Not for one-off scripts."
+        },
+        {
+          "name": "explore-idea",
+          "description": "Shapes a vague idea one question at a time with a decision log, then hands off to specify. Use when the user has an idea but no stated problem, or ideas to sort. Not for a stated problem."
+        },
+        {
+          "name": "gate-check",
+          "description": "Reports PASS/FAIL with measured numbers on a plan task's acceptance gate, or audits all gates. Use when the user asks whether a gate passed. Not for writing code."
+        },
+        {
+          "name": "review",
+          "description": "Reviews a PR, diff, design doc or proposal for risks and standards. Use when the user wants something reviewed. Not for release sign-off (ship)."
+        },
+        {
+          "name": "ship",
+          "description": "Confirms a change is production-ready — compatibility, tests, observability, rollback. Use when the user wants release sign-off. Not for PR review (review)."
+        },
+        {
+          "name": "specify",
+          "description": "Investigates a problem or an unclear-impact feature and proposes options. Use when the user has a problem to understand before building. Not for scoped work (design)."
+        }
+      ]
+    }
+  ]
+}

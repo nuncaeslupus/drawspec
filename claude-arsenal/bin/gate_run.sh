@@ -59,10 +59,24 @@ if [[ -z "${TASK_ID}" ]]; then
     exit 2
 fi
 
+# Boundary timing: how long this gate took, appended to a local TSV that never
+# leaves the machine. See bin/_timing.sh; ARSENAL_METRICS=off disables it.
+# shellcheck source=/dev/null
+_BIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+[[ -f "${_BIN_DIR}/_timing.sh" ]] && source "${_BIN_DIR}/_timing.sh"
+command -v arsenal_timing_begin >/dev/null 2>&1 && arsenal_timing_begin gate "${TASK_ID}" "${TASK_ID}"
+
 PAYLOAD_TMP=""
 # `return 0` matters: under `set -e` a non-zero status out of an EXIT trap
 # becomes the script's exit status, which would report every clean run as failed.
-cleanup() { [[ -n "${PAYLOAD_TMP}" ]] && rm -f "${PAYLOAD_TMP}"; return 0; }
+# `local rc=$?` is the FIRST line for the same family of reasons: every command
+# below overwrites it, and the gate's own exit code is the one worth recording.
+cleanup() {
+    local rc=$?
+    command -v arsenal_timing_end >/dev/null 2>&1 && arsenal_timing_end "${rc}"
+    [[ -n "${PAYLOAD_TMP}" ]] && rm -f "${PAYLOAD_TMP}"
+    return 0
+}
 trap cleanup EXIT
 
 # The task file is ordinary versioned content on the default branch, so any
@@ -104,7 +118,11 @@ if [[ ! -f "${PAYLOAD}" || ${_prefer_default} -eq 1 ]]; then
     found=0
     for ref in "${REMOTE}/${DEFAULT_BRANCH}" "${DEFAULT_BRANCH}"; do
         if git show "${ref}:${HOME_DIR}/tasks/${TASK_ID}.md" >"${PAYLOAD_TMP}" 2>/dev/null; then
-            echo "gate_run: task file read from ${ref} (not on disk)" >&2
+            # Not "(not on disk)": in this branch the file usually IS on disk,
+            # and saying otherwise sent workers looking for a stale checkout
+            # instead of telling them the default branch's copy is the one that
+            # counts.
+            echo "gate_run: task file read from ${ref} (preferred over the working copy)" >&2
             PAYLOAD="${PAYLOAD_TMP}"
             found=1
             break
@@ -136,10 +154,21 @@ WORKING_PAYLOAD=""
 # A declared evidence gate can never pass vacuously (CA-12): a missing evidence
 # file or a measurement that violates the threshold fails the gate right here,
 # before the prose/bash-block path can let it through.
-GATE_EVIDENCE_PY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../scripts/gate_evidence.py"
+GATE_EVIDENCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Git Bash: a native python.exe cannot open a `/c/...` path. Resolve to `C:/...`
+# here; identity on every other platform.
+command -v cygpath >/dev/null 2>&1 && GATE_EVIDENCE_DIR="$(cygpath -m "${GATE_EVIDENCE_DIR}")"
+GATE_EVIDENCE_PY="${GATE_EVIDENCE_DIR}/../scripts/gate_evidence.py"
 if [[ -f "${GATE_EVIDENCE_PY}" ]]; then
-    python3 "${GATE_EVIDENCE_PY}" "${PAYLOAD}"
-    _ev=$?
+    # `|| _ev=$?`, not a bare call followed by `$?`: under `set -e` a non-zero
+    # exit from a simple command ends the script right there, so every line
+    # below — the `gate: unmeasured` verdict, both stderr messages, the exit
+    # mapping — was unreachable for exactly the runs they exist to describe. A
+    # caller parsing the `gate:` line saw nothing, and an exit 2 from
+    # gate_evidence.py surfaced as this script's "usage error" rather than as a
+    # gate failure.
+    _ev=0
+    python3 "${GATE_EVIDENCE_PY}" "${PAYLOAD}" || _ev=$?
     # 3 means the evidence file positively declares the metric unmeasured: the
     # check ran and found that this cannot be scored yet. That is not a verdict,
     # and collapsing it into 1 would make the one honest answer a hard failure —
@@ -256,7 +285,10 @@ working = sys.argv[3] if len(sys.argv) > 3 else ""
 if working and is_placeholder(cmd):
     try:
         wcmd = gate_command(gate_section(pathlib.Path(working).read_text(encoding="utf-8")))
-    except OSError:
+    except (OSError, UnicodeDecodeError):
+        # UnicodeDecodeError derives from ValueError, not OSError, so a non-UTF-8
+        # task file used to escape here as a traceback — from a branch that only
+        # prints a diagnostic, long after the gate decision was made.
         wcmd = None
     if wcmd and not is_placeholder(wcmd):
         print(
@@ -266,6 +298,28 @@ if working and is_placeholder(cmd):
             file=sys.stderr,
         )
         cmd = wcmd
+elif working:
+    # The branch edited a gate that is already real on the board. That edit is
+    # discarded by design — it is exactly what self-certification would target —
+    # but discarding it in silence is what costs the session: the gate fails
+    # naming a symbol the implementation renamed, and the worker debugs its own
+    # code against a test that no longer exists. Say which command ran and why.
+    try:
+        wcmd = gate_command(gate_section(pathlib.Path(working).read_text(encoding="utf-8")))
+    except (OSError, UnicodeDecodeError):
+        # UnicodeDecodeError derives from ValueError, not OSError, so a non-UTF-8
+        # task file used to escape here as a traceback — from a branch that only
+        # prints a diagnostic, long after the gate decision was made.
+        wcmd = None
+    if wcmd and wcmd != cmd:
+        print(
+            f"gate_run: {task_id} — the gate that ran is the one on the DEFAULT BRANCH. "
+            "Your branch edits the gate block, and that edit was NOT used and cannot be: "
+            "a task's gate is the precondition it was accepted under, so a PR cannot "
+            "change the gate it is judged by. If the gate genuinely needs amending, merge "
+            "the task-file change on its own first, or open a new task.",
+            file=sys.stderr,
+        )
     else:
         print(
             f"gate_run: {task_id} — the gate command is still the placeholder on both the "
@@ -338,32 +392,59 @@ for system_dir in ("/usr/local/sbin", "/usr/local/bin", "/usr/sbin", "/usr/bin",
 # friends with exit 127 — a gate that CANNOT RUN, which is worse than an
 # unhardened one: it verifies nothing, and every caller has to work around it
 # with ARSENAL_GATE_INHERIT_ENV=1, which hands the gate the *entire* real
-# HOME/PATH. Admitting just these dirs keeps the rest of $HOME off PATH, and
+# HOME/PATH. Admitting just these tools keeps the rest of $HOME off PATH, and
 # HOME itself stays a throwaway.
-for tool in ("pnpm", "npm", "yarn", "bun", "node", "corepack", "uv", "poetry", "cargo"):
-    found = shutil.which(tool, path=os.environ.get("PATH", ""))
-    tool_dir = os.path.dirname(os.path.abspath(found)) if found else None
-    if tool_dir and tool_dir not in safe_path.split(os.pathsep):
-        safe_path = f"{tool_dir}{os.pathsep}{safe_path}" if safe_path else tool_dir
+# Admitted as symlinks to those tools, not as the directories holding them.
+# Prepending a whole directory put every OTHER file in it ahead of /usr/bin, and
+# `~/.nvm/versions/node/vN/bin` is also where every `npm install -g` shim lands
+# — and anything a dependency's postinstall dropped. A file named `git`, `curl`
+# or `make` sitting there ran instead of the system binary, inside the gate
+# whose own threat model is running attacker-influenceable code. Symlinks keep
+# each toolchain resolving exactly where it did, at the same precedence, and
+# make nothing else in its directory reachable. (Re-applying the $HOME filter
+# here instead, or resolving against the hardened PATH, would find none of these
+# tools at all — being under $HOME is the whole reason they need re-admitting.)
+GATE_TOOLS = ("pnpm", "npm", "yarn", "bun", "node", "corepack", "uv", "poetry", "cargo")
 
-with tempfile.TemporaryDirectory(prefix="arsenal-gate-home-") as gate_home:
-    env = {
-        "PATH": safe_path,
-        "HOME": gate_home,
-        "PWD": os.getcwd(),
-        "LANG": os.environ.get("LANG", "C.UTF-8"),
-        "LC_ALL": os.environ.get("LC_ALL", "C.UTF-8"),
-        "TERM": os.environ.get("TERM", "dumb"),
-    }
-    # A repo pinning "packageManager" makes corepack resolve that version out of
-    # its own cache; keyed to HOME, a throwaway one re-downloads the package
-    # manager on every gate run and fails outright offline. Point it at the real
-    # cache — a package cache, not a credential store.
-    corepack_home = os.environ.get("COREPACK_HOME") or os.path.join(
-        real_home, ".cache", "node", "corepack"
-    )
-    if os.path.isdir(corepack_home):
-        env["COREPACK_HOME"] = corepack_home
-    rc = _run(env)
+with tempfile.TemporaryDirectory(prefix="arsenal-gate-bin-") as gate_bin:
+    for tool in GATE_TOOLS:
+        found = shutil.which(tool, path=os.environ.get("PATH", ""))
+        if not found:
+            continue
+        # Resolved from the real PATH, so this is the binary the host would have
+        # used — and re-admitted only when the strip is what removed it. Asking
+        # instead whether the NAME resolves on the hardened PATH would silently
+        # swap a $HOME toolchain for a system one of a different version.
+        if not _under_home(os.path.dirname(os.path.abspath(found))):
+            continue
+        try:
+            os.symlink(os.path.abspath(found), os.path.join(gate_bin, tool))
+        except OSError:
+            # A platform or filesystem without symlinks loses that toolchain,
+            # which is the old exit-127 problem for that one tool — not a reason
+            # to hand the gate a whole writable directory instead.
+            pass
+    if os.listdir(gate_bin):
+        safe_path = f"{gate_bin}{os.pathsep}{safe_path}" if safe_path else gate_bin
+
+    with tempfile.TemporaryDirectory(prefix="arsenal-gate-home-") as gate_home:
+        env = {
+            "PATH": safe_path,
+            "HOME": gate_home,
+            "PWD": os.getcwd(),
+            "LANG": os.environ.get("LANG", "C.UTF-8"),
+            "LC_ALL": os.environ.get("LC_ALL", "C.UTF-8"),
+            "TERM": os.environ.get("TERM", "dumb"),
+        }
+        # A repo pinning "packageManager" makes corepack resolve that version out of
+        # its own cache; keyed to HOME, a throwaway one re-downloads the package
+        # manager on every gate run and fails outright offline. Point it at the real
+        # cache — a package cache, not a credential store.
+        corepack_home = os.environ.get("COREPACK_HOME") or os.path.join(
+            real_home, ".cache", "node", "corepack"
+        )
+        if os.path.isdir(corepack_home):
+            env["COREPACK_HOME"] = corepack_home
+        rc = _run(env)
 _finish(rc)
 PY

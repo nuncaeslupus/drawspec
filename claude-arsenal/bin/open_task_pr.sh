@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # open_task_pr.sh <task_id> <title> [<type>]
+# open_task_pr.sh <task_id> --title <title> [--type <type>] [--body-file <path>]
+# open_task_pr.sh <task_id> --preflight
+# open_task_pr.sh <task_id> <title> --branch <name>   (or ARSENAL_PR_BRANCH)
+# open_task_pr.sh --help
 # Commit a worker's task changes on a feature branch cut from the host DEFAULT
 # branch (origin/main), push it, and open a PR that closes the task's issue.
 #
@@ -9,6 +13,8 @@
 #   branch:<name>       — the branch was pushed but no PR backend exists here;
 #                         the orchestrator/operator opens the PR (github skill /
 #                         MCP). The branch ref is enough to do so.
+#   preflight:ok        — --preflight only: every check that can be made cheaply
+#                         passed. Nothing was branched, committed or pushed.
 #
 # Conventional Commits message: `<type>: <title>` (type defaults to feat). The
 # Co-Authored-By trailer is NEVER hardcoded — it is taken verbatim from
@@ -29,23 +35,151 @@
 # part of the PR's own diff, so the archive lands exactly when the merge does
 # and no follow-up commit is owed to anyone.
 #
+# Three things are checked before any of that happens, in this order: whether a
+# reviewer with no history of the work cleared this exact tree
+# (`adversarial_review.sh check`), the host's own gate, and the task's
+# acceptance gate. The last two are mechanical and say nothing about whether the
+# change is the change that was asked for; the first is the only one that can.
+# It runs first because the other two execute arbitrary consumer commands, and
+# any untracked artifact they leave behind would move the tree out from under
+# the review's digest and report a genuine CLEAR as stale.
+#
+# The outcome is written into the PR body under every mode but `off`, so a PR
+# opened with no review on record says so where the person merging it will read
+# it. The body states only what the receipt proves — that a verdict was recorded
+# for this tree — not that any particular reviewer ran: nothing here can tell a
+# subagent's verdict from one a session wrote itself.
+#
 # Env: ARSENAL_QUEUE_REMOTE (default origin); ARSENAL_COAUTHOR (optional);
 #      ARSENAL_TASK_ISSUE (issue number, when the caller already knows it);
 #      ARSENAL_ISSUES_JSON (saved issue list, default /tmp/arsenal-issues.json);
 #      ARSENAL_HOME (task tree, default arsenal);
 #      ARSENAL_ALLOW_UNLINKED_PR=1 (open a PR that closes nothing — see below);
-#      ARSENAL_ALLOW_SHARED_ADD (operator escape hatch, see the guard below).
+#      ARSENAL_ALLOW_SHARED_ADD (operator escape hatch, see the guard below);
+#      ARSENAL_PR_BRANCH (same as --branch).
 # Exit: 0 branch pushed (PR opened or branch emitted), 1 on push failure /
 #       usage / an unresolvable issue handle.
 
 set -uo pipefail
 
 REMOTE="${ARSENAL_QUEUE_REMOTE:-origin}"
-TASK_ID="${1:?open_task_pr.sh requires <task_id>}"
-TITLE="${2:?open_task_pr.sh requires <title>}"
-TYPE="${3:-feat}"
+
+_usage() {
+    cat <<'USAGE'
+usage: open_task_pr.sh <task_id> <title> [<type>]
+       open_task_pr.sh <task_id> --title <title> [--type <type>] [--body-file <path>]
+       open_task_pr.sh <task_id> --preflight
+       open_task_pr.sh <task_id> <title> --branch <name>
+
+  <task_id>            the queue task this PR completes (e.g. lo-cf3d)
+  <title>              the PR/commit subject, WITHOUT the Conventional Commits type
+  <type>               Conventional Commits type; default: feat
+
+Options:
+  --title <text>       same as the second positional argument
+  --type <text>        same as the third positional argument
+  --body-file <path>   file whose contents become the PR body's Summary prose.
+                       The `Closes #<issue>` line, the acceptance-gate note and
+                       the review receipt are still written by this script — a
+                       body that dropped them would break task completion.
+  --branch <name>      commit and push on <name> instead of cutting
+                       arsenal/<task_id>-<slug> off the default branch. For a
+                       session that must work on one designated branch: pass
+                       the current branch and it is reused as is (no checkout).
+                       A <name> that does not exist yet is cut off the default
+                       branch like the generated one. Env: ARSENAL_PR_BRANCH.
+  --preflight          run only the cheap half — the review receipt, the task
+                       gate, the issue handle, the archive, and `preflight-gate`
+                       if the repo declares one — then put the tree back and
+                       report. Opens no PR, cuts no branch, needs no <title>.
+  -h, --help           print this and exit
+
+Env: ARSENAL_QUEUE_REMOTE, ARSENAL_COAUTHOR, ARSENAL_TASK_ISSUE,
+     ARSENAL_ISSUES_JSON, ARSENAL_HOME, ARSENAL_ALLOW_UNLINKED_PR,
+     ARSENAL_ALLOW_SHARED_ADD, ARSENAL_PR_BRANCH
+USAGE
+}
+
+# Positional-only parsing let `open_task_pr.sh lo-cf3d --body-file tmp/pr.md` run
+# to completion with TITLE=--body-file and TYPE=tmp/pr.md, and merged the subject
+# `tmp/pr.md: --body-file` into main (#352). The subject is the one part of a PR
+# that survives a squash, so a typo here is only fixable by rewriting shared
+# history. An argument that looks like an option is now never taken as a value:
+# it is either a known option or a usage error, before anything touches git.
+TASK_ID=""
+TITLE=""
+TYPE=""
+BODY_FILE=""
+PREFLIGHT=""
+BRANCH_OPT="${ARSENAL_PR_BRANCH:-}"
+_positional=()
+
+# The count check above is not the invariant this comment claims. `--title
+# --body-file x.md` satisfies `$# -ge 2`, so TITLE became `--body-file` and
+# `x.md` fell through to positional — the #352 subject bug, reachable again
+# through the option form that was added to fix it. A value is rejected here
+# when it is empty or starts with `-`, in both the spaced and the `=` form.
+# Returns non-zero rather than exiting: this script runs without `set -e`, and
+# called as `TITLE="$(_check ...)"` the exit would have ended only the command
+# substitution's subshell — leaving TITLE empty and the run going, which is a
+# quieter version of the bug being fixed. Callers pair it with `|| exit 1`.
+_reject_optionlike() {  # _reject_optionlike <option> <value>
+    case "$2" in
+        "")  echo "open_task_pr: $1 needs a non-empty value" >&2; _usage >&2; return 1 ;;
+        -*)  echo "open_task_pr: $1 got '$2', which starts with '-' and is rejected as an option — quoting does not change that, the shell strips the quotes before this sees the value. Pass one that does not start with '-'; for a file that really is named that way, prefix the path: ./$2" >&2; _usage >&2; return 1 ;;
+    esac
+}
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help) _usage; exit 0 ;;
+        --title)      [[ $# -ge 2 ]] || { echo "open_task_pr: --title needs a value" >&2; _usage >&2; exit 1; }; _reject_optionlike --title "$2" || exit 1; TITLE="$2"; shift 2 ;;
+        --title=*)    _reject_optionlike --title "${1#--title=}" || exit 1; TITLE="${1#--title=}"; shift ;;
+        --type)       [[ $# -ge 2 ]] || { echo "open_task_pr: --type needs a value" >&2; _usage >&2; exit 1; }; _reject_optionlike --type "$2" || exit 1; TYPE="$2"; shift 2 ;;
+        --type=*)     _reject_optionlike --type "${1#--type=}" || exit 1; TYPE="${1#--type=}"; shift ;;
+        --body-file)  [[ $# -ge 2 ]] || { echo "open_task_pr: --body-file needs a value" >&2; _usage >&2; exit 1; }; _reject_optionlike --body-file "$2" || exit 1; BODY_FILE="$2"; shift 2 ;;
+        --body-file=*) _reject_optionlike --body-file "${1#--body-file=}" || exit 1; BODY_FILE="${1#--body-file=}"; shift ;;
+        --branch)     [[ $# -ge 2 ]] || { echo "open_task_pr: --branch needs a value" >&2; _usage >&2; exit 1; }; _reject_optionlike --branch "$2" || exit 1; BRANCH_OPT="$2"; shift 2 ;;
+        --branch=*)   _reject_optionlike --branch "${1#--branch=}" || exit 1; BRANCH_OPT="${1#--branch=}"; shift ;;
+        --preflight)  PREFLIGHT=1; shift ;;
+        --) shift; while [[ $# -gt 0 ]]; do _positional+=("$1"); shift; done ;;
+        -*) echo "open_task_pr: unknown option: $1" >&2; _usage >&2; exit 1 ;;
+        *) _positional+=("$1"); shift ;;
+    esac
+done
+
+[[ -n "${_positional[0]:-}" ]] && TASK_ID="${_positional[0]}"
+[[ -z "${TITLE}" && -n "${_positional[1]:-}" ]] && TITLE="${_positional[1]}"
+[[ -z "${TYPE}"  && -n "${_positional[2]:-}" ]] && TYPE="${_positional[2]}"
+TYPE="${TYPE:-feat}"
+
+if [[ ${#_positional[@]} -gt 3 ]]; then
+    echo "open_task_pr: too many arguments (got ${#_positional[@]}, expected at most 3)" >&2
+    _usage >&2; exit 1
+fi
+[[ -n "${TASK_ID}" ]] || { echo "open_task_pr.sh requires <task_id>" >&2; _usage >&2; exit 1; }
+# --preflight opens nothing, so there is no subject to require. Demanding one
+# for a question means the caller types a placeholder to get past it, and a
+# placeholder subject is what merged `tmp/pr.md: --body-file` (#352).
+[[ -n "${TITLE}" || -n "${PREFLIGHT}" ]] \
+    || { echo "open_task_pr.sh requires <title>" >&2; _usage >&2; exit 1; }
+# Checked before anything runs: a name git would refuse fails the push at the
+# very end, after the gates and the commit, which is the costliest place to learn it.
+if [[ -n "${BRANCH_OPT}" ]] && ! git check-ref-format --branch "${BRANCH_OPT}" >/dev/null 2>&1; then
+    echo "open_task_pr: --branch '${BRANCH_OPT}' is not a valid branch name" >&2; exit 1
+fi
+if [[ -n "${BODY_FILE}" && ! -f "${BODY_FILE}" ]]; then
+    echo "open_task_pr: --body-file ${BODY_FILE} does not exist" >&2; exit 1
+fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null || echo .)"
-BUNDLE_SCRIPTS="$(cd "${SCRIPT_DIR}/../scripts" && pwd 2>/dev/null || echo "${SCRIPT_DIR}/../scripts")"
+# Git Bash: a native python.exe cannot open a `/c/...` path, and MSYS rewrites
+# one it is handed into a wrong `C:\c\...`. Resolve to `C:/...` once, here, so
+# every path built from SCRIPT_DIR below works for both shells. Identity elsewhere.
+command -v cygpath >/dev/null 2>&1 && SCRIPT_DIR="$(cygpath -m "${SCRIPT_DIR}")"
+# Boundary timing. Sourced, not run: it only defines functions, and does
+# nothing at all under ARSENAL_METRICS=off. See bin/_timing.sh.
+# shellcheck source=/dev/null
+[[ -f "${SCRIPT_DIR}/_timing.sh" ]] && source "${SCRIPT_DIR}/_timing.sh"
+BUNDLE_SCRIPTS="${SCRIPT_DIR}/../scripts"
 ARSENAL_HOME="${ARSENAL_HOME:-arsenal}"
 
 # Every path this script handles is repo-root-relative by contract: ARSENAL_HOME,
@@ -73,15 +207,37 @@ cd "${_repo_root}" || {
     exit 1
 }
 
+# End to end: task claimed -> PR open, gates and review included. Started only
+# after the root is resolved, because everything before it is argument parsing.
+# A preflight is its OWN event, not a short `task-pr`. Folding it in would drop
+# runs that deliberately stop before the expensive half into the p50/p95 of the
+# runs that do not, and the table would then report the loop getting faster
+# every time somebody asked it a question.
+_EVENT="task-pr"
+[[ -n "${PREFLIGHT}" ]] && _EVENT="preflight"
+command -v arsenal_timing_begin >/dev/null 2>&1 && {
+    arsenal_timing_begin "${_EVENT}" "${TASK_ID}" "${TASK_ID}"
+    trap '_rc=$?; arsenal_timing_phase "" "${_rc}"; arsenal_timing_end "${_rc}"' EXIT
+}
+# One `task-pr` row said the loop cost 13m26s and could not say which of the
+# eight steps below spent it — 13m25s of it sat in the parent with no internal
+# structure, and the only resolved boundary was the 2.2s task gate. So each step
+# closes the one before it. `_phase` is a no-op when the helper is not sourced,
+# and never fails: `arsenal_timing_phase` returns 0 on every path, but an
+# unsourced `command -v` returning 1 as this function's last status would make
+# the call site's exit code the metric's, not the step's.
+_phase() { command -v arsenal_timing_phase >/dev/null 2>&1 && arsenal_timing_phase "$@"; return 0; }
+_phase review
+
 # ---------------------------------------------------------------------------
 # Gates, before anything touches git.
 #
-# worker.md step 4 asks a worker to run the host lint gate and then gate_run.sh,
+# worker.md step 5 asks a worker to run the host lint gate and then gate_run.sh,
 # and to open no PR if either fails. AGENTS.md goes further and states the
 # payload gate "is a hard precondition" because this script re-runs it. Neither
 # was true: nothing here ran either gate, so both were instructions with no data
 # path behind them — which this project already names as the thing that makes a
-# step not happen. A worker that forgot step 4, or ran only the `make lint` the
+# step not happen. A worker that forgot step 5, or ran only the `make lint` the
 # prose gives as its example, opened a perfectly valid PR over a red repo.
 #
 # The refusal is the load-bearing half. A worker that *cannot* open a PR over a
@@ -101,7 +257,88 @@ _gate_fail() {
 # There is deliberately no way to skip this. An escape hatch would be reached
 # for exactly when a repo is red, which is the case the refusal exists for.
 #
-# 1. The host's own gate, when the repo declares one. Absent by default, so a
+# 1. The pre-PR adversarial review — FIRST, before either gate runs.
+#
+#    The two gates below prove the change does not break the repo. Neither
+#    can tell whether it does what the task asked, because both are
+#    mechanical and the only reader who has judged that is the session that
+#    wrote it. `adversarial_review.sh check` asks whether a reviewer with no
+#    history of this work cleared THIS tree — digest-bound, so a CLEAR from
+#    before the last edit does not count.
+#
+#    Order is load-bearing, and it was wrong the first time. Both gates below
+#    run arbitrary consumer commands, and a gate that leaves any untracked
+#    artifact — a timestamped log, a coverage report, __pycache__ — changes
+#    the tree between the reviewer's verdict and this check. Running the
+#    check afterwards therefore reported a genuine CLEAR as stale: under
+#    `warn` the PR body then asserted something false on the one surface this
+#    feature exists to make truthful, and under `required` the refusal could
+#    never be cleared, because every retry re-ran the gate that invalidated
+#    the receipt. Asking before the gates run removes the whole class.
+#
+#    What the receipt covers is the tree the AUTHOR produced, not the final PR
+#    byte-for-byte: this script goes on to archive the task file into
+#    `tasks/_history/` as part of the same diff, after this check. That mutation
+#    is deliberately outside the review's scope — it is this helper's own
+#    bookkeeping, identical on every task PR, and re-reviewing after it would
+#    never converge, because the next run would mutate the tree again. No
+#    author-written change can enter through it.
+#
+#    Default is `warn`, not a refusal, and that is deliberate: a hard gate
+#    added to every existing worker loop overnight is a gate a consumer
+#    disables on the first red morning. So the outcome is written into the PR
+#    body instead, where the human who merges it reads it. Silence is what
+#    this repo keeps getting bitten by, not friction. Set
+#    `pre-pr-review = "required"` in arsenal/config.toml to make it refuse.
+review_note=""
+review_mode="warn"
+if [[ -f "${BUNDLE_SCRIPTS}/arsenal_config.py" ]]; then
+    # Errors are NOT swallowed into the default, for the same reason the
+    # host-gate read above does not swallow its own. arsenal_config.py exits 2
+    # on a value outside the enum — which is exactly what a consumer who typed
+    # `requried` or `Required` gets — and `|| echo warn` would turn that
+    # refusal back into the permissive mode they were trying to leave. The
+    # validation would then be enforced by nobody, which is worse than absent:
+    # it reads as protection while granting none.
+    if ! review_mode="$(python3 "${BUNDLE_SCRIPTS}/arsenal_config.py" \
+            --repo-root "${_repo_root}" --get pre-pr-review 2>&1)"; then
+        _gate_fail "could not read pre-pr-review from ${_repo_root}/${ARSENAL_HOME}/config.toml: ${review_mode}"
+    fi
+    review_mode="$(printf '%s' "${review_mode}" | tr -d '[:space:]')"
+    [[ -z "${review_mode}" ]] && review_mode="warn"
+fi
+# A `required` gate whose checker is not installed must not pass. Guarding the
+# whole block on the file's presence made the strictest setting a silent no-op
+# in exactly the bundle that cannot honour it — the failure this repo keeps
+# naming, wearing the label of the safeguard.
+if [[ "${review_mode}" != "off" && ! -f "${SCRIPT_DIR}/adversarial_review.sh" ]]; then
+    if [[ "${review_mode}" == "required" ]]; then
+        _gate_fail "pre-pr-review is 'required' but ${SCRIPT_DIR}/adversarial_review.sh is not installed, so the gate cannot run"
+    fi
+    review_note="Pre-PR adversarial review: **not run** — the review helper is not installed in this bundle."
+fi
+if [[ "${review_mode}" != "off" && -f "${SCRIPT_DIR}/adversarial_review.sh" ]]; then
+    # Anchored to the git root like the two gates below. The review directory is
+    # a repo-root-relative path, and `git ls-files --others` only sees from the
+    # cwd down — run from a subdirectory this would read a different tree than
+    # the one the review was written for, and report a clean "not run".
+    # --task namespaces the review slot. Without it there is one slot per working
+    # tree and `emit` clears it, so a second worker in a shared tree — which
+    # worker.md expects, because some surfaces ignore `isolation: worktree` —
+    # deletes the first worker's genuine CLEAR out from under this check.
+    ( cd "${_repo_root:-.}" && bash "${SCRIPT_DIR}/adversarial_review.sh" check --task "${TASK_ID}" ) >&2
+    case $? in
+        0) review_note="Pre-PR adversarial review: **CLEAR** — a clearing verdict is on record for this exact tree." ;;
+        1) review_note="Pre-PR adversarial review: **BLOCK** — a blocking verdict is on record for this tree and was not resolved before the PR opened. Read the findings before merging." ;;
+        3) review_note="Pre-PR adversarial review: **STALE** — the change was reviewed, then edited again. What is in this PR has not been reviewed." ;;
+        *) review_note="Pre-PR adversarial review: **not run** — no review verdict was recorded for this change before the PR opened." ;;
+    esac
+    if [[ "${review_mode}" == "required" && "${review_note}" != *CLEAR* ]]; then
+        _gate_fail "pre-pr-review is 'required' and there is no CLEAR review for this tree (run adversarial_review.sh emit, review it, then verdict)"
+    fi
+fi
+
+# 2. The host's own gate, when the repo declares one. Absent by default, so a
 #    repo without one is unaffected.
 # Anchored to the git root, not the cwd: this script is routinely invoked from a
 # worktree or a subdirectory, and arsenal_config.py resolves arsenal/config.toml
@@ -126,15 +363,52 @@ if [[ -f "${BUNDLE_SCRIPTS}/arsenal_config.py" ]]; then
         _gate_fail "could not read host-gate from ${_repo_root}/${ARSENAL_HOME}/config.toml: ${host_gate}"
     fi
 fi
-if [[ -n "${host_gate}" ]]; then
-    echo "open_task_pr: running host gate: ${host_gate}" >&2
-    if ! bash -c "${host_gate}" >&2; then
-        _gate_fail "host gate failed (${host_gate})"
+# `preflight-gate` is the cheap counterpart, read only on the --preflight path.
+# Empty by default, and that default is the honest answer: nothing here can see
+# inside `make test`, so the only party that knows which slice of a host's gate
+# is cheap is the host. Declared, it runs over the same tree the host gate
+# measures — which is the whole reason it exists, because a preflight that
+# stopped before the archive could say nothing about that tree at all.
+preflight_gate=""
+if [[ -n "${PREFLIGHT}" && -f "${BUNDLE_SCRIPTS}/arsenal_config.py" ]]; then
+    if ! preflight_gate="$(python3 "${BUNDLE_SCRIPTS}/arsenal_config.py" \
+            --repo-root "${_repo_root}" --get preflight-gate 2>&1)"; then
+        _gate_fail "could not read preflight-gate from ${_repo_root}/${ARSENAL_HOME}/config.toml: ${preflight_gate}"
     fi
 fi
+# The host gate is READ here and RUN after the archive, not here. It used to run
+# on both sides of the archive, and a host measurement over the repo's own files
+# under `${ARSENAL_HOME}/tasks/` cannot satisfy both: the archive moves a tracked
+# file, so the two runs demand two different committed values. Staging the
+# pre-archive number failed the second run; staging the post-archive number
+# failed the first and never reached the archive. The script could not open the
+# PR at all, and its own advice — make the measurement account for `_history/` —
+# asked hosts to count rows in a ledger that is append-only by design.
+#
+# The archived tree is the one the PR ships, so it is the only tree whose
+# measurement means anything. Running once, there, costs a slower failure: a red
+# repo is now discovered after the branch is cut rather than before. The archive
+# is undone on refusal (below) and the branch carries no commit, so the cost is
+# time, not a tree left moved.
 
-# 2. The task's own mechanical gate — the precondition AGENTS.md already claims
+# 3. The task's own mechanical gate — the precondition AGENTS.md already claims
 #    this script enforces.
+#
+#    This one runs BEFORE the archive, unlike the host gate above, and that
+#    asymmetry is deliberate rather than an oversight left over from #220.
+#    `gate_run.sh` only prefers the default branch's copy of the task file when
+#    a working copy is also on disk; once `_archive_task_file` has moved it to
+#    `tasks/_history/`, a task that is not on the default branch yet — one added
+#    by this very PR — has no copy left to read and the gate exits 2. Running it
+#    here keeps that bootstrap case working.
+#
+#    The cost is the mirror of the host gate's: this gate measures the
+#    PRE-archive tree, so a task gate must not depend on archive-dependent
+#    state. A gate that transitively asserts "every merged task is archived" —
+#    or reuses the host gate, which is written for the post-archive tree — is
+#    unsatisfiable here by construction, and the failure reads as the task's
+#    fault rather than the ordering's. See references/evidence-gates.md.
+_phase task-gate
 if [[ -f "${SCRIPT_DIR}/gate_run.sh" ]]; then
     # Gate chatter goes to stderr: this script's stdout is a contract that
     # callers parse (`branch:…`, the PR URL), and a `gate: passed` line in it
@@ -154,6 +428,29 @@ if [[ -f "${SCRIPT_DIR}/gate_run.sh" ]]; then
         2) _gate_fail "the task gate could not read ${ARSENAL_HOME}/tasks/${TASK_ID}.md (gate_run.sh exit 2). A repo still on the pre-v0.25 claude-arsenal/queue/ layout must run arsenal_migrate.py first" ;;
         *) _gate_fail "the task gate failed (gate_run.sh exit ${_rc})" ;;
     esac
+fi
+
+# The gates ran after the review, and `git add -A` below commits whatever they
+# left behind. This names that gap; it does NOT refuse over it, and the
+# distinction was arrived at the hard way.
+#
+# Checking after the gates made a gate's own artifacts invalidate a genuine
+# CLEAR, and under `required` that never converged: each retry re-ran the gate
+# that invalidated the receipt. Checking before them fixed that and put a false
+# CLEAR in its place — a build log riding inside a PR whose body called the tree
+# reviewed. Refusing on the drift detected here brings the first failure
+# straight back, because round N's review covers round N-1's artifact and the
+# gate rewrites it every time.
+#
+# So the guarantee is drawn where it can actually be met: `required` means an
+# independent reviewer cleared THE AUTHOR'S tree. What the gates then wrote is
+# disclosed in the PR body and never silently absorbed, but it does not block —
+# those artifacts are not the author's change, committing them is behaviour this
+# helper already had, and a setting nobody can satisfy protects nobody.
+if [[ "${review_note}" == *CLEAR* ]]; then
+    if ! ( cd "${_repo_root:-.}" && bash "${SCRIPT_DIR}/adversarial_review.sh" check --task "${TASK_ID}" ) >/dev/null 2>&1; then
+        review_note="Pre-PR adversarial review: **CLEAR for the tree as reviewed — but the gates then changed it.** They ran after the review and left files behind, so this PR carries content no reviewer saw. Ignore or clean whatever your gate writes into the tree."
+    fi
 fi
 
 # Snapshot the working tree to a permanent refs/arsenal-rescue/… ref. Used
@@ -181,11 +478,32 @@ _in_linked_worktree() {
 }
 
 # Slug: lowercase, non-alphanumerics → single hyphens, trimmed, capped.
-slug="$(printf '%s' "${TITLE}" | tr '[:upper:]' '[:lower:]' \
-    | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' | cut -c1-40 | sed -E 's/-+$//')"
+#
+# The whole pipeline runs under LC_ALL=C, and a final C-locale pass strips
+# anything that still is not [a-z0-9-] (#350). Both are load-bearing, and the
+# bug they close is invisible to CI because the runners are C.UTF-8:
+#   * Under a UTF-8 locale glibc collates accented letters INSIDE the `a-z`
+#     range, so `[^a-z0-9]` does not match `é` and it survives into the branch
+#     name raw. `tr '[:upper:]' '[:lower:]'` mangles multibyte there too.
+#   * `cut -c1-40` counts bytes, so a multibyte character straddling byte 40 is
+#     left as a lone continuation byte — not even valid UTF-8.
+# `git push` then refuses the ref, on exactly the workstations where people
+# write non-English titles and nowhere the tests run. This was patched three
+# times in one consumer's tree; each bundle bump reverted it, which is why the
+# normalisation belongs here.
+slug="$(export LC_ALL=C; printf '%s' "${TITLE}" | tr -d '\n\r' \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' | cut -c1-40 \
+    | sed -E 's/[^a-z0-9-]+//g; s/-+$//')"
 [[ -z "${slug}" ]] && slug="task"
 BRANCH="arsenal/${TASK_ID}-${slug}"
+# A session told to develop and push on ONE designated branch must not cut and
+# push another (#503). --branch reuses that branch: when it is the current one
+# the switch below is a no-op, so the commit lands on top of whatever the
+# session already committed there, and every check above still ran.
+[[ -n "${BRANCH_OPT}" ]] && BRANCH="${BRANCH_OPT}"
 
+_phase fetch
 # Resolve the host default branch from the remote's published HEAD symref, then
 # fetch it so we branch off its real tip. NEVER fall back to the current HEAD:
 # the worker may run in the orchestrator's tree, and branching off it would drag the entire
@@ -326,6 +644,7 @@ _resolve_issue() {
     return 1
 }
 
+_phase issue
 ISSUE=""
 if ! ISSUE="$(_resolve_issue)" || [[ -z "${ISSUE}" ]]; then
     if [[ "${ARSENAL_ALLOW_UNLINKED_PR:-}" == "1" ]]; then
@@ -346,8 +665,20 @@ EOF
     fi
 fi
 
-current="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
-if [[ "${current}" != "${BRANCH}" ]]; then
+# Where the caller started. The host gate now runs after this checkout (#256),
+# so a refusal there has a branch switch to undo — and this script's own promise
+# on a refusal is that nothing was committed and the tree is as it was. Leaving
+# the caller on a branch they did not ask to be on is the same class of stray
+# side effect the archive rollback exists to prevent.
+_phase branch
+_ENTRY_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)"
+current="${_ENTRY_BRANCH}"
+# --preflight cuts no branch. A branch left behind by a question is a side
+# effect the caller has to clean up before the real run can cut the same name,
+# and the archive below is undone in place on whatever branch they are on.
+if [[ -n "${PREFLIGHT}" ]]; then
+    :
+elif [[ "${current}" != "${BRANCH}" ]]; then
     if git rev-parse --verify --quiet "${BRANCH}" >/dev/null 2>&1; then
         git checkout "${BRANCH}" >/dev/null 2>&1 || { echo "open_task_pr: cannot switch to ${BRANCH}" >&2; exit 1; }
     elif ! git checkout -b "${BRANCH}" "${default_ref}" >/dev/null 2>&1; then
@@ -386,7 +717,11 @@ _unarchive_task_file() {
         echo "open_task_pr: could not restore ${_ARCHIVED_LIVE} from ${_ARCHIVED_BACKUP} — the archived copy at ${_ARCHIVED_DEST} is being left in place. Move it back by hand; the backup is at ${_ARCHIVED_BACKUP}." >&2
         return 1
     fi
-    rm -f "${_ARCHIVED_DEST}" "${_ARCHIVED_BACKUP}"
+    # The archive goes now; the BACKUP waits until the assertion below proves the
+    # tree is actually back. Deleting it here made every later failure path — a
+    # failed rm, a broken index restore — report "the backup has been kept" over
+    # a backup that was already gone.
+    rm -f "${_ARCHIVED_DEST}"
     # Put the INDEX back where it was, rather than staging the rollback: the
     # task file may have been untracked (a task added by this very PR) or
     # carrying unstaged edits, and `git add -A` would turn either into a staged
@@ -405,6 +740,7 @@ _unarchive_task_file() {
         echo "open_task_pr: the rollback did not complete — ${_ARCHIVED_LIVE} should be present and ${_ARCHIVED_DEST} should be gone; check both, and the index, by hand." >&2
         return 1
     fi
+    rm -f "${_ARCHIVED_BACKUP}"
     echo "open_task_pr: restored ${_ARCHIVED_LIVE} — the archive was undone" >&2
 }
 
@@ -433,13 +769,18 @@ _archive_task_file() {
     # need undoing when the re-check below refuses — and a refusal that leaves
     # the task file moved contradicts this script's own "nothing has been
     # committed".
-    _ARCHIVED_BACKUP="$(mktemp -t "arsenal-task-${TASK_ID}-XXXXXX.md")"
-    cp "${live}" "${_ARCHIVED_BACKUP}" || { echo "open_task_pr: cannot back up ${live}" >&2; return 1; }
+    local backup
+    backup="$(mktemp -t "arsenal-task-${TASK_ID}-XXXXXX.md")"
+    cp "${live}" "${backup}" || { echo "open_task_pr: cannot back up ${live}" >&2; return 1; }
     _ARCHIVED_LIVE="${live}"
     _ARCHIVED_DEST="${dest}"
     # The index entry as it stands before the move — empty when the file is
     # untracked, which is itself the state to restore.
     _ARCHIVED_INDEX="$(git ls-files -s -- "${live}" 2>/dev/null || true)"
+    # Published LAST, because the signal trap tests exactly this variable to
+    # decide whether there is something to undo. Written first, a signal landing
+    # on the next line would send `_unarchive_task_file` at an empty live path.
+    _ARCHIVED_BACKUP="${backup}"
 
     mkdir -p "${hist_dir}" || { echo "open_task_pr: cannot create ${hist_dir}" >&2; return 1; }
     if ! git mv "${live}" "${dest}" 2>/dev/null; then
@@ -458,7 +799,20 @@ path = Path(sys.argv[1])
 text = path.read_text(encoding="utf-8")
 match = re.match(r"\A---\r?\n(.*?)\r?\n---\r?\n", text, re.DOTALL)
 if not match:
-    sys.exit(0)
+    # Exiting 0 here read as "stamped", and the caller then failed its own
+    # re-check of the same file and reported the vaguer "not a complete
+    # archive" -- the two halves disagreeing about one case, with the specific
+    # cause known here and thrown away. The refusal itself is right: a task
+    # file with no front matter has no `id:` either, so `task_select.py` cannot
+    # attribute it, and inventing a block to satisfy the check would archive a
+    # record the queue still cannot read. Say what is actually wrong instead.
+    print(
+        f"open_task_pr: {path} has no front matter, so 'status: merged' has "
+        "nowhere to go. A task file needs an `id:`/`title:` block; fix the "
+        "file and re-run.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 front = match.group(1)
 if re.search(r"^status:", front, re.MULTILINE):
     front = re.sub(r"^status:.*$", "status: merged", front, count=1, flags=re.MULTILINE)
@@ -475,6 +829,24 @@ PY
     fi
     echo "open_task_pr: archived ${live} -> ${dest} (status: merged)" >&2
 }
+# From the archive until the commit the task file is in `tasks/_history/`
+# stamped `status: merged`, which `task_select.py` reads as finished work. Every
+# refusal below undoes it; a SIGNAL took none of those paths — Ctrl-C during the
+# host gate, the longest step in the run, left the task out of the queue with
+# nothing merged. One trap covers that, --preflight (which holds the tree
+# archived across the same window for the same reason), and the move itself: a
+# kill timed at the archive landed in the gap when the trap was armed after it,
+# and the backup already exists before `git mv` runs, so arming it here restores
+# from a half-done move too. `_unarchive_task_file` returns 0 while there is no
+# backup, so arming early costs nothing.
+# ponytail: INT and TERM only. SIGKILL cannot be trapped by anything, and the
+# byte-exact backup named in _unarchive_task_file's own failure message is the
+# way back from one. The trap disarms itself at the commit, which deletes the
+# backup.
+trap '_unarchive_task_file >&2; exit 130' INT
+trap '_unarchive_task_file >&2; exit 143' TERM
+
+_phase archive
 if ! _archive_task_file; then
     # The undo belongs here, not at each `return 1` inside the function. Two of
     # those fire after `git mv` has already succeeded — the stamp, and the
@@ -495,17 +867,84 @@ if ! _archive_task_file; then
     exit 1
 fi
 
-# The host gate ran at the top, over a tree that did not yet contain the
-# archive. Then the archive moved a tracked file — so the gate certified one
-# tree and the commit carries another. Any host measurement over the repo's own
-# files (a file count, a coverage denominator, a lint sweep) is then stale by
-# exactly that file, and the host's next run fails on a branch whose gate had
-# just passed (#220). Re-run it here, where the tree is final: a gate that
-# regenerates its evidence writes the right numbers into this commit, and one
-# that only checks confirms the tree being committed is the certified one.
-if [[ -n "${host_gate}" && -n "${_ARCHIVED_DEST}" ]]; then
-    echo "open_task_pr: re-running host gate over the archived tree: ${host_gate}" >&2
-    if ! bash -c "${host_gate}" >&2; then
+# --preflight: the cheap half of the run, and then stop.
+#
+# Everything above this line is what the real run does before it reaches its
+# expensive step, and none of it is expensive — the review receipt, the task
+# gate, the issue handle, the archive measured 305ms plus a 2.2s task gate on a
+# run whose host gate below was 13m25s. So a caller who only wants to know
+# whether the gates are RUNNABLE can have that answer for the price of the
+# cheap half, instead of learning it from a refusal thirteen minutes in.
+#
+# It refuses at the FIRST thing the real run would refuse at rather than
+# collecting every finding. Each refusal above already names its own cause and
+# its own fix; restating all of them in a report would be a second place to keep
+# those messages true. Fix what it names and re-run — it is cheap by
+# construction, which is the whole premise.
+#
+# What it cannot tell you is whether the host gate PASSES: running it is the
+# cost being avoided. `preflight-gate` is the host's own answer to that.
+if [[ -n "${PREFLIGHT}" ]]; then
+    _phase gate-check
+    _pf_rc=0
+    if [[ -n "${host_gate}" ]]; then
+        # Resolution only — this never runs the host gate. `command -v` on the
+        # first word catches the failure that actually happens (a gate naming a
+        # tool a fresh worktree never installed, which is what host-setup
+        # exists for) and is honest about the rest: nothing here parses shell,
+        # so a gate opening with a variable assignment or a `cd` is reported as
+        # unchecked rather than as broken.
+        _pf_first="${host_gate%%[[:space:]]*}"
+        if command -v "${_pf_first}" >/dev/null 2>&1; then
+            echo "open_task_pr: host gate '${host_gate}' — '${_pf_first}' resolves here; NOT run, that is the cost being avoided" >&2
+        else
+            echo "open_task_pr: host gate '${host_gate}' — '${_pf_first}' is not on PATH here. If the gate opens with a variable assignment or other shell syntax this check cannot see past it; otherwise the real run fails on it." >&2
+        fi
+    fi
+    if [[ -n "${preflight_gate}" ]]; then
+        echo "open_task_pr: running preflight gate over the tree the PR would commit: ${preflight_gate}" >&2
+        bash -c "${preflight_gate}" >&2 || _pf_rc=$?
+    fi
+    if _unarchive_task_file; then
+        [[ -n "${_ARCHIVED_BACKUP}" ]] && rm -f "${_ARCHIVED_BACKUP}"
+    else
+        echo "open_task_pr: preflight could not put the tree back — see above. The backup is at ${_ARCHIVED_BACKUP:-<none>}." >&2
+        _pf_rc=1
+    fi
+    if [[ "${_pf_rc}" -ne 0 ]]; then
+        echo "open_task_pr: preflight FAILED for ${TASK_ID} (exit ${_pf_rc}) — the real run would not have got past this. Nothing was branched, committed or pushed." >&2
+        exit 1
+    fi
+    echo "open_task_pr: preflight passed for ${TASK_ID} — the gates resolve and the archive completes. Nothing was branched, committed or pushed." >&2
+    echo "preflight:ok"
+    exit 0
+fi
+
+# The host gate runs HERE and nowhere else — once, over the final tree. It used
+# to run at the top as well, over a tree that did not yet contain the archive,
+# and then the archive moved a tracked file: the gate certified one tree and the
+# commit carried another. Any host measurement over the repo's own files (a file
+# count, a coverage denominator, a lint sweep) was stale by exactly that file,
+# and the host's next run failed on a branch whose gate had just passed (#220).
+# So the early call was removed, not duplicated. Running it here, where the tree
+# is final: a gate that regenerates its evidence writes the right numbers into
+# this commit, and one that only checks confirms the tree being committed is the
+# certified one.
+# Not conditional on the archive: `_ARCHIVED_DEST` is empty for an unlinked PR
+# and for a task worked from a payload elsewhere, and gating on it would leave
+# those two cases running no host gate at all — a skip, in the one check the
+# script says has deliberately no way to skip it.
+# Through fast_gate.sh --full --as-committed when it is installed: same command,
+# same root, but a pass leaves a receipt keyed by the tree this commit will
+# carry, so a re-run over that tree — here, or at merge — reuses it instead of
+# paying for the suite again. Failure handling below is unchanged.
+_phase host-gate
+if [[ -n "${host_gate}" ]]; then
+    echo "open_task_pr: running host gate over the tree being committed: ${host_gate}" >&2
+    _host_gate_cmd=(bash -c "${host_gate}")
+    [[ -f "${SCRIPT_DIR}/fast_gate.sh" ]] \
+        && _host_gate_cmd=(bash "${SCRIPT_DIR}/fast_gate.sh" --full --as-committed)
+    if ! "${_host_gate_cmd[@]}" >&2; then
         # Say which of the two happened. Claiming the restoration unconditionally
         # told a reader the tree was back the way it started in exactly the case
         # where it is not, and that is the case where they have to act.
@@ -514,14 +953,31 @@ if [[ -n "${host_gate}" && -n "${_ARCHIVED_DEST}" ]]; then
         else
             restored="THE ROLLBACK ALSO FAILED — see above; the tree needs a hand before re-running. Nothing was committed."
         fi
-        echo "open_task_pr: host gate failed after the task file was archived (${host_gate}) — no PR opened. ${restored} A gate that passes before the archive and fails after it is measuring the repo's own files; re-run once the measurement accounts for ${ARSENAL_HOME}/tasks/_history/." >&2
+        # Uncommitted work follows a plain checkout, so this returns the caller
+        # to the branch they ran from with their edits intact. Reported, not
+        # silent: a switch that fails leaves them somewhere they did not choose,
+        # and that is the case where they have to act.
+        if [[ -n "${_ENTRY_BRANCH}" && "${_ENTRY_BRANCH}" != "HEAD" \
+              && "$(git rev-parse --abbrev-ref HEAD 2>/dev/null || true)" != "${_ENTRY_BRANCH}" ]]; then
+            if git checkout "${_ENTRY_BRANCH}" >/dev/null 2>&1; then
+                restored="${restored} You are back on ${_ENTRY_BRANCH}."
+            else
+                restored="${restored} NOTE: could not switch back to ${_ENTRY_BRANCH} — you are on ${BRANCH}."
+            fi
+        fi
+        echo "open_task_pr: host gate failed (${host_gate}) — no PR opened. ${restored} The gate ran over the tree this PR would commit, with the task file already in ${ARSENAL_HOME}/tasks/_history/; if it passes over your working tree but fails here, it is measuring the repo's own files and the archive is the difference." >&2
         exit 1
     fi
 fi
-[[ -n "${_ARCHIVED_BACKUP}" ]] && rm -f "${_ARCHIVED_BACKUP}"
-
 # Stage and commit — the shared-checkout guard above already cleared `git add
 # -A`, and a dynamic Co-Authored-By is added only when supplied.
+#
+# The rescue backup is deliberately NOT deleted yet. It used to be dropped
+# right here, before the commit, so a `git commit` that failed left the task
+# file moved into `tasks/_history/` with `status: merged` — which the selector
+# reads as finished work — and `_unarchive_task_file` had nothing to restore
+# from. That is exactly what the rollback above exists to prevent.
+_phase commit
 git add -A
 
 # `Closes #<issue>` goes in the commit message as well as the PR body. The body
@@ -535,11 +991,34 @@ fi
 if [[ -n "${ARSENAL_COAUTHOR:-}" ]]; then
     commit_args+=(-m "Co-Authored-By: ${ARSENAL_COAUTHOR}")
 fi
-if ! git commit "${commit_args[@]}" >/dev/null 2>&1; then
-    echo "open_task_pr: nothing to commit for ${TASK_ID} (empty diff); return outcome 'open' with failure notes" >&2
+if ! commit_err="$(git commit "${commit_args[@]}" 2>&1 >/dev/null)"; then
+    # Not "empty diff": `_archive_task_file` moved a tracked file and `git add
+    # -A` staged it, so there IS something to commit whenever the archive ran.
+    # Reaching here then means a hook, a git-config problem, or an identity that
+    # cannot be resolved — and the message used to name the one cause that
+    # cannot apply, sending the reader to look in the wrong place.
+    # The backup is deleted per-branch, not once at the end: on the failed-rollback
+    # branch the task file is still in tasks/_history/ and this byte-exact copy is
+    # the only way back — and the failure message above names that exact path. The
+    # host-gate failure path keeps it for the same reason.
+    if [[ -n "${_ARCHIVED_DEST}" ]]; then
+        if _unarchive_task_file; then
+            restored="The task file has been restored to ${ARSENAL_HOME}/tasks/."
+            [[ -n "${_ARCHIVED_BACKUP}" ]] && rm -f "${_ARCHIVED_BACKUP}"
+        else
+            restored="THE ROLLBACK ALSO FAILED — see above; the tree needs a hand before re-running. The backup at ${_ARCHIVED_BACKUP:-<none>} has been kept."
+        fi
+    else
+        restored="Nothing had been archived, so the tree is unchanged."
+        [[ -n "${_ARCHIVED_BACKUP}" ]] && rm -f "${_ARCHIVED_BACKUP}"
+    fi
+    echo "open_task_pr: could not commit ${TASK_ID} — no PR opened. ${restored} git said: ${commit_err:-<no output>}" >&2
     exit 1
 fi
+# The commit holds the archive now, so the backup has nothing left to protect.
+[[ -n "${_ARCHIVED_BACKUP}" ]] && rm -f "${_ARCHIVED_BACKUP}"
 
+_phase push
 # Push with exponential backoff (network-transient retry only).
 delay=1
 pushed=0
@@ -553,6 +1032,7 @@ if [[ "${pushed}" -ne 1 ]]; then
     exit 1
 fi
 
+_phase pr
 # The PR body. `Closes #<issue>` is the first line of the summary rather than a
 # trailer, because a squash merge that truncates the body still keeps the top.
 closes_line=""
@@ -562,8 +1042,21 @@ if [[ -n "${ISSUE}" ]]; then
 else
     gate_note="$(printf 'Acceptance gate in `%s/tasks/%s.md`; it passed before the PR was opened. This PR closes no issue, so merging it does NOT complete the task.' "${ARSENAL_HOME}" "${TASK_ID}")"
 fi
-BODY="$(printf '## Summary\n\n%s\n\n%s\n\n## Test plan\n\n%s\n' \
-    "${closes_line}" "${TITLE}" "${gate_note}")"
+# The review outcome rides in the body on purpose. stderr scrolls past and
+# nobody re-reads a worker's log; the PR body is the one surface the person
+# merging this actually looks at, so "nobody independent read this" has to be
+# written where that decision is made.
+# --body-file supplies the Summary prose in place of the bare title. It does
+# NOT replace the whole body: `Closes #<issue>` is the completion mechanism and
+# the review receipt is what the person merging reads, so neither is delegated
+# to a caller-supplied file.
+summary_prose="${TITLE}"
+if [[ -n "${BODY_FILE}" ]]; then
+    summary_prose="$(cat "${BODY_FILE}")"
+fi
+BODY="$(printf '## Summary\n\n%s\n\n%s\n\n## Test plan\n\n%s\n%s' \
+    "${closes_line}" "${summary_prose}" "${gate_note}" \
+    "$([[ -n "${review_note}" ]] && printf '\n%s\n' "${review_note}")")"
 PR_TITLE="${TYPE}: ${TITLE}"
 
 # Open the PR over whichever channel exists. `gh` first, then REST — the REST
@@ -596,6 +1089,7 @@ fi
 # No PR backend at all. Say what still has to happen, including the keyword —
 # the caller opening this PR by hand is the one path where the body is written
 # by someone other than this script.
-echo "open_task_pr: no PR backend here — open the PR for ${BRANCH} with a body containing '${closes_line:-Closes #<issue>}', or the merge will not close the task" >&2
+echo "open_task_pr: no PR backend here — open the PR for ${BRANCH} (base ${default_base}, title '${PR_TITLE}') with a body containing '${closes_line:-Closes #<issue>}', or the merge will not close the task. The body this script would have used:" >&2
+printf '%s\n' "${BODY}" >&2
 echo "branch:${BRANCH}"
 exit 0

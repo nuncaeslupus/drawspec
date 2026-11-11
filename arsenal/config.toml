@@ -39,6 +39,14 @@ host-gate = "uv run ruff check . && uv run ruff format --check . && uv run mypy 
 #
 # orchestrator is advisory — a session cannot change the model it is already
 # running as. Leave it empty for "no opinion".
+attribution = true
+
 [models]
 orchestrator = ""
 workers = "sonnet"
+
+[skills]
+android = false
+extract = false
+python = true
+workflow = true
