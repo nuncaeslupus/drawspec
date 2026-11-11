@@ -12,6 +12,17 @@ Before opening the PR, run `python3 .claude/skills/add-kind/scripts/audit_kind.p
 (exit 0 means every registration point and document names it), then grep the docs for
 any other number or list the change made stale. The `add-kind` skill holds the procedure.
 
+## Reviewing and merging
+
+Every PR needs a review before it merges. CodeRabbit does not review this repo on its
+own (fewer than 10 stars), so comment `@coderabbitai review` on each PR; the plan allows
+about one review an hour. If it will not review, review the diff yourself. Merge only
+when CI is green and one of those reviews is done.
+
+Branch protection also requires a "CodeRabbit" status check, which posts only when
+CodeRabbit reviews. When our own review stands in for it, that check stays missing and
+blocks the merge: ask the owner to merge.
+
 <!-- claude-arsenal: auto-managed -->
 ## Automatic session protocol
 
