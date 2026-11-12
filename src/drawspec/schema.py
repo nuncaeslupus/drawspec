@@ -11652,6 +11652,8 @@ def _barmodel_violations(document: Mapping[str, Any]) -> list[Violation]:
                         f"model would teach the wrong sum: fix a part's amount, or the brace's.",
                     )
                 )
+        elif total == 0:
+            continue
         elif worth is None:
             worth = (value / total, index)
         elif not math.isclose(value / total, worth[0], rel_tol=1e-9):
@@ -18142,13 +18144,16 @@ def _field_schema(spec: FieldSpec) -> dict[str, Any]:
         schema["enum"] = list(spec.enum)
     if spec.exclusive_minimum is not None:
         schema["exclusiveMinimum"] = spec.exclusive_minimum
+    if spec.kind in ("number", "integer"):
+        schema["minimum"] = -MAX_NUMBER
+        schema["maximum"] = MAX_NUMBER
     if spec.kind == "array":
         if spec.item_ref:
             schema["items"] = {"$ref": f"#/$defs/{spec.item_ref}"}
         elif spec.item_kind == "point":
             schema["items"] = {
                 "type": "array",
-                "items": {"type": "number"},
+                "items": {"type": "number", "minimum": -MAX_NUMBER, "maximum": MAX_NUMBER},
                 "minItems": 2,
                 "maxItems": 2,
             }

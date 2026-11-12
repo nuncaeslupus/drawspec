@@ -131,7 +131,7 @@ def evaluate(value: Any, schema: dict[str, Any], root: dict[str, Any]) -> list[s
     """Errors `value` has against `schema`. Empty means valid.
 
     Covers exactly the keywords the published schema uses: `$ref`, `type`,
-    `const`, `enum`, `exclusiveMinimum`, `properties`, `required`,
+    `const`, `enum`, `exclusiveMinimum`, `minimum`, `maximum`, `properties`, `required`,
     `additionalProperties: false`, `items`, `minItems`, `maxItems`, `oneOf`.
     Anything else raises, so this cannot quietly stop checking.
     """
@@ -146,6 +146,8 @@ def evaluate(value: Any, schema: dict[str, Any], root: dict[str, Any]) -> list[s
         "const",
         "enum",
         "exclusiveMinimum",
+        "minimum",
+        "maximum",
         "properties",
         "required",
         "additionalProperties",
@@ -174,6 +176,10 @@ def evaluate(value: Any, schema: dict[str, Any], root: dict[str, Any]) -> list[s
         return [f"{value!r} is not in the enum"]
     if "exclusiveMinimum" in schema and not value > schema["exclusiveMinimum"]:
         return [f"must be greater than {schema['exclusiveMinimum']}"]
+    if "minimum" in schema and not value >= schema["minimum"]:
+        return [f"must be at least {schema['minimum']}"]
+    if "maximum" in schema and not value <= schema["maximum"]:
+        return [f"must be at most {schema['maximum']}"]
 
     if isinstance(value, dict):
         properties = schema.get("properties", {})

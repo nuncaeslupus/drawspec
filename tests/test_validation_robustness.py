@@ -10,6 +10,7 @@ the property behind them all, run over every bundled example.
 from __future__ import annotations
 
 import copy
+import json
 import random
 import re
 from typing import Any
@@ -18,10 +19,12 @@ from xml.dom import minidom
 import pytest
 
 from drawspec import render
+from drawspec.emit import check_embedding_safety
 from drawspec.errors import DocumentError, DrawspecError
 from drawspec.examples import EXAMPLES
 from drawspec.render import render_text
-from drawspec.schema import parse_document, validate_document
+from drawspec.schema import build_schema, parse_document, validate_document
+from drawspec.theme import load_theme
 
 
 def _with(kind: str, path: tuple[str | int, ...], value: object) -> dict[str, Any]:
@@ -154,3 +157,26 @@ def test_any_mutated_example_either_renders_cleanly_or_is_refused_cleanly() -> N
             continue
         minidom.parseString(svg.encode("utf-8"))
         assert not re.search(r"\b(?:nan|inf)\b", svg), (name, path)
+
+
+def test_a_units_brace_over_zero_units_is_not_a_division_by_zero() -> None:
+    document = {
+        "version": 1,
+        "kind": "barmodel",
+        "bars": [
+            {"id": "red", "text": "Red", "parts": [{"units": 0}]},
+            {"id": "blue", "text": "Blue", "parts": [{"units": 5}]},
+        ],
+        "braces": [{"over": ["red"], "amount": 64}, {"over": ["blue"], "amount": 5}],
+    }
+    validate_document(document)  # a located refusal or none, never ZeroDivisionError
+
+
+def test_markup_looking_words_after_a_child_element_are_not_searched() -> None:
+    svg = '<svg><text id="p-1"><tspan>bold</tspan>report.ttf</text></svg>'
+    theme = load_theme()
+    assert check_embedding_safety(svg, theme, namespace="p") == ()
+
+
+def test_the_published_schema_carries_the_number_bounds() -> None:
+    assert '"maximum": 1000000000000.0' in json.dumps(build_schema())

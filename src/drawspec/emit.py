@@ -61,7 +61,7 @@ PRECISION: Final = 3
 _ID_PATTERN: Final = re.compile(r'\bid="([^"]*)"')
 _URL_PATTERN: Final = re.compile(r"url\(#([^)]*)\)")
 _PAINT_PATTERN: Final = re.compile(r'\b(fill|stroke)="([^"]*)"')
-_TEXT_CONTENT: Final = re.compile(r"(<(?:text|tspan|title|desc)\b[^>]*>)[^<]*")
+_TEXT_CONTENT: Final = re.compile(r"(</?(?:text|tspan|title|desc)\b[^>]*>)[^<]+")
 _STYLE_ELEMENT: Final = re.compile(r"<style>(.*?)</style>", re.DOTALL)
 _STYLE_ATTRIBUTE: Final = re.compile(r'\bstyle="([^"]*)"')
 _FONT_REFERENCE_PATTERN: Final = re.compile(
