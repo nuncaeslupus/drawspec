@@ -61,6 +61,7 @@ PRECISION: Final = 3
 _ID_PATTERN: Final = re.compile(r'\bid="([^"]*)"')
 _URL_PATTERN: Final = re.compile(r"url\(#([^)]*)\)")
 _PAINT_PATTERN: Final = re.compile(r'\b(fill|stroke)="([^"]*)"')
+_TEXT_CONTENT: Final = re.compile(r"(<(?:text|tspan|title|desc)\b[^>]*>)[^<]*")
 _STYLE_ELEMENT: Final = re.compile(r"<style>(.*?)</style>", re.DOTALL)
 _STYLE_ATTRIBUTE: Final = re.compile(r'\bstyle="([^"]*)"')
 _FONT_REFERENCE_PATTERN: Final = re.compile(
@@ -698,6 +699,11 @@ def check_embedding_safety(
             colour properties.
     """
     violations: list[Violation] = []
+
+    # The rules are about markup. A label is text, and text may say `id="x"`,
+    # `report.ttf` or `url(#a)` without being any of those, so what sits between
+    # the tags of a text-bearing element is not searched.
+    svg = _TEXT_CONTENT.sub(r"\1", svg)
 
     identifiers = _ID_PATTERN.findall(svg)
     prefix = namespace

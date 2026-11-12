@@ -286,6 +286,8 @@ def _wraps(region: Region, widest: float, theme: Theme, measurer: TextMeasurer) 
     natural = wrap(text, 1e6, measurer, theme=theme, level="body")
     blocks: list[TextBlock] = [natural]
     limit = min(natural.width, widest)
+    if limit <= 0:
+        return blocks  # blank text: nothing to break, and no width to narrow to
     while True:
         target = limit * 0.999
         try:
@@ -302,6 +304,8 @@ def _wraps(region: Region, widest: float, theme: Theme, measurer: TextMeasurer) 
 
 def _balanced(text: str, block: TextBlock, theme: Theme, measurer: TextMeasurer) -> TextBlock:
     """As narrow as `text` goes on as many lines as `block` has."""
+    if block.width <= 0:
+        return block  # blank text has no width to narrow
     low, high = block.width / 2, block.width
     for _ in range(10):
         middle = (low + high) / 2

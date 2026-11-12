@@ -3,6 +3,7 @@ id: t-ee8091be
 title: "review: Non-finite numbers pass validation: SVG with `inf` coordinates or a traceback"
 priority: 5
 requires: [human:gate]
+status: merged
 ---
 
 Imported from issue #184

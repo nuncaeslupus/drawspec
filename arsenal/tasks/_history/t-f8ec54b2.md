@@ -3,6 +3,7 @@ id: t-f8ec54b2
 title: "review: No fuzz or property tests: a 5-minute mutation fuzz finds 12 crash sites"
 priority: 5
 requires: [human:gate]
+status: merged
 ---
 
 Imported from issue #194
