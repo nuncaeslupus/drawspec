@@ -22,12 +22,17 @@
 set -euo pipefail
 
 payload="$(cat)"
+# Cheap pre-filter: this runs on every prompt, and almost none name the skill.
+case "$payload" in *skill-workshop*|*skill-creator*) ;; *) exit 0 ;; esac
 prompt="$(printf '%s' "$payload" | python3 -c 'import json,sys; print(json.loads(sys.stdin.read()).get("prompt",""))' 2>/dev/null || true)"
 session_id="$(printf '%s' "$payload" | python3 -c 'import json,sys; print(json.loads(sys.stdin.read()).get("session_id",""))' 2>/dev/null || true)"
 
 # Match /skill-workshop at the start of the prompt: bare, with args, or
 # explicitly namespaced (e.g. /skill-workshop:skill-workshop some text).
-if printf '%s' "$prompt" | grep -qE '^/([a-z0-9_-]+:)?skill-workshop($|[[:space:]])'; then
+# `skill-creator` is the same skill's former name; see the companion hook for
+# why a bundle that only exposes it must still be able to satisfy the gate.
+if printf '%s' "$prompt" \
+    | grep -qE '^/([a-z0-9_-]+:)?(skill-workshop|skill-creator)($|[[:space:]])'; then
   if [[ -n "$session_id" ]]; then
     marker_dir="${CLAUDE_PLUGIN_DATA:-${HOME}/.cache/claude-arsenal/skill-workshop}"
     mkdir -p "$marker_dir" 2>/dev/null || true

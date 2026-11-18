@@ -36,12 +36,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -135,12 +139,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -244,12 +252,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -332,12 +344,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -395,12 +411,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -469,12 +489,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -536,12 +560,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -635,12 +663,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -698,12 +730,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -761,12 +797,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -832,12 +872,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -904,12 +948,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -979,12 +1027,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -1047,12 +1099,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -1122,12 +1178,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -1208,12 +1268,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -1297,12 +1361,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -1383,12 +1451,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -1477,12 +1549,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -1547,12 +1623,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -1636,12 +1716,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -1720,12 +1804,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -1788,12 +1876,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -1858,12 +1950,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -1938,12 +2034,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -2017,12 +2117,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -2097,12 +2201,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -2170,12 +2278,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -2240,12 +2352,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -2308,12 +2424,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -2379,12 +2499,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -2447,12 +2571,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -2515,12 +2643,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -2587,12 +2719,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -2660,12 +2796,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -2723,12 +2863,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -2806,12 +2950,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -2873,12 +3021,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -2890,7 +3042,9 @@
         },
         "bits_per_row": {
           "type": "integer",
-          "description": "How many bits one row holds: 8, 16, 32 (the default: an RFC header's word) or 64. A field wider than what is left of its row is split across the rows."
+          "description": "How many bits one row holds: 8, 16, 32 (the default: an RFC header's word) or 64. A field wider than what is left of its row is split across the rows.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "numbering": {
           "type": "string",
@@ -2948,12 +3102,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -3028,12 +3186,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -3112,12 +3274,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -3192,12 +3358,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -3262,12 +3432,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -3350,12 +3524,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -3429,12 +3607,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -3504,12 +3686,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -3590,12 +3776,16 @@
         "width": {
           "type": "number",
           "description": "Overrides the theme's canvas width. Binding.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height": {
           "type": "number",
           "description": "Advisory unless height_binding is true.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "height_binding": {
           "type": "boolean",
@@ -3821,11 +4011,15 @@
         },
         "min": {
           "type": "number",
-          "description": "Where the axis starts. Omit to take it from the data."
+          "description": "Where the axis starts. Omit to take it from the data.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "max": {
           "type": "number",
-          "description": "Where the axis ends. Omit to take it from the data."
+          "description": "Where the axis ends. Omit to take it from the data.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "categories": {
           "type": "array",
@@ -3853,11 +4047,15 @@
         },
         "min": {
           "type": "number",
-          "description": "Where the axis starts. Omit to take it from the data."
+          "description": "Where the axis starts. Omit to take it from the data.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "max": {
           "type": "number",
-          "description": "Where the axis ends. Omit to take it from the data."
+          "description": "Where the axis ends. Omit to take it from the data.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         }
       },
       "required": [
@@ -3878,11 +4076,15 @@
         },
         "min": {
           "type": "number",
-          "description": "Where the plan starts. Omit to take it from the tasks."
+          "description": "Where the plan starts. Omit to take it from the tasks.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "max": {
           "type": "number",
-          "description": "Where the plan ends. Omit to take it from the tasks."
+          "description": "Where the plan ends. Omit to take it from the tasks.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "categories": {
           "type": "array",
@@ -3903,16 +4105,22 @@
       "properties": {
         "min": {
           "type": "number",
-          "description": "Where the scale starts, at the left arrowhead's side."
+          "description": "Where the scale starts, at the left arrowhead's side.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "max": {
           "type": "number",
-          "description": "Where the scale ends: more than `min`."
+          "description": "Where the scale ends: more than `min`.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "step": {
           "type": "number",
           "description": "The distance between two ticks, each labelled with its number. Omit it for a step a reader can count in, chosen from the range.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "label": {
           "type": "string",
@@ -3950,11 +4158,15 @@
         },
         "min": {
           "type": "number",
-          "description": "Where the axis starts. Omit to take it from the positions."
+          "description": "Where the axis starts. Omit to take it from the positions.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "max": {
           "type": "number",
-          "description": "Where the axis ends. Omit to take it from the positions."
+          "description": "Where the axis ends. Omit to take it from the positions.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "ends": {
           "type": "array",
@@ -4031,7 +4243,9 @@
         "amount": {
           "type": "number",
           "description": "What the stretch adds up to. Checked: the parts' amounts must sum to it, and with units every brace must make one unit worth the same. Written unless `text` is given.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "text": {
           "type": "string",
@@ -4053,12 +4267,16 @@
         "amount": {
           "type": "number",
           "description": "How much the part is, more than 0: its length is in proportion, and its words default to the number. Give it even for the unknown — the `?` is its `text`.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "units": {
           "type": "integer",
           "description": "How many equal boxes the part is, each one unit long: groups to multiply, the shares of a ratio, the fifths of a fraction. Not with `amount`, and not in a document whose parts have amounts.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "text": {
           "type": "string",
@@ -4090,7 +4308,9 @@
         "limit": {
           "type": "integer",
           "description": "A work-in-progress limit. drawspec counts the column's cards (a `note` card is not work, so it is not counted) and writes `n / limit` in the heading; over the limit the heading takes `emphasis`. Never write the count yourself.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "role": {
           "type": "string",
@@ -4220,19 +4440,27 @@
         },
         "column": {
           "type": "integer",
-          "description": "Which column this cell starts in, counting from zero."
+          "description": "Which column this cell starts in, counting from zero.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "row": {
           "type": "integer",
-          "description": "Which row it starts in, from zero."
+          "description": "Which row it starts in, from zero.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "across": {
           "type": "integer",
-          "description": "How many columns it covers. Default 1."
+          "description": "How many columns it covers. Default 1.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "down": {
           "type": "integer",
-          "description": "How many rows it covers. Default 1."
+          "description": "How many rows it covers. Default 1.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "group": {
           "type": "string",
@@ -4927,7 +5155,9 @@
         },
         "at": {
           "type": "number",
-          "description": "For `timeline`: when this happened, so the gaps mean something. Give it to every entry or to none."
+          "description": "For `timeline`: when this happened, so the gaps mean something. Give it to every entry or to none.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         }
       },
       "required": [
@@ -4940,11 +5170,15 @@
       "properties": {
         "start": {
           "type": "number",
-          "description": "Where the cycle begins on the axis: the arc's head lands here."
+          "description": "Where the cycle begins on the axis: the arc's head lands here.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "end": {
           "type": "number",
-          "description": "Where it ends and turns back, after `start`: the arc leaves from here."
+          "description": "Where it ends and turns back, after `start`: the arc leaves from here.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         }
       },
       "required": [
@@ -5143,7 +5377,9 @@
         },
         "at": {
           "type": "number",
-          "description": "Where on the axis: a line is drawn across every row there."
+          "description": "Where on the axis: a line is drawn across every row there.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         }
       },
       "required": [
@@ -5201,7 +5437,9 @@
         },
         "to": {
           "type": "number",
-          "description": "Where the band ends; it starts where the band before ends."
+          "description": "Where the band ends; it starts where the band before ends.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         }
       },
       "required": [
@@ -5219,15 +5457,21 @@
         },
         "amount": {
           "type": "number",
-          "description": "The reading, on the scale from `min` to `max`. Written with its `unit` in the readout; never as a percentage the author worked out."
+          "description": "The reading, on the scale from `min` to `max`. Written with its `unit` in the readout; never as a percentage the author worked out.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "max": {
           "type": "number",
-          "description": "The end of the scale: a thermometer's goal, a progress bar's whole, a dial's right-hand end."
+          "description": "The end of the scale: a thermometer's goal, a progress bar's whole, a dial's right-hand end.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "min": {
           "type": "number",
-          "description": "Where the scale starts, on a `dial` only (0 by default): a needle reads a position, so it may start anywhere. A bar's length is its amount, so a bar, a bullet and a thermometer start at 0."
+          "description": "Where the scale starts, on a `dial` only (0 by default): a needle reads a position, so it may start anywhere. A bar's length is its amount, so a bar, a bullet and a thermometer start at 0.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "unit": {
           "type": "string",
@@ -5235,7 +5479,9 @@
         },
         "target": {
           "type": "number",
-          "description": "A mark on the scale — the plan, a stage of an appeal — drawn across the track and written in the readout. Inside the scale."
+          "description": "A mark on the scale — the plan, a stage of an appeal — drawn across the track and written in the readout. Inside the scale.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "bands": {
           "type": "array",
@@ -5417,7 +5663,9 @@
         "size": {
           "type": "integer",
           "description": "`neurons` only, and required there: how many neurons the layer holds. Up to 8 are drawn whole; a larger layer is drawn as its first three, a column of dots and its last two, with its size under it.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "labels": {
           "type": "array",
@@ -5463,7 +5711,9 @@
         "times": {
           "type": "integer",
           "description": "How many times the block is stacked: `6`, drawn `×6` by its frame.",
-          "exclusiveMinimum": 1
+          "exclusiveMinimum": 1,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "text": {
           "type": "string",
@@ -5581,7 +5831,9 @@
       "properties": {
         "at": {
           "type": "number",
-          "description": "Where the dot sits on the axis: a number between `min` and `max`."
+          "description": "Where the dot sits on the axis: a number between `min` and `max`.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "text": {
           "type": "string",
@@ -5611,11 +5863,15 @@
       "properties": {
         "from": {
           "type": "number",
-          "description": "Where the range starts. Omit it for a range that runs on below `min`, drawn as an arrow off the left end."
+          "description": "Where the range starts. Omit it for a range that runs on below `min`, drawn as an arrow off the left end.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "to": {
           "type": "number",
-          "description": "Where the range ends: more than `from`. Omit it for a range that runs on above `max`, drawn as an arrow off the right end."
+          "description": "Where the range ends: more than `from`. Omit it for a range that runs on above `max`, drawn as an arrow off the right end.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "from_open": {
           "type": "boolean",
@@ -5651,7 +5907,9 @@
         "bits": {
           "type": "integer",
           "description": "How many bits wide the field is. Fields are laid end to end in the order written, left to right and row after row; one that crosses a row's end is split there and its continuation marked, so no field ever carries a position.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "short": {
           "type": "string",
@@ -5721,19 +5979,27 @@
         },
         "duration": {
           "type": "number",
-          "description": "How long the activity takes, in the document's `unit`: zero or more. Write this, or the three PERT estimates, not both."
+          "description": "How long the activity takes, in the document's `unit`: zero or more. Write this, or the three PERT estimates, not both.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "optimistic": {
           "type": "number",
-          "description": "A PERT estimate: the shortest the activity could take. With `likely` and `pessimistic` in place of `duration`; the box carries the expected duration, (optimistic + 4 x likely + pessimistic) / 6."
+          "description": "A PERT estimate: the shortest the activity could take. With `likely` and `pessimistic` in place of `duration`; the box carries the expected duration, (optimistic + 4 x likely + pessimistic) / 6.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "likely": {
           "type": "number",
-          "description": "A PERT estimate: the most likely duration, no less than `optimistic` and no more than `pessimistic`."
+          "description": "A PERT estimate: the most likely duration, no less than `optimistic` and no more than `pessimistic`.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "pessimistic": {
           "type": "number",
-          "description": "A PERT estimate: the longest the activity could take."
+          "description": "A PERT estimate: the longest the activity could take.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "after": {
           "type": "array",
@@ -5781,7 +6047,9 @@
         "amount": {
           "type": "number",
           "description": "How much of the total this part is, more than 0, in the pie's `unit`: a count, a sum, or with `unit: \"%\"` a percentage. Its angle is its share of the sum of the amounts, computed — never written.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "role": {
           "type": "string",
@@ -5808,11 +6076,15 @@
         },
         "across": {
           "type": "number",
-          "description": "Where this sits on the horizontal axis. Data, not a coordinate."
+          "description": "Where this sits on the horizontal axis. Data, not a coordinate.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "up": {
           "type": "number",
-          "description": "Where this sits on the vertical axis. Data, not a coordinate."
+          "description": "Where this sits on the vertical axis. Data, not a coordinate.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "role": {
           "type": "string",
@@ -5920,7 +6192,9 @@
         },
         "min": {
           "type": "integer",
-          "description": "With `repeat`, and required there: `1` for one or more, `0` for zero or more (the loop with a bypass over it)."
+          "description": "With `repeat`, and required there: `1` for one or more, `0` for zero or more (the loop with a bypass over it).",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         }
       },
       "additionalProperties": false
@@ -6077,7 +6351,9 @@
         "amount": {
           "type": "number",
           "description": "How much flows, in the sankey's `unit`: the band's thickness is in proportion. A number you already know, more than 0.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "role": {
           "type": "string",
@@ -6135,7 +6411,9 @@
           "items": {
             "type": "array",
             "items": {
-              "type": "number"
+              "type": "number",
+              "minimum": -1000000000000.0,
+              "maximum": 1000000000000.0
             },
             "minItems": 2,
             "maxItems": 2
@@ -6247,7 +6525,9 @@
         "amount": {
           "type": "number",
           "description": "On a `funnel` stage: how many reached it. Written under the name, with the share kept from the stage before; the taper stays the drawing's own, not to scale. Every stage or none, never more than the stage before.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         }
       },
       "required": [
@@ -6338,15 +6618,21 @@
         },
         "start": {
           "type": "number",
-          "description": "Where the task starts on the axis, with `end`. A number in the axis's unit (week 3, day 12, minute 45) — data, not a coordinate. Never a date."
+          "description": "Where the task starts on the axis, with `end`. A number in the axis's unit (week 3, day 12, minute 45) — data, not a coordinate. Never a date.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "end": {
           "type": "number",
-          "description": "Where it ends, after `start`. With categories, 4 is where the fourth period begins."
+          "description": "Where it ends, after `start`. With categories, 4 is where the fourth period begins.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "at": {
           "type": "number",
-          "description": "Instead of `start` and `end`: makes the task a milestone, drawn as a mark at this point with no length."
+          "description": "Instead of `start` and `end`: makes the task a milestone, drawn as a mark at this point with no length.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "actor": {
           "type": "string",
@@ -6354,7 +6640,9 @@
         },
         "done": {
           "type": "number",
-          "description": "How much of the task is complete, 0 to 100: drawn as a solid band inside the bar from its start, MS Project's progress line. Not on a milestone."
+          "description": "How much of the task is complete, 0 to 100: drawn as a solid band inside the bar from its start, MS Project's progress line. Not on a milestone.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "events": {
           "type": "array",
@@ -6392,7 +6680,9 @@
       "properties": {
         "at": {
           "type": "number",
-          "description": "Where on the axis, inside the task's interval."
+          "description": "Where on the axis, inside the task's interval.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "text": {
           "type": "string",
@@ -6409,11 +6699,15 @@
       "properties": {
         "from": {
           "type": "number",
-          "description": "The edge the interval starts at, in steps (whole or half), as a marker's `at`."
+          "description": "The edge the interval starts at, in steps (whole or half), as a marker's `at`.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "to": {
           "type": "number",
-          "description": "The edge it ends at, after `from`, in steps (whole or half)."
+          "description": "The edge it ends at, after `from`, in steps (whole or half).",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "text": {
           "type": "string",
@@ -6436,7 +6730,9 @@
       "properties": {
         "at": {
           "type": "number",
-          "description": "Where the marker stands, in steps from the start: `0` is the left edge, a whole number is the edge between two steps, and a half is the middle of one (where a clock pulse falls)."
+          "description": "Where the marker stands, in steps from the start: `0` is the left edge, a whole number is the edge between two steps, and a half is the middle of one (where a clock pulse falls).",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "text": {
           "type": "string",
@@ -6558,7 +6854,9 @@
         "amount": {
           "type": "number",
           "description": "How much of the total this part is, in the treemap's `unit`: its area is in proportion. A number you already know, more than 0.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "group": {
           "type": "string",
@@ -6762,7 +7060,9 @@
         "depth": {
           "type": "integer",
           "description": "Which row of the value chain this sits on, the anchors being row 0. Left out, it is one row below the lowest thing that needs it; set it only to sink a component further, never above what needs it.",
-          "exclusiveMinimum": 0
+          "exclusiveMinimum": 0,
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "evolves": {
           "type": "string",
@@ -6838,11 +7138,15 @@
         },
         "total": {
           "type": "number",
-          "description": "A total: the bar stands on zero and runs to it. The first bar is one and so is the last; one in between is a subtotal. Every total after the first is checked: it must be the running sum. Not with `amount`."
+          "description": "A total: the bar stands on zero and runs to it. The first bar is one and so is the last; one in between is a subtotal. Every total after the first is checked: it must be the running sum. Not with `amount`.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "amount": {
           "type": "number",
-          "description": "A signed step, not 0: the bar floats from the running sum to the running sum plus this, and is written `+6.1` or `−9.4`. Not with `total`."
+          "description": "A signed step, not 0: the bar floats from the running sum to the running sum plus this, and is written `+6.1` or `−9.4`. Not with `total`.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "role": {
           "type": "string",
@@ -6871,11 +7175,15 @@
         },
         "across": {
           "type": "number",
-          "description": "Where this sits on the horizontal axis. Data, not a coordinate."
+          "description": "Where this sits on the horizontal axis. Data, not a coordinate.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         },
         "up": {
           "type": "number",
-          "description": "Where this sits on the vertical axis. Data, not a coordinate."
+          "description": "Where this sits on the vertical axis. Data, not a coordinate.",
+          "minimum": -1000000000000.0,
+          "maximum": 1000000000000.0
         }
       },
       "required": [

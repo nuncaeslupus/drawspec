@@ -37,7 +37,25 @@ OPS = {
     "<": lambda a, b: a < b,
     ">": lambda a, b: a > b,
 }
-GATE_RE = re.compile(r"(<=|>=|==|!=|<|>)\s*([+-]?\d+(?:\.\d+)?)")
+# The number grammar, shared verbatim with gate_evidence.py — the blocking gate
+# and this advisory audit must read the same gate text the same way. They did
+# not: this pattern lacked the exponent branch, so `throughput >= 1e6` read as a
+# threshold of 1 here and 1000000 there, and a measured 5 passed the audit while
+# the gate refused the PR.
+#
+# `(?!,?\d)` is what makes the parse honest. `\d+(?:,\d{3})*` alone matches `1`
+# in `1,5` and silently drops the rest — the same class of bug as `1,000` being
+# read as 1. With the lookahead the token matches whole or not at all, and a
+# threshold that cannot be parsed is a non-numeric gate, which the grammar
+# already routes to a human. A trailing unit still parses: `200ms` is 200,
+# because `m` is not a digit.
+_NUMBER = r"[+-]?\d+(?:,\d{3})*(?:\.\d+)?(?:[eE][+-]?\d+)?(?!,?\d)"
+GATE_RE = re.compile(rf"(<=|>=|==|!=|<|>)\s*({_NUMBER})")
+# Stricter than the threshold pattern by one lookahead. A measurement may carry
+# a trailing unit (`42ms`), but it must not be the first field of a structured
+# value: `2026-09-21` begins with a number and is not a measurement. Anchoring
+# alone was not enough — it still read that cell as 2026.
+MEASURED_RE = re.compile(rf"^{_NUMBER}(?![-/:]\d)")
 DELIM_RE = re.compile(r"^\s*\|?[\s:|-]*-[\s:|-]*\|?\s*$")
 EVIDENCE_FIELDS = ("measured", "command", "sha", "env")
 
@@ -129,7 +147,7 @@ def parse_gate(gate_text: str) -> tuple[str, str, float] | None:
     if not m:
         return None
     metric = gate_text[: m.start()].strip().strip("`").strip() or "value"
-    return metric, m.group(1), float(m.group(2))
+    return metric, m.group(1), float(m.group(2).replace(",", ""))
 
 
 def evaluate(gate_text: str, measured: float | None) -> dict:
@@ -162,10 +180,21 @@ def missing_evidence(row: dict | None) -> list[str]:
 
 
 def _measured_from_row(row: dict | None) -> float | None:
+    """The number a Measured cell records, or None when it does not record one.
+
+    Anchored at the start of the cell rather than searched for anywhere in it.
+    The grammar deliberately allows a trailing unit — `42ms` is 42 — but a cell
+    whose first number is not the measurement is not a measurement: a row
+    reading `2026-09-21: 0.85` used to score as 2026.0 and PASS a
+    `line_coverage >= 0.90` gate. A cell that does not begin with its number now
+    reads as non-numeric, which the grammar already routes to a human rather
+    than to a verdict.
+    """
     if row is None:
         return None
-    raw = re.search(r"[+-]?\d+(?:\.\d+)?", row.get("measured", "") or "")
-    return float(raw.group()) if raw else None
+    cell = (row.get("measured", "") or "").strip().strip("`*_").strip()
+    m = MEASURED_RE.match(cell)
+    return float(m.group().replace(",", "")) if m else None
 
 
 def build_report(tasks: dict[str, str], evidence: dict[str, dict], strict: bool = False) -> dict:
@@ -175,9 +204,16 @@ def build_report(tasks: dict[str, str], evidence: dict[str, dict], strict: bool 
         row = evidence.get(tid)
         measured = _measured_from_row(row)
         verdict = evaluate(gate_text, measured)
-        check_ev = parse_gate(gate_text) is not None or measured is not None
-        missing = missing_evidence(row) if check_ev else []
         has_gate = bool(gate_text and not _looks_templated(gate_text))
+        # Evidence is required of a MANUAL gate too. `verdict` never reads PASS
+        # for one — the rule the skill documents — but the exit code did read 0,
+        # and to a caller that is the same thing as a pass. A prose gate is
+        # exactly the kind that needs a human to record what they checked, so
+        # "manual, and nobody wrote down that they looked" is incomplete, not
+        # clean. Previously this asked for evidence only when the gate parsed as
+        # numeric or a measurement happened to exist.
+        check_ev = has_gate or measured is not None
+        missing = missing_evidence(row) if check_ev else []
         items.append(
             {
                 "task": tid,
@@ -223,7 +259,11 @@ def _print_human(report: dict) -> None:
             mark = "✓"
             detail = f"PASS — measured {i.get('measured')} {i['op']} {i['threshold']}"
         elif i["verdict"] == "MANUAL":
-            mark, detail = "?", "non-numeric gate — verify manually"
+            # Reached only when the evidence row IS complete — the branch above
+            # catches the incomplete case first. So this is "a human recorded
+            # what they checked, and the grammar cannot score it", which is a
+            # legitimate resting state rather than a silent pass.
+            mark, detail = "?", "non-numeric gate — verified by hand, not by the parser"
         else:
             mark, detail = "?", "gate recorded; no measured value to compare"
         print(f"  {mark} {i['task']:<5} {i['gate']:<32} {detail}")
@@ -251,7 +291,7 @@ def _focus(
         measured = _measured_from_row(row)
     verdict = evaluate(gate_text, measured)
     has_gate = bool(gate_text and not _looks_templated(gate_text))
-    check_ev = parse_gate(gate_text) is not None or measured is not None
+    check_ev = has_gate or measured is not None  # manual gates need evidence too
     missing = missing_evidence(row) if check_ev else []
     result = {
         "task": tid,
@@ -284,7 +324,7 @@ def _focus(
             print(f"  threshold: {verdict['op']} {verdict['threshold']} (no measured value given)")
         elif verdict["kind"] == "manual":
             print("  verdict:  non-numeric gate — verify manually")
-        if has_gate and verdict["kind"] != "manual":
+        if has_gate:
             if missing:
                 print(f"  evidence: INCOMPLETE — missing {', '.join(missing)}")
             else:
@@ -342,4 +382,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    # Windows consoles default to a legacy codepage (cp1252 and friends);
+    # a non-ASCII line must degrade to "?", never take the process down.
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
     sys.exit(main())

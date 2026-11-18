@@ -426,6 +426,15 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `axes` | [axes object](#axes-object) | **yes** | Both axes. A named shape still needs saying what it is a shape of. |
 | `curves` | array of [curve](#curve-object), at least 1 | **yes** | The shapes drawn, each through its own waypoints. |
 
+## Numbers and text a document may hold
+
+Every number must be finite and no larger than 1e12 in size: `NaN`, `Infinity` and
+`1e400` (which JSON reads as infinity) are refused at the field, as is a value too
+large to draw. Every string must be made of characters XML 1.0 can carry, so a
+control character other than tab and newline, or half an emoji (a lone surrogate),
+is refused with the pointer of the string that holds it. Text of a label may say
+anything else, markup-looking words included.
+
 ## The readability budget
 
 A document that would draw can still be refused for holding too much to read.

@@ -206,6 +206,16 @@ against it would stop working. Everything below is about the *package*.
 
 ### Fixed
 
+- **Bad input is refused where it is read, never a traceback.** `NaN`, `Infinity`,
+  `1e400` and numbers over 1e12 are refused at the field (they used to render `inf`
+  coordinates or crash a kind); control characters and lone surrogates in any string
+  are refused with a pointer (they used to write malformed XML, or die in the CLI's
+  write); a blank matrix cell or venn set renders; a malformed entry reports its own
+  violation instead of a `KeyError` from the referential checks; and the
+  embedding-safety check no longer reads label text, so a label such as `report.ttf`
+  or `id="main"` no longer refuses the whole document. A seeded property test now
+  mutates the bundled examples and asserts each renders or is refused cleanly.
+
 - **An arrow that turns a corner no longer arrives with almost no line.** The router
   kept only the head and a clearance between a route's last turn and the box, so an
   arrow turning just before it arrived was all head: a blot on the corner. It now asks
