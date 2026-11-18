@@ -35,6 +35,8 @@ PNG only, which is why there is no WebP here — see `docs/proposals/exports.md`
 
 from __future__ import annotations
 
+import html
+import re
 import warnings
 from collections.abc import Callable, Mapping
 from dataclasses import replace
@@ -44,7 +46,13 @@ from typing import Any, Final
 from drawspec.errors import ExportError
 from drawspec.render import render_document
 from drawspec.schema import Document, parse_document
-from drawspec.text.fontlib import FONT_ROLES, FONT_WEIGHTS, bundled_font_family, bundled_font_path
+from drawspec.text.fontlib import (
+    FONT_ROLES,
+    FONT_WEIGHTS,
+    bundled_font_family,
+    bundled_font_path,
+    load_font,
+)
 from drawspec.text.measure import TextMeasurer
 from drawspec.theme import Theme, load_theme
 
@@ -114,6 +122,8 @@ def render_png(
         resolved = replace(resolved, canvas=replace(resolved.canvas, ink=DARK_INK))
     svg = render_document(parsed, resolved, "standalone")
 
+    _refuse_uncovered_text(svg, font_files(resolved))
+
     page = {"light": LIGHT_PAGE, "dark": DARK_PAGE, "transparent": None}[background]
     return rasterise(
         svg_string=svg,
@@ -126,6 +136,36 @@ def render_png(
         serif_family=bundled_font_family("serif"),
         monospace_family=bundled_font_family("mono"),
     )
+
+
+def _refuse_uncovered_text(svg: str, files: tuple[Path, ...]) -> None:
+    """Refuse a PNG whose text has characters none of its fonts can draw.
+
+    The rasteriser ignores system fonts (that is what keeps the output identical
+    everywhere), so a character outside the bundled subset, such as CJK or an
+    emoji, would be dropped without a sign. A browser draws it from a fallback
+    font, so the SVG is fine; for a PNG, say which characters and what to do.
+    """
+    fonts = [load_font(path) for path in files]
+    # Only drawn text: <text> (with its <tspan>s), not <title> or <desc> metadata.
+    drawn = re.findall(r"<text\b[^>]*>(.*?)</text>", svg, flags=re.DOTALL)
+    text = html.unescape("".join(re.sub(r"<[^>]*>", "", chunk) for chunk in drawn))
+    missing = sorted(
+        {
+            c
+            for c in text
+            if not c.isspace()
+            and c.isprintable()
+            and all(font.glyph_name(c) is None for font in fonts)
+        }
+    )
+    if missing:
+        shown = " ".join(missing[:12]) + (" ..." if len(missing) > 12 else "")
+        raise ExportError(
+            f"the PNG fonts have no glyph for: {shown}. A PNG is drawn only from the bundled "
+            "fonts and would silently omit them; render the SVG instead (a browser falls back "
+            "to a font that has them), or use a theme whose font covers these characters."
+        )
 
 
 def font_files(theme: Theme) -> tuple[Path, ...]:

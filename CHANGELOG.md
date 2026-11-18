@@ -12,6 +12,15 @@ against it would stop working. Everything below is about the *package*.
 
 ### Added
 
+- **`drawspec agents`** prints the `AGENTS.md` that ships inside the installed package, so
+  the skill reads the format that matches the version in use, offline, instead of the
+  GitHub `main` copy (which can describe kinds a released package refuses).
+- **The published JSON Schema carries the readability budgets it can state**: each kind's
+  top-level array limit is a `maxItems` (a flow past 15 nodes now fails the schema, not
+  only `validate`). The schema's description lists what stays validator-only: budgets on
+  nested, per-role or per-cell counts, the emphasis cap, text-length, fit and theme-file
+  rules.
+
 - **`neuralnet`: Inception branches, and arrows in and out.** In `blocks`, an entry
   `{"branches": [{"layers": [...]}, ...]}` draws two to four parallel towers of one to
   three layers, split from the layer before and joined by the layer after —
@@ -205,6 +214,25 @@ against it would stop working. Everything below is about the *package*.
   build and a three-point software release are the references.
 
 ### Fixed
+
+- **Characters outside the bundled font subset are no longer mis-measured or silently
+  dropped.** CJK and other wide characters the fonts lack are measured at one em (as a
+  browser's fallback font draws them) rather than the `.notdef` width, so boxes are no
+  longer too narrow for them. `render_png` refuses text with characters none of its
+  fonts can draw, naming them, instead of omitting them; the SVG is unaffected.
+- **The release workflow tags only after the suite passes.** The tag used to be pushed
+  first, so a red suite left a tag on a bad commit and the next push saw "tag already
+  exists" and could never publish that version.
+
+- **Bad input is refused where it is read, never a traceback.** `NaN`, `Infinity`,
+  `1e400` and numbers over 1e12 are refused at the field (they used to render `inf`
+  coordinates or crash a kind); control characters and lone surrogates in any string
+  are refused with a pointer (they used to write malformed XML, or die in the CLI's
+  write); a blank matrix cell or venn set renders; a malformed entry reports its own
+  violation instead of a `KeyError` from the referential checks; and the
+  embedding-safety check no longer reads label text, so a label such as `report.ttf`
+  or `id="main"` no longer refuses the whole document. A seeded property test now
+  mutates the bundled examples and asserts each renders or is refused cleanly.
 
 - **An arrow that turns a corner no longer arrives with almost no line.** The router
   kept only the head and a clearance between a route's last turn and the box, so an

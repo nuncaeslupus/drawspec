@@ -131,7 +131,7 @@ def evaluate(value: Any, schema: dict[str, Any], root: dict[str, Any]) -> list[s
     """Errors `value` has against `schema`. Empty means valid.
 
     Covers exactly the keywords the published schema uses: `$ref`, `type`,
-    `const`, `enum`, `exclusiveMinimum`, `properties`, `required`,
+    `const`, `enum`, `exclusiveMinimum`, `minimum`, `maximum`, `properties`, `required`,
     `additionalProperties: false`, `items`, `minItems`, `maxItems`, `oneOf`.
     Anything else raises, so this cannot quietly stop checking.
     """
@@ -146,6 +146,8 @@ def evaluate(value: Any, schema: dict[str, Any], root: dict[str, Any]) -> list[s
         "const",
         "enum",
         "exclusiveMinimum",
+        "minimum",
+        "maximum",
         "properties",
         "required",
         "additionalProperties",
@@ -174,6 +176,10 @@ def evaluate(value: Any, schema: dict[str, Any], root: dict[str, Any]) -> list[s
         return [f"{value!r} is not in the enum"]
     if "exclusiveMinimum" in schema and not value > schema["exclusiveMinimum"]:
         return [f"must be greater than {schema['exclusiveMinimum']}"]
+    if "minimum" in schema and not value >= schema["minimum"]:
+        return [f"must be at least {schema['minimum']}"]
+    if "maximum" in schema and not value <= schema["maximum"]:
+        return [f"must be at most {schema['maximum']}"]
 
     if isinstance(value, dict):
         properties = schema.get("properties", {})
@@ -731,3 +737,15 @@ def test_the_edge_id_space_widens_only_where_containers_are_drawn() -> None:
     """`CONTAINER_KINDS` is the boundary, and it is narrower than `GRAPH_KINDS`."""
     assert set(CONTAINER_KINDS) < set(GRAPH_KINDS)
     assert "cycle" not in CONTAINER_KINDS
+
+
+def test_the_published_schema_states_the_top_level_readability_budgets() -> None:
+    """A flow past 15 nodes fails the schema, and a bracket tree (which budgets leaves) does not."""
+    from drawspec.schema import build_schema
+
+    variants = {v["title"]: v for v in build_schema()["oneOf"]}
+    flow = next(v for t, v in variants.items() if t.split(" / ")[0] == "flow")
+    assert flow["properties"]["nodes"]["maxItems"] == 15
+    assert flow["properties"]["edges"]["maxItems"] == 16
+    tree = next(v for t, v in variants.items() if "tree" in t.split(" / "))
+    assert "maxItems" not in tree["properties"]["nodes"]

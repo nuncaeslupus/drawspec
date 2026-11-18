@@ -126,14 +126,18 @@ registered yet):
    Restore the brackets on the headings so the references resolve.
 3. Merge that. The release workflow runs on every push to `main`: when the
    package version has a `## [x.y.z]` heading in `CHANGELOG.md` and no `vx.y.z`
-   tag exists yet, it creates the tag on the merge commit and publishes it. An
+   tag exists yet, it runs the suite on the merge commit and, only once that is
+   green, creates the tag and publishes it. An
    ordinary merge (no new dated heading) releases nothing. Pushing the tag by
    hand still works too:
    ```bash
    git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
    ```
-4. Watch the run. If `check` fails, the tag exists but no upload happened —
-   fix, delete the tag, and merge again (or re-push the tag).
+4. Watch the run. If `check` fails on a merge to `main`, no tag was made and
+   nothing was uploaded: fix forward and merge again. For a transient failure,
+   re-run the failed workflow. (A tag pushed by hand whose run then fails stays
+   behind: delete it on the remote, fix, and push the tag again; deleting alone
+   releases nothing.)
 
 Every action in that workflow is pinned to a commit SHA rather than a tag,
 with the tag in a trailing comment. A tag moves; this workflow holds

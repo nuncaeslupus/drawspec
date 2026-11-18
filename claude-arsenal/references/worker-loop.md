@@ -6,10 +6,11 @@ A session that never spawns a worker never needs this file.
 ## Contents
 
 - [Worker loop algorithm (parallel fan-out)](#worker-loop-algorithm-parallel-fan-out) — the loop itself, steps 0–6
+- [What to run while editing](#what-to-run-while-editing) — the touched suite now, the whole gate once
 - [Per-task PRs](#per-task-prs) — what a worker opens, and the web caveat
 - [Reading a precedent](#reading-a-precedent--shape-first-prose-on-demand) — how to follow an existing module without paying for all of it
-- [Credit guards](#credit-guards--set-before-any-task-tool-dispatch) — env to set before any Task-tool dispatch
-- [Tuning knobs](#tuning-knobs) — every `ARSENAL_*` / `LOOP_*` env var
+- [Credit guards](#credit-guards--set-before-any-task-tool-dispatch) — the single home of model dispatch
+- Tuning knobs — every `ARSENAL_*` / `LOOP_*` env var: `performance-tuning.md` § Tuning knobs
 - [Agent definitions](#agent-definitions)
 
 ---
@@ -19,18 +20,20 @@ A session that never spawns a worker never needs this file.
 One orchestrator claims up to `ARSENAL_MAX_WORKERS` independent tasks and
 dispatches that many workers at once. Run when the queue has open tasks:
 
-> **Precondition — the main working tree must be clean.** Run
-> `git status --porcelain` in the host's main tree before the first dispatch.
-> If it reports anything, **stop and tell the user**: commit it, move it to a
-> worktree, or explicitly accept the risk. The loop force-restores that tree
-> after every worker (step 6), and uncommitted work sitting in it is exactly
-> what gets caught. Keep it clean for the whole loop — do not cut branches or
-> start edits there while workers are running.
+> **Precondition — the main working tree is clean, and stays clean.** Run
+> `git status --porcelain` in the host's main tree before the first dispatch;
+> if it reports anything, stop and ask the user to commit it, move it to a
+> worktree, or accept the risk. `worker_postcheck.sh` (step 6) runs
+> `git reset --hard` + `git clean -fd` in that tree whenever HEAD is off the
+> recorded host branch, and it cannot tell a worker's residue from your own
+> uncommitted work. So while workers run, cut no branch and start no edit there
+> (a small docs PR is the usual trigger); use a separate worktree, or commit
+> first.
 
 0. **Establish worker isolation (once per session).** Parallel fan-out is only
    safe when each worker runs in its own `git worktree`; without it, concurrent
    workers share one tree and clobber each other, and any worker moves the
-   orchestrator's HEAD off the coordination branch. The Task tool's
+   orchestrator's HEAD off its host branch. The Task tool's
    `isolation: worktree` flag is **silently ignored on some surfaces** (observed
    on Claude Code on the web), so the orchestrator must establish isolation
    empirically, not assume it:
@@ -38,7 +41,9 @@ dispatches that many workers at once. Run when the queue has open tasks:
      (exit 1), git worktrees do not work here at all → set
      `ARSENAL_MAX_WORKERS=1` and run **serialized in-place mode** for the whole
      session (one worker at a time; `worker_postcheck.sh` keeps the branch clean
-     between them).
+     between them). In this mode the task's PR commits the whole checkout, so
+     `claim_task.sh` refuses (exit 2) while `git status` shows changes no task
+     made; relay the paths to the user rather than stashing them yourself.
    - If it prints `available`, dispatch the **first batch as a single worker**.
      You no longer have to remember to: `task_select.py` returns one task unless
      the sentinel reads a proven `available`, and the first round is always
@@ -92,6 +97,20 @@ dispatches that many workers at once. Run when the queue has open tasks:
      lives in the selector rather than in this protocol on purpose — a rule the
      caller has to remember is one it can skip exactly once, in the round that
      discovers isolation is missing.
+
+     **Dispatching separate sessions rather than Task-tool subagents?** Then no
+     worker ever returns through `worker_postcheck.sh`, which is `available`'s
+     only writer — so the sentinel stays `unknown` and every batch is clamped to
+     one task, permanently, on the surface where separate sessions are the only
+     shape that works. Record the fact instead:
+     `bash claude-arsenal/bin/record_isolation.sh separate-session`. It attests
+     that isolation follows from HOW you dispatched (a container per worker
+     cannot share a tree) rather than from a path comparison, which inverts
+     across containers — two containers routinely check out at the same path.
+     The vocabulary is closed and the provenance is written to
+     `worktree_isolation.why`; an unknown mechanism is refused, not recorded.
+     Not for Task-tool subagents: `worker_postcheck.sh` measures that
+     case correctly, and a measurement is worth more than an attestation.
 4. For each task line, `bash claude-arsenal/bin/claim_task.sh <task_id>`
    (sequential — each push is atomic):
    - `won` → keep the task in the dispatch set. `claim_task.sh` reports `won`
@@ -100,45 +119,64 @@ dispatches that many workers at once. Run when the queue has open tasks:
      ref — the web double-claim vector.
    - `lost` → another session claimed it; drop it from this batch.
    - `error: …` (exit 2) → **stop the loop and surface to the user.** A
-     misconfiguration, not a race (wrong branch, protected coordination branch,
+     misconfiguration, not a race (wrong branch, protected default branch,
      no upstream). Do **not** retry — it spins forever on a deadlock. Re-run
      the GitHub channel (`github_channel.sh --detect`), or fix the
      protection, then resume.
-   - **Never work around a `lost` or `error` by creating an upstream, pushing
-     `-u`, or re-claiming on a different ref.** A `lost` means another session
-     legitimately owns the task; an `error` means the lock is misconfigured.
-     "Recovering" the claim by giving your branch its own pushable ref defeats
-     the shared-ref lock entirely and lets two sessions both win the same task —
-     the precise double-claim failure this protocol prevents. Obey the result.
-5. **Spawn every won task as a Task-tool worker subagent in ONE message**
-   (see `agents/worker.md`) so they run concurrently:
+   - Obey a `lost` or `error`; routing around it re-creates the double claim
+     the lock prevents (`AGENTS.md` § Claiming — the contract).
+5. **Dispatch every won task.** Which of the two shapes you are in was decided
+   back in step 3, and steps 5 and 6 differ by it — so say which one you are in
+   before reading on.
+
+   **Task-tool dispatch — spawn every won task as a worker subagent in ONE
+   message** (see `agents/worker.md`) so they run concurrently:
    - `isolation: worktree`
    - Inject the relative-path directive and the task payload path.
-6. **Wait for all workers.** Then, for each returned outcome:
+   - Restate the two rules a worker most often misses, because your prompt is
+     the last thing it reads: run gates in the foreground (ending the turn ends
+     the task), and run `claude-arsenal/bin/host_setup.sh` before any test.
+     Both are spelled out in `agents/worker.md`. If a worker reports that the
+     repo declares no `host-setup`, declare it once in `arsenal/config.toml`
+     rather than paying for the discovery per worker.
+   **Separate-session dispatch — open one session per won task instead.** The
+   worker never returns into this session, so there is nothing to spawn in one
+   message and nothing to wait on in step 6: each session opens its own PR (or
+   returns `branch:<name>`), and you pick the outcomes up off GitHub. Isolation
+   was attested with `record_isolation.sh separate-session` in step 3, so the
+   `worker_postcheck.sh` calls below do not apply — there is no returned worker
+   to run them against, and inventing an outcome to feed one would replace a
+   measurement with a guess. Everything else in step 6 — the PR, the gate
+   evidence, `Closes #<issue>` — you read from the PR itself. A session that
+   returns `branch:<name>` had no channel that could open one: **open it
+   yourself**, with the `Closes #<issue>` line, before you count that task as
+   dispatched. Step 6 writes that handoff out, and this mode skips step 6 — so
+   it is named here too, because a pushed branch is not an opened PR: a task
+   left at a branch holds its claim until `sweep-claims` releases it a day
+   later, and its PR never opens by itself.
+
+6. **Wait for all workers** (Task-tool dispatch only — separate sessions are
+   picked up off GitHub, per step 5). Then, for each returned outcome:
    - **Assert the tree invariant first** — pass the worker's reported root so
-     isolation is measured rather than inferred:
-     `ARSENAL_WORKER_TOPLEVEL=<worker's toplevel> claude-arsenal/bin/worker_postcheck.sh`.
+     isolation is measured rather than inferred, and its outcome and returned
+     text so a `done` is checked for the evidence a completion carries:
+     `ARSENAL_WORKER_OUTCOME=done ARSENAL_WORKER_RESULT="<the worker's result>" ARSENAL_WORKER_TOPLEVEL=<worker's toplevel> claude-arsenal/bin/worker_postcheck.sh`.
+     **Exit 4** → the worker reported `done` with no PR URL, no `branch:` and no
+     `toplevel:`. That is an abandoned task, not a completion — usually a
+     backgrounded gate whose turn ended, with its processes still alive. Nothing
+     was touched: resume that worker and let it finish in the foreground. Do not
+     record the task as done, and do not re-dispatch it as a fresh attempt; the
+     work is intact and only needs the turn it was cut off from.
      It guarantees HEAD is back on the session's own branch and the tree is clean.
      In a real worktree this is a no-op (`ok`);
      if it prints `restored`, the worker ran in-place — clamp
      `ARSENAL_MAX_WORKERS=1` per step 0. Exit 2 (could not restore) → stop the
      loop and surface to the user.
-   - ⚠️ **`worker_postcheck.sh` is destructive by design.** A `restored` result
-     means it ran `git reset --hard` + `git clean -fd` in the tree it was
-     invoked from — the host's MAIN working tree, when the orchestrator runs it.
-     It restores whenever HEAD is off the recorded host branch, and it cannot
-     tell a worker's residue from your own uncommitted work. So:
-     - satisfy the loop precondition (step 0) — **the main working tree is
-       clean before the loop starts**, and stays that way;
-     - **never cut a branch in the main tree while the loop is running**
-       (a small docs PR is the classic trigger: the branch moves, the next
-       postcheck restores, and everything uncommitted goes with it). Do that
-       work in a separate worktree, or commit first.
-     - If a restore did catch uncommitted work, the tree was snapshotted first:
-       the ref is on `worker_postcheck.sh`'s stderr and in
-       `arsenal/session/rescue_refs`. Recover with
-       `git checkout <ref> -- .`, and **surface it to the user** — do not
-       silently continue the loop over rescued work.
+   - `restored` is destructive (see the precondition above). If it caught
+     uncommitted work, the tree was snapshotted first: the ref is on
+     `worker_postcheck.sh`'s stderr and in `arsenal/session/rescue_refs`.
+     Recover with `git checkout <ref> -- .` and tell the user before the loop
+     continues.
    - Then record the outcome:
      - `done` + **PR URL** → nothing to record. `open_task_pr.sh` wrote
        `Closes #<issue>` and archived the task file into that PR, so merging it
@@ -148,9 +186,14 @@ dispatches that many workers at once. Run when the queue has open tasks:
        line. A pushed branch is not an opened PR, and a task whose PR never
        opened can never close. The keyword-guard check in
        `.github/workflows/arsenal-queue.yml` fails the PR if you forget it.
-     - `open` (gate failed) → append the worker's `## Attempt N failure` notes to
-       the task file so the next attempt can read them, and leave the task for a
-       retry. The next attempt claims `<id>.a<n+1>`; past `max-attempts` it stops
+     - `open` (gate failed, round cap, refused review) → append the worker's
+       `## Attempt N failure` notes to the task file so the next attempt can read
+       them, and leave the task for a retry. Copy its `wip:` and `resume:` lines
+       into those notes, into a comment on the task issue and into `handover.md`:
+       the next attempt restores the work with the `resume:` command instead of
+       redoing it. No `wip:` line and the worker's worktree still exists → run
+       `park_task.sh <task_id>` from inside that worktree yourself before
+       anything removes it, and do not end the loop until it has pushed. The next attempt claims `<id>.a<n+1>`; past `max-attempts` it stops
        being offered and needs a human.
      - Remove `arsenal:claimed` and your assignment from the issue when you are
        not continuing, so the task is visibly free again.
@@ -193,14 +236,48 @@ function signature.
 
 ---
 
+## What to run while editing
+
+**While editing, run only the suite covering what you touched. Run the whole
+gate once, before opening the PR.**
+
+A worker's natural reading of "the gate is the bar" is to keep checking against
+the gate, and the loop above does nothing to discourage it. But only the last
+run decides anything — `open_task_pr.sh` runs the gate itself, and refuses on
+its failure, so a gate run five edits earlier bought information that the final
+one re-buys. On one measured task that was three whole-gate runs after edits to
+one language's files, against seconds of verification that would have told
+anyone the same thing.
+
+This costs nothing and weakens nothing: the run that gates is still the full
+one. It is the cheapest saving available to a worker, and the one nothing in the
+tooling will make for you.
+
+**Do not make the gate skip suites based on what changed.** The selectivity
+belongs here, in the editing loop, where being wrong costs a re-run and
+certifies nothing. A host that wants every run to be the whole gate just keeps
+running it — there is no knob to set, and nothing in the bundle runs a suite on
+your behalf while you edit. See `references/evidence-gates.md` § How often to
+run the whole gate for the reasoning, and `references/performance-tuning.md`
+§ Making the gate faster for what makes a gate slow.
+
+---
+
 ## Per-task PRs
 
 Each worker implements its task in an isolated worktree, cuts a feature branch off
 the **host default branch** via `claude-arsenal/bin/open_task_pr.sh`, which runs the
-host gate (`host-gate` in `arsenal/config.toml`) and `gate_run.sh` itself and
-refuses on either failure — and only then commits (Conventional
+pre-PR adversarial review check, the host gate (`host-gate` in
+`arsenal/config.toml`) and `gate_run.sh` itself, and refuses on either gate's
+failure — or, where `pre-pr-review = "required"`, on a change no independent
+reviewer has cleared. It records the review outcome in the PR body under every
+mode but `off`. Only then does it commit (Conventional
 Commits + the dynamic `Co-Authored-By` from the `github` skill, never a hardcoded
 model), pushes, and opens a PR. The PR diff is just that task's code.
+Where the harness mandates one designated branch, `--branch <name>` (or
+`ARSENAL_PR_BRANCH`) commits and pushes there instead of cutting a new one; with
+no PR backend it prints the PR body, `Closes #<issue>` included, for the caller's
+own GitHub tools.
 
 **The PR body must carry `Closes #<issue>`.** That is the entire completion
 mechanism: GitHub closes the issue when the PR merges into the default branch, so
@@ -235,61 +312,35 @@ a property of merging rather than a command anyone runs.
 
 ## Credit guards — set before any Task-tool dispatch
 
-Two of these are fixed. The third is the consumer's call, so it is read from
-`arsenal/config.toml` rather than written here — a model id hardcoded in a
-vendored file is a preference an upgrade overwrites:
+This is the one place model dispatch is defined; `agents/worker.md` and
+`agents/reviewer.md` point here. Assign, check, then use — in the same Bash call
+as the dispatch:
 
 ```bash
-export CLAUDE_CODE_DISABLE_1M_CONTEXT=1
-export CLAUDE_CODE_DISABLE_FAST_MODE=1
-
 root="$(git rev-parse --show-toplevel)"
-workers_model="$(python3 "${root}/claude-arsenal/scripts/arsenal_config.py" \
-    --repo-root "${root}" --get models.workers)" \
+cfg="${root}/claude-arsenal/scripts/arsenal_config.py"
+workers_model="$(python3 "${cfg}" --repo-root "${root}" --get models.workers)" \
   || { echo "arsenal: models.workers is unusable — fix arsenal/config.toml" >&2; exit 1; }
-export CLAUDE_CODE_SUBAGENT_MODEL="${workers_model:?models.workers resolved empty}"
+reviewer_model="$(python3 "${cfg}" --repo-root "${root}" --get models.reviewers)" \
+  || { echo "arsenal: models.reviewers is unusable — fix arsenal/config.toml" >&2; exit 1; }
+printf 'workers: %s  reviewer: %s\n' "${workers_model:?resolved empty}" "${reviewer_model:-${workers_model}}"
+export CLAUDE_CODE_DISABLE_1M_CONTEXT=1 CLAUDE_CODE_DISABLE_FAST_MODE=1
 ```
 
-**Assign, check, then export** — and anchor both paths on the repo root. Written
-as one line, `export VAR="$(cmd)"` reports the exit status of `export`, which
-always succeeds: a rejected model or a script path that did not resolve from a
-subdirectory would set an empty value, `export` would return 0, and the fleet
-would dispatch on whatever model Claude Code defaults to. That is the silent
-fleet the hard error below exists to prevent, arriving by a different door.
+Write the printed model into each dispatch's own `model` argument. Why:
 
-`models.workers` defaults to `sonnet` and takes either an alias Claude Code
-resolves (`opus`, `sonnet`, `haiku`) or a full model id. A value that is
-neither is a hard config error, not a silent fallback: a worker fleet quietly
-running a model nobody chose is exactly the kind of thing that is only
-discovered on the invoice.
+- Cloud Bash calls share no shell state, so an exported
+  `CLAUDE_CODE_SUBAGENT_MODEL` never reaches the dispatch.
+- A dispatch with no `model` inherits the parent's model, not `models.workers`.
+- `export VAR="$(cmd)"` always exits 0, so assigning first is what lets a bad
+  config fail loudly instead of dispatching on an empty value.
 
-**The orchestrator half is advisory.** `models.orchestrator` says which model
-this repo wants running the dispatching session, and no script can enforce it —
-a session cannot change the model it is already running as. What it can do is
-notice: compare the configured value against the model you are actually running
-and, if they differ, say so once rather than dispatching a fleet from a session
-the repo did not want driving it. Empty (the default) means no opinion.
+`models.workers` defaults to `sonnet` and takes an alias (`opus`, `sonnet`,
+`haiku`) or a full model id; anything else is a hard config error. Empty
+`models.reviewers` means "same as workers". `models.orchestrator` is advisory:
+a session cannot change its own model, so if it differs from the one you are
+running, say so once before dispatching. Empty means no opinion.
 
-**Version requirement**: Claude Code ≥ v2.1.172. Check with `claude --version`
-before starting; older versions do not support `statusLine.rate_limits`.
-
----
-
-## Tuning knobs
-
-| Env var | Default | Effect |
-|---------|---------|--------|
-| `ARSENAL_MAX_WORKERS` | `2` | Workers per batch. `2` is the validated git-push concurrency ceiling; higher N raises claim-race churn and PR/merge-conflict surface. **Forced to `1` when worktree isolation is unavailable** (loop step 0): parallel workers are unsafe sharing one tree. |
-| `ARSENAL_QUOTA_STOP_PCT` | `90` | Stop the loop before dispatch at/above this used-percentage on either window. |
-| `ARSENAL_MAX_ITERATIONS` | `50` | Always-available per-session dispatch-round cap (quota-independent). `0` disables it. |
-| `ARSENAL_GATE_INHERIT_ENV` | _(unset)_ | Set `1` to run gate blocks with the caller's full environment instead of the hardened throwaway HOME + restricted PATH. |
-| `LOOP_WORKSPACE` | _(unset)_ | Workspace scope; set by `/continue` token inference. |
-| `LOOP_TAGS` | _(unset)_ | Comma/space-separated tag scope (ANDed); set by `/continue` token inference. |
-| `ARSENAL_QUEUE_REMOTE` | `origin` | Remote for claim refs + per-task pushes. |
-| `ARSENAL_CLAIM_PREFIX` | `arsenal/claims` | Ref namespace for atomic claim refs. |
-| `ARSENAL_HOME` | `arsenal` | Host-owned tree (tasks, specs, plans, config, session). |
-
----
 ---
 
 ## Agent definitions
@@ -297,5 +348,6 @@ before starting; older versions do not support `statusLine.rate_limits`.
 | Agent | File | When used |
 |-------|------|-----------|
 | Worker | `agents/worker.md` | Spawned via Task tool per claimed task |
+| Reviewer | `agents/reviewer.md` | Spawned by the worker before its PR opens, on a packet from `adversarial_review.sh` — no history of the change |
 
 ---

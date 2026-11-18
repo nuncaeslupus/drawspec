@@ -3,7 +3,9 @@ name: Release
 # Two ways in, one path out. Pushing a tag `v0.1.0` publishes 0.1.0. A push to
 # main whose package version has a dated CHANGELOG heading and no tag yet
 # creates that tag here and publishes it, so a release is: bump the version,
-# date the changelog, merge. A tag pushed with the workflow token does not start
+# date the changelog, merge. The tag on main is pushed only AFTER the suite is
+# green (a tag on a red commit would block that version for good: the next push
+# sees "tag already exists"). A tag pushed with the workflow token does not start
 # another run, so nothing is published twice. Nothing here reads a version from anywhere else, because the two
 # classic release-day failures are a tag that disagrees with the package and a
 # stale `dist/` — the first is checked below, and the second cannot happen
@@ -29,13 +31,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  tag:
+  decide:
     name: Decide what, if anything, is released
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    timeout-minutes: 10
     outputs:
       tag: ${{ steps.decide.outputs.tag }}
+      create: ${{ steps.decide.outputs.create }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -44,6 +46,7 @@ jobs:
       # On a tag push the tag is the release. On main the release is the
       # package version, but only once CHANGELOG.md has a heading for it and no
       # tag exists yet; anything else is an ordinary merge and stops here.
+      # Nothing is tagged in this job: the tag is created after `check` passes.
       - name: Decide
         id: decide
         run: |
@@ -62,30 +65,21 @@ jobs:
             echo "CHANGELOG.md has no dated heading for $version; nothing to release"
             exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$tag" -m "$tag"
-          if git push origin "$tag"; then
-            echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          elif git ls-remote --exit-code --refs origin "refs/tags/$tag" >/dev/null; then
-            echo "$tag was created by another run; nothing to release"
-          else
-            echo "failed to push $tag" >&2
-            exit 1
-          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "create=true" >> "$GITHUB_OUTPUT"
 
   check:
     name: The suite, before anything is published
-    needs: tag
-    if: needs.tag.outputs.tag != '' || github.event_name == 'workflow_dispatch'
+    needs: decide
+    if: needs.decide.outputs.tag != '' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
-      RELEASE_TAG: ${{ needs.tag.outputs.tag }}
+      RELEASE_TAG: ${{ needs.decide.outputs.tag }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
         with:
           enable-cache: true
 
@@ -125,15 +119,52 @@ jobs:
           print(f"releasing {tag}")
           PY
 
+  tag:
+    name: Tag the release, now that the suite is green
+    needs: [decide, check]
+    if: needs.decide.outputs.tag != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.push.outputs.tag }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Push the tag
+        id: push
+        env:
+          TAG: ${{ needs.decide.outputs.tag }}
+          CREATE: ${{ needs.decide.outputs.create }}
+        run: |
+          if [[ "$CREATE" != "true" ]]; then
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"  # a tag push: the tag already exists
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "$TAG"
+          if git push origin "$TAG"; then
+            echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          elif git ls-remote --exit-code --refs origin "refs/tags/$TAG" >/dev/null; then
+            echo "$TAG was created by another run; nothing to release"
+          else
+            echo "failed to push $TAG" >&2
+            exit 1
+          fi
+
   build:
     name: Build and check the distribution
     needs: check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install uv
-        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
 
       - name: Set up Python
         run: uv python install 3.12
@@ -165,13 +196,13 @@ jobs:
       # configured once on PyPI — see the Releasing section of CONTRIBUTING.md.
       id-token: write
     steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: distribution
           path: dist/
 
       - name: Upload
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1
 
   mcp-registry:
     name: Publish to the MCP Registry
@@ -209,9 +240,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: distribution
           path: dist/

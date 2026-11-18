@@ -88,7 +88,11 @@ api() {
 
     case "${channel}" in
         gh)
-            local args=(api -X "${method}" "${path}" -H "Accept: application/vnd.github+json")
+            # `gh` accepts the endpoint with or without a leading slash; Git Bash
+            # rewrites any leading-slash argument into a Windows path and `gh` then
+            # rejects it. Strip it for `gh` only — the curl branch below builds
+            # `https://api.github.com${path}` and still needs it.
+            local args=(api -X "${method}" "${path#/}" -H "Accept: application/vnd.github+json")
             [[ -n "${body}" ]] && args+=(--input -)
             local out status
             if [[ -n "${body}" ]]; then
@@ -99,6 +103,27 @@ api() {
             printf '%s\n' "${out}"
             [[ ${status} -eq 0 ]] && return 0
             grep -qi 'already exists\|HTTP 422' <<<"${out}" && return 3
+            # The same reasoning the `rest` branch below spells out, which this
+            # one was missing: a write this channel is not permitted to make is
+            # not a broken channel, it is the no-channel case the caller already
+            # knows how to handle. Returning 4 made `claim_task.sh` map it to
+            # `error` — which stops the whole session — instead of `manual`,
+            # so the documented fallback was unreachable on the `gh` channel.
+            # Anchored on gh's own `HTTP <code>:` framing. The bare `403|404`
+            # alternatives matched anywhere in ${out} — which is gh's stdout AND
+            # stderr — so an HTTP 500 whose body carried a `#404` doc link, or a
+            # connection reset with `403` inside a trace id, was reported as a
+            # permission failure. The caller then sent a human after a token
+            # problem that did not exist, and a real outage was reclassified as
+            # `manual` rather than surfacing as the error it was.
+            if [[ "${method}" != "GET" ]] \
+                && grep -qiE '(^|[^0-9])HTTP[[:space:]]+40[34]([^0-9]|$)' <<<"${out}"; then
+                echo "channel:none"
+                echo "${method} ${path}"
+                [[ -n "${body}" ]] && echo "${body}"
+                echo "github_channel: gh reported a permission/not-found failure for ${method} ${path} — this channel may read but not write here; handing the call back" >&2
+                return 5
+            fi
             return 4
             ;;
         rest)

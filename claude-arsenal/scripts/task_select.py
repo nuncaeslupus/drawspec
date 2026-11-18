@@ -18,7 +18,9 @@ Two inputs, both cheap:
   trivially testable and cannot fail because a network call did.
 
 A task is eligible when it is `open`, every dep is `done`, and every
-`requires:` capability is offered by the current surface.
+`requires:` capability is offered by the current surface: the capabilities in
+`<session>/surface_profile.json` (what `detect_surface.sh` measured), plus any
+`--capability` passed.
 
 Output is one compact JSON object per line, best first — small on purpose,
 since every byte lands in a model's context:
@@ -67,9 +69,61 @@ TASK_MARKER_RE = re.compile(r"arsenal-task:\s*`?([A-Za-z0-9._-]+)`?")
 # Second way in: the task file's path, which every issue body names and which is
 # ordinary markdown. This is what rescues issues opened before the visible token
 # existed, on the surface where their comment is stripped.
-TASK_PATH_RE = re.compile(
-    r"(?:arsenal|claude-arsenal)/tasks/(?:_history/)?([A-Za-z0-9._-]+)\.md"
-)
+TASK_PATH_RE = re.compile(r"(?:arsenal|claude-arsenal)/tasks/(?:_history/)?([A-Za-z0-9._-]+)\.md")
+
+# Third way in, and the only exact one that survives a body-less fetch. Both
+# markers above live in the issue *body*, and the session-start fetch
+# deliberately does not ask for bodies — ~9k tokens against ~1.2k on a 40-issue
+# board. That left the title as the only path on the surface the board is
+# actually read from, and a title is a heuristic: renaming a task unpaired it
+# from its issue, and `handle_sync.py` then reported not "I cannot find the
+# issue for this task" but "this task has no issue", which is the one sentence a
+# caller acts on by opening a second one. A label is exact like the marker and
+# cheap like the title — `labels` is already in the field list every fetch asks
+# for, so this costs a body-less board nothing.
+ID_LABEL_PREFIX = "arsenal-id:"
+
+
+def labels_of(issue: dict[str, Any]) -> set[str]:
+    """Label names on an issue, however the fetch spelled them.
+
+    REST returns objects, the MCP tools and some fixtures return bare strings.
+    """
+    return {
+        label["name"] if isinstance(label, dict) else str(label)
+        for label in (issue.get("labels") or [])
+    }
+
+
+def task_id_from_labels(issue: dict[str, Any]) -> str | None:
+    """The task id an `arsenal-id:<id>` label states, or None.
+
+    Two of them is not a tie to break: an issue is the handle for exactly one
+    task, so a second label means somebody stamped the wrong one and guessing
+    would attribute a task's state to another. None sends the caller to the
+    body marker, which is exact too.
+    """
+    found = {
+        name[len(ID_LABEL_PREFIX) :].strip()
+        for name in labels_of(issue)
+        if name.startswith(ID_LABEL_PREFIX)
+    }
+    found = {f for f in found if f and re.fullmatch(r"[A-Za-z0-9._-]+", f)}
+    return found.pop() if len(found) == 1 else None
+
+
+def task_id_from_body(issue: dict[str, Any]) -> str | None:
+    """The task id the issue body states, or None."""
+    # A GitHub issue body is a string or null. Anything else is a malformed
+    # payload, and the honest reading of it is "carries no marker" — searching
+    # it raised a TypeError that surfaced as a traceback from whichever caller
+    # happened to be reading the board.
+    raw_body = issue.get("body")
+    body = raw_body if isinstance(raw_body, str) else ""
+    for pattern in (TASK_MARKER_RE, TASK_PATH_RE):
+        if match := pattern.search(body):
+            return match.group(1)
+    return None
 
 
 def normalise_title(text: str) -> str:
@@ -139,9 +193,9 @@ def task_id_from_issue(
 ) -> str | None:
     """The task an issue is a handle for, or None.
 
-    The body is asked first and always: the `arsenal-task:` line is an exact
-    statement of identity, and a title is a heuristic that must never override
-    one.
+    Exact evidence first and always, in the order it is cheapest to have: the
+    `arsenal-id:` label, then the `arsenal-task:` line in the body. A title is a
+    heuristic and must never override either.
 
     `titles` adds the fallback that lets a caller stop fetching bodies at all.
     Resolving from the body means the session-start fetch has to request `body`
@@ -151,16 +205,17 @@ def task_id_from_issue(
     before any work is read. Measured on a 40-issue board: ~9k tokens with
     bodies, ~1.2k without, for a payload of one identifier per issue.
 
-    The fallback is safe to lean on because the titles are not independently
-    written: `handle_sync.py` and `arsenal-queue.yml` both title the handle from
-    the task file's `title:`, so they match verbatim. A title edited on GitHub
-    but not in the task file fails to resolve and is reported — which is the
-    existing `handle_sync.py` conversation about drifted handles, not a new one.
+    The label is what makes that fallback shrink rather than grow: it is exact,
+    and it arrives on the same cheap fetch, so a board whose handles have been
+    stamped never reaches the title at all. Until they have been, the title
+    still carries body-less boards — safely, because the titles are not
+    independently written: `handle_sync.py` and `arsenal-queue.yml` both title
+    the handle from the task file's `title:`, so they match verbatim. A title
+    edited on GitHub but not in the task file fails to resolve, which is what
+    the stamping in `sync-handles` exists to stop being possible.
     """
-    body = issue.get("body") or ""
-    for pattern in (TASK_MARKER_RE, TASK_PATH_RE):
-        if match := pattern.search(body):
-            return match.group(1)
+    if resolved := (task_id_from_labels(issue) or task_id_from_body(issue)):
+        return resolved
     if not titles:
         return None
     key = normalise_title(issue.get("title") or "")
@@ -170,10 +225,11 @@ def task_id_from_issue(
     if resolved is None and warnings is not None:
         warnings.append(
             f"issue #{issue.get('number', '?')}: title matches more than one task file — "
-            "left unresolved. Give the issue an `arsenal-task: <id>` line, or make the "
+            "left unresolved. Give the issue an `arsenal-id:<id>` label, or make the "
             "task titles distinct."
         )
     return resolved
+
 
 TERMINAL = {"done", "merged"}
 
@@ -182,9 +238,77 @@ TERMINAL = {"done", "merged"}
 # a finished task's gate on disk for a host check that re-asserts it.
 HISTORY_DIRNAME = "_history"
 
+
 # Where worktree_probe.sh and worker_postcheck.sh record whether git worktrees
 # actually work on this surface.
-ISOLATION_SENTINEL = Path("arsenal/session/worktree_isolation")
+def _session_dir() -> Path:
+    """The session-state directory, resolved the way every writer resolves it.
+
+    `worktree_probe.sh` and `worker_postcheck.sh` honour ARSENAL_SESSION_DIR and
+    ARSENAL_HOME; this path was hardcoded. With a relocated host tree the probe
+    wrote `unavailable` to one file while the selector read a stale `available`
+    from another — and `available` is what permits ramping to N workers, so the
+    disagreement dispatched parallel workers into a single checkout.
+    """
+    session = os.environ.get("ARSENAL_SESSION_DIR", "").strip()
+    if session:
+        return Path(session)
+    return Path(os.environ.get("ARSENAL_HOME", "").strip() or "arsenal") / "session"
+
+
+def default_tasks_dir() -> Path:
+    """The board, resolved the way `_session_dir` above resolves its own path.
+
+    Every `--tasks-dir` default in the bundle was the literal `arsenal/tasks`,
+    and every canonical invocation in AGENTS.md omits the flag — so on a host
+    that set ARSENAL_HOME, exactly as AGENTS.md says relocates the whole
+    host-owned tree, every board reader reported `tasks: 0 — open 0, problems
+    0`. Nothing errored and nothing warned: an existing queue read as an empty
+    one, which is the same output a healthy empty backlog produces.
+
+    Imported rather than repeated, because the four other readers each had
+    their own copy of the literal and a fix to one would not have reached them.
+    """
+    return Path(os.environ.get("ARSENAL_HOME", "").strip() or "arsenal") / "tasks"
+
+
+def read_issue_payload(path: Path, prog: str) -> list[dict[str, Any]] | None:
+    """The issues in a `gh issue list --json …` file, or None having said why.
+
+    A truncated or wrong-shaped fetch is valid JSON that is not an issue list —
+    `null`, a bare scalar, `{"issues": null}` — and each of those raised a
+    TypeError out of the comprehension that consumed it, so the operator got a
+    traceback and exit 1 where every one of these scripts documents exit 2.
+    `query_status.py` was hardened after a real incident, and its comment even
+    claimed the siblings reading the identical payload already returned 2; they
+    did not. They import this now rather than each carrying a copy that can be
+    fixed alone.
+    """
+    try:
+        text = sys.stdin.read() if str(path) == "-" else path.read_text(encoding="utf-8")
+        payload = json.loads(text)
+    except (OSError, UnicodeDecodeError) as exc:
+        print(f"{prog}: cannot read --issues — {exc}", file=sys.stderr)
+        return None
+    except json.JSONDecodeError as exc:
+        # Kept distinct from the read error: "the file is not there / not
+        # readable" and "the fetch wrote something that is not JSON" send an
+        # operator to different places.
+        print(f"{prog}: --issues is not valid JSON — {exc}", file=sys.stderr)
+        return None
+    if isinstance(payload, dict):
+        payload = payload.get("issues")
+    if not isinstance(payload, list):
+        print(
+            f"{prog}: --issues {path} is not an issue list — expected a "
+            'JSON array, or an object with an "issues" array',
+            file=sys.stderr,
+        )
+        return None
+    return [i for i in payload if isinstance(i, dict)]
+
+
+ISOLATION_SENTINEL = _session_dir() / "worktree_isolation"
 
 
 def isolation_verdict(sentinel: Path) -> str:
@@ -218,6 +342,15 @@ def state_from_issues(
     not release work that was never actually done, and a label is the only
     signal every surface can see. `state_reason` is honoured when present.
     """
+    # A task can carry more than one handle — a duplicate created against a
+    # stale fetch, or a board re-seeded — and last-write-wins made the answer
+    # depend on the order GitHub happened to return them. `issue_number_for`
+    # already resolves that by preferring an OPEN handle; this has to agree, or
+    # the two disagree about the same board. A live issue therefore outranks a
+    # terminal one, and among terminal ones `cancelled` outranks `done`: both
+    # directions err toward "not finished", which keeps work visible rather
+    # than handing out a task twice.
+    precedence = {"claimed": 3, "open": 2, "cancelled": 1, "done": 0}
     state: dict[str, str] = {}
     resolved = 0
     for issue in issues:
@@ -229,6 +362,7 @@ def state_from_issues(
             label["name"] if isinstance(label, dict) else str(label)
             for label in (issue.get("labels") or [])
         }
+        derived: str
         if str(issue.get("state", "")).lower() == "closed":
             # `state_reason` is the precise signal, but not every surface can
             # return it: the GitHub MCP tools a cloud session uses have no such
@@ -238,17 +372,22 @@ def state_from_issues(
             # loses the distinction. So a label carries it instead — every
             # surface can read labels — and `state_reason` refines the answer
             # when it happens to be there.
-            reason = issue.get("state_reason")
+            # REST spells it `state_reason`, `gh --json` spells it `stateReason`.
+            reason = issue.get("state_reason") or issue.get("stateReason")
             if cancelled_label in labels:
-                state[task_id] = "cancelled"
-            elif reason is None:
-                state[task_id] = "done"
+                derived = "cancelled"
+            elif not reason:
+                derived = "done"
             else:
-                state[task_id] = "done" if str(reason).lower() == "completed" else "cancelled"
+                derived = "done" if str(reason).lower() == "completed" else "cancelled"
         elif claimed_label in labels or issue.get("assignee") or issue.get("assignees"):
-            state[task_id] = "claimed"
+            derived = "claimed"
         else:
-            state[task_id] = "open"
+            derived = "open"
+
+        current = state.get(task_id)
+        if current is None or precedence[derived] > precedence[current]:
+            state[task_id] = derived
 
     # An empty map is indistinguishable from a healthy new board: every task
     # defaults to `open`, so selection looks right until the first task is
@@ -328,6 +467,35 @@ def parse_front_matter(text: str) -> dict[str, Any]:
     return data
 
 
+LABEL_MAX_WORDS = 5
+
+
+def display_label(label: Any, title: str) -> str:
+    """The short human name a task is shown by: its `label:`, else the first
+    five words of the title with an ellipsis, so a bare id never stands alone."""
+    if label and str(label).strip():
+        return " ".join(str(label).split())
+    words = title.split()
+    if len(words) <= LABEL_MAX_WORDS:
+        return " ".join(words)
+    return " ".join(words[:LABEL_MAX_WORDS]) + "…"
+
+
+def _as_list(value: Any) -> list[str]:
+    """Front matter may write a single value bare: `requires: surface:cli`.
+
+    parse_front_matter hands that back as a string, and iterating a string
+    yields characters — so a bare value silently became eleven one-character
+    capabilities that could never match `--capability surface:cli`. A scalar is
+    therefore normalised to a one-item list before anything iterates it.
+    """
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(v) for v in value]
+    return [str(value)]
+
+
 def load_tasks(tasks_dir: Path) -> tuple[list[dict[str, Any]], list[str]]:
     """Return (tasks, warnings). A malformed task file is reported rather than
     skipped in silence — a task nobody can see is work that never happens."""
@@ -358,19 +526,33 @@ def load_tasks(tasks_dir: Path) -> tuple[list[dict[str, Any]], list[str]]:
             warnings.append(f"{path}: duplicate id {task_id} (also {seen[task_id]}) — skipped")
             continue
         seen[task_id] = path
-        deps = meta.get("deps") or []
+        title = str(meta.get("title", task_id))
+        label = display_label(meta.get("label"), title)
+        if meta.get("label") and len(label.split()) > LABEL_MAX_WORDS:
+            warnings.append(
+                f"{path}: `label:` has more than {LABEL_MAX_WORDS} words — "
+                "keep it short enough to read at a glance"
+            )
         tasks.append(
             {
                 "id": task_id,
-                "title": str(meta.get("title", task_id)),
+                "title": title,
+                "label": label,
+                "display": f"{label} ({task_id})",
                 "path": str(path),
                 "priority": meta.get("priority", 0)
                 if isinstance(meta.get("priority", 0), int)
                 else 0,
-                "deps": [str(d) for d in deps] if isinstance(deps, list) else [],
-                "requires": [str(r) for r in (meta.get("requires") or [])],
+                # `_as_list`, not an isinstance check: a bare `deps: t-aaaa1111`
+                # is valid front matter and the same single-value shape
+                # `requires` already accepts. Dropping it to [] read as "no
+                # dependencies", so the task was offered as unblocked and ran
+                # before its prerequisite — the one direction this must not
+                # fail in.
+                "deps": _as_list(meta.get("deps")),
+                "requires": _as_list(meta.get("requires")),
                 "workspace": meta.get("workspace"),
-                "tags": [str(t) for t in (meta.get("tags") or [])],
+                "tags": _as_list(meta.get("tags")),
                 "gate": bool(GATE_BLOCK_RE.search(text)),
                 # A status in the file is a fact about finished work, recorded
                 # where it cannot drift: the issue may be long gone.
@@ -380,9 +562,7 @@ def load_tasks(tasks_dir: Path) -> tuple[list[dict[str, Any]], list[str]]:
     return tasks, warnings
 
 
-def effective_state(
-    tasks: list[dict[str, Any]], state: dict[str, str]
-) -> dict[str, str]:
+def effective_state(tasks: list[dict[str, Any]], state: dict[str, str]) -> dict[str, str]:
     """Merge the file-declared status of finished tasks over the issue-derived
     state. A task file that records `status: merged` is the record of work that
     is done; there may be no issue left to say so."""
@@ -413,8 +593,22 @@ def select(
                 warnings.append(
                     f"{task['id']}: depends on unknown task {dep} — treated as blocking"
                 )
+            elif state.get(dep) == "cancelled":
+                # `cancelled` is not in TERMINAL, so this dep can never satisfy
+                # and the dependent is blocked for good. Every other blocking
+                # path here says why; without this one the task simply stops
+                # appearing, with nothing anywhere explaining it.
+                warnings.append(
+                    f"{task['id']}: depends on {dep}, which is cancelled — blocked "
+                    "permanently, since a cancelled task never becomes done. Drop "
+                    "the dep or reopen it."
+                )
 
     eligible: list[dict[str, Any]] = []
+    # Tasks the surface profile ruled out, reported rather than silently dropped:
+    # an undetected surface offers no capabilities, so a board made entirely of
+    # gated tasks would otherwise read as an empty queue with no explanation.
+    gated: list[str] = []
     for task in tasks:
         # Finished work is loaded to resolve deps, never to be handed back out.
         if task.get("status") in TERMINAL:
@@ -425,13 +619,28 @@ def select(
         # dependency is satisfied is how work gets done out of order.
         if any(state.get(dep) not in TERMINAL for dep in task["deps"]):
             continue
-        if not set(task["requires"]).issubset(capabilities):
-            continue
         if workspace and task["workspace"] != workspace:
             continue
         if tags and not tags.issubset(set(task["tags"])):
             continue
+        # Last of the filters, so `gated` only ever names tasks the caller asked
+        # about. Ahead of the scope filters it collected the whole board, and a
+        # `--workspace FRONTEND` run with no eligible work reported a gated
+        # BACKEND task — blaming capabilities for what was really an empty scope.
+        if not set(task["requires"]).issubset(capabilities):
+            gated.append(task["id"])
+            continue
         eligible.append(task)
+
+    if gated and not eligible:
+        detail = ", ".join(sorted(gated)[:5]) + ("…" if len(gated) > 5 else "")
+        warnings.append(
+            f"{len(gated)} task(s) were filtered out by `requires:` against the current "
+            f"capabilities ({', '.join(sorted(capabilities)) or 'none'}): {detail}. They come "
+            "from surface_profile.json (`bash claude-arsenal/bin/detect_surface.sh`) plus "
+            "--capability; declare a host-specific one as a probe under [capabilities] in "
+            "arsenal/config.toml."
+        )
 
     # Highest priority first, then by id so two agents reading the same graph
     # always rank it identically — ties resolved by luck would have them race
@@ -440,14 +649,29 @@ def select(
     return eligible[:limit], warnings
 
 
+def _profile_capabilities() -> set[str]:
+    """What `detect_surface.sh` recorded for this surface, or nothing.
+
+    The profile had no reader: capabilities arrived only through `--capability`,
+    which the session-start protocol never passes, so a detected surface still
+    offered `(none)` and the hint told the session to run the probe it had just
+    run (#481). Unreadable or malformed reads as empty — an undetected surface
+    is exactly what the gated-task warning already explains.
+    """
+    try:
+        data = json.loads((_session_dir() / "surface_profile.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return set()
+    caps = data.get("capabilities") if isinstance(data, dict) else None
+    return {c for c in caps if isinstance(c, str)} if isinstance(caps, list) else set()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("--tasks-dir", type=Path, default=Path("arsenal/tasks"))
-    parser.add_argument(
-        "--state", type=Path, help="JSON file of {task_id: state}; omit to read stdin"
-    )
+    parser.add_argument("--tasks-dir", type=Path, default=default_tasks_dir())
+    parser.add_argument("--state", type=Path, help="JSON file of {task_id: state}, or - for stdin")
     parser.add_argument(
         "--issues",
         type=Path,
@@ -455,7 +679,15 @@ def main(argv: list[str] | None = None) -> int:
         "state is derived from them, so no --state is needed",
     )
     parser.add_argument(
-        "--capability", action="append", default=[], help="repeatable, e.g. surface:cli"
+        "--capability",
+        action="append",
+        default=[],
+        help="repeatable, e.g. surface:cli; adds to the surface profile",
+    )
+    parser.add_argument(
+        "--no-profile",
+        action="store_true",
+        help="ignore surface_profile.json; offer only the --capability values",
     )
     parser.add_argument("--workspace")
     parser.add_argument("--tag", action="append", default=[])
@@ -485,26 +717,51 @@ def main(argv: list[str] | None = None) -> int:
     state: dict[str, str] = {}
     issue_warnings: list[str] = []
     if args.issues:
-        try:
-            payload = json.loads(args.issues.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            print(f"task_select: --issues is not valid JSON — {exc}", file=sys.stderr)
+        # Every way this file can be absent or wrong is an error, not an empty
+        # state map. `query_status.py` already returns 2 here; this path only
+        # caught JSONDecodeError, so a path that did not exist raised
+        # FileNotFoundError out of a documented exit contract, and a truncated
+        # `{"issues": null}` raised TypeError from the comprehension below.
+        # Either way the operator sees a traceback instead of the one sentence
+        # that says which file was unreadable — and on the branch where the
+        # exception is swallowed by a caller, an empty state map hands out a
+        # task that is already finished.
+        issues = read_issue_payload(args.issues, "task_select")
+        if issues is None:
             return 2
-        # Accept either a bare array or the {"issues": [...]} envelope some
-        # GitHub tools wrap results in, so the caller can save what it got.
-        if isinstance(payload, dict):
-            payload = payload.get("issues", [])
         state = state_from_issues(
-            [i for i in payload if isinstance(i, dict)],
+            issues,
             titles=title_index(tasks),
             warnings=issue_warnings,
         )
     else:
         raw_state = ""
         if args.state:
-            raw_state = args.state.read_text(encoding="utf-8")
+            # `-` means stdin, the spelling `issue_for_task.py` and
+            # `read_issue_payload` already use. It used to be inferred instead:
+            # `not sys.stdin.isatty()` then `sys.stdin.read()`. But "not a
+            # terminal" is not "data is waiting" — an open pipe with no writer
+            # closing it blocks forever, and that is what a harness hands a
+            # subprocess whose stdin it inherited. `task_select.py` runs on the
+            # session-start path, so the failure was a session that never
+            # started, with nothing on any stream to say why.
+            raw_state = (
+                sys.stdin.read()
+                if str(args.state) == "-"
+                else args.state.read_text(encoding="utf-8")
+            )
         elif not sys.stdin.isatty():
-            raw_state = sys.stdin.read()
+            # Said, not silently dropped. A caller who was piping state in gets
+            # one line telling them the spelling, instead of a selection quietly
+            # computed as though every task were open. Only reachable when
+            # neither --issues nor --state was given, so the ordinary
+            # session-start invocation never sees it.
+            print(
+                "task_select: stdin is not a terminal and --state was not given. State "
+                "is no longer read from stdin implicitly — that blocked forever on an "
+                "inherited pipe. Pass `--state -` to read it from stdin.",
+                file=sys.stderr,
+            )
         try:
             state = json.loads(raw_state) if raw_state.strip() else {}
         except json.JSONDecodeError as exc:
@@ -519,6 +776,8 @@ def main(argv: list[str] | None = None) -> int:
             row = {
                 "id": task["id"],
                 "title": task["title"],
+                "label": task["label"],
+                "display": task["display"],
                 "state": merged.get(task["id"], "open"),
             }
             print(json.dumps(row, separators=(",", ":")))
@@ -547,7 +806,8 @@ def main(argv: list[str] | None = None) -> int:
         selection, sel_warnings = select(
             tasks,
             state,
-            capabilities=set(args.capability),
+            capabilities=set(args.capability)
+            | (set() if args.no_profile else _profile_capabilities()),
             workspace=args.workspace,
             tags=set(args.tag) or None,
             limit=limit,
@@ -559,6 +819,8 @@ def main(argv: list[str] | None = None) -> int:
                     {
                         "id": task["id"],
                         "title": task["title"],
+                        "label": task["label"],
+                        "display": task["display"],
                         "path": task["path"],
                         "priority": task["priority"],
                         "gate": task["gate"],
@@ -573,4 +835,9 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    # Windows consoles default to a legacy codepage (cp1252 and friends);
+    # a non-ASCII line must degrade to "?", never take the process down.
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
     raise SystemExit(main())

@@ -915,7 +915,11 @@ def _line_box(
     """A laid-out line's box: its measured extent across, its line box down."""
     left, right = line_bounds(line, theme, measurer)
     size = theme.scale[line.level]
-    extents = measurer.measure(line.spans[0].text, line.spans[0].font, size)
+    # A blank cell is a line with no spans: measure nothing in the theme's own font.
+    span = line.spans[0] if line.spans else None
+    extents = measurer.measure(
+        span.text if span else "", span.font if span else theme.font.default, size
+    )
     return left, line.y - extents.ascent, right, line.y + extents.descent
 
 

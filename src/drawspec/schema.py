@@ -34,12 +34,13 @@ from __future__ import annotations
 import json
 import math
 import re
-from collections.abc import Iterator, Mapping, Sequence, Set
+from collections.abc import Callable, Iterator, Mapping, Sequence, Set
+from contextlib import suppress
 from dataclasses import dataclass, replace
 from difflib import get_close_matches
 from fractions import Fraction
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, cast
 
 from drawspec.errors import DocumentError
 from drawspec.filetree import ORDERS, STATUSES, Entry, problems
@@ -7449,9 +7450,46 @@ def _check_type(value: object, spec: FieldSpec, pointer: str, found: list[Violat
     return True
 
 
+#: The largest magnitude a number field may carry. Far past any drawing, and far
+#: inside what a float can multiply by a scale without overflowing to `inf`.
+MAX_NUMBER: Final = 1e12
+
+#: What XML 1.0 forbids in a document: control characters other than tab, newline
+#: and carriage return, lone surrogates (what a truncated `\\ud83d` decodes to),
+#: and U+FFFE / U+FFFF. Escaping does not remove them, so they must not reach the SVG.
+_NOT_XML_CHAR: Final = re.compile("[^\t\n\r\u0020-\ud7ff\ue000-\ufffd\U00010000-\U0010ffff]")
+
+
+def _check_number(value: Any, pointer: str, found: list[Violation]) -> None:
+    """Refuse `NaN`, `Infinity` and `1e400` (which JSON parses to inf), and the absurdly large."""
+    # Not `math.isfinite`: it raises OverflowError on an int past float range.
+    if value != value or abs(value) > MAX_NUMBER:
+        found.append(
+            Violation(pointer, f"must be a finite number no larger than {MAX_NUMBER:g} in size")
+        )
+
+
+def _check_string(value: str, pointer: str, found: list[Violation]) -> None:
+    """Refuse characters XML 1.0 cannot carry, naming the first."""
+    bad = _NOT_XML_CHAR.search(value)
+    if bad:
+        found.append(
+            Violation(
+                pointer,
+                f"contains U+{ord(bad.group(0)):04X}, which XML cannot carry. Remove it "
+                f"(a control character pasted from a terminal, or half an emoji).",
+            )
+        )
+
+
 def _check_field(value: object, spec: FieldSpec, pointer: str, found: list[Violation]) -> None:
     if not _check_type(value, spec, pointer, found):
         return
+
+    if spec.kind in ("number", "integer"):
+        _check_number(value, pointer, found)
+    if spec.kind == "string":
+        _check_string(value, pointer, found)  # type: ignore[arg-type]
 
     if spec.enum and value not in spec.enum:
         found.append(
@@ -7461,7 +7499,7 @@ def _check_field(value: object, spec: FieldSpec, pointer: str, found: list[Viola
                 f"closed, so a role the theme does not declare cannot be named.",
             )
         )
-    if spec.exclusive_minimum is not None and float(value) <= spec.exclusive_minimum:  # type: ignore[arg-type]
+    if spec.exclusive_minimum is not None and value <= spec.exclusive_minimum:  # type: ignore[operator]
         found.append(Violation(pointer, f"must be greater than {spec.exclusive_minimum}"))
 
     if spec.kind == "object" and spec.ref:
@@ -7486,6 +7524,8 @@ def _check_field(value: object, spec: FieldSpec, pointer: str, found: list[Viola
                 _check_object(element, OBJECTS[spec.item_ref], where, found)
             elif spec.item_kind == "string" and not isinstance(element, str):
                 found.append(Violation(where, f"expected string, got {type(element).__name__}"))
+            elif spec.item_kind == "string":
+                _check_string(element, where, found)
             elif spec.item_kind == "point":
                 _check_point(element, where, found)
 
@@ -7498,6 +7538,9 @@ def _check_point(element: object, pointer: str, found: list[Violation]) -> None:
     )
     if not numbers:
         found.append(Violation(pointer, "expected a pair of numbers, [x, y]"))
+        return
+    for index, value in enumerate(cast(list[Any], element)):
+        _check_number(value, f"{pointer}/{index}", found)
 
 
 def _check_object(
@@ -7640,11 +7683,24 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
     if kind in GITGRAPH_KINDS:
         found = [_gitgraph_refusal(violation) for violation in found]
     found = [_edge_role_refusal(violation, document, kind) for violation in found]
-    found.extend(_referential_violations(document, kind))
-    if kind == "tree":
-        found.extend(_bracket_violations(document))
-    found.extend(_readability_violations(document, kind))
-    found.extend(_emphasis_violations(document))
+    # The passes below read the raw document and assume its shape. When the
+    # structural pass has already refused part of it, a wrong shape is the likely
+    # cause of a crash in them, and the author should hear the violation already
+    # found, not a traceback: so they are best effort then. On a document with no
+    # structural violation they run unguarded, and a crash there is a real bug.
+    passes: list[Callable[[], list[Violation]]] = [
+        lambda: _referential_violations(document, kind),
+        lambda: _bracket_violations(document) if kind == "tree" else [],
+        lambda: list(_readability_violations(document, kind)),
+        lambda: list(_emphasis_violations(document)),
+    ]
+    malformed = bool(found)
+    for run in passes:
+        if not malformed:
+            found.extend(run())
+            continue
+        with suppress(KeyError, TypeError, AttributeError, IndexError, ValueError, OverflowError):
+            found.extend(run())
     return tuple(found)
 
 
@@ -11596,6 +11652,8 @@ def _barmodel_violations(document: Mapping[str, Any]) -> list[Violation]:
                         f"model would teach the wrong sum: fix a part's amount, or the brace's.",
                     )
                 )
+        elif total == 0:
+            continue
         elif worth is None:
             worth = (value / total, index)
         elif not math.isclose(value / total, worth[0], rel_tol=1e-9):
@@ -18086,13 +18144,16 @@ def _field_schema(spec: FieldSpec) -> dict[str, Any]:
         schema["enum"] = list(spec.enum)
     if spec.exclusive_minimum is not None:
         schema["exclusiveMinimum"] = spec.exclusive_minimum
+    if spec.kind in ("number", "integer"):
+        schema["minimum"] = -MAX_NUMBER
+        schema["maximum"] = MAX_NUMBER
     if spec.kind == "array":
         if spec.item_ref:
             schema["items"] = {"$ref": f"#/$defs/{spec.item_ref}"}
         elif spec.item_kind == "point":
             schema["items"] = {
                 "type": "array",
-                "items": {"type": "number"},
+                "items": {"type": "number", "minimum": -MAX_NUMBER, "maximum": MAX_NUMBER},
                 "minItems": 2,
                 "maxItems": 2,
             }
@@ -18115,6 +18176,22 @@ def _object_schema(specs: Sequence[FieldSpec], *, title: str = "") -> dict[str, 
     # silently absorbed, which is what makes the schema teach.
     schema["additionalProperties"] = False
     return schema
+
+
+def _published_budgets(kinds: Sequence[str]) -> dict[str, int]:
+    """The readability budgets a JSON Schema can state: one top-level array, one limit.
+
+    Nested, per-cell, deep and per-role budgets, and `tree` nodes (a bracket counts
+    its leaves instead), are left to the validator. Kinds sharing a variant may
+    differ, so the loosest limit is published and only when every kind has one:
+    the schema may pass what the validator refuses, never the reverse.
+    """
+    limits: dict[str, list[int]] = {}
+    for kind in kinds:
+        for name, limit in READABILITY_BUDGET.get(kind, ()):
+            if name.isidentifier() and not (kind == "tree" and name == "nodes"):
+                limits.setdefault(name, []).append(limit)
+    return {name: max(found) for name, found in limits.items() if len(found) == len(kinds)}
 
 
 def build_schema() -> dict[str, Any]:
@@ -18140,6 +18217,9 @@ def build_schema() -> dict[str, Any]:
     for specs_for_kind, kinds in grouped.items():
         specs = list(COMMON_FIELDS) + list(specs_for_kind)
         variant = _object_schema(specs, title=" / ".join(kinds))
+        for name, limit in _published_budgets(kinds).items():
+            if variant["properties"].get(name, {}).get("type") == "array":
+                variant["properties"][name]["maxItems"] = limit
         variant["properties"]["kind"] = {"type": "string", "enum": list(kinds)}
         variant["properties"]["version"] = {"const": DOCUMENT_VERSION}
         variants.append(variant)
@@ -18153,9 +18233,12 @@ def build_schema() -> dict[str, Any]:
             "decision that requires seeing the output — coordinates, type size, colour, "
             "arrow-head geometry, z-order — is taken by drawspec and has no field here. "
             "Referential rules (node ids are unique; an edge names nodes that exist) are "
-            "beyond JSON Schema and are enforced by `drawspec validate`, as are the "
-            "readability budget (the most entries each kind may hold) and the cap of "
-            f"{EMPHASIS_CAP} elements with the 'emphasis' role (docs/format.md)."
+            "beyond JSON Schema and are enforced by `drawspec validate`. So are the "
+            "readability budgets this schema cannot state (those on nested, per-role or "
+            "per-cell counts; a plain top-level array's limit is its `maxItems`), the "
+            f"cap of {EMPHASIS_CAP} elements with the 'emphasis' role, text-length and "
+            "fit limits, and the theme-file rules: a document that passes this schema "
+            "can still be refused, so validate before rendering (docs/format.md)."
         ),
         "oneOf": variants,
         "$defs": {name: _object_schema(specs) for name, specs in sorted(OBJECTS.items())},

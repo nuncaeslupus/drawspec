@@ -4,7 +4,7 @@
 
 ```
 usage: drawspec [-h] [--version]
-                {render,validate,theme,schema,kinds,example,mcp} ...
+                {render,validate,theme,schema,kinds,example,agents,mcp} ...
 ```
 
 Nothing is printed to stdout but the thing that was asked for — the SVG, the
@@ -144,6 +144,14 @@ usage: drawspec example [-h]
 | Argument | What it does |
 |---|---|
 | `kind` | Which kind to write. One of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `packet`, `network`, `timing`, `gitgraph`, `railroad`, `usecase`, `wardley`, `pert`, `automaton`, `neuralnet`. |
+
+### `drawspec agents`
+
+Write the AGENTS.md that belongs to the installed package, so the format an agent reads is the one this version accepts, offline.
+
+```
+usage: drawspec agents [-h]
+```
 
 ### `drawspec mcp`
 
