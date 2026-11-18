@@ -24,7 +24,7 @@ format:  ## ruff format + autofix
 	uv run ruff check --fix .
 
 test:  ## run the test suite
-	uv run pytest
+	uv run pytest -n auto
 
 schema:  ## regenerate the published JSON Schema from the field tables
 	uv run python -m drawspec.schema

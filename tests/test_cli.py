@@ -346,3 +346,60 @@ def test_agents_prints_the_agents_md_that_ships_with_the_install(
     assert printed == (Path(__file__).resolve().parents[1] / "AGENTS.md").read_text(
         encoding="utf-8"
     )
+
+
+# --------------------------------------------------------------------------
+# What the machine refuses is an exit code, not a traceback
+# --------------------------------------------------------------------------
+
+
+def test_an_unwritable_output_path_is_a_refusal_not_a_traceback(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = write(tmp_path / "doc.json", VALID)
+    assert main(["render", str(source), "-o", str(tmp_path / "missing" / "doc.svg")]) == 1
+    assert "drawspec:" in capsys.readouterr().err
+
+
+def test_a_failed_write_leaves_the_previous_output_whole(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = write(tmp_path / "doc.json", VALID)
+    out = tmp_path / "doc.svg"
+    out.write_text("previous", encoding="utf-8")
+
+    def refuse(*_: object) -> None:
+        raise OSError("disk full")
+
+    monkeypatch.setattr(Path, "replace", refuse)
+    assert main(["render", str(source), "-o", str(out)]) == 1
+    assert out.read_text(encoding="utf-8") == "previous"
+    assert {path.name for path in tmp_path.iterdir()} == {"doc.json", "doc.svg"}
+
+
+def test_a_document_nested_past_the_recursion_limit_is_a_refusal(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr("sys.stdin", io.StringIO("[" * 100_000))
+    assert main(["validate", "-"]) == 1
+    assert "nested too deeply" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("flag", ["--width", "--height"])
+@pytest.mark.parametrize("value", ["0", "-5", "nan", "inf"])
+def test_a_size_override_must_be_positive(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], flag: str, value: str
+) -> None:
+    source = write(tmp_path / "doc.json", VALID)
+    assert main(["render", str(source), flag, value]) == 2
+    assert f"{flag} must be greater than 0" in capsys.readouterr().err
+
+
+def test_a_replaced_output_keeps_its_mode(tmp_path: Path) -> None:
+    source = write(tmp_path / "doc.json", VALID)
+    out = tmp_path / "doc.svg"
+    out.write_text("previous", encoding="utf-8")
+    out.chmod(0o600)
+    assert main(["render", str(source), "-o", str(out)]) == 0
+    assert out.stat().st_mode & 0o777 == 0o600
+    assert out.read_text(encoding="utf-8").startswith("<svg")

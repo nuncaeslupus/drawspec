@@ -34,7 +34,7 @@ from __future__ import annotations
 import json
 import math
 import re
-from collections.abc import Callable, Iterator, Mapping, Sequence, Set
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence, Set
 from contextlib import suppress
 from dataclasses import dataclass, replace
 from difflib import get_close_matches
@@ -7420,7 +7420,10 @@ def _unknown_field_message(name: str, legal: Sequence[str]) -> str:
             f"{name!r} is not a field an author may write: {reason}. Every decision "
             f"that requires seeing the output is taken by drawspec."
         )
-    return f"{name!r} is not a known field here. Known fields: {', '.join(sorted(legal))}."
+    return (
+        f"{name!r} is not a known field here. Known fields: {', '.join(sorted(legal))}."
+        f"{_did_you_mean(name, legal) if isinstance(name, str) else ''}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -7601,7 +7604,8 @@ def validate_document(document: Mapping[str, Any]) -> tuple[Violation, ...]:
                 "'kind' is required"
                 if kind is None
                 else f"{kind!r} is not one of {', '.join(KINDS)}. The vocabulary is "
-                f"closed: a new kind needs evidence, in docs/kinds-wanted.md.",
+                f"closed: a new kind needs evidence, in docs/kinds-wanted.md."
+                f"{_did_you_mean(kind, KINDS) if isinstance(kind, str) else ''}",
             )
         )
         if "version" not in document:
@@ -15993,6 +15997,12 @@ def _reaches(graph: Mapping[str, Sequence[str]], start: str, goal: str) -> bool:
     return False
 
 
+def _did_you_mean(name: str, known: Iterable[str]) -> str:
+    """` Did you mean 'x'?` as a closing sentence, for a name that is no known one."""
+    close = get_close_matches(name, list(known), n=1)
+    return f" Did you mean {close[0]!r}?" if close else ""
+
+
 def _closest(name: str, known: Mapping[str, Any]) -> str:
     """`; did you mean 'x'?` when one known id is close to `name`, else nothing."""
     close = get_close_matches(name, list(known), n=1)
@@ -16689,7 +16699,12 @@ def parse_document(document: Mapping[str, Any]) -> Document:
         DocumentError: carrying every violation, each with its JSON pointer.
     """
     if not isinstance(document, Mapping):
-        raise DocumentError("a document must be a mapping", ())
+        hint = (
+            "; it arrived as a string, so pass the JSON object itself, not its text"
+            if isinstance(document, str)
+            else ""
+        )
+        raise DocumentError(f"a document must be a mapping{hint}", ())
     violations = validate_document(document)
     if violations:
         raise DocumentError(_describe(violations), violations)
@@ -18163,6 +18178,8 @@ def _field_schema(spec: FieldSpec) -> dict[str, Any]:
     if spec.kind in ("number", "integer"):
         schema["minimum"] = -MAX_NUMBER
         schema["maximum"] = MAX_NUMBER
+    if spec.kind == "string":
+        schema["maxLength"] = MAX_TEXT_LENGTH
     if spec.kind == "array":
         if spec.item_ref:
             schema["items"] = {"$ref": f"#/$defs/{spec.item_ref}"}
@@ -18175,6 +18192,8 @@ def _field_schema(spec: FieldSpec) -> dict[str, Any]:
             }
         elif spec.item_kind:
             schema["items"] = {"type": spec.item_kind}
+            if spec.item_kind == "string":
+                schema["items"]["maxLength"] = MAX_TEXT_LENGTH
         if spec.min_items:
             schema["minItems"] = spec.min_items
     return schema

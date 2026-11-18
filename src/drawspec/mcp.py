@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import base64
 import json
+import math
 import os
 from dataclasses import replace
 from pathlib import Path
@@ -381,6 +382,8 @@ def _number(arguments: dict[str, Any], name: str) -> float | None:
         return None
     if isinstance(value, bool) or not isinstance(value, int | float):
         raise _ArgumentError("InvalidArgument", f"`{name}` must be a number")
+    if name in ("width", "height") and not 0 < value < math.inf:
+        raise _ArgumentError("InvalidArgument", f"`{name}` must be greater than 0 and finite")
     return float(value)
 
 
@@ -418,6 +421,11 @@ def _render(arguments: dict[str, Any]) -> str | bytes:
     it afterwards would scale a picture that had already decided it fitted.
     """
     document = _document(arguments)
+    output_format = arguments.get("format", "svg")
+    if output_format not in ("svg", "png", "text"):
+        raise _ArgumentError(
+            "InvalidArgument", f"unknown format {str(output_format)[:20]!r}; use svg, png or text"
+        )
     theme = _theme(arguments.get("theme"))
     variants = arguments.get("variants") or None
     if variants is not None:
@@ -428,6 +436,8 @@ def _render(arguments: dict[str, Any]) -> str | bytes:
         raise DrawspecError("`variants` applies to format svg only")
     width, height = _number(arguments, "width"), _number(arguments, "height")
     if arguments.get("format") == "text":
+        if width is not None and width != int(width):
+            raise _ArgumentError("InvalidArgument", "with format `text`, `width` is whole columns")
         return render_text(
             document,
             width=None if width is None else int(width),
