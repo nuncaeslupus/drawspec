@@ -45,6 +45,7 @@ repo, which only these declarations know.
 from __future__ import annotations
 
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -59,7 +60,18 @@ OPS = {
     "<": lambda a, b: a < b,
     ">": lambda a, b: a > b,
 }
-GATE_RE = re.compile(r"(<=|>=|==|!=|<|>)\s*([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)")
+# The number grammar, shared verbatim with run_gate.py — this blocking gate and
+# that advisory audit must read the same gate text the same way, and they did
+# not: run_gate.py lacked the exponent branch, so `throughput >= 1e6` was a
+# threshold of 1 there and 1000000 here. A measured 5 passed the audit and was
+# then refused by this gate, for the same line of text.
+#
+# `(?!,?\d)` makes the token match whole or not at all. Without it `1,000` reads
+# as 1 and `1,5` reads as 1, silently — a gate that means something other than
+# what it says. A trailing unit still parses, since `m` in `200ms` is not a
+# digit. gate_grammar_test.sh asserts this pattern matches run_gate.py's.
+_NUMBER = r"[+-]?\d+(?:,\d{3})*(?:\.\d+)?(?:[eE][+-]?\d+)?(?!,?\d)"
+GATE_RE = re.compile(rf"(<=|>=|==|!=|<|>)\s*({_NUMBER})")
 
 
 def _fail(msg: str, code: int) -> NoReturn:
@@ -101,7 +113,11 @@ def _parse_block(block: str) -> tuple[dict[str, str], str]:
             k, v = line.split(":", 1)
             # Tolerate quoted values (evidence: "coverage.json") — strip them.
             fields[k.strip().lower()] = v.strip().strip("'\"")
-        elif GATE_RE.search(line):
+        elif GATE_RE.search(line) and not gate_line:
+            # First assertion wins. Assigning unconditionally let any later
+            # operator-bearing line overwrite the real gate, so a trailing note
+            # like "previous target was >= 2.0" silently became the threshold
+            # this block is enforced against.
             gate_line = line
     return fields, gate_line
 
@@ -161,7 +177,16 @@ def main() -> None:
     m = GATE_RE.search(gate_line)
     if not m:
         _fail("gate block present but has no '<metric> <op> <threshold>' line", 2)
-    op, threshold = m.group(1), float(m.group(2))
+    op, threshold = m.group(1), float(m.group(2).replace(",", ""))
+    # `GATE_RE` accepts an exponent, so `<= 1e999` overflows to inf here and
+    # every finite measurement satisfies it. Unfailable from the threshold side
+    # is the same hole as unfailable from the measurement side, checked below.
+    if not math.isfinite(threshold):
+        _fail(
+            f"gate threshold {m.group(2)!r} is not a finite number — "
+            "a gate written against it cannot be failed",
+            2,
+        )
 
     evidence = fields.get("evidence")
     key = fields.get("key")
@@ -192,7 +217,31 @@ def main() -> None:
     raw_measured = _dig(data, key)
     if isinstance(raw_measured, bool) or not isinstance(raw_measured, int | float):
         _fail(f"evidence value at {key!r} is not numeric: {raw_measured!r}", 2)
-    measured = float(raw_measured)
+    # A Python int is unbounded; a float is not. JSON carries arbitrary-precision
+    # integer literals, so an evidence file holding a 400-digit number raised
+    # OverflowError here — uncaught, so the traceback escaped as exit 1, which is
+    # `gate_run.sh`'s "the assertion failed". An unusable gate was therefore
+    # scored as a FAILED one, and exit 2 ("declared but unusable"), which exists
+    # for exactly this, never fired.
+    try:
+        measured = float(raw_measured)
+    except OverflowError:
+        _fail(
+            f"evidence value at {key!r} is out of float range — a gate cannot be scored against it",
+            2,
+        )
+    # `json.loads` accepts the JavaScript spellings `NaN`, `Infinity` and
+    # `-Infinity`, and both are `float` — so they cleared the type check above
+    # and reached the comparison, where they are the wrong kind of wrong: `NaN`
+    # passes every `!=` gate (it compares unequal to everything, itself
+    # included) and `Infinity` passes every directional one. A gate that cannot
+    # be failed is not a gate. The threshold side is guarded where it is parsed.
+    if not math.isfinite(measured):
+        _fail(
+            f"evidence value at {key!r} is {raw_measured!r}, which is not a finite number — "
+            "a gate cannot be scored against it",
+            2,
+        )
 
     if OPS[op](measured, threshold):
         print(f"gate_evidence: PASS — {key}={measured} {op} {threshold} ({ev_path})")
@@ -205,4 +254,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # Windows consoles default to a legacy codepage (cp1252 and friends);
+    # a non-ASCII line must degrade to "?", never take the process down.
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
     main()

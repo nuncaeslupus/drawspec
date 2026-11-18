@@ -4,7 +4,9 @@
 # Compares the installed bundle version (claude-arsenal/.bundle-version) against
 # the latest version tag on the upstream remote. When behind: runs
 # `git subtree pull` to bring in the new bundle, then re-runs init.py --silent
-# to propagate any file-level changes to the host project.
+# to propagate any file-level changes to the host project. Either way, prints
+# the CHANGELOG.md entries between the installed version and the new one, so
+# an update says what changed, not just the version number.
 #
 # NO SILENT "ALREADY CURRENT". Every path that declines to update says why. A
 # consumer once re-vendored, was told it was current, and sat on a stale bundle
@@ -38,6 +40,8 @@
 #                    that could satisfy both readings.
 #   ARSENAL_UPSTREAM_VERSION_PATH  path of .bundle-version inside the marketplace
 #                    repo, for the untagged-release probe
+#   ARSENAL_UPSTREAM_CHANGELOG_PATH  path of CHANGELOG.md inside the marketplace
+#                    repo, for printing what changed on an update
 #
 # Exit: 0 always — update failures are printed as warnings and never abort a session.
 
@@ -65,6 +69,7 @@ PREFIX="${ARSENAL_PREFIX:-claude-arsenal}"
 BUNDLE_DIR="${ARSENAL_BUNDLE_DIR:-${PREFIX}}"
 VERSION_FILE="${BUNDLE_DIR}/.bundle-version"
 UPSTREAM_VERSION_PATH="${ARSENAL_UPSTREAM_VERSION_PATH:-plugins/core/skills/init/assets/.bundle-version}"
+UPSTREAM_CHANGELOG_PATH="${ARSENAL_UPSTREAM_CHANGELOG_PATH:-plugins/core/skills/init/assets/CHANGELOG.md}"
 
 _warn() { echo "check_update.sh: $*" >&2; }
 
@@ -82,23 +87,68 @@ except (ValueError, IndexError):
 " "$1" "$2" 2>/dev/null
 }
 
-# Report a newer version sitting untagged on the marketplace's default branch.
-# Reads the file from a THROWAWAY bare repo: a --depth=1 fetch into the
-# consumer's own repo would leave shallow objects behind and can break a later
-# `git subtree merge`, and this repo is not ours to make shallow.
-_upstream_branch_version() {
-    local url tmpdir version=""
+# Read `path` at `ref` on the remote, via a THROWAWAY bare repo. A --depth=1
+# fetch into the consumer's own repo would leave shallow objects behind and can
+# break a later `git subtree merge`, and this repo is not ours to make shallow.
+# Empty on any failure (no remote, unreachable ref, no such path) — every
+# caller treats that as "nothing to report", never as an error worth aborting on.
+_show_upstream_file() {
+    local ref="$1" path="$2" url tmpdir content=""
     url="$(git remote get-url "${REMOTE}" 2>/dev/null || true)"
     [[ -n "${url}" ]] || return 0
     tmpdir="$(mktemp -d 2>/dev/null || true)"
     [[ -n "${tmpdir}" ]] || return 0
     if git init -q --bare "${tmpdir}" 2>/dev/null \
-        && git -C "${tmpdir}" fetch -q --depth=1 "${url}" HEAD 2>/dev/null; then
-        version="$(git -C "${tmpdir}" show "FETCH_HEAD:${UPSTREAM_VERSION_PATH}" 2>/dev/null \
-            | tr -d '[:space:]' || true)"
+        && git -C "${tmpdir}" fetch -q --depth=1 "${url}" "${ref}" 2>/dev/null; then
+        content="$(git -C "${tmpdir}" show "FETCH_HEAD:${path}" 2>/dev/null || true)"
     fi
     rm -rf "${tmpdir}" 2>/dev/null || true
-    printf '%s' "${version}"
+    printf '%s' "${content}"
+}
+
+# Report a newer version sitting untagged on the marketplace's default branch.
+_upstream_branch_version() {
+    _show_upstream_file "HEAD" "${UPSTREAM_VERSION_PATH}" | tr -d '[:space:]'
+}
+
+# Print CHANGELOG.md entries for versions in (installed, latest] — what a
+# consumer actually gets by updating, not just the version number. Silent on
+# any failure: this is an enhancement to the UPDATE AVAILABLE / pulling-update
+# messages below, never a reason to treat the update path differently.
+_print_changelog_since() {
+    local installed="$1" latest="$2" text
+    text="$(_show_upstream_file "refs/tags/v${latest}" "${UPSTREAM_CHANGELOG_PATH}")"
+    [[ -n "${text}" ]] || return 0
+    printf '%s' "${text}" | python3 -c "
+import re, sys
+def parse(v):
+    return tuple(int(x) for x in v.split('.'))
+installed, latest = parse(sys.argv[1]), parse(sys.argv[2])
+parts = re.split(r'(?m)^## \[(\d+\.\d+\.\d+)\][^\n]*\n', sys.stdin.read())
+entries = []
+for i in range(1, len(parts), 2):
+    try:
+        v = parse(parts[i])
+    except ValueError:
+        continue
+    if installed < v <= latest:
+        body = parts[i + 1].strip() if i + 1 < len(parts) else ''
+        if body:
+            entries.append((v, parts[i], body))
+entries.sort(reverse=True)
+# Capped: --check-only runs at every session start while an update is pending,
+# and a consumer a month behind would otherwise reprint tens of thousands of
+# tokens of release notes each time.
+shown, rest = entries[:5], entries[5:]
+for _, ver, body in shown:
+    print()
+    print(f'  --- new in {ver} ---')
+    for line in body.splitlines():
+        print(f'  {line}')
+if rest:
+    print()
+    print(f'  … {len(rest)} older entries (back to {rest[-1][1]}) — see CHANGELOG.md at v{sys.argv[2]}')
+" "${installed}" "${latest}" 2>/dev/null || true
 }
 
 # Only worth a network round trip when the default branch actually carries
@@ -106,7 +156,11 @@ _upstream_branch_version() {
 # no untagged release to find.
 _report_untagged_upstream() {
     local installed="$1" latest="$2" head_sha tag_sha branch_version
-    head_sha="$(git ls-remote "${REMOTE}" HEAD 2>/dev/null | awk 'NR==1{print $1}')"
+    # `|| true` on the pipeline: this file promises "Exit: 0 always" because
+    # session-start step 0(a) runs it as a *report*, and an unreachable or
+    # credential-less remote aborting under `set -e` removes the very report it
+    # exists to produce — leaving the session unaware the bundle is stale.
+    head_sha="$(git ls-remote "${REMOTE}" HEAD 2>/dev/null | awk 'NR==1{print $1}' || true)"
     [[ -n "${head_sha}" ]] || return 0
     if [[ -n "${latest}" ]]; then
         tag_sha="$(git ls-remote "${REMOTE}" "refs/tags/v${latest}^{}" 2>/dev/null | awk 'NR==1{print $1}')"
@@ -157,9 +211,36 @@ _report_skill_skew() {
     # the exact failure this guard exists to catch, failing open (#244).
     # `sort` in the fallback is load-bearing for the same reason — without it
     # the same tree answers differently on different machines.
+    #
+    # `sort` made the fallback deterministic, but determinism is not
+    # correctness: with two or more candidates it still picked one — the
+    # lexicographically first, which has nothing to do with which skill owns the
+    # bundle — and reported a confident verdict about it. That turned "wrong on
+    # some machines" into "wrong on every machine, reproducibly", and a wrong
+    # verdict here is silent: `_semver_gt` returns false, the probe says nothing,
+    # and step 0(b) rewrites the bundle backwards.
+    #
+    # A probe that cannot identify its own subject says so instead of answering.
+    # That is the same rule the gates already follow with `gate_status:
+    # unmeasured` — the check ran, and what it found is that this cannot be
+    # scored. Warning and returning is fail-VISIBLE rather than fail-closed: the
+    # operator sees the ambiguity, and step 0(b) is not blocked for a host whose
+    # layout is merely unusual.
     ver_file=".claude/skills/init/assets/.bundle-version"
-    [[ -f "${ver_file}" ]] \
-        || ver_file="$(find .claude/skills -path '*/init/assets/.bundle-version' 2>/dev/null | sort | head -1 || true)"
+    if [[ ! -f "${ver_file}" ]]; then
+        local candidates count
+        # No `mapfile`: this ships to consumers and runs under the bash 3.2 that
+        # macOS still installs as /bin/bash, where it does not exist.
+        candidates="$(find .claude/skills -path '*/init/assets/.bundle-version' 2>/dev/null | sort || true)"
+        count="$(printf '%s' "${candidates}" | grep -c . || true)"
+        if [[ "${count:-0}" -gt 1 ]]; then
+            _warn "AMBIGUOUS VENDORED SKILL — ${count} candidate version files and no canonical ${ver_file}; not guessing which owns the bundle."
+            _warn "  Candidates: $(printf '%s' "${candidates}" | tr '\n' ' ')"
+            _warn "  The skew check is INERT until one of them is at .claude/skills/init/, so step 0(b) is unguarded: confirm the vendored skill is not behind the bundle before running it."
+            return 0
+        fi
+        ver_file="$(printf '%s\n' "${candidates}" | head -1)"
+    fi
     [[ -n "${ver_file}" ]] || return 0
     skill_ver="$(tr -d '[:space:]' < "${ver_file}" 2>/dev/null || true)"
     [[ -n "${skill_ver}" ]] || return 0
@@ -179,11 +260,25 @@ _report_skill_skew "${installed}"
 # concluded upgrades had to be done by copying files in, which is the exact
 # failure `verify-subtree` exists to catch, arrived at by trusting the tool
 # whose job is to know.
+# Where this tree was installed from, as recorded by init.py in the manifest.
+# This is the text a consumer is reading at the exact moment they need the URL:
+# a non-subtree install has no `arsenal` remote by definition, so without this
+# the message below could only say "<marketplace-url>" and leave them to ask.
+_source_url() {
+    # `|| true`: set -e + pipefail, and a missing manifest is the normal state
+    # on a first run. No URL just means the message falls back to a placeholder.
+    sed -n 's/^# source: //p' "${PREFIX}/.arsenal-manifest" 2>/dev/null | head -1 || true
+}
+_url="$(_source_url || true)"
+_url_hint="${_url:-<marketplace-url>}"
+
+_nonsubtree_route="if you have the CLI plugin, /plugin update claude-arsenal then /init; if you do not (cloud-only, CI, a fresh container), re-clone upstream (${_url_hint}) at the newer tag and run its plugins/core/skills/init/scripts/init.py --repo-path . — see docs/INSTALL.md. Either way, finish with: python3 .claude/skills/init/scripts/init.py --repo-path . --silent"
+
 if ! git remote get-url "${REMOTE}" >/dev/null 2>&1; then
     if _is_subtree; then
-        _warn "no '${REMOTE}' remote configured — update checking is INERT for this repo. '${PREFIX}' IS a git subtree here; only the remote is missing, which is expected on a fresh clone. Wire it up with: git remote add ${REMOTE} <marketplace-url>"
+        _warn "no '${REMOTE}' remote configured — update checking is INERT for this repo. '${PREFIX}' IS a git subtree here; only the remote is missing, which is expected on a fresh clone. Wire it up with: git remote add ${REMOTE} ${_url_hint}"
     else
-        _warn "no '${REMOTE}' remote configured — update checking is INERT for this repo, and '${PREFIX}' has no subtree merge in this history either, so it cannot be updated by merge even once the remote is added. Wire up the remote with: git remote add ${REMOTE} <marketplace-url>"
+        _warn "no '${REMOTE}' remote configured and '${PREFIX}' has no subtree merge in this history — which is what a NON-SUBTREE install looks like, not a broken one. Two installs land in this same git state: the marketplace plugin, and running init.py straight from a clone (docs/INSTALL.md), which is the cloud/CI route and has no plugin to update. This script only reports drift for a subtree install, so INERT is the correct steady state for both, and step 0(a) has nothing to act on. To update: ${_nonsubtree_route}. Adding the remote is optional and buys drift REPORTING only (it cannot merge without a subtree): git remote add ${REMOTE} ${_url_hint}"
     fi
     exit 0
 fi
@@ -234,19 +329,20 @@ fi
 # merge — the skill's assets ARE the distribution — so both halves of the subtree
 # command fail, and the consumer is sent down that route twice with nothing in
 # the text to tell them it cannot work here.
-_plugin_route="update the plugin (/plugin update claude-arsenal), re-vendor .claude/skills from it, then: python3 .claude/skills/init/scripts/init.py --repo-path . --silent"
 if _is_subtree; then
     _manual_hint="git fetch ${REMOTE} refs/tags/v${latest}:refs/tags/v${latest} && git subtree merge --prefix=${PREFIX} \"v${latest}^{commit}\" --squash"
 else
-    _manual_hint="'${PREFIX}' is not a git subtree, so there is nothing to merge into — ${_plugin_route}"
+    _manual_hint="'${PREFIX}' is not a git subtree, so there is nothing to merge into — ${_nonsubtree_route}"
 fi
 if [[ ${CHECK_ONLY} -eq 1 ]]; then
     echo "claude-arsenal: installed=v${installed}, latest=v${latest} — UPDATE AVAILABLE"
     echo "  run without --check-only, or: ${_manual_hint}"
+    _print_changelog_since "${installed}" "${latest}"
     exit 0
 fi
 
 echo "claude-arsenal: installed=v${installed}, latest=v${latest} — pulling update…"
+_print_changelog_since "${installed}" "${latest}"
 
 # Ensure the working tree is clean before the subtree update
 if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
@@ -262,13 +358,33 @@ fi
 # fixes it. Saying so beats a `fatal:` that reads like a transient failure and a
 # manual command carrying the same wrong prefix.
 if ! _is_subtree; then
-    _warn "'${PREFIX}' was never added as a git subtree, so it cannot be updated by merge. If the subtree lives elsewhere, set ARSENAL_PREFIX to it (and ARSENAL_BUNDLE_DIR to where .bundle-version is). If the bundle came from the plugin instead: ${_plugin_route}"
+    _warn "'${PREFIX}' was never added as a git subtree, so it cannot be updated by merge. If the subtree lives elsewhere, set ARSENAL_PREFIX to it (and ARSENAL_BUNDLE_DIR to where .bundle-version is). If the bundle came from a plugin or clone install instead: ${_nonsubtree_route}"
     exit 0
 fi
 
 if ! git fetch "${REMOTE}" "refs/tags/v${latest}:refs/tags/v${latest}" 2>&1 \
     || ! git subtree merge --prefix="${PREFIX}" "v${latest}^{commit}" --squash \
         -m "chore: update claude-arsenal to v${latest}" 2>&1; then
+    # A conflicting subtree merge leaves MERGE_HEAD, a populated index and
+    # conflict markers behind. This branch then warns and exits 0, so the
+    # session reports no failure and the worker loop runs against a tree it
+    # requires to be clean -- the same tree the check above just confirmed was
+    # clean. Put it back before saying anything.
+    #
+    # MERGE_HEAD, not the abort's exit status, is what says the tree is still
+    # mid-merge: `git merge --abort` also fails when there is no merge to abort,
+    # which is the common case on this branch, since a failed `git fetch` never
+    # started one. And a bare `|| true` would hide the case that matters -- an
+    # abort that could not undo a real conflict. Exiting nonzero is not the
+    # answer either: this script promises never to abort a session (3.2.0) and
+    # session-start runs it as a report. So repair the tree where that is
+    # possible, and name the one state that cannot be repaired loudly enough
+    # that nobody dispatches a worker into it.
+    if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1 \
+        && ! git merge --abort >/dev/null 2>&1; then
+        _warn "subtree update failed AND 'git merge --abort' could not undo it: the working tree is left mid-merge, with conflict markers under '${PREFIX}'. The worker loop requires a clean tree — resolve or abort this merge by hand BEFORE dispatching any worker, then: ${_manual_hint}"
+        exit 0
+    fi
     _warn "subtree update failed — run manually: ${_manual_hint}"
     exit 0
 fi
@@ -287,7 +403,11 @@ fi
 # Re-run init.py --silent so any new bundle scripts are propagated
 init_py="$(find .claude/skills -name 'init.py' -path '*/init/scripts/init.py' 2>/dev/null | head -1 || true)"
 if [[ -n "${init_py}" ]]; then
-    python3 "${init_py}" --repo-path . --silent
+    # A refusal from init.py (a downgrade guard, a malformed config) is a
+    # warning here, not an abort: aborting skips the version verification just
+    # below, which is the check that separates "updated" from "half-updated".
+    python3 "${init_py}" --repo-path . --silent \
+        || _warn "init.py refused to re-run after the update; new bundle scripts may not be in place"
 fi
 
 # Only now is "updated" a claim worth making. A success message that can print
@@ -296,8 +416,15 @@ fi
 # one, and nothing fails.
 now_installed="$(cat "${VERSION_FILE}" 2>/dev/null || echo "0.0.0")"
 if [[ "${now_installed}" != "${latest}" ]]; then
-    _warn "subtree merged to v${latest} but ${VERSION_FILE} still reads ${now_installed} — the bundle was NOT upgraded. Re-vendor the skills and re-run init.py:
-    bash ${PREFIX}/scripts/vendor-skills.sh --src ${PREFIX} --dest .claude/skills --plugins all
+    # The remedy has to match the layout. `vendor-skills.sh` was the separate
+    # vendoring step before v2.0.0 and is not shipped any more — printing it
+    # unconditionally sent every modern install after a file that is not there,
+    # and the real remedy (init.py, which vendors) read like an afterthought to
+    # it. So name it only where the find above actually located one.
+    _revendor=""
+    [[ -n "${vendor_sh}" ]] && _revendor="
+    bash ${vendor_sh} --src ${PREFIX} --dest .claude/skills --plugins all"
+    _warn "subtree merged to v${latest} but ${VERSION_FILE} still reads ${now_installed} — the bundle was NOT upgraded. Re-vendor the skills and re-run init.py:${_revendor}
     python3 .claude/skills/init/scripts/init.py --repo-path . --silent"
     exit 0
 fi

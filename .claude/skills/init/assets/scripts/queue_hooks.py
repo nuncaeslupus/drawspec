@@ -24,6 +24,7 @@ watching.
     queue_hooks.py pr-closed      # on: pull_request_target [closed]
     queue_hooks.py sync-handles   # on: push to the default branch, arsenal/tasks/**
     queue_hooks.py sweep-claims   # on: schedule
+    queue_hooks.py prune-claims   # on: schedule
 
 Deciding and doing are split: every subcommand builds a list of actions from
 its inputs with no network at all, then applies them. `--dry-run` prints the
@@ -40,6 +41,7 @@ import argparse
 import contextlib
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.error
@@ -51,13 +53,30 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from arsenal_config import setting
 from handle_sync import missing_handles
 from issue_for_task import issue_number_for
-from task_select import TERMINAL, load_tasks, task_id_from_issue
+from task_select import (
+    ID_LABEL_PREFIX,
+    TERMINAL,
+    default_tasks_dir,
+    load_tasks,
+    task_id_from_body,
+    task_id_from_issue,
+    task_id_from_labels,
+)
 
 CLAIMED_LABEL = "arsenal:claimed"
-TASK_LABEL = "arsenal:task"
+# `task-label` and `claim-prefix` were validated and documented settings that
+# nothing read — these two lines were the hardcoded strings they were supposed
+# to control.
+TASK_LABEL = setting("task-label")
 API_ROOT = "https://api.github.com"
+# Same precedence as claim_task.sh, which is what writes them: env, then the
+# config file, then the shipped default.
+DEFAULT_CLAIM_PREFIX = os.environ.get("ARSENAL_CLAIM_PREFIX", "").strip() or setting("claim-prefix")
+# `<id>.a2` is attempt 2 on `<id>` — the same task, so the same prune decision.
+CLAIM_ATTEMPT_RE = re.compile(r"\.a\d+$")
 
 
 # ---------------------------------------------------------------- pure planning
@@ -94,6 +113,8 @@ def plan_pr_closed(
     event: dict[str, Any],
     tasks: list[dict[str, Any]],
     issues: list[dict[str, Any]],
+    *,
+    truncated: bool = False,
 ) -> list[dict[str, Any]]:
     """What a closed PR means for the queue.
 
@@ -112,11 +133,47 @@ def plan_pr_closed(
     number = pull.get("number")
     url = pull.get("html_url") or f"#{number}"
     merged = bool(pull.get("merged"))
+
+    # A PR from a fork decides nothing about this queue. Task identity is read
+    # from `head.ref` and, failing that, from the PR body — and a fork author
+    # controls both. The workflow that calls this runs on `pull_request_target`
+    # with `issues: write`, so a fork PR closed without merging could reach
+    # `release-claim` and strip a claim another session legitimately holds. An
+    # `arsenal/*` head ref is not proof of anything: fork authors name their own
+    # branches.
+    #
+    # Checked here as well as in the workflow's `if:` condition, because the
+    # workflow is installed into a consumer repo by `/init` and may be an older
+    # copy than this script.
+    head_repo = str(((pull.get("head") or {}).get("repo") or {}).get("full_name") or "")
+    base_repo = str(
+        ((pull.get("base") or {}).get("repo") or {}).get("full_name")
+        or (event.get("repository") or {}).get("full_name")
+        or ""
+    )
+    # Keyed on the BASE repo, not on the head repo being present. GitHub sends
+    # `head.repo: null` once the fork is deleted or made private, which is the
+    # same fork with its provenance missing — and a payload an attacker can
+    # produce on demand by deleting the fork after opening the PR. Once the base
+    # repo is known, anything that does not match it is outside. A payload
+    # carrying no repository information at all stays lenient: that is a caller
+    # constructing an event by hand, not a fork.
+    if base_repo and head_repo != base_repo:
+        return [
+            {
+                "kind": "note",
+                "message": (
+                    f"PR {url}: opened from fork '{head_repo or '?'}' — ignored. A pull "
+                    "request from outside this repository cannot close or release a task."
+                ),
+            }
+        ]
+
     head_ref = str((pull.get("head") or {}).get("ref") or "")
     base_ref = str((pull.get("base") or {}).get("ref") or "")
     default_branch = str(
         (event.get("repository") or {}).get("default_branch")
-        or (pull.get("base") or {}).get("repo", {}).get("default_branch")
+        or ((pull.get("base") or {}).get("repo") or {}).get("default_branch")
         or ""
     )
     into_default = bool(default_branch) and base_ref == default_branch
@@ -134,6 +191,61 @@ def plan_pr_closed(
 
     issue_number = issue_number_for(task_id, issues)
     if issue_number is None:
+        if truncated:
+            # "Not in the listing" and "does not exist" are the same observation
+            # here, and only one of them is safe to act on. The handle may simply
+            # have sat past the pagination cap, in which case treating it as
+            # absent leaves a merged task closing nothing and its issue open and
+            # claimed forever. Unlike sync-handles and sweep-claims this command
+            # cannot just refuse and run again later — it is driven by a webhook
+            # that fires once — so it reports loudly instead, and the run goes red
+            # with the task named for a human to finish by hand.
+            return [
+                {
+                    "kind": "unresolved",
+                    "task": task_id,
+                    "message": (
+                        f"PR {url}: could not resolve the issue handle for task {task_id} "
+                        "because the issue listing was truncated at the pagination cap. "
+                        "This PR's task may still be open and claimed — check it and close "
+                        "it by hand, then narrow the board (close or re-label finished "
+                        "tasks) so the listing fits."
+                    ),
+                }
+            ]
+        # No handle — but the task id is already resolved, and the ARCHIVE does
+        # not need an issue number; only the issue close does. Doing half the
+        # reconciliation is what makes the keyword guard's non-blocking pass
+        # honest: that guard lets a handle-less task PR through on the stated
+        # grounds that "`plan_pr_closed` still reconciles on merge", and until
+        # this branch existed it did not — it returned here having closed
+        # nothing and archived nothing. The task file stayed live, and the next
+        # session's `handle_sync.py` proposed a fresh handle for work that had
+        # already merged: the drift the queue exists to prevent, arriving
+        # through the door the guard was told to watch.
+        if merged and into_default:
+            task = next((t for t in tasks if t["id"] == task_id), None)
+            if task and task.get("status") not in TERMINAL and "_history" not in task["path"]:
+                return [
+                    {"kind": "archive-task", "task": task_id, "path": task["path"]},
+                    {
+                        "kind": "note",
+                        "message": (
+                            f"PR {url}: task {task_id} archived on merge. It has no issue "
+                            "handle, so there is no issue to close — if one is opened later "
+                            "it will not be claimed by this task."
+                        ),
+                    },
+                ]
+            return [
+                {
+                    "kind": "note",
+                    "message": (
+                        f"PR {url}: task {task_id} has no issue handle and is already "
+                        "terminal — nothing to update"
+                    ),
+                }
+            ]
         return [
             {
                 "kind": "note",
@@ -205,6 +317,129 @@ def plan_pr_closed(
     ]
 
 
+# `Closes #12`, `Fixes #12`, `Resolved #12` — GitHub's own closing vocabulary,
+# with the number captured so it can be checked against the task's own issue.
+# The colon form `Closes: #12` is GitHub's too, and requiring whitespace meant
+# keyword-guard failed a PR that would have closed the issue correctly. Either a
+# colon or whitespace, not neither: `Closes#12` closes nothing on GitHub either.
+CLOSING_REFERENCE = re.compile(
+    r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)(?::\s*|\s+)#(\d+)\b", re.IGNORECASE
+)
+
+
+def check_keyword(
+    event: dict[str, Any],
+    tasks: list[dict[str, Any]],
+    issues: list[dict[str, Any]],
+    commit_messages: list[str],
+    *,
+    truncated: bool = False,
+) -> tuple[bool, str]:
+    """Whether this task PR closes ITS OWN issue. Returns (ok, message).
+
+    Accepting any `Closes #N` was the hole: a task PR could satisfy the guard
+    while pointing at an unrelated issue, so the merge closed that issue and
+    left the task's own one open and claimed — the exact drift the guard exists
+    to prevent, now with a green check beside it.
+    """
+    pull = event.get("pull_request") or {}
+    url = pull.get("html_url") or f"#{pull.get('number')}"
+    head_ref = str((pull.get("head") or {}).get("ref") or "")
+
+    known = {t["id"] for t in tasks}
+    task_id = task_id_from_branch(head_ref, known)
+    if task_id is None:
+        # Same fallback `plan_pr_closed` uses: a PR opened by hand names its task
+        # in the body, not in the branch name. Without this the branch name alone
+        # decided whether the guard applied, so a hand-opened task PR carrying
+        # `Closes #<unrelated issue>` passed — and its merge closed that issue
+        # while the backstop separately closed the task's own one. That is the
+        # very drift this guard exists to prevent.
+        task_id = task_id_from_issue({"body": pull.get("body") or ""})
+        if task_id not in known:
+            task_id = None
+    if task_id is None:
+        return True, f"PR {url}: '{head_ref}' is not a known task branch — guard does not apply"
+
+    issue_number = issue_number_for(task_id, issues)
+    if issue_number is None:
+        if truncated:
+            # The fail-open below rests on "no handle exists yet". A truncated
+            # listing cannot support that reading: the handle may sit past the
+            # pagination cap, in which case this PR's `Closes #N` names some
+            # OTHER issue and merging closes it — precisely the drift this guard
+            # exists to prevent, waved through with a green check. `pr-closed` is
+            # no backstop for it either, because by then the wrong issue is
+            # already closed. So the one case where the answer is unknowable
+            # fails, and says what a human has to do about it.
+            return False, (
+                f"PR {url}: the `{TASK_LABEL}` issue listing was truncated at the pagination "
+                f"cap, so task {task_id}'s issue handle could not be resolved — it may exist "
+                "beyond the cap. Merging now could close an unrelated issue. Confirm the task's "
+                "own issue number by hand and check that this PR's closing keyword names it."
+            )
+        # No handle to point at yet. Failing here would block the PR on
+        # something the author cannot fix from the PR, so it is a pass with a
+        # note; `sync-handles` opens the issue, and `plan_pr_closed` archives the
+        # task file on merge whether or not one exists by then.
+        #
+        # That second half is what makes this pass honest, and it has to keep
+        # being true: the note the guard prints is the reason nobody re-checks
+        # it. Reconciliation here means the ARCHIVE only — with no handle there
+        # is no issue to close, and none is invented.
+        #
+        # Only sound because the listing was WHOLE: "not in a complete listing"
+        # really does mean "does not exist".
+        return True, (
+            f"PR {url}: task {task_id} has no issue handle yet — nothing to reference. "
+            "sync-handles will open one."
+        )
+
+    referenced = {
+        int(m)
+        for text in [str(pull.get("body") or ""), *commit_messages]
+        for m in CLOSING_REFERENCE.findall(text)
+    }
+    if issue_number in referenced:
+        return True, f"PR {url}: closes #{issue_number}, the issue for task {task_id}."
+
+    if referenced:
+        return False, (
+            f"PR {url} closes {', '.join('#' + str(n) for n in sorted(referenced))}, but task "
+            f"{task_id}'s own issue is #{issue_number}. Merging this would close an unrelated "
+            f"issue and leave #{issue_number} open and claimed. Point the keyword at "
+            f"#{issue_number}."
+        )
+    return False, (
+        f"PR {url} is on task branch '{head_ref}' but neither its body nor any of its commits "
+        f"closes #{issue_number}, the issue for task {task_id}. Merging it would land the work "
+        "and leave the task claimed forever, which is the drift the queue exists to prevent.\n"
+        f"Add `Closes #{issue_number}` to the PR body, or to a commit message if this PR is "
+        "stacked on another branch. `claude-arsenal/bin/open_task_pr.sh` writes both "
+        "automatically — a PR missing them was opened by hand."
+    )
+
+
+def _refuse_on_truncation(api: Api | None, command: str) -> bool:
+    """Stop a state-changing command that was handed a partial listing.
+
+    Both of these commands write to the board from what they read. Acting on a
+    truncated view is not a smaller version of the right answer — it is the
+    wrong one, and it writes: a duplicate issue for a task whose handle sat past
+    the cap, or a released claim whose open PR was never seen. Refusing costs a
+    delayed run; proceeding costs queue state.
+    """
+    if api is None or not api.truncated:
+        return False
+    print(
+        f"queue_hooks: refusing to run {command} — a GitHub listing was truncated at the "
+        "pagination cap, so the plan would be built from an incomplete board. Narrow the "
+        "query (close or re-label finished tasks) and re-run.",
+        file=sys.stderr,
+    )
+    return True
+
+
 def plan_sync_handles(
     tasks: list[dict[str, Any]], issues: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
@@ -219,25 +454,42 @@ def plan_sync_handles(
     """
     warnings: list[str] = []
     rows = missing_handles(tasks, issues, label=TASK_LABEL, warnings=warnings)
-    return [
-        {"kind": "note", "message": f"handle_sync: {warning}"} for warning in warnings
-    ] + [
-        {
-            "kind": "create-issue",
-            "task": row["task"],
-            "title": row["title"],
-            "body": row["body"],
-            "labels": row["labels"],
-        }
-        # A row marked ambiguous names a collision the id resolution cannot
-        # settle: an unresolved issue that is the handle for at most one of
-        # several tasks. Creating it here would put a second issue on the board
-        # for whichever one it already covered, unattended and unreviewed. The
-        # warning above already carries the row, so nothing is hidden — the
-        # decision is just left to someone who can make it (#239).
-        for row in rows
-        if not row.get("ambiguous")
+
+    # The migration for every handle opened before the label existed, and the
+    # reason a body-less board can stop resolving by title at all. Only the body
+    # marker is allowed to authorise a stamp: a title match is a heuristic, and
+    # stamping from one would make a wrong pairing permanent instead of visible.
+    # This job always has the bodies — it fetches the board over REST — which is
+    # exactly why the stamping belongs here and not in a session.
+    stamps = [
+        {"kind": "stamp-id", "issue": number, "task": task_id}
+        for issue in issues
+        if isinstance(number := issue.get("number"), int)
+        and (task_id := task_id_from_body(issue))
+        and not task_id_from_labels(issue)
     ]
+
+    return (
+        [{"kind": "note", "message": f"handle_sync: {warning}"} for warning in warnings]
+        + stamps
+        + [
+            {
+                "kind": "create-issue",
+                "task": row["task"],
+                "title": row["title"],
+                "body": row["body"],
+                "labels": row["labels"],
+            }
+            # A row marked ambiguous names a collision the id resolution cannot
+            # settle: an unresolved issue that is the handle for at most one of
+            # several tasks. Creating it here would put a second issue on the board
+            # for whichever one it already covered, unattended and unreviewed. The
+            # warning above already carries the row, so nothing is hidden — the
+            # decision is just left to someone who can make it (#239).
+            for row in rows
+            if not row.get("ambiguous")
+        ]
+    )
 
 
 def plan_sweep_claims(
@@ -259,10 +511,15 @@ def plan_sweep_claims(
     never releases a claim — only age with nothing to show for it.
     """
     cutoff = now - timedelta(hours=max_age_hours)
+    # A hand-opened PR names its task by the body marker, not the branch.
     busy = {
         task_id
         for pr in open_prs
-        if (task_id := task_id_from_branch(str((pr.get("head") or {}).get("ref") or ""), known_ids))
+        if (
+            task_id := task_id_from_branch(str((pr.get("head") or {}).get("ref") or ""), known_ids)
+            or task_id_from_issue({"body": pr.get("body") or ""})
+        )
+        in known_ids
     }
 
     actions: list[dict[str, Any]] = []
@@ -290,6 +547,40 @@ def plan_sweep_claims(
     return actions
 
 
+def plan_prune_claims(
+    refs: list[dict[str, Any]], tasks: list[dict[str, Any]], *, prefix: str
+) -> list[dict[str, Any]]:
+    """Delete the claim refs of tasks that are already finished.
+
+    `claiming-internals.md` acknowledges that claim refs accumulate, roughly one
+    per task ever claimed, and had exactly one remedy for it: prune them from a
+    CLI session. A consumer working only from Claude Code on the web has no such
+    session, and its proxy refuses every ref write — `git push --delete` and the
+    REST `DELETE` both 403 — so the only remedy on offer could never be run
+    there and the cost it names had no ceiling. Nothing session-side fixes that,
+    because the 403 is the proxy and not the caller. This runs where a write
+    token already exists, which is what makes the prune surface-independent.
+
+    Terminal tasks only. The ref *is* the lock, so an id with no finished task
+    behind it is either live work or a task file that never merged, and deleting
+    either lets a second session claim a task the first is still working on.
+    """
+    done = {t["id"] for t in tasks if str(t.get("status") or "") in TERMINAL}
+    head = f"refs/heads/{prefix.strip('/')}/"
+    actions: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for ref in refs:
+        name = str(ref.get("ref") or "")
+        # A ref listed twice is deleted once; the second DELETE would 422.
+        if not name.startswith(head) or name in seen:
+            continue
+        seen.add(name)
+        task_id = CLAIM_ATTEMPT_RE.sub("", name[len(head) :])
+        if task_id in done:
+            actions.append({"kind": "delete-ref", "ref": name, "task": task_id})
+    return actions
+
+
 def _parse_ts(raw: Any) -> datetime | None:
     if not isinstance(raw, str):
         return None
@@ -305,9 +596,20 @@ def _parse_ts(raw: Any) -> datetime | None:
 class Api:
     """The smallest GitHub REST client that covers these actions."""
 
+    # GitHub's own listing cap for this client: 10 pages of 100. The
+    # eleventh request paginate() may make is a probe, never collected.
+    MAX_PAGES = 10
+
     def __init__(self, repo: str, token: str) -> None:
         self.repo = repo
         self.token = token
+        # Set by paginate() when a listing hits the page cap. A warning alone was
+        # not enough: every command acts on what it was handed, so a partial view
+        # makes sync-handles open a duplicate issue for a task whose handle sat
+        # past the cap, sweep-claims release a claim whose PR it never saw, and
+        # pr-closed read a merged task as having no handle at all. The flag is
+        # what lets the first two refuse and the third report.
+        self.truncated = False
 
     def request(self, method: str, path: str, body: Any = None) -> Any:
         url = path if path.startswith("http") else f"{API_ROOT}{path}"
@@ -322,12 +624,34 @@ class Api:
         return json.loads(payload) if payload else None
 
     def paginate(self, path: str) -> list[dict[str, Any]]:
+        """Up to `MAX_PAGES` pages, with one extra request to prove truncation.
+
+        A tenth page that comes back exactly full is ambiguous: it is what a list
+        of 1,001 records looks like, and equally what a list of exactly 1,000
+        looks like. Inferring truncation from it declared every board of exactly
+        1,000 incomplete, and `_refuse_on_truncation` then refused sync-handles
+        and sweep-claims on a board that was whole. Page 11 settles it — empty
+        means the listing simply ended, and it costs one request only in the case
+        that was previously guessed at.
+        """
         out: list[dict[str, Any]] = []
         page = 1
-        while page <= 10:
+        while page <= self.MAX_PAGES + 1:
             sep = "&" if "?" in path else "?"
             chunk = self.request("GET", f"{path}{sep}per_page=100&page={page}")
             if not isinstance(chunk, list) or not chunk:
+                break
+            if page > self.MAX_PAGES:
+                # The probe came back with records, so the list really does run
+                # past the cap. They are deliberately not collected: returning a
+                # partial eleventh page would make the truncation harder to see,
+                # not smaller.
+                self.truncated = True
+                print(
+                    f"queue_hooks: {path} returned more than {len(out)} records — the list "
+                    "is truncated, so plans built from it are incomplete",
+                    file=sys.stderr,
+                )
                 break
             out.extend(chunk)
             if len(chunk) < 100:
@@ -344,8 +668,28 @@ class Api:
             if "pull_request" not in i
         ]
 
+    def matching_refs(self, prefix: str) -> list[dict[str, Any]]:
+        """Every ref under `refs/heads/<prefix>/`. An empty list when there are none.
+
+        One request, not `paginate()`: this endpoint ignores `page` and
+        `per_page` and returns the whole list every time. Paging it collected
+        the same refs ten times over, flagged 121 claims as truncated at 1,210,
+        and prune-claims then DELETEd each ref once and 422'd on the nine
+        copies: a red run whenever more than 100 refs existed.
+        """
+        quoted = urllib.parse.quote(prefix.strip("/"), safe="/")
+        refs = self.request("GET", f"/repos/{self.repo}/git/matching-refs/heads/{quoted}/")
+        return refs if isinstance(refs, list) else []
+
     def open_prs(self) -> list[dict[str, Any]]:
         return self.paginate(f"/repos/{self.repo}/pulls?state=open")
+
+    def pr_commit_messages(self, number: int) -> list[str]:
+        """Commit messages on one PR — where a stacked PR carries its keyword."""
+        return [
+            str((c.get("commit") or {}).get("message") or "")
+            for c in self.paginate(f"/repos/{self.repo}/pulls/{number}/commits")
+        ]
 
 
 def apply_action(action: dict[str, Any], api: Api | None, *, tasks_dir: Path) -> bool:
@@ -354,6 +698,13 @@ def apply_action(action: dict[str, Any], api: Api | None, *, tasks_dir: Path) ->
     if kind == "note":
         print(f"queue_hooks: {action['message']}")
         return True
+
+    # Not a failed action — an action that could not be planned. It returns False
+    # so the run exits non-zero, which is the only way a once-only webhook makes
+    # itself visible to a human.
+    if kind == "unresolved":
+        print(f"queue_hooks: {action['message']}", file=sys.stderr)
+        return False
 
     if kind == "archive-task":
         return _archive(action, tasks_dir)
@@ -366,7 +717,7 @@ def apply_action(action: dict[str, Any], api: Api | None, *, tasks_dir: Path) ->
     # one. Validating the number before dispatching by kind made that branch
     # unreachable, so `sync-handles` could plan a handle and never open it.
     number = -1
-    if kind != "create-issue":
+    if kind not in ("create-issue", "delete-ref"):
         raw_number = action.get("issue")
         if not isinstance(raw_number, int):
             print(f"queue_hooks: {kind} carries no issue number — skipped", file=sys.stderr)
@@ -400,7 +751,20 @@ def apply_action(action: dict[str, Any], api: Api | None, *, tasks_dir: Path) ->
                 {"body": action["comment"]},
             )
             print(f"queue_hooks: released the claim on #{number} ({action['task']})")
+        elif kind == "stamp-id":
+            name = f"{ID_LABEL_PREFIX}{action['task']}"
+            _ensure_label(api, name)
+            api.request("POST", f"/repos/{api.repo}/issues/{number}/labels", {"labels": [name]})
+            print(f"queue_hooks: labelled #{number} `{name}`")
+        elif kind == "delete-ref":
+            ref = str(action["ref"])
+            # The endpoint is `git/refs/heads/...`: the full ref, `refs/` included.
+            # Stripping it addressed `git/heads/...`, which 404s on every delete.
+            api.request("DELETE", f"/repos/{api.repo}/git/{ref}")
+            print(f"queue_hooks: deleted claim ref {ref} ({action['task']})")
         elif kind == "create-issue":
+            for name in action["labels"]:
+                _ensure_label(api, name)
             created = api.request(
                 "POST",
                 f"/repos/{api.repo}/issues",
@@ -412,14 +776,38 @@ def apply_action(action: dict[str, Any], api: Api | None, *, tasks_dir: Path) ->
             return False
     except urllib.error.HTTPError as exc:
         print(
-            f"queue_hooks: {kind} on #{number} failed — HTTP {exc.code} {exc.reason}",
+            f"queue_hooks: {kind} on {_target(action, number)} failed — "
+            f"HTTP {exc.code} {exc.reason}",
             file=sys.stderr,
         )
         return False
     except urllib.error.URLError as exc:
-        print(f"queue_hooks: {kind} on #{number} failed — {exc.reason}", file=sys.stderr)
+        print(
+            f"queue_hooks: {kind} on {_target(action, number)} failed — {exc.reason}",
+            file=sys.stderr,
+        )
         return False
     return True
+
+
+def _target(action: dict[str, Any], number: int) -> str:
+    """What the failed action was acting on. Not every kind has an issue."""
+    if number >= 0:
+        return f"#{number}"
+    return str(action.get("ref") or action.get("task") or "the queue")
+
+
+def _ensure_label(api: Api, name: str) -> None:
+    """Create a repository label if it is not there yet.
+
+    Every `arsenal-id:` label is unique to one task, so each handle needs one
+    that has never existed. Whether the issues endpoints mint an unknown label
+    on the way past is not something an unattended weekly job should be betting
+    on, and the failure would be a red run per new task. A 422 here means it
+    already exists, which is the outcome wanted either way.
+    """
+    with contextlib.suppress(urllib.error.HTTPError):
+        api.request("POST", f"/repos/{api.repo}/labels", {"name": name, "color": "ededed"})
 
 
 def _assignees(api: Api, number: int) -> list[dict[str, Any]]:
@@ -459,9 +847,7 @@ def _archive(action: dict[str, Any], tasks_dir: Path) -> bool:
         if end != -1:
             front = text[4:end]
             front = (
-                "\n".join(
-                    line for line in front.splitlines() if not line.startswith("status:")
-                )
+                "\n".join(line for line in front.splitlines() if not line.startswith("status:"))
                 + "\nstatus: merged"
             )
             text = f"---\n{front}\n---\n" + text[end + 5 :]
@@ -477,6 +863,14 @@ def _archive(action: dict[str, Any], tasks_dir: Path) -> bool:
     ]
     for command in commands:
         result = subprocess.run(command, capture_output=True, text=True)
+        if result.returncode != 0 and command[1] in ("add", "commit"):
+            print(
+                f"queue_hooks: could not {command[1]} the archive of {live.name} "
+                f"({result.stderr.strip() or result.stdout.strip()}) — not fatal, for the "
+                "same reason as a failed push",
+                file=sys.stderr,
+            )
+            return True
         if result.returncode != 0 and command[1] == "push":
             print(
                 f"queue_hooks: archived {live.name} but could not push "
@@ -498,14 +892,25 @@ def _load_json(path: Path) -> Any:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=["pr-closed", "sync-handles", "sweep-claims"])
-    parser.add_argument("--tasks-dir", type=Path, default=Path("arsenal/tasks"))
+    parser.add_argument(
+        "command",
+        choices=["pr-closed", "sync-handles", "sweep-claims", "prune-claims", "keyword-guard"],
+    )
+    parser.add_argument(
+        "--commits",
+        type=Path,
+        default=None,
+        help="JSON array of commit messages, for keyword-guard instead of fetching",
+    )
+    parser.add_argument("--tasks-dir", type=Path, default=default_tasks_dir())
     parser.add_argument("--repo", default=os.environ.get("GITHUB_REPOSITORY", ""))
     parser.add_argument(
         "--event", type=Path, default=None, help="event JSON (default $GITHUB_EVENT_PATH)"
     )
     parser.add_argument("--issues", type=Path, default=None, help="issue JSON, instead of fetching")
     parser.add_argument("--prs", type=Path, default=None, help="open-PR JSON, instead of fetching")
+    parser.add_argument("--refs", type=Path, default=None, help="git-ref JSON, instead of fetching")
+    parser.add_argument("--claim-prefix", default=DEFAULT_CLAIM_PREFIX)
     parser.add_argument("--max-age-hours", type=int, default=24)
     parser.add_argument("--now", default=None, help="ISO timestamp, for tests")
     parser.add_argument("--dry-run", action="store_true", help="print the plan, change nothing")
@@ -519,21 +924,80 @@ def main(argv: list[str] | None = None) -> int:
         print(f"queue_hooks: {warning}", file=sys.stderr)
 
     try:
-        if args.issues is not None:
+        if args.command == "prune-claims":
+            # The one command that reads refs and not the board. Fetching the
+            # issues anyway would be a page of API calls to answer a question
+            # nothing here asks, and would refuse to run without a board.
+            issues = []
+        elif args.issues is not None:
             issues = [i for i in _load_json(args.issues) if isinstance(i, dict)]
         elif api is not None:
             issues = api.issues(TASK_LABEL)
         else:
             print("queue_hooks: no --issues and no usable token", file=sys.stderr)
             return 2
+        # Read HERE, before anything else paginates. `Api.truncated` is one
+        # sticky flag across every listing, and keyword-guard goes on to page
+        # through the PR's commits: a long enough commit list would raise the
+        # flag and make the guard reject a PR whose ISSUE listing was complete
+        # and whose handle is simply absent — turning a deliberate fail-open
+        # into a rejection the author cannot act on. Only the completeness of
+        # the issue listing says anything about whether a handle exists.
+        issues_truncated = bool(args.issues is None and api is not None and api.truncated)
+
+        if args.command == "keyword-guard":
+            # Returns straight from here: this command reports a verdict on
+            # stdout and exits, rather than producing queue actions to apply.
+            event_path = args.event or Path(os.environ.get("GITHUB_EVENT_PATH", ""))
+            if not event_path or not event_path.is_file():
+                print("queue_hooks: no event payload to read", file=sys.stderr)
+                return 2
+            event = _load_json(event_path)
+            if args.commits is not None:
+                commits = [str(m) for m in _load_json(args.commits)]
+            elif api is not None:
+                number = (event.get("pull_request") or {}).get("number")
+                commits = api.pr_commit_messages(int(number)) if number else []
+            else:
+                commits = []
+            # Narrower than refusing on any truncation: a handle that resolved
+            # within the cap is the right issue number whether or not the listing
+            # ran past it, and failing those PRs too would block every task PR on
+            # a board large enough to truncate. Only the unresolvable case is
+            # actually unknowable, and that is where check_keyword fails.
+            ok, message = check_keyword(
+                event,
+                tasks,
+                issues,
+                commits,
+                truncated=issues_truncated,
+            )
+            print(message, file=sys.stdout if ok else sys.stderr)
+            return 0 if ok else 1
 
         if args.command == "pr-closed":
             event_path = args.event or Path(os.environ.get("GITHUB_EVENT_PATH", ""))
             if not event_path or not event_path.is_file():
                 print("queue_hooks: no event payload to read", file=sys.stderr)
                 return 2
-            actions = plan_pr_closed(_load_json(event_path), tasks, issues)
+            actions = plan_pr_closed(
+                _load_json(event_path),
+                tasks,
+                issues,
+                truncated=issues_truncated,
+            )
+        elif args.command == "prune-claims":
+            if args.refs is not None:
+                refs = [r for r in _load_json(args.refs) if isinstance(r, dict)]
+            elif api is not None:
+                refs = api.matching_refs(args.claim_prefix)
+            else:
+                print("queue_hooks: no --refs and no usable token", file=sys.stderr)
+                return 2
+            actions = plan_prune_claims(refs, tasks, prefix=args.claim_prefix)
         elif args.command == "sync-handles":
+            if _refuse_on_truncation(api, "sync-handles"):
+                return 2
             actions = plan_sync_handles(tasks, issues)
         else:
             if args.prs is not None:
@@ -542,6 +1006,8 @@ def main(argv: list[str] | None = None) -> int:
                 prs = api.open_prs()
             else:
                 prs = []
+            if _refuse_on_truncation(api, "sweep-claims"):
+                return 2
             now = _parse_ts(args.now) or datetime.now(UTC)
             actions = plan_sweep_claims(
                 issues,
@@ -570,4 +1036,9 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
+    # Windows consoles default to a legacy codepage (cp1252 and friends);
+    # a non-ASCII line must degrade to "?", never take the process down.
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
     raise SystemExit(main())

@@ -954,16 +954,16 @@ def test_dials_stand_three_to_a_row() -> None:
         render_text(document, width=20)
 
 
-def test_a_timeline_spaced_across_the_float_range_renders() -> None:
-    """`at` values near the float limit still give proportional spacing, not an error."""
+def test_a_timeline_spaced_across_the_largest_allowed_range_renders() -> None:
+    """`at` values at the largest magnitude a document may hold still space proportionally."""
     document = parse_document(
         {
             "version": 1,
             "kind": "timeline",
             "items": [
-                {"text": "Start", "at": -1e308},
+                {"text": "Start", "at": -1e12},
                 {"text": "Middle", "at": 0},
-                {"text": "End", "at": 1e308},
+                {"text": "End", "at": 1e12},
             ],
         }
     )
