@@ -32,10 +32,14 @@ one member used to do.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
+import math
 import os
 import re
+import shutil
 import sys
+import tempfile
 from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
@@ -327,6 +331,11 @@ def _render(arguments: argparse.Namespace) -> int:
     if output_format != "text" and arguments.charset:
         print("drawspec: --charset applies to --format text only", file=sys.stderr)
         return USAGE
+    for flag in ("width", "height"):
+        value = getattr(arguments, flag)
+        if value is not None and not 0 < value < math.inf:  # also refuses NaN
+            print(f"drawspec: --{flag} must be greater than 0 and finite", file=sys.stderr)
+            return USAGE
     if (
         output_format == "text"
         and arguments.width is not None
@@ -341,12 +350,6 @@ def _render(arguments: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return USAGE
-
-    for flag in ("width", "height"):
-        value = getattr(arguments, flag)
-        if value is not None and not value > 0:  # `not >` also refuses NaN
-            print(f"drawspec: --{flag} must be greater than 0", file=sys.stderr)
-            return USAGE
 
     try:
         document = _read(arguments.document)
@@ -389,13 +392,26 @@ def _render(arguments: argparse.Namespace) -> int:
 
 
 def _write_atomically(path: Path, data: bytes) -> None:
-    """Write beside the target and rename over it, so a failure leaves the old file."""
-    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    """Replace an existing output whole, or fail leaving it untouched.
+
+    The data goes to an exclusively created file beside the (symlink-resolved)
+    target, which then takes the target's mode and is renamed over it. A new
+    output has nothing to preserve, so it is written directly.
+    """
+    target = path.resolve()
+    if not target.is_file():
+        target.write_bytes(data)
+        return
+    descriptor, name = tempfile.mkstemp(dir=target.parent, prefix=f".{target.name}.")
+    temporary = Path(name)
     try:
-        temporary.write_bytes(data)
-        temporary.replace(path)
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(data)
+        shutil.copymode(target, temporary)
+        temporary.replace(target)
     except BaseException:
-        temporary.unlink(missing_ok=True)
+        with contextlib.suppress(OSError):
+            temporary.unlink(missing_ok=True)
         raise
 
 

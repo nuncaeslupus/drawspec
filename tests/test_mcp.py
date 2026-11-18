@@ -485,3 +485,10 @@ def test_a_document_passed_as_a_string_is_told_to_pass_the_object(client: Client
 def test_a_size_override_must_be_positive(client: Client, size: int) -> None:
     result = client.tool("render_document", document=GOOD, width=size)
     assert _body(result)["error"] == "InvalidArgument"
+
+
+def test_a_fractional_text_width_is_refused(client: Client) -> None:
+    result = client.tool("render_document", document=GOOD, format="text", width=0.5)
+    assert _body(result)["error"] == "InvalidArgument"
+    result = client.tool("render_document", document=GOOD, format="")
+    assert _body(result)["error"] == "InvalidArgument"

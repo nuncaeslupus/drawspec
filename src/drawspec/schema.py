@@ -7422,7 +7422,7 @@ def _unknown_field_message(name: str, legal: Sequence[str]) -> str:
         )
     return (
         f"{name!r} is not a known field here. Known fields: {', '.join(sorted(legal))}."
-        f"{_did_you_mean(name, legal)}"
+        f"{_did_you_mean(name, legal) if isinstance(name, str) else ''}"
     )
 
 

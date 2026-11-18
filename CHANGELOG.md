@@ -14,8 +14,8 @@ against it would stop working. Everything below is about the *package*.
 
 - **The CLI no longer ends in a traceback** when it cannot write the output (a missing
   directory, a full disk) or the document is nested past Python's recursion limit: it
-  says why on stderr and exits 1. `-o` now writes beside the target and renames over it,
-  so a failed write leaves the previous file whole.
+  says why on stderr and exits 1. `render -o` now replaces an existing file by renaming a staged copy over it
+  (keeping its mode), so a failed write leaves the previous file whole.
 - **`--width` and `--height` (CLI) and `width` and `height` (MCP) must be greater than 0**;
   `0` and negative values were treated as unset or failed deep inside fitting.
 - **MCP `render_document` refuses an unknown `format`** (`jpeg`, `PNG`) instead of
