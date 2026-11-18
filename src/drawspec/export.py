@@ -35,6 +35,7 @@ PNG only, which is why there is no WebP here — see `docs/proposals/exports.md`
 
 from __future__ import annotations
 
+import re
 import warnings
 from collections.abc import Callable, Mapping
 from dataclasses import replace
@@ -63,6 +64,12 @@ DEFAULT_SCALE: Final = 2.0
 #: thousand pixels across; past it a typo (`--scale 20`) would allocate
 #: gigabytes before anyone noticed.
 MAX_SCALE: Final = 8.0
+
+#: The most pixels a PNG may have, width times height after `scale`. A starting value:
+#: 16 million is 4000 x 4000, which rasterises in a few seconds and a few hundred
+#: megabytes; the document's own `width` is otherwise unbounded, so without this a
+#: large one allocates what `MAX_SCALE` exists to prevent.
+MAX_PIXELS: Final = 16_000_000
 
 #: The two pages. The dark one is `drawspec.brand.DARK_PAGE`, the page every
 #: derived colour is checked against, so a brand accent reads on it.
@@ -113,6 +120,16 @@ def render_png(
     if background == "dark":
         resolved = replace(resolved, canvas=replace(resolved.canvas, ink=DARK_INK))
     svg = render_document(parsed, resolved, "standalone")
+
+    box = re.search(r'viewBox="[^"]*?([\d.]+) ([\d.]+)"', svg)
+    if box:
+        wide, high = float(box.group(1)) * scale, float(box.group(2)) * scale
+        if wide * high > MAX_PIXELS:
+            raise ExportError(
+                f"the PNG would be {wide:.0f} x {high:.0f} pixels; at most {MAX_PIXELS:,} "
+                f"pixels are allowed (about {MAX_PIXELS**0.5:.0f} x {MAX_PIXELS**0.5:.0f}). "
+                "Lower `scale` or the document's `width` and `height`."
+            )
 
     page = {"light": LIGHT_PAGE, "dark": DARK_PAGE, "transparent": None}[background]
     return rasterise(

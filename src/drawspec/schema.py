@@ -7469,8 +7469,24 @@ def _check_number(value: Any, pointer: str, found: list[Violation]) -> None:
         )
 
 
+#: The longest any one string in a document may be, in characters. A starting value,
+#: about ten times the longest label in the reference documents: wrapping and fitting
+#: a label costs milliseconds per word, so an unbounded string is a way to hold a
+#: server for minutes. A label this long belongs in the prose around the drawing.
+MAX_TEXT_LENGTH: Final = 2000
+
+
 def _check_string(value: str, pointer: str, found: list[Violation]) -> None:
-    """Refuse characters XML 1.0 cannot carry, naming the first."""
+    """Refuse a string past `MAX_TEXT_LENGTH`, and characters XML 1.0 cannot carry."""
+    if len(value) > MAX_TEXT_LENGTH:
+        found.append(
+            Violation(
+                pointer,
+                f"is {len(value)} characters, more than the {MAX_TEXT_LENGTH} a text may have. "
+                "Shorten it; a label this long belongs in the prose around the diagram.",
+            )
+        )
+        return
     bad = _NOT_XML_CHAR.search(value)
     if bad:
         found.append(

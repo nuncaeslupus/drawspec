@@ -206,6 +206,16 @@ against it would stop working. Everything below is about the *package*.
 
 ### Fixed
 
+- **The MCP server answers with a tool error for every failure, and cannot be made
+  to probe or hold the host.** A bug inside drawspec now comes back as an
+  `InternalError` result (it used to escape as a protocol error); a malformed argument
+  (`variants`, `width`, `scale`) is an `InvalidArgument`. A refusal lists each
+  violation once and at most 50, saying how many were left out, and `message` is a
+  one-line summary instead of the same list again. `theme`, a document's own `theme`
+  and `variants` accept bundled names only (or a file in `DRAWSPEC_THEME_DIR`), and a
+  path that exists is refused exactly like one that does not. Strings are capped at
+  2000 characters, and a PNG at 16 million pixels, each refused cleanly with the
+  limit named; the caps are starting values (`MAX_TEXT_LENGTH`, `MAX_PIXELS`).
 - **Bad input is refused where it is read, never a traceback.** `NaN`, `Infinity`,
   `1e400` and numbers over 1e12 are refused at the field (they used to render `inf`
   coordinates or crash a kind); control characters and lone surrogates in any string

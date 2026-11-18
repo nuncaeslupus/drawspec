@@ -370,3 +370,99 @@ def test_server_json_matches_the_released_package() -> None:
     assert server["version"] == version == __version__
     assert {p["version"] for p in server["packages"]} == {version}
     assert f"mcp-name: {server['name']}" in (root / "README.md").read_text(encoding="utf-8")
+
+
+def _many_bad_edges(count: int) -> dict[str, Any]:
+    return {
+        "version": 1,
+        "kind": "flow",
+        "nodes": [{"id": "a", "text": "A step"}],
+        "edges": [{"from": "a", "to": f"ghost{i}"} for i in range(count)],
+    }
+
+
+def test_a_bug_in_a_renderer_is_a_tool_error_not_a_protocol_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import asyncio
+
+    import mcp.types as types
+
+    from drawspec import mcp as server
+
+    def boom(*_args: Any, **_kwargs: Any) -> str:
+        raise IndexError("/secret/path")
+
+    monkeypatch.setattr(server, "render_document", boom)
+    params = types.CallToolRequestParams(name="render_document", arguments={"document": GOOD})
+    result = asyncio.run(server._on_call_tool(None, params))
+    assert result.is_error
+    body = json.loads(result.content[0].text)  # type: ignore[union-attr]
+    assert body["error"] == "InternalError"
+    assert "IndexError" in body["message"] and "/secret/path" not in body["message"]
+
+
+def test_a_malformed_argument_is_an_invalid_argument(client: Client) -> None:
+    result = client.tool("render_document", document=GOOD, variants="dark")
+    assert _body(result)["error"] == "InvalidArgument"
+    result = client.tool("render_document", document=GOOD, width="wide")
+    assert _body(result)["error"] == "InvalidArgument"
+
+
+def test_a_refusal_lists_each_violation_once_and_caps_the_list(client: Client) -> None:
+    small = _body(client.tool("validate_document", document=_many_bad_edges(1)))
+    assert len(small["violations"]) == 1
+    assert small["message"].startswith("the document has 1 problem")
+    assert "ghost0" not in small["message"]
+
+    big = _body(client.tool("validate_document", document=_many_bad_edges(200)))
+    assert len(big["violations"]) == 50
+    assert "151 omitted" in big["message"]
+
+
+def test_a_theme_path_is_refused_and_does_not_say_whether_it_exists(client: Client) -> None:
+    messages = set()
+    for path in ("/etc/passwd", "/no/such/file.toml"):
+        result = client.tool("render_document", document=GOOD, theme=path)
+        assert result["isError"] is True, result
+        message = _body(result)["message"]
+        assert "TOML" not in message and "not found" not in message
+        messages.add(message.replace(path, ""))
+    assert len(messages) == 1
+
+    own = {**GOOD, "theme": "/etc/passwd"}
+    assert client.tool("validate_document", document=own)["isError"] is True
+    variant = client.tool("render_document", document=GOOD, variants={"dark": "/etc/passwd"})
+    assert variant["isError"] is True
+
+
+def test_a_bundled_theme_still_loads(client: Client) -> None:
+    from drawspec import mcp as server
+
+    name = server._BUNDLED_THEMES[0]
+    assert not client.tool("render_document", document=GOOD, theme=name).get("isError")
+
+
+def test_themes_load_from_the_configured_directory_only(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Any
+) -> None:
+    from drawspec import mcp as server
+    from drawspec.errors import ThemeError
+
+    inside = tmp_path / "mine.toml"
+    inside.write_text("version = 1\n")
+    (tmp_path / "sub").mkdir()
+    monkeypatch.setenv(server.THEME_DIR_ENV, str(tmp_path))
+    assert server._theme("mine.toml") == str(inside)
+    for refused in ("../mine.toml", "sub/x.toml", "/etc/passwd", "absent.toml"):
+        with pytest.raises(ThemeError):
+            server._theme(refused)
+
+
+def test_text_beyond_the_cap_is_refused_before_any_drawing(client: Client) -> None:
+    from drawspec.schema import MAX_TEXT_LENGTH
+
+    long = {**GOOD, "nodes": [{"id": "a", "text": "word " * MAX_TEXT_LENGTH}]}
+    body = _body(client.tool("validate_document", document=long))
+    assert body["violations"][0]["pointer"] == "/nodes/0/text"
+    assert str(MAX_TEXT_LENGTH) in body["violations"][0]["message"]
