@@ -1,0 +1,28 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "lanes",
+  "title": "A change, from branch to production",
+  "description": "A team handbook's release path in three phases. A review that asks for changes sends the work back into the build phase: an arrow from a later phase into an earlier one is allowed because it is a loop, and it is drawn as a return.",
+  "phases": [
+    { "text": "Build", "members": ["branch", "push"] },
+    { "text": "Review", "members": ["checks", "review"] },
+    { "text": "Release", "members": ["merge", "deploy"] }
+  ],
+  "nodes": [
+    { "id": "branch", "text": "Opens a branch", "actor": "Developer", "role": "start" },
+    { "id": "push", "text": "Pushes commits", "actor": "Developer" },
+    { "id": "checks", "text": "Runs the tests", "actor": "CI" },
+    { "id": "review", "text": "Approves?", "actor": "Reviewer", "role": "decision" },
+    { "id": "merge", "text": "Merges", "actor": "Developer" },
+    { "id": "deploy", "text": "Deploys", "actor": "CI", "role": "terminal" }
+  ],
+  "edges": [
+    { "from": "branch", "to": "push" },
+    { "from": "push", "to": "checks" },
+    { "from": "checks", "to": "review" },
+    { "from": "review", "to": "push", "label": "changes", "role": "weak" },
+    { "from": "review", "to": "merge", "label": "yes" },
+    { "from": "merge", "to": "deploy" }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "kind": "treemap",
+  "title": "The 2.4 MB front-end bundle",
+  "unit": "kB",
+  "parts": [
+    {"text": "Charting library", "amount": 910, "role": "emphasis"},
+    {"text": "Our code", "amount": 520},
+    {"text": "Date handling", "amount": 330},
+    {"text": "UI components", "amount": 300},
+    {"text": "Polyfills", "amount": 190},
+    {"text": "Everything else", "amount": 150, "role": "note"}
+  ],
+  "caption": "The charting library is used on one page."
+}

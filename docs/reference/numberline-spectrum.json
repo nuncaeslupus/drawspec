@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "kind": "numberline",
+  "title": "Office attendance options, from remote to on site",
+  "description": "Four attendance policies placed on one spectrum from fully remote to fully on site, with the option proposed marked and the range the survey would accept shown above.",
+  "axis": {"min": 0, "max": 10, "ends": ["fully remote", "fully on site"]},
+  "ranges": [
+    {"from": 2, "to": 7, "text": "what the staff survey would accept", "role": "note"}
+  ],
+  "points": [
+    {"at": 1, "text": "Remote by default"},
+    {"at": 4, "text": "Two anchor days"},
+    {"at": 5.5, "text": "Team chooses", "role": "emphasis"},
+    {"at": 9, "text": "Office by default"}
+  ]
+}

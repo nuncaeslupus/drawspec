@@ -1,0 +1,20 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "rag",
+  "title": "Corporate risk register: quarter 3",
+  "description": "Ten key risks of a district council, each rated red, amber or green after controls, with the direction of travel since quarter 2.",
+  "caption": "Residual ratings after controls. A risk that rose since quarter 2 is worsening.",
+  "rows": [
+    {"text": "Cyber attack on core systems", "rag": "red", "trend": "same"},
+    {"text": "Temporary accommodation costs", "rag": "red", "trend": "worse"},
+    {"text": "Recruiting planning officers", "rag": "amber", "trend": "worse"},
+    {"text": "Leisure centre contract ends", "rag": "amber", "trend": "better"},
+    {"text": "Local plan examination", "rag": "amber", "trend": "same"},
+    {"text": "Flooding of the high street", "rag": "amber", "trend": "same"},
+    {"text": "Waste fleet replacement", "rag": "green", "trend": "better"},
+    {"text": "Council tax collection", "rag": "green", "trend": "same"},
+    {"text": "Data protection breach", "rag": "green", "trend": "same"},
+    {"text": "Election delivery", "rag": "green", "trend": "better"}
+  ]
+}

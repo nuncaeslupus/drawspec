@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "kind": "board",
+  "title": "Borrowing a book, sliced into releases",
+  "columns": [
+    {"id": "find", "text": "Find a book"},
+    {"id": "borrow", "text": "Borrow it"},
+    {"id": "return", "text": "Return it"}
+  ],
+  "rows": [
+    {"id": "first", "text": "First release"},
+    {"id": "next", "text": "Next"},
+    {"id": "later", "text": "Later"}
+  ],
+  "cut": "first",
+  "cards": [
+    {"text": "Search by title", "column": "find", "row": "first"},
+    {"text": "See if a copy is on the shelf", "column": "find", "row": "first"},
+    {"text": "Borrow at the desk with a card", "column": "borrow", "row": "first"},
+    {"text": "Return at the desk", "column": "return", "row": "first"},
+    {"text": "Search by author", "column": "find", "row": "next"},
+    {"text": "Reserve a copy that is out", "column": "borrow", "row": "next"},
+    {"text": "Reminder before the due date", "column": "return", "row": "next"},
+    {"text": "Recommendations", "column": "find", "row": "later"},
+    {"text": "Self-service kiosk", "column": "borrow", "row": "later"}
+  ]
+}

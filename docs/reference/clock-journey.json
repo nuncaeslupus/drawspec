@@ -1,0 +1,13 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "clock",
+  "title": "How long did it take?",
+  "description": "The class trip: the coach leaves at twenty-five to three and arrives at quarter past three, the forty minutes shaded round the second face; the visit then runs until twenty to six, two hours twenty-five minutes, shaded round the hour hand's path on the third.",
+  "numerals": "quarters",
+  "clocks": [
+    {"time": "2:35", "text": "The coach leaves"},
+    {"time": "3:15", "since": "2:35", "text": "We arrive at the museum"},
+    {"time": "5:40", "since": "3:15", "text": "We leave the museum"}
+  ]
+}

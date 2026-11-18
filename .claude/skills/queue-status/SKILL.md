@@ -1,49 +1,65 @@
 ---
 name: queue-status
-description: When the user wants queue progress counts by status, or to audit the queue for inconsistencies (orphans, broken deps, false-done). Do NOT use to modify task status.
+description: Reports queue counts and flags missing gates, handles and broken deps. Use when the user asks how the queue stands. Not for changing task status.
 user-invocable: true
 argument-hint: "[--detail]"
+effort: low
+metadata:
+  type: workflow
 ---
 
 # queue-status
 
-Reports task counts by status from `claude-arsenal/queue/tasks.jsonl`: total, open, in-progress, done, merged, and blocked. With `--detail`, lists each task's ID, title, status, assignee, and unmet dependency IDs.
+Reports the board: how many tasks are open, claimed, done and blocked, and —
+with `--detail` — every task with its priority, state, and what holds it up.
 
 CANARY: queue-status-loaded-2026-06-13-fb78d23e-d4e5f6a7b8c9d0e1
 
 ## When to load
 
-Load this skill when:
-
-- The user asks "how is the queue?", "what tasks are left?", "queue status", or "/queue-status".
-- Checking whether all tasks are done before closing a loop session.
-- Diagnosing a stuck queue (tasks in `blocked` status with unmet deps).
+- The user asks how the queue stands, what tasks are left, or types `/queue-status`.
+- Checking whether every task is done before closing a loop session.
+- Diagnosing a stuck queue.
 
 ## How to use
 
-```bash
-# Summary counts
-python3 "${CLAUDE_SKILL_DIR}/scripts/query_status.py"
-
-# Full task list
-python3 "${CLAUDE_SKILL_DIR}/scripts/query_status.py" --detail
-```
-
-## Consistency check
-
-The counts above describe progress; for a read-only **integrity** audit run the bundle's queue doctor — `queue_doctor.sh`, in `claude-arsenal/bin/`. It flags orphaned payloads, broken or cyclic dependencies, crashed `in_progress` claims, stale or `branch:`-only `pr` fields, likely secrets committed into payloads, and — when `gh` is available — false-`done` (a `done`/`merged` row whose PR never merged).
+Fetch the `arsenal:task` issues, open and closed, with whatever GitHub access
+this surface has, asking for `number`, `title`, `state`, `labels`, `assignees`
+(plus `state_reason` where the surface returns it) and leaving out `body` — the board is derived from labels and state, and bodies
+are most of the fetch. Then run `query_status.py` (in `claude-arsenal/scripts/`):
 
 ```bash
-# Audit the queue (auto-enables the gh / git layers when those tools are present)
-queue_doctor.sh
-
-# As a CI / make gate: exit non-zero on findings at/above the chosen severity
-queue_doctor.sh --fail-on error
+query_status.py --issues /tmp/issues.json            # summary counts
+query_status.py --issues /tmp/issues.json --detail   # every task with blockers
 ```
 
-It never writes. The orchestrator runs it at session start as an advisory report; run it standalone to gate CI or a `make` target. See `claude-arsenal/AGENTS.md` for the session-start wiring.
+It reads the same graph as the selector, so the board matches what a worker
+will pick next. Without `--issues` every task shows as `open`, because state
+lives in the issues.
 
-## Gotchas
+## What it flags
 
-- **`in_progress` tasks with no active assignee signal a crashed session.** Use the bundle release script to reset it to `open` status (see `claude-arsenal/AGENTS.md`). The consistency check above flags these as `stranded-in-progress`.
-- **`blocked` does not mean failed.** A task becomes eligible automatically once its dependencies complete.
+Problems go to stderr; `--fail-on-problems` makes them a non-zero exit for a
+`make` target or CI job.
+
+- **`no-gate`** — no fenced ` ```bash ` block, so the gate runs nothing and
+  passes everything.
+- **`no-handle`** — no issue points at the task, so no agent can claim it. Run
+  `handle_sync.py` and create the missing issues; where it reports a
+  near-identical issue title, add `arsenal-task: <id>` to that issue instead of
+  opening a second.
+- **`depends on unknown task`** — a dep id no task file declares. The selector
+  treats it as unsatisfied, so the task would never become eligible.
+- **completion drift** — the task file and its issue disagree on whether the
+  work is finished (a merged file with an open issue, or a completed issue with
+  a live file). Selection hides this on purpose, so the board is where it shows.
+
+## Reading the board
+
+- `blocked` is not failed: the task becomes eligible once its dependencies are
+  closed as completed. A close as not-planned leaves dependents blocked.
+- `claimed` means an agent holds the claim ref; the issue's assignee and claim
+  comment name the session. A claim over a day old with no open PR may be stale;
+  `arsenal-queue.yml` releases those on a schedule, and
+  `claude-arsenal:core:queue-next § references/claim-gotchas.md` says how
+  stale claims are released.

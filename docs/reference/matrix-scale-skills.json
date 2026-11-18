@@ -1,0 +1,28 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "matrix",
+  "title": "Who can cover what on the platform team",
+  "description": "A skills matrix for planning on-call cover: people down the side, areas across the top, each cell filled by how far that person can go in that area, from learning to able to teach it. One cell is blank because nobody has assessed it yet; with no key written, the key lists the scale's own names in order.",
+  "columns": ["Networking", "Databases", "Kubernetes", "Observability"],
+  "rows": ["Ana", "Luis", "Marta", "Tomás"],
+  "scale": ["learning", "can assist", "can lead", "can teach"],
+  "cells": [
+    {"text": "can teach", "column": 0, "row": 0, "group": "can teach"},
+    {"text": "learning", "column": 1, "row": 0, "group": "learning"},
+    {"text": "can lead", "column": 2, "row": 0, "group": "can lead"},
+    {"text": "can assist", "column": 3, "row": 0, "group": "can assist"},
+    {"text": "can assist", "column": 0, "row": 1, "group": "can assist"},
+    {"text": "can teach", "column": 1, "row": 1, "group": "can teach"},
+    {"text": "learning", "column": 2, "row": 1, "group": "learning"},
+    {"text": "can lead", "column": 3, "row": 1, "group": "can lead"},
+    {"text": "learning", "column": 0, "row": 2, "group": "learning"},
+    {"text": "can lead", "column": 1, "row": 2, "group": "can lead"},
+    {"text": "can teach", "column": 2, "row": 2, "group": "can teach"},
+    {"text": "not assessed", "column": 3, "row": 2},
+    {"text": "can lead", "column": 0, "row": 3, "group": "can lead"},
+    {"text": "can assist", "column": 1, "row": 3, "group": "can assist"},
+    {"text": "can assist", "column": 2, "row": 3, "group": "can assist"},
+    {"text": "learning", "column": 3, "row": 3, "group": "learning"}
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "packet",
+  "title": "AVR status register",
+  "description": "SREG, the 8-bit status register of an AVR microcontroller such as the ATmega328P: bit 7 at the left, each flag named by its letter, readable and writable, zero at reset.",
+  "caption": "After the ATmega328P datasheet's status register (SREG). Every bit is 0 at reset.",
+  "bits_per_row": 8,
+  "numbering": "right",
+  "fields": [
+    {"text": "I", "bits": 1, "holds": "R/W", "note": "Global Interrupt Enable: set by SEI, cleared by CLI."},
+    {"text": "T", "bits": 1, "holds": "R/W", "note": "Bit Copy Storage: the source and destination of BST and BLD."},
+    {"text": "H", "bits": 1, "holds": "R/W", "note": "Half Carry Flag."},
+    {"text": "S", "bits": 1, "holds": "R/W", "note": "Sign Bit: N exclusive-or V."},
+    {"text": "V", "bits": 1, "holds": "R/W", "note": "Two's Complement Overflow Flag."},
+    {"text": "N", "bits": 1, "holds": "R/W", "note": "Negative Flag."},
+    {"text": "Z", "bits": 1, "holds": "R/W", "note": "Zero Flag."},
+    {"text": "C", "bits": 1, "holds": "R/W", "note": "Carry Flag."}
+  ]
+}

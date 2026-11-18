@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "kind": "entities",
+  "title": "A bill of materials, as a model",
+  "description": "A conceptual model on the blueprint sheet: an assembly is built from lines, each line calls for a quantity of one part, and a part may be bought from several suppliers at their own price.",
+  "theme": "blueprint",
+  "entities": [
+    {"id": "assembly", "text": "Assembly", "fields": [{"text": "drawing number", "key": "primary"}, {"text": "revision"}, {"text": "name"}]},
+    {"id": "line", "text": "BOM line", "role": "emphasis", "fields": [{"text": "item number"}, {"text": "quantity"}]},
+    {"id": "part", "text": "Part", "fields": [{"text": "part number", "key": "primary"}, {"text": "material"}, {"text": "mass, g"}]},
+    {"id": "supplier", "text": "Supplier", "fields": [{"text": "supplier code", "key": "primary"}, {"text": "lead time, days"}]}
+  ],
+  "edges": [
+    {"from": "assembly", "to": "line", "from_end": "one", "to_end": "one-or-many", "label": "is built from"},
+    {"from": "line", "to": "part", "from_end": "zero-or-many", "to_end": "one", "label": "calls for"},
+    {"from": "part", "to": "supplier", "from_end": "zero-or-many", "to_end": "one-or-many", "label": "is bought from"}
+  ]
+}

@@ -30,6 +30,7 @@ Usage, from the repository root:
 from __future__ import annotations
 
 import argparse
+import base64
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -40,11 +41,69 @@ from drawspec.emit import PROFILES
 from drawspec.errors import DrawspecError, FitError
 from drawspec.render import render_document
 from drawspec.schema import load_document
+from drawspec.theme import load_theme
 
 ROOT = Path(__file__).resolve().parents[1]
 REFERENCE_DIR = ROOT / "docs" / "reference"
 GALLERY_DIR = ROOT / "docs" / "gallery"
 PAGE = GALLERY_DIR / "index.html"
+LOGO = ROOT / "docs" / "logo.svg"
+
+# The order kinds appear in on the page: most used first, so a visitor meets the
+# diagrams they are likeliest to want before the specialised ones. `flow` leads
+# because it is a third of the hand-drawn corpus (`docs/kinds-wanted.md`); the
+# rest is a judgement of how often each shape turns up in docs, specs and READMEs,
+# not a measurement. A kind missing from this list still draws, alphabetically
+# after the listed ones, so adding a kind never needs this edited to appear.
+KIND_ORDER: tuple[str, ...] = (
+    "flow",
+    "chart",
+    "sequence",
+    "timeline",
+    "tree",
+    "mindmap",
+    "gantt",
+    "pert",
+    "entities",
+    "states",
+    "automaton",
+    "neuralnet",
+    "pie",
+    "venn",
+    "matrix",
+    "quadrant",
+    "cycle",
+    "lanes",
+    "pyramid",
+    "funnel",
+    "columns",
+    "stack",
+    "journey",
+    "board",
+    "scatter",
+    "curve",
+    "sankey",
+    "treemap",
+    "fishbone",
+    "waterfall",
+    "rings",
+    "files",
+    "argument",
+    "familytree",
+    "meter",
+    "rag",
+    "numberline",
+    "barmodel",
+    "clock",
+    "sunburst",
+    "wardley",
+    "network",
+    "timing",
+    "gitgraph",
+    "railroad",
+    "usecase",
+    "packet",
+)
 
 
 @dataclass(frozen=True)
@@ -68,16 +127,23 @@ def reference_documents() -> list[Path]:
 
 
 def build(profile: str = "inline") -> list[Entry]:
-    """Render every reference document, recording why any did not draw."""
+    """Render every reference document, recording why any did not draw.
+
+    A document whose theme draws a sheet (`blueprint`) is rendered `standalone`
+    whatever `profile` says: the sheet is standalone furniture, and inline it
+    would be the same drawing as any other theme's. A standalone SVG keeps every
+    embedding rule but inheriting the page's ink, so it still sits on this page.
+    """
     entries: list[Entry] = []
     for path in reference_documents():
         document = load_document(path)
         try:
+            sheet = load_theme(document.theme or None).canvas.sheet
             entries.append(
                 Entry(
                     name=path.stem,
                     kind=document.kind,
-                    svg=render_document(document, profile=profile),
+                    svg=render_document(document, profile="standalone" if sheet else profile),
                 )
             )
         except FitError as error:
@@ -89,6 +155,22 @@ def build(profile: str = "inline") -> list[Entry]:
     return entries
 
 
+def kind_rank(kind: str) -> tuple[int, str]:
+    """Sort key placing `kind` per KIND_ORDER, unlisted kinds last by name."""
+    try:
+        return (KIND_ORDER.index(kind), kind)
+    except ValueError:
+        return (len(KIND_ORDER), kind)
+
+
+def by_kind(entries: Sequence[Entry]) -> list[tuple[str, list[Entry]]]:
+    """Group entries by kind, the groups in KIND_ORDER, names sorted within."""
+    groups: dict[str, list[Entry]] = {}
+    for entry in sorted(entries, key=lambda e: (kind_rank(e.kind), e.name)):
+        groups.setdefault(entry.kind, []).append(entry)
+    return list(groups.items())
+
+
 def page(entries: Sequence[Entry], profile: str) -> str:
     """One HTML page holding every diagram, for judging the set in one look.
 
@@ -96,15 +178,32 @@ def page(entries: Sequence[Entry], profile: str) -> str:
     of the inline promise: if two of them collided on ids or leaked a style, it
     would show up here first.
     """
+    groups = by_kind(entries)
+    menu = " ".join(
+        f'<a href="#{escape(kind)}">{escape(kind)} <span>{len(group)}</span></a>'
+        for kind, group in groups
+    )
     blocks: list[str] = []
-    for entry in entries:
-        body = entry.svg if entry.rendered else f'<p class="skipped">{escape(entry.skipped)}</p>'
+    for kind, group in groups:
+        figures = []
+        for entry in group:
+            body = (
+                entry.svg if entry.rendered else f'<p class="skipped">{escape(entry.skipped)}</p>'
+            )
+            figures.append(
+                f"<figure>\n<figcaption><b>{escape(entry.name)}</b></figcaption>\n{body}\n</figure>"
+            )
         blocks.append(
-            f"<figure>\n<figcaption><b>{escape(entry.name)}</b> "
-            f"<span>{escape(entry.kind)}</span></figcaption>\n{body}\n</figure>"
+            f'<section id="{escape(kind)}">\n<h2>{escape(kind)} '
+            f'<a class="top" href="#menu">↑ kinds</a></h2>\n'
+            + "\n".join(figures)
+            + "\n</section>\n"
         )
 
     drawn = sum(entry.rendered for entry in entries)
+    # Embedded, not linked: CI uploads the gallery directory on its own, where a
+    # relative path to docs/logo.svg would not resolve.
+    logo = "data:image/svg+xml;base64," + base64.b64encode(LOGO.read_bytes()).decode()
     # A deliberately plain page: the diagrams inherit `color` from it, which is
     # what the inline profile is for, and anything more would be judging the
     # page rather than the drawings.
@@ -112,6 +211,7 @@ def page(entries: Sequence[Entry], profile: str) -> str:
 <html lang="en">
 <meta charset="utf-8">
 <title>drawspec gallery — {escape(profile)}</title>
+<link rel="icon" href="{logo}">
 <style>
   body {{ font: 15px/1.5 system-ui, sans-serif; color: #1a1a1a; background: #fff;
          margin: 0 auto; max-width: 760px; padding: 2rem 1rem 6rem; }}
@@ -120,10 +220,21 @@ def page(entries: Sequence[Entry], profile: str) -> str:
   figcaption span {{ color: #888; }}
   svg {{ max-width: 100%; height: auto; }}
   .skipped {{ color: #777; font-style: italic; margin: 0; }}
-  h1 {{ font-size: 18px; }}
+  h1 {{ font-size: 18px; display: flex; align-items: center; gap: .5rem; }}
+  h1 img {{ width: 32px; height: 32px; }}
+  h2 {{ font-size: 16px; margin: 3rem 0 1rem; padding-top: .5rem; border-top: 1px solid #ddd; }}
+  h2 .top {{ font-size: 12px; font-weight: normal; margin-left: .5rem; }}
+  nav {{ display: flex; flex-wrap: wrap; gap: .35rem .5rem; margin: 1rem 0 2rem; }}
+  nav a {{ font-size: 13px; padding: .15rem .5rem; border: 1px solid #ccc; border-radius: 1rem;
+           text-decoration: none; color: inherit; }}
+  nav a span, h1 span {{ color: #888; }}
+  a {{ color: #2557a7; }}
 </style>
-<h1>drawspec gallery <span>({escape(profile)} profile, {drawn} of {len(entries)} drawn)</span></h1>
-<p>Every reference document through the current renderer. Look at it.</p>
+<h1><img src="{logo}" alt="">drawspec gallery
+<span>({escape(profile)} profile, {drawn} of {len(entries)} drawn)</span></h1>
+<p>Every reference document through the current renderer, grouped by kind, the most
+used kinds first. Look at it.</p>
+<nav id="menu" aria-label="Kinds">{menu}</nav>
 {"".join(blocks)}
 </html>
 """

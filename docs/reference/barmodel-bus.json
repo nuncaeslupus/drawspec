@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "kind": "barmodel",
+  "title": "How many children come by bus?",
+  "description": "A part-whole bar model: a class of 30 children, 12 who walk and the unknown rest who come by bus, with the whole braced over the bar.",
+  "bars": [
+    {"id": "class", "parts": [
+      {"amount": 12, "text": "walk: 12"},
+      {"amount": 18, "text": "bus: ?", "role": "emphasis"}
+    ]}
+  ],
+  "braces": [{"over": ["class"], "amount": 30, "text": "30 children"}]
+}

@@ -1,0 +1,18 @@
+    ··░░░░░░░▒▒            ░░░░░░░░░░░            ░▒▒▒▒▒▒▒▒▒▓
+  ···         ▒▒▒        ░░░     │   ▒▒▒        ░░░   │     ▓▓▓
+···          ╱╱ ▒▒▒    ░░░       │     ▒▒◆    ░░░     │       ▓▓▓
+··         ╱╱    ▓▓    ░░       │       ◆◆    ░░       │       ▓▓
+··       ●╱      ▓▓    ░░       ●       ▓▓    ░░       ●       ▓▓
+60%            100%    50%            100%    0%              15%
+
+   · Low  ░ Safe         ░ Red  ▒ Amber        ░ Low  ▒ Moderate
+   ▒ Strained            ▓ Green               ▓ High
+   ▓ Critical
+
+        91%                    78%                   6.5%
+     Strained                  Red                 Moderate
+                           target 95%
+
+   Bed occupancy       Seen within 4 hours     Nursing vacancies
+
+Week ending Sunday; bands as agreed by the division's board.

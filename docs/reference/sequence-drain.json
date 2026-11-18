@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "kind": "sequence",
+  "title": "Draining a node",
+  "participants": [
+    {"id": "op", "text": "On-call engineer"},
+    {"id": "lb", "text": "Load balancer"},
+    {"id": "sched", "text": "Scheduler"},
+    {"id": "node", "text": "Node `web-3`"}
+  ],
+  "messages": [
+    {"id": "out", "from": "op", "to": "lb", "text": "take `web-3` out of rotation"},
+    {"from": "lb", "to": "op", "text": "0 new connections to `web-3`", "role": "weak"},
+    {"id": "cordon", "from": "op", "to": "sched", "text": "cordon `web-3`"},
+    {"id": "move", "from": "sched", "to": "node", "text": "stop one workload"},
+    {"id": "moved", "from": "node", "to": "sched", "text": "stopped", "role": "weak"},
+    {"id": "check", "from": "op", "to": "node", "text": "anything still running?",
+     "note": "wait for long requests: up to 2 min"},
+    {"from": "node", "to": "op", "text": "nothing", "role": "weak"}
+  ],
+  "fragments": [
+    {"operator": "loop", "from": "move", "to": "moved", "text": "for each workload on the node"}
+  ]
+}

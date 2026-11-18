@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "kind": "sequence",
+  "title": "A report export that runs in the background",
+  "description": "The export is queued and the request returns at once; a worker picks the job up, and the person learns it is ready by email, not by waiting on the page.",
+  "participants": [
+    {"id": "analyst", "text": "Analyst", "role": "actor"},
+    {"id": "api", "text": "Reports API"},
+    {"id": "queue", "text": "Job queue"},
+    {"id": "worker", "text": "Export worker", "role": "emphasis"},
+    {"id": "store", "text": "File store"},
+    {"id": "mail", "text": "Mailer", "role": "note"}
+  ],
+  "messages": [
+    {"from": "analyst", "to": "api", "text": "export Q3 as CSV"},
+    {"from": "api", "to": "queue", "text": "enqueue job 7", "role": "async"},
+    {"from": "api", "to": "analyst", "text": "`202 Accepted`", "role": "weak"},
+    {"id": "take", "from": "queue", "to": "worker", "text": "job 7", "role": "async"},
+    {"from": "worker", "to": "store", "text": "write q3.csv"},
+    {"from": "store", "to": "worker", "text": "link, valid 24 h", "role": "weak"},
+    {"id": "notify", "from": "worker", "to": "mail", "text": "export ready", "role": "async"},
+    {"from": "mail", "to": "analyst", "text": "email with the link", "role": "async", "note": "minutes later"}
+  ],
+  "fragments": [
+    {"operator": "loop", "from": "take", "to": "notify", "text": "each queued job"}
+  ]
+}

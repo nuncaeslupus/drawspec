@@ -1,0 +1,20 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "pert",
+  "title": "Shipping version 2",
+  "description": "A software release estimated in three points: each box carries the expected duration, (optimistic + 4 x likely + pessimistic) / 6, and the critical path runs through the API.",
+  "unit": "days",
+  "start": "Kick-off",
+  "finish": "Live",
+  "activities": [
+    {"id": "spec", "text": "Write the spec", "optimistic": 2, "likely": 3, "pessimistic": 6},
+    {"id": "api", "text": "Build the API", "optimistic": 5, "likely": 8, "pessimistic": 14, "after": ["spec"]},
+    {"id": "ui", "text": "Build the UI", "optimistic": 4, "likely": 6, "pessimistic": 11, "after": ["spec"]},
+    {"id": "migrate", "text": "Migrate the data", "optimistic": 2, "likely": 3, "pessimistic": 7, "after": ["spec"]},
+    {"id": "tests", "text": "Integration tests", "optimistic": 2, "likely": 4, "pessimistic": 6, "after": ["api", "ui"]},
+    {"id": "docs", "text": "User docs", "optimistic": 2, "likely": 3, "pessimistic": 4, "after": ["ui"]},
+    {"id": "beta", "text": "Beta", "optimistic": 5, "likely": 5, "pessimistic": 5, "after": ["tests", "migrate"]},
+    {"id": "launch", "text": "Launch", "optimistic": 1, "likely": 1, "pessimistic": 2, "after": ["beta", "docs"]}
+  ]
+}

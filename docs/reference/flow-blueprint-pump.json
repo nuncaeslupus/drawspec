@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "kind": "flow",
+  "title": "Restarting a pump station after a power cut",
+  "description": "A flow chart on a drafting sheet, in the bundled blueprint theme. Standalone and as a PNG it is drawn white on blue, inside a zoned border, with a title block filled from this document; pasted inline it inherits the page like any other drawing.",
+  "theme": "blueprint",
+  "nodes": [
+    { "id": "power", "text": "Mains power returns", "role": "start" },
+    { "id": "level", "text": "Read the wet-well level" },
+    { "id": "high", "text": "Above the start level?", "role": "decision" },
+    { "id": "prime", "text": "Prime pump 1 and open its valve" },
+    { "id": "flow", "text": "Flow within 10 s?", "role": "decision" },
+    { "id": "duty", "text": "Switch duty to pump 2", "role": "emphasis" },
+    { "id": "wait", "text": "Wait for the level to rise" },
+    { "id": "run", "text": "Station back in automatic", "role": "terminal" }
+  ],
+  "edges": [
+    { "from": "power", "to": "level" },
+    { "from": "level", "to": "high" },
+    { "from": "high", "to": "prime", "label": "yes" },
+    { "from": "high", "to": "wait", "label": "no", "role": "weak" },
+    { "from": "prime", "to": "flow" },
+    { "from": "flow", "to": "run", "label": "yes" },
+    { "from": "flow", "to": "duty", "label": "no", "role": "strong" },
+    { "from": "duty", "to": "run", "role": "strong" }
+  ]
+}

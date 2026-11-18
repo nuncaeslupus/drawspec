@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "kind": "venn",
+  "title": "Where a data engineer sits",
+  "sets": [
+    {"id": "sw", "text": "Software engineering"},
+    {"id": "an", "text": "Data analysis"},
+    {"id": "ops", "text": "Operations"}
+  ],
+  "regions": [
+    {"in": ["sw", "an"], "text": "Analytics engineering"},
+    {"in": ["sw", "ops"], "text": "Platform engineering"},
+    {"in": ["an", "ops"], "text": "Monitoring and SLOs"},
+    {"in": ["sw", "an", "ops"], "text": "**Data engineering**", "role": "emphasis"}
+  ]
+}

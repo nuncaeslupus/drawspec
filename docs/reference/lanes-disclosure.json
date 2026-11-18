@@ -1,0 +1,26 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "lanes",
+  "title": "From report to disclosure",
+  "description": "A runbook for a privately reported vulnerability: the reporter, the security team and engineering each hold their own steps, and the hand-offs between them are the arrows that cross a lane. The fix goes back to engineering while the reporter still finds it exploitable.",
+  "lanes": ["Reporter", "Security team", "Engineering"],
+  "nodes": [
+    { "id": "report", "text": "Reports privately", "actor": "Reporter", "role": "start" },
+    { "id": "ack", "text": "Acknowledges within 2 working days", "actor": "Security team" },
+    { "id": "valid", "text": "Is it a vulnerability?", "actor": "Security team", "role": "decision" },
+    { "id": "close", "text": "Explains why not", "actor": "Security team", "role": "terminal" },
+    { "id": "fix", "text": "Prepares a fix in a private branch", "actor": "Engineering" },
+    { "id": "verify", "text": "Confirms the fix", "actor": "Reporter" },
+    { "id": "release", "text": "Releases and publishes the advisory", "actor": "Engineering", "role": "terminal" }
+  ],
+  "edges": [
+    { "from": "report", "to": "ack" },
+    { "from": "ack", "to": "valid" },
+    { "from": "valid", "to": "close", "label": "no" },
+    { "from": "valid", "to": "fix", "label": "yes" },
+    { "from": "fix", "to": "verify" },
+    { "from": "verify", "to": "release" },
+    { "from": "verify", "to": "fix", "label": "still exploitable", "role": "weak" }
+  ]
+}

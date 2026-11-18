@@ -1,0 +1,18 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "files",
+  "title": "Where the docs live",
+  "description": "A documentation site's layout, drawn as text and sorted with folders first.",
+  "root": "docs",
+  "sort": "folders-first",
+  "style": "unicode",
+  "entries": [
+    {"path": "index.md", "note": "the landing page"},
+    {"path": "guide/install.md"},
+    {"path": "guide/usage.md"},
+    {"path": "reference/", "note": "generated, do not edit"},
+    {"path": "assets/logo.svg"},
+    {"path": "assets/..."}
+  ]
+}

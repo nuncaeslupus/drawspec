@@ -1,0 +1,12 @@
+Data mapping                   [##########################!]  100%
+                                                              target 100%
+Archive scanning               [#################--!-------]  64%
+Boxes from the basement store                                 target 70%
+Case records                   |###########-----!----------|  41%
+                                                              target 60%
+Staff training                 [##################!##------]  23 of 30 sessions
+                                                              target 20 sessions
+Old system retired             [######---!-----------------]  2 of 9 modules
+                                                              target 3 modules
+
+Targets are the baseline plan for week 18.

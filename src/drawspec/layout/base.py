@@ -44,6 +44,10 @@ class LayoutNode:
     id: str
     width: float
     height: float
+    turns: bool = False
+    """Whether this box lies across the flow whichever way it runs: its `width`
+    is along the ranks when laid out `down`, and it stands upright laid out
+    `right`. A state machine's fork bar is one; every box with words is not."""
 
 
 @dataclass(frozen=True)
@@ -65,6 +69,9 @@ class Spacing:
 
     node_gap: float = 24.0
     rank_gap: float = 40.0
+    turn_gap: float = 0.0
+    """Room for an arrow to turn in, where `rank_gap` was widened for something
+    else — a causal loop's marker. Zero means `rank_gap` is that room."""
 
 
 @dataclass(frozen=True)

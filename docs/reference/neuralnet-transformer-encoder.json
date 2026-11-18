@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "kind": "neuralnet",
+  "style": "blocks",
+  "direction": "up",
+  "title": "The Transformer's encoder",
+  "description": "Vaswani et al.'s encoder: each of its N = 6 identical layers is self-attention then a feed-forward network, each sub-layer wrapped in a residual connection and layer normalisation.",
+  "layers": [
+    {"text": "Input embedding", "type": "embedding", "shape": "n × 512"},
+    {"id": "pos", "text": "+ Positional encoding", "type": "embedding"},
+    {"id": "attn", "text": "Multi-head attention", "type": "attention"},
+    {"id": "norm1", "text": "Add & norm", "type": "norm"},
+    {"text": "Feed forward", "type": "dense"},
+    {"id": "norm2", "text": "Add & norm", "type": "norm", "shape": "n × 512"}
+  ],
+  "skips": [
+    {"from": "pos", "to": "norm1"},
+    {"from": "norm1", "to": "norm2"}
+  ],
+  "repeats": [{"from": "attn", "to": "norm2", "times": 6}]
+}

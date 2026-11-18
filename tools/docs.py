@@ -43,36 +43,80 @@ from typing import Any, Final
 from drawspec.cli import OK, REFUSED, USAGE, build_parser
 from drawspec.emit import PROFILES
 from drawspec.schema import (
+    BRACKET_LEAVES_MAX,
     COMMON_FIELDS,
     DOCUMENT_VERSION,
+    EMPHASIS_CAP,
+    EMPHASIS_ROLE,
     KIND_PAYLOADS,
     KINDS,
     OBJECTS,
+    READABILITY_BUDGET,
     REJECTED_FIELDS,
     SCHEMA_ID,
     FieldSpec,
 )
 from drawspec.theme import (
+    ARGUMENT_FILLS,
     CYCLE_CONNECTORS,
     EDGE_HEADS,
+    EDGE_ROLES,
+    ENTITIES_NOTATIONS,
+    FAMILYTREE_CARRIERS,
+    FILES_ALIGNS,
+    FILES_TYPES,
     FILL_PATTERNS,
+    FLOW_POLARITIES,
     FONT_ROLES,
     FUNNEL_DIRECTIONS,
+    GANTT_MILESTONES,
+    LANES_ORIENTATIONS,
     NODE_SHAPES,
+    NUMBERLINE_ENDS,
+    PIE_SHAPES,
+    RAG_SHAPES,
+    SHEET_BORDERS,
+    SHEET_PATTERNS,
     THEME_VERSION,
     TYPE_LEVELS,
     WIDTH_MODES,
+    ArgumentStyle,
+    BoardStyle,
     BoxStyle,
     Canvas,
+    ClassesStyle,
     CycleStyle,
     EdgeStyle,
+    EntitiesStyle,
+    FamilytreeStyle,
+    FilesStyle,
+    FishboneStyle,
     FitBand,
+    FlowStyle,
     FontStacks,
+    FramesStyle,
     FunnelStyle,
+    GanttStyle,
+    GitgraphStyle,
+    JourneyStyle,
+    LanesStyle,
+    LevelsStyle,
     MarkStyle,
+    MindmapStyle,
+    NetworkStyle,
+    NumberlineStyle,
+    PacketStyle,
     Padding,
+    PertStyle,
+    PieStyle,
+    RagStyle,
+    SequenceStyle,
+    StatesStyle,
+    SunburstStyle,
+    TimingStyle,
     TitleStyle,
     TypeScale,
+    WardleyStyle,
     load_theme,
 )
 
@@ -94,6 +138,23 @@ BANNER: Final = (
 def _cell(text: str) -> str:
     """One table cell: no newlines, and no pipe that would end the column."""
     return " ".join(text.split()).replace("|", "\\|")
+
+
+def _budgeted(name: str, limit: int) -> str:
+    """One budget entry: `8 entities`, or `12 fields per entity` for a nested one."""
+    if "@" in name:
+        outer, per = name.split("@")
+        return f"{limit} `{outer}` per {per}"
+    if name.endswith("*"):
+        return f"{limit} `{name[:-1]}` in all, at every level"
+    if "=" in name:
+        outer, roles = name.split("=")
+        return f"{limit} `{outer}` that are " + " or ".join(f"`{r}`" for r in roles.split("|"))
+    if "/" not in name:
+        return f"{limit} `{name}`"
+    outer, inner = name.split("/")
+    each = outer[:-3] + "y" if outer.endswith("ies") else outer[:-1]
+    return f"{limit} `{inner}` per {each}"
 
 
 def _table(headings: Sequence[str], rows: Iterable[Sequence[str]]) -> list[str]:
@@ -234,6 +295,53 @@ def format_markdown() -> str:
         lines += [f"### {heading}", "", *_fields_table(fields), ""]
 
     lines += [
+        "## Numbers and text a document may hold",
+        "",
+        "Every number must be finite and no larger than 1e12 in size: `NaN`, `Infinity` and",
+        "`1e400` (which JSON reads as infinity) are refused at the field, as is a value too",
+        "large to draw. Every string must be made of characters XML 1.0 can carry, so a",
+        "control character other than tab and newline, or half an emoji (a lone surrogate),",
+        "is refused with the pointer of the string that holds it. Text of a label may say",
+        "anything else, markup-looking words included.",
+        "",
+        "## The readability budget",
+        "",
+        "A document that would draw can still be refused for holding too much to read.",
+        "Each kind has a budget — the most entries its counted arrays may hold — and a",
+        "document past it is refused with the pointer of the first entry over, before",
+        "any layout is tried. It is not the fit limit: a fit refusal says the canvas is",
+        "too small, and arrives later, around twenty boxes. This says the picture",
+        "would be searched rather than read.",
+        "",
+        "The remedy is to split: an **overview** that names each part once, plus a",
+        "**detail** diagram per part, each within the budget. There is no opt-out —",
+        "the top-level `width` and `height` size the canvas, and a wider canvas does",
+        "not make the drawing easier to take in. Every number below sits above the",
+        "largest reference document of its kind, so nothing in the gallery is refused.",
+        "",
+        *_table(
+            ("Kind", "At most"),
+            (
+                [
+                    f"`{kind}`",
+                    ", ".join(_budgeted(name, limit) for name, limit in READABILITY_BUDGET[kind]),
+                ]
+                for kind in KINDS
+            ),
+        ),
+        "",
+        f'A `tree` with `"style": "bracket"` counts its leaves instead: {BRACKET_LEAVES_MAX}',
+        "leaves, a sixteen-team knockout, in place of its 15 nodes.",
+        "",
+        "## Emphasis",
+        "",
+        f"At most {EMPHASIS_CAP} elements in a document may take the `{EMPHASIS_ROLE}` role —",
+        "nodes, items, levels, cells, positions, series and curves counted together.",
+        "Emphasis says *look here first*, and when three things say it none of them is",
+        "first. The third and every later one is refused at its `role`, with a message",
+        "saying to keep the one or two the diagram is about. The `strong` edge role is",
+        "not counted: it marks a path, which is several edges and reads as one line.",
+        "",
         "## The objects",
         "",
         "What the arrays above hold. Every one of them refuses a field it does not",
@@ -449,8 +557,34 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
     "edge": EdgeStyle,
     "mark": MarkStyle,
     "title": TitleStyle,
+    "frames": FramesStyle,
+    "levels": LevelsStyle,
+    "classes": ClassesStyle,
     "cycle": CycleStyle,
     "funnel": FunnelStyle,
+    "files": FilesStyle,
+    "states": StatesStyle,
+    "sequence": SequenceStyle,
+    "lanes": LanesStyle,
+    "entities": EntitiesStyle,
+    "gantt": GanttStyle,
+    "board": BoardStyle,
+    "fishbone": FishboneStyle,
+    "journey": JourneyStyle,
+    "numberline": NumberlineStyle,
+    "flow": FlowStyle,
+    "pie": PieStyle,
+    "mindmap": MindmapStyle,
+    "sunburst": SunburstStyle,
+    "wardley": WardleyStyle,
+    "network": NetworkStyle,
+    "timing": TimingStyle,
+    "gitgraph": GitgraphStyle,
+    "packet": PacketStyle,
+    "pert": PertStyle,
+    "argument": ArgumentStyle,
+    "familytree": FamilytreeStyle,
+    "rag": RagStyle,
 }
 
 #: Closed vocabularies, by the key that is checked against them. The values are
@@ -458,11 +592,37 @@ THEME_SECTIONS: Final[Mapping[str, type]] = {
 #: this page stale — only a *new* constrained key needs adding here.
 THEME_VOCABULARIES: Final[Mapping[tuple[str, str], tuple[str, ...]]] = {
     ("canvas", "width_mode"): WIDTH_MODES,
+    ("canvas", "pattern"): SHEET_PATTERNS,
+    ("canvas", "border"): SHEET_BORDERS,
     ("font", "default"): FONT_ROLES,
     ("mark", "fills"): FILL_PATTERNS,
     ("title", "level"): TYPE_LEVELS,
     ("cycle", "connector"): CYCLE_CONNECTORS,
     ("funnel", "direction"): FUNNEL_DIRECTIONS,
+    ("files", "types"): FILES_TYPES,
+    ("files", "align"): FILES_ALIGNS,
+    ("sequence", "lifeline"): EDGE_ROLES,
+    ("lanes", "orientation"): LANES_ORIENTATIONS,
+    ("lanes", "separator"): EDGE_ROLES,
+    ("entities", "notation"): ENTITIES_NOTATIONS,
+    ("gantt", "milestone"): GANTT_MILESTONES,
+    ("gantt", "marks"): EDGE_ROLES,
+    ("board", "separator"): EDGE_ROLES,
+    ("board", "cut"): EDGE_ROLES,
+    ("fishbone", "spine"): EDGE_ROLES,
+    ("fishbone", "bone"): EDGE_ROLES,
+    ("fishbone", "cause"): EDGE_ROLES,
+    ("journey", "line"): EDGE_ROLES,
+    ("journey", "guide"): EDGE_ROLES,
+    ("journey", "separator"): EDGE_ROLES,
+    ("numberline", "ends"): NUMBERLINE_ENDS,
+    ("flow", "polarity"): FLOW_POLARITIES,
+    ("pie", "shape"): PIE_SHAPES,
+    ("argument", "against_fill"): ARGUMENT_FILLS,
+    ("familytree", "carrier"): FAMILYTREE_CARRIERS,
+    ("rag", "red_shape"): RAG_SHAPES,
+    ("rag", "amber_shape"): RAG_SHAPES,
+    ("rag", "green_shape"): RAG_SHAPES,
 }
 
 
@@ -548,6 +708,13 @@ def theme_markdown() -> str:
         "",
         "`drawspec theme check house.toml` loads it and runs its invariants.",
         "[The guide](guide.md#writing-a-theme) walks through writing one.",
+        "",
+        "`drawspec theme from brand.css` writes one from a design system instead:",
+        "CSS custom properties or W3C design tokens, mapped onto the keys below,",
+        "with every token it left out reported and why — a background, say, because",
+        "the drawing sits on the page's own. A brand colour is held to 3:1 against a",
+        "white page and a near-black one, and darkened or lightened until it reads on",
+        "both. [The guide](guide.md#matching-your-brand) has the mapping.",
         "",
         "## The greyscale invariant",
         "",
@@ -640,8 +807,32 @@ def theme_markdown() -> str:
                     'A rule between a label\'s lead and its detail — `[box] lead = "rule"` — for '
                     "a diagram whose boxes are a name over what belongs to it.",
                 ],
+                [
+                    "`blueprint`",
+                    "A drafting sheet — white ink on blue, a grid, a zoned border and a title "
+                    "block filled from the document — in the `standalone` profile and PNG. "
+                    "Inline, the page's own ink and background, like `default`.",
+                ],
             ],
         ),
+        "",
+        "## The drafting sheet",
+        "",
+        "`ground`, `pattern`, `border`, `title_block`, `rule` and `accent` in",
+        "`[canvas]` are **standalone furniture**: a linked `.svg`, a PDF, or a PNG.",
+        "The `inline` profile ignores them, as it ignores `ink` — an inline drawing is",
+        "on its page's background, in its page's ink. They are not refused there,",
+        "because one theme serves both profiles.",
+        "",
+        "The canvas grows to hold the sheet rather than drawing over the diagram: the",
+        "border goes around the framed drawing, the same width for every diagram in",
+        "the theme, and the title block takes a strip of its own below it. Its fields",
+        "are the document's `title` (or its kind), a drawing number derived from its",
+        "content, its `kind`, the drawing's size, and its format `version`. A title",
+        "too long for the block on a fixed-width canvas is a `FitError`.",
+        "",
+        "A theme with a `ground` is checked against it when it loads: `ink` must read",
+        "on it at 4.5:1, and every other colour the theme declares at 3:1.",
         "",
     ]
     return "\n".join(lines) + "\n"

@@ -263,11 +263,16 @@ def gutters(svg: str, *, search_paths: Sequence[Path] | None = None) -> tuple[fl
     if not boxes:
         return ()
     vx, vy, vw, vh = _canvas(root)
-    return (
-        min(box[0] for box in boxes) - vx,
-        min(box[1] for box in boxes) - vy,
-        (vx + vw) - max(box[2] for box in boxes),
-        (vy + vh) - max(box[3] for box in boxes),
+    # Rounded well below the three decimals the emitter writes, so a gutter that
+    # is exactly the margin is not read as a hair under it by float subtraction.
+    return tuple(
+        round(value, 6)
+        for value in (
+            min(box[0] for box in boxes) - vx,
+            min(box[1] for box in boxes) - vy,
+            (vx + vw) - max(box[2] for box in boxes),
+            (vy + vh) - max(box[3] for box in boxes),
+        )
     )
 
 

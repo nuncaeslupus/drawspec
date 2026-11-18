@@ -10,7 +10,9 @@
 # `currentColor`, so a diagram pasted into a page inherits that page's ink and
 # follows it into dark mode. That means colour carries no information at all,
 # which is why every pair of roles is separated by shape, dash pattern or stroke
-# weight instead — checked at load time, not at review time.
+# weight instead — checked at load time, not at review time. The one colour this
+# theme lays down is a git graph's lane fill (`[gitgraph]`), and only over what a
+# lane's place and name already say.
 #
 # One size per level. Four type sizes exist and no element may name its own.
 
@@ -114,6 +116,224 @@ fills = ["dots", "hatch", "grid", "cross", "none"]
 # How much of a category's band is left empty around its bars. Zero draws bars
 # that touch, which reads as one wide bar rather than as several.
 gap = 0.3
+# The tones a matrix's ordered `scale` is filled with, lightest first: how much of
+# the page's ink each step lays down. An order, which patterns cannot carry —
+# dots and hatch are two things, not two amounts — so a heatmap reads by
+# darkness, the channel greyscale keeps. The loader holds it to that: five steps
+# or more, each at least 0.08 darker than the one before (the first measured from
+# a blank cell), none past 0.4 so a cell's text stays readable on it on a white
+# page and on a dark one.
+ramp = [0.08, 0.16, 0.24, 0.32, 0.4]
+
+[frames]
+# A container — a group's frame, a composite state, a sequence group — is washed
+# with this much of the page's ink (0 for outlines only). It is the ink at part
+# opacity, never a colour, so it follows a dark page and prints as a light grey;
+# a frame inside a frame lays its wash over its parent's, one step darker per
+# level, for `levels` levels.
+tone = 0.05
+levels = 3
+
+[levels]
+# A pyramid's levels, a funnel's stages, rings and a stack's layers are graded
+# from the ramp above: the first written lightest, one step darker per level, so
+# the order the author wrote reads at a glance and in greyscale. The ink at part
+# opacity, as a frame's wash is; false for outlines only.
+shade = true
+
+[classes]
+# A flow's, tree's or swimlane's node classes, in the order the document declares
+# them: the first a grey wash (the ink at `tone`), the rest faint patterns in the
+# ink. The key under the drawing shows each beside its name.
+fills = ["solid", "dots", "hatch", "grid"]
+tone = 0.14
+
+[states]
+# A state machine's pseudo-states: the filled dot it starts from, and the ringed
+# dot each final state leads to. Marks with no words, so sized here: the dot
+# about the cap height of the body type, the ring a stroke's width clear of it.
+dot = 10.0
+ring = 3.0
+# A fork or join bar: `bar` thick across the flow, and `bar_step` long for each
+# arrow on its busy side, so it grows with the regions it splits into or joins.
+bar = 6.0
+bar_step = 44.0
+
+[sequence]
+# A sequence diagram's activation bar, inferred from a call and its reply: about
+# the cap height of the body type across, so it reads as a bar and not a line. A
+# lifeline is drawn in an edge role with no head; `aside` keeps it light.
+activation = 10.0
+lifeline = "aside"
+
+[lanes]
+# A swimlane diagram's lanes run across the page as rows, the way they are drawn
+# by hand, when that fits the width; otherwise down it as columns. The line
+# between two lanes is drawn in an edge role with no head: dashed, so the arrows
+# crossing it — the hand-offs — are what the eye follows.
+orientation = "auto"
+separator = "link"
+# Every second lane is washed with this much of the page's ink, so a row of five
+# or six lanes reads as bands rather than as lines to count. 0 for none.
+stripe = 0.04
+# The line between two phases runs across every lane, so it is the lighter
+# dashed role: the lanes stay the grid's first axis, the phases its second.
+phase = "aside"
+
+[entities]
+# How an entity diagram draws a relation's cardinality — the author says `one`
+# or `zero-or-many`, and this says how: crow's-foot marks across the line's end,
+# or UML's numbers beside it ("numeric": 1, 0..1, *, 0..*, 1..*).
+notation = "crowsfoot"
+
+[gantt]
+# A plan's milestone — a task with `at` rather than `start` and `end` — is drawn
+# as a filled diamond, the way most plans draw one ("circle" for a dot). A mark
+# (today, a deadline) is a line across every row in an edge role with no head:
+# dashed, so it reads as a reference and not as a task.
+milestone = "diamond"
+marks = "weak"
+# A task's `done` is a solid band through its bar, in the page's ink at this
+# strength (0 to 1), so it reads on a dark page and in greyscale.
+done = 0.7
+
+[board]
+# A story map's slices are told apart by a line across every column in an edge
+# role with no head — dashed, so the cards and not the lines are what is read —
+# and the cut under the first release by the one heavy line on the board.
+separator = "weak"
+cut = "strong"
+
+[fishbone]
+# A fishbone's bones slant into the spine by convention — the slant is the shape,
+# so this is the one diagonal drawspec draws on purpose; 90 draws upright bones.
+# The spine is the heavy line everything flows into; a bone is an ordinary line,
+# and the tick a cause sits on the lightest, so the words are what is read.
+slant = 60.0
+spine = "strong"
+bone = "flow"
+cause = "link"
+
+[journey]
+# A journey map's feeling line is the one heavy line on it; the guide each level
+# is named on is light and dashed, so the line reads over the grid, and the rule
+# above each detail row is thin and solid, a table's line rather than a level's.
+line = "strong"
+guide = "aside"
+separator = "link"
+
+[numberline]
+# Whether a range's end belongs to it is drawn as a filled (in) or hollow (out)
+# dot, the school convention in most of the world; "brackets" draws "[" and "(",
+# as most US and college algebra texts do. A point is a dot either way.
+ends = "dots"
+
+[flow]
+# How a causal link's sign is written: "+-" (a plus and a true minus) or "so"
+# (s for same, o for opposite, as some systems-thinking courses write it). The
+# document says which links are negative either way.
+polarity = "+-"
+
+[pie]
+# A pie is a disc, its labels inside a sector when they fit; "donut" draws a ring
+# with a hole of about half the radius and every label outside on a leader. House
+# style, set once for a report: the shares are the same either way.
+shape = "pie"
+
+[mindmap]
+# A twig or a leaf sits on a line, its branch line running on under its words,
+# the mind-map convention; true boxes them like the main branches. Lines thin
+# from the centre outwards: the width each level's line leaves its parent at,
+# narrowing to the next level's where it arrives.
+boxes = false
+taper = [6.0, 3.0, 1.5]
+
+[sunburst]
+# How boldly a sunburst's structure is drawn, as shares of the wheel's radius with a
+# hairline floor, so a wide wheel reads as firmly as a small one: a first-ring divider
+# and the rim, a ring boundary and the hub circle, a division two or more rings deep.
+# Heaviest first; none heavier than the one before.
+weights = [0.006, 0.0035, 0.002]
+
+[wardley]
+# The words on a Wardley map's axes. The author names a stage (`product`); this is
+# what is written under it — Wardley's own words, or a house's or a translation.
+genesis = "Genesis"
+custom = "Custom-built"
+product = "Product (+rental)"
+commodity = "Commodity (+utility)"
+visible = "Visible"
+invisible = "Invisible"
+chain = "Value chain"
+evolution = "Evolution"
+
+[network]
+# How a network diagram is washed, as shares of the page's ink: a network's bus,
+# with its name and address written on it, and a group's backdrop behind its
+# hosts — lighter, so a group reads as ground and a bus as a thing.
+bus = 0.16
+group = 0.07
+
+[timing]
+# How steeply a bus changes word, or a signal goes into or out of unknown, as a
+# share of a step (capped at a few units): the slant of a datasheet's hexagon
+# lanes. A level's edge — a clock, a select line — is always drawn upright.
+slew = 0.15
+# Whether each step edge is ruled faintly down the figure. Off: the clock's own
+# edges are the ruler, and `markers` rule the edges that matter.
+grid = false
+
+[gitgraph]
+# What colour a git graph's branches take: one per lane, in the order the branches
+# are written, cycling — the convention readers of Mermaid and the git-flow figures
+# expect. A colour fills the lane's commit dots and washes its name; the lines and
+# the words stay ink, so a lane is still told apart by its place and the name at
+# its head, never by colour alone, and greyscale loses nothing. The trunk blue, then
+# green, ochre, purple; red comes late so it is not read as emphasis. Each reads at
+# 3:1 or better as a mark on white and on a dark page (#121212), so the drawing
+# holds in light and dark mode. Empty (`colours = []`) draws every lane in ink.
+colours = ["#2A6FC0", "#3E7A4A", "#B07A0C", "#8A4FB0", "#C0452A", "#7C8794"]
+
+[packet]
+# The pattern a reserved field of a header or a register is filled with, faint so
+# its name reads over it: the datasheet's greyed-out bits, said without colour.
+reserved_fill = "hatch"
+
+[pert]
+# Whether a project network carries a key under it: one box with each cell named
+# (ES, Dur, EF over the activity; LS, Float, LF under it), the unit the durations
+# are in, and that the heavy line is the critical path. A textbook figure wants
+# it; a team that reads these daily may not.
+key = true
+
+[argument]
+# How an argument map shows which way a point bears, twice so greyscale holds: a
+# tag in the box's top margin, read aloud down a chain (claim, because, but, but),
+# and a faint fill on an objection's box; a reason's box is plain.
+for_tag = "because"
+against_tag = "but"
+against_fill = "hatch"
+
+[familytree]
+# How a family tree marks a carrier. `dot` is the standard nomenclature's (a dot
+# in the middle of the symbol); `half` fills its left half, as exam pedigrees do.
+carrier = "dot"
+
+[rag]
+# How a RAG report draws a rating: its word and its shape, both always, so a
+# greyscale print or a reader who cannot tell red from green loses nothing. The
+# three words differ and so do the three shapes; a colour is added only when a
+# theme names one (`red_colour`, …), which this one does not: marks are drawn in
+# the page's ink. A trend's arrow (up, across, down) carries its word too.
+red = "Red"
+amber = "Amber"
+green = "Green"
+red_shape = "square"
+amber_shape = "triangle"
+green_shape = "circle"
+better = "improving"
+same = "no change"
+worse = "worsening"
 
 # ---------------------------------------------------------------------------
 # Node roles. Shape and line treatment per semantic role. The author names the
@@ -163,6 +383,45 @@ fill = "none"
 fill_pattern = "none"
 dash = "none"
 stroke_width = 2.5
+
+# A flowchart's three standard symbols beyond the box and the diamond, each told
+# apart by its outline alone: data coming in or going out is a parallelogram, a
+# process defined elsewhere is a box with doubled sides, and where data rests (a
+# database, a queue, a file) is a drum.
+[role.io]
+shape = "parallelogram"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "none"
+stroke_width = 1.5
+
+[role.subroutine]
+shape = "subroutine"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "none"
+stroke_width = 1.5
+
+[role.store]
+shape = "cylinder"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "none"
+stroke_width = 1.5
+
+# A person — a user, a customer, a member of staff, as against a system — is a
+# body with rounded shoulders under a round head, the C4 person shape; the name
+# is written in the body, under the head.
+[role.person]
+shape = "person"
+stroke = "currentColor"
+fill = "none"
+fill_pattern = "none"
+dash = "none"
+stroke_width = 1.5
 
 # An aside is set beside the argument, not boxed off from it: a note is words on
 # the page, and the box drawspec used to draw round them was a border with
@@ -256,6 +515,35 @@ stroke_width = 2.5
 
 [edge_role.owns]
 head = "diamond"
+tail = "none"
+stroke = "currentColor"
+dash = "none"
+stroke_width = 1.5
+
+# A class diagram's two "is a" relations, named only in an `entities` document:
+# a hollow triangle at the general end, solid for a subclass and dashed for an
+# interface it implements — told apart from each other by dash, and from every
+# other role by the head's shape.
+[edge_role.inherits]
+head = "triangle"
+tail = "none"
+stroke = "currentColor"
+dash = "none"
+stroke_width = 1.5
+
+[edge_role.realizes]
+head = "triangle"
+tail = "none"
+stroke = "currentColor"
+dash = "4 3"
+stroke_width = 1.5
+
+# A sequence diagram's asynchronous message, named only in a `sequence`: sent,
+# and the sender carries on. UML draws it as a solid line with an open (stick)
+# head — `flow`'s line with `weak`'s head, so it is told from a call by the head
+# and from a reply by the solid line.
+[edge_role.async]
+head = "open"
 tail = "none"
 stroke = "currentColor"
 dash = "none"

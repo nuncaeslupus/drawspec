@@ -1,0 +1,22 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "cycle",
+  "title": "Every click trains tomorrow's ranking",
+  "description": "A recommender's feedback loop. Items are ranked, shown, clicked or skipped, and the model is retrained nightly. The interaction log is what the loop turns around: the clicks are written to it and the retraining reads from it, so both are spokes to the middle rather than steps.",
+  "hub": {"id": "log", "text": "Interaction log"},
+  "nodes": [
+    {"id": "rank", "text": "Rank the candidate items"},
+    {"id": "show", "text": "Show the top ten"},
+    {"id": "click", "text": "User clicks or skips"},
+    {"id": "train", "text": "Retrain the model nightly"}
+  ],
+  "edges": [
+    {"from": "rank", "to": "show"},
+    {"from": "show", "to": "click"},
+    {"from": "click", "to": "train"},
+    {"from": "train", "to": "rank"},
+    {"from": "click", "to": "log", "role": "weak", "label": "written"},
+    {"from": "log", "to": "train", "role": "weak", "label": "read"}
+  ]
+}

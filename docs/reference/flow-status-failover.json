@@ -1,0 +1,22 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "flow",
+  "title": "While the primary is down",
+  "description": "A runbook's topology during planned maintenance of the primary database, marked against normal running: the primary leaves, the replica is promoted, and the connection proxy is repointed. The applications do not change, which is the point of the proxy.",
+  "caption": "Marked against normal running.",
+  "nodes": [
+    {"id": "web", "text": "Web application"},
+    {"id": "jobs", "text": "Background jobs"},
+    {"id": "proxy", "text": "Connection proxy", "status": "changed"},
+    {"id": "primary", "text": "Primary database", "status": "removed"},
+    {"id": "replica", "text": "Replica, promoted to primary", "status": "changed", "role": "emphasis"}
+  ],
+  "edges": [
+    {"from": "web", "to": "proxy"},
+    {"from": "jobs", "to": "proxy"},
+    {"from": "proxy", "to": "primary", "status": "removed"},
+    {"from": "proxy", "to": "replica", "label": "writes", "status": "added"},
+    {"from": "primary", "to": "replica", "label": "replication", "role": "weak", "status": "removed"}
+  ]
+}

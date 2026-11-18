@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "kind": "barmodel",
+  "title": "Maya read 45 pages and Tom read 28. How many more did Maya read?",
+  "description": "A comparison bar model: two bars on one left edge in one scale, Tom's shorter by a dashed difference marked with a question mark.",
+  "bars": [
+    {"id": "maya", "text": "Maya", "parts": [{"amount": 45}]},
+    {"text": "Tom", "parts": [
+      {"amount": 28},
+      {"id": "more", "amount": 17, "text": "?", "role": "note"}
+    ]}
+  ],
+  "braces": [
+    {"over": ["maya"], "amount": 45, "text": "45 pages"},
+    {"over": ["more"], "text": "how many more?"}
+  ]
+}

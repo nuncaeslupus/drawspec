@@ -1,0 +1,20 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "rag",
+  "title": "Library refit: highlight report, period 7",
+  "description": "Five workstreams of a library refit, each rated red, amber or green with its direction of travel since period 6 and a sentence saying why.",
+  "caption": "Ratings as at the end of period 7; the trend is the change since period 6.",
+  "rows": [
+    {"text": "Building works\nLead: estates", "rag": "amber", "trend": "worse",
+     "note": "The asbestos survey added two weeks; the contractor is re-sequencing the ground floor to hold the opening date."},
+    {"text": "Self-service kiosks\nLead: digital", "rag": "green", "trend": "same",
+     "note": "All six installed and tested with the new catalogue."},
+    {"text": "Staff training\nLead: people team", "rag": "red", "trend": "worse",
+     "note": "No trainer is booked yet. **Decision needed:** approve the supplier's quote by Friday."},
+    {"text": "Stock move\nLead: collections", "rag": "green", "trend": "better",
+     "note": "The temporary store is ready, a week early."},
+    {"text": "Reopening event\nLead: communications", "rag": "amber", "trend": "same",
+     "note": "Date held; the guest speaker has not yet confirmed."}
+  ]
+}

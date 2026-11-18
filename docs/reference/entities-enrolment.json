@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "kind": "entities",
+  "title": "Who is enrolled in what",
+  "description": "A logical model of course enrolment. A course runs as sections, one per term; a student enrols in a section, not a course. Departments live in another system, so they are drawn as outside this model and joined by dashed, non-identifying relations.",
+  "entities": [
+    {"id": "department", "text": "Department", "role": "note", "fields": [{"text": "code", "key": "primary"}, {"text": "name"}]},
+    {"id": "course", "text": "Course", "fields": [{"text": "code", "key": "primary"}, {"text": "title"}, {"text": "credits"}]},
+    {"id": "lecturer", "text": "Lecturer", "fields": [{"text": "staff number", "key": "primary"}, {"text": "name"}]},
+    {"id": "section", "text": "Section", "fields": [{"text": "term"}, {"text": "capacity"}]},
+    {"id": "student", "text": "Student", "fields": [{"text": "student number", "key": "primary"}, {"text": "name"}, {"text": "email", "key": "unique"}]},
+    {"id": "enrolment", "text": "Enrolment", "role": "emphasis", "fields": [{"text": "enrolled on"}, {"text": "grade"}]}
+  ],
+  "edges": [
+    {"from": "department", "to": "course", "from_end": "one", "to_end": "one-or-many", "role": "weak", "label": "offers"},
+    {"from": "department", "to": "lecturer", "from_end": "one", "to_end": "zero-or-many", "role": "weak", "label": "employs"},
+    {"from": "course", "to": "section", "from_end": "one", "to_end": "zero-or-many", "label": "runs as"},
+    {"from": "lecturer", "to": "section", "from_end": "one", "to_end": "zero-or-many", "label": "teaches"},
+    {"from": "section", "to": "enrolment", "from_end": "one", "to_end": "zero-or-many"},
+    {"from": "student", "to": "enrolment", "from_end": "one", "to_end": "zero-or-many"}
+  ]
+}

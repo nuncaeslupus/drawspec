@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "kind": "mindmap",
+  "title": "Moving in March",
+  "description": "Planning a house move as a mind map: what to do before, on the day and after, and the paperwork.",
+  "centre": "The move",
+  "branches": [
+    {
+      "text": "Before",
+      "branches": [
+        {"text": "Give notice to the landlord"},
+        {
+          "text": "Book the van",
+          "branches": [{"text": "Two quotes"}, {"text": "Ask about parking"}]
+        },
+        {"text": "Sort and donate"}
+      ]
+    },
+    {
+      "text": "Paperwork",
+      "branches": [
+        {
+          "text": "Change of address",
+          "branches": [{"text": "Bank"}, {"text": "Employer"}, {"text": "Electoral roll"}]
+        },
+        {"text": "Register with a doctor"},
+        {"text": "Council tax"}
+      ]
+    },
+    {
+      "text": "The day",
+      "role": "emphasis",
+      "branches": [
+        {"text": "Meter readings", "branches": [{"text": "Photo of each meter"}]},
+        {"text": "Keys back by 5 pm"},
+        {"text": "Kettle and mugs in the car"}
+      ]
+    },
+    {
+      "text": "After",
+      "branches": [
+        {"text": "Unpack the kitchen first"},
+        {"text": "Meet the neighbours"},
+        {"text": "Ideas for the garden", "role": "note"}
+      ]
+    }
+  ]
+}

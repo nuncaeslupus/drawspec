@@ -13,6 +13,7 @@ crossing and length from the points alone.
 from __future__ import annotations
 
 import math
+import re
 from itertools import combinations, pairwise
 
 import pytest
@@ -27,6 +28,7 @@ from drawspec.routing import (
     Route,
     edge_primitives,
     minimum_rank_gap,
+    off_borders,
     route_edges,
     separate_lanes,
     shaft_length,
@@ -748,6 +750,20 @@ def test_an_anchor_never_blocks_a_route() -> None:
         assert route.points[0] != route.points[-1]
 
 
+def test_a_self_loop_takes_the_side_that_keeps_out_of_a_foreign_frame() -> None:
+    """A loop's first-choice side runs through a frame its box is not in.
+
+    The left side is clear, so the loop goes there rather than in and out of a
+    group it has nothing to do with.
+    """
+    box = Obstacle("a", x=0.0, y=0.0, width=100.0, height=40.0)
+    member = Obstacle("m", x=200.0, y=0.0, width=100.0, height=40.0)
+    frame = Obstacle("frame", x=110.0, y=-20.0, width=210.0, height=80.0)
+    (loop,) = route_edges((Connector("a", "a"),), (box, member), THEME, anchors=(frame,))
+    assert all(x <= box.right for x, _ in loop.points)
+    assert any(x < box.x for x, _ in loop.points)
+
+
 def test_an_anchor_that_repeats_an_obstacle_id_is_refused() -> None:
     """One id, one box. The two roles are separable; the name space is not."""
     with pytest.raises(LayoutError) as error:
@@ -760,3 +776,108 @@ def test_a_connector_naming_nothing_at_all_still_goes_nowhere() -> None:
     with pytest.raises(LayoutError) as error:
         route_edges((Connector("a", "absent"),), COLUMN, THEME, anchors=(frame,))
     assert "goes nowhere" in str(error.value)
+
+
+def test_a_link_whose_centre_line_grazes_a_neighbour_is_still_one_straight_line() -> None:
+    """A `direct` role keeps its chord when only the centre-to-centre line fails.
+
+    Four boxes over three across a narrow rank gap, as `flow-mesh` lays them
+    out: the centre line from the first top box to the last bottom one passes
+    within the clearance of the second top box. It used to fall back to an
+    orthogonal bracket, so a mesh of diagonals carried two right angles; a line
+    between the two facing sides clears every neighbour and is drawn instead.
+    """
+    tops = [
+        Obstacle(f"t{i}", x=165.5 + 89.25 * i, y=12.0, width=65.25, height=36.85) for i in range(4)
+    ]
+    bottoms = [
+        Obstacle(f"b{i}", x=210.1 + 89.25 * i, y=96.85, width=65.25, height=36.85) for i in range(3)
+    ]
+    boxes = (*tops, *bottoms)
+    connectors = tuple(
+        Connector(top.id, bottom.id, role="link") for top in tops for bottom in bottoms
+    )
+    built = route_edges(connectors, boxes, THEME, direction="down")
+    by_id = {box.id: box for box in boxes}
+    for route in built:
+        assert len(route.points) == 2, f"{route.source}->{route.target} is not one segment"
+        (x0, y0), (x1, y1) = route.points
+        assert abs(x1 - x0) > 1 and abs(y1 - y0) > 1, "a chord here is diagonal"
+        assert y0 == pytest.approx(by_id[route.source].bottom)
+        assert y1 == pytest.approx(by_id[route.target].y)
+        for box in boxes:
+            if box.id not in (route.source, route.target):
+                assert not box.grown(THEME.edge.clearance).crosses(*route.points)
+
+
+def test_the_mesh_reference_draws_every_link_as_a_diagonal() -> None:
+    """`flow-mesh` exists to show `link` drawn as chords: all twelve, not ten."""
+    from drawspec.render import render_file
+
+    svg = render_file(REFERENCE_DIR / "flow-mesh.json")
+    paths = re.findall(r'<path d="([^"]*)"', svg)
+    assert len(paths) == 12
+    for d in paths:
+        match = re.fullmatch(r"M (\S+) (\S+) L (\S+) (\S+)", d)
+        assert match, f"not one straight segment: {d}"
+        x0, y0, x1, y1 = map(float, match.groups())
+        assert abs(x1 - x0) > 1 and abs(y1 - y0) > 1, f"not diagonal: {d}"
+
+
+FRAME = Obstacle("f", 0.0, 0.0, 300.0, 300.0)
+
+
+def _runs_on_border(route: Route, frame: Obstacle) -> list[int]:
+    """Indices of the middle runs within a clearance of one of `frame`'s borders."""
+    near = THEME.edge.clearance
+    found = []
+    for index, (first, second) in enumerate(route.segments[1:-1], start=1):
+        vertical = first[0] == second[0]
+        at = first[0] if vertical else first[1]
+        low, high = sorted((first[1], second[1]) if vertical else (first[0], second[0]))
+        start, end = (frame.y, frame.bottom) if vertical else (frame.x, frame.right)
+        edges = (frame.x, frame.right) if vertical else (frame.y, frame.bottom)
+        if min(high, end) > max(low, start) and any(abs(at - edge) < near for edge in edges):
+            found.append(index)
+    return found
+
+
+def test_a_run_on_the_border_of_a_frame_holding_both_ends_moves_inward() -> None:
+    a = Obstacle("a", 20.0, 20.0, 60.0, 30.0)
+    b = Obstacle("b", 20.0, 240.0, 60.0, 30.0)
+    route = Route("a", "b", "flow", ((80.0, 35.0), (298.0, 35.0), (298.0, 255.0), (80.0, 255.0)))
+    (moved,) = off_borders((route,), (FRAME,), (a, b), THEME)
+    assert _runs_on_border(moved, FRAME) == []
+    assert all(x < FRAME.right for x, _ in moved.points)
+
+
+def test_every_run_on_a_border_moves_off_it_not_only_the_first() -> None:
+    s = Obstacle("s", 400.0, 20.0, 40.0, 30.0)
+    t = Obstacle("t", 80.0, 400.0, 40.0, 30.0)
+    route = Route(
+        "s",
+        "t",
+        "flow",
+        (
+            (400.0, 35.0),
+            (302.0, 35.0),
+            (302.0, 200.0),
+            (350.0, 200.0),
+            (350.0, 302.0),
+            (100.0, 302.0),
+            (100.0, 400.0),
+        ),
+    )
+    assert _runs_on_border(route, FRAME) == [1, 4]
+    (moved,) = off_borders((route,), (FRAME,), (s, t), THEME)
+    assert _runs_on_border(moved, FRAME) == []
+
+
+def test_a_shift_that_lays_a_neighbouring_run_along_a_border_is_refused() -> None:
+    s = Obstacle("s", 400.0, -15.0, 40.0, 30.0)
+    t = Obstacle("t", 200.0, 185.0, 40.0, 30.0)
+    wall = Obstacle("wall", 306.0, 50.0, 80.0, 100.0)
+    route = Route("s", "t", "flow", ((400.0, 0.0), (302.0, 0.0), (302.0, 200.0), (240.0, 200.0)))
+    (moved,) = off_borders((route,), (FRAME,), (s, t, wall), THEME)
+    first, second = moved.points[:2]
+    assert not (first[1] == second[1] == FRAME.y and min(first[0], second[0]) < FRAME.right)

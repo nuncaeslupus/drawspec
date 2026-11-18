@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "kind": "board",
+  "title": "Sprint 14 retrospective",
+  "columns": [
+    {"id": "well", "text": "Went well"},
+    {"id": "improve", "text": "To improve"},
+    {"id": "actions", "text": "Actions", "role": "emphasis"}
+  ],
+  "cards": [
+    {"text": "Release went out on the Tuesday", "column": "well"},
+    {"text": "Pairing on the parser", "column": "well"},
+    {"text": "Flaky integration tests", "column": "improve"},
+    {"text": "Reviews waited two days", "column": "improve"},
+    {"text": "Quarantine the three flakiest tests", "column": "actions", "actor": "Joan"},
+    {"text": "Review rota in the team calendar", "column": "actions", "actor": "Ana"}
+  ]
+}

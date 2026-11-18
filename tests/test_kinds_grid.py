@@ -11,10 +11,12 @@ path is asserted here too: parse, load the theme, fit, render, emit.
 
 from __future__ import annotations
 
+import copy
 import re
 from collections.abc import Mapping
 from dataclasses import replace
 from itertools import pairwise
+from typing import Any
 from xml.etree import ElementTree
 
 import pytest
@@ -164,11 +166,102 @@ def test_columns_of_one_item_take_the_whole_width() -> None:
     assert rects(built)[0].width == pytest.approx(built.width)
 
 
+def test_a_rising_series_ascends_from_a_common_baseline() -> None:
+    """`rise` draws the order as height, which equal columns cannot say.
+
+    Two corpus originals drew an ordinal scale by making each box taller than
+    the last — five stars of open data at 30·60·90·120·150, three degrees of a
+    change at 60·75·100 — and both said in their own words that the growth was
+    the content: *each star adds a condition to the one before it*. Redrawn as
+    plain `columns` they came out flat, and nothing caught it: no word was lost
+    and no line crossed a word. What was lost was the geometry.
+
+    The ascent is strict and the baseline is shared. Aligning the tops instead
+    would draw the same heights as columns that *hang*, which reads as decay.
+    """
+    built = scene("columns", "One", "Two", "Three", "Four", rise=True)
+    columns = sorted(rects(built), key=lambda column: column.x)
+
+    for shorter, taller in pairwise(columns):
+        assert taller.height > shorter.height
+    baselines = {round(column.y + column.height, 6) for column in columns}
+    assert len(baselines) == 1
+
+
+def test_a_rising_series_reaches_the_themes_multiple_and_no_further() -> None:
+    """The tallest is `[box] rise` times the shortest — the author writes no height.
+
+    That is the whole point of the field being a boolean: a per-column number is
+    exactly the thing an author gets wrong, and it is what a generator exists to
+    take away. The shortest column is whatever its own text needs, so raising
+    the theme's multiple stretches the drawing upwards instead of starving the
+    first label.
+    """
+    built = scene("columns", "One", "Two", "Three", rise=True)
+    columns = sorted(rects(built), key=lambda column: column.x)
+    assert columns[-1].height == pytest.approx(columns[0].height * THEME.box.rise)
+
+    steeper = replace(THEME, box=replace(THEME.box, rise=4.0))
+    taller = grid_scene(
+        parse_document(document("columns", "One", "Two", "Three", rise=True)), steeper, MEASURER
+    )
+    subidas = sorted(rects(taller), key=lambda column: column.x)
+    # La más baja no se estrangula al subir el tema: sigue siendo la que su
+    # propio texto necesita, y lo que crece es el dibujo entero.
+    assert subidas[0].height == pytest.approx(columns[0].height)
+    assert subidas[-1].height == pytest.approx(columns[0].height * 4.0)
+
+
+def test_columns_without_rise_stay_equal() -> None:
+    """The default is unchanged: equal columns say the entries are peers.
+
+    Worth its own assertion because `rise` reaches into the shared sizing path,
+    and a scale drawn where the author said *peers* is the same defect in the
+    opposite direction.
+    """
+    built = scene("columns", "One", "Two", "Three")
+    assert len({round(column.height, 6) for column in rects(built)}) == 1
+
+
+def test_a_rising_series_of_one_is_not_a_series() -> None:
+    """One column has nothing to ascend from, and must not divide by zero."""
+    built = scene("columns", "Only", rise=True)
+    assert len(rects(built)) == 1
+
+
+def test_a_rising_timeline_lifts_its_labels_off_the_axis() -> None:
+    """The same ascent, and the axis is already the common baseline.
+
+    The original wanting this drew three boxes of `60·75·100` over an arrow
+    labelled *depth of the change*, and said in its own description that each
+    degree changes more than the last. A flat timeline says the three are peers
+    on a line, which is what the drawing was drawn to deny.
+
+    Nothing else moves: every label still ends where the axis is, so each tick
+    still runs from its own label's bottom edge to the line — which is what
+    pairs a label with its moment.
+    """
+    built = scene("timeline", "First", "Second", "Third", rise=True)
+    labels = sorted(rects(built), key=lambda label: label.x)
+
+    for shorter, taller in pairwise(labels):
+        assert taller.height > shorter.height
+    assert len({round(label.y + label.height, 6) for label in labels}) == 1
+    assert labels[-1].height == pytest.approx(labels[0].height * THEME.box.rise)
+
+
+def test_a_timeline_without_rise_keeps_one_band() -> None:
+    """The default is unchanged, and it is the one every existing drawing uses."""
+    built = scene("timeline", "First", "Second", "Third")
+    assert len({round(label.height, 6) for label in rects(built)}) == 1
+
+
 def test_too_many_columns_raises_fiterror_naming_the_remedies() -> None:
+    """Within the readability budget, so the narrow canvas is what refuses it."""
     with pytest.raises(FitError) as error:
-        scene("columns", *[f"Column {index}" for index in range(30)])
+        scene("columns", *[f"Column {index}" for index in range(6)], width=200)
     message = str(error.value)
-    assert "30 columns" in message
+    assert "6 columns" in message
     assert "fewer columns" in message
 
 
@@ -241,7 +334,7 @@ def test_timeline_of_one_moment_places_it_across_the_canvas() -> None:
 
 def test_too_many_timeline_entries_raises_fiterror_suggesting_a_vertical_kind() -> None:
     with pytest.raises(FitError) as error:
-        scene("timeline", *[f"Moment {index}" for index in range(40)])
+        scene("timeline", *[f"Moment {index}" for index in range(10)], width=240)
     assert "stack" in str(error.value)
 
 
@@ -882,3 +975,343 @@ def test_two_cells_sharing_an_id_are_refused() -> None:
     cells = [*PROCESS["cells"], {"id": "plan", "text": "Again", "column": 0, "row": 2}]  # type: ignore[misc]
     with pytest.raises(DocumentError, match="duplicate cell id"):
         parse_document({**PROCESS, "cells": cells})
+
+
+# --------------------------------------------------------------------------
+# scale — a matrix whose groups are an order, filled by tone
+# --------------------------------------------------------------------------
+
+RISK: dict[str, object] = {
+    "version": 1,
+    "kind": "matrix",
+    "title": "Risk",
+    "columns": ["Minor", "Severe"],
+    "rows": ["Likely", "Rare"],
+    "scale": ["low", "medium", "high"],
+    "cells": [
+        # `high` is mentioned first: the fill must follow the scale, not the order of mention.
+        {"text": "High", "column": 1, "row": 0, "group": "high"},
+        {"text": "Medium", "column": 0, "row": 0, "group": "medium"},
+        {"text": "Low", "column": 0, "row": 1, "group": "low"},
+        {"text": "Not assessed", "column": 1, "row": 1},
+    ],
+}
+
+
+def risk(**changes: object) -> dict[str, object]:
+    built = {key: value for key, value in RISK.items()}
+    built.update(changes)
+    return built
+
+
+def cell_figures(built: Scene) -> dict[str, Polygon]:
+    """Each cell's figure, keyed by the text drawn in it."""
+    figures = [item for item in built.primitives if isinstance(item, Polygon)]
+    texts = [item for item in built.primitives if isinstance(item, TextLine)]
+    found: dict[str, Polygon] = {}
+    for figure in figures:
+        xs = [x for x, _ in figure.points]
+        ys = [y for _, y in figure.points]
+        for line in texts:
+            if min(xs) < line.x < max(xs) and min(ys) < line.y < max(ys):
+                found[line.text] = figure
+    return found
+
+
+def test_a_scale_fills_by_its_own_order_not_by_first_mention() -> None:
+    built = grid_scene(parse_document(risk()), THEME, MEASURER)
+    figures = cell_figures(built)
+    ramp = THEME.mark.ramp
+    assert figures["Low"].fill_opacity == ramp[0]
+    assert figures["Medium"].fill_opacity == ramp[2]
+    assert figures["High"].fill_opacity == ramp[-1]
+    assert {figures[name].fill for name in ("Low", "Medium", "High")} == {"solid"}
+
+
+def test_a_cell_with_no_group_stays_blank_on_a_scale() -> None:
+    """Blank says *not assessed*, which is why the ramp's first step is never blank."""
+    figures = cell_figures(grid_scene(parse_document(risk()), THEME, MEASURER))
+    assert figures["Not assessed"].fill == ""
+
+
+def test_the_key_lists_every_step_in_scale_order() -> None:
+    """Including a step no cell uses: the key of a heatmap is its scale."""
+    document = risk(cells=[{"text": "High", "column": 0, "row": 0, "group": "high"}])
+    built = grid_scene(parse_document(document), THEME, MEASURER)
+    words = [item.text for item in built.primitives if isinstance(item, TextRun)]
+    assert words[-3:] == ["low", "medium", "high"]
+    swatches = [item for item in built.primitives if isinstance(item, Polygon)]
+    assert [swatch.fill_opacity for swatch in swatches[-3:]] == [
+        THEME.mark.tone_for(index, 3) for index in range(3)
+    ]
+
+
+def test_the_key_uses_key_texts_where_given() -> None:
+    document = risk(key=[{"group": "high", "text": "Mitigate now"}])
+    built = grid_scene(parse_document(document), THEME, MEASURER)
+    words = [item.text for item in built.primitives if isinstance(item, TextRun)]
+    assert words[-3:] == ["low", "medium", "Mitigate now"]
+
+
+def test_a_scale_renders_to_safe_svg() -> None:
+    svg = render(risk())
+    assert 'fill-opacity="0.4"' in svg
+    assert check_embedding_safety(svg, THEME) == ()
+
+
+def pointers(document: Mapping[str, object]) -> dict[str, str]:
+    from drawspec.schema import validate_document
+
+    return {violation.pointer: violation.message for violation in validate_document(document)}
+
+
+def test_a_cell_group_off_the_scale_is_refused_at_the_cell() -> None:
+    document = risk(cells=[{"text": "?", "column": 0, "row": 0, "group": "severe"}])
+    assert "/cells/0/group" in pointers(document)
+
+
+def test_a_scale_past_five_steps_is_refused() -> None:
+    document = risk(
+        scale=["a", "b", "c", "d", "e", "f"], cells=[{"text": "x", "column": 0, "row": 0}]
+    )
+    found = pointers(document)
+    assert "/scale/5" in found
+    assert "grey" in found["/scale/5"]
+
+
+def test_a_scale_of_one_step_is_refused() -> None:
+    document = risk(scale=["only"], cells=[{"text": "x", "column": 0, "row": 0, "group": "only"}])
+    assert "/scale" in pointers(document)
+
+
+def test_a_step_named_twice_is_refused() -> None:
+    document = risk(scale=["low", "high", "low"])
+    assert "/scale/2" in pointers(document)
+
+
+def test_a_key_line_for_a_name_off_the_scale_is_refused() -> None:
+    document = risk(key=[{"group": "critical", "text": "Critical"}])
+    assert "/key/0/group" in pointers(document)
+
+
+def test_a_key_line_for_an_unused_step_is_accepted_on_a_scale() -> None:
+    document = risk(
+        cells=[{"text": "High", "column": 0, "row": 0, "group": "high"}],
+        key=[{"group": "low", "text": "Accept"}],
+    )
+    assert pointers(document) == {}
+
+
+def test_a_numeric_value_on_a_cell_is_refused_with_the_bucketing_advice() -> None:
+    document = risk(cells=[{"text": "14 %", "column": 0, "row": 0, "value": 14}])
+    found = pointers(document)
+    assert "scale" in found["/cells/0/value"]
+
+
+def test_scale_is_a_matrix_field_only() -> None:
+    document = {
+        "version": 1,
+        "kind": "columns",
+        "items": [{"text": "a"}],
+        "scale": ["low", "high"],
+    }
+    assert "/scale" in pointers(document)
+
+
+def test_stack_layers_are_graded_lightest_first_unless_the_theme_says_not() -> None:
+    document = parse_document(
+        {
+            "version": 1,
+            "kind": "stack",
+            "items": [{"text": "Top"}, {"text": "Middle"}, {"text": "Base"}],
+        }
+    )
+    layers = [p for p in grid_scene(document, THEME, MEASURER).primitives if isinstance(p, Rect)]
+    assert [layer.fill_opacity for layer in layers] == list(THEME.mark.ramp[:3])
+    plain = replace(THEME, levels=replace(THEME.levels, shade=False))
+    layers = [p for p in grid_scene(document, plain, MEASURER).primitives if isinstance(p, Rect)]
+    assert all(layer.fill == "" for layer in layers)
+
+
+STAKEHOLDERS: dict[str, Any] = {
+    "version": 1,
+    "kind": "matrix",
+    "columns": ["Start", "Plan", "Execute", "Monitor"],
+    "rows": ["Process", "Output"],
+    "cells": [
+        {"id": "p0", "text": "Identify stakeholders", "column": 0, "row": 0},
+        {"id": "p1", "text": "Plan engagement", "column": 1, "row": 0},
+        {"id": "p2", "text": "Manage engagement", "column": 2, "row": 0},
+        {"id": "p3", "text": "Monitor engagement", "column": 3, "row": 0},
+        {"id": "o0", "text": "Register", "column": 0, "row": 1},
+        {"id": "o1", "text": "Engagement plan", "column": 1, "row": 1},
+        {"id": "o2", "text": "Change requests", "column": 2, "row": 1},
+        {"id": "o3", "text": "Performance data", "column": 3, "row": 1},
+    ],
+    "edges": [
+        {"from": "p0", "to": "p1"},
+        {"from": "p1", "to": "p2"},
+        {"from": "p2", "to": "p3"},
+        {"from": "o3", "to": "p0", "role": "weak", "label": "repeats throughout"},
+    ],
+}
+
+
+def _text_box(primitive: TextRun | TextLine) -> tuple[float, float, float, float]:
+    """The measured box of a run or a laid-out line."""
+    if isinstance(primitive, TextLine):
+        left, right = line_bounds(primitive, THEME, MEASURER)
+        span = primitive.spans[0]
+    else:
+        extents = MEASURER.measure(primitive.text, THEME.font.default, THEME.scale["label"])
+        shift = {"start": 0.0, "middle": extents.width / 2, "end": extents.width}
+        left = primitive.x - shift[primitive.anchor]
+        right = left + extents.width
+        return left, primitive.y - extents.ascent, right, primitive.y + extents.descent
+    extents = MEASURER.measure(span.text, span.font, THEME.scale[primitive.level])
+    return left, primitive.y - extents.ascent, right, primitive.y + extents.descent
+
+
+def test_a_return_edge_label_on_a_matrix_clears_every_cells_words() -> None:
+    """Issue #132: the return from the last output to the first process ran along
+    the join between the rows, and its label, centred on the run, printed over the
+    words of the cells it passed. The join now opens a channel for it, and every
+    label is kept off every cell's words — or refused, never overprinted."""
+    built = scene_for(parse_document(STAKEHOLDERS), THEME, MEASURER)
+    label = next(
+        p for p in built.primitives if isinstance(p, TextRun) and p.text == "repeats throughout"
+    )
+    box = _text_box(label)
+    for line in (p for p in built.primitives if isinstance(p, TextLine)):
+        other = _text_box(line)
+        assert (
+            box[2] <= other[0] or other[2] <= box[0] or box[3] <= other[1] or other[3] <= box[1]
+        ), f"the label overprints {line.text!r}"
+
+
+def test_a_labelled_return_opens_a_channel_between_the_rows() -> None:
+    """The channel is deeper for the label: without one it only makes room for a head."""
+    plain = copy.deepcopy(STAKEHOLDERS)
+    del plain["edges"][3]["label"]
+    labelled = scene_for(parse_document(STAKEHOLDERS), THEME, MEASURER)
+    unlabelled = scene_for(parse_document(plain), THEME, MEASURER)
+    assert labelled.height > unlabelled.height
+
+
+#: The return of issue #132 as opos drew it: each process produces its output
+#: below, and the return's label is longer than any one column is wide.
+PRODUCING: dict[str, Any] = {
+    **STAKEHOLDERS,
+    "edges": [
+        *STAKEHOLDERS["edges"][:3],
+        *({"from": f"p{n}", "to": f"o{n}", "role": "link"} for n in range(4)),
+        {
+            "from": "o3",
+            "to": "p0",
+            "role": "weak",
+            "label": "repeats periodically throughout the whole of the project",
+        },
+    ],
+}
+
+
+def _cell_box(built: Scene, text: str) -> tuple[float, float, float, float]:
+    """The outline of the cell whose first line starts with `text`."""
+    line = next(
+        p for p in built.primitives if isinstance(p, TextLine) and p.spans[0].text.startswith(text)
+    )
+    outline = next(
+        p
+        for p in built.primitives
+        if isinstance(p, Polygon)
+        and p.points[0][0] <= line.x <= p.points[1][0]
+        and p.points[0][1] <= line.y <= p.points[2][1]
+    )
+    return outline.points[0][0], outline.points[0][1], outline.points[2][0], outline.points[2][1]
+
+
+def _on_border(point: tuple[float, float], box: tuple[float, float, float, float]) -> bool:
+    x, y = point
+    inside = box[0] <= x <= box[2] and box[1] <= y <= box[3]
+    edge = min(abs(x - box[0]), abs(x - box[2]), abs(y - box[1]), abs(y - box[3]))
+    return inside and edge < 1e-6
+
+
+def test_a_return_between_rows_that_share_no_column_reaches_both_cells() -> None:
+    """Issue #132, still open in 0.4.0: the return ran level along the join
+    between the rows, from the source's left side to the target's right side —
+    at a height neither cell occupies, so the dashed arrow touched neither. It
+    now leaves its source across the join, runs along it, and enters its target."""
+    built = scene_for(parse_document(PRODUCING), THEME, MEASURER)
+    route = next(p for p in built.primitives if isinstance(p, Path) and p.role == "weak")
+    head = next(p for p in built.primitives if isinstance(p, Polygon) and p.role == "weak")
+    assert _on_border(route.points[0], _cell_box(built, "Performance"))
+    assert _on_border(head.points[0], _cell_box(built, "Identify"))
+
+
+def test_a_return_label_sits_where_no_other_edge_crosses_it() -> None:
+    """The links from each process to its output cross the join the return runs
+    along. Laid across them, the label was struck through or broke them short
+    of their outputs; it is now wrapped onto the stretch between two of them."""
+    built = scene_for(parse_document(PRODUCING), THEME, MEASURER)
+    words = [p for p in built.primitives if isinstance(p, TextRun) and p.role == "weak"]
+    assert len(words) > 1, "the label should have wrapped to fit between two links"
+    assert " ".join(w.text for w in words) == PRODUCING["edges"][-1]["label"]
+    links = [p for p in built.primitives if isinstance(p, Path) and p.role == "link"]
+    for word in words:
+        left, top, right, bottom = _text_box(word)
+        for link in links:
+            (x, y0), (_, y1) = link.points
+            assert not (left <= x <= right and min(y0, y1) <= bottom and top <= max(y0, y1)), (
+                f"a link crosses {word.text!r}"
+            )
+
+
+def _wordy(source: dict[str, Any]) -> dict[str, Any]:
+    """`source` with a first cell long enough to wrap onto several lines."""
+    wordy = copy.deepcopy(source)
+    wordy["cells"][0]["text"] = "Identify every one of the project's stakeholders"
+    return wordy
+
+
+@pytest.mark.parametrize("edges", [True, False], ids=["with-edges", "table"])
+def test_a_cells_words_are_centred_in_the_cell_drawn(edges: bool) -> None:
+    """A matrix with edges draws each cell an inset in from its slot, but sized
+    the box for the whole slot: the box was taller than the cell, and a
+    two-line cell's words sat an inset low, all but touching its bottom
+    (opos diagram 65). The ink, first ascent to last descent, is now centred
+    in the cell less its padding — whose bottom is deliberately the deeper —
+    and inside the cell either side."""
+    source = _wordy(PRODUCING)
+    if not edges:
+        del source["edges"]
+    built = scene_for(parse_document(source), THEME, MEASURER)
+    padding = THEME.box.padding
+    outlines = [p for p in built.primitives if isinstance(p, Polygon) and len(p.points) == 4]
+    lines = [p for p in built.primitives if isinstance(p, TextLine)]
+    seen = 0
+    for outline in outlines:
+        (left, top), _, (right, bottom), _ = outline.points
+        inside = [line for line in lines if left < line.x < right and top < line.y < bottom]
+        if not inside:
+            continue
+        boxes = [_text_box(line) for line in inside]
+        ink_top, ink_bottom = min(b[1] for b in boxes), max(b[3] for b in boxes)
+        above, below = ink_top - top - padding.top, bottom - ink_bottom - padding.bottom
+        assert above == pytest.approx(below, abs=0.01), [line.spans[0].text for line in inside]
+        assert left < min(b[0] for b in boxes) and max(b[2] for b in boxes) < right
+        seen += len(inside) > 1
+    assert seen, "no cell wrapped, so nothing tested the multi-line case"
+
+
+def test_a_return_label_is_centred_between_the_cells_and_its_run() -> None:
+    """Hung a clearance off its run, the return's label sat nearer the cells
+    above it than its own stroke. It is centred in the gap, ink to ink."""
+    built = scene_for(parse_document(PRODUCING), THEME, MEASURER)
+    words = [_text_box(p) for p in built.primitives if isinstance(p, TextRun) and p.role == "weak"]
+    run = next(p for p in built.primitives if isinstance(p, Path) and p.role == "weak")
+    cells = _cell_box(built, "Identify")[3]
+    join = run.points[1][1]
+    ink_top, ink_bottom = min(b[1] for b in words), max(b[3] for b in words)
+    assert cells < ink_top < ink_bottom < join
+    assert ink_top - cells == pytest.approx(join - ink_bottom, abs=0.01)

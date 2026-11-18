@@ -125,3 +125,22 @@ def test_gallery_report_names_every_document() -> None:
     text = gallery.report(ENTRIES)
     for entry in ENTRIES:
         assert entry.name in text
+
+
+def test_gallery_menu_links_every_kind_in_most_used_order() -> None:
+    """The page opens on a menu of every kind, most used first, each an anchor."""
+    html = gallery.page(ENTRIES, "inline")
+    menu = re.search(r'<nav id="menu"[^>]*>(.*?)</nav>', html, re.S)
+    assert menu, "the gallery has no kind menu"
+    listed = re.findall(r'href="#([a-z]+)"', menu.group(1))
+    assert set(listed) == set(KINDS)
+    assert listed == sorted(listed, key=gallery.kind_rank)
+    assert listed[0] == "flow"
+    for kind in listed:
+        assert f'<section id="{kind}">' in html, kind
+
+
+def test_every_kind_in_the_vocabulary_has_a_place_in_the_order() -> None:
+    """A new kind still draws unlisted, but the order is meant to name them all."""
+    assert set(gallery.KIND_ORDER) == set(KINDS)
+    assert len(gallery.KIND_ORDER) == len(set(gallery.KIND_ORDER))

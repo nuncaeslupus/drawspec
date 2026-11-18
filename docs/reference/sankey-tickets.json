@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "kind": "sankey",
+  "title": "1,000 tickets, by channel and outcome",
+  "caption": "Last quarter's support tickets, from the channel they came in by to how they closed.",
+  "unit": "tickets",
+  "nodes": [
+    {"id": "email", "text": "Email"},
+    {"id": "chat", "text": "Chat"},
+    {"id": "phone", "text": "Phone"},
+    {"id": "bot", "text": "Answered by the help bot"},
+    {"id": "l1", "text": "First line"},
+    {"id": "l2", "text": "Engineering", "role": "emphasis"},
+    {"id": "solved", "text": "Solved"},
+    {"id": "dup", "text": "Duplicate", "role": "note"}
+  ],
+  "flows": [
+    {"from": "email", "to": "l1", "amount": 380},
+    {"from": "chat", "to": "bot", "amount": 260},
+    {"from": "chat", "to": "l1", "amount": 140},
+    {"from": "phone", "to": "l1", "amount": 220},
+    {"from": "bot", "to": "solved", "amount": 260},
+    {"from": "l1", "to": "solved", "amount": 520},
+    {"from": "l1", "to": "l2", "amount": 150, "role": "strong"},
+    {"from": "l1", "to": "dup", "amount": 70},
+    {"from": "l2", "to": "solved", "amount": 150, "role": "strong"}
+  ]
+}

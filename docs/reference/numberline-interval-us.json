@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "kind": "numberline",
+  "theme": "docs/reference/themes/algebra-us.toml",
+  "title": "The solution set of 2x − 3 ≥ 5 or x < −2",
+  "description": "Interval notation on a number line, drawn with brackets and parentheses: everything below −2, excluded, and everything from 4 up, included.",
+  "axis": {"min": -6, "max": 8, "step": 1},
+  "ranges": [
+    {"to": -2, "to_open": true, "text": "(−∞, −2)", "role": "emphasis"},
+    {"from": 4, "text": "[4, ∞)", "role": "emphasis"}
+  ],
+  "points": [
+    {"at": 0, "text": "0 is not a solution", "open": true, "role": "note"}
+  ]
+}

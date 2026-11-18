@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "kind": "neuralnet",
+  "style": "blocks",
+  "title": "LeNet-5",
+  "description": "LeCun et al.'s convolutional network for reading digits (1998), named as the paper names its layers: C for convolution, S for subsampling, F for fully connected.",
+  "layers": [
+    {"text": "Input", "shape": "32×32"},
+    {"text": "C1", "type": "convolution", "shape": "6@28×28"},
+    {"text": "S2", "type": "subsampling", "shape": "6@14×14"},
+    {"text": "C3", "type": "convolution", "shape": "16@10×10"},
+    {"text": "S4", "type": "subsampling", "shape": "16@5×5"},
+    {"text": "C5", "type": "full", "shape": "120"},
+    {"text": "F6", "type": "full", "shape": "84"},
+    {"text": "Output", "type": "full", "shape": "10"}
+  ],
+  "caption": "Each C layer convolves 5×5 kernels; each S layer averages 2×2 neighbourhoods."
+}

@@ -1,4 +1,4 @@
-"""The command line: four commands, and an exit code that means something.
+"""The command line: six commands, and an exit code that means something.
 
 The contract is specification §5.4, and the exit codes are the part of it that a
 build script actually consumes:
@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from collections.abc import Sequence
 from dataclasses import replace
@@ -40,11 +41,15 @@ from pathlib import Path
 from typing import Final, TextIO
 
 from drawspec import __version__
+from drawspec.brand import derive_theme
 from drawspec.emit import PROFILES
 from drawspec.errors import DocumentError, DrawspecError, ThemeError
 from drawspec.examples import EXAMPLES, PURPOSE
-from drawspec.render import render_document
+from drawspec.export import BACKGROUNDS, DEFAULT_SCALE, MAX_SCALE, render_png
+from drawspec.kinds import TEXT_KINDS
+from drawspec.render import render_document, render_text
 from drawspec.schema import KINDS, Document, load_document, parse_document, schema_json
+from drawspec.textgrid import CHARSETS, DEFAULT_WIDTH, WIDE_WIDTH
 from drawspec.theme import load_theme
 
 #: The conventional name for standard input, as a document argument. Reading a
@@ -53,6 +58,10 @@ from drawspec.theme import load_theme
 STDIN: Final = "-"
 
 #: What the shell gets back. Named, because these are the contract.
+#: What `render --format` accepts, and the extension each is inferred from.
+FORMATS: Final = ("svg", "png", "text")
+EXTENSIONS: Final = {".svg": "svg", ".png": "png", ".txt": "text"}
+
 OK: Final = 0
 REFUSED: Final = 1
 USAGE: Final = 2
@@ -69,16 +78,63 @@ def build_parser() -> argparse.ArgumentParser:
 
     render = commands.add_parser(
         "render",
-        help="render a document to SVG",
-        description="Read a document, draw it, and write the SVG to stdout or to a file.",
+        help="render a document to SVG, PNG or plain text",
+        description=(
+            "Read a document, draw it, and write the SVG to stdout or to a file. "
+            "With --format png, or an -o ending in .png, write a PNG instead "
+            "(needs pip install 'drawspec[png]'). With --format text, or an -o ending in "
+            ".txt, write the diagram as plain text, refused when it is wider than --width."
+        ),
     )
     render.add_argument("document", help="the document to render")
     render.add_argument("-o", "--out", help="write here instead of stdout")
     render.add_argument("--theme", help="a bundled theme name or a theme file")
-    render.add_argument("--width", type=float, help="override the document's width")
+    render.add_argument(
+        "--variant",
+        action="append",
+        metavar="NAME=THEME",
+        help=(
+            "for svg: also draw the diagram in THEME, switched on by an ancestor's "
+            "data-theme=NAME (and, for NAME dark, by prefers-color-scheme). Repeatable. "
+            "--theme is the base and answers to light"
+        ),
+    )
+    render.add_argument(
+        "--width",
+        type=float,
+        help=(
+            "override the document's width; with --format text, the most terminal cells a "
+            f"line may take (default {DEFAULT_WIDTH}, or {WIDE_WIDTH} for automaton, lanes, "
+            "sequence and timing)"
+        ),
+    )
     render.add_argument("--height", type=float, help="override the document's height")
     render.add_argument(
         "--profile", choices=PROFILES, default="inline", help="the embedding profile"
+    )
+    render.add_argument(
+        "--format",
+        choices=FORMATS,
+        help=(
+            "what to write: svg; png, a raster image of the standalone drawing; or text, the "
+            f"diagram as plain text for a code block or a terminal ({', '.join(TEXT_KINDS)}). "
+            "Default: from the -o extension, else svg"
+        ),
+    )
+    render.add_argument(
+        "--charset",
+        choices=CHARSETS,
+        help="for text: box-drawing characters, or ASCII only (default unicode)",
+    )
+    render.add_argument(
+        "--scale",
+        type=_scale,
+        help=f"for png: pixels per SVG unit, at most {MAX_SCALE:g} (default {DEFAULT_SCALE:g})",
+    )
+    render.add_argument(
+        "--background",
+        choices=BACKGROUNDS,
+        help="for png: theme ink on white, light ink on near-black, or no page (default light)",
     )
 
     validate = commands.add_parser(
@@ -102,6 +158,28 @@ def build_parser() -> argparse.ArgumentParser:
         description=("Load a theme and run its invariants, the greyscale role pairing included."),
     )
     check.add_argument("theme", help="a bundled theme name or a theme file")
+    derive = theme_commands.add_parser(
+        "from",
+        help="derive a theme from a brand's CSS or design tokens",
+        description=(
+            "Read CSS custom properties (a .css file) or W3C design tokens (a .json or "
+            ".tokens file) and write the theme they map onto, as TOML. Fonts, the accent "
+            "and muted colours, a corner radius and a stroke weight are taken; every token "
+            "left out is reported on stderr with the reason. A colour that would not read "
+            "at 3:1 on both a white and a near-black page is darkened or lightened until it "
+            "does. Local files only: no URL is fetched."
+        ),
+    )
+    derive.add_argument(
+        "brand", nargs="+", help="a .css or design-tokens file; a later file wins a tie"
+    )
+    derive.add_argument("-o", "--out", help="write here instead of stdout")
+    derive.add_argument("--name", help="the theme's name; the first file's name by default")
+    derive.add_argument(
+        "--strict",
+        action="store_true",
+        help="refuse a colour that would need adjusting, instead of adjusting it",
+    )
 
     schema = commands.add_parser(
         "schema",
@@ -131,6 +209,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     example.add_argument("kind", choices=KINDS, help="which kind to write")
 
+    # The same server as `drawspec-mcp`, reachable as `drawspec mcp` so a launcher
+    # that can only run the package's own command (`uvx --from 'drawspec[mcp]'
+    # drawspec mcp`, the MCP Registry's entry) gets to it too.
+    commands.add_parser(
+        "mcp",
+        help="serve validate, render and kinds as MCP tools over stdio",
+        description="The MCP server; needs the extra: pip install 'drawspec[mcp]'.",
+    )
+
     return parser
 
 
@@ -157,12 +244,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _validate(arguments)
     if arguments.command == "kinds":
         return _kinds()
+    if arguments.command == "mcp":
+        from drawspec.mcp import main as serve_mcp
+
+        serve_mcp()
+        return OK
     if arguments.command == "example":
         return _example(arguments)
     if arguments.command == "theme":
-        if getattr(arguments, "theme_command", None) != "check":
+        command = getattr(arguments, "theme_command", None)
+        if command == "from":
+            return _theme_from(arguments)
+        if command != "check":
             parser.print_usage(sys.stderr)
-            print("drawspec: theme takes one command: check", file=sys.stderr)
+            print("drawspec: theme takes one of two commands: check, from", file=sys.stderr)
             return USAGE
         return _theme_check(arguments)
     return _schema(arguments)
@@ -174,27 +269,116 @@ def main(argv: Sequence[str] | None = None) -> int:
 
 
 def _render(arguments: argparse.Namespace) -> int:
-    """Document in, SVG out, with the overrides applied before anything is drawn.
+    """Document in, SVG (or PNG, or text) out, with the overrides applied first.
 
     The overrides are applied to the *document*, not to the finished drawing:
     width is an input to wrapping, sizing and the direction choice, so overriding
     it after the fact would scale a picture that had already decided it fitted.
+
+    The format is the flag when given, and otherwise the `-o` extension, so
+    `-o diagram.png` does what it says. A flag that contradicts the extension is
+    a usage error rather than a file whose name lies about its contents.
     """
+    output_format = _output_format(arguments)
+    if output_format is None:
+        return USAGE
+    if output_format != "png" and (arguments.scale is not None or arguments.background):
+        print("drawspec: --scale and --background apply to --format png only", file=sys.stderr)
+        return USAGE
+    if output_format != "svg" and arguments.variant:
+        print("drawspec: --variant applies to --format svg only", file=sys.stderr)
+        return USAGE
+    variants: dict[str, str] = {}
+    for pair in arguments.variant or ():
+        name, equals, source = pair.partition("=")
+        if not (equals and name and source):
+            print(f"drawspec: --variant takes NAME=THEME; got {pair!r}", file=sys.stderr)
+            return USAGE
+        if name in variants:
+            print(f"drawspec: --variant {name!r} is given twice", file=sys.stderr)
+            return USAGE
+        variants[name] = source
+    if output_format != "text" and arguments.charset:
+        print("drawspec: --charset applies to --format text only", file=sys.stderr)
+        return USAGE
+    if (
+        output_format == "text"
+        and arguments.width is not None
+        and (arguments.width < 1 or arguments.width != int(arguments.width))
+    ):
+        print("drawspec: with --format text, --width is a whole number of columns", file=sys.stderr)
+        return USAGE
+    if output_format == "png" and not arguments.out and sys.stdout.isatty():
+        print(
+            "drawspec: a PNG is binary and stdout is a terminal; pass -o file.png "
+            "or redirect the output",
+            file=sys.stderr,
+        )
+        return USAGE
+
     try:
         document = _read(arguments.document)
-        if arguments.width is not None:
+        if arguments.width is not None and output_format != "text":
             document = replace(document, width=arguments.width)
         if arguments.height is not None:
             document = replace(document, height=arguments.height)
-        svg = render_document(document, arguments.theme, arguments.profile)
+        if output_format == "png":
+            image = render_png(
+                document,
+                arguments.theme,
+                scale=DEFAULT_SCALE if arguments.scale is None else arguments.scale,
+                background=arguments.background or "light",
+            )
+        elif output_format == "text":
+            svg = render_text(
+                document,
+                width=None if arguments.width is None else int(arguments.width),
+                charset=arguments.charset or "unicode",
+            ).rstrip("\n")
+        else:
+            svg = render_document(
+                document, arguments.theme, arguments.profile, variants=variants or None
+            )
     except DrawspecError as error:
         return _refuse(error)
 
+    if output_format == "png":
+        if arguments.out:
+            Path(arguments.out).write_bytes(image)
+        else:
+            sys.stdout.buffer.write(image)
+            sys.stdout.flush()
+        return OK
     if arguments.out:
         Path(arguments.out).write_text(svg, encoding="utf-8")
     else:
         print(svg)
     return OK
+
+
+def _output_format(arguments: argparse.Namespace) -> str | None:
+    """The format `render` writes, or None after reporting a contradiction."""
+    inferred = EXTENSIONS.get(Path(arguments.out).suffix.lower()) if arguments.out else None
+    chosen: str | None = arguments.format
+    if chosen and inferred and chosen != inferred:
+        print(
+            f"drawspec: --format {chosen} contradicts -o {arguments.out}; "
+            f"name the file .{'txt' if chosen == 'text' else chosen} or drop --format",
+            file=sys.stderr,
+        )
+        return None
+    return chosen or inferred or "svg"
+
+
+def _scale(value: str) -> float:
+    """`--scale`, refused by argparse when it is not a usable factor."""
+    try:
+        scale = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"not a number: {value!r}") from None
+    if not 0 < scale <= MAX_SCALE:
+        raise argparse.ArgumentTypeError(f"must be above 0 and at most {MAX_SCALE:g}")
+    return scale
 
 
 def _validate(arguments: argparse.Namespace) -> int:
@@ -286,6 +470,34 @@ def _theme_check(arguments: argparse.Namespace) -> int:
             print(f"{first} and {second} differ only by colour", file=sys.stderr)
         return REFUSED
     print(f"{theme.name}: {len(ambiguous)} ambiguous role pairs")
+    return OK
+
+
+def _theme_from(arguments: argparse.Namespace) -> int:
+    """A brand's tokens in, a theme out, and a line on stderr for every token.
+
+    The theme is the thing asked for, so it alone goes to stdout; the report is
+    about how it was made, and goes beside it. A URL is a usage error rather than
+    a refusal — nothing was read — and drawspec never fetches one.
+    """
+    for brand in arguments.brand:
+        if re.match(r"^[a-z][a-z0-9+.-]*://", brand, re.IGNORECASE):
+            print(
+                f"drawspec: {brand} is a URL. theme from reads local files only and makes "
+                f"no network request; save the stylesheet or tokens file and pass its path.",
+                file=sys.stderr,
+            )
+            return USAGE
+    try:
+        derived = derive_theme(arguments.brand, arguments.name, strict=arguments.strict)
+    except ThemeError as error:
+        return _refuse(error)
+
+    print(derived.report, file=sys.stderr)
+    if arguments.out:
+        Path(arguments.out).write_text(derived.toml, encoding="utf-8")
+    else:
+        sys.stdout.write(derived.toml)
     return OK
 
 

@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "kind": "familytree",
+  "title": "Henry VIII's six marriages and three heirs",
+  "description": "History notes: Henry VII's children, Henry VIII's six queens in marriage order, and the child of each marriage that had one.",
+  "people": [
+    {"id": "h7", "sex": "male", "text": "Henry VII"},
+    {"id": "eoy", "sex": "female", "text": "Elizabeth of York"},
+    {"id": "arthur", "sex": "male", "text": "Arthur"},
+    {"id": "margaret", "sex": "female", "text": "Margaret"},
+    {"id": "h8", "sex": "male", "text": "Henry VIII", "role": "emphasis"},
+    {"id": "maryt", "sex": "female", "text": "Mary"},
+    {"id": "catherine", "sex": "female", "text": "Catherine of Aragon"},
+    {"id": "anne", "sex": "female", "text": "Anne Boleyn"},
+    {"id": "jane", "sex": "female", "text": "Jane Seymour"},
+    {"id": "cleves", "sex": "female", "text": "Anne of Cleves"},
+    {"id": "howard", "sex": "female", "text": "Catherine Howard"},
+    {"id": "parr", "sex": "female", "text": "Catherine Parr"},
+    {"id": "mary1", "sex": "female", "text": "Mary I"},
+    {"id": "e1", "sex": "female", "text": "Elizabeth I"},
+    {"id": "ed6", "sex": "male", "text": "Edward VI"}
+  ],
+  "couples": [
+    {"between": ["h7", "eoy"], "children": ["arthur", "margaret", "h8", "maryt"]},
+    {"between": ["h8", "catherine"], "children": ["mary1"], "separated": true},
+    {"between": ["h8", "anne"], "children": ["e1"]},
+    {"between": ["h8", "jane"], "children": ["ed6"]},
+    {"between": ["h8", "cleves"], "separated": true},
+    {"between": ["h8", "howard"]},
+    {"between": ["h8", "parr"]}
+  ]
+}

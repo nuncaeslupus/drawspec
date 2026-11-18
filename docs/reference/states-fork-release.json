@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "kind": "states",
+  "title": "A release build runs three checks at once",
+  "description": "A queued release forks into a dependency scan, compiling and testing, three regions of one composite that run side by side; the join bar passes only when all three are done. Any check failing stops the whole build.",
+  "initial": "queued",
+  "final": ["released", "failed"],
+  "states": [
+    {"id": "queued", "text": "Queued"},
+    {"id": "split", "role": "fork"},
+    {"id": "compiling", "text": "Compiling"},
+    {"id": "compiled", "text": "Artefact\nstored"},
+    {"id": "testing", "text": "Testing"},
+    {"id": "tested", "text": "Tests\npassed"},
+    {"id": "scanning", "text": "Scanning\ndependencies"},
+    {"id": "clean", "text": "No known\nissues"},
+    {"id": "gather", "role": "join"},
+    {"id": "publishing", "text": "Publishing"},
+    {"id": "released", "text": "Released", "role": "emphasis"},
+    {"id": "failed", "text": "Failed"}
+  ],
+  "groups": [
+    {"id": "checking", "text": "Checking", "regions": [
+      {"members": ["scanning", "clean"]},
+      {"members": ["compiling", "compiled"]},
+      {"members": ["testing", "tested"]}
+    ]}
+  ],
+  "transitions": [
+    {"from": "queued", "to": "split", "event": "runner free"},
+    {"from": "split", "to": "compiling"},
+    {"from": "split", "to": "testing"},
+    {"from": "split", "to": "scanning"},
+    {"from": "compiling", "to": "compiled", "event": "build ok"},
+    {"from": "testing", "to": "tested", "event": "all green"},
+    {"from": "scanning", "to": "clean", "event": "report empty"},
+    {"from": "compiled", "to": "gather"},
+    {"from": "tested", "to": "gather"},
+    {"from": "clean", "to": "gather"},
+    {"from": "gather", "to": "publishing", "action": "tag version"},
+    {"from": "publishing", "to": "released", "event": "upload done", "role": "strong"},
+    {"from": "checking", "to": "failed", "event": "a check fails", "role": "weak"}
+  ]
+}

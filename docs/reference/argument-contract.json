@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "kind": "argument",
+  "title": "Did the email of 3 May form a contract?",
+  "description": "Law course notes: whether a contract was formed, with offer and acceptance as co-premises, an objection to the acceptance and its rebuttal.",
+  "claim": "A binding contract was formed on 3 May",
+  "points": [
+    {"id": "offer", "on": "claim", "stance": "for", "text": "The quote was an offer capable of acceptance"},
+    {"id": "accept", "on": "claim", "stance": "for", "with": ["offer"], "text": "The buyer's email accepted it"},
+    {"id": "consid", "on": "claim", "stance": "for", "text": "Price was agreed: consideration given"},
+    {"id": "counter", "on": "accept", "stance": "against", "text": "The email asked for a later delivery date: a counter-offer"},
+    {"id": "enquiry", "on": "counter", "stance": "against", "role": "emphasis", "text": "It asked whether the date could move: a mere enquiry"}
+  ]
+}

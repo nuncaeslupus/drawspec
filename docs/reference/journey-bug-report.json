@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "kind": "journey",
+  "title": "Reporting a bug to us",
+  "feelings": ["ignored", "unsure", "heard"],
+  "stages": [
+    {"text": "Hits the bug", "feeling": "unsure"},
+    {"text": "Searches issues", "feeling": "unsure"},
+    {"text": "Files a report", "feeling": "heard"},
+    {"text": "Waits 3 weeks", "feeling": "ignored", "role": "emphasis"},
+    {"text": "Gets a fix", "feeling": "heard"}
+  ],
+  "caption": "The wait is the whole problem: triage within a week is the proposed fix."
+}

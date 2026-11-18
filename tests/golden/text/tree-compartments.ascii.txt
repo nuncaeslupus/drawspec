@@ -1,0 +1,25 @@
+#===========#
+# Payment   #
+# reference #
+# amount    #
+# taken at  #
+#=#=========#
+  | +------------------+
+  |-| Card payment     |
+  | | last four digits |
+  | | scheme           |
+  | +-+----------------+
+  |   | .-------------------------------.
+  |   `.( Settled                       )
+  |     ( no further change is possible )
+  |     '-------------------------------'
+  | +---------------+
+  |-| Bank transfer |
+  | | sort code     |
+  | | cleared at    |
+  | +---------------+
+  | +----------+
+  `-| Refund   |
+    | reverses |
+    | reason   |
+    +----------+

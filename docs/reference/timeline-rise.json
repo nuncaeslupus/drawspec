@@ -1,0 +1,14 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "timeline",
+  "rise": true,
+  "title": "Three degrees of going digital, by how deep the change cuts",
+  "description": "The axis grows to the right: each degree changes more than the one before it. Above the line, what changes; below it, an example.",
+  "caption": "depth of the change to the organisation",
+  "items": [
+    {"text": "Digitising\nchanges the medium", "note": "paper → file"},
+    {"text": "Digitalising\nchanges the channel of the process", "note": "counter → online"},
+    {"text": "Digital transformation\nchanges the service model, the structure and the culture", "note": "the errand disappears"}
+  ]
+}

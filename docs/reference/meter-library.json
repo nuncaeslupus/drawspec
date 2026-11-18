@@ -1,0 +1,31 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "meter",
+  "style": "bullet",
+  "title": "The library service's year against its targets",
+  "description": "Four bullet graphs: each measure as a bar on poor, fair and good bands, with the year's target as a tick across it.",
+  "caption": "April to March. Bands set from the previous three years.",
+  "meters": [
+    {
+      "text": "Visits\nthousands",
+      "amount": 182, "max": 240, "target": 200,
+      "bands": [{"text": "Poor", "to": 150}, {"text": "Fair", "to": 190}, {"text": "Good", "to": 240}]
+    },
+    {
+      "text": "Loans\nthousands",
+      "amount": 412, "max": 480, "target": 400,
+      "bands": [{"text": "Poor", "to": 300}, {"text": "Fair", "to": 380}, {"text": "Good", "to": 480}]
+    },
+    {
+      "text": "New members",
+      "amount": 2350, "max": 3000, "target": 2500,
+      "bands": [{"text": "Poor", "to": 1500}, {"text": "Fair", "to": 2200}, {"text": "Good", "to": 3000}]
+    },
+    {
+      "text": "Volunteer hours",
+      "amount": 3400, "max": 8000, "target": 6000, "role": "emphasis",
+      "bands": [{"text": "Poor", "to": 4000}, {"text": "Fair", "to": 5500}, {"text": "Good", "to": 8000}]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "clock",
+  "title": "Roman numerals, to the nearest minute",
+  "description": "Three faces numbered I to XII showing times to the minute, each read in words and on the 24-hour clock.",
+  "numerals": "roman",
+  "readout": "both",
+  "clocks": [
+    {"time": "9:07", "text": "Register"},
+    {"time": "14:52", "text": "Afternoon break"},
+    {"time": "11:38", "text": "Lunch queue"}
+  ]
+}

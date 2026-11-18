@@ -130,6 +130,18 @@ class TextBlock:
         return None if not self.rule else self.lead_lines * self.advance + self.rule / 2
 
 
+def bold_lines(text: str) -> str:
+    """`text` set bold throughout, its own inline markers dropped.
+
+    Each line is wrapped in its own `**…**`: a pair that crossed a newline
+    would be split by `wrap` into two unmatched markers and printed as literal
+    asterisks (issue #133, a two-line `emphasis` point on a numberline).
+    """
+    return "\n".join(
+        f"**{line.replace('**', '')}**" if line.strip() else line for line in text.split("\n")
+    )
+
+
 def parse_spans(text: str, *, font: str = "sans") -> tuple[Span, ...]:
     """Split `text` into spans on its inline markers.
 

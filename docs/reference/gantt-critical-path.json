@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "kind": "gantt",
+  "title": "Six activities, one critical path",
+  "caption": "Heavy bars have no float: delaying any of them delays the project.",
+  "axis": {"label": "Day", "min": 0, "max": 14},
+  "tasks": [
+    {"id": "a", "text": "A — design", "start": 0, "end": 3, "role": "strong"},
+    {"id": "b", "text": "B — write the manual", "start": 3, "end": 6},
+    {"id": "c", "text": "C — build the frame", "start": 3, "end": 8, "role": "strong"},
+    {"id": "d", "text": "D — order parts", "start": 0, "end": 5},
+    {"id": "e", "text": "E — fit the parts", "start": 8, "end": 11, "role": "strong"},
+    {"id": "f", "text": "F — test", "start": 11, "end": 14, "role": "strong"}
+  ],
+  "edges": [
+    {"from": "a", "to": "b"},
+    {"from": "a", "to": "c", "role": "strong"},
+    {"from": "c", "to": "e", "role": "strong"},
+    {"from": "d", "to": "e"},
+    {"from": "e", "to": "f", "role": "strong"}
+  ]
+}

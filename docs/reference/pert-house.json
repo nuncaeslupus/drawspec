@@ -1,0 +1,24 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "pert",
+  "title": "Building a house",
+  "description": "A house from permits to handover: the frame opens four trades at once, and the critical path runs through the plumbing, the drywall and the interior.",
+  "unit": "days",
+  "activities": [
+    {"id": "permits", "text": "Survey and permits", "duration": 5},
+    {"id": "excavate", "text": "Excavate", "duration": 3, "after": ["permits"]},
+    {"id": "foundation", "text": "Pour foundation", "duration": 4, "after": ["excavate"]},
+    {"id": "frame", "text": "Frame walls and roof", "duration": 10, "after": ["foundation"]},
+    {"id": "roof", "text": "Roofing", "duration": 4, "after": ["frame"]},
+    {"id": "plumbing", "text": "Rough plumbing", "duration": 5, "after": ["frame"]},
+    {"id": "wiring", "text": "Rough wiring", "duration": 4, "after": ["frame"]},
+    {"id": "windows", "text": "Windows and doors", "duration": 3, "after": ["frame"]},
+    {"id": "insulate", "text": "Insulate", "duration": 3, "after": ["plumbing", "wiring"]},
+    {"id": "exterior", "text": "Exterior finish", "duration": 7, "after": ["roof", "windows"]},
+    {"id": "drywall", "text": "Drywall", "duration": 6, "after": ["insulate", "windows"]},
+    {"id": "interior", "text": "Interior finish", "duration": 8, "after": ["drywall"]},
+    {"id": "landscape", "text": "Landscaping", "duration": 5, "after": ["exterior"]},
+    {"id": "handover", "text": "Inspection and handover", "duration": 1, "after": ["interior", "landscape"]}
+  ]
+}

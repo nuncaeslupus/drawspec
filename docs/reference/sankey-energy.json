@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "kind": "sankey",
+  "title": "Where a data centre's 10 MW go",
+  "caption": "Course notes, power and cooling. Rounded figures for one hall at full load.",
+  "unit": "MW",
+  "nodes": [
+    {"id": "grid", "text": "Grid supply"},
+    {"id": "solar", "text": "Rooftop solar"},
+    {"id": "ups", "text": "UPS and distribution"},
+    {"id": "cooling", "text": "Cooling plant"},
+    {"id": "it", "text": "IT load", "role": "emphasis"},
+    {"id": "loss", "text": "Conversion losses", "role": "note"},
+    {"id": "servers", "text": "Servers"},
+    {"id": "storage", "text": "Storage"},
+    {"id": "network", "text": "Network"},
+    {"id": "heat", "text": "Heat rejected outdoors"}
+  ],
+  "flows": [
+    {"from": "grid", "to": "ups", "amount": 6.6},
+    {"from": "grid", "to": "cooling", "amount": 2.6},
+    {"from": "solar", "to": "ups", "amount": 0.8},
+    {"from": "ups", "to": "it", "amount": 6.8, "role": "strong"},
+    {"from": "ups", "to": "loss", "amount": 0.6},
+    {"from": "cooling", "to": "heat", "amount": 2.6},
+    {"from": "it", "to": "servers", "amount": 5.2, "role": "strong"},
+    {"from": "it", "to": "storage", "amount": 0.9},
+    {"from": "it", "to": "network", "amount": 0.7}
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "kind": "venn",
+  "title": "Feature parity, honestly",
+  "sets": [
+    {"id": "web", "text": "Web"},
+    {"id": "desktop", "text": "Desktop"},
+    {"id": "mobile", "text": "Mobile"}
+  ],
+  "regions": [
+    {"in": ["web"], "text": "Admin console"},
+    {"in": ["desktop"], "text": "Offline editing"},
+    {"in": ["mobile"], "text": "Push alerts"},
+    {"in": ["web", "desktop"], "text": "Bulk export"},
+    {"in": ["web", "desktop", "mobile"], "text": "Viewing and comments"}
+  ]
+}

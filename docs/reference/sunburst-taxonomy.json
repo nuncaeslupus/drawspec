@@ -1,0 +1,24 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "sunburst",
+  "title": "Kingdoms of life",
+  "description": "A taxonomy with no hub — the top level fills the centre, split into wedges.",
+  "nodes": [
+    {"text": "Animals", "children": [
+      {"text": "Mammals", "children": [{"text": "Whale"}, {"text": "Bat"}]},
+      {"text": "Birds", "children": [{"text": "Owl"}, {"text": "Finch"}]},
+      {"text": "Insects", "children": [{"text": "Ant"}, {"text": "Bee"}]}
+    ]},
+    {"text": "Plants", "children": [
+      {"text": "Mosses"},
+      {"text": "Ferns"},
+      {"text": "Flowering", "children": [{"text": "Grasses"}, {"text": "Trees"}]}
+    ]},
+    {"text": "Fungi", "children": [
+      {"text": "Moulds"},
+      {"text": "Yeasts"},
+      {"text": "Mushrooms"}
+    ]}
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "flow",
+  "title": "An incident, and whose each step is",
+  "description": "The same four steps `flow-bands` draws, said the other way round. There a band names something running *alongside* the steps and does not attribute any of them; here `actor` names who performs each one. The difference is not decoration: a band's bar spans its members' extent, so an owner holding the first, second and fourth step would draw a bar straight across the third — claiming a step it does not perform. Ownership is a property of one box, not a span over several, which is why it is a field on the node.",
+  "caption": "Three owners across four steps, and the handovers are the two places the lead changes. Compare `flow-bands`, where the bars accompany all four and attribute none.",
+  "nodes": [
+    { "id": "detect", "text": "Detected", "actor": "Monitoring", "role": "start" },
+    { "id": "triage", "text": "Triaged", "actor": "The on-call engineer" },
+    { "id": "contain", "text": "Contained", "actor": "The on-call engineer" },
+    { "id": "close", "text": "Closed", "actor": "The incident owner", "role": "terminal" }
+  ],
+  "edges": [
+    { "from": "detect", "to": "triage" },
+    { "from": "triage", "to": "contain" },
+    { "from": "contain", "to": "close" }
+  ]
+}

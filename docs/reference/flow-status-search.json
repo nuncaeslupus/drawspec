@@ -1,0 +1,23 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "flow",
+  "title": "Search moves off the primary database",
+  "description": "A design document's proposal, drawn once as the target state with the change marked on it. Product search stops running full-text queries on the primary database: an indexer reads its change feed into a new search cluster, which the product service queries instead. The nightly re-index job goes away.",
+  "nodes": [
+    {"id": "gateway", "text": "API gateway"},
+    {"id": "product", "text": "Product service", "status": "changed"},
+    {"id": "db", "text": "Primary database"},
+    {"id": "cron", "text": "Nightly re-index job", "status": "removed"},
+    {"id": "indexer", "text": "Indexer worker", "status": "added"},
+    {"id": "search", "text": "Search cluster", "status": "added"}
+  ],
+  "edges": [
+    {"from": "gateway", "to": "product"},
+    {"from": "product", "to": "db", "label": "orders, stock"},
+    {"from": "product", "to": "search", "label": "queries", "status": "added"},
+    {"from": "db", "to": "indexer", "label": "change feed", "status": "added"},
+    {"from": "indexer", "to": "search", "status": "added"},
+    {"from": "cron", "to": "db", "status": "removed"}
+  ]
+}

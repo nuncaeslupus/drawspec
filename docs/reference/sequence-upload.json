@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "kind": "sequence",
+  "title": "A direct upload",
+  "description": "The API never sees the file's bytes. It hands out a short-lived upload address, the browser writes to the store directly, and the store tells a scanner, which tells the API whether the file may be used.",
+  "participants": [
+    {"id": "browser", "text": "Browser"},
+    {"id": "api", "text": "API"},
+    {"id": "store", "text": "Object store"},
+    {"id": "scan", "text": "Virus scanner"}
+  ],
+  "groups": [
+    {"id": "ours", "text": "Our account", "members": ["api", "store", "scan"]}
+  ],
+  "messages": [
+    {"id": "ask", "from": "browser", "to": "api", "text": "I want to upload `report.pdf`"},
+    {"from": "api", "to": "browser", "text": "upload address, valid 5 min", "role": "weak"},
+    {"id": "put", "from": "browser", "to": "store", "text": "PUT the bytes"},
+    {"from": "store", "to": "browser", "text": "stored", "role": "weak"},
+    {"id": "event", "from": "store", "to": "scan", "text": "a new object arrived"},
+    {"id": "clean", "from": "scan", "to": "api", "text": "`report.pdf` is clean"},
+    {"id": "dirty", "from": "scan", "to": "api", "text": "`report.pdf` is infected", "role": "strong"},
+    {"id": "delete", "from": "api", "to": "store", "text": "delete it"}
+  ],
+  "fragments": [
+    {"operator": "alt", "from": "clean", "to": "delete", "text": "scan passed",
+     "else": [{"at": "dirty", "text": "scan failed"}]}
+  ]
+}

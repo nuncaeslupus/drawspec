@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "kind": "familytree",
+  "title": "First cousins, and a recessive condition in their children",
+  "description": "Biology course notes: an autosomal recessive trait that no one shows for three generations, until two carrier cousins have children together.",
+  "caption": "Both cousins inherited the same recessive allele from their shared grandparents, so each of their children had a one-in-four chance of being affected.",
+  "people": [
+    {"id": "gf", "sex": "male"},
+    {"id": "gm", "sex": "female", "status": "carrier"},
+    {"id": "son", "sex": "male", "status": "carrier"},
+    {"id": "sonwife", "sex": "female"},
+    {"id": "dau", "sex": "female", "status": "carrier"},
+    {"id": "dauhusb", "sex": "male"},
+    {"id": "a", "sex": "male", "status": "carrier"},
+    {"id": "asis", "sex": "female"},
+    {"id": "bbro", "sex": "male"},
+    {"id": "b", "sex": "female", "status": "carrier"},
+    {"id": "k1", "sex": "female", "status": "carrier"},
+    {"id": "k2", "sex": "male", "status": "affected", "proband": true},
+    {"id": "k3", "sex": "female"},
+    {"id": "k4", "sex": "female", "status": "affected"}
+  ],
+  "couples": [
+    {"between": ["gf", "gm"], "children": ["son", "dau"]},
+    {"between": ["son", "sonwife"], "children": ["asis", "a"]},
+    {"between": ["dauhusb", "dau"], "children": ["b", "bbro"]},
+    {"between": ["a", "b"], "children": ["k1", "k2", "k3", "k4"], "consanguineous": true}
+  ]
+}

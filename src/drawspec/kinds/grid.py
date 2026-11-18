@@ -18,12 +18,15 @@ so a consumer retunes their diagrams by editing a theme file.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
+from dataclasses import dataclass
 from itertools import pairwise
+from typing import Final
 
 from drawspec.errors import DrawspecError, FitError
 from drawspec.geometry import Box, normalise, size_box
-from drawspec.kinds.common import box_primitives, text_runs
-from drawspec.legend import entries_for, height_of, primitives_for
+from drawspec.kinds.common import box_primitives, level_tones, line_bounds, text_runs, toned
+from drawspec.legend import Entry, entries_for, height_of, primitives_for
 from drawspec.scene import (
     Path,
     Polygon,
@@ -37,6 +40,18 @@ from drawspec.scene import (
 from drawspec.schema import Cell, Document, Item
 from drawspec.text.measure import TextMeasurer
 from drawspec.text.wrap import TextBlock, wrap
+from drawspec.textgrid import (
+    Drawn,
+    Grid,
+    boxed,
+    caption_lines,
+    cells,
+    finished,
+    label_lines,
+    widest,
+    words_fit,
+    wrapped,
+)
 from drawspec.theme import Theme
 
 #: The role the timeline's own axis and ticks are drawn with. An axis is a plain
@@ -120,10 +135,11 @@ def _stack(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
 
     primitives: list[Primitive] = []
     y = 0.0
-    for box in boxes:
+    tones = level_tones([item.role for item in document.items], theme)
+    for box, tone in zip(boxes, tones, strict=True):
         # Full width, not the width its own text happened to need.
         placed = box.resized(width=width).moved_to(0.0, y)
-        primitives.extend(box_primitives(placed, theme, measurer))
+        primitives.extend(toned(part, tone) for part in box_primitives(placed, theme, measurer))
         y += placed.height + gap
 
     return _scene(document, primitives, width, max(y - gap, 0.0))
@@ -148,13 +164,43 @@ def _columns(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         )
 
     boxes = normalise(_sized(document.items, theme, measurer, column))
+    heights = (
+        _rising(len(boxes), max((box.height for box in boxes), default=0.0), theme)
+        if document.rise
+        else None
+    )
+
     primitives: list[Primitive] = []
+    tallest = max(heights) if heights else max((box.height for box in boxes), default=0.0)
     for index, box in enumerate(boxes):
-        placed = box.resized(width=column).moved_to((column + gutter) * index, 0.0)
+        # Sobre una línea de base común: una serie que asciende se lee desde
+        # abajo, y alinearla por arriba dibujaría lo contrario —columnas que
+        # cuelgan— con las mismas alturas.
+        top = tallest - heights[index] if heights else 0.0
+        placed = box.resized(width=column, height=heights[index] if heights else None).moved_to(
+            (column + gutter) * index, top
+        )
         primitives.extend(box_primitives(placed, theme, measurer))
 
-    height = max((box.height for box in boxes), default=0.0)
-    return _scene(document, primitives, width, height)
+    return _scene(document, primitives, width, tallest)
+
+
+def _rising(count: int, natural: float, theme: Theme) -> list[float]:
+    """Alturas de una serie que asciende, de la natural a `natural * rise`.
+
+    La más baja es la que el texto necesita, **no una fracción de la más alta**:
+    así toda etiqueta cabe sea cual sea el `rise` del tema, y subirlo estira el
+    dibujo hacia arriba en vez de estrangular la primera. Con un solo elemento
+    no hay serie y no hay ascenso.
+
+    La comparten `columns` y `timeline` porque el ascenso es el mismo: cajas
+    alineadas por abajo que crecen hacia arriba. Lo único que cambia es dónde
+    está esa base —el suelo del lienzo o el eje—, y eso ya lo decide cada uno.
+    """
+    if count < 2:
+        return [natural]
+    paso = natural * (theme.box.rise - 1.0) / (count - 1)
+    return [natural + paso * index for index in range(count)]
 
 
 # ---------------------------------------------------------------------------
@@ -205,7 +251,13 @@ def _timeline(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
         )
 
     boxes = normalise(_sized(document.items, theme, measurer, label_width))
-    band = max((box.height for box in boxes), default=0.0)
+    natural = max((box.height for box in boxes), default=0.0)
+    # Las etiquetas de un `timeline` ya se apoyan todas en el eje, así que
+    # ascender es exactamente lo mismo que en `columns`: cambia la altura de
+    # cada caja y no cambia nada más. El tick sigue saliendo de `band`, que es
+    # donde acaban todas.
+    heights = _rising(len(boxes), natural, theme) if document.rise else None
+    band = max(heights) if heights else natural
     tick = theme.edge.head_length * TICK_FRACTION
     axis_y = band + theme.box.padding.top
 
@@ -222,7 +274,10 @@ def _timeline(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene
         # along here, and the reader is left to pair each label with the nearest
         # mark by eye. Touching both, it says which moment is which.
         primitives.append(Path(AXIS_ROLE, points=((centre, band), (centre, axis_y + tick / 2))))
-        placed = box.resized(width=label_width).moved_to(centre - label_width / 2, 0.0)
+        alto = heights[index] if heights else None
+        placed = box.resized(width=label_width, height=alto).moved_to(
+            centre - label_width / 2, band - (alto if alto else natural)
+        )
         primitives.extend(box_primitives(placed, theme, measurer))
 
     below = axis_y + tick / 2
@@ -380,7 +435,11 @@ def _shares(items: tuple[Item, ...], count: int) -> list[float] | None:
             "nothing for the spacing to say. Give them different values, or drop "
             "`at` and let them space evenly."
         )
-    return [(value - low) / (high - low) for value in placed]
+    # Scaled first, so a span near the float limit (-1e308 to 1e308) cannot
+    # overflow to infinity; the shares are the same either way.
+    scale = max(abs(low), abs(high))
+    low, high = low / scale, high / scale
+    return [(value / scale - low) / (high - low) for value in placed]
 
 
 def _tightest(shares: list[float]) -> float:
@@ -412,9 +471,6 @@ def _centres(
     return [first + share * (last - first) for share in shares]
 
 
-__all__ = ["AXIS_ROLE", "TICK_FRACTION", "grid_scene"]
-
-
 # ---------------------------------------------------------------------------
 # matrix
 # ---------------------------------------------------------------------------
@@ -439,6 +495,12 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         raise DrawspecError("a matrix needs at least one cell")
     fills = _group_fills(cells, theme)
     inks = _group_colours(cells, theme)
+    tones = _scale_tones(document.scale, theme)
+    if tones:
+        # An ordered scale fills by tone — the page's ink, laid down at the
+        # step's strength — rather than with a pattern from the set.
+        fills = {"": "", **dict.fromkeys(document.scale, "solid")}
+        inks = {"": "", **dict.fromkeys(document.scale, "currentColor")}
 
     _check_cells(cells)
     across = max(max(cell.column + cell.across for cell in cells), len(document.columns))
@@ -448,6 +510,17 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     heading_width = _heading_width(document, theme, measurer, width) if document.rows else 0.0
     column_width = (width - heading_width) / across
 
+    # A matrix that carries relations is a grid of boxes rather than a solid
+    # table, so its cells stand apart far enough for an arrow to live in the
+    # join. Only then: the tables that have no edges keep the shared borders
+    # that make them read as tables.
+    inset = theme.edge.clearance if document.edges else 0.0
+
+    # Each box is sized for the cell it is drawn as: its slot less the inset
+    # either side. Sized for the whole slot, it came out taller than its cell,
+    # `resized` never shrinks a box, and the words were centred on a box that
+    # hung past the cell's bottom — sitting low in every cell of a matrix with
+    # edges.
     boxes = {
         (cell.column, cell.row): size_box(
             cell.text,
@@ -455,12 +528,12 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
             measurer=measurer,
             role=cell.role,
             level="body",
-            max_width=column_width * cell.across,
+            max_width=column_width * cell.across - inset * 2,
             shape="rect",
         )
         for cell in cells
     }
-    heights = _row_heights(cells, boxes, down)
+    heights = _row_heights(cells, boxes, down, inset)
     heading_height = (
         size_box(
             " ".join(document.columns) or "x",
@@ -474,9 +547,18 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         else 0.0
     )
 
+    def across_of(cell: Cell) -> tuple[float, float]:
+        left = heading_width + cell.column * column_width + inset
+        return left, left + column_width * cell.across - inset * 2
+
+    # An edge that turns along the join between two rows gets a channel there,
+    # deep enough for its head and its words: the join is only a stroke wide,
+    # and a label centred on it would print over the cells either side (issue
+    # #132).
+    channels, plans = _channels(document, cells, across_of, theme, measurer)
     tops = [heading_height]
-    for height in heights:
-        tops.append(tops[-1] + height)
+    for row, height in enumerate(heights):
+        tops.append(tops[-1] + height + channels.get(row + 1, 0.0))
 
     primitives: list[Primitive] = []
     for index, heading in enumerate(document.columns):
@@ -510,19 +592,17 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
         )
         primitives.extend(text_runs(band, theme, measurer))
 
-    # A matrix that carries relations is a grid of boxes rather than a solid
-    # table, so its cells stand apart far enough for an arrow to live in the
-    # join. Only then: the tables that have no edges keep the shared borders
-    # that make them read as tables.
-    inset = theme.edge.clearance if document.edges else 0.0
     placements: dict[str, tuple[float, float, float, float]] = {}
+    # Every cell's words as boxes, so an edge label can be kept off them.
+    words: list[tuple[float, float, float, float]] = []
 
     for cell in cells:
-        left = heading_width + cell.column * column_width + inset
-        cell_width = column_width * cell.across - inset * 2
+        left, right = across_of(cell)
+        cell_width = right - left
         top = tops[cell.row] + inset
-        cell_height = tops[cell.row + cell.down] - tops[cell.row] - inset * 2
-        right, bottom = left + cell_width, top + cell_height
+        last = cell.row + cell.down
+        cell_height = tops[last] - channels.get(last, 0.0) - tops[cell.row] - inset * 2
+        bottom = top + cell_height
         if cell.id:
             placements[cell.id] = (left, top, right, bottom)
         # Polygons rather than rects: adjacent cells share an edge, and the
@@ -534,6 +614,7 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
                 points=((left, top), (right, top), (right, bottom), (left, bottom)),
                 fill=fills[cell.group],
                 fill_colour=inks[cell.group],
+                fill_opacity=tones.get(cell.group, 1.0),
             )
         )
         placed = (
@@ -541,9 +622,11 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
             .resized(width=cell_width, height=cell_height)
             .moved_to(left, top)
         )
-        primitives.extend(text_runs(placed, theme, measurer))
+        runs = text_runs(placed, theme, measurer)
+        primitives.extend(runs)
+        words.extend(_line_box(run, theme, measurer) for run in runs)
 
-    primitives.extend(_cell_edges(document, placements, theme, measurer))
+    primitives.extend(_cell_edges(document, placements, words, plans, theme, measurer))
 
     # What the fills stand for. A matrix's whole content is a comparison between
     # groups of cells, so a matrix with two groups and no key is a drawing whose
@@ -554,11 +637,31 @@ def _matrix(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     # `capcalera` — was being read out to the reader as though it were prose. A
     # `key` entry gives the group a name meant for reading.
     named = {entry.group: entry.text for entry in document.key}
-    key = entries_for(
-        [(named.get(group, group), "step", True) for group in _named_groups(cells)], theme
+    key = (
+        # Every step of an ordered scale, in its order and whether or not a cell
+        # uses it: the key of a heatmap is the scale, and a reader looking for
+        # *often* should learn that nothing was, not that the word is missing.
+        tuple(
+            Entry(named.get(step, step), "step", "solid", "currentColor", opacity=tones[step])
+            for step in document.scale
+        )
+        if tones
+        else entries_for(
+            [(named.get(group, group), "step", True) for group in _named_groups(cells)], theme
+        )
     )
     primitives.extend(primitives_for(key, theme, measurer, 0.0, tops[-1], width))
     return _scene(document, primitives, width, tops[-1] + height_of(key, theme, measurer, width))
+
+
+def _scale_tones(scale: tuple[str, ...], theme: Theme) -> dict[str, float]:
+    """Each step of an ordered scale's tone, spread across the theme's ramp.
+
+    Spread rather than taken from the front, so the ends of any scale are the
+    ends of the ramp: a two-step scale is the lightest tone against the darkest,
+    not two neighbouring greys.
+    """
+    return {step: theme.mark.tone_for(index, len(scale)) for index, step in enumerate(scale)}
 
 
 def _named_groups(cells: tuple[Cell, ...]) -> list[str]:
@@ -635,7 +738,7 @@ def _check_cells(cells: tuple[Cell, ...]) -> None:
 
 
 def _row_heights(
-    cells: tuple[Cell, ...], boxes: dict[tuple[int, int], Box], down: int
+    cells: tuple[Cell, ...], boxes: dict[tuple[int, int], Box], down: int, inset: float = 0.0
 ) -> list[float]:
     """Every row the same depth: the deepest any one cell needs of a single row.
 
@@ -650,9 +753,13 @@ def _row_heights(
     It needs its rows together, not each of them as deep as itself, so what it
     demands of one row is its own depth divided by how many it spans — which is
     what keeps a two-row cell from doubling the matrix.
+
+    A cell is drawn `inset` in from its slot on every side, so the slot is
+    charged the box and both insets: a row only as deep as the box left the
+    cell shorter than its own text block.
     """
     demand = max(
-        (boxes[(cell.column, cell.row)].height / cell.down for cell in cells),
+        ((boxes[(cell.column, cell.row)].height + inset * 2) / cell.down for cell in cells),
         default=0.0,
     )
     return [demand] * down
@@ -666,9 +773,175 @@ def _heading_width(document: Document, theme: Theme, measurer: TextMeasurer, wid
     )
 
 
+@dataclass(frozen=True)
+class _Turn:
+    """How an edge that turns along a row join is drawn: its label and where it sits.
+
+    `block` is the label as wrapped to the stretch of the run it was given, or
+    `None` for an edge with no label; `centre` is the middle of that stretch.
+    """
+
+    block: TextBlock | None = None
+    centre: float = 0.0
+
+
+def _turning(source: Cell, target: Cell) -> int | None:
+    """The join an edge turns along — keyed by the lower row — or `None` for a straight one.
+
+    Two cells in neighbouring rows that share no column cannot be joined by a
+    straight run that touches both: the run that used to be drawn went along
+    the join between the rows, level with neither cell, and stopped short of
+    both (the return from the last output to the first process, issue #132).
+    So such an edge leaves its source across the join, runs along it, and
+    enters its target across it — three legs, each end on a cell.
+
+    Only for *adjacent* rows: an edge between rows further apart would run
+    through the row between them whichever join it turned along.
+    """
+    upper, lower = sorted((source, target), key=lambda cell: cell.row)
+    apart = (
+        target.column >= source.column + source.across
+        or source.column >= target.column + target.across
+    )
+    if not apart or upper.row + upper.down != lower.row:
+        return None
+    return lower.row
+
+
+def _riser(left: float, right: float, towards_left: bool) -> float:
+    """Where a turning edge crosses into a cell: a quarter in from the side it comes from.
+
+    A quarter rather than the middle, because the middle is where a straight
+    edge from the cell above or below already runs, and a riser drawn on it
+    would read as one line with two meanings.
+    """
+    quarter = (right - left) / 4
+    return left + quarter if towards_left else right - quarter
+
+
+def _channels(
+    document: Document,
+    cells: tuple[Cell, ...],
+    across_of: Callable[[Cell], tuple[float, float]],
+    theme: Theme,
+    measurer: TextMeasurer,
+) -> tuple[dict[int, float], dict[int, _Turn]]:
+    """How much deeper each join between two rows is drawn, and how each turning edge is drawn.
+
+    The depths are keyed by the lower row, the turns by the edge's index. A
+    turning edge (`_turning`) runs along a join that is otherwise two
+    clearances deep: too shallow for the head of its last leg, and with no room
+    for a label but on the cells' words. So such a join is widened — by enough
+    for a head either side, and for a labelled edge by its label's block
+    twice, once for the words and once for the same daylight on the far side
+    of the stroke.
+
+    The label is kept to a stretch of the run that no other edge crosses. The
+    straight edges between the two rows cross the join, and a label laid
+    across them was either struck through or broke them short of the cells
+    they join. It is wrapped to the widest such stretch, which leaves a long
+    label on several short lines rather than on one that something cuts.
+    """
+    by_id = {cell.id: cell for cell in cells if cell.id}
+    size = theme.scale["label"]
+    clearance = theme.edge.clearance
+    inset = clearance
+    # Each straight edge that crosses a join, at the x where it crosses.
+    crossings: dict[int, list[float]] = {}
+    for edge in document.edges:
+        if edge.source not in by_id or edge.target not in by_id:
+            continue
+        source, target = by_id[edge.source], by_id[edge.target]
+        if _turning(source, target) is not None:
+            continue
+        upper, lower = sorted((source, target), key=lambda cell: cell.row)
+        (ul, ur), (ll, lr) = across_of(upper), across_of(lower)
+        if max(ul, ll) >= min(ur, lr):
+            continue
+        x = (max(ul, ll) + min(ur, lr)) / 2
+        for crossed in range(upper.row + upper.down, lower.row + 1):
+            crossings.setdefault(crossed, []).append(x)
+
+    depths: dict[int, float] = {}
+    turns: dict[int, _Turn] = {}
+    for index, edge in enumerate(document.edges):
+        if edge.source not in by_id or edge.target not in by_id:
+            continue
+        source, target = by_id[edge.source], by_id[edge.target]
+        join = _turning(source, target)
+        if join is None:
+            continue
+        # Enough for the last leg to carry a whole head clear of the stroke it
+        # leaves: the leg is half the channel plus the inset deep.
+        need = max(0.0, 2 * (theme.edge.head_length + clearance - inset))
+        turn = _Turn()
+        if edge.label:
+            (sl, sr), (tl, tr) = across_of(source), across_of(target)
+            leftward = tl < sl
+            ends = sorted((_riser(sl, sr, leftward), _riser(tl, tr, not leftward)))
+            stops = [ends[0], *sorted(x for x in crossings.get(join, []) if ends[0] < x < ends[1])]
+            stops.append(ends[1])
+            middle = (ends[0] + ends[1]) / 2
+            low, high = max(
+                pairwise(stops),
+                key=lambda pair: (pair[1] - pair[0], -abs((pair[0] + pair[1]) / 2 - middle)),
+            )
+            room = high - low - 2 * clearance
+            if room <= 0:
+                raise FitError(
+                    f"the label {edge.label!r} on the edge from {edge.source!r} to "
+                    f"{edge.target!r} has no stretch of its run that the other edges leave "
+                    f"free. Give the diagram more width, or say it in the figure's caption."
+                )
+            block = wrap(edge.label, room, measurer, theme=theme, level="label", lead=False)
+            turn = _Turn(block=block, centre=(low + high) / 2)
+            extents = measurer.measure("", theme.font.default, size)
+            height = extents.ascent + extents.descent + (len(block) - 1) * block.advance
+            need = max(need, 2 * height + clearance)
+        turns[index] = turn
+        depths[join] = max(depths.get(join, 0.0), need)
+    return depths, turns
+
+
+#: Where along its own edge a label is tried, as a share of the run from source to
+#: target: the middle first, then out towards either end. The middle is what a
+#: reader expects and what every label got before any were moved.
+LABEL_STOPS: Final = (0.5, 0.375, 0.625, 0.25, 0.75, 0.125, 0.875)
+
+
+def _line_box(
+    line: TextLine, theme: Theme, measurer: TextMeasurer
+) -> tuple[float, float, float, float]:
+    """A laid-out line's box: its measured extent across, its line box down."""
+    left, right = line_bounds(line, theme, measurer)
+    size = theme.scale[line.level]
+    # A blank cell is a line with no spans: measure nothing in the theme's own font.
+    span = line.spans[0] if line.spans else None
+    extents = measurer.measure(
+        span.text if span else "", span.font if span else theme.font.default, size
+    )
+    return left, line.y - extents.ascent, right, line.y + extents.descent
+
+
+def _overlaps(
+    box: tuple[float, float, float, float],
+    others: list[tuple[float, float, float, float]],
+    margin: float,
+) -> bool:
+    return any(
+        box[0] < other[2] + margin
+        and other[0] < box[2] + margin
+        and box[1] < other[3] + margin
+        and other[1] < box[3] + margin
+        for other in others
+    )
+
+
 def _cell_edges(
     document: Document,
     placements: dict[str, tuple[float, float, float, float]],
+    words: list[tuple[float, float, float, float]],
+    turns: dict[int, _Turn],
     theme: Theme,
     measurer: TextMeasurer,
 ) -> list[Primitive]:
@@ -685,16 +958,29 @@ def _cell_edges(
     straight run between the two cells' facing edges, at the theme's own head,
     with the label beside it. Facing edges rather than centres, because two
     cells of a grid are almost always neighbours — the run is short, and a line
-    from centre to centre would be a line inside two boxes.
+    from centre to centre would be a line inside two boxes. Two cells in
+    neighbouring rows that share no column have no facing edges, and their
+    relation turns along the join between the rows instead (`_turning`), with
+    its label on the stretch `_channels` kept for it.
+
+    A label is kept off every cell's words and every other label (issue #132: a
+    return edge from the last output back to the first process ran along the
+    gutter between the rows, and its label, centred on the run, printed over
+    the two cells' words it passed). It is tried at the middle of its run on
+    the usual side, then on the other side, then further out towards either
+    end; and refused by name when no stop is clear, rather than overprinted.
     """
     if not document.edges:
         return []
     primitives: list[Primitive] = []
+    labels: list[tuple[float, float, float, float]] = []
     size = theme.scale["label"]
-    for edge in document.edges:
+    for index, edge in enumerate(document.edges):
         source, target = placements[edge.source], placements[edge.target]
-        start, finish = _facing(source, target)
+        turn = turns.get(index)
+        route = _turned(source, target) if turn is not None else _facing(source, target)
         role = edge.role
+        start, finish = route[0], route[-1]
         span = math.hypot(finish[0] - start[0], finish[1] - start[1])
         if span <= 0:
             # Two cells at one place cannot happen — `_check_cells` refuses an
@@ -705,13 +991,17 @@ def _cell_edges(
                 f"the edge from {edge.source!r} to {edge.target!r} joins a cell to "
                 f"itself, so there is nothing between them to draw."
             )
-        towards = ((finish[0] - start[0]) / span, (finish[1] - start[1]) / span)
+        # The head points along the last leg, which is the whole run when the
+        # edge is straight.
+        before = route[-2]
+        leg = math.hypot(finish[0] - before[0], finish[1] - before[1])
+        towards = ((finish[0] - before[0]) / leg, (finish[1] - before[1]) / leg)
         if theme.edge_roles[role].has_head:
-            back = min(theme.edge.head_length, span)
+            back = min(theme.edge.head_length, leg)
             shaft = (finish[0] - towards[0] * back, finish[1] - towards[1] * back)
             wing = theme.edge.head_length / 2
             across = (-towards[1] * wing, towards[0] * wing)
-            primitives.append(Path(role, points=(start, shaft)))
+            primitives.append(Path(role, points=(*route[:-1], shaft)))
             primitives.append(
                 Polygon(
                     role,
@@ -723,24 +1013,130 @@ def _cell_edges(
                 )
             )
         else:
-            primitives.append(Path(role, points=(start, finish)))
+            primitives.append(Path(role, points=route))
 
-        if edge.label:
-            extents = measurer.measure(edge.label, theme.font.default, size)
-            away = theme.edge.clearance + extents.ascent
-            middle = ((start[0] + finish[0]) / 2, (start[1] + finish[1]) / 2)
-            primitives.append(
+        if not edge.label:
+            continue
+        if turn is not None and turn.block is not None:
+            primitives.extend(
+                _turn_label(
+                    edge.label,
+                    turn,
+                    route[1][1],
+                    abs(route[1][1] - route[0][1]),
+                    role,
+                    [*words, *labels],
+                    labels,
+                    theme,
+                )
+            )
+            continue
+        towards = ((finish[0] - start[0]) / span, (finish[1] - start[1]) / span)
+        extents = measurer.measure(edge.label, theme.font.default, size)
+        away = theme.edge.clearance + extents.ascent
+        spot = None
+        for share in LABEL_STOPS:
+            along = (
+                start[0] + (finish[0] - start[0]) * share,
+                start[1] + (finish[1] - start[1]) * share,
+            )
+            for side in (1.0, -1.0):
+                x = along[0] - towards[1] * away * side
+                y = along[1] + towards[0] * away * side
+                box = (
+                    x - extents.width / 2,
+                    y - extents.ascent,
+                    x + extents.width / 2,
+                    y + extents.descent,
+                )
+                if not _overlaps(box, [*words, *labels], theme.edge.clearance / 2):
+                    spot = (x, y, box)
+                    break
+            if spot is not None:
+                break
+        if spot is None:
+            raise FitError(
+                f"the label {edge.label!r} on the edge from {edge.source!r} to "
+                f"{edge.target!r} has nowhere along its run that is clear of the cells' "
+                f"words. Shorten the label, give the diagram more width, or say it in the "
+                f"figure's caption."
+            )
+        labels.append(spot[2])
+        primitives.append(
+            TextRun(
+                role,
+                x=spot[0],
+                y=spot[1],
+                text=edge.label,
+                level="label",
+                font=theme.font.default,
+                anchor="middle",
+            )
+        )
+    return primitives
+
+
+def _turned(
+    source: tuple[float, float, float, float], target: tuple[float, float, float, float]
+) -> tuple[tuple[float, float], ...]:
+    """A turning edge's route: out of its source, along the join, into its target.
+
+    The join is the middle of the gap between the two rows; each leg across it
+    leaves or enters a cell a quarter in from the side it faces (`_riser`).
+    """
+    sx1, sy1, sx2, sy2 = source
+    tx1, ty1, tx2, ty2 = target
+    leftward = tx1 < sx1
+    out = _riser(sx1, sx2, leftward)
+    into = _riser(tx1, tx2, not leftward)
+    if ty1 >= sy2:  # the target is in the row below
+        join = (sy2 + ty1) / 2
+        return ((out, sy2), (out, join), (into, join), (into, ty1))
+    join = (ty2 + sy1) / 2
+    return ((out, sy1), (out, join), (into, join), (into, ty2))
+
+
+def _turn_label(
+    text: str,
+    turn: _Turn,
+    join: float,
+    half: float,
+    role: str,
+    others: list[tuple[float, float, float, float]],
+    labels: list[tuple[float, float, float, float]],
+    theme: Theme,
+) -> list[Primitive]:
+    """A turning edge's label, on the stretch of the join kept for it, above or below the run.
+
+    `half` is the gap from the cells' edge to the run. The label is centred in
+    it, ink to ink, so it sits as far from the cells as from its own stroke;
+    hung a clearance off the run it crowded the cells above it.
+    """
+    block = turn.block
+    assert block is not None  # the caller draws only a turn that carries a label
+    height = block.ascent + block.descent + (len(block) - 1) * block.advance
+    clearance = theme.edge.clearance
+    for top in (join - (half + height) / 2, join + (half - height) / 2):
+        box = (turn.centre - block.width / 2, top, turn.centre + block.width / 2, top + height)
+        if not _overlaps(box, others, clearance / 2):
+            labels.append(box)
+            return [
                 TextRun(
                     role,
-                    x=middle[0] - towards[1] * away,
-                    y=middle[1] + towards[0] * away,
-                    text=edge.label,
+                    x=turn.centre,
+                    y=top + block.ascent + line * block.advance,
+                    text=wrapped.text,
                     level="label",
                     font=theme.font.default,
                     anchor="middle",
                 )
-            )
-    return primitives
+                for line, wrapped in enumerate(block)
+            ]
+    raise FitError(
+        f"the label {text!r} has no side of its run along the join between the rows "
+        f"that is clear of the cells' words. Shorten the label, give the diagram more "
+        f"width, or say it in the figure's caption."
+    )
 
 
 def _facing(
@@ -762,3 +1158,199 @@ def _facing(
         return ((sx2, y), (tx1, y)) if tx1 >= sx2 else ((sx1, y), (tx2, y))
     x = (max(sx1, tx1) + min(sx2, tx2)) / 2
     return ((x, sy2), (x, ty1)) if ty1 >= sy2 else ((x, sy1), (x, ty2))
+
+
+# ---------------------------------------------------------------------------
+# Text: `stack` as boxes on boxes, `timeline` down the page
+# ---------------------------------------------------------------------------
+
+#: A timeline entry's mark on the axis, per charset.
+TEXT_TICK: Final = {"unicode": "●", "ascii": "o"}
+
+
+def stack_text(document: Document, width: int, charset: str) -> str:
+    """A `stack` as plain text: its layers as boxes, top to bottom, all one width.
+
+    One width is the SVG's rule — a layer narrower than the one under it would
+    read as less important — so every box is as wide as the widest layer's text,
+    and a layer wider than `width` is wrapped at spaces, as the SVG wraps it.
+
+    Raises:
+        FitError: one word is wider than `width` leaves inside a box.
+    """
+    texts = [
+        (text, f"/items/{position}/text")
+        for position, item in enumerate(document.items)
+        for text in label_lines(item.text, charset, f"/items/{position}/text")
+    ]
+    words_fit(texts, width - 4, width, 4)
+    layers = [
+        [
+            line
+            for text in label_lines(item.text, charset, f"/items/{position}/text")
+            for line in wrapped(text, width - 4, f"/items/{position}/text", width, 4)
+        ]
+        for position, item in enumerate(document.items)
+    ]
+    inner = max(cells(line) for lines in layers for line in lines)
+    drawn = [
+        Drawn(line, f"/items/{position}/text", f"the layer {lines[0]!r}")
+        for position, (item, lines) in enumerate(zip(document.items, layers, strict=True))
+        for line in boxed(lines, item.role, charset, inner, "centre")
+    ]
+    widest(drawn, width)
+    return finished([line.text for line in drawn] + caption_lines(document.caption, width, charset))
+
+
+#: The most blank rows between two entries of a timeline spaced by `at`. A gap
+#: that would take more is drawn this long, its line dashed: not to scale.
+TEXT_GAP_ROWS: Final = 8
+
+
+def _text_rows(items: tuple[Item, ...], heights: list[int]) -> tuple[list[int], set[int]]:
+    """Each entry's first row, and which gaps (by the entry above) are compressed.
+
+    Evenly — one blank row under each entry — unless every entry has an `at`
+    and they rise in the order written; then each gap is in proportion to its
+    interval, the closest pair one blank row apart, and a gap that would take
+    more than `TEXT_GAP_ROWS` blank rows takes that many and is marked.
+
+    Raises:
+        FitError: every entry is at the same point, as the SVG refuses it.
+    """
+    # The steps in shares of the whole span: proportional to the `at` intervals,
+    # which is all the spacing below reads, and none at all for even spacing.
+    shares = _shares(items, len(items)) or []
+    steps = [later - earlier for earlier, later in pairwise(shares)]
+    rows = [0]
+    compressed: set[int] = set()
+    if not steps or any(step < 0 for step in steps):
+        for height in heights[:-1]:
+            rows.append(rows[-1] + height + 1)
+        return rows, compressed
+    # Rows per unit: enough that the closest entries have one blank row between.
+    scale = max(
+        (height + 1) / step for height, step in zip(heights, steps, strict=False) if step > 0
+    )
+    for number, (height, step) in enumerate(zip(heights, steps, strict=False)):
+        distance = max(height + 1, round(step * scale))
+        if distance - height > TEXT_GAP_ROWS:
+            distance = height + TEXT_GAP_ROWS
+            compressed.add(number)
+        rows.append(rows[-1] + distance)
+    return rows, compressed
+
+
+def timeline_text(document: Document, width: int, charset: str) -> str:
+    """A `timeline` as plain text: the axis down the page, one row per entry.
+
+    Spaced as the SVG spaces it: in proportion to `at` when every entry has one
+    (the closest two one blank row apart, a long gap shortened and dashed `┆`),
+    evenly otherwise.
+
+    The layout's order, turned: each entry a mark on a vertical line with its
+    words to the right, and what goes under the SVG's line — its `note`, or its
+    `at` when it has no note — in a column to the left. A span is a bracket
+    beside the entries it runs between, its name beside it; spans that overlap
+    take lanes left to right in the order written, as the SVG's lanes go down.
+
+    Raises:
+        FitError: a line is wider than `width`, at the widest entry's pointer.
+    """
+    items = document.items
+    labels = [
+        label_lines(item.text, charset, f"/items/{position}/text")
+        for position, item in enumerate(items)
+    ]
+    whens = [
+        label_lines(item.note, charset, f"/items/{position}/note")
+        if item.note
+        else ([f"{item.at:g}"] if item.at is not None else [])
+        for position, item in enumerate(items)
+    ]
+    when_width = max((cells(line) for lines in whens for line in lines), default=0)
+    axis = when_width + 2 if when_width else 0
+    text_left = axis + 3
+    # Spans: brackets in lanes, each lane with its own column for its names.
+    order = {item.id: position for position, item in enumerate(items) if item.id}
+    lanes: list[list[tuple[int, int, int]]] = []
+    for position, span in enumerate(document.spans):
+        first, last = sorted((order[span.start], order[span.end]))
+        for lane in lanes:
+            if all(last <= start or first >= end for start, end, _ in lane):
+                lane.append((first, last, position))
+                break
+        else:
+            lanes.append([(first, last, position)])
+    names = [
+        " ".join(label_lines(span.text, charset, f"/spans/{position}/text"))
+        for position, span in enumerate(document.spans)
+    ]
+    # What the brackets take beside the entries: per lane, a gap, the bracket,
+    # a gap, its widest name.
+    beside = sum(4 + max(cells(names[position]) for *_, position in lane) for lane in lanes)
+    # An entry too wide for the line is wrapped at spaces, as the SVG wraps its labels.
+    words_fit(
+        [
+            (line, f"/items/{position}/text")
+            for position, label in enumerate(labels)
+            for line in label
+        ],
+        width - text_left - beside,
+        width,
+        text_left + beside,
+    )
+    labels = [
+        [
+            part
+            for line in label
+            for part in wrapped(
+                line,
+                width - text_left - beside,
+                f"/items/{position}/text",
+                width,
+                text_left + beside,
+            )
+        ]
+        for position, label in enumerate(labels)
+    ]
+    heights = [max(len(label), len(when)) for label, when in zip(labels, whens, strict=True)]
+    rows, compressed = _text_rows(items, heights)
+    grid = Grid(charset)
+    for number, (top, bottom) in enumerate(pairwise(rows)):
+        grid.vertical(axis, top, bottom, "dashed" if number in compressed else "light")
+    if len(rows) == 1:
+        grid.vertical(axis, rows[0], rows[0])
+    lines_of: list[tuple[int, str, str]] = []
+    for position, (label, when) in enumerate(zip(labels, whens, strict=True)):
+        top = rows[position]
+        for offset, line in enumerate(when):
+            grid.text(top + offset, when_width - cells(line), line)
+        grid.text(top, axis, TEXT_TICK[charset])
+        for offset, line in enumerate(label):
+            grid.text(top + offset, text_left, line)
+            lines_of.append((top + offset, f"/items/{position}/text", f"the entry {label[0]!r}"))
+    labels_right = text_left + max(cells(line) for label in labels for line in label)
+
+    column = labels_right + 2
+    for lane in lanes:
+        for first, last, position in lane:
+            top, bottom = rows[first], rows[last]
+            grid.vertical(column, top, bottom)
+            grid.arm(top, column, "w")
+            grid.arm(bottom, column, "w")
+            name_row = top + 1 if bottom > top + 1 else top
+            grid.text(name_row, column + 2, names[position])
+            lines_of.append((name_row, f"/spans/{position}/text", f"the span {names[position]!r}"))
+        column += 4 + max(cells(names[position]) for *_, position in lane)
+    text = grid.lines()
+    pointer_of = {number: (pointer, what) for number, pointer, what in lines_of}
+    drawn = [
+        Drawn(line, *pointer_of.get(number, ("/items", "the entries")))
+        for number, line in enumerate(text)
+    ]
+    widest(drawn, width)
+    return finished(text + caption_lines(document.caption, width, charset))
+
+
+__all__ = ["AXIS_ROLE", "TICK_FRACTION", "grid_scene", "stack_text", "timeline_text"]

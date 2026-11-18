@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "kind": "argument",
+  "title": "Should the city centre have a congestion charge?",
+  "description": "A policy brief's argument map: two reasons for a weekday charge, two objections, a reply to one, and the evidence under a reason.",
+  "claim": "Introduce a weekday charge for the centre",
+  "points": [
+    {"id": "air", "on": "claim", "stance": "for", "text": "Cuts traffic and roadside pollution"},
+    {"id": "evidence", "on": "air", "stance": "for", "role": "note", "text": "Comparable cities saw double-digit traffic falls"},
+    {"id": "funds", "on": "claim", "stance": "for", "text": "Revenue funds the buses"},
+    {"id": "fair", "on": "claim", "stance": "against", "text": "Falls hardest on low-income drivers"},
+    {"id": "exempt", "on": "fair", "stance": "against", "text": "Discounts for residents and care workers answer most of it"},
+    {"id": "trade", "on": "claim", "stance": "against", "text": "Shops in the zone lose trade"}
+  ]
+}

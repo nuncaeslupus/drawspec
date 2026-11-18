@@ -35,7 +35,13 @@ import pytest
 
 from drawspec import render
 from drawspec.errors import DocumentError, LayoutError
-from drawspec.geometry import Box, candidate_factors, size_box
+from drawspec.geometry import (
+    CYLINDER_CAP,
+    PARALLELOGRAM_SLANT,
+    Box,
+    candidate_factors,
+    size_box,
+)
 from drawspec.kinds import scene_for
 from drawspec.kinds.graph import graph_drawing
 from drawspec.routing import Connector, Obstacle, route_edges, shaft_length
@@ -293,7 +299,17 @@ def test_family_vertical_centring_is_unrepresentable() -> None:
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("name", ["flow-validation", "tree-decisions"])
+@pytest.mark.parametrize(
+    "name",
+    [
+        "flow-validation",
+        "tree-decisions",
+        "flow-meter-readings",
+        "flow-person-helpdesk",
+        "tree-person-escalation",
+        "flow-classes-context",
+    ],
+)
 def test_family_line_not_reaching_the_box_is_unrepresentable(name: str) -> None:
     """By invariant: the endpoint *is* a point on the outline.
 
@@ -503,4 +519,45 @@ def _on_outline(point: tuple[float, float], box: Box, shape: str) -> bool:
         return math.isclose(
             math.hypot(beyond, point[1] - (top + height / 2)) / radius, 1.0, abs_tol=1e-6
         )
+    if shape == "parallelogram":
+        slant = min(PARALLELOGRAM_SLANT, width / 2)
+        fall = (point[1] - top) / height
+        on_flat = math.isclose(down, 1.0, abs_tol=1e-6)
+        on_left = math.isclose(point[0], left + slant * (1 - fall), abs_tol=1e-6)
+        on_right = math.isclose(point[0], left + width - slant * fall, abs_tol=1e-6)
+        return on_flat or on_left or on_right
+    if shape == "person":
+        from drawspec.kinds.common import person_silhouette
+
+        outline = person_silhouette(box, THEME.box.corner_radius)
+        return any(
+            _on_segment(point, start, end)
+            for start, end in zip(outline, [*outline[1:], outline[0]], strict=True)
+        )
+    if shape == "cylinder":
+        cap = min(CYLINDER_CAP, height / 4)
+        rise = cap * (1 - math.sqrt(max(1 - min(across, 1.0) ** 2, 0.0)))
+        return (
+            math.isclose(across, 1.0, abs_tol=1e-6)
+            or math.isclose(point[1], top + rise, abs_tol=1e-6)
+            or math.isclose(point[1], top + height - rise, abs_tol=1e-6)
+        )
     return math.isclose(across, 1.0, abs_tol=1e-6) or math.isclose(down, 1.0, abs_tol=1e-6)
+
+
+def _on_segment(
+    point: tuple[float, float], start: tuple[float, float], end: tuple[float, float]
+) -> bool:
+    """Whether `point` lies on the chord from `start` to `end`, within a unit.
+
+    A polyline stands in for the head's and the shoulders' arcs, so a point on
+    the true arc sits a fraction of a unit off its chord.
+    """
+    (px, py), (ax, ay), (bx, by) = point, start, end
+    length = math.hypot(bx - ax, by - ay)
+    if not length:
+        return math.hypot(px - ax, py - ay) <= 1.0
+    along = ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / length**2
+    if not -0.01 <= along <= 1.01:
+        return False
+    return abs((px - ax) * (by - ay) - (py - ay) * (bx - ax)) / length <= 1.0

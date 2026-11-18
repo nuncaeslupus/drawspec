@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "kind": "states",
+  "title": "What a lift door can be doing",
+  "description": "A state machine on the blueprint sheet. The safety edge reopens a closing door; a door that cannot lock is taken out of service rather than retried for ever.",
+  "theme": "blueprint",
+  "initial": "closed",
+  "states": [
+    { "id": "closed", "text": "Closed\nand locked" },
+    { "id": "opening", "text": "Opening" },
+    { "id": "open", "text": "Open\ndwell timer running" },
+    { "id": "closing", "text": "Closing" },
+    { "id": "fault", "text": "Out of service\nan engineer is called", "role": "emphasis" }
+  ],
+  "transitions": [
+    { "from": "closed", "to": "opening", "event": "car level at a floor" },
+    { "from": "opening", "to": "open", "event": "fully open" },
+    { "from": "open", "to": "closing", "event": "dwell elapsed" },
+    { "from": "closing", "to": "closed", "event": "locked" },
+    { "from": "closing", "to": "opening", "event": "safety edge touched" },
+    { "from": "closing", "to": "fault", "event": "not locked", "guard": "third try" }
+  ]
+}

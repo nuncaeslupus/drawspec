@@ -1,0 +1,118 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "tree",
+  "title": "Who sits on a school's governing board",
+  "description": "A governing board and its two committees, each seat classed by how its holder got there: elected by parents or staff, appointed by the board, or there because of the post they hold.",
+  "nodes": [
+    {
+      "id": "board",
+      "text": "Governing board",
+      "role": "start"
+    },
+    {
+      "id": "chair",
+      "text": "Chair",
+      "class": "appointed"
+    },
+    {
+      "id": "head",
+      "text": "Headteacher",
+      "class": "office"
+    },
+    {
+      "id": "parents",
+      "text": "Parent governors",
+      "class": "elected"
+    },
+    {
+      "id": "staffgov",
+      "text": "Staff governor",
+      "class": "elected"
+    },
+    {
+      "id": "finance",
+      "text": "Finance"
+    },
+    {
+      "id": "pupils",
+      "text": "Pupils"
+    },
+    {
+      "id": "bursar",
+      "text": "Business manager",
+      "class": "office"
+    },
+    {
+      "id": "treasurer",
+      "text": "Treasurer",
+      "class": "appointed"
+    },
+    {
+      "id": "senco",
+      "text": "Needs lead",
+      "class": "office"
+    },
+    {
+      "id": "parentrep",
+      "text": "Parent rep",
+      "class": "elected"
+    }
+  ],
+  "edges": [
+    {
+      "from": "board",
+      "to": "chair"
+    },
+    {
+      "from": "board",
+      "to": "head"
+    },
+    {
+      "from": "board",
+      "to": "parents"
+    },
+    {
+      "from": "board",
+      "to": "staffgov"
+    },
+    {
+      "from": "chair",
+      "to": "finance"
+    },
+    {
+      "from": "chair",
+      "to": "pupils"
+    },
+    {
+      "from": "finance",
+      "to": "bursar"
+    },
+    {
+      "from": "finance",
+      "to": "treasurer"
+    },
+    {
+      "from": "pupils",
+      "to": "senco"
+    },
+    {
+      "from": "pupils",
+      "to": "parentrep"
+    }
+  ],
+  "classes": [
+    {
+      "id": "elected",
+      "text": "Elected"
+    },
+    {
+      "id": "appointed",
+      "text": "Appointed by the board"
+    },
+    {
+      "id": "office",
+      "text": "There by virtue of their post"
+    }
+  ]
+}

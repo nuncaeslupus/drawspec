@@ -1,0 +1,18 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "pie",
+  "title": "Where each £100 of public spending goes",
+  "description": "A budget-day pie in percentages: the seven largest areas of spending, and everything else merged into one remainder.",
+  "unit": "%",
+  "parts": [
+    {"text": "Social protection", "amount": 27},
+    {"text": "Health", "amount": 20},
+    {"text": "Education", "amount": 10},
+    {"text": "Debt interest", "amount": 8},
+    {"text": "Defence", "amount": 5},
+    {"text": "Transport", "amount": 4},
+    {"text": "Public order and safety", "amount": 4},
+    {"text": "Everything else", "amount": 22, "role": "note"}
+  ]
+}

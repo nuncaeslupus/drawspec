@@ -50,16 +50,28 @@ four rendering defects were found by looking at that page and by no gate.
 
 If your change alters the drawings, commit the regenerated gallery with it.
 
-## Two checkers worth running on anything that touches layout
+A change that adds, removes or alters a kind, a field, a role or an output format
+updates, in the same pull request, `README.md`, `docs/format.md`, `docs/guide.md`,
+`AGENTS.md`, `llms.txt`, `CHANGELOG.md`, the generated docs and schema (`make docs
+&& make schema`), the gallery, and the proposals index — see `CLAUDE.md`.
+
+On a pull request, CI's `gallery` job renders the gallery from the branch's code
+and uploads it as a workflow artifact named `gallery-pr-<number>` (kept 14
+days). A reviewer can download it from the run's summary page and open the SVGs
+of the kinds a change touched without checking the branch out.
+
+## Checkers worth running on anything that touches layout
 
 ```bash
 uv run python tools/collisions.py docs/gallery   # does a line cross a word
 uv run python tools/clipping.py  docs/gallery    # is every word on the page
+uv run python tools/frames.py    docs/gallery    # does an edge cut through a frame
+uv run python tools/arrows.py    docs/gallery    # does an arrow arrive with a line, clear of branches
 ```
 
-Both should report zero. They answer different questions and neither implies the
-other — `clipping.py` exists because a defect passed every check in the suite
-while being partly drawn off the canvas.
+All should report zero. They answer different questions and none implies another
+— `clipping.py` exists because a defect passed every check in the suite while
+being partly drawn off the canvas.
 
 ## What a change should look like
 
@@ -79,8 +91,10 @@ while being partly drawn off the canvas.
 
 ## Releasing
 
-`.github/workflows/release.yml` does the work; a tag is the only input. Pushing
-`v0.1.0` runs the suite, builds, checks, publishes 0.1.0 to PyPI and cuts a
+`.github/workflows/release.yml` does the work, and a release is a `vX.Y.Z` tag.
+The tag is made either by the workflow itself, when a merge to `main` brings a
+dated `## [X.Y.Z] — YYYY-MM-DD` heading for the package version, or by hand.
+Either way it runs the suite, builds, checks, publishes to PyPI and cuts a
 GitHub release. A `workflow_dispatch` run does everything except the upload, so
 the path can be exercised without cutting a tag.
 
@@ -110,11 +124,16 @@ registered yet):
    [0.1.0]: https://github.com/nuncaeslupus/drawspec/releases/tag/v0.1.0
    ```
    Restore the brackets on the headings so the references resolve.
-3. Merge that, then tag the merge commit and push:
+3. Merge that. The release workflow runs on every push to `main`: when the
+   package version has a `## [x.y.z]` heading in `CHANGELOG.md` and no `vx.y.z`
+   tag exists yet, it creates the tag on the merge commit and publishes it. An
+   ordinary merge (no new dated heading) releases nothing. Pushing the tag by
+   hand still works too:
    ```bash
    git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
    ```
-4. Watch the run. If `check` fails, no upload happened — fix and re-tag.
+4. Watch the run. If `check` fails, the tag exists but no upload happened —
+   fix, delete the tag, and merge again (or re-push the tag).
 
 Every action in that workflow is pinned to a commit SHA rather than a tag,
 with the tag in a trailing comment. A tag moves; this workflow holds

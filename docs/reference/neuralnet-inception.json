@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "kind": "neuralnet",
+  "style": "blocks",
+  "direction": "up",
+  "title": "An Inception module",
+  "description": "Szegedy et al.'s GoogLeNet module with dimension reductions: four branches side by side, their outputs concatenated along the channels.",
+  "layers": [
+    {"text": "Previous layer"},
+    {"branches": [
+      {"layers": [{"text": "1×1 conv", "type": "conv"}]},
+      {"layers": [{"text": "1×1 conv", "type": "conv"}, {"text": "3×3 conv", "type": "conv"}]},
+      {"layers": [{"text": "1×1 conv", "type": "conv"}, {"text": "5×5 conv", "type": "conv"}]},
+      {"layers": [{"text": "3×3 max pool", "type": "pool"}, {"text": "1×1 conv", "type": "conv"}]}
+    ]},
+    {"text": "Filter concatenation", "type": "concat"}
+  ],
+  "caption": "The 1×1 convolutions cut the channels the larger kernels compute on."
+}

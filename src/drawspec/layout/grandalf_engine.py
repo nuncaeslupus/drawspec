@@ -142,7 +142,9 @@ class GrandalfEngine:
         # grandalf only lays out downwards, so `right` is the transposed problem:
         # swap each box's dimensions going in and swap the coordinates coming out.
         vertex.view = (
-            _View(node.height, node.width) if transposed else _View(node.width, node.height)
+            _View(node.height, node.width)
+            if transposed and not node.turns
+            else _View(node.width, node.height)
         )
         return vertex
 

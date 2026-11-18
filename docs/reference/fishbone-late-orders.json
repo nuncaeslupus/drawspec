@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "kind": "fishbone",
+  "title": "Why orders ship late",
+  "caption": "Categories follow the 6M convention; any set of categories is allowed.",
+  "effect": {"text": "Orders ship after the promised date"},
+  "categories": [
+    {"text": "Method", "causes": [{"text": "Picking by order, not by zone"}, {"text": "Manual address checks"}]},
+    {"text": "Machine", "causes": [{"text": "Label printer jams"}]},
+    {"text": "Material", "causes": [{"text": "Boxes out of stock"}, {"text": "Supplier ships short"}]},
+    {"text": "Manpower", "causes": [{"text": "Peak-season temps untrained"}]},
+    {"text": "Measurement", "causes": [{"text": "Promise date ignores stock location"}]},
+    {"text": "Milieu", "causes": [{"text": "Courier cut-off moved earlier"}]}
+  ]
+}
