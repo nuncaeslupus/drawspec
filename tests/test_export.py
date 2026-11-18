@@ -288,3 +288,28 @@ def test_contradictory_or_misplaced_flags_exit_two(
     arguments = [str(tmp_path / part) if part.startswith("x.") else part for part in extra]
     assert main(["render", str(write(tmp_path / "d.json")), *arguments]) == 2
     assert capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# Glyphs outside the bundled subset: measured, never silently dropped
+# ---------------------------------------------------------------------------
+
+
+def _cjk_document(text: str) -> dict[str, object]:
+    return {"version": 1, "kind": "flow", "nodes": [{"id": "a", "text": text}], "edges": []}
+
+
+def test_a_wide_character_outside_the_subset_is_measured_at_one_em() -> None:
+    from drawspec.text.fontlib import load_font
+
+    font = load_font(bundled_font_path("sans"))
+    assert font.glyph_name("数") is None
+    assert font.advance("数") == font.units_per_em
+    assert font.text_advance("数据库") == 3 * font.units_per_em
+
+
+@needs_extra
+def test_a_png_refuses_text_it_cannot_draw_and_names_it() -> None:
+    with pytest.raises(ExportError, match="数"):
+        render_png(_cjk_document("数据库"))
+    assert render_png(_cjk_document("abc")).startswith(SIGNATURE)

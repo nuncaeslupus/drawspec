@@ -18,6 +18,7 @@ substitution, and a substitution is always reported — see
 from __future__ import annotations
 
 import io
+import unicodedata
 from dataclasses import dataclass
 from functools import cache, lru_cache
 from itertools import pairwise
@@ -214,9 +215,21 @@ class FontFile:
         return advance
 
     def advance(self, character: str) -> int:
-        """Advance width of `character` in font units, `.notdef` if uncovered."""
+        """Advance width of `character` in font units; a fallback width if uncovered."""
         glyph = self.glyph_name(character)
-        return self.notdef_advance if glyph is None else self.glyph_advance(glyph)
+        return self._uncovered_advance(character) if glyph is None else self.glyph_advance(glyph)
+
+    def _uncovered_advance(self, character: str) -> int:
+        """What a character this font lacks is measured at.
+
+        A browser draws CJK and emoji from a fallback font at about one em, so
+        measuring them at `.notdef` (0.6 em here) sizes the box too small for the
+        text. East Asian Wide and Fullwidth characters are measured at one em, as
+        `textgrid` already counts them as two cells; anything else keeps `.notdef`.
+        """
+        if unicodedata.east_asian_width(character) in ("W", "F"):
+            return self.units_per_em
+        return self.notdef_advance
 
     # -- kerning ----------------------------------------------------------
 
@@ -308,7 +321,10 @@ class FontFile:
             return 0.0
         glyphs = [self.glyph_name(character) for character in text]
         total = float(
-            sum(self.notdef_advance if g is None else self.glyph_advance(g) for g in glyphs)
+            sum(
+                self._uncovered_advance(character) if glyph is None else self.glyph_advance(glyph)
+                for character, glyph in zip(text, glyphs, strict=True)
+            )
         )
         for left, right in pairwise(glyphs):
             if left is not None and right is not None:

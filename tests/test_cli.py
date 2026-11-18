@@ -336,3 +336,13 @@ def test_malformed_json_on_stdin_is_refused_the_way_a_file_would_be(
     monkeypatch.setattr("sys.stdin", io.StringIO("{not json"))
     assert main(["validate", "-"]) == 1
     assert "not valid JSON" in capsys.readouterr().err
+
+
+def test_agents_prints_the_agents_md_that_ships_with_the_install(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert main(["agents"]) == 0
+    printed = capsys.readouterr().out
+    assert printed == (Path(__file__).resolve().parents[1] / "AGENTS.md").read_text(
+        encoding="utf-8"
+    )

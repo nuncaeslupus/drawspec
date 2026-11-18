@@ -3,6 +3,7 @@ id: t-c2d58e6d
 title: "review: Skill reads AGENTS.md from `main`, which can be ahead of the installed package"
 priority: 5
 requires: [human:gate]
+status: merged
 ---
 
 Imported from issue #196
