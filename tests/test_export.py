@@ -313,3 +313,10 @@ def test_a_png_refuses_text_it_cannot_draw_and_names_it() -> None:
     with pytest.raises(ExportError, match="数"):
         render_png(_cjk_document("数据库"))
     assert render_png(_cjk_document("abc")).startswith(SIGNATURE)
+
+
+@needs_extra
+def test_an_uncovered_character_in_the_description_alone_does_not_refuse_a_png() -> None:
+    document = _cjk_document("abc")
+    document["description"] = "数据库"
+    assert render_png(document).startswith(SIGNATURE)

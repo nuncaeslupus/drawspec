@@ -524,7 +524,13 @@ def _agents() -> int:
     if not path.is_file():
         print("drawspec: AGENTS.md is not part of this installation", file=sys.stderr)
         return USAGE
-    sys.stdout.write(path.read_text(encoding="utf-8"))
+    text = path.read_text(encoding="utf-8")
+    buffer = getattr(sys.stdout, "buffer", None)
+    if buffer is not None:  # bytes, so a cp1252 console cannot refuse the `≤`
+        buffer.write(text.encode("utf-8"))
+        buffer.flush()
+    else:
+        sys.stdout.write(text)
     return OK
 
 

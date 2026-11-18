@@ -134,8 +134,10 @@ registered yet):
    git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
    ```
 4. Watch the run. If `check` fails on a merge to `main`, no tag was made and
-   nothing was uploaded: fix forward and merge again. (A tag pushed by hand and
-   then failing leaves that tag behind: delete it, or re-push it.)
+   nothing was uploaded: fix forward and merge again. For a transient failure,
+   re-run the failed workflow. (A tag pushed by hand whose run then fails stays
+   behind: delete it on the remote, fix, and push the tag again; deleting alone
+   releases nothing.)
 
 Every action in that workflow is pinned to a commit SHA rather than a tag,
 with the tag in a trailing comment. A tag moves; this workflow holds

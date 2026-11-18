@@ -34,6 +34,7 @@ jobs:
   decide:
     name: Decide what, if anything, is released
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       tag: ${{ steps.decide.outputs.tag }}
       create: ${{ steps.decide.outputs.create }}
@@ -123,6 +124,7 @@ jobs:
     needs: [decide, check]
     if: needs.decide.outputs.tag != ''
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     outputs:

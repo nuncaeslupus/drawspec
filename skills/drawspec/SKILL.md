@@ -17,7 +17,8 @@ rather than guess at.
    the installed version — read it whole, once. It is the copy that matches what
    your drawspec accepts; the one on GitHub `main` may describe kinds a released
    package refuses. `drawspec kinds` lists the kinds and `drawspec example <kind>`
-   prints a minimal valid document. All of it works offline.
+   prints a minimal valid document. All of it works offline. If your installed drawspec has no `agents`
+   command, upgrade it (`pip install -U drawspec`) before reading anything else.
 3. **Decide whether to draw at all.** A list is bullets, attributes are a table,
    one step is a sentence. Pick the kind by what the reader must understand.
 4. **Write the JSON.** No coordinates, sizes or colours — they are refused by

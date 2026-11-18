@@ -147,7 +147,9 @@ def _refuse_uncovered_text(svg: str, files: tuple[Path, ...]) -> None:
     font, so the SVG is fine; for a PNG, say which characters and what to do.
     """
     fonts = [load_font(path) for path in files]
-    text = html.unescape("".join(re.findall(r">([^<>]+)<", svg)))
+    # Only drawn text: <text> (with its <tspan>s), not <title> or <desc> metadata.
+    drawn = re.findall(r"<text\b[^>]*>(.*?)</text>", svg, flags=re.DOTALL)
+    text = html.unescape("".join(re.sub(r"<[^>]*>", "", chunk) for chunk in drawn))
     missing = sorted(
         {
             c
