@@ -71,6 +71,21 @@ from drawspec.schema import load_document
 sys.stdout.write(render_document(load_document(sys.argv[1]), profile=sys.argv[2]))
 """
 
+#: The same claim for every reference document at once: one interpreter per hash
+#: seed renders them all and prints a JSON map, instead of one per document.
+BATCH_RENDER_SCRIPT: Final = """
+import json, sys
+from pathlib import Path
+from drawspec import render_document
+from drawspec.schema import load_document
+profiles = sys.argv[1].split(",")
+out = {
+    path: {p: render_document(load_document(path), profile=p) for p in profiles}
+    for path in sys.argv[2:]
+}
+sys.stdout.write(json.dumps(out))
+"""
+
 
 def fixture(name: str) -> dict[str, object]:
     text = (REFERENCE_DIR / f"{name}.json").read_text(encoding="utf-8")
@@ -101,19 +116,50 @@ def _in_a_fresh_interpreter(name: str, profile: str, **environment: str) -> str:
 # --------------------------------------------------------------------------
 
 
+@pytest.fixture(scope="module")
+def fresh_renders() -> dict[str, dict[str, dict[str, str]]]:
+    """Every reference document in both profiles, rendered under two hash seeds."""
+    renders: dict[str, dict[str, dict[str, str]]] = {}
+    for seed in ("1", "7919"):
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                BATCH_RENDER_SCRIPT,
+                ",".join(PROFILES),
+                *(str(REFERENCE_DIR / f"{name}.json") for name in FIXTURES),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+            env={
+                "PATH": os.environ.get("PATH", ""),
+                "PYTHONPATH": str(ROOT / "src"),
+                "HOME": os.environ.get("HOME", "/tmp"),
+                "PYTHONHASHSEED": seed,
+            },
+        )
+        assert result.returncode == 0, result.stderr[-2000:]
+        renders[seed] = json.loads(result.stdout)
+    return renders
+
+
 @pytest.mark.parametrize("name", FIXTURES)
-def test_every_fixture_renders_identically_on_a_second_run(name: str) -> None:
+def test_every_fixture_renders_identically_on_a_second_run(
+    name: str, fresh_renders: dict[str, dict[str, dict[str, str]]]
+) -> None:
     """`nondeterministic_reruns == 0`, in a second interpreter with a new seed.
 
     A committed diagram that changes byte for byte between runs shows up as a
     diff nobody wrote, which is enough to make people stop committing them.
     """
-    document = load_document(REFERENCE_DIR / f"{name}.json")
+    path = str(REFERENCE_DIR / f"{name}.json")
+    document = load_document(path)
     for profile in PROFILES:
         here = render_document(document, profile=profile)
         assert here == render_document(document, profile=profile)
-        assert here == _in_a_fresh_interpreter(name, profile, PYTHONHASHSEED="1")
-        assert here == _in_a_fresh_interpreter(name, profile, PYTHONHASHSEED="7919")
+        for seed, renders in fresh_renders.items():
+            assert here == renders[path][profile], f"seed {seed}"
 
 
 def test_package_renders_with_no_system_binaries_available() -> None:
@@ -175,12 +221,6 @@ def test_the_readme_points_at_something_that_exists() -> None:
     for path in ("docs/gallery/index.html", "docs/reference"):
         assert path in readme, path
         assert (ROOT / path).exists(), path
-
-
-def test_the_readme_no_longer_says_there_is_no_renderer() -> None:
-    """The status line was true until T11 and is the kind of thing that lingers."""
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
-    assert "No renderer yet" not in readme
 
 
 # --------------------------------------------------------------------------

@@ -32,9 +32,14 @@ one member used to do.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
+import math
+import os
 import re
+import shutil
 import sys
+import tempfile
 from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
@@ -234,8 +239,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run one command and return its exit code.
 
     Returns rather than exits, and catches argparse's own `SystemExit`, so the
-    codes in §5.4 are testable as values instead of as process outcomes.
+    codes in §5.4 are testable as values instead of as process outcomes. What the
+    machine refuses — an unreadable or unwritable path — and a document nested
+    deeper than Python can read are refusals too, not tracebacks.
     """
+    try:
+        return _main(argv)
+    except OSError as error:
+        where = f": {error.filename}" if error.filename else ""
+        print(f"drawspec: {error.strerror or error}{where}", file=sys.stderr)
+        return REFUSED
+    except RecursionError:
+        print("drawspec: the document is nested too deeply to read", file=sys.stderr)
+        return REFUSED
+
+
+def _main(argv: Sequence[str] | None) -> int:
     parser = build_parser()
     try:
         arguments = parser.parse_args(argv)
@@ -312,6 +331,11 @@ def _render(arguments: argparse.Namespace) -> int:
     if output_format != "text" and arguments.charset:
         print("drawspec: --charset applies to --format text only", file=sys.stderr)
         return USAGE
+    for flag in ("width", "height"):
+        value = getattr(arguments, flag)
+        if value is not None and not 0 < value < math.inf:  # also refuses NaN
+            print(f"drawspec: --{flag} must be greater than 0 and finite", file=sys.stderr)
+            return USAGE
     if (
         output_format == "text"
         and arguments.width is not None
@@ -355,16 +379,40 @@ def _render(arguments: argparse.Namespace) -> int:
 
     if output_format == "png":
         if arguments.out:
-            Path(arguments.out).write_bytes(image)
+            _write_atomically(Path(arguments.out), image)
         else:
             sys.stdout.buffer.write(image)
             sys.stdout.flush()
         return OK
     if arguments.out:
-        Path(arguments.out).write_text(svg, encoding="utf-8")
+        _write_atomically(Path(arguments.out), svg.encode("utf-8"))
     else:
         print(svg)
     return OK
+
+
+def _write_atomically(path: Path, data: bytes) -> None:
+    """Replace an existing output whole, or fail leaving it untouched.
+
+    The data goes to an exclusively created file beside the (symlink-resolved)
+    target, which then takes the target's mode and is renamed over it. A new
+    output has nothing to preserve, so it is written directly.
+    """
+    target = path.resolve()
+    if not target.is_file():
+        target.write_bytes(data)
+        return
+    descriptor, name = tempfile.mkstemp(dir=target.parent, prefix=f".{target.name}.")
+    temporary = Path(name)
+    try:
+        with os.fdopen(descriptor, "wb") as handle:
+            handle.write(data)
+        shutil.copymode(target, temporary)
+        temporary.replace(target)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            temporary.unlink(missing_ok=True)
+        raise
 
 
 def _output_format(arguments: argparse.Namespace) -> str | None:

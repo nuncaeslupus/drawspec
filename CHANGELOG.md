@@ -10,6 +10,24 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The CLI no longer ends in a traceback** when it cannot write the output (a missing
+  directory, a full disk) or the document is nested past Python's recursion limit: it
+  says why on stderr and exits 1. `render -o` now replaces an existing file by renaming a staged copy over it
+  (keeping its mode), so a failed write leaves the previous file whole.
+- **`--width` and `--height` (CLI) and `width` and `height` (MCP) must be greater than 0**;
+  `0` and negative values were treated as unset or failed deep inside fitting.
+- **MCP `render_document` refuses an unknown `format`** (`jpeg`, `PNG`) instead of
+  returning an SVG, and a `document` passed as a JSON string now says to pass the object.
+
+### Changed
+
+- **A misspelt kind or field names the nearest match** (`Did you mean 'flow'?`), as
+  references to ids already did.
+- **The published JSON Schema states the 2000-character cap** on every free string as
+  `maxLength`, so a schema-validating client refuses an overlong text before `validate`.
+
 ### Added
 
 - **`drawspec agents`** prints the `AGENTS.md` that ships inside the installed package, so
@@ -215,6 +233,16 @@ against it would stop working. Everything below is about the *package*.
 
 ### Fixed
 
+- **The MCP server answers with a tool error for every failure, and cannot be made
+  to probe or hold the host.** A bug inside drawspec now comes back as an
+  `InternalError` result (it used to escape as a protocol error); a malformed argument
+  (`variants`, `width`, `scale`) is an `InvalidArgument`. A refusal lists each
+  violation once and at most 50, saying how many were left out, and `message` is a
+  one-line summary instead of the same list again. `theme`, a document's own `theme`
+  and `variants` accept bundled names only (or a file in `DRAWSPEC_THEME_DIR`), and a
+  path that exists is refused exactly like one that does not. Strings are capped at
+  2000 characters, and a PNG at 16 million pixels, each refused cleanly with the
+  limit named; the caps are starting values (`MAX_TEXT_LENGTH`, `MAX_PIXELS`).
 - **Characters outside the bundled font subset are no longer mis-measured or silently
   dropped.** CJK and other wide characters the fonts lack are measured at one em (as a
   browser's fallback font draws them) rather than the `.notdef` width, so boxes are no

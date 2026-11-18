@@ -132,7 +132,7 @@ def evaluate(value: Any, schema: dict[str, Any], root: dict[str, Any]) -> list[s
 
     Covers exactly the keywords the published schema uses: `$ref`, `type`,
     `const`, `enum`, `exclusiveMinimum`, `minimum`, `maximum`, `properties`, `required`,
-    `additionalProperties: false`, `items`, `minItems`, `maxItems`, `oneOf`.
+    `additionalProperties: false`, `items`, `minItems`, `maxItems`, `maxLength`, `oneOf`.
     Anything else raises, so this cannot quietly stop checking.
     """
     unsupported = set(schema) - {
@@ -154,6 +154,7 @@ def evaluate(value: Any, schema: dict[str, Any], root: dict[str, Any]) -> list[s
         "items",
         "minItems",
         "maxItems",
+        "maxLength",
         "oneOf",
     }
     assert not unsupported, f"the evaluator does not cover {sorted(unsupported)}"
@@ -174,6 +175,8 @@ def evaluate(value: Any, schema: dict[str, Any], root: dict[str, Any]) -> list[s
         return [f"expected const {schema['const']!r}"]
     if "enum" in schema and value not in schema["enum"]:
         return [f"{value!r} is not in the enum"]
+    if "maxLength" in schema and len(value) > schema["maxLength"]:
+        return ["too long"]
     if "exclusiveMinimum" in schema and not value > schema["exclusiveMinimum"]:
         return [f"must be greater than {schema['exclusiveMinimum']}"]
     if "minimum" in schema and not value >= schema["minimum"]:
@@ -749,3 +752,44 @@ def test_the_published_schema_states_the_top_level_readability_budgets() -> None
     assert flow["properties"]["edges"]["maxItems"] == 16
     tree = next(v for t, v in variants.items() if "tree" in t.split(" / "))
     assert "maxItems" not in tree["properties"]["nodes"]
+
+
+def test_a_misspelt_kind_or_field_names_the_nearest_match() -> None:
+    with pytest.raises(DocumentError, match=r"Did you mean 'flow'\?"):
+        parse_document({"version": 1, "kind": "flw"})
+    with pytest.raises(DocumentError, match=r"Did you mean 'text'\?"):
+        parse_document({"version": 1, "kind": "flow", "nodes": [{"id": "a", "txt": "x"}]})
+    with pytest.raises(DocumentError) as unrelated:
+        parse_document({"version": 1, "kind": "zzzzzzzz"})
+    assert "Did you mean" not in str(unrelated.value)
+
+
+def test_the_published_schema_states_the_text_length_cap() -> None:
+    """Every free string, and every string in a list, carries the cap the parser enforces."""
+    from drawspec.schema import MAX_TEXT_LENGTH, build_schema
+
+    schema = build_schema()
+    strings = [
+        node
+        for node in _walk(schema)
+        if isinstance(node, dict) and node.get("type") == "string" and "enum" not in node
+    ]
+    assert strings
+    assert all(node.get("maxLength") == MAX_TEXT_LENGTH for node in strings)
+
+
+def _walk(node: object) -> Any:
+    yield node
+    for child in (
+        node.values() if isinstance(node, dict) else node if isinstance(node, list) else ()
+    ):
+        yield from _walk(child)
+
+
+def test_the_schema_and_the_parser_agree_on_an_overlong_text() -> None:
+    from drawspec.schema import MAX_TEXT_LENGTH
+
+    for length, accepted in ((MAX_TEXT_LENGTH, True), (MAX_TEXT_LENGTH + 1, False)):
+        document = {"version": 1, "kind": "stack", "items": [{"text": "x" * length}]}
+        assert accepted_by_schema(document) is accepted
+        assert accepted_by_parser(document) is accepted

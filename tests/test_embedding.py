@@ -25,7 +25,7 @@ from xml.etree import ElementTree
 
 import pytest
 
-from drawspec import render, render_document
+from drawspec import render
 from drawspec.emit import PROFILES, check_embedding_safety, emit
 from drawspec.kinds import scene_for
 from drawspec.schema import load_document
@@ -239,16 +239,6 @@ def test_inline_and_standalone_differ_only_in_what_they_assume(name: str) -> Non
     assert "currentColor" not in standalone
     assert 'width="' not in inline.split(">", 1)[0]
     assert 'width="' in standalone.split(">", 1)[0]
-
-
-@pytest.mark.parametrize("name", FIXTURES)
-def test_every_fixture_renders_identically_twice_in_both_profiles(name: str) -> None:
-    """Byte-identical reruns, which is what makes a diagram diffable in a repo."""
-    document = load_document(REFERENCE_DIR / f"{name}.json")
-    for profile in PROFILES:
-        assert render_document(document, profile=profile) == render_document(
-            document, profile=profile
-        )
 
 
 # --------------------------------------------------------------------------

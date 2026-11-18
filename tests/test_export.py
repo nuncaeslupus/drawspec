@@ -290,6 +290,14 @@ def test_contradictory_or_misplaced_flags_exit_two(
     assert capsys.readouterr().err
 
 
+def test_a_huge_canvas_is_refused_before_it_is_rasterised() -> None:
+    from drawspec.export import MAX_PIXELS
+
+    huge = {**DOCUMENT, "width": 40000, "height": 40000}
+    with pytest.raises(ExportError, match=f"{MAX_PIXELS:,}"):
+        render_png(huge)
+
+
 # ---------------------------------------------------------------------------
 # Glyphs outside the bundled subset: measured, never silently dropped
 # ---------------------------------------------------------------------------
