@@ -18194,6 +18194,22 @@ def _object_schema(specs: Sequence[FieldSpec], *, title: str = "") -> dict[str, 
     return schema
 
 
+def _published_budgets(kinds: Sequence[str]) -> dict[str, int]:
+    """The readability budgets a JSON Schema can state: one top-level array, one limit.
+
+    Nested, per-cell, deep and per-role budgets, and `tree` nodes (a bracket counts
+    its leaves instead), are left to the validator. Kinds sharing a variant may
+    differ, so the loosest limit is published and only when every kind has one:
+    the schema may pass what the validator refuses, never the reverse.
+    """
+    limits: dict[str, list[int]] = {}
+    for kind in kinds:
+        for name, limit in READABILITY_BUDGET.get(kind, ()):
+            if name.isidentifier() and not (kind == "tree" and name == "nodes"):
+                limits.setdefault(name, []).append(limit)
+    return {name: max(found) for name, found in limits.items() if len(found) == len(kinds)}
+
+
 def build_schema() -> dict[str, Any]:
     """Render the field tables above as a JSON Schema document.
 
@@ -18217,6 +18233,9 @@ def build_schema() -> dict[str, Any]:
     for specs_for_kind, kinds in grouped.items():
         specs = list(COMMON_FIELDS) + list(specs_for_kind)
         variant = _object_schema(specs, title=" / ".join(kinds))
+        for name, limit in _published_budgets(kinds).items():
+            if variant["properties"].get(name, {}).get("type") == "array":
+                variant["properties"][name]["maxItems"] = limit
         variant["properties"]["kind"] = {"type": "string", "enum": list(kinds)}
         variant["properties"]["version"] = {"const": DOCUMENT_VERSION}
         variants.append(variant)
@@ -18230,9 +18249,12 @@ def build_schema() -> dict[str, Any]:
             "decision that requires seeing the output — coordinates, type size, colour, "
             "arrow-head geometry, z-order — is taken by drawspec and has no field here. "
             "Referential rules (node ids are unique; an edge names nodes that exist) are "
-            "beyond JSON Schema and are enforced by `drawspec validate`, as are the "
-            "readability budget (the most entries each kind may hold) and the cap of "
-            f"{EMPHASIS_CAP} elements with the 'emphasis' role (docs/format.md)."
+            "beyond JSON Schema and are enforced by `drawspec validate`. So are the "
+            "readability budgets this schema cannot state (those on nested, per-role or "
+            "per-cell counts; a plain top-level array's limit is its `maxItems`), the "
+            f"cap of {EMPHASIS_CAP} elements with the 'emphasis' role, text-length and "
+            "fit limits, and the theme-file rules: a document that passes this schema "
+            "can still be refused, so validate before rendering (docs/format.md)."
         ),
         "oneOf": variants,
         "$defs": {name: _object_schema(specs) for name, specs in sorted(OBJECTS.items())},

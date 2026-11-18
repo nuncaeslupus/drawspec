@@ -97,6 +97,8 @@ packages = ["src/drawspec"]
 # the wheel from there. Two copies in the repository would drift.
 [tool.hatch.build.targets.wheel.force-include]
 "schema/drawspec-v1.schema.json" = "drawspec/schemas/drawspec-v1.schema.json"
+# Same for AGENTS.md: the skill reads the copy that matches the installed version.
+"AGENTS.md" = "drawspec/AGENTS.md"
 
 [tool.ruff]
 line-length = 100

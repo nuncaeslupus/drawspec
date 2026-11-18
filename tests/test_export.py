@@ -296,3 +296,35 @@ def test_a_huge_canvas_is_refused_before_it_is_rasterised() -> None:
     huge = {**DOCUMENT, "width": 40000, "height": 40000}
     with pytest.raises(ExportError, match=f"{MAX_PIXELS:,}"):
         render_png(huge)
+
+
+# ---------------------------------------------------------------------------
+# Glyphs outside the bundled subset: measured, never silently dropped
+# ---------------------------------------------------------------------------
+
+
+def _cjk_document(text: str) -> dict[str, object]:
+    return {"version": 1, "kind": "flow", "nodes": [{"id": "a", "text": text}], "edges": []}
+
+
+def test_a_wide_character_outside_the_subset_is_measured_at_one_em() -> None:
+    from drawspec.text.fontlib import load_font
+
+    font = load_font(bundled_font_path("sans"))
+    assert font.glyph_name("数") is None
+    assert font.advance("数") == font.units_per_em
+    assert font.text_advance("数据库") == 3 * font.units_per_em
+
+
+@needs_extra
+def test_a_png_refuses_text_it_cannot_draw_and_names_it() -> None:
+    with pytest.raises(ExportError, match="数"):
+        render_png(_cjk_document("数据库"))
+    assert render_png(_cjk_document("abc")).startswith(SIGNATURE)
+
+
+@needs_extra
+def test_an_uncovered_character_in_the_description_alone_does_not_refuse_a_png() -> None:
+    document = _cjk_document("abc")
+    document["description"] = "数据库"
+    assert render_png(document).startswith(SIGNATURE)

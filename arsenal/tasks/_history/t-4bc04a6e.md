@@ -3,6 +3,7 @@ id: t-4bc04a6e
 title: "review: Glyphs outside the bundled font subset are mis-measured; PNG drops them"
 priority: 5
 requires: [human:gate]
+status: merged
 ---
 
 Imported from issue #183
