@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "kind": "gantt",
+  "title": "Saturday's database upgrade",
+  "axis": {"label": "Minutes after 02:00", "min": 0, "max": 90},
+  "tasks": [
+    {"id": "freeze", "text": "Announce read-only mode", "at": 0, "actor": "On-call"},
+    {"id": "backup", "text": "Take and verify a backup", "start": 0, "end": 20, "actor": "DBA"},
+    {"id": "upgrade", "text": "Upgrade the primary", "start": 20, "end": 50, "actor": "DBA", "role": "emphasis"},
+    {"id": "replicas", "text": "Rebuild replicas", "start": 50, "end": 75, "actor": "DBA"},
+    {"id": "smoke", "text": "Run smoke tests", "start": 50, "end": 65, "actor": "On-call"},
+    {"id": "open", "text": "Lift read-only mode", "at": 70, "actor": "On-call"}
+  ],
+  "edges": [
+    {"from": "freeze", "to": "backup"},
+    {"from": "backup", "to": "upgrade"},
+    {"from": "upgrade", "to": "replicas"},
+    {"from": "upgrade", "to": "smoke"},
+    {"from": "smoke", "to": "open"}
+  ],
+  "marks": [{"text": "rollback deadline", "at": 60}]
+}

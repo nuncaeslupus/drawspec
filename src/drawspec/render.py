@@ -15,6 +15,9 @@ design in one place:
    the same for every kind, and were not while each family decided its own.
 6. **Clear**: break every stroke that would be drawn through a word, which is the
    one defect a family cannot see because it only knows its own primitives.
+   In the `standalone` profile, a theme with a sheet (`[canvas] border`, …)
+   then moves the drawing clear of its border and title block — see
+   `drawspec.sheet`.
 7. **Emit**, which is the only place styling happens and therefore the only place
    embedding safety is enforced.
 
@@ -31,20 +34,25 @@ from pathlib import Path
 from typing import Any, Final
 
 from drawspec.clearance import cleared
-from drawspec.emit import emit
-from drawspec.errors import FitError
+from drawspec.emit import check_embedding_safety, emit, namespace_for
+from drawspec.errors import DrawspecError, EmitError, FitError
 from drawspec.geometry import fit
-from drawspec.kinds import scene_for
+from drawspec.kinds import TEXT_KINDS, scene_for, text_for
 from drawspec.scene import Scene, moved
-from drawspec.schema import Document, parse_document
+from drawspec.schema import FILES_KINDS, Document, parse_document
+from drawspec.sheet import Sheet, around
 from drawspec.text.measure import TextMeasurer
+from drawspec.textgrid import CHARSETS, default_width
 from drawspec.theme import Theme, load_theme
+from drawspec.variants import BASE_NAME, check_names, merged
 
 
 def render(
     document: Mapping[str, Any],
     theme: Theme | str | Path | None = None,
     profile: str = "inline",
+    *,
+    variants: Mapping[str, Theme | str | Path] | None = None,
 ) -> str:
     """Render a document mapping to SVG.
 
@@ -53,24 +61,70 @@ def render(
         theme: a `Theme`, a bundled theme name, a theme file path, or None for the
             default. A `theme` named by the document is used when this is None.
         profile: `inline` (default) or `standalone` — see `drawspec.emit`.
+        variants: more themes for the same drawing, by the name a page selects
+            each with (`data-theme="dark"`). The SVG then carries every theme's
+            colours as CSS custom properties and switches between them — see
+            `drawspec.variants`. A variant named `dark` also follows the reader's
+            `prefers-color-scheme`. `theme` is the base and answers to `light`.
 
     Raises:
         DocumentError: the document violates the schema, with the offending
             field's JSON pointer.
-        ThemeError: the theme is malformed or greyscale-ambiguous.
+        ThemeError: the theme is malformed or greyscale-ambiguous, or a variant
+            draws the document differently from the base in more than colour.
         FitError: the content cannot fit at the theme's minimum legible size.
         EmitError: a primitive names a role the theme does not declare, or the
             SVG failed its own embedding-safety check.
     """
-    return render_document(parse_document(document), theme, profile)
+    return render_document(parse_document(document), theme, profile, variants=variants)
 
 
 def render_document(
     document: Document,
     theme: Theme | str | Path | None = None,
     profile: str = "inline",
+    *,
+    variants: Mapping[str, Theme | str | Path] | None = None,
 ) -> str:
     """Render an already-parsed `Document`. See `render`."""
+    if variants:
+        check_names(list(variants))
+    drawing, fitted, sheet = _drawn(document, theme, profile)
+    if not variants:
+        return emit(drawing, fitted, profile, sheet=sheet)
+
+    # Every theme is drawn under the base's namespace and with patterns named by
+    # use, so the drawings can differ only in paint — which `merged` checks.
+    namespace = namespace_for(drawing, fitted, profile, sheet)
+    drawings = [
+        (
+            BASE_NAME,
+            fitted,
+            emit(drawing, fitted, profile, namespace=namespace, sheet=sheet, ordinal=True),
+        )
+    ]
+    for name, source in variants.items():
+        other, other_theme, other_sheet = _drawn(document, source, profile)
+        svg = emit(
+            other, other_theme, profile, namespace=namespace, sheet=other_sheet, ordinal=True
+        )
+        drawings.append((name, other_theme, svg))
+    svg = merged(drawings, namespace)
+    violations = check_embedding_safety(
+        svg, fitted, profile, namespace=namespace, variants=[t for _, t, _ in drawings[1:]]
+    )
+    if violations:
+        raise EmitError(
+            "the multi-theme SVG failed its own embedding-safety check: "
+            + "; ".join(str(violation) for violation in violations)
+        )
+    return svg
+
+
+def _drawn(
+    document: Document, theme: Theme | str | Path | None, profile: str
+) -> tuple[Scene, Theme, Sheet | None]:
+    """The finished drawing, the theme it fitted at, and its sheet, if any."""
     resolved = load_theme(theme if theme is not None else (document.theme or None))
     if document.width:
         # The document may override the canvas width and nothing else: width is
@@ -87,8 +141,59 @@ def render_document(
             _within_width(scene_for(document, scaled, measurer), scaled), document
         ),
     )
-    placed = framed(centred(fitted.value, fitted.theme), fitted.theme)
-    return emit(cleared(placed, fitted.theme, measurer), fitted.theme, profile)
+    placed = framed(_placed(fitted.value, fitted.theme, document), fitted.theme)
+    drawing = cleared(placed, fitted.theme, measurer)
+    if profile == "standalone" and fitted.theme.canvas.sheet:
+        # The sheet is the standalone canvas's furniture; inline, the page is
+        # the canvas and the theme's sheet is ignored like its `ink` is.
+        drawing, sheet = around(drawing, fitted.theme, document, measurer)
+        return drawing, fitted.theme, sheet
+    return drawing, fitted.theme, None
+
+
+def _placed(scene: Scene, theme: Theme, document: Document) -> Scene:
+    """`centred`, except for a `files` tree the theme puts at the left.
+
+    A listing reads from its left edge the way the text around it does, so a
+    tree centred in a wide canvas starts halfway across the column. It keeps the
+    canvas width either way — only where the drawing sits on it changes.
+    """
+    left = document.kind in FILES_KINDS and theme.files.align == "left"
+    if left and theme.canvas.width_mode == "fixed" and scene.width < theme.canvas.width:
+        return _shifted(scene, 0.0, theme.canvas.width)
+    return centred(scene, theme)
+
+
+def render_text(document: Document, *, width: int | None = None, charset: str = "unicode") -> str:
+    """A document as plain text, for a code block, a terminal or a commit message.
+
+    A second emitter rather than a rasteriser: each kind with a text form lays
+    itself out on a character grid from its layout's topology — rows, columns,
+    order, intervals — and never from the SVG's coordinates, which are in points
+    with proportional type and would collide when rounded to cells.
+
+    `width` is in terminal cells (an East Asian wide character is two); left
+    out, it is 80, or 100 for `lanes` and `sequence`, whose parties sit side by
+    side. The caller's width always wins. A drawing
+    that does not fit is refused at the pointer of its widest thing, with the
+    width it needs; nothing is wrapped mid-word or truncated. `charset` is
+    `unicode` (box drawing) or `ascii` (bytes below 128 only). A `files` tree
+    with `style: "ascii"` is drawn in ASCII whatever `charset` says, as it always
+    was.
+
+    Raises:
+        DrawspecError: the kind has no text form, or a label has a character
+            with no ASCII spelling in an `ascii` drawing.
+        FitError: the drawing is wider than `width`.
+    """
+    if charset not in CHARSETS:
+        raise DrawspecError(f"charset must be one of {', '.join(CHARSETS)}; got {charset!r}")
+    if document.kind not in TEXT_KINDS:
+        raise DrawspecError(
+            f"a {document.kind!r} document has no text form. The kinds that have one are "
+            f"{', '.join(f'`{kind}`' for kind in TEXT_KINDS)}. Render it as SVG."
+        )
+    return text_for(document, default_width(document.kind) if width is None else width, charset)
 
 
 #: How far over the canvas a drawing may measure before it is refused, in user
@@ -252,4 +357,4 @@ def render_file(
     return render_document(load_document(path), theme, profile)
 
 
-__all__ = ["centred", "framed", "render", "render_document", "render_file"]
+__all__ = ["centred", "framed", "render", "render_document", "render_file", "render_text"]

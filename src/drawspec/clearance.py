@@ -132,7 +132,10 @@ def _boxes(
     boxes: list[Box] = []
     for primitive in primitives:
         if isinstance(primitive, TextRun):
-            if primitive.rotate:
+            # A rotated axis title sits outside the plot; lettering sized as part
+            # of a picture sits on its own tag, which the picture already keeps
+            # its strokes clear of — cutting them again would cut the picture.
+            if primitive.rotate or primitive.size:
                 continue
             width = measurer.advance(
                 primitive.text, primitive.font, theme.scale[primitive.level], primitive.weight

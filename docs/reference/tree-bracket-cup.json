@@ -1,0 +1,292 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "tree",
+  "title": "Under-12s cup: the knockout rounds",
+  "description": "Sixteen teams in a single-elimination draw, read left to right from the first round to the final, each team's goals in a match beside it and the champion's run drawn heavy.",
+  "caption": "A match level after extra time goes to penalties (p).",
+  "style": "bracket",
+  "root": "right",
+  "nodes": [
+    {
+      "id": "t0",
+      "text": "Riverside"
+    },
+    {
+      "id": "t1",
+      "text": "Hillcrest"
+    },
+    {
+      "id": "t2",
+      "text": "Oakfield"
+    },
+    {
+      "id": "t3",
+      "text": "Marsh Lane"
+    },
+    {
+      "id": "t4",
+      "text": "Northgate"
+    },
+    {
+      "id": "t5",
+      "text": "Kingsway"
+    },
+    {
+      "id": "t6",
+      "text": "Brookvale"
+    },
+    {
+      "id": "t7",
+      "text": "St Anne's"
+    },
+    {
+      "id": "t8",
+      "text": "Ashworth"
+    },
+    {
+      "id": "t9",
+      "text": "Elmhurst"
+    },
+    {
+      "id": "t10",
+      "text": "Westbury"
+    },
+    {
+      "id": "t11",
+      "text": "Fairview"
+    },
+    {
+      "id": "t12",
+      "text": "Harbour"
+    },
+    {
+      "id": "t13",
+      "text": "Linfield"
+    },
+    {
+      "id": "t14",
+      "text": "Castleton"
+    },
+    {
+      "id": "t15",
+      "text": "Mill Road"
+    },
+    {
+      "id": "first1",
+      "text": "Riverside"
+    },
+    {
+      "id": "first2",
+      "text": "Marsh Lane"
+    },
+    {
+      "id": "first3",
+      "text": "Northgate"
+    },
+    {
+      "id": "first4",
+      "text": "St Anne's"
+    },
+    {
+      "id": "first5",
+      "text": "Ashworth"
+    },
+    {
+      "id": "first6",
+      "text": "Westbury"
+    },
+    {
+      "id": "first7",
+      "text": "Linfield"
+    },
+    {
+      "id": "first8",
+      "text": "Castleton"
+    },
+    {
+      "id": "quarter1",
+      "text": "Riverside"
+    },
+    {
+      "id": "quarter2",
+      "text": "St Anne's"
+    },
+    {
+      "id": "quarter3",
+      "text": "Ashworth"
+    },
+    {
+      "id": "quarter4",
+      "text": "Castleton"
+    },
+    {
+      "id": "semi1",
+      "text": "St Anne's"
+    },
+    {
+      "id": "semi2",
+      "text": "Ashworth"
+    },
+    {
+      "id": "final1",
+      "text": "St Anne's"
+    }
+  ],
+  "edges": [
+    {
+      "from": "first1",
+      "to": "t0",
+      "label": "3"
+    },
+    {
+      "from": "first1",
+      "to": "t1",
+      "label": "1"
+    },
+    {
+      "from": "first2",
+      "to": "t2",
+      "label": "0"
+    },
+    {
+      "from": "first2",
+      "to": "t3",
+      "label": "2"
+    },
+    {
+      "from": "first3",
+      "to": "t4",
+      "label": "4"
+    },
+    {
+      "from": "first3",
+      "to": "t5",
+      "label": "2"
+    },
+    {
+      "from": "first4",
+      "to": "t6",
+      "label": "1"
+    },
+    {
+      "from": "first4",
+      "to": "t7",
+      "label": "3",
+      "role": "strong"
+    },
+    {
+      "from": "first5",
+      "to": "t8",
+      "label": "2"
+    },
+    {
+      "from": "first5",
+      "to": "t9",
+      "label": "0"
+    },
+    {
+      "from": "first6",
+      "to": "t10",
+      "label": "5"
+    },
+    {
+      "from": "first6",
+      "to": "t11",
+      "label": "4"
+    },
+    {
+      "from": "first7",
+      "to": "t12",
+      "label": "0"
+    },
+    {
+      "from": "first7",
+      "to": "t13",
+      "label": "1"
+    },
+    {
+      "from": "first8",
+      "to": "t14",
+      "label": "3"
+    },
+    {
+      "from": "first8",
+      "to": "t15",
+      "label": "2"
+    },
+    {
+      "from": "quarter1",
+      "to": "first1",
+      "label": "2"
+    },
+    {
+      "from": "quarter1",
+      "to": "first2",
+      "label": "1"
+    },
+    {
+      "from": "quarter2",
+      "to": "first3",
+      "label": "1"
+    },
+    {
+      "from": "quarter2",
+      "to": "first4",
+      "label": "2",
+      "role": "strong"
+    },
+    {
+      "from": "quarter3",
+      "to": "first5",
+      "label": "3"
+    },
+    {
+      "from": "quarter3",
+      "to": "first6",
+      "label": "0"
+    },
+    {
+      "from": "quarter4",
+      "to": "first7",
+      "label": "2 (3 p)"
+    },
+    {
+      "from": "quarter4",
+      "to": "first8",
+      "label": "2 (4 p)"
+    },
+    {
+      "from": "semi1",
+      "to": "quarter1",
+      "label": "0"
+    },
+    {
+      "from": "semi1",
+      "to": "quarter2",
+      "label": "1",
+      "role": "strong"
+    },
+    {
+      "from": "semi2",
+      "to": "quarter3",
+      "label": "2"
+    },
+    {
+      "from": "semi2",
+      "to": "quarter4",
+      "label": "1"
+    },
+    {
+      "from": "final1",
+      "to": "semi1",
+      "label": "2",
+      "role": "strong"
+    },
+    {
+      "from": "final1",
+      "to": "semi2",
+      "label": "1"
+    }
+  ]
+}

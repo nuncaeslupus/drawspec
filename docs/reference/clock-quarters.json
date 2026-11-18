@@ -1,0 +1,14 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "clock",
+  "title": "O'clock, quarter past, half past, quarter to",
+  "description": "Four faces from three o'clock to quarter to four: the minute hand goes round a quarter at a time while the hour hand moves on from the 3 towards the 4.",
+  "caption": "Watch the short hand: it moves on too.",
+  "clocks": [
+    {"time": "3:00"},
+    {"time": "3:15"},
+    {"time": "3:30"},
+    {"time": "3:45"}
+  ]
+}

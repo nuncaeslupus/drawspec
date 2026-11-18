@@ -27,7 +27,8 @@ import sys
 from pathlib import Path
 
 # Latin (incl. Extended-A), Greek, Cyrillic, general punctuation, currency,
-# arrows, mathematical operators, geometric shapes and the dingbats a diagram
+# arrows, mathematical operators, box drawing and block elements (the glyphs
+# text output draws with), geometric shapes and the dingbats a diagram
 # label plausibly reaches for. Everything else falls back to `.notdef`, which
 # is why the coverage is generous rather than minimal.
 UNICODES = ",".join(
@@ -45,6 +46,8 @@ UNICODES = ",".join(
         "U+2122",  # trademark
         "U+2190-21FF",  # Arrows
         "U+2200-22FF",  # Mathematical Operators
+        "U+2500-257F",  # Box Drawing — what `--format text` draws with
+        "U+2580-259F",  # Block Elements — its meters and bars
         "U+25A0-25FF",  # Geometric Shapes
         "U+2600-26FF",  # Miscellaneous Symbols
     ]

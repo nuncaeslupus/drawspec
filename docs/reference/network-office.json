@@ -1,0 +1,25 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "network",
+  "theme": "blueprint",
+  "title": "A small office network",
+  "description": "One router joins the internet line, the office LAN and a guest Wi-Fi network: desks, a printer and a NAS on the LAN, visitors' devices on the guest network only.",
+  "caption": "The guest network reaches the internet through the router and nothing else.",
+  "networks": [
+    {"id": "wan", "text": "Internet (ISP)", "address": "198.51.100.8/30"},
+    {"id": "lan", "text": "Office LAN", "address": "192.168.1.0/24"},
+    {"id": "guest", "text": "Guest Wi-Fi", "address": "192.168.50.0/24"}
+  ],
+  "hosts": [
+    {"id": "router", "text": "router\nfirewall, DHCP", "role": "emphasis", "networks": [{"network": "wan", "address": ".10"}, {"network": "lan", "address": ".1"}, {"network": "guest", "address": ".1"}]},
+    {"id": "nas", "text": "NAS\nfile shares", "role": "store", "networks": [{"network": "lan", "address": ".5"}]},
+    {"id": "printer", "networks": [{"network": "lan", "address": ".6"}]},
+    {"id": "desk1", "text": "Reception", "role": "person", "networks": [{"network": "lan"}]},
+    {"id": "desk2", "text": "Accounts", "role": "person", "networks": [{"network": "lan"}]},
+    {"id": "guests", "text": "visitors' devices", "role": "person", "networks": [{"network": "guest"}]}
+  ],
+  "groups": [
+    {"text": "desks", "members": ["desk1", "desk2"]}
+  ]
+}

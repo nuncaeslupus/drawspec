@@ -9,10 +9,12 @@ frame makes: what is inside it is inside it.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
+from drawspec import render
 from drawspec.errors import DocumentError, DrawspecError
 from drawspec.kinds.common import line_bounds
 from drawspec.kinds.containers import GROUP_ROLE, Frame, nesting_of
@@ -20,7 +22,7 @@ from drawspec.kinds.graph import GraphDrawing, graph_drawing, graph_scene
 from drawspec.scene import Rect, TextLine
 from drawspec.schema import Document, load_document, parse_document
 from drawspec.text import TextMeasurer
-from drawspec.theme import load_theme
+from drawspec.theme import Theme, load_theme
 
 REFERENCE_DIR = Path(__file__).resolve().parents[1] / "docs" / "reference"
 
@@ -511,6 +513,51 @@ def test_an_edge_may_join_two_containers() -> None:
         assert frame.y - 1e-6 <= point[1] <= frame.bottom + 1e-6
 
 
+CLUSTER_PLANE = (
+    ("api", "kube-apiserver"),
+    ("etcd", "etcd"),
+    ("sched", "kube-scheduler"),
+    ("ctrl", "kube-controller-manager"),
+    ("cloud", "cloud-controller-manager"),
+)
+CLUSTER_NODE = (
+    ("kubelet", "kubelet"),
+    ("proxy", "kube-proxy"),
+    ("runtime", "container runtime (containerd)"),
+    ("pods", "pods"),
+)
+
+
+def test_an_edge_between_groups_does_not_undo_the_packing_of_their_members() -> None:
+    """A Kubernetes cluster: a control plane with an arrow to each of two nodes.
+
+    Without the arrows the three frames stack and each packs its members into
+    rows. With them the two nodes rank side by side, and each was still packed
+    as if it had the sheet to itself, so the drawing needed 1072 on a 640 canvas
+    in both directions and was refused — the arrow had undone the packing. The
+    nodes now give way and pack narrower; the control plane, alone in its row,
+    keeps its rows; and every group keeps the order its members were written in.
+    """
+    nodes = list(CLUSTER_PLANE)
+    groups: list[tuple[str, str, tuple[str, ...]]] = [
+        ("control", "Control plane", tuple(i for i, _ in CLUSTER_PLANE))
+    ]
+    for n in ("1", "2"):
+        nodes += [(i + n, t) for i, t in CLUSTER_NODE]
+        groups.append(("node" + n, "Node " + n, tuple(i + n for i, _ in CLUSTER_NODE)))
+    built = drawing(flow(nodes, [("control", "node1"), ("control", "node2")], groups))
+
+    assert built.width <= THEME.canvas.width + 1e-6
+    for _, _, members in groups:
+        placed = sorted(members, key=lambda i: (round(built.boxes[i].y, 3), built.boxes[i].x))
+        assert tuple(placed) == members
+    plane = [built.boxes[i] for i, _ in CLUSTER_PLANE]
+    rows = {round(box.y, 3) for box in plane}
+    assert 1 < len(rows) < len(plane), "the control plane is packed into rows, not a line"
+    first, second = frame_named(built, "node1"), frame_named(built, "node2")
+    assert first.y == pytest.approx(second.y) and first.right <= second.x
+
+
 def test_a_cycle_refuses_a_group_at_an_edge_end_rather_than_crashing() -> None:
     """The widened id space stops where the frame does.
 
@@ -578,3 +625,52 @@ def test_a_tree_may_name_a_group_too() -> None:
     frame = frame_named(built, "branch")
     assert frame.x - 1e-6 <= route.points[-1][0] <= frame.right + 1e-6
     assert frame.y - 1e-6 <= route.points[-1][1] <= frame.bottom + 1e-6
+
+
+# --------------------------------------------------------------------------
+# Washed frames and striped lanes: `[frames] tone`, `[lanes] stripe`
+# --------------------------------------------------------------------------
+
+
+WASHED: dict[str, object] = {
+    "version": 1,
+    "kind": "flow",
+    "nodes": [{"id": "a", "text": "Web server"}, {"id": "b", "text": "Database"}],
+    "edges": [{"from": "a", "to": "b"}],
+    "groups": [
+        {"id": "outer", "text": "Region", "members": ["inner", "b"]},
+        {"id": "inner", "text": "Zone", "members": ["a"]},
+    ],
+}
+
+
+def _frames(theme: Theme) -> list[Rect]:
+    scene = graph_scene(parse_document(WASHED), theme, MEASURER)
+    return [p for p in scene.primitives if isinstance(p, Rect) and p.role == GROUP_ROLE]
+
+
+def test_a_frame_is_washed_with_the_ink_and_nesting_lays_wash_over_wash() -> None:
+    frames = _frames(THEME)
+    assert len(frames) == 2
+    for frame in frames:
+        assert (frame.fill, frame.fill_colour) == ("solid", "currentColor")
+        assert frame.fill_opacity == pytest.approx(THEME.frames.tone)
+    assert 0 < THEME.frames.tone <= 0.1
+
+
+def test_a_frame_deeper_than_the_levels_is_outlined_only() -> None:
+    shallow = replace(THEME, frames=replace(THEME.frames, levels=1))
+    opacities = sorted(frame.fill_opacity for frame in _frames(shallow))
+    assert opacities == [pytest.approx(THEME.frames.tone), 1.0]
+    assert sorted(frame.fill for frame in _frames(shallow)) == ["", "solid"]
+
+
+def test_a_tone_of_zero_draws_outlines_exactly_as_before() -> None:
+    plain = replace(THEME, frames=replace(THEME.frames, tone=0.0))
+    assert all(frame.fill == "" for frame in _frames(plain))
+    assert "fill-opacity" not in render(WASHED, theme=plain)
+
+
+def test_the_wash_is_emitted_as_the_page_s_ink_at_part_opacity() -> None:
+    svg = render(WASHED, theme=THEME)
+    assert f'fill="currentColor" fill-opacity="{THEME.frames.tone:g}"' in svg

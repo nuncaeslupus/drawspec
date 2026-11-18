@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "kind": "treemap",
+  "title": "212 on-call hours in the quarter",
+  "unit": "hours",
+  "parts": [
+    {"text": "Disk alerts", "amount": 74, "role": "emphasis"},
+    {"text": "Certificate renewals", "amount": 41},
+    {"text": "Real incidents", "amount": 38},
+    {"text": "Flapping health checks", "amount": 35},
+    {"text": "Access requests", "amount": 24}
+  ],
+  "caption": "Every disk alert was cleared by the same two commands."
+}

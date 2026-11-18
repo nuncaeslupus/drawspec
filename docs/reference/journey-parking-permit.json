@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "kind": "journey",
+  "title": "A parking permit, from the resident's side",
+  "feelings": ["frustrated", "uneasy", "neutral", "satisfied", "relieved"],
+  "rows": [
+    {"id": "does", "text": "Does"},
+    {"id": "where", "text": "Where"},
+    {"id": "pain", "text": "Friction"}
+  ],
+  "stages": [
+    {"text": "Finds out", "feeling": "neutral", "details": [
+      {"row": "does", "text": "Gets a warning ticket"},
+      {"row": "where", "text": "Windscreen"}
+    ]},
+    {"text": "Applies", "feeling": "uneasy", "details": [
+      {"row": "does", "text": "Fills in the form"},
+      {"row": "where", "text": "City website"},
+      {"row": "pain", "text": "Asked for the car's registration twice"}
+    ]},
+    {"text": "Proves address", "feeling": "frustrated", "role": "emphasis", "details": [
+      {"row": "does", "text": "Uploads a utility bill"},
+      {"row": "where", "text": "City website"},
+      {"row": "pain", "text": "Rejects phone photos over 2 MB"}
+    ]},
+    {"text": "Pays", "feeling": "neutral", "details": [
+      {"row": "does", "text": "Pays the annual fee"},
+      {"row": "where", "text": "Payment gateway"}
+    ]},
+    {"text": "Receives", "feeling": "relieved", "details": [
+      {"row": "does", "text": "Gets the digital permit"},
+      {"row": "where", "text": "Email"}
+    ]}
+  ]
+}

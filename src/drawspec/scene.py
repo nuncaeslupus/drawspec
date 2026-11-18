@@ -61,6 +61,11 @@ class Rect(Primitive):
     """The colour that pattern is drawn in, when the theme declares one. Resolved
     from the theme by whoever chose the fill — never a value an author wrote."""
 
+    fill_opacity: float = field(default=1.0, repr=False)
+    """How much of the fill shows, as `Polygon.fill_opacity`: a container's wash.
+    Kept out of the repr the id digest reads, so no drawing without a wash
+    changed its ids."""
+
     """One of the theme's fill patterns, when the *geometry* decides its own fill.
 
     Empty means "ask the role", which is every box in every graph. A chart mark
@@ -79,6 +84,17 @@ class Ellipse(Primitive):
     cy: float = 0.0
     rx: float = 0.0
     ry: float = 0.0
+    fill: str = field(default="", repr=False)
+    """As `Rect.fill`: a fill the geometry chose, or empty for the role's. A state
+    machine's initial dot is the one ellipse that asks — `solid` — because a dot
+    is a filled mark, not an outline. Kept out of the repr the id digest reads,
+    so no drawing made before it existed changed its ids."""
+
+    fill_colour: str = field(default="", repr=False)
+    """As `Rect.fill_colour`: the colour that fill is drawn in."""
+
+    fill_opacity: float = field(default=1.0, repr=False)
+    """As `Rect.fill_opacity`: a graded ring's share of the ink."""
 
 
 @dataclass(frozen=True)
@@ -91,6 +107,11 @@ class Polygon(Primitive):
 
     fill_colour: str = ""
     """As `Rect.fill_colour`: the colour that fill is drawn in."""
+
+    fill_opacity: float = 1.0
+    """How much of the fill shows, from 0 to 1. A tint rather than a colour: a
+    `files` folder is filled with the page's own ink, faintly, so it reads as a
+    solid shape in any theme without adding a colour the page did not choose."""
 
     region: bool = False
     """Whether this figure is an extent rather than a shape, so it is not outlined.
@@ -164,6 +185,21 @@ class TextRun(Primitive):
     """Rotation in degrees about (x, y) — a chart's vertical axis label, and
     nothing else so far."""
 
+    paint: str = ""
+    """The colour the letters are drawn in, when the theme chose one for this run —
+    a `files` label's letters on its coloured tag. Empty is the page's ink."""
+
+    opacity: float = field(default=1.0, repr=False)
+    """How much of the ink the letters take, below 1 for words that are ground
+    rather than content — a quadrant's quarter names. Still the page's ink, so a
+    dark page keeps them legible; never a colour."""
+
+    size: float = 0.0
+    """A size of its own, for lettering that is part of a picture rather than text
+    — a `files` tag's `PDF`. Zero, for every run that is text, means *the level's*
+    size; a run set here is not read, it is recognised, and the words it stands
+    for are always written out beside it at a level size."""
+
 
 @dataclass(frozen=True)
 class TextSpan:
@@ -218,6 +254,18 @@ class TextLine(Primitive):
     side used to mean dropping to a `TextRun`, which is a run of plain
     characters — so `**RPO**` went out with its asterisks showing, the same
     defect a span's name had before it was made to go through `wrap`.
+    """
+
+    strike: bool = field(default=False, repr=False)
+    """Whether the line is struck through — a box a proposed change removes.
+
+    A property of the words rather than a line drawn over them, so the renderer
+    puts the stroke where *its* font's middle is, and nothing that checks for a
+    line crossing a word mistakes the one meant to for a collision.
+
+    Out of the `repr` because the emitter digests reprs into the id prefix, and a
+    field every unstruck line carried would have renamed the ids of every drawing
+    that has text; `emit.namespace_for` adds it to the digest when it is set.
     """
 
     @property

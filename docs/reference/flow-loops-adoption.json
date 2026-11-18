@@ -1,0 +1,26 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "flow",
+  "title": "Word of mouth, until the market runs out",
+  "description": "A business-course limits-to-growth diagram, with signs written s and o by a course theme: customers recommend the product, which raises adoption, until the people yet to adopt run out.",
+  "theme": "docs/reference/themes/same-opposite.toml",
+  "nodes": [
+    {"id": "customers", "text": "Customers"},
+    {"id": "talk", "text": "Recommendations"},
+    {"id": "rate", "text": "Adoption rate"},
+    {"id": "left", "text": "People yet to adopt"}
+  ],
+  "edges": [
+    {"from": "customers", "to": "talk", "polarity": "+"},
+    {"from": "talk", "to": "rate", "polarity": "+"},
+    {"from": "rate", "to": "customers", "polarity": "+"},
+    {"from": "customers", "to": "left", "polarity": "-"},
+    {"from": "left", "to": "rate", "polarity": "+"}
+  ],
+  "loops": [
+    {"text": "Word of mouth", "nodes": ["customers", "talk", "rate"]},
+    {"text": "Saturation", "nodes": ["customers", "left", "rate"]}
+  ],
+  "caption": "s: the two move the same way; o: they move in opposite ways."
+}

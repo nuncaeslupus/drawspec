@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "kind": "gantt",
+  "title": "The library refit, at week 7",
+  "description": "Where each piece of the refit has got to. The band inside a bar is how much of that task is done; the line at week 7 is today.",
+  "axis": {"label": "Week", "min": 0, "max": 14},
+  "tasks": [
+    {"id": "survey", "text": "Survey the building", "start": 0, "end": 2, "done": 100},
+    {"id": "strip", "text": "Strip out old shelving", "start": 2, "end": 5, "done": 100},
+    {"id": "wiring", "text": "Rewire the reading room", "start": 4, "end": 9, "done": 60, "role": "emphasis"},
+    {"id": "floor", "text": "Lay the new floor", "start": 6, "end": 10, "done": 20},
+    {"id": "shelves", "text": "Fit new shelving", "start": 10, "end": 13, "done": 0},
+    {"id": "open", "text": "Reopen to readers", "at": 14}
+  ],
+  "edges": [
+    {"from": "survey", "to": "strip"},
+    {"from": "floor", "to": "shelves"},
+    {"from": "shelves", "to": "open"}
+  ],
+  "marks": [{"text": "today", "at": 7}]
+}

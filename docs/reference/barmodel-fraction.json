@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "kind": "barmodel",
+  "title": "Two fifths of a bag of 40 sweets are eaten",
+  "description": "A fraction of an amount: a bar of five equal units, two of them eaten, the whole bag of 40 braced over the bar and one unit's worth braced under it.",
+  "bars": [
+    {"id": "bag", "text": "Bag", "parts": [
+      {"id": "eaten", "units": 2, "text": "eaten", "role": "emphasis"},
+      {"units": 3, "text": "left"}
+    ]}
+  ],
+  "braces": [
+    {"over": ["bag"], "amount": 40, "text": "40 sweets"},
+    {"over": ["eaten"], "amount": 16, "text": "eaten: ?"}
+  ]
+}

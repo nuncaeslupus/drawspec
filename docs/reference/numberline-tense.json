@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "kind": "numberline",
+  "title": "“I have worked here for three years”",
+  "description": "A tense line for a language class: a past action that is finished, and the present perfect running from three years ago up to now.",
+  "axis": {"min": -6, "max": 2, "ends": ["past", "future"]},
+  "points": [
+    {"at": 0, "text": "now", "role": "emphasis"},
+    {"at": -5, "text": "“I worked in a shop”"}
+  ],
+  "ranges": [
+    {"from": -3, "to": 0, "text": "“I have worked here”"}
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "kind": "numberline",
+  "title": "Where x > −1 and x ≤ 4 both hold",
+  "description": "Two inequalities on one scale from −4 to 7, each in its own track, and the range where both hold under them: from −1, excluded, to 4, included.",
+  "axis": {"min": -4, "max": 7, "step": 1},
+  "ranges": [
+    {"from": -1, "from_open": true, "text": "x > −1"},
+    {"to": 4, "text": "x ≤ 4"},
+    {"from": -1, "to": 4, "from_open": true, "text": "both: −1 < x ≤ 4", "role": "emphasis"}
+  ]
+}

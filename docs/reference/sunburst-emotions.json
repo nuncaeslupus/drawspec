@@ -1,0 +1,496 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "sunburst",
+  "title": "The feelings wheel",
+  "description": "Core feelings in the middle, each opening into finer ones and then into the words we reach for — read from the centre outward. After the Gloria Willcox / Junto feelings wheel.",
+  "centre": "How I feel",
+  "nodes": [
+    {
+      "text": "Happy",
+      "children": [
+        {
+          "text": "Playful",
+          "children": [
+            {
+              "text": "Aroused"
+            },
+            {
+              "text": "Cheeky"
+            }
+          ]
+        },
+        {
+          "text": "Content",
+          "children": [
+            {
+              "text": "Free"
+            },
+            {
+              "text": "Joyful"
+            }
+          ]
+        },
+        {
+          "text": "Interested",
+          "children": [
+            {
+              "text": "Curious"
+            },
+            {
+              "text": "Inquisitive"
+            }
+          ]
+        },
+        {
+          "text": "Proud",
+          "children": [
+            {
+              "text": "Successful"
+            },
+            {
+              "text": "Confident"
+            }
+          ]
+        },
+        {
+          "text": "Accepted",
+          "children": [
+            {
+              "text": "Respected"
+            },
+            {
+              "text": "Valued"
+            }
+          ]
+        },
+        {
+          "text": "Powerful",
+          "children": [
+            {
+              "text": "Courageous"
+            },
+            {
+              "text": "Creative"
+            }
+          ]
+        },
+        {
+          "text": "Peaceful",
+          "children": [
+            {
+              "text": "Loving"
+            },
+            {
+              "text": "Thankful"
+            }
+          ]
+        },
+        {
+          "text": "Trusting",
+          "children": [
+            {
+              "text": "Sensitive"
+            },
+            {
+              "text": "Intimate"
+            }
+          ]
+        },
+        {
+          "text": "Optimistic",
+          "children": [
+            {
+              "text": "Hopeful"
+            },
+            {
+              "text": "Inspired"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "text": "Sad",
+      "children": [
+        {
+          "text": "Lonely",
+          "children": [
+            {
+              "text": "Isolated"
+            },
+            {
+              "text": "Abandoned"
+            }
+          ]
+        },
+        {
+          "text": "Vulnerable",
+          "children": [
+            {
+              "text": "Victimised"
+            },
+            {
+              "text": "Fragile"
+            }
+          ]
+        },
+        {
+          "text": "Despair",
+          "children": [
+            {
+              "text": "Grief"
+            },
+            {
+              "text": "Powerless"
+            }
+          ]
+        },
+        {
+          "text": "Guilty",
+          "children": [
+            {
+              "text": "Ashamed"
+            },
+            {
+              "text": "Remorseful"
+            }
+          ]
+        },
+        {
+          "text": "Depressed",
+          "children": [
+            {
+              "text": "Inferior"
+            },
+            {
+              "text": "Empty"
+            }
+          ]
+        },
+        {
+          "text": "Hurt",
+          "children": [
+            {
+              "text": "Embarrassed"
+            },
+            {
+              "text": "Disappointed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "text": "Disgusted",
+      "children": [
+        {
+          "text": "Disapproving",
+          "children": [
+            {
+              "text": "Judgmental"
+            },
+            {
+              "text": "Embarrassed"
+            }
+          ]
+        },
+        {
+          "text": "Disappointed",
+          "children": [
+            {
+              "text": "Appalled"
+            },
+            {
+              "text": "Revolted"
+            }
+          ]
+        },
+        {
+          "text": "Awful",
+          "children": [
+            {
+              "text": "Nauseated"
+            },
+            {
+              "text": "Detestable"
+            }
+          ]
+        },
+        {
+          "text": "Repelled",
+          "children": [
+            {
+              "text": "Horrified"
+            },
+            {
+              "text": "Hesitant"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "text": "Angry",
+      "children": [
+        {
+          "text": "Let down",
+          "children": [
+            {
+              "text": "Betrayed"
+            },
+            {
+              "text": "Resentful"
+            }
+          ]
+        },
+        {
+          "text": "Humiliated",
+          "children": [
+            {
+              "text": "Disrespected"
+            },
+            {
+              "text": "Ridiculed"
+            }
+          ]
+        },
+        {
+          "text": "Bitter",
+          "children": [
+            {
+              "text": "Indignant"
+            },
+            {
+              "text": "Violated"
+            }
+          ]
+        },
+        {
+          "text": "Mad",
+          "children": [
+            {
+              "text": "Furious"
+            },
+            {
+              "text": "Jealous"
+            }
+          ]
+        },
+        {
+          "text": "Aggressive",
+          "children": [
+            {
+              "text": "Provoked"
+            },
+            {
+              "text": "Hostile"
+            }
+          ]
+        },
+        {
+          "text": "Frustrated",
+          "children": [
+            {
+              "text": "Infuriated"
+            },
+            {
+              "text": "Annoyed"
+            }
+          ]
+        },
+        {
+          "text": "Distant",
+          "children": [
+            {
+              "text": "Withdrawn"
+            },
+            {
+              "text": "Numb"
+            }
+          ]
+        },
+        {
+          "text": "Critical",
+          "children": [
+            {
+              "text": "Sceptical"
+            },
+            {
+              "text": "Dismissive"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "text": "Fearful",
+      "children": [
+        {
+          "text": "Scared",
+          "children": [
+            {
+              "text": "Helpless"
+            },
+            {
+              "text": "Frightened"
+            }
+          ]
+        },
+        {
+          "text": "Anxious",
+          "children": [
+            {
+              "text": "Overwhelmed"
+            },
+            {
+              "text": "Worried"
+            }
+          ]
+        },
+        {
+          "text": "Insecure",
+          "children": [
+            {
+              "text": "Inadequate"
+            },
+            {
+              "text": "Inferior"
+            }
+          ]
+        },
+        {
+          "text": "Weak",
+          "children": [
+            {
+              "text": "Worthless"
+            },
+            {
+              "text": "Insignificant"
+            }
+          ]
+        },
+        {
+          "text": "Rejected",
+          "children": [
+            {
+              "text": "Excluded"
+            },
+            {
+              "text": "Persecuted"
+            }
+          ]
+        },
+        {
+          "text": "Threatened",
+          "children": [
+            {
+              "text": "Nervous"
+            },
+            {
+              "text": "Exposed"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "text": "Bad",
+      "children": [
+        {
+          "text": "Bored",
+          "children": [
+            {
+              "text": "Indifferent"
+            },
+            {
+              "text": "Apathetic"
+            }
+          ]
+        },
+        {
+          "text": "Busy",
+          "children": [
+            {
+              "text": "Pressured"
+            },
+            {
+              "text": "Rushed"
+            }
+          ]
+        },
+        {
+          "text": "Stressed",
+          "children": [
+            {
+              "text": "Overwhelmed"
+            },
+            {
+              "text": "Out of control"
+            }
+          ]
+        },
+        {
+          "text": "Tired",
+          "children": [
+            {
+              "text": "Sleepy"
+            },
+            {
+              "text": "Unfocused"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "text": "Surprised",
+      "children": [
+        {
+          "text": "Startled",
+          "children": [
+            {
+              "text": "Shocked"
+            },
+            {
+              "text": "Dismayed"
+            }
+          ]
+        },
+        {
+          "text": "Confused",
+          "children": [
+            {
+              "text": "Disillusioned"
+            },
+            {
+              "text": "Perplexed"
+            }
+          ]
+        },
+        {
+          "text": "Amazed",
+          "children": [
+            {
+              "text": "Astonished"
+            },
+            {
+              "text": "Awe"
+            }
+          ]
+        },
+        {
+          "text": "Excited",
+          "children": [
+            {
+              "text": "Eager"
+            },
+            {
+              "text": "Energetic"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

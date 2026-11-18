@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "kind": "entities",
+  "title": "Sales, as a star",
+  "description": "A star schema: the fact table in the middle, marked `centre`, and its four dimensions round it, the first above and the rest clockwise in the order written. Each dimension is one to the facts' many.",
+  "entities": [
+    {"id": "sales", "text": "`fact_sales`", "centre": true, "fields": [
+      {"text": "`date_id`", "type": "int", "key": "foreign"},
+      {"text": "`product_id`", "type": "int", "key": "foreign"},
+      {"text": "`store_id`", "type": "int", "key": "foreign"},
+      {"text": "`customer_id`", "type": "int", "key": "foreign"},
+      {"text": "`amount`", "type": "decimal"}
+    ]},
+    {"id": "date", "text": "`dim_date`", "fields": [
+      {"text": "`date_id`", "type": "int", "key": "primary"},
+      {"text": "`day`", "type": "date"},
+      {"text": "`quarter`", "type": "int"}
+    ]},
+    {"id": "product", "text": "`dim_product`", "fields": [
+      {"text": "`product_id`", "type": "int", "key": "primary"},
+      {"text": "`name`", "type": "text"},
+      {"text": "`category`", "type": "text"}
+    ]},
+    {"id": "store", "text": "`dim_store`", "fields": [
+      {"text": "`store_id`", "type": "int", "key": "primary"},
+      {"text": "`city`", "type": "text"}
+    ]},
+    {"id": "customer", "text": "`dim_customer`", "fields": [
+      {"text": "`customer_id`", "type": "int", "key": "primary"},
+      {"text": "`name`", "type": "text"},
+      {"text": "`segment`", "type": "text"}
+    ]}
+  ],
+  "edges": [
+    {"from": "date", "to": "sales", "from_end": "one", "to_end": "zero-or-many"},
+    {"from": "product", "to": "sales", "from_end": "one", "to_end": "zero-or-many"},
+    {"from": "store", "to": "sales", "from_end": "one", "to_end": "zero-or-many"},
+    {"from": "customer", "to": "sales", "from_end": "one", "to_end": "zero-or-many"}
+  ]
+}

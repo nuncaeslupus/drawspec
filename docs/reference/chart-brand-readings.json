@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "kind": "chart",
+  "title": "Where the readings came from",
+  "description": "Bars in a derived brand theme: each series keeps its own fill pattern, and the brand's palette is laid over the patterns, so the chart still reads printed in greyscale. The brand's pale yellow was darkened by `drawspec theme from` until it read on a white page.",
+  "theme": "docs/reference/brand/tidemark.toml",
+  "axes": {
+    "horizontal": { "label": "Quarter", "min": 0.4, "max": 4.6, "categories": ["Q1", "Q2", "Q3", "Q4"] },
+    "vertical": { "label": "Readings, thousands" }
+  },
+  "series": [
+    { "name": "Tide gauges", "mark": "bar", "data": [[1, 42], [2, 44], [3, 43], [4, 45]] },
+    { "name": "Buoys", "mark": "bar", "data": [[1, 18], [2, 21], [3, 26], [4, 24]] },
+    { "name": "Volunteer reports", "mark": "bar", "data": [[1, 6], [2, 9], [3, 14], [4, 11]] }
+  ]
+}

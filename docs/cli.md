@@ -4,7 +4,7 @@
 
 ```
 usage: drawspec [-h] [--version]
-                {render,validate,theme,schema,kinds,example} ...
+                {render,validate,theme,schema,kinds,example,mcp} ...
 ```
 
 Nothing is printed to stdout but the thing that was asked for — the SVG, the
@@ -38,11 +38,14 @@ Legal before the command name.
 
 ### `drawspec render`
 
-Read a document, draw it, and write the SVG to stdout or to a file.
+Read a document, draw it, and write the SVG to stdout or to a file. With --format png, or an -o ending in .png, write a PNG instead (needs pip install 'drawspec[png]'). With --format text, or an -o ending in .txt, write the diagram as plain text, refused when it is wider than --width.
 
 ```
-usage: drawspec render [-h] [-o OUT] [--theme THEME] [--width WIDTH]
-                       [--height HEIGHT] [--profile {inline,standalone}]
+usage: drawspec render [-h] [-o OUT] [--theme THEME] [--variant NAME=THEME]
+                       [--width WIDTH] [--height HEIGHT]
+                       [--profile {inline,standalone}]
+                       [--format {svg,png,text}] [--charset {unicode,ascii}]
+                       [--scale SCALE] [--background {light,dark,transparent}]
                        document
 ```
 
@@ -51,9 +54,14 @@ usage: drawspec render [-h] [-o OUT] [--theme THEME] [--width WIDTH]
 | `document` | The document to render. |
 | `-o`, `--out` | Write here instead of stdout. |
 | `--theme` | A bundled theme name or a theme file. |
-| `--width` | Override the document's width. |
+| `--variant` | For svg: also draw the diagram in THEME, switched on by an ancestor's data-theme=NAME (and, for NAME dark, by prefers-color-scheme). Repeatable. --theme is the base and answers to light. |
+| `--width` | Override the document's width; with --format text, the most terminal cells a line may take (default 80, or 100 for automaton, lanes, sequence and timing). |
 | `--height` | Override the document's height. |
 | `--profile` | The embedding profile. One of `inline`, `standalone`. Default `inline`. |
+| `--format` | What to write: svg; png, a raster image of the standalone drawing; or text, the diagram as plain text for a code block or a terminal (files, tree, sequence, gantt, timeline, board, stack, rag, meter, network, timing, gitgraph, railroad, packet, flow, states, lanes, pert, automaton, neuralnet). Default: from the -o extension, else svg. One of `svg`, `png`, `text`. |
+| `--charset` | For text: box-drawing characters, or ASCII only (default unicode). One of `unicode`, `ascii`. |
+| `--scale` | For png: pixels per SVG unit, at most 8 (default 2). |
+| `--background` | For png: theme ink on white, light ink on near-black, or no page (default light). One of `light`, `dark`, `transparent`. |
 
 ### `drawspec validate`
 
@@ -73,7 +81,7 @@ usage: drawspec validate [-h] [--theme THEME] document
 Tools for the files that decide appearance.
 
 ```
-usage: drawspec theme [-h] {check} ...
+usage: drawspec theme [-h] {check,from} ...
 ```
 
 #### `drawspec theme check`
@@ -87,6 +95,22 @@ usage: drawspec theme check [-h] theme
 | Argument | What it does |
 |---|---|
 | `theme` | A bundled theme name or a theme file. |
+
+#### `drawspec theme from`
+
+Read CSS custom properties (a .css file) or W3C design tokens (a .json or .tokens file) and write the theme they map onto, as TOML. Fonts, the accent and muted colours, a corner radius and a stroke weight are taken; every token left out is reported on stderr with the reason. A colour that would not read at 3:1 on both a white and a near-black page is darkened or lightened until it does. Local files only: no URL is fetched.
+
+```
+usage: drawspec theme from [-h] [-o OUT] [--name NAME] [--strict]
+                           brand [brand ...]
+```
+
+| Argument | What it does |
+|---|---|
+| `brand` | A .css or design-tokens file; a later file wins a tie. |
+| `-o`, `--out` | Write here instead of stdout. |
+| `--name` | The theme's name; the first file's name by default. |
+| `--strict` | Refuse a colour that would need adjusting, instead of adjusting it. |
 
 ### `drawspec schema`
 
@@ -114,12 +138,20 @@ Write the smallest document of that kind that renders, to stdout. Pipe it straig
 
 ```
 usage: drawspec example [-h]
-                        {flow,tree,cycle,stack,timeline,columns,matrix,pyramid,rings,funnel,chart,quadrant,curve}
+                        {flow,tree,cycle,stack,timeline,columns,matrix,pyramid,rings,funnel,chart,quadrant,scatter,curve,files,states,sequence,lanes,entities,gantt,board,fishbone,venn,journey,treemap,sankey,numberline,barmodel,waterfall,pie,mindmap,argument,familytree,meter,rag,clock,sunburst,packet,network,timing,gitgraph,railroad,usecase,wardley,pert,automaton,neuralnet}
 ```
 
 | Argument | What it does |
 |---|---|
-| `kind` | Which kind to write. One of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `curve`. |
+| `kind` | Which kind to write. One of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `packet`, `network`, `timing`, `gitgraph`, `railroad`, `usecase`, `wardley`, `pert`, `automaton`, `neuralnet`. |
+
+### `drawspec mcp`
+
+The MCP server; needs the extra: pip install 'drawspec[mcp]'.
+
+```
+usage: drawspec mcp [-h]
+```
 
 ## Embedding profiles
 

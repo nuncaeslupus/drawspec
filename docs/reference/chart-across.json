@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "kind": "chart",
+  "title": "Why people called the council last month",
+  "description": "Calls by reason, longest first. The reasons are sentences, so the bars lie on their side: each name reads left to right beside its bar.",
+  "axes": {
+    "horizontal": { "label": "Calls", "unit": "thousands" },
+    "vertical": {
+      "label": "Reason for calling",
+      "categories": [
+        "Missed bin collection",
+        "Council tax bill or payment",
+        "Parking permit or fine",
+        "Housing repair not yet done",
+        "Report a pothole or broken street light",
+        "Something else"
+      ]
+    }
+  },
+  "series": [
+    {
+      "name": "Calls",
+      "mark": "bar",
+      "data": [[8.4, 1], [6.1, 2], [4.7, 3], [3.9, 4], [2.2, 5], [1.6, 6]]
+    }
+  ]
+}

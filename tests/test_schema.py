@@ -26,7 +26,9 @@ from drawspec.errors import DocumentError
 from drawspec.schema import (
     CONTAINER_KINDS,
     DOCUMENT_VERSION,
+    GRAPH_EDGE_ROLES,
     GRAPH_KINDS,
+    HIERARCHY_ROLES,
     KINDS,
     OBJECTS,
     REJECTED_FIELDS,
@@ -40,7 +42,7 @@ from drawspec.schema import (
     schema_json,
     validate_document,
 )
-from drawspec.theme import EDGE_ROLES, NODE_ROLES
+from drawspec.theme import NODE_ROLES
 
 
 def flow_document(**overrides: Any) -> dict[str, Any]:
@@ -129,7 +131,7 @@ def evaluate(value: Any, schema: dict[str, Any], root: dict[str, Any]) -> list[s
     """Errors `value` has against `schema`. Empty means valid.
 
     Covers exactly the keywords the published schema uses: `$ref`, `type`,
-    `const`, `enum`, `exclusiveMinimum`, `properties`, `required`,
+    `const`, `enum`, `exclusiveMinimum`, `minimum`, `maximum`, `properties`, `required`,
     `additionalProperties: false`, `items`, `minItems`, `maxItems`, `oneOf`.
     Anything else raises, so this cannot quietly stop checking.
     """
@@ -144,6 +146,8 @@ def evaluate(value: Any, schema: dict[str, Any], root: dict[str, Any]) -> list[s
         "const",
         "enum",
         "exclusiveMinimum",
+        "minimum",
+        "maximum",
         "properties",
         "required",
         "additionalProperties",
@@ -172,6 +176,10 @@ def evaluate(value: Any, schema: dict[str, Any], root: dict[str, Any]) -> list[s
         return [f"{value!r} is not in the enum"]
     if "exclusiveMinimum" in schema and not value > schema["exclusiveMinimum"]:
         return [f"must be greater than {schema['exclusiveMinimum']}"]
+    if "minimum" in schema and not value >= schema["minimum"]:
+        return [f"must be at least {schema['minimum']}"]
+    if "maximum" in schema and not value <= schema["maximum"]:
+        return [f"must be at most {schema['maximum']}"]
 
     if isinstance(value, dict):
         properties = schema.get("properties", {})
@@ -302,14 +310,14 @@ def test_document_with_a_future_version_raises_documenterror() -> None:
 
 def test_document_with_unknown_kind_raises_documenterror() -> None:
     with pytest.raises(DocumentError) as error:
-        parse_document(flow_document(kind="mindmap"))
+        parse_document(flow_document(kind="radar"))
     assert "mindmap" in str(error.value)
     assert all(kind in str(error.value) for kind in KINDS)
 
 
 def test_document_with_unknown_kind_does_not_report_payload_fields() -> None:
     """Without a kind, nothing is known about which payload is legal."""
-    violations = validate_document(flow_document(kind="mindmap"))
+    violations = validate_document(flow_document(kind="radar"))
     assert [violation.pointer for violation in violations] == ["/kind"]
 
 
@@ -339,7 +347,7 @@ def test_document_with_edge_role_outside_vocabulary_raises_documenterror() -> No
     with pytest.raises(DocumentError) as error:
         parse_document(document)
     assert "dependsOn" in str(error.value)
-    assert all(role in str(error.value) for role in EDGE_ROLES)
+    assert all(role in str(error.value) for role in GRAPH_EDGE_ROLES)
 
 
 @pytest.mark.parametrize("role", NODE_ROLES)
@@ -349,11 +357,23 @@ def test_every_node_role_in_the_vocabulary_is_accepted(role: str) -> None:
     assert parse_document(document).nodes[0].role == role
 
 
-@pytest.mark.parametrize("role", EDGE_ROLES)
+@pytest.mark.parametrize("role", GRAPH_EDGE_ROLES)
 def test_every_edge_role_in_the_vocabulary_is_accepted(role: str) -> None:
     document = flow_document()
     document["edges"][0]["role"] = role
     assert parse_document(document).edges[0].role == role
+
+
+@pytest.mark.parametrize("role", HIERARCHY_ROLES)
+def test_a_hierarchy_role_is_refused_outside_entities_by_name(role: str) -> None:
+    """Edge roles are per kind: `inherits` means nothing in a flow, and says so."""
+    document = flow_document()
+    document["edges"][0]["role"] = role
+    with pytest.raises(DocumentError) as error:
+        parse_document(document)
+    (violation,) = error.value.violations
+    assert violation.pointer == "/edges/0/role"
+    assert "`entities` kind only" in violation.message
 
 
 # --------------------------------------------------------------------------
@@ -374,7 +394,7 @@ def test_published_schema_matches_the_runtime_validator() -> None:
         ("forbidden field on an edge", _with(flow_document(), "edges", 0, dx=2)),
         ("missing version", _without(flow_document(), "version")),
         ("future version", flow_document(version=2)),
-        ("unknown kind", flow_document(kind="mindmap")),
+        ("unknown kind", flow_document(kind="radar")),
         ("node role outside the vocabulary", _with(flow_document(), "nodes", 0, role="swimlane")),
         ("edge role outside the vocabulary", _with(flow_document(), "edges", 0, role="calls")),
         ("node missing its text", _without_key(flow_document(), "nodes", 0, "text")),
@@ -514,6 +534,29 @@ def test_every_kind_is_reachable_through_exactly_one_schema_branch() -> None:
 
 def test_schema_documents_the_referential_rules_it_cannot_express() -> None:
     assert "beyond JSON Schema" in build_schema()["description"]
+
+
+def test_kinds_sharing_field_names_keep_their_own_descriptions() -> None:
+    """`quadrant` and `scatter` both take `axes` + `positions`, but mean
+    different things by them. Grouping schema variants by field name alone
+    merged the two and silently kept only one kind's prose."""
+    schema = build_schema()
+    quadrant_variant = next(
+        variant
+        for variant in schema["oneOf"]
+        if variant["properties"]["kind"]["enum"] == ["quadrant"]
+    )
+    scatter_variant = next(
+        variant
+        for variant in schema["oneOf"]
+        if variant["properties"]["kind"]["enum"] == ["scatter"]
+    )
+    assert quadrant_variant is not scatter_variant
+    assert (
+        quadrant_variant["properties"]["axes"]["description"]
+        != scatter_variant["properties"]["axes"]["description"]
+    )
+    assert "measurement" in scatter_variant["properties"]["axes"]["description"]
 
 
 def test_every_valid_fixture_is_accepted_by_both() -> None:

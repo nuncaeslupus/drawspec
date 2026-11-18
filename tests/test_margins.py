@@ -33,6 +33,7 @@ import pytest
 from clipping import gutters
 
 from drawspec.render import render, render_file
+from drawspec.schema import load_document
 from drawspec.theme import load_theme
 
 REFERENCE = Path(__file__).resolve().parent.parent / "docs" / "reference"
@@ -76,7 +77,10 @@ def test_no_reference_drawing_is_framed_tighter_than_the_theme_margin(document: 
     these thirty-three drawings used to come out at zero.
     """
     margin = load_theme().canvas.margin
-    measured = gutters(render_file(document, profile="standalone"))
+    # A sheet's ground runs to the edge of a standalone file by design; the
+    # drawing's own frame is what the inline profile shows.
+    sheet = load_theme(load_document(document).theme or None).canvas.sheet
+    measured = gutters(render_file(document, profile="inline" if sheet else "standalone"))
     assert measured, "a reference drawing with no ink in it"
     for side, blank in zip(("left", "top", "right", "bottom"), measured, strict=True):
         assert blank >= margin, f"{document.stem}: {side} gutter is {blank:.2f}, under {margin}"

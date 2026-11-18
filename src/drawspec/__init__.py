@@ -7,17 +7,19 @@ from drawspec.errors import (
     DocumentError,
     DrawspecError,
     EmitError,
+    ExportError,
     FitError,
     FontSubstitutionWarning,
     ThemeError,
 )
+from drawspec.export import render_png
 from drawspec.geometry import Box, Fitted, fit, normalise, size_box
-from drawspec.render import render, render_document, render_file
+from drawspec.render import render, render_document, render_file, render_text
 from drawspec.scene import Ellipse, Path, Polygon, Rect, Scene, TextRun
 from drawspec.schema import Document, load_document, parse_document, validate_document
 from drawspec.theme import Theme, load_theme
 
-__version__ = "0.1.0"
+__version__ = "0.4.3"
 
 __all__ = [
     "Box",
@@ -26,6 +28,7 @@ __all__ = [
     "DrawspecError",
     "Ellipse",
     "EmitError",
+    "ExportError",
     "FitError",
     "Fitted",
     "FontSubstitutionWarning",
@@ -47,6 +50,8 @@ __all__ = [
     "render",
     "render_document",
     "render_file",
+    "render_png",
+    "render_text",
     "size_box",
     "validate_document",
 ]

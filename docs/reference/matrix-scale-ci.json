@@ -1,0 +1,33 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "matrix",
+  "title": "Where CI fails, by service and week",
+  "description": "The share of continuous-integration runs that failed, per service per week. The numbers are the cells' text; the fill is the bucket the team put each number in, so the run of bad weeks on the billing service is visible before any number is read.",
+  "caption": "Rare: under 2 % of runs. Sometimes: 2 to 10 %. Often: over 10 %.",
+  "columns": ["Week 36", "Week 37", "Week 38", "Week 39", "Week 40"],
+  "rows": ["`auth`", "`billing`", "`search`", "`notify`"],
+  "scale": ["rare", "sometimes", "often"],
+  "cells": [
+    {"text": "1 %", "column": 0, "row": 0, "group": "rare"},
+    {"text": "0 %", "column": 1, "row": 0, "group": "rare"},
+    {"text": "3 %", "column": 2, "row": 0, "group": "sometimes"},
+    {"text": "1 %", "column": 3, "row": 0, "group": "rare"},
+    {"text": "1 %", "column": 4, "row": 0, "group": "rare"},
+    {"text": "4 %", "column": 0, "row": 1, "group": "sometimes"},
+    {"text": "14 %", "column": 1, "row": 1, "group": "often"},
+    {"text": "17 %", "column": 2, "row": 1, "group": "often", "role": "emphasis"},
+    {"text": "12 %", "column": 3, "row": 1, "group": "often"},
+    {"text": "6 %", "column": 4, "row": 1, "group": "sometimes"},
+    {"text": "0 %", "column": 0, "row": 2, "group": "rare"},
+    {"text": "1 %", "column": 1, "row": 2, "group": "rare"},
+    {"text": "1 %", "column": 2, "row": 2, "group": "rare"},
+    {"text": "2 %", "column": 3, "row": 2, "group": "sometimes"},
+    {"text": "0 %", "column": 4, "row": 2, "group": "rare"},
+    {"text": "5 %", "column": 0, "row": 3, "group": "sometimes"},
+    {"text": "3 %", "column": 1, "row": 3, "group": "sometimes"},
+    {"text": "1 %", "column": 2, "row": 3, "group": "rare"},
+    {"text": "11 %", "column": 3, "row": 3, "group": "often"},
+    {"text": "2 %", "column": 4, "row": 3, "group": "sometimes"}
+  ]
+}

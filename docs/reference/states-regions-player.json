@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "kind": "states",
+  "title": "A podcast player",
+  "description": "While a podcast is on, what is playing and how loud it is change independently: two regions of one composite, each with its own initial state. Stopping, or closing the app, leaves both.",
+  "initial": "stopped",
+  "final": ["closed"],
+  "states": [
+    {"id": "stopped", "text": "Stopped"},
+    {"id": "playing", "text": "Playing"},
+    {"id": "paused", "text": "Paused\nposition kept"},
+    {"id": "loud", "text": "Sound on"},
+    {"id": "muted", "text": "Muted"},
+    {"id": "closed", "text": "Closed"}
+  ],
+  "groups": [
+    {"id": "on", "text": "Episode open", "regions": [
+      {"members": ["playing", "paused"], "initial": "playing"},
+      {"members": ["loud", "muted"], "initial": "loud"}
+    ]}
+  ],
+  "transitions": [
+    {"from": "stopped", "to": "on", "event": "play"},
+    {"from": "playing", "to": "paused", "event": "pause"},
+    {"from": "paused", "to": "playing", "event": "resume"},
+    {"from": "loud", "to": "muted", "event": "mute"},
+    {"from": "muted", "to": "loud", "event": "unmute"},
+    {"from": "on", "to": "stopped", "event": "episode ends"},
+    {"from": "on", "to": "closed", "event": "app closed"}
+  ]
+}

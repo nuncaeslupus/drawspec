@@ -77,3 +77,33 @@ stroke = "#7C8794"
 # filled series has already asked too much of its reader.
 [mark]
 colours = ["#C0452A", "#2A6FC0", "#3E7A4A", "#7C8794", "#7C8794"]
+
+# A file tree's pictures in colour: folders amber, each family of type its own
+# hue. Only ever a tint behind a shape or a badge that already says what it is,
+# so the tree reads the same printed in greyscale.
+[files]
+tint = 0.35
+label_ink = "#FFFFFF"
+
+[files.colours]
+folder = "#D9A21B"
+code = "#2A6FC0"
+data = "#3E7A4A"
+text = "#7C8794"
+image = "#8A4FB0"
+archive = "#7C8794"
+pdf = "#C0452A"
+
+# A RAG report's marks in the colours the reader is taught. Only ever on top of
+# the word and the shape each mark already carries, so greyscale keeps them.
+[rag]
+red_colour = "#C0452A"
+amber_colour = "#D9A21B"
+green_colour = "#3E7A4A"
+
+# A git graph's lanes, as Mermaid and the git-flow figures colour them: the trunk
+# blue, then green, amber, purple; the accent red comes late so it is not read as
+# emphasis. Only ever the fill of a dot and the wash behind a name, both of which
+# the lane's place already says.
+[gitgraph]
+colours = ["#2A6FC0", "#3E7A4A", "#D9A21B", "#8A4FB0", "#C0452A", "#7C8794"]

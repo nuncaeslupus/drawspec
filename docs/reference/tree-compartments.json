@@ -3,7 +3,7 @@
   "kind": "tree",
   "theme": "compartment",
   "title": "A box that is a name over what belongs to it",
-  "description": "The same lead-and-detail every label may carry, separated by a rule instead of by weight. A blank-free newline in `text` is the author saying these are two things; `[box] lead` is the theme saying what separates them, and this theme says a line. It is what a class, a record or a component is drawn as by hand — a name, a rule, and the things under it — and it is also where who performs a step goes when that is not the kind of thing a role should carry.",
+  "description": "The same lead-and-detail every label may carry, separated by a rule instead of by weight. A blank-free newline in `text` is the author saying these are two things; `[box] lead` is the theme saying what separates them, and this theme says a line. It is what a class, a record or a component is drawn as by hand — a name, a rule, and the things under it. Who performs a step is the same shape and has its own field: see `actor` and `flow-actors`, which puts the name in the lead so a document does not have to write it into the label.",
   "nodes": [
     {
       "id": "payment",

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "cycle",
+  "title": "One on-call rotation",
+  "description": "A week on call, in the wheel theme. The pager is taken, pages are answered, the week is reviewed and what it found is fixed before the next handover. The runbook is what every rotation works from and writes back to, so it is the hub, joined to the step that updates it by a quiet spoke.",
+  "theme": "wheel",
+  "hub": {"id": "runbook", "text": "The team's runbook"},
+  "nodes": [
+    {"id": "handover", "text": "Take the pager"},
+    {"id": "respond", "text": "Answer the pages"},
+    {"id": "review", "text": "Review the week"},
+    {"id": "fix", "text": "Fix what the week found", "role": "emphasis"}
+  ],
+  "edges": [
+    {"from": "handover", "to": "respond"},
+    {"from": "respond", "to": "review"},
+    {"from": "review", "to": "fix"},
+    {"from": "fix", "to": "handover"},
+    {"from": "fix", "to": "runbook", "role": "aside"}
+  ]
+}

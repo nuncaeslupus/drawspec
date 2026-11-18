@@ -1,0 +1,30 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "packet",
+  "theme": "accent",
+  "title": "TCP header format",
+  "description": "The TCP header of RFC 9293, section 3.1, with the eight control bits standing on end and the two the handshake turns on emphasised.",
+  "caption": "After RFC 9293, section 3.1. SYN and ACK are the bits a three-way handshake sets.",
+  "fields": [
+    {"text": "Source Port", "bits": 16},
+    {"text": "Destination Port", "bits": 16},
+    {"text": "Sequence Number", "bits": 32},
+    {"text": "Acknowledgment Number", "bits": 32},
+    {"text": "Data Offset", "short": "DOffset", "bits": 4, "note": "The header's length in 32-bit words."},
+    {"text": "Rsrvd", "bits": 4, "role": "reserved", "holds": "0"},
+    {"text": "CWR", "bits": 1},
+    {"text": "ECE", "bits": 1},
+    {"text": "URG", "bits": 1},
+    {"text": "ACK", "bits": 1, "role": "emphasis"},
+    {"text": "PSH", "bits": 1},
+    {"text": "RST", "bits": 1},
+    {"text": "SYN", "bits": 1, "role": "emphasis"},
+    {"text": "FIN", "bits": 1},
+    {"text": "Window", "bits": 16},
+    {"text": "Checksum", "bits": 16},
+    {"text": "Urgent Pointer", "bits": 16},
+    {"text": "Options", "bits": 24, "note": "Variable length, a multiple of 8 bits."},
+    {"text": "Padding", "bits": 8, "role": "reserved"}
+  ]
+}

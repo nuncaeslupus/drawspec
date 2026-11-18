@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "kind": "states",
+  "title": "Three locks on one keyboard",
+  "description": "Caps, number and scroll lock are each on or off, independently of the others: three regions of one composite state, each toggled by its own key.",
+  "initial": "ready",
+  "states": [
+    {"id": "caps_off", "text": "Caps off"},
+    {"id": "caps_on", "text": "Caps on"},
+    {"id": "num_off", "text": "Num off"},
+    {"id": "num_on", "text": "Num on"},
+    {"id": "scroll_off", "text": "Scroll off"},
+    {"id": "scroll_on", "text": "Scroll on"},
+    {"id": "asleep", "text": "Asleep\nlights off"}
+  ],
+  "groups": [
+    {"id": "ready", "text": "Ready", "regions": [
+      {"members": ["caps_off", "caps_on"], "initial": "caps_off"},
+      {"members": ["num_off", "num_on"], "initial": "num_on"},
+      {"members": ["scroll_off", "scroll_on"], "initial": "scroll_off"}
+    ]}
+  ],
+  "transitions": [
+    {"from": "caps_off", "to": "caps_on", "event": "Caps Lock"},
+    {"from": "caps_on", "to": "caps_off", "event": "Caps Lock"},
+    {"from": "num_on", "to": "num_off", "event": "Num Lock"},
+    {"from": "num_off", "to": "num_on", "event": "Num Lock"},
+    {"from": "scroll_off", "to": "scroll_on", "event": "Scroll Lock"},
+    {"from": "scroll_on", "to": "scroll_off", "event": "Scroll Lock"},
+    {"from": "ready", "to": "asleep", "event": "idle 10 min"},
+    {"from": "asleep", "to": "ready", "event": "any key"}
+  ]
+}

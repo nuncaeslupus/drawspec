@@ -1,0 +1,22 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "gitgraph",
+  "title": "Basic branching and merging",
+  "description": "Work on issue 53 is interrupted by an urgent fix: a hotfix branch is made from master, merged back, and then iss53 is merged too. After Pro Git, section 3.2.",
+  "branches": [
+    {"name": "master"},
+    {"name": "hotfix", "from": "master", "role": "emphasis"},
+    {"name": "iss53", "from": "master"}
+  ],
+  "steps": [
+    {"on": "master", "id": "C0"},
+    {"on": "master", "id": "C1"},
+    {"on": "master", "id": "C2"},
+    {"on": "iss53", "id": "C3"},
+    {"on": "hotfix", "id": "C4", "text": "C4 fix the login page"},
+    {"on": "master", "merge": "hotfix", "tag": "v1.0.1"},
+    {"on": "iss53", "id": "C5"},
+    {"on": "master", "merge": "iss53", "id": "C6"}
+  ]
+}

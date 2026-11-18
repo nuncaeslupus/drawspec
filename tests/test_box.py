@@ -19,8 +19,12 @@ import pytest
 
 from drawspec.errors import FitError
 from drawspec.geometry import (
+    CYLINDER_CAP,
     FIT_STEP,
     MIN_ASPECT,
+    PARALLELOGRAM_SLANT,
+    PERSON_HEAD,
+    SUBROUTINE_INSET,
     Box,
     candidate_factors,
     fit,
@@ -31,7 +35,7 @@ from drawspec.geometry import (
     usable_span,
 )
 from drawspec.text import TextMeasurer
-from drawspec.theme import TYPE_LEVELS, Theme, load_theme
+from drawspec.theme import TYPE_LEVELS, Padding, Theme, load_theme
 
 THEME = load_theme()
 MEASURER = TextMeasurer(THEME.font.stacks(), search_paths=[])
@@ -168,14 +172,26 @@ def test_box_moved_to_translates_everything_together() -> None:
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("shape", ["rect", "pill", "diamond", "ellipse"])
+ALL_SHAPES = [
+    "rect",
+    "pill",
+    "diamond",
+    "ellipse",
+    "parallelogram",
+    "subroutine",
+    "cylinder",
+    "person",
+]
+
+
+@pytest.mark.parametrize("shape", ALL_SHAPES)
 def test_usable_span_never_exceeds_the_bounding_box(shape: str) -> None:
     width, height = usable_span(shape, 200.0, 60.0)
     assert 0 < width <= 200.0
     assert 0 < height <= 60.0
 
 
-@pytest.mark.parametrize("shape", ["rect", "pill", "diamond", "ellipse"])
+@pytest.mark.parametrize("shape", ALL_SHAPES)
 def test_outer_size_and_usable_span_are_inverses(shape: str) -> None:
     """Sizing a box and then asking what fits in it must agree."""
     width, height = outer_size(shape, 120.0, 30.0, THEME.box.padding)
@@ -184,7 +200,12 @@ def test_outer_size_and_usable_span_are_inverses(shape: str) -> None:
     assert usable[1] >= 30.0 + THEME.box.padding.vertical - 1e-6
 
 
-@pytest.mark.parametrize("shape", ["rect", "pill", "diamond", "ellipse"])
+def test_a_person_is_never_narrower_than_its_head() -> None:
+    width, _ = outer_size("person", 0.0, 10.0, Padding(0.0, 0.0, 0.0, 0.0))
+    assert width >= 2 * PERSON_HEAD
+
+
+@pytest.mark.parametrize("shape", ALL_SHAPES)
 def test_span_at_never_reaches_outside_the_shape(shape: str) -> None:
     """What a mark drawn across the box may span, at every height in it."""
     for step in range(21):
@@ -192,12 +213,34 @@ def test_span_at_never_reaches_outside_the_shape(shape: str) -> None:
         assert 0.0 <= span_at(shape, 200.0, 60.0, depth) <= 200.0 + 1e-9
 
 
-@pytest.mark.parametrize("shape", ["pill", "diamond", "ellipse"])
+@pytest.mark.parametrize("shape", ["pill", "diamond", "ellipse", "parallelogram"])
 def test_span_at_is_widest_across_the_middle_and_narrowest_at_the_ends(shape: str) -> None:
     """Every shape but the rect narrows away from its own middle, symmetrically."""
     middle = span_at(shape, 200.0, 60.0, 30.0)
     assert middle > span_at(shape, 200.0, 60.0, 6.0)
     assert span_at(shape, 200.0, 60.0, 6.0) == pytest.approx(span_at(shape, 200.0, 60.0, 54.0))
+
+
+@pytest.mark.parametrize("role", ["io", "subroutine", "store"])
+def test_a_flowchart_symbol_keeps_its_text_clear_of_its_own_outline(role: str) -> None:
+    """A parallelogram's text clears both slanted sides at its top and bottom
+    lines; a subroutine's clears the inner verticals; a drum's sits under the
+    front rim of its lid and above where the base curves."""
+    for text in ("Read the rows", "Validate every row against the published checks"):
+        box = size_box(text, theme=THEME, measurer=MEASURER, role=role, max_width=180.0)
+        left, top, right, bottom = box.content_bounds()
+        pad = THEME.box.padding
+        if role == "io":
+            for y in (top, bottom):
+                down = (y - box.y) / box.height
+                assert left >= box.x + PARALLELOGRAM_SLANT * (1 - down) + pad.left - 1e-6
+                assert right <= box.x + box.width - PARALLELOGRAM_SLANT * down - pad.right + 1e-6
+        elif role == "subroutine":
+            assert left >= box.x + SUBROUTINE_INSET + pad.left - 1e-6
+            assert right <= box.x + box.width - SUBROUTINE_INSET - pad.right + 1e-6
+        else:
+            assert top >= box.y + 2 * CYLINDER_CAP + pad.top - 1e-6
+            assert bottom <= box.y + box.height - CYLINDER_CAP - pad.bottom + 1e-6
 
 
 def test_span_at_gives_a_rect_its_whole_width_at_every_height() -> None:
@@ -555,3 +598,16 @@ def test_fit_does_not_swallow_an_error_that_is_not_a_fit_failure() -> None:
 def test_fit_a_theme_that_cannot_grow_does_not_try_to() -> None:
     """`scale_max = 1.0` means shrink to fit, never grow."""
     assert max(candidate_factors(THEME)) == pytest.approx(1.0)
+
+
+def test_a_person_keeps_its_text_in_the_body_under_the_head() -> None:
+    from drawspec.geometry import PERSON_SHOULDER, PERSON_TOP
+
+    for text in ("Customer", "Library member\nborrows and reserves books"):
+        box = size_box(text, theme=THEME, measurer=MEASURER, role="person", max_width=180.0)
+        left, top, right, _ = box.content_bounds()
+        assert top >= box.y + PERSON_TOP + THEME.box.padding.top - 1e-6
+        # The first line clears the rounded shoulders at its own height.
+        rise = max(box.y + PERSON_TOP + PERSON_SHOULDER - top, 0.0)
+        inset = PERSON_SHOULDER - (PERSON_SHOULDER**2 - rise**2) ** 0.5
+        assert left >= box.x + inset - 1e-6 and right <= box.x + box.width - inset + 1e-6

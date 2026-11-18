@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "kind": "wardley",
+  "title": "An online photo service",
+  "description": "What a user needs to store and share photos online, down to the power it runs on. Storage is moving from product to utility; the auto-tagging is new, and still being worked out.",
+  "anchors": [
+    { "id": "user", "text": "User", "needs": ["share", "store"] }
+  ],
+  "components": [
+    { "id": "share", "text": "Share photos", "evolution": "custom", "needs": ["website", "tagging"] },
+    { "id": "store", "text": "Store photos", "evolution": "late custom", "needs": ["website", "storage"] },
+    { "id": "website", "text": "Website", "evolution": "product", "needs": ["platform"] },
+    { "id": "tagging", "text": "Auto-tagging", "evolution": "genesis", "needs": ["compute"] },
+    { "id": "storage", "text": "Photo storage", "evolution": "product", "needs": ["compute"], "evolves": "commodity" },
+    { "id": "platform", "text": "Platform", "evolution": "late product", "needs": ["compute"] },
+    { "id": "compute", "text": "Compute", "evolution": "commodity", "needs": ["power"] },
+    { "id": "power", "text": "Power", "evolution": "late commodity" }
+  ],
+  "notes": [
+    { "text": "Rent storage as a utility rather than run our own.", "on": ["storage"] },
+    { "text": "Where we differ from every other photo site: build it ourselves.", "on": ["tagging"] }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "kind": "automaton",
+  "title": "A Mealy edge detector",
+  "description": "A Mealy machine that outputs 1 whenever its input differs from the bit before it, and 0 otherwise: the state remembers the last bit read, and each move is labelled input / output.",
+  "start": "init",
+  "states": [
+    {"id": "init", "text": "start"},
+    {"id": "zero", "text": "last 0"},
+    {"id": "one", "text": "last 1"}
+  ],
+  "transitions": [
+    {"from": "init", "to": "zero", "on": "0", "output": "0"},
+    {"from": "init", "to": "one", "on": "1", "output": "0"},
+    {"from": "zero", "to": "zero", "on": "0", "output": "0"},
+    {"from": "zero", "to": "one", "on": "1", "output": "1"},
+    {"from": "one", "to": "one", "on": "1", "output": "0"},
+    {"from": "one", "to": "zero", "on": "0", "output": "1"}
+  ]
+}

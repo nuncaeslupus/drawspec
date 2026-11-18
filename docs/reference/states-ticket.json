@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "kind": "states",
+  "title": "The life of a support ticket",
+  "description": "A ticket is opened, worked until it is resolved, and closed once the customer agrees or a week passes; while it is being worked it is either under investigation or waiting on the customer.",
+  "initial": "open",
+  "final": ["closed"],
+  "states": [
+    {"id": "open", "text": "Open\nnobody owns it yet"},
+    {"id": "investigating", "text": "Investigating"},
+    {"id": "waiting", "text": "Waiting on the customer"},
+    {"id": "resolved", "text": "Resolved\na fix is offered"},
+    {"id": "closed", "text": "Closed"}
+  ],
+  "groups": [
+    {"id": "worked", "text": "Being worked", "members": ["investigating", "waiting"], "initial": "investigating"}
+  ],
+  "transitions": [
+    {"from": "open", "to": "worked", "event": "an agent takes it", "role": "strong"},
+    {"from": "investigating", "to": "waiting", "event": "a question is sent"},
+    {"from": "waiting", "to": "investigating", "event": "the customer replies"},
+    {"from": "waiting", "to": "waiting", "event": "3 days pass", "action": "send a reminder"},
+    {"from": "worked", "to": "resolved", "event": "a fix is found", "role": "strong"},
+    {"from": "resolved", "to": "closed", "event": "the customer agrees", "role": "strong"},
+    {"from": "resolved", "to": "closed", "event": "7 days pass"},
+    {"from": "resolved", "to": "worked", "event": "the fix fails", "role": "weak"}
+  ]
+}

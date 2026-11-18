@@ -26,6 +26,13 @@ body = 12.0        # everything else keeps the default
 `drawspec theme check house.toml` loads it and runs its invariants.
 [The guide](guide.md#writing-a-theme) walks through writing one.
 
+`drawspec theme from brand.css` writes one from a design system instead:
+CSS custom properties or W3C design tokens, mapped onto the keys below,
+with every token it left out reported and why — a background, say, because
+the drawing sits on the page's own. A brand colour is held to 3:1 against a
+white page and a near-black one, and darkened or lightened until it reads on
+both. [The guide](guide.md#matching-your-brand) has the mapping.
+
 ## The greyscale invariant
 
 Two roles may not be distinguishable **by colour alone**. The loader compares
@@ -53,6 +60,12 @@ The one width every diagram is drawn to, and the legibility floor.
 | `min_legible_size` | `9.0` | The floor the fit band may not push type below. |
 | `caption` | `"below"` | Where a document's `caption` sits: `below` the drawing, or `above` it. |
 | `ink` | `"#1a1a1a"` | What `currentColor` resolves to in the `standalone` profile. |
+| `ground` | `"none"` | The sheet's colour behind the drawing, in the `standalone` profile and PNG. |
+| `pattern` | `"none"` | What is ruled on the ground: `none`, or a fine drafting `grid`. Standalone only. One of `none`, `grid`. |
+| `border` | `"none"` | The sheet's frame: `none`, or `zoned` — a double border with zone numbers and letters, centring arrows and registration marks. Standalone only. One of `none`, `zoned`. |
+| `title_block` | `false` | Whether to draw an engineering title block below the drawing. Standalone only. |
+| `rule` | `""` | The colour of the grid and of the sheet's quiet lettering — zone letters and the title block's field names. Empty means `ink`. |
+| `accent` | `""` | The colour of the registration marks and the drawing number. Empty means `ink`. |
 
 ### `[font]`
 
@@ -95,6 +108,7 @@ Box geometry constants: margin, line spacing, corner treatment.
 | `line_height` | `1.35` | Baseline-to-baseline distance, as a multiple of the type size. |
 | `corner_radius` | `4.0` | Corner rounding for a `rect`. Zero draws square corners. |
 | `lead` | `"bold"` | How the first paragraph of a label with more than one is set. |
+| `rise` | `2.0` | How much taller the last column of a rising series is than the first. |
 | `widen_steps` | `1` | How far past the aspect floor a box may keep taking width to shed a line. |
 
 ### `[edge]`
@@ -118,6 +132,7 @@ How a chart tells one mark from another, and how much room bars get.
 | `fills` | `["dots", "hatch", "grid", "cross", "none"]` | The fills a chart's marks take, in order, one per filled mark. Each one of `none`, `solid`, `hatch`, `dots`, `cross`, `grid`. |
 | `colours` | `[]` | A colour per fill, in the same order, or empty for ink alone. |
 | `gap` | `0.3` | How much of a category's band is left empty around its bars, as a fraction. Zero draws bars that touch, which reads as one wide bar. |
+| `ramp` | `[0.08, 0.16, 0.24, 0.32, 0.4]` | The tones an ordered `scale` is filled with, lightest first: how much of the page's ink each step lays down, from 0 (blank) to 1. |
 
 ### `[title]`
 
@@ -127,6 +142,32 @@ Whether a diagram carries its own title. Off until the question is settled.
 |---|---|---|
 | `show` | `false` | Whether a document's `title` is drawn on the diagram as well as announced to a screen reader. Off by default: a figure caption is usually the page's job, not the drawing's. |
 | `level` | `"title"` | Which type level the drawn title takes. One of `title`, `heading`, `body`, `label`. |
+
+### `[frames]`
+
+How a container is told from the page: washed with a little of the ink.
+
+| Key | Default | What it is |
+|---|---|---|
+| `tone` | `0.05` | The share of the ink one frame lays down, from 0 (outlines only) to `TONE_CEILING`. Off unless a theme sets it; the bundled default theme does. |
+| `levels` | `3` | How many levels of nesting deepen the wash; a frame deeper than this is outlined only. |
+
+### `[levels]`
+
+Whether the levels of a `pyramid`, `funnel`, `rings` and `stack` are graded.
+
+| Key | Default | What it is |
+|---|---|---|
+| `shade` | `true` | Whether levels are graded from the ramp; `false` draws outlines only. Off unless a theme sets it; the bundled default theme does. |
+
+### `[classes]`
+
+How a `flow`, `tree` or `lanes` drawing's node classes are told apart.
+
+| Key | Default | What it is |
+|---|---|---|
+| `fills` | `["solid", "dots", "hatch", "grid"]` | The fill each class takes, in declaration order; distinct, none `none`. |
+| `tone` | `0.14` | How much of the ink a `solid` class's wash lays down: light enough that its text reads on a white page and on a dark one. |
 
 ### `[cycle]`
 
@@ -145,11 +186,237 @@ Which way a `funnel` tapers. Appearance, so it lives here.
 |---|---|---|
 | `direction` | `"down"` | `down` tapers towards the bottom of the page; `right`, towards its edge. One of `down`, `right`. |
 
+### `[files]`
+
+How a `files` tree draws its pictures. Appearance, so it lives here.
+
+| Key | Default | What it is |
+|---|---|---|
+| `tint` | `0.25` | How strongly a folder is filled, from 0 (an outline) to 1 (solid). The same strength paints a file whose type has a colour below. |
+| `types` | `"labels"` | What a file's page says about its type. `labels` writes the extension on a small tag across the page — `PDF`, `JSON` — lettered as part of the picture; `pictures` draws one of five shapes (code, data, text, image, archive); `none` draws a plain page. One of `labels`, `pictures`, `none`. |
+| `label_ink` | `""` | The colour a label's letters are drawn in when its tag is filled with a colour below — white on a red `PDF`, say. Empty is the page's ink. |
+| `align` | `"left"` | Where a tree sits on the canvas: `left`, as a listing reads, or `centre`, like every other kind. One of `left`, `centre`. |
+| `colours` | `{}` | Fill colour by extension (`pdf`), by type family (`code`, `data`, `text`, `image`, `archive`), or `folder`. An extension wins over its family. Anything not named is drawn in the page's ink. |
+
+### `[states]`
+
+How a state machine's pseudo-states are drawn. Appearance, so it lives here.
+
+| Key | Default | What it is |
+|---|---|---|
+| `dot` | `10.0` | The diameter of the initial pseudo-state's filled dot, and of the dot inside a final pseudo-state's ring. |
+| `ring` | `3.0` | The daylight between a final pseudo-state's dot and the ring around it. |
+| `bar` | `6.0` | How thick a fork or join bar is, across the flow. |
+| `bar_step` | `44.0` | How much of a fork or join bar's length each of its arrows has: the bar is at least this times the number of arrows on its busy side, so it grows with the regions it splits into or gathers, and longer when it must reach over them. |
+
+### `[sequence]`
+
+How a sequence diagram's lifelines and activation bars are drawn.
+
+| Key | Default | What it is |
+|---|---|---|
+| `activation` | `10.0` | The width of an activation bar. A nested bar is set half this to the right. |
+| `lifeline` | `"aside"` | The edge role a lifeline is drawn in, with no head: dashed and light by default, so the messages across it are what the eye follows. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
+
+### `[lanes]`
+
+How a swimlane diagram lays its lanes out and divides them.
+
+| Key | Default | What it is |
+|---|---|---|
+| `orientation` | `"auto"` | `rows`, `columns`, or `auto`: rows when they fit the width, else columns. One of `rows`, `columns`, `auto`. |
+| `separator` | `"link"` | The edge role the line between two lanes is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
+| `stripe` | `0.04` | How much of the page's ink every second lane is washed with, from 0 (no stripes) to `TONE_CEILING`. A tint, not a colour, so dark mode and greyscale keep it. Off unless a theme sets it; the bundled default theme does. |
+| `phase` | `"aside"` | The edge role the line between two phases is drawn in, across every lane: lighter than a lane's own separator, since a phase is crossed by every lane. |
+
+### `[entities]`
+
+How an entity diagram says *how many* at each end of a relation.
+
+| Key | Default | What it is |
+|---|---|---|
+| `notation` | `"crowsfoot"` | `crowsfoot` (marks across the line's end) or `numeric` (text beside it). One of `crowsfoot`, `numeric`. |
+
+### `[gantt]`
+
+How a plan draws the two marks that are not bars.
+
+| Key | Default | What it is |
+|---|---|---|
+| `milestone` | `"diamond"` | `diamond` or `circle`: the mark a task with `at` is drawn as, filled. One of `diamond`, `circle`. |
+| `marks` | `"weak"` | The edge role a mark's line across the rows is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
+| `done` | `0.7` | How much of the ink a task's `done` band takes, above 0 and at most 1. The page's own ink at that strength, so a dark page draws it light. |
+
+### `[board]`
+
+How a board draws the two lines that are not card borders.
+
+| Key | Default | What it is |
+|---|---|---|
+| `separator` | `"weak"` | The edge role the line between two rows (slices) is drawn in, with no head. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
+| `cut` | `"strong"` | The edge role the cut under a row is drawn in, with no head: the board's one heavy line. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
+
+### `[fishbone]`
+
+How a fishbone draws its spine, its bones and the ticks its causes sit on.
+
+| Key | Default | What it is |
+|---|---|---|
+| `slant` | `60.0` | The angle, in degrees from the spine, each bone meets it at: 30 to 90. A fishbone's bones slant by convention — the one place drawspec draws a diagonal on purpose, because the slant *is* the shape. `90` draws a comb of upright bones for a theme that keeps right angles throughout. |
+| `spine` | `"strong"` | The edge role the spine is drawn in, with no head: from the far end of the last bone into the effect's box. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
+| `bone` | `"flow"` | The edge role a category's bone is drawn in, with no head. The bone of a confirmed root cause (`emphasis`) is drawn in the spine's role from that cause to the spine, so the path from cause to effect is one weight. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
+| `cause` | `"link"` | The edge role the tick a cause's words sit on is drawn in, with no head. A ruled-out cause (`note`) is drawn in `aside` instead: light and dashed. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
+
+### `[journey]`
+
+How a journey draws the lines that are not words: the feeling line and its rules.
+
+| Key | Default | What it is |
+|---|---|---|
+| `line` | `"strong"` | The edge role the feeling line is drawn in, with no head: the one heavy line, through every stage's point. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
+| `guide` | `"aside"` | The edge role each feeling level's guide is drawn in, across every stage: light, so the line and not the grid is what is read. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
+| `separator` | `"link"` | The edge role the rule above each detail row is drawn in, across the whole map. One of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `inherits`, `realizes`, `async`. |
+
+### `[numberline]`
+
+How a number line marks whether a range's end belongs to it.
+
+| Key | Default | What it is |
+|---|---|---|
+| `ends` | `"dots"` | `dots` (filled closed, hollow open) or `brackets` (`[` closed, `(` open). A point is a dot either way. One of `dots`, `brackets`. |
+
+### `[flow]`
+
+How a causal loop diagram's signs are written.
+
+| Key | Default | What it is |
+|---|---|---|
+| `polarity` | `"+-"` | `+-` (a plus and a true minus) or `so` (`s` for same, `o` for opposite). One of `+-`, `so`. |
+
+### `[pie]`
+
+Whether a pie is a disc or a ring.
+
+| Key | Default | What it is |
+|---|---|---|
+| `shape` | `"pie"` | `pie` (a disc, labels inside a sector when they fit) or `donut` (a ring with a hole of about half the radius, every label outside on a leader). One of `pie`, `donut`. |
+
+### `[mindmap]`
+
+How a mind map draws its branches: their lines, and whether words are boxed.
+
+| Key | Default | What it is |
+|---|---|---|
+| `boxes` | `false` | `false` sets a twig or a leaf on a line, the mind-map convention, its branch line running on under its words; `true` boxes them like the main branches. |
+| `taper` | `[6.0, 3.0, 1.5]` | How thick a branch's line is where it leaves its parent, one width per level below the centre, none thicker than the one before. Each line narrows to the next level's width where it arrives (the last to two thirds of itself), so a map thins from its centre outwards. An `emphasis` branch's line, and every line between it and the centre, is drawn half as thick again. |
+
+### `[sunburst]`
+
+How heavy a sunburst's three structural lines are.
+
+| Key | Default | What it is |
+|---|---|---|
+| `weights` | `[0.006, 0.0035, 0.002]` | The width of a first-ring divider and the rim, a ring boundary and the hub circle, and a division two or more rings deep — each as a share of the wheel's radius, floored at a hairline so a small wheel keeps its lines, so the structure grows heavier on a wide wheel. Heaviest first; none heavier than the one before. |
+
+### `[wardley]`
+
+The words on a Wardley map's two axes.
+
+| Key | Default | What it is |
+|---|---|---|
+| `genesis` | `"Genesis"` | The first stage's name, under the leftmost quarter of the evolution axis. |
+| `custom` | `"Custom-built"` | The second stage's name: what `custom` is written as. |
+| `product` | `"Product (+rental)"` | The third stage's name: what `product` is written as. |
+| `commodity` | `"Commodity (+utility)"` | The fourth stage's name, under the rightmost quarter. |
+| `visible` | `"Visible"` | Written at the top of the value-chain axis, by the anchors. |
+| `invisible` | `"Invisible"` | Written at the bottom of the value-chain axis. |
+| `chain` | `"Value chain"` | The value-chain axis's name, beside it. |
+| `evolution` | `"Evolution"` | The evolution axis's name, at its arrow's end. |
+
+### `[network]`
+
+How a network diagram washes its buses and its groups' backdrops.
+
+| Key | Default | What it is |
+|---|---|---|
+| `bus` | `0.16` | How much ink fills a network's bus, behind its name and address. |
+| `group` | `0.07` | How much ink fills a group's backdrop, behind its hosts. Lighter than a bus, so a group reads as ground and a bus as a thing. |
+
+### `[timing]`
+
+How a timing figure draws its edges, and whether its steps are ruled.
+
+| Key | Default | What it is |
+|---|---|---|
+| `slew` | `0.15` | How much of a step a change of word on a bus, or into and out of unknown, takes to cross — the slant of a datasheet's hexagon lanes. Capped at a few units on a wide step, so a slow bus does not look like a ramp; 0 draws the changes upright. A level's edge (a clock, a select line) is always upright. |
+| `grid` | `false` | Whether every step edge is ruled faintly down the figure, as WaveDrom does. Off by default: the clock's own edges are the ruler a datasheet reads by, and markers rule the edges that matter. |
+
+### `[gitgraph]`
+
+What colour a git graph's branches take, if any.
+
+| Key | Default | What it is |
+|---|---|---|
+| `colours` | `["#2a6fc0", "#3e7a4a", "#b07a0c", "#8a4fb0", "#c0452a", "#7c8794"]` | A colour per branch, in the order the branches are written, cycling past the last; empty draws every lane in the page's ink. A lane's commits are filled with its colour and its name is set on a faint wash of it; the lines stay ink, so a lane's colour never has to carry a crossing. |
+
+### `[packet]`
+
+How a packet marks its reserved bits.
+
+| Key | Default | What it is |
+|---|---|---|
+| `reserved_fill` | `"hatch"` | The pattern a reserved field is filled with; every other field is plain. The patterns are drawn faint, so a reserved field's name stays readable over it. |
+
+### `[pert]`
+
+Whether a project network carries a key to its boxes' cells.
+
+| Key | Default | What it is |
+|---|---|---|
+| `key` | `true` | `true` draws a key under the network: one box with each cell named (`ES`, `Dur`, `EF`; `LS`, `Float`, `LF`), the unit the durations are in, and that the critical path is the heavy line. `false` leaves it out, and the unit, when there is one, is written under the network on its own. |
+
+### `[argument]`
+
+How an argument map says which way a point bears: its tag and its fill.
+
+| Key | Default | What it is |
+|---|---|---|
+| `for_tag` | `"because"` | The tag over a `for` point, in its top margin at the left: the word a reader says before it when reading the map aloud. |
+| `against_tag` | `"but"` | The tag over an `against` point: an objection, and a rebuttal of one. |
+| `against_fill` | `"hatch"` | The pattern an `against` box is filled with; a `for` box is plain. The patterns are drawn faint, so the words over them stay readable. One of `hatch`, `dots`, `cross`, `grid`. |
+
+### `[familytree]`
+
+How a family tree draws its one non-default mark of house style: a carrier.
+
+| Key | Default | What it is |
+|---|---|---|
+| `carrier` | `"dot"` | `dot`, a filled dot in the middle of the symbol (the standard nomenclature's carrier), or `half`, the left half filled (the textbook heterozygote). One of `dot`, `half`. |
+
+### `[rag]`
+
+How a RAG report draws a rating: a word, a shape and, optionally, a colour.
+
+| Key | Default | What it is |
+|---|---|---|
+| `red` | `"Red"` | The word written beside a `red` mark. A house that says *Off track* sets it here. |
+| `amber` | `"Amber"` | The word beside an `amber` mark: *Amber*, or *At risk*. |
+| `green` | `"Green"` | The word beside a `green` mark: *Green*, or *On track*. |
+| `red_shape` | `"square"` | The shape of a `red` mark: `circle`, `triangle`, `square` or `diamond`, each different from the other two ratings' shapes. One of `circle`, `triangle`, `square`, `diamond`. |
+| `amber_shape` | `"triangle"` | The shape of an `amber` mark, the warning triangle by default. One of `circle`, `triangle`, `square`, `diamond`. |
+| `green_shape` | `"circle"` | The shape of a `green` mark. One of `circle`, `triangle`, `square`, `diamond`. |
+| `red_colour` | `""` | The colour a `red` mark is filled with. Empty is the page's ink, as in the default theme; the `accent` theme sets the three. |
+| `amber_colour` | `""` | The colour an `amber` mark is filled with, or empty for the page's ink. |
+| `green_colour` | `""` | The colour a `green` mark is filled with, or empty for the page's ink. |
+| `better` | `"improving"` | The word beside a `better` trend's arrow, which points up. |
+| `same` | `"no change"` | The word beside a `same` trend's arrow, which points across. |
+| `worse` | `"worsening"` | The word beside a `worse` trend's arrow, which points down. |
+
 ## `[role.*]` — the node roles
 
 A document names a role; the theme decides what that role looks like. The
-vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group`. `shape` is one of
-`rect`, `pill`, `diamond`, `ellipse`, `none` and `fill_pattern` one of `none`, `solid`, `hatch`, `dots`, `cross`, `grid`.
+vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group`, `io`, `subroutine`, `store`, `person`. `shape` is one of
+`rect`, `pill`, `diamond`, `ellipse`, `parallelogram`, `subroutine`, `cylinder`, `person`, `none` and `fill_pattern` one of `none`, `solid`, `hatch`, `dots`, `cross`, `grid`.
 
 | Role | `shape` | `stroke` | `fill` | `fill_pattern` | `dash` | `stroke_width` |
 |---|---|---|---|---|---|---|
@@ -160,13 +427,17 @@ vocabulary is closed: `start`, `step`, `decision`, `terminal`, `emphasis`, `note
 | `emphasis` | `"rect"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `2.5` |
 | `note` | `"none"` | `"currentColor"` | `"none"` | `"none"` | `"3 2"` | `1.0` |
 | `group` | `"rect"` | `"currentColor"` | `"none"` | `"none"` | `"6 3"` | `1.0` |
+| `io` | `"parallelogram"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
+| `subroutine` | `"subroutine"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
+| `store` | `"cylinder"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
+| `person` | `"person"` | `"currentColor"` | `"none"` | `"none"` | `"none"` | `1.5` |
 
 ## `[edge_role.*]` — the edge roles
 
 The same arrangement for connectors, and it is where a connector that is *not*
 an arrow lives: an author says two things are merely associated (`link`) and
 the theme decides that means a line with no head. `head` and `tail` are each
-one of `arrow`, `open`, `diamond`, `circle`, `bar`, `none`.
+one of `arrow`, `open`, `diamond`, `circle`, `bar`, `triangle`, `none`.
 
 | Role | `head` | `tail` | `stroke` | `dash` | `stroke_width` | `routing` |
 |---|---|---|---|---|---|---|
@@ -177,6 +448,9 @@ one of `arrow`, `open`, `diamond`, `circle`, `bar`, `none`.
 | `owns` | `"diamond"` | `"none"` | `"currentColor"` | `"none"` | `1.5` | `"orthogonal"` |
 | `strong` | `"arrow"` | `"none"` | `"currentColor"` | `"none"` | `2.5` | `"orthogonal"` |
 | `aside` | `"none"` | `"none"` | `"currentColor"` | `"4 3"` | `1.0` | `"orthogonal"` |
+| `inherits` | `"triangle"` | `"none"` | `"currentColor"` | `"none"` | `1.5` | `"orthogonal"` |
+| `realizes` | `"triangle"` | `"none"` | `"currentColor"` | `"4 3"` | `1.5` | `"orthogonal"` |
+| `async` | `"open"` | `"none"` | `"currentColor"` | `"none"` | `1.5` | `"orthogonal"` |
 
 ## The bundled themes
 
@@ -186,4 +460,23 @@ one of `arrow`, `open`, `diamond`, `circle`, `bar`, `none`.
 | `accent` | Colour that points and never carries: six roles are coloured, and every one of them already differed from its neighbours by weight, dash or shape. |
 | `wheel` | The broad tapered cycle connector — `[cycle] connector = "band"` — for a cycle drawn loudly. |
 | `compartment` | A rule between a label's lead and its detail — `[box] lead = "rule"` — for a diagram whose boxes are a name over what belongs to it. |
+| `blueprint` | A drafting sheet — white ink on blue, a grid, a zoned border and a title block filled from the document — in the `standalone` profile and PNG. Inline, the page's own ink and background, like `default`. |
+
+## The drafting sheet
+
+`ground`, `pattern`, `border`, `title_block`, `rule` and `accent` in
+`[canvas]` are **standalone furniture**: a linked `.svg`, a PDF, or a PNG.
+The `inline` profile ignores them, as it ignores `ink` — an inline drawing is
+on its page's background, in its page's ink. They are not refused there,
+because one theme serves both profiles.
+
+The canvas grows to hold the sheet rather than drawing over the diagram: the
+border goes around the framed drawing, the same width for every diagram in
+the theme, and the title block takes a strip of its own below it. Its fields
+are the document's `title` (or its kind), a drawing number derived from its
+content, its `kind`, the drawing's size, and its format `version`. A title
+too long for the block on a fixed-width canvas is a `FitError`.
+
+A theme with a `ground` is checked against it when it loads: `ink` must read
+on it at 4.5:1, and every other colour the theme declares at 3:1.
 

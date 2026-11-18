@@ -1,0 +1,17 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "waterfall",
+  "title": "How last year's surplus became this year's",
+  "description": "A small charity's operating result: a surplus pushed into deficit by energy costs and the pay award, and back above zero by a fee rise and a new contract.",
+  "caption": "The result crosses zero twice; each bar runs between its two running sums.",
+  "axis": {"label": "Operating result, £ million"},
+  "bars": [
+    {"text": "Last year", "total": 1.8},
+    {"text": "Energy costs", "amount": -2.6, "role": "emphasis"},
+    {"text": "Pay award", "amount": -1.1},
+    {"text": "Fee rise", "amount": 2.4},
+    {"text": "New contract", "amount": 0.9},
+    {"text": "This year", "total": 1.4}
+  ]
+}

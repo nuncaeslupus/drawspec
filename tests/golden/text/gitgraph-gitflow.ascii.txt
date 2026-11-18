@@ -1,0 +1,20 @@
+*          [main] (1.0) Initial release
++-+---+
+| |   *    [develop] Start the 1.1 cycle
+| |   +-+
+| |   | *  [feature/search] Add a search box to the header
+| @   | |  [hotfix/1.0.1] Fix the crash on an empty basket
+| |   | *  Rank results by relevance
++-+   | |
+M |   | |  (1.0.1) Merge hotfix 1.0.1
+| +---+ |
+|     M |  Bring the fix into develop
+|     +-+
+|     M    Merge feature/search
+|   +-+
+|   * |    [release/1.1] Bump the version to 1.1
+|   * |    Fix a typo in the release notes
++---+ |
+M   | |    (1.1) Release 1.1
+    +-+
+      M    Back-merge the release fixes

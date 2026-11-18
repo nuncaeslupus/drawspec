@@ -6,27 +6,27 @@
 # Background: the orchestrator dispatches each worker as a Task-tool subagent
 # with `isolation: worktree`. On some surfaces (observed on Claude Code on the
 # web) that flag is silently ignored — no worktree is created and the worker
-# runs in the orchestrator's shared tree on the coordination branch, moving HEAD
+# runs in the orchestrator's shared tree on its host branch, moving HEAD
 # and leaving uncommitted edits on the append-only ledger. A shell script cannot
 # interrogate the Task tool, but it CAN test whether git worktrees work here at
 # all. That is a necessary condition for safe parallel fan-out and for option
 # (b) "orchestrator creates the worktree itself"; when it fails the orchestrator
 # must fall back to a serialized, single-worker, in-place mode (ARSENAL_MAX_WORKERS=1)
-# and lean on worker_postcheck.sh to keep the coordination branch invariant.
+# and lean on worker_postcheck.sh to keep the host branch invariant.
 #
 # Stdout: one word — `available` or `unavailable`.
 # Exit:   0 if worktrees are usable, 1 if not. (Always prints the verdict.)
 
 set -uo pipefail
 
-# Record the isolation verdict where queue_batch.sh reads it, so an `unavailable`
+# Record the isolation verdict where task_select.py reads it, so an `unavailable`
 # probe mechanically clamps the batch width to 1 (serialized in-place mode) —
 # the orchestrator no longer has to remember to pass --max 1 (QIC-6). Only a
 # negative probe is persisted: a passing git-level probe does NOT prove the Task
 # tool honors `isolation: worktree`, so `available` is confirmed later by
 # worker_postcheck.sh after the first worker returns.
 _record_isolation() {
-    local dir="${ARSENAL_SESSION_DIR:-claude-arsenal/session}"
+    local dir="${ARSENAL_SESSION_DIR:-${ARSENAL_HOME:-arsenal}/session}"
     mkdir -p "${dir}" 2>/dev/null || return 0
     printf '%s\n' "$1" > "${dir}/worktree_isolation" 2>/dev/null || true
 }

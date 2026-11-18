@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "kind": "sankey",
+  "title": "64 reserved cores, by team and workload",
+  "unit": "cores",
+  "nodes": [
+    {"id": "search", "text": "Search team"},
+    {"id": "pay", "text": "Payments team"},
+    {"id": "api", "text": "APIs"},
+    {"id": "batch", "text": "Batch jobs"},
+    {"id": "idle", "text": "Reserved, idle", "role": "note"}
+  ],
+  "flows": [
+    {"from": "search", "to": "api", "amount": 18},
+    {"from": "search", "to": "batch", "amount": 14},
+    {"from": "search", "to": "idle", "amount": 8},
+    {"from": "pay", "to": "api", "amount": 16},
+    {"from": "pay", "to": "idle", "amount": 8}
+  ]
+}

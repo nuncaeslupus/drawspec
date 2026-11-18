@@ -1,0 +1,13 @@
+  #   Layer                  Type
+-----------------------------------
+  1   Previous layer
+ 2a   1x1 conv               conv
+2b1   1x1 conv               conv
+2b2   3x3 conv               conv
+2c1   1x1 conv               conv
+2c2   5x5 conv               conv
+2d1   3x3 max pool           pool
+2d2   1x1 conv               conv
+  3   Filter concatenation   concat
+
+The 1x1 convolutions cut the channels the larger kernels compute on.

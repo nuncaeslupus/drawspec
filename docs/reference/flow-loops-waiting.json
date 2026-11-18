@@ -1,0 +1,25 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "flow",
+  "title": "Waiting lists: one loop that feeds itself, one that drains it",
+  "description": "A causal loop diagram for a policy brief: longer waits mean more emergency admissions, which take beds from planned surgery, which lengthens the wait; and longer waits push some patients to private care.",
+  "nodes": [
+    {"id": "wait", "text": "Time on the waiting list", "role": "emphasis"},
+    {"id": "acute", "text": "Emergency admissions"},
+    {"id": "beds", "text": "Beds free for planned surgery"},
+    {"id": "private", "text": "Patients who go private"}
+  ],
+  "edges": [
+    {"from": "wait", "to": "acute", "polarity": "+", "delay": true},
+    {"from": "acute", "to": "beds", "polarity": "-"},
+    {"from": "beds", "to": "wait", "polarity": "-"},
+    {"from": "wait", "to": "private", "polarity": "+"},
+    {"from": "private", "to": "wait", "polarity": "-"}
+  ],
+  "loops": [
+    {"text": "Deterioration", "nodes": ["wait", "acute", "beds"], "type": "reinforcing"},
+    {"text": "Exit to private care", "nodes": ["wait", "private"], "type": "balancing"}
+  ],
+  "caption": "The double stroke marks a delay: a condition worsens over months before it becomes an emergency."
+}

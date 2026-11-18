@@ -9,11 +9,13 @@ luminance delta of 0.25 or more.
 from __future__ import annotations
 
 import tomllib
+from itertools import pairwise
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from drawspec.brand import TEXT_CONTRAST, contrast
 from drawspec.emit import emit
 from drawspec.errors import ThemeError
 from drawspec.scene import Polygon, Scene
@@ -636,3 +638,149 @@ def test_a_solid_mark_is_painted_in_its_own_colour() -> None:
         ),
     )
     assert f'fill="{painted}"' in emit(scene, theme)
+
+
+# --------------------------------------------------------------------------
+# [mark] ramp — the tones an ordered matrix scale is filled with
+# --------------------------------------------------------------------------
+
+
+def test_the_default_ramp_is_an_order_greyscale_keeps() -> None:
+    ramp = load_theme().mark.ramp
+    assert len(ramp) >= 5
+    assert all(later > earlier for earlier, later in pairwise(ramp))
+
+
+def test_a_ramp_whose_neighbours_are_one_grey_is_refused() -> None:
+    """Two buckets of a heatmap printed as the same grey are one bucket."""
+    with pytest.raises(ThemeError, match="step 2"):
+        MarkStyle.from_mapping({"ramp": [0.1, 0.2, 0.22, 0.35, 0.45]})
+
+
+def test_a_ramp_whose_first_step_is_almost_blank_is_refused() -> None:
+    """The lightest step must stay apart from a cell left blank as *not assessed*."""
+    with pytest.raises(ThemeError, match="blank cell"):
+        MarkStyle.from_mapping({"ramp": [0.02, 0.12, 0.22, 0.32, 0.42]})
+
+
+def test_a_ramp_too_dark_for_its_text_is_refused() -> None:
+    with pytest.raises(ThemeError, match=r"darker than 0\.4"):
+        MarkStyle.from_mapping({"ramp": [0.2, 0.35, 0.5, 0.65, 0.8]})
+
+
+def test_a_ramp_shorter_than_the_longest_scale_is_refused() -> None:
+    with pytest.raises(ThemeError, match="at least 5"):
+        MarkStyle.from_mapping({"ramp": [0.1, 0.3, 0.5]})
+
+
+def test_a_ramp_that_is_not_numbers_is_refused() -> None:
+    with pytest.raises(ThemeError):
+        MarkStyle.from_mapping({"ramp": ["light", "dark", "x", "y", "z"]})
+
+
+@pytest.mark.parametrize(
+    ("count", "expected"),
+    [(2, (0, 4)), (3, (0, 2, 4)), (4, (0, 1, 3, 4)), (5, (0, 1, 2, 3, 4))],
+)
+def test_a_short_scale_takes_steps_spread_across_the_whole_ramp(
+    count: int, expected: tuple[int, ...]
+) -> None:
+    """A two-step scale is the lightest tone against the darkest, not two neighbours."""
+    style = load_theme().mark
+    assert tuple(style.tone_for(index, count) for index in range(count)) == tuple(
+        style.ramp[index] for index in expected
+    )
+
+
+@pytest.mark.parametrize(("ink", "page"), [("#1a1a1a", "#ffffff"), ("#e6e6e6", "#121212")])
+def test_text_on_the_heaviest_ramp_step_reads_on_both_pages(ink: str, page: str) -> None:
+    """A heatmap cell's tone is the page's ink, and so is its label.
+
+    On a dark page the ink is light, so the heaviest step is the lightest cell
+    and its light label the faintest; at the old 0.48 ceiling that was 3.4:1.
+    """
+    tone = load_theme().mark.ramp[-1]
+    ink_rgb = [int(ink[i : i + 2], 16) for i in (1, 3, 5)]
+    page_rgb = [int(page[i : i + 2], 16) for i in (1, 3, 5)]
+    cell = "#" + "".join(
+        f"{round(tone * a + (1 - tone) * b):02x}" for a, b in zip(ink_rgb, page_rgb, strict=True)
+    )
+    assert contrast(ink, cell) >= TEXT_CONTRAST
+
+
+@pytest.mark.parametrize(
+    "section",
+    [
+        "[frames]\ntone = 0.3",
+        "[frames]\ntone = -0.01",
+        "[frames]\nlevels = 0",
+        "[lanes]\nstripe = 0.5",
+    ],
+)
+def test_a_wash_heavier_than_the_ceiling_or_a_bad_level_count_is_refused(
+    tmp_path: Path, section: str
+) -> None:
+    """A container's wash sits behind words, so it stays well under a cell's tone."""
+    with pytest.raises(ThemeError, match=r"\[(frames|lanes)\]"):
+        load_theme(write_theme(tmp_path, MINIMAL + section + "\n"))
+
+
+def test_the_default_theme_washes_frames_and_stripes_lanes_faintly() -> None:
+    theme = load_theme()
+    assert 0 < theme.frames.tone <= 0.06
+    assert 0 < theme.lanes.stripe <= 0.06
+    assert theme.frames.tone_at(theme.frames.levels) == 0.0
+
+
+@pytest.mark.parametrize(
+    ("section", "attribute"),
+    [("[frames]\ntone = false", "frames"), ("[lanes]\nstripe = false", "lanes")],
+)
+def test_a_wash_is_turned_off_with_false_as_well_as_zero(
+    tmp_path: Path, section: str, attribute: str
+) -> None:
+    theme = load_theme(write_theme(tmp_path, MINIMAL + section + "\n"))
+    style = getattr(theme, attribute)
+    assert (style.tone if attribute == "frames" else style.stripe) == 0.0
+
+
+def test_levels_are_graded_by_default_and_a_theme_turns_it_off(tmp_path: Path) -> None:
+    assert load_theme().levels.shade is True
+    off = load_theme(write_theme(tmp_path, MINIMAL + "[levels]\nshade = false\n"))
+    assert off.levels.shade is False
+    with pytest.raises(ThemeError, match=r"\[levels\] shade"):
+        load_theme(write_theme(tmp_path, MINIMAL + '[levels]\nshade = "ramp"\n'))
+    with pytest.raises(ThemeError, match=r"\[frames\] tone"):
+        load_theme(write_theme(tmp_path, MINIMAL + "[frames]\ntone = true\n"))
+
+
+def test_no_graded_level_is_darker_than_the_ramp_ceiling_text_is_checked_on() -> None:
+    """So `test_text_on_the_heaviest_ramp_step_reads_on_both_pages` covers every
+    level's text too."""
+    mark = load_theme().mark
+    for count in range(1, 12):
+        assert max(mark.level_tone(index, count) for index in range(count)) <= mark.ramp[-1]
+
+
+def test_class_fills_match_the_class_cap_and_start_with_a_grey_wash() -> None:
+    from drawspec.schema import CLASSES_MAX
+    from drawspec.theme import CLASS_FILLS
+
+    theme = load_theme()
+    assert CLASS_FILLS == CLASSES_MAX == len(theme.classes.fills)
+    assert theme.classes.fill_for(0) == ("solid", "currentColor", theme.classes.tone)
+    assert theme.classes.tone <= theme.mark.ramp[-1]
+
+
+@pytest.mark.parametrize(
+    "section",
+    [
+        '[classes]\nfills = ["solid", "dots", "hatch"]',
+        '[classes]\nfills = ["solid", "dots", "dots", "grid"]',
+        '[classes]\nfills = ["none", "dots", "hatch", "grid"]',
+        "[classes]\ntone = 0.6",
+    ],
+)
+def test_a_bad_class_fill_sequence_is_refused(tmp_path: Path, section: str) -> None:
+    with pytest.raises(ThemeError, match=r"\[classes\]"):
+        load_theme(write_theme(tmp_path, MINIMAL + section + "\n"))

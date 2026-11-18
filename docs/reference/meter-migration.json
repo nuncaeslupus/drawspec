@@ -1,0 +1,15 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "meter",
+  "title": "Records migration: progress at week 18",
+  "description": "Five workstreams of a records migration, each a progress bar of the share of its work complete, with a tick where the plan said it would be by now.",
+  "caption": "Targets are the baseline plan for week 18.",
+  "meters": [
+    {"text": "Data mapping", "amount": 100, "max": 100, "unit": "%", "target": 100},
+    {"text": "Archive scanning\nBoxes from the basement store", "amount": 64, "max": 100, "unit": "%", "target": 70},
+    {"text": "Case records", "amount": 41, "max": 100, "unit": "%", "target": 60, "role": "emphasis"},
+    {"text": "Staff training", "amount": 23, "max": 30, "unit": "sessions", "target": 20},
+    {"text": "Old system retired", "amount": 2, "max": 9, "unit": "modules", "target": 3}
+  ]
+}

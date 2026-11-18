@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "kind": "sequence",
+  "title": "A chat handed from the bot to a person",
+  "description": "Two people take part, drawn as actors: the customer and the support agent. The bot hands over by posting to a queue that nobody waits on.",
+  "participants": [
+    {"id": "customer", "text": "Customer", "role": "actor"},
+    {"id": "bot", "text": "Help bot"},
+    {"id": "queue", "text": "Agent queue"},
+    {"id": "agent", "text": "Support agent", "role": "actor"}
+  ],
+  "messages": [
+    {"from": "customer", "to": "bot", "text": "my parcel is late"},
+    {"from": "bot", "to": "customer", "text": "tracking says Tuesday", "role": "weak"},
+    {"from": "customer", "to": "bot", "text": "talk to a person"},
+    {"from": "bot", "to": "queue", "text": "hand over chat 3108", "role": "async"},
+    {"from": "bot", "to": "customer", "text": "an agent will join", "role": "weak"},
+    {"from": "queue", "to": "agent", "text": "new chat", "role": "async"},
+    {"from": "agent", "to": "customer", "text": "hello, I can see the order", "role": "strong"}
+  ]
+}

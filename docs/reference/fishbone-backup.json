@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "kind": "fishbone",
+  "title": "Why the backup finished at 09:40",
+  "effect": {"text": "Nightly backup overran its window by 3 h 40 min"},
+  "categories": [
+    {"text": "Data", "causes": [
+      {"text": "Audit table grew 4× after the logging change", "role": "emphasis"},
+      {"text": "No retention on audit rows"}
+    ]},
+    {"text": "Infrastructure", "causes": [
+      {"text": "Backup volume on slower storage tier"},
+      {"text": "Network shared with the reindex job"}
+    ]},
+    {"text": "Schedule", "causes": [
+      {"text": "Reindex moved to 01:00 the same week"}
+    ]},
+    {"text": "Monitoring", "causes": [
+      {"text": "Duration alert only at 6 h"},
+      {"text": "Growth trend not on any dashboard"}
+    ]}
+  ]
+}

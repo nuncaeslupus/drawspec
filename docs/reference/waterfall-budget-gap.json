@@ -1,0 +1,16 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "waterfall",
+  "title": "How the council's budget gap closed",
+  "description": "A bridge from the budget gap forecast in the autumn to the gap that remains: the council tax rise, the grant settlement and the savings programme close it; demand for social care widens it.",
+  "axis": {"label": "Budget gap, £ million"},
+  "bars": [
+    {"text": "Autumn forecast", "total": 18.4},
+    {"text": "Council tax rise", "amount": -4.2},
+    {"text": "Grant settlement", "amount": -6.5},
+    {"text": "Social care demand", "amount": 5.1},
+    {"text": "Savings programme", "amount": -7.6, "role": "emphasis"},
+    {"text": "Remaining gap", "total": 5.2}
+  ]
+}

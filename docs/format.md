@@ -9,7 +9,7 @@ and never its input. The [refused fields](#what-may-not-be-written) at
 the end of this page are that rule made mechanical.
 
 Every document declares `"version": 1` and one of the
-13 kinds. The machine-readable form of this page is the published
+47 kinds. The machine-readable form of this page is the published
 JSON Schema, `https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json` — point an editor at it with a `$schema` key and
 get completion and inline validation for free.
 
@@ -28,14 +28,14 @@ These fields are legal whatever the kind is.
 |---|---|---|---|
 | `$schema` | string | no | Optional, and only for editors: the URL of this schema. |
 | `version` | integer | **yes** | 'version' is required. Declare it so a future format change is a loud failure rather than a misread document. |
-| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `curve` | **yes** | Which of the thirteen diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
+| `kind` | string — one of `flow`, `tree`, `cycle`, `stack`, `timeline`, `columns`, `matrix`, `pyramid`, `rings`, `funnel`, `chart`, `quadrant`, `scatter`, `curve`, `files`, `states`, `sequence`, `lanes`, `entities`, `gantt`, `board`, `fishbone`, `venn`, `journey`, `treemap`, `sankey`, `numberline`, `barmodel`, `waterfall`, `pie`, `mindmap`, `argument`, `familytree`, `meter`, `rag`, `clock`, `sunburst`, `packet`, `network`, `timing`, `gitgraph`, `railroad`, `usecase`, `wardley`, `pert`, `automaton`, `neuralnet` | **yes** | Which of the forty-seven diagrams this is. It selects the fields that are legal below, so it is the first thing to get right. |
 | `title` | string | no | The diagram's accessible name. |
 | `description` | string | no | The diagram's accessible description. |
 | `caption` | string | no | A line of text belonging to the whole diagram rather than to any one element — an axis's units, a condition that holds throughout, the sentence the original wrote alongside the figure. Drawn outside the drawing; the theme's `[canvas] caption` says above or below. Use a `note` for something attached to one element. |
 | `width` | number, greater than 0 | no | Overrides the theme's canvas width. Binding. |
 | `height` | number, greater than 0 | no | Advisory unless height_binding is true. |
 | `height_binding` | boolean | no | Makes height a constraint rather than a hint. |
-| `theme` | string | no | A bundled theme name or the path of a theme file. |
+| `theme` | string | no | A bundled theme name or the path of a theme file. A relative path is read from the document's own folder when the file is there, so a theme can sit beside the diagrams that use it. |
 
 ## What each kind adds
 
@@ -52,11 +52,42 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `groups` | array of [group](#group-object) | no | Boxes drawn around sets of nodes, each with its own caption. |
 | `bands` | array of [band](#band-object) | no | Named things that run alongside a set of boxes rather than containing them — drawn as a labelled bar beside the boxes they accompany. For the activity that goes on throughout: a source sheet with one continuous concern above its steps and another below says the steps are *surrounded* by them, and two such bands are peers. A `group` cannot say that — a box sits inside one container or none, so two groups over the same members had to be nested, which draws a hierarchy that is not there. |
 
+### `flow`, `tree`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `classes` | array of [class](#class-object), at least 1 | no | The classes the boxes are sorted into, each `{id, text}`: 1 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team. |
+
+### `tree`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `style` | string — one of `boxes`, `bracket` | no | `boxes` (the default) ranks boxed nodes down from the root. `bracket` draws a tournament bracket or a cladogram: every leaf on one outer edge, square elbows, and each inner node unboxed — its words (a match's winner, a clade's name) on its own line, or none (`"text": ""`). An edge's `label` is written on the child's line by the elbow: a score, a trait. Every node but the root has one parent and every inner node at least two children; at most 16 leaves, and no groups, bands, classes, and no node role but `step`. |
+| `root` | string — one of `left`, `right`, `middle` | no | Only with `"style": "bracket"`: the edge the root stands at. `right` (the default) is a tournament read left to right, the champion last; `left` is a cladogram's, the leaves' names in a column at the right; `middle` is the two-sided draw, the root's first child's half on the left and its second's on the right, the final in the middle. A bracket reads across, so there is no top or bottom. |
+
+### `flow`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `loops` | array of [loop](#loop-object) | no | The feedback loops of a causal loop diagram, each named and marked R (reinforcing) or B (balancing) inside the loop it closes — the type derived from the signs, never chosen. Needs `polarity` on the edges. |
+
+### `cycle`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `hub` | [hub object](#hub-object) | no | What the loop turns around: the system a quality cycle improves, the model a data flywheel retrains. Not a step — it is drawn in the middle of the ring, outside the check that the ring closes through every node. An edge may join it to a step only as a spoke, in the roles 'aside', 'weak', 'link': a solid arrow to the middle would read as one more step. Needs a ring of at least 3 steps. |
+
 ### `stack`, `timeline`, `columns`
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
 | `items` | array of [item](#item-object), at least 1 | **yes** | The entries, in the order they are meant to be read: down for `stack`, along for `timeline` and `columns`. |
+
+### `columns`, `timeline`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `rise` | boolean | no | Whether the series ascends: each entry drawn taller than the one before it, all sitting on a common baseline — the canvas floor for `columns`, the axis itself for `timeline`. For a scale where the order is the content and not merely the reading direction — five levels of open data, three degrees of a change — and where equal entries say they are peers, which is the opposite. The author says the series rises; the theme's `[box] rise` says by how much, so there is no per-column height to get wrong. Not a `pyramid`: that draws the last level as the *narrowest*, which is the right shape for a maturity model and the wrong one for a ladder. |
 
 ### `timeline`
 
@@ -71,7 +102,8 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `cells` | array of [cell](#cell-object), at least 1 | **yes** | What is in the grid. A cell states where it starts, not where it is drawn. |
 | `columns` | array of string | no | Column headings, left to right. Omit for a matrix with none. |
 | `rows` | array of string | no | Row headings, top to bottom. |
-| `edges` | array of [edge](#edge-object) | no | What connects to what, between cells that carry an `id`. The cells of a grid are not always only cells: one may produce another, or come before it. The grid places them; the relations are a separate thing, and without them a reader sees a table where the source drew a process. |
+| `edges` | array of [edge](#edge-object) | no | What connects to what, between cells that carry an `id`. The cells of a grid are not always only cells: one may produce another, or come before it. The grid places them; the relations are a separate thing, and without them a reader sees a table where the source drew a process. An edge between cells in neighbouring rows that share no column, such as a return from the last output to the first process, turns along the join between the rows, and its label is wrapped onto a stretch of that join no other edge crosses. |
+| `scale` | array of string, at least 2 | no | Says the groups are **ordered**, and in what order: 2 to 5 group names, **weakest first** — `["rare", "sometimes", "often"]`. For a heatmap, a risk matrix, a skills matrix: a grid whose cells say *how much*. The cells are then filled by tone, light to dark, from the theme's `[mark] ramp` instead of with unrelated patterns, and the key lists every step in this order (with `key` texts where given). Every cell `group` must be one of these; a cell with no `group` stays blank, for *not assessed*. Names, not numbers: the author buckets the values. |
 | `key` | array of [key](#key-object) | no | What each group of cells is called, for the key drawn under the grid. Without one, a group is announced to the reader under the name the cells use for it — which is fine when that name is a name, and is how an id-shaped key like `carrega` ends up as visible text. |
 
 ### `pyramid`
@@ -91,6 +123,8 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | Field | Type | Required | What it is |
 |---|---|---|---|
 | `stages` | array of [stage](#stage-object), at least 1 | **yes** | Widest first: a funnel is a pyramid lying down. |
+| `unit` | string | no | What the stages' amounts count — `visitors`, `applications`, `£k` — written after each one. Only with amounts. |
+| `values` | boolean | no | `false` leaves the amounts and shares out and writes the stage names alone. Defaults to true. |
 
 ### `chart`
 
@@ -104,8 +138,285 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `axes` | [axes object](#axes-object) | **yes** | The two named axes whose crossing makes the four quadrants. |
+| `axes` | [axes-quadrant object](#axes-quadrant-object) | **yes** | The two named axes whose crossing makes the four quadrants. |
+| `quadrants` | array of string | no | Exactly four names, one per quarter, written faint in its outer corner: top right first, then counter-clockwise — top left, bottom left, bottom right (Mermaid's order). An empty string leaves that quarter unnamed. |
 | `positions` | array of [position](#position-object), at least 1 | **yes** | The items placed in the plane, each by what it scores, not by where it goes. |
+
+### `files`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `root` | string | no | The folder everything is in, drawn as the top row. Omit it for a listing with several top-level entries and no common parent. |
+| `entries` | array of [entry](#entry-object), at least 1 | **yes** | The paths, one per entry. Siblings keep the order written here. |
+| `sort` | string — one of `given`, `name`, `folders-first` | no | How siblings are ordered: `given` (the default) keeps the order written, `name` sorts naturally (`file2` before `file10`), `folders-first` sorts by name with folders above files. A `...` row stays last. |
+| `style` | string — one of `icons`, `plain`, `unicode`, `ascii` | no | `icons` (the default) draws folder and file pictures; `plain` draws the names and guides only; `unicode` and `ascii` draw the tree as monospace text, with box-drawing or plain ASCII branches. |
+
+### `states`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `states` | array of [state](#state-object), at least 1 | **yes** | The conditions the machine can be in. A newline in `text` is a lead and a detail, as everywhere: the state's name over what holds in it. Every state must be reachable from `initial`. |
+| `initial` | string | **yes** | The state the machine starts in, drawn as a filled dot with an arrow to it. Required: reachability is measured from here. May name a group, which must then say its own `initial`. |
+| `final` | array of string | no | The states the machine ends in, each drawn with an arrow to a ringed dot. A final state has no outgoing transition. |
+| `transitions` | array of [transition](#transition-object) | no | What moves the machine from one state to another, each labelled `event [guard] / action` from its own fields. |
+| `groups` | array of [composite](#composite-object) | no | Composite states: a frame around the states inside it, named at its corner. Groups may nest. A transition from a group leaves it from any state inside; one to a group enters it at the group's `initial`. A composite with `regions` is drawn divided by dashed lines, every region current at once. |
+
+### `sequence`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `participants` | array of [participant](#participant-object), at least 2 | **yes** | Who takes part, drawn left to right in the order written, each a head with a dashed lifeline under it. The order is the reading order, not a coordinate. Every participant must send or receive a message. A person taking part is `role: "actor"`, drawn as the UML stick figure with the name under it. |
+| `messages` | array of [message](#message-object), at least 1 | **yes** | What is said, drawn top to bottom in the order written: the order is the diagram. A call (`flow`) answered later by a `weak` reply opens an activation bar on the receiver from the call's row to the reply's; nobody writes how tall it is. An `async` message (solid line, open head) is sent without waiting, opens no bar and takes no reply. |
+| `fragments` | array of [fragment](#fragment-object) | no | Frames round a run of messages, `from` to `to`, and every participant they touch. Fragments nest or are apart; one that starts inside another and ends outside it is refused. |
+| `groups` | array of [group](#group-object) | no | A frame round a run of neighbouring lifelines, named at its top — *inside our account*. Members must be next to each other in `participants`, and a participant is in one group or none. |
+
+### `lanes`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `nodes` | array of [lane-node](#lane-node-object), at least 1 | **yes** | The steps, each in the lane its `actor` names. Ranked along the lanes as a `flow` is; within one lane, order is the order siblings are drawn in. |
+| `edges` | array of [edge](#edge-object) | no | What follows what, as on a `flow`. An edge between two lanes crosses the boundaries between them: that crossing is the hand-off. |
+| `lanes` | array of string, at least 1 | no | The lanes in order — top to bottom when they run across the page, left to right when they run down it; the theme decides which. Each must be some node's `actor`, spelled exactly, and every actor must be listed. Omit it and the lanes come in the order their actors first appear in `nodes`. At most 6. |
+| `phases` | array of [phase](#phase-object), at least 2 | no | The stages the process passes through, in the order it runs — named in a band along the lanes' edge and divided by faint lines across every lane (a cross-functional flowchart's phases). Each phase lists its steps, and with `phases` given every step is in exactly one. A phase's steps are drawn after every step of the phases before it, so the phases never interleave. 2 to 6. |
+| `classes` | array of [class](#class-object), at least 1 | no | The classes the boxes are sorted into, each `{id, text}`: 1 to 4, every one used by some node. Each is drawn as a faint fill from the theme's fixed sequence (`[classes] fills`: a grey wash, then patterns), in the order declared, and the key under the drawing names each by its `text`. For a grouping the reader must see across the whole drawing — external systems greyed in a C4 context, steps by owning team. |
+
+### `entities`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `entities` | array of [entity](#entity-object), at least 1 | **yes** | The boxes: each a name (and a stereotype), a rule, its fields, and its operations under a second rule. Placed by their relations: general above specific when there is a hierarchy, side by side otherwise; round the one marked `centre`, a star schema's fact table, when one is. |
+| `edges` | array of [relation](#relation-object) | no | The relations between entities, each landing on a box — or, with `from_field` / `to_field`, on one row of it — and carrying a cardinality at either end. A hierarchy may not loop. |
+
+### `gantt`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `axis` | [axis-gantt object](#axis-gantt-object) | **yes** | The one axis the plan runs along: what its numbers count, in a unit you name. There are no dates. |
+| `tasks` | array of [task](#task-object), at least 1 | **yes** | One row each, in the order written — that order is the reading order. `start` and `end` make a bar; `at` makes a milestone. |
+| `groups` | array of [group](#group-object) | no | Phases, each a run of consecutive tasks, drawn as a heading row with a bracket over the phase's span. With groups, every task is in one. |
+| `edges` | array of [dependency](#dependency-object) | no | Finish-to-start dependencies between tasks: drawn from the end of `from` into the start of `to`. |
+| `marks` | array of [mark](#mark-object) | no | Named points in time — today, a deadline, a freeze — each a line across every row with its name above. |
+
+### `board`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `columns` | array of [board-column](#board-column-object), at least 1 | **yes** | Left to right as written: states on a kanban board, prompts on a retrospective, the steps of a story on a story map. All one width. |
+| `rows` | array of [slice](#slice-object), at least 1 | no | Slices across every column, top to bottom — the releases of a story map. With rows, every card names one. |
+| `cut` | string | no | The id of a row: a heavy rule is drawn under it — everything above ships first. Not the last row, which has nothing below it to cut from. |
+| `cards` | array of [card](#card-object), at least 1 | **yes** | Each in a column (and a row, with rows). Within a cell they stack in the order written, top-aligned, so a short column looks short. |
+
+### `fishbone`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `effect` | [effect object](#effect-object) | **yes** | The observed problem, stated as a fact: drawn in the head box at the end of the spine, always as the diagram's emphasis. |
+| `categories` | array of [category](#category-object), at least 2 | **yes** | The bones, drawn alternately above and below the spine, nearest the head first: the written order is the reading order from the head outwards. |
+
+### `venn`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `sets` | array of [venn-set](#venn-set-object), at least 2 | **yes** | Two to four sets, each a circle of one size with its name outside it — four are four equal ellipses, so all fifteen regions exist. Not sizes: the shapes are equal, because a Venn diagram says what overlaps, not how much. |
+| `regions` | array of [region](#region-object) | no | What each region holds, named by membership. A region not listed is drawn empty: its set's name says enough. |
+
+### `journey`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `feelings` | array of string, at least 2 | **yes** | The named levels a stage's feeling may take, **worst first**: drawn as guides across the map, the worst at the bottom, each named once on the left. Names, not scores. |
+| `rows` | array of [journey-row](#journey-row-object), at least 1 | no | The detail rows under the feeling line, top to bottom: what the person does, where, what gets in the way. Optional: without rows the map is the stages and the line. |
+| `stages` | array of [journey-stage](#journey-stage-object), at least 2 | **yes** | Left to right as written, one column each, all one width. The feeling line passes through every stage's point. |
+
+### `treemap`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `parts` | array of [treemap-part](#treemap-part-object), at least 2 | **yes** | The parts of one total, each a rectangle whose area is in proportion to its `amount`, with its words inside it. Laid out largest first whatever the written order, which only breaks ties; `note` parts go last. |
+| `groups` | array of [treemap-group](#treemap-group-object), at least 1 | no | One level of grouping: each group is a captioned frame holding the parts that name it, filled with the theme's mark fills in the order written. Groups do not nest. |
+| `unit` | string | no | What the values are in — `kB`, `GB`, `hours` — written after each one. |
+| `values` | boolean | no | Whether to write each part's amount under its words, and each group's total beside its name. Defaults to true. |
+
+### `sankey`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `nodes` | array of [sankey-node](#sankey-node-object), at least 2 | **yes** | Where the quantity starts, passes and ends. A node's column is derived from the flows — sources left, ends right — never written; the written order is where the order down each column starts. |
+| `flows` | array of [sankey-flow](#sankey-flow-object), at least 1 | **yes** | How much goes from one node to another, each a band whose thickness is in proportion to its `amount`. What reaches a node in the middle must all leave it, and nothing flows back. |
+| `unit` | string | no | What the amounts are in — `tickets`, `cores`, `€ million` — written after each total. |
+| `values` | boolean | no | Whether to write each node's total under its name. Defaults to true. |
+
+### `numberline`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `axis` | [axis-numberline object](#axis-numberline-object) | **yes** | The one scale, drawn across the canvas with an arrowhead at each end: numbered ticks, or two named `ends`. |
+| `points` | array of [numberline-point](#numberline-point-object) | no | Values marked on the axis, each a dot with its words above it — or below the numbers, with a leader, when the words above would touch. |
+| `ranges` | array of [numberline-range](#numberline-range-object) | no | Stretches of the scale, each a line in its own track above the axis, in the order written — the last nearest the axis. Each end is closed, open, or missing: a range with no `to` runs on past `max`. |
+
+### `barmodel`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `bars` | array of [barmodel-bar](#barmodel-bar-object), at least 1 | **yes** | One to three bars, top to bottom, all starting at one left edge, every length in one scale: the longest bar fills the width. |
+| `braces` | array of [barmodel-brace](#barmodel-brace-object) | no | What a stretch adds up to — the whole, a difference, a total over two bars — each a brace with its amount or its `?`. |
+
+### `waterfall`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `axis` | [waterfall-axis object](#waterfall-axis-object) | **yes** | The vertical axis: its `label`, what the numbers are and their unit. |
+| `bars` | array of [waterfall-bar](#waterfall-bar-object), at least 3 | **yes** | The bars, left to right: a `total` first, signed `amount` steps, any subtotals (a `total` mid-way, checked against the running sum), and a `total` last. |
+
+### `argument`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `claim` | string | **yes** | The contention, drawn at the top in the heavy outline. Points name it as `"on": "claim"`. A qualifier (*probably*, *in most cases*) is a word in it. |
+| `points` | array of [argument-point](#argument-point-object), at least 1 | **yes** | Every reason, objection, rebuttal and piece of evidence, each `on` the box it bears on, `for` or `against` it. Drawn as a tree down from the claim, siblings in the order written; at most 15, and 4 deep. |
+
+### `familytree`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `people` | array of [familytree-person](#familytree-person-object), at least 2 | **yes** | Everyone in the tree. Generations and numbers are derived: a child is one row below its parents, a partner shares their partner's row, and people are numbered left to right in each row (II-3). At most 30, in 4 generations. |
+| `couples` | array of [familytree-couple](#familytree-couple-object), at least 1 | **yes** | Who partnered whom, and their children. Everyone is in at least one couple, as a partner or a child. |
+
+### `meter`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `style` | string — one of `bar`, `thermometer`, `dial`, `bullet` | no | How every meter in the document is drawn: `bar` (the default, a progress bar), `thermometer` (a goal filling up), `dial` (a needle on a half-circle) or `bullet` (a bar on named bands, with a target tick). One for the whole panel, so like is compared with like. |
+| `meters` | array of [meter-meter](#meter-meter-object), at least 1 | **yes** | The meters, 1 to 6, in reading order: rows for bars and bullets, columns for thermometers, up to three dials to a row. Each has its own scale. |
+
+### `clock`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `clocks` | array of [clock-face](#clock-face-object), at least 1 | **yes** | The faces, 1 to 12, in reading order, up to four to a row: each a `time`, and optionally a `text` under it and a `since`. |
+| `numerals` | string — one of `arabic`, `roman`, `quarters`, `none` | no | The numbers round every face: `arabic` (the default, 1 to 12), `roman` (I to XII), `quarters` (12, 3, 6 and 9 only) or `none`. |
+| `readout` | string — one of `words`, `digits`, `both`, `none` | no | What is written under each face: `words` (the default: `quarter past three`), `digits` (`3:15`, as written), `both`, or `none` for a worksheet. |
+
+### `rag`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `rows` | array of [rag-row](#rag-row-object), at least 1 | **yes** | The workstreams or risks, 1 to 15, in the order written: each a name, its `rag`, and optionally a `trend` and a `note`. |
+
+### `network`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `networks` | array of [network-segment](#network-segment-object), at least 1 | **yes** | The networks, 1 to 6, each a horizontal bus, drawn top to bottom in the order written. Write them in the order traffic meets them — the internet, the DMZ, the internal network, storage — so a host on two neighbours sits between them. |
+| `hosts` | array of [network-host](#network-host-object), at least 1 | **yes** | The hosts, 1 to 24, each a box under its topmost network with a line to every network it is on. The columns are drawspec's: ordered for the fewest lines hopping over a bus they are not on (usually none), then as few and as close to the order written as that allows. |
+| `groups` | array of [network-group](#network-group-object), at least 1 | no | Optional: up to 6 sets of hosts drawn on a shaded backdrop, with an optional name — a cluster, a rack, a site. No host outside a group may stand inside it. |
+
+### `timing`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `signals` | array of [timing-signal](#timing-signal-object), at least 1 | **yes** | The lanes, 1 to 12, top to bottom in the order written: each a `text`, a `lane` and one value per step in `values`, every signal the same number of steps (40 at most). |
+| `ticks` | array of string | no | A name for each step, written under the figure — one per step, as many as the values; an empty string leaves a step unnamed. |
+| `markers` | array of [timing-marker](#timing-marker-object) | no | Vertical lines across every lane at an edge, up to 8, each named over the figure: a START, a sample point. |
+| `intervals` | array of [timing-interval](#timing-interval-object) | no | Named spans between two edges, up to 10, each an arrow under a signal's lane: a setup time, a hold time, a timeout. |
+
+### `usecase`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `systems` | array of [usecase-system](#usecase-system-object) | no | The systems whose boundaries hold the use cases, 0 to 3, each a frame with its name in the corner, stacked down the middle in the order written. Left out, the use cases stand with no boundary. |
+| `actors` | array of [usecase-actor](#usecase-actor-object), at least 1 | **yes** | Who or what uses the system, 1 to 8, each drawn as a stick figure with its name under it, outside every boundary: primary actors on the left, `supporting` ones on the right, a specialised actor above or below its parent. No coordinates; the order down each side is derived to keep lines from crossing. |
+| `usecases` | array of [usecase-case](#usecase-case-object), at least 1 | **yes** | What the actors do with the system, 1 to 15, each an ellipse inside its system's boundary. A use case that is included, that extends another or that specialises one stands a column to the right of it, three columns at most. |
+| `edges` | array of [usecase-edge](#usecase-edge-object), at least 1 | **yes** | The relations, up to 30: `association` between an actor and a use case, `include` and `extend` between use cases, `inherits` between two actors or two use cases. No labels: the role says what each line is. |
+
+### `packet`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `bits_per_row` | integer | no | How many bits one row holds: 8, 16, 32 (the default: an RFC header's word) or 64. A field wider than what is left of its row is split across the rows. |
+| `numbering` | string — one of `left`, `right` | no | Which end bit 0 is at. `left` (the default) is the RFC convention: the ruler counts 0 to 31 from the left of every word. `right` is a register's: the highest bit at the top left, counting down to bit 0 at the bottom right, each row with its own ruler — so the fields are still written in reading order, the highest bits first, and must fill whole rows. |
+| `fields` | array of [packet-field](#packet-field-object), at least 1 | **yes** | The bit fields, 1 to 40, in reading order: left to right, then row after row, each with its width in `bits`. Wrapped into rows of `bits_per_row`, 16 rows at most; a field that crosses a row's end is split and its continuation marked. |
+
+### `sunburst`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `centre` | string | no | An optional hub label in the middle — the overall topic. Left out, the first ring fills the centre. |
+| `nodes` | array of [sunburst-node](#sunburst-node-object), at least 2 | **yes** | The first ring, 2 to 8, clockwise from twelve o'clock in the order written, each with optional `children` for the ring nested inside it. Nested up to three rings, 150 sectors in all; every terminal sector takes an equal angle, so there are no amounts. |
+
+### `gitgraph`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `branches` | array of [gitgraph-branch](#gitgraph-branch-object), at least 1 | **yes** | The branches, 1 to 8, one lane each in the order written: the first is the trunk (`main`) and every other forks `from` another branch or a commit `id`; the lane order need not be the order the branches were made. |
+| `steps` | array of [gitgraph-step](#gitgraph-step-object), at least 1 | **yes** | The commits, 1 to 30, in the order they were made: each `on` a branch, and a merge (`merge`) or a cherry-pick (`pick`) when it is one. Lanes, spacing and the lines between commits are derived. |
+| `direction` | string — one of `right`, `down` | no | Which way time runs: `right` (the default) across the page, each commit's label under it; `down` the page, the labels in a column beside the lanes as `git log --graph` sets them — the one for long commit messages. |
+
+### `railroad`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `rules` | array of [railroad-rule](#railroad-rule-object), at least 1 | **yes** | The grammar's rules, 1 to 12, drawn one under another in the order written, each a named track from entry to exit, at most 40 boxes on one track. |
+| `external` | array of string | no | Names a `rule` box may refer to that this document does not define — rules drawn elsewhere. Every other `rule` must name one of `rules`. |
+
+### `wardley`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `anchors` | array of [wardley-anchor](#wardley-anchor-object), at least 1 | **yes** | The users or needs the map is anchored on, 1 to 3, across the top: each names the components it needs. Everything on the map hangs from an anchor. |
+| `components` | array of [wardley-component](#wardley-component-object), at least 1 | **yes** | The value chain, 1 to 24: each a name, a named `evolution` stage and what it `needs`. Its row is derived — below everything that needs it — and its place across is its stage; neither is a coordinate. |
+| `notes` | array of [wardley-note](#wardley-note-object) | no | Up to 6 numbered notes, each about one or more anchors or components: the number is set beside each, the words under the map. |
+
+### `automaton`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `states` | array of [automaton-state](#automaton-state-object), at least 1 | **yes** | The states, 1 to 12, each a circle with its name inside, all the size of the widest. Ranked left to right from `start` by the transitions; the order written breaks ties and is the row order of the text form's table. |
+| `start` | string | **yes** | The id of the start state, entered by an arrow coming in from nowhere. Exactly one. |
+| `accepting` | array of string | no | The ids of the accepting (final) states, each drawn as a double circle. May include `start`; may be left out, as a Mealy or Moore machine often is. |
+| `transitions` | array of [automaton-transition](#automaton-transition-object) | no | The moves, each `from`, `to` and the symbol it reads `on` (or `epsilon`). Several between the same two states, in the same direction, are drawn as one arrow labelled `a, b`; a pair in opposite directions as two arcs bowed apart; a move from a state to itself as a loop on its circle. |
+| `deterministic` | boolean | no | `true` says this is a DFA, and has drawspec hold it to that: no ε-move, and no two moves from one state on the same symbol. A missing move is allowed — the textbooks leave the dead state out. |
+
+### `neuralnet`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `style` | string — one of `neurons`, `blocks` | no | `neurons` (the default) draws each layer as a column of circles, every neuron joined to every neuron of the next layer: the textbook's fully connected network. `blocks` draws each layer as a box in sequence, its tensor shape beside it, its fill by `type`, with `skips` and `repeats`: a paper's architecture figure. |
+| `layers` | array of [neuralnet-layer](#neuralnet-layer-object), at least 1 | **yes** | The layers, input first, 1 to 16 (at least 2 in `neurons`). Each is joined to the next in the order written. |
+| `skips` | array of [neuralnet-skip](#neuralnet-skip-object) | no | `blocks` only: connections that jump over layers — ResNet's identity shortcut, U-Net's copy — each drawn as a line bowed round the layers it bypasses, into the layer it feeds. |
+| `repeats` | array of [neuralnet-repeat](#neuralnet-repeat-object) | no | `blocks` only: runs of layers stacked several times, each drawn once inside a frame marked with how many times it stacks — the Transformer's `Nx`. Two repeats never overlap, and a skip is inside a repeat or outside it, never across its frame. |
+| `direction` | string — one of `right`, `down`, `up` | no | `blocks` only: which way the layers run — `right` (across the page), `down` or `up` (the Transformer's bottom-to-top). Left out, across, and down when across does not fit. |
+
+### `pert`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `activities` | array of [pert-activity](#pert-activity-object), at least 2 | **yes** | The activities, 2 to 20, each an `id`, its `text`, a `duration` (or three PERT estimates) and the activities it comes `after`. Ranked left to right by those dependencies; every start, finish and float is computed, so none is written. |
+| `unit` | string | no | What the durations are in — `days`, `weeks` — written in the key under the network. The numbers count from 0, the start of the project. |
+| `start` | string | no | A start milestone's words, `Start`: a node before every activity with no `after`, so the network begins at one point. Left out, none is drawn. |
+| `finish` | string | no | A finish milestone's words, `Finish`: a node after every activity nothing waits for, carrying the project's duration. Left out, none is drawn. |
+
+### `mindmap`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `centre` | string | **yes** | The topic: the one strongly boxed element, in the middle of the map. Every main branch is a peer round it. |
+| `branches` | array of [mindmap-branch](#mindmap-branch-object), at least 2 | **yes** | The main branches, 2 to 8, placed clockwise from the top right in the order written and split between the two sides so they balance: the first is always on the right. Nested, up to three levels, 30 branches in all; the nesting is the structure, so there are no edges. |
+
+### `pie`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `parts` | array of [pie-part](#pie-part-object), at least 2 | **yes** | The parts of one total, 2 to 8, clockwise from twelve o'clock in the order written (a `note` part last), each labelled with its `text` and amount — inside its sector, or beside it on a leader line. |
+| `unit` | string | no | What the amounts are in — `pupils`, `£m`, `%` — written after each one. With `%` the amounts must add up to 100, within one point of rounding. |
+| `values` | boolean | no | `false` leaves the amounts out and writes the names alone. |
+
+### `scatter`
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `axes` | [axes-continuous object](#axes-continuous-object) | **yes** | Both axes, each read as a measurement — unlike `quadrant`'s. |
+| `positions` | array of [position](#position-object), at least 1 | **yes** | The points, each placed by its two measured values. |
 
 ### `curve`
 
@@ -114,6 +425,92 @@ ignored — a `chart` with `nodes` in it is a mistake worth hearing about.
 | `spans` | array of [span](#span-object) | no | Named distances between two waypoints, drawn as a capped line with the name beside it. For the quantity that is the gap itself: a cost variance is not a point on the drawing, it is how far one curve is from another, and a caption saying so states it without showing it. Either way round — two waypoints at one moment measure vertically, two at one value measure along. |
 | `axes` | [axes object](#axes-object) | **yes** | Both axes. A named shape still needs saying what it is a shape of. |
 | `curves` | array of [curve](#curve-object), at least 1 | **yes** | The shapes drawn, each through its own waypoints. |
+
+## Numbers and text a document may hold
+
+Every number must be finite and no larger than 1e12 in size: `NaN`, `Infinity` and
+`1e400` (which JSON reads as infinity) are refused at the field, as is a value too
+large to draw. Every string must be made of characters XML 1.0 can carry, so a
+control character other than tab and newline, or half an emoji (a lone surrogate),
+is refused with the pointer of the string that holds it. Text of a label may say
+anything else, markup-looking words included.
+
+## The readability budget
+
+A document that would draw can still be refused for holding too much to read.
+Each kind has a budget — the most entries its counted arrays may hold — and a
+document past it is refused with the pointer of the first entry over, before
+any layout is tried. It is not the fit limit: a fit refusal says the canvas is
+too small, and arrives later, around twenty boxes. This says the picture
+would be searched rather than read.
+
+The remedy is to split: an **overview** that names each part once, plus a
+**detail** diagram per part, each within the budget. There is no opt-out —
+the top-level `width` and `height` size the canvas, and a wider canvas does
+not make the drawing easier to take in. Every number below sits above the
+largest reference document of its kind, so nothing in the gallery is refused.
+
+| Kind | At most |
+|---|---|
+| `flow` | 15 `nodes`, 16 `edges`, 6 `loops`, 4 `classes` |
+| `tree` | 15 `nodes`, 4 `classes` |
+| `cycle` | 8 `nodes` |
+| `stack` | 10 `items` |
+| `timeline` | 10 `items` |
+| `columns` | 6 `items` |
+| `matrix` | 25 `cells` |
+| `pyramid` | 7 `levels` |
+| `rings` | 6 `rings` |
+| `funnel` | 7 `stages` |
+| `chart` | 6 `series` |
+| `quadrant` | 12 `positions` |
+| `scatter` | 20 `positions` |
+| `curve` | 4 `curves` |
+| `files` | 30 `entries` |
+| `states` | 14 `states`, 24 `transitions`, 4 `regions` per group, 4 `states` that are `fork` or `join` |
+| `sequence` | 8 `participants`, 30 `messages` |
+| `lanes` | 15 `nodes`, 16 `edges`, 6 `lanes`, 6 `phases`, 4 `classes` |
+| `entities` | 8 `entities`, 12 `edges`, 12 `fields` per entity, 8 `operations` per entity |
+| `gantt` | 16 `tasks`, 20 `edges`, 4 `marks`, 8 `events` per task, 8 `iterations` per task |
+| `board` | 6 `columns`, 4 `rows`, 32 `cards`, 8 `cards` per cell |
+| `fishbone` | 6 `categories`, 5 `causes` per category |
+| `venn` | 4 `sets`, 15 `regions` |
+| `journey` | 7 `stages`, 5 `feelings`, 4 `rows` |
+| `treemap` | 10 `parts`, 4 `groups` |
+| `sankey` | 14 `nodes`, 24 `flows` |
+| `numberline` | 15 `points`, 4 `ranges` |
+| `barmodel` | 3 `bars`, 8 `parts` per bar, 6 `braces` |
+| `waterfall` | 12 `bars` |
+| `pie` | 8 `parts` |
+| `mindmap` | 8 `branches`, 30 `branches` in all, at every level |
+| `argument` | 15 `points` |
+| `familytree` | 30 `people` |
+| `meter` | 6 `meters`, 5 `bands` per meter |
+| `rag` | 15 `rows` |
+| `clock` | 12 `clocks` |
+| `sunburst` | 8 `nodes` |
+| `packet` | 40 `fields` |
+| `network` | 6 `networks`, 24 `hosts`, 6 `groups` |
+| `timing` | 12 `signals`, 6 `states` per signal, 8 `markers`, 10 `intervals` |
+| `gitgraph` | 8 `branches`, 30 `steps` |
+| `railroad` | 12 `rules` |
+| `usecase` | 8 `actors`, 15 `usecases`, 3 `systems`, 30 `edges` |
+| `wardley` | 24 `components`, 3 `anchors`, 6 `notes` |
+| `pert` | 20 `activities` |
+| `automaton` | 12 `states`, 36 `transitions` |
+| `neuralnet` | 16 `layers`, 6 `skips`, 3 `repeats` |
+
+A `tree` with `"style": "bracket"` counts its leaves instead: 16
+leaves, a sixteen-team knockout, in place of its 15 nodes.
+
+## Emphasis
+
+At most 2 elements in a document may take the `emphasis` role —
+nodes, items, levels, cells, positions, series and curves counted together.
+Emphasis says *look here first*, and when three things say it none of them is
+first. The third and every later one is refused at its `role`, with a message
+saying to keep the one or two the diagram is about. The `strong` edge role is
+not counted: it marks a path, which is several edges and reads as one line.
 
 ## The objects
 
@@ -127,17 +524,746 @@ name, so a misspelt key is an error at the point it was written.
 | `id` | string | **yes** | Unique within the document. |
 | `centre` | boolean | no | Whether this node is the subject the rest are arranged around. One node per document may say so, and only a `flow`. For the diagram that starts in the middle rather than at the top: a thing with named relations on every side, where the relations are peers and there is no sequence between them. Ranked instead, the middle object becomes just another row. |
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
-| `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group`, `io`, `subroutine`, `store`, `person` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `actor` | string | no | Who performs this step — free text, and orthogonal to `role`. `role` says what kind of step it is; this says whose it is, and the two are independent: a human step can be routine and an automated one can be the critical path. Drawn as the box's **lead**, the name over what belongs to it, so the same words sit in the same place in every box and a reader can scan a column of them. Free text rather than an enum on purpose: an actor is told apart by its **name**, which is legible in greyscale and in any medium, so it costs none of the four non-colour channels the roles are told apart by. **Only a `flow`, a `tree` or a `cycle` draws one**, and a node that names an actor may not also write its own lead — the box has one lead and this is it. |
 | `note` | string | no | A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead. |
+| `class` | string | no | Which of the document's `classes` this box belongs to — an author-chosen grouping such as *external system* or *owned by the payments team*, drawn as that class's faint fill and named in a key under the drawing. Must be the `id` of a declared class. Not on a `note` or a `group`, and not with `status` (both would mark the box). **Only a `flow`, a `tree` or `lanes`.** |
+| `status` | string — one of `added`, `changed`, `removed` | no | What a proposed change does to this box, as a diff would say it — for one drawing of the target state with the change marked on it, instead of a before and an after to compare by eye. Drawn as the labelled mark `files` uses (`+ added`, `~ changed`, `- removed`) inside the box, never as a colour; a removed box is also dashed and its text struck through. **Only a `flow` or a `tree`**: a loop that changes is a different loop. An edge touching a removed box must be `removed`, and one touching an added box must be `added`. |
 
 ### `edge` object
 
 | Field | Type | Required | What it is |
 |---|---|---|---|
-| `from` | string | **yes** | The id of the source node — or, in a `flow` or a `tree`, of a group: an edge may name a container, for a relation that belongs to the whole of it rather than to any one box inside. It may not join a container to something already within it. A `cycle` draws no containers, so an edge in one names a node. |
-| `to` | string | **yes** | The id of the target node — or, in a `flow` or a `tree`, of a group. The same id space as `from`. |
+| `from` | string | **yes** | The id of the source node — or, in a `flow` or a `tree`, of a group: an edge may name a container, for a relation that belongs to the whole of it rather than to any one box inside. It may not join a container to something already within it. A `cycle` draws no containers, so an edge in one names a node — or its `hub`, as a spoke. |
+| `to` | string | **yes** | The id of the target node — or, in a `flow` or a `tree`, of a group. The same id space as `from`. The same id as `from` draws a loop on the side of that box, across the reading direction, with its label outside it: two per box at most, and never on a group. |
 | `label` | string | no | A short label placed along the edge. |
-| `role` | string — one of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
+| `role` | string — one of `flow`, `link`, `exchange`, `weak`, `owns`, `strong`, `aside`, `async` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
+| `status` | string — one of `added`, `changed`, `removed` | no | What a proposed change does to this connection: the same marks as a node's, written before the label (`+`, `~`, `-`), with a key of the marks under the drawing. A removed edge is drawn in the `aside` treatment — dashed, no head — whatever its role. **Only a `flow`, a `tree` or `lanes`.** |
+| `polarity` | string — one of `+`, `-` | no | A causal link's sign: more of the source means more (`+`) or less (`-`) of the target, written as the edge's label (`s`/`o` under a theme that says so). Every `flow` or `strong` edge of the document has one, or none does. **Only a `flow`.** |
+| `delay` | boolean | no | The effect takes time: drawn as the double stroke across the shaft. Needs `polarity`. **Only a `flow`.** |
+
+### `loop` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `nodes` | array of string, at least 2 | **yes** | The loop's variables in the order it runs: each joined to the next, and the last back to the first, by a signed edge in that direction. |
+| `type` | string — one of `reinforcing`, `balancing` | no | Optional, and checked: an even number of `-` links is `reinforcing`, an odd number `balancing`. Drawn as R or B, numbered in the order written. |
+
+### `lane-node` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique within the document. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `io`, `subroutine`, `store`, `person` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `actor` | string | **yes** | Who performs this step, and so which lane it is drawn in. Required: every box in a swimlane diagram is in a lane. Drawn once, as the lane's heading, and not repeated in the box — so `text` may again use a newline for its own lead and detail. Free text, matched exactly against `lanes` when that is given. |
+| `status` | string — one of `added`, `changed`, `removed` | no | What a proposed change does to this box, drawn as on a `flow`: the labelled mark inside the box, never a colour. |
+| `class` | string | no | Which of the document's `classes` this box belongs to — an author-chosen grouping such as *external system* or *owned by the payments team*, drawn as that class's faint fill and named in a key under the drawing. Must be the `id` of a declared class. Not on a `note` or a `group`, and not with `status` (both would mark the box). **Only a `flow`, a `tree` or `lanes`.** |
+
+### `hub` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique within the document, and in the same id space as the nodes, so an edge may name the hub — as a spoke, never as a step of the loop. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+
+### `state` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique within the document, among the states and the groups. |
+| `text` | string | no | The state's name. A newline makes it a lead and a detail, as on any box. Required on every state but a `fork` or `join` bar, which has no words. |
+| `role` | string — one of `step`, `emphasis`, `terminal`, `fork`, `join` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. `fork` and `join` make this state a bar: a fork has one transition in and two or more out, each into a different region of one composite; a join is the reverse. A bar has no `text`, and the transitions out of a fork or into a join carry no `event` or `guard`. |
+
+### `transition` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | string | **yes** | The state the machine leaves — or a group, for a transition that leaves the composite from whichever state inside it is current. |
+| `to` | string | **yes** | The state the machine enters — or a group, which is entered at its own `initial`. The same id as `from` draws a self-loop. |
+| `event` | string | no | What happens that moves the machine. Omit for a completion transition, taken as soon as the state's work is done. |
+| `guard` | string | no | The condition that must hold for the event to move the machine. Written plainly; drawspec adds the brackets. |
+| `action` | string | no | What the machine does on the way. Written plainly; drawspec adds the slash. The label reads `event [guard] / action`, each part optional. |
+| `role` | string — one of `flow`, `strong`, `weak` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
+
+### `composite` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique within the document, among the states and the groups. |
+| `text` | string | **yes** | The composite state's name, drawn at its frame's corner. |
+| `members` | array of string, at least 1 | no | The states (or groups) inside this composite state. A composite lists its `members` or its `regions`, not both. |
+| `initial` | string | no | The member this composite is entered at, drawn as a dot inside the frame. Required when a transition, or the machine's own `initial`, names the group. With `regions`, each region names its own instead. |
+| `regions` | array of [state_region](#state_region-object), at least 2 | no | Orthogonal regions: parts of this composite that are all current at once, drawn side by side (or stacked) and divided by dashed lines. Each region lists its own members and its own `initial` — unless every way into the composite is a `fork` with an arrow into that region, which says where it starts — and entering the composite enters every region there. A transition may not run between two regions of one composite. In place of `members`. |
+
+### `state_region` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `members` | array of string, at least 1 | **yes** | The states (or groups) in this region. A state is in one region; each region is a machine of its own, running alongside the others. |
+| `initial` | string | no | The member this region starts in when its composite is entered, drawn as a dot inside the region. Required unless every way into the composite is a `fork` with an arrow into this region, which says where it starts instead. |
+
+### `participant` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique within the document, among the participants and the groups. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis`, `note`, `actor` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+
+### `message` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | no | Optional, and only needed to name this message from a fragment. Unique among the messages. |
+| `from` | string | **yes** | The participant that sends it. |
+| `to` | string | **yes** | The participant that receives it. The same id as `from` is a message to itself, drawn as a hook on the right of its lifeline. |
+| `text` | string | no | What is said, written above the arrow. May carry inline spans. Omit for a bare arrow. |
+| `role` | string — one of `flow`, `weak`, `strong`, `async` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'flow'. |
+| `note` | string | no | A short aside about this message, drawn on its row in one column to the right of the last lifeline, so the notes read down as one margin. |
+
+### `fragment` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `operator` | string — one of `loop`, `alt`, `opt`, `par` | **yes** | What the frame says about the messages inside it, written in its tab: `loop` repeats them, `opt` may happen, `alt` is one branch of several, `par` runs its branches at once. |
+| `from` | string | **yes** | The id of the first message inside the frame. |
+| `to` | string | **yes** | The id of the last message inside the frame — the same as `from` for a frame round one message. Not before `from`. |
+| `text` | string | no | The condition, beside the tab: what the loop runs over, when the option or the first branch happens. Written plainly; drawspec adds the brackets. |
+| `else` | array of [branch](#branch-object) | no | For `alt` and `par` only: where the frame is divided, each a dashed line above a message inside it, with that branch's condition under it. |
+
+### `branch` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `at` | string | **yes** | The id of the first message of this branch. The divider is drawn above it, so it is after the fragment's first message and no later than its last. |
+| `text` | string | no | This branch's condition. Written plainly; drawspec adds the brackets. Omit it for a `par` branch, which runs alongside the others and has none. |
+
+### `entity` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the entities. |
+| `text` | string | **yes** | The entity's name, drawn bold over its fields. One line: may carry `code` and **bold** spans — a table name is usually `code`. |
+| `tag` | string | no | A short stereotype drawn over the name in guillemets — `interface` is drawn «interface». Free text, 16 characters at most. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+| `centre` | boolean | no | Whether this entity is the one the rest are arranged around: a star schema's fact table, its dimensions round it — the first above, the rest clockwise in the order written. One entity per document may say so, and not in a class hierarchy, which is drawn general above specific. |
+| `fields` | array of [field](#field-object) | no | What the entity holds, one row each under its name: attributes, columns. A last field of `...` stands for those not shown. |
+| `operations` | array of string | no | What a class can do — `area() → float` — drawn in a compartment of their own under the fields. Strings, not objects: an operation is read, never linked to. |
+
+### `field` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | no | Only needed for a relation to land on this row (`from_field`, `to_field`). Unique among the fields of the document. |
+| `text` | string | **yes** | The field's name, one line. `...` as the last field is a row standing for the fields not shown. |
+| `type` | string | no | Its type — `uuid`, `float` — drawn right-aligned in the monospace face. |
+| `key` | string — one of `primary`, `foreign`, `unique` | no | Whether it is a key, drawn as letters before the name — `PK`, `FK`, `UQ`: a word, never a colour. |
+
+### `relation` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | string | **yes** | The id of an entity. For `inherits` and `realizes`, the specific one — the subclass, the implementation. |
+| `to` | string | **yes** | The id of another entity — for `inherits` and `realizes` the general one, which gets the hollow triangle. Not the same as `from`. |
+| `from_field` | string | no | The id of one of the `from` entity's fields: the line leaves that row, at the side facing the other entity, instead of the box. A foreign key drawn from its column. |
+| `to_field` | string | no | As `from_field`, a field of the `to` entity: the line arrives at its row. |
+| `from_end` | string — one of `one`, `zero-or-one`, `many`, `zero-or-many`, `one-or-many` | no | How many of the `from` entity there are per one of the other, drawn at the `from` end — crow's feet or numbers, as the theme's `[entities] notation` says. Not on `inherits` or `realizes`. |
+| `to_end` | string — one of `one`, `zero-or-one`, `many`, `zero-or-many`, `one-or-many` | no | As `from_end`, for the `to` end: how many of it per one of the other. Not on `owns`, whose `to` end is the whole, drawn as the diamond. |
+| `label` | string | no | A short label placed along the line. |
+| `role` | string — one of `link`, `owns`, `weak`, `strong`, `inherits`, `realizes` | no | What the relation is. `link` (the default) an association; `owns` composition — `from` is a part of `to`, diamond at `to`; `weak` a dependency; `strong` the relation that matters; `inherits` and `realizes` a subclass and an implementation, hollow triangle at `to`. An end with a cardinality draws it in place of the role's head. |
+
+### `task` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique within the document. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `start` | number | no | Where the task starts on the axis, with `end`. A number in the axis's unit (week 3, day 12, minute 45) — data, not a coordinate. Never a date. |
+| `end` | number | no | Where it ends, after `start`. With categories, 4 is where the fourth period begins. |
+| `at` | number | no | Instead of `start` and `end`: makes the task a milestone, drawn as a mark at this point with no length. |
+| `actor` | string | no | Who does it — free text, drawn as the row label's lead, so the names line up in a column. A task with an actor may not put a newline in `text`. |
+| `done` | number | no | How much of the task is complete, 0 to 100: drawn as a solid band inside the bar from its start, MS Project's progress line. Not on a milestone. |
+| `events` | array of [task-event](#task-event-object) | no | Moments on the task's own row — a delivery, a release, a review — each a diamond on the bar where it falls, its words under the bar. Unlike a milestone task they take no row of their own, so several fall on one row. Within the task's `start` to `end`; not on a milestone. |
+| `iterations` | array of [iteration](#iteration-object) | no | Cycles the work goes round: each an arc over the bar from an iteration's `end` back to its `start`, the return a life cycle draws. Within the task's `start` to `end`, in order and not overlapping; not on a milestone. |
+| `role` | string — one of `step`, `strong`, `emphasis`, `note` | no | `step` (the default bar), `strong` (on the critical path: drawn heavier, the word its dependencies take), `emphasis` (the task the diagram is about) or `note` (outside the plan, drawn lighter). |
+
+### `task-event` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `at` | number | **yes** | Where on the axis, inside the task's interval. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `iteration` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `start` | number | **yes** | Where the cycle begins on the axis: the arc's head lands here. |
+| `end` | number | **yes** | Where it ends and turns back, after `start`: the arc leaves from here. |
+
+### `dependency` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | string | **yes** | The id of the task that has to finish first. |
+| `to` | string | **yes** | The id of the task that waits for it, which may not start before `from` ends. Drawn from the end of one bar into the start of the other. |
+| `role` | string — one of `flow`, `strong`, `weak` | no | `flow` (the default), `strong` (the critical path) or `weak` (a soft dependency, dashed). |
+
+### `mark` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `at` | number | **yes** | Where on the axis: a line is drawn across every row there. |
+
+### `axis-gantt` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `label` | string | **yes** | Required, and the unit's name: `Week`, `Day`, `Minutes after 02:00`. |
+| `unit` | string | no | What the numbers are in, written after the label. |
+| `min` | number | no | Where the plan starts. Omit to take it from the tasks. |
+| `max` | number | no | Where the plan ends. Omit to take it from the tasks. |
+| `categories` | array of string, at least 1 | no | Names for the periods, in order, instead of numbers — months, sprints, quarters. The first period runs from 1 to 2, the second from 2 to 3, so a task over the first three is `start` 1, `end` 4. Sets the range itself, so not with `min` or `max`. |
+
+### `board-column` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the columns; what a card's `column` names. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `limit` | integer, greater than 0 | no | A work-in-progress limit. drawspec counts the column's cards (a `note` card is not work, so it is not counted) and writes `n / limit` in the heading; over the limit the heading takes `emphasis`. Never write the count yourself. |
+| `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis` (the column the board is about), drawn as the weight of the rule under the heading. |
+
+### `slice` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the rows; what a card's `row` and the board's `cut` name. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `card` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `column` | string | **yes** | The id of the column it is in. Its kind is its column. |
+| `row` | string | no | The id of the row (slice) it is in. Required when the board has `rows`, refused when it has none. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (blocked, at risk, the one that matters) or `note` (a placeholder or a summary such as `+ 6 more`, drawn lighter and not counted against a limit). |
+| `actor` | string | no | Who holds it — free text, drawn as the card's lead, as in a `flow` box. A card with an actor may not put a newline in `text`. |
+| `note` | string | no | A short aside hung under the card, smaller: `blocked on a decision`. |
+
+### `venn-set` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the sets; what a region's `in` names. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis` (the set the diagram is about), drawn as a heavier outline. |
+
+### `region` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `in` | array of string, at least 1 | **yes** | The ids of exactly the sets this region is in, and no others: `["gdpr"]` is what only that set holds, `["gdpr", "ens"]` what the two share. drawspec knows where that region is. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis` (the region the diagram is about): its words bold and the region filled with the theme's first mark fill. |
+
+### `journey-row` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the rows; what a stage's `details` name in `row`. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `journey-stage` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `feeling` | string | **yes** | One of the journey's `feelings`, by name: the level this stage's point is drawn at. A name, never a score. |
+| `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis` (the stage the map is about, usually the trough): its column framed, its point drawn larger and solid. |
+| `details` | array of [detail](#detail-object) | no | What this stage holds in each detail row, a `{row, text}` per row it fills. A row it does not name is drawn as an empty cell. |
+
+### `detail` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `row` | string | **yes** | The id of one of the journey's `rows`, at most once per stage. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `treemap-part` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `amount` | number, greater than 0 | **yes** | How much of the total this part is, in the treemap's `unit`: its area is in proportion. A number you already know, more than 0. |
+| `group` | string | no | The id of one of the treemap's `groups`: the part is laid out with the group's other parts inside its captioned frame. Omit it to sit beside the groups. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the part the diagram is about — not automatically the largest: a heavier outline, its words bold) or `note` (the remainder, `Everything else`: a light dashed outline, laid out last). |
+
+### `sankey-node` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the nodes; what a flow's `from` and `to` name. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the node the diagram is about: its bar outlined heavier, its words bold) or `note` (the remainder — `Lost`, `Reserved, idle` — drawn lighter, with the bands that reach it). |
+
+### `sankey-flow` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | string | **yes** | The id of the node the amount leaves. |
+| `to` | string | **yes** | The id of the node the amount reaches. |
+| `amount` | number, greater than 0 | **yes** | How much flows, in the sankey's `unit`: the band's thickness is in proportion. A number you already know, more than 0. |
+| `role` | string — one of `flow`, `strong` | no | `flow` (the default band) or `strong` (the path the diagram is about, drawn darker). |
+
+### `axis-numberline` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `min` | number | **yes** | Where the scale starts, at the left arrowhead's side. |
+| `max` | number | **yes** | Where the scale ends: more than `min`. |
+| `step` | number, greater than 0 | no | The distance between two ticks, each labelled with its number. Omit it for a step a reader can count in, chosen from the range. |
+| `label` | string | no | What the numbers measure, centred under them: `pH`, `Temperature`. |
+| `unit` | string | no | What the numbers are in, written after the label: `°C`, `cm`. |
+| `ends` | array of string, at least 2 | no | Two words for the low and the high end — `past` and `future`, `fully remote` and `fully on site` — written under the arrowheads, for a scale that is named rather than measured. No numbers are drawn: only the order and the gaps count, so not with `step` or `unit`. |
+
+### `numberline-point` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `at` | number | **yes** | Where the dot sits on the axis: a number between `min` and `max`. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `open` | boolean | no | Whether the dot is hollow: the value itself is excluded — `x ≠ 3`, a hole. Defaults to false, a filled dot. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the point the line is about: a larger dot, its words bold) or `note` (context: a smaller dot). |
+
+### `numberline-range` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | number | no | Where the range starts. Omit it for a range that runs on below `min`, drawn as an arrow off the left end. |
+| `to` | number | no | Where the range ends: more than `from`. Omit it for a range that runs on above `max`, drawn as an arrow off the right end. |
+| `from_open` | boolean | no | Whether `from` is excluded — `x > 1` rather than `x ≥ 1`. Defaults to false. The theme's `[numberline] ends` draws it as a hollow dot or a parenthesis. |
+| `to_open` | boolean | no | Whether `to` is excluded — `x < 4` rather than `x ≤ 4`. Defaults to false. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default, a heavy line), `emphasis` (the range the line is about — the solution set: a heavier bar, its words bold) or `note` (context: dashed). |
+
+### `barmodel-bar` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | no | What a brace's `over` names, for a brace over the whole bar. Unique among the bars and the parts. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `parts` | array of [barmodel-part](#barmodel-part-object), at least 1 | **yes** | The bar's parts, left to right, each as long as its `value` or its `units` say — in one scale for every bar. |
+
+### `barmodel-part` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | no | What a brace's `over` names. Unique among the bars and the parts. |
+| `amount` | number, greater than 0 | no | How much the part is, more than 0: its length is in proportion, and its words default to the number. Give it even for the unknown — the `?` is its `text`. |
+| `units` | integer, greater than 0 | no | How many equal boxes the part is, each one unit long: groups to multiply, the shares of a ratio, the fifths of a fraction. Not with `amount`, and not in a document whose parts have amounts. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the part the problem asks about: bold words, filled) or `note` (a part that is not there — the difference a shorter bar lacks: dashed). |
+
+### `barmodel-brace` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `over` | array of string, at least 1 | **yes** | What the brace spans: the ids of side-by-side parts of one bar, drawn over it (under it, for the last of several bars), or of whole bars — one bar the same way, several consecutive bars with an upright brace at their right. |
+| `amount` | number, greater than 0 | no | What the stretch adds up to. Checked: the parts' amounts must sum to it, and with units every brace must make one unit worth the same. Written unless `text` is given. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `waterfall-axis` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `label` | string | **yes** | What the numbers are, with their unit — `Borrowing, £ billion`. Set beside the vertical axis; required, as on every chart. |
+
+### `waterfall-bar` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `total` | number | no | A total: the bar stands on zero and runs to it. The first bar is one and so is the last; one in between is a subtotal. Every total after the first is checked: it must be the running sum. Not with `amount`. |
+| `amount` | number | no | A signed step, not 0: the bar floats from the running sum to the running sum plus this, and is written `+6.1` or `−9.4`. Not with `total`. |
+| `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis` (the bar the chart is about: a heavier outline, its number bold). |
+
+### `pie-part` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `amount` | number, greater than 0 | **yes** | How much of the total this part is, more than 0, in the pie's `unit`: a count, a sum, or with `unit: "%"` a percentage. Its angle is its share of the sum of the amounts, computed — never written. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the part the chart is about: a heavier outline, its words bold) or `note` (the remainder, `Everything else`: unfilled and dashed, drawn last). At most one `note`. |
+
+### `argument-point` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique within the document, and not `claim`: what `on` and `with` name. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `on` | string | **yes** | The box this point bears on: `claim`, or another point's id. The points hang below it, in the order written. |
+| `stance` | string — one of `for`, `against` | **yes** | `for` (a reason, drawn plain, tagged *because*) or `against` (an objection, hatched, tagged *but*) the box it is `on`. A rebuttal is an `against` on an `against`. |
+| `with` | array of string, at least 1 | no | Co-premises: the ids of points with the same `on` and `stance` that support it only together. Written once, on any member; the group is every point joined this way, at most 4, drawn side by side under one bracket with one connector. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the decisive point: heavy outline and connector, bold words) or `note` (evidence or a source rather than a reason: the note type, unboxed, on a dashed connector). |
+
+### `familytree-person` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique within the document: what `couples` name. |
+| `sex` | string — one of `male`, `female`, `unknown` | **yes** | The symbol: a square (`male`), a circle (`female`) or a diamond (`unknown`), as the standard nomenclature draws them. With `gender`, the symbol shows the gender instead and this is noted under it (`AMAB`, `AFAB`) when the two differ. |
+| `gender` | string — one of `man`, `woman`, `nonbinary` | no | Gender identity, per the 2022 revision of the standard: the symbol becomes a square (`man`), a circle (`woman`) or a diamond (`nonbinary`), and `sex` is the sex assigned at birth, written under it when it differs. Leave it out and the symbol follows `sex`. |
+| `text` | string | no | The name, or an age or a test result, under the symbol and its number. A newline makes it a lead and a detail, as anywhere: a name over the years. |
+| `status` | string — one of `affected`, `carrier`, `unaffected` | no | The one trait the tree tracks: `affected` (the symbol filled), `carrier` (the theme's carrier mark: a dot in the middle, or the left half filled) or `unaffected` (the default: empty). Told apart without colour; a key under the drawing names the ones used. |
+| `deceased` | boolean | no | A diagonal stroke through the symbol. An age or year goes in `text`. |
+| `proband` | boolean | no | The affected person through whom the family came to attention: an arrow at the lower left with a `P`. One per tree. |
+| `consultand` | boolean | no | The person asking for advice or testing: the arrow without the `P`. May be the proband too. |
+| `adopted` | boolean | no | Adopted into the couple whose `children` list them: brackets round the symbol and a dashed line down from the sibship line. A child is listed once, in the couple that raised them. |
+| `pregnancy` | string — one of `ongoing`, `loss` | no | `ongoing`: a `P` in the symbol (the weeks go in `text`); `loss`: a small triangle in place of the symbol, shaded when `affected`. Either is a child only: no partners. |
+| `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis`: the person the figure is about when there is no proband — a heavier symbol and a bold name. |
+
+### `familytree-couple` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `between` | array of string, at least 2 | **yes** | The two partners' ids, in either order: drawspec puts them side by side, joined by the partner line. A person's couples are their partners in the order written — marriage order — at most 6. |
+| `children` | array of string | no | Their children's ids, in birth order: left to right under the sibship line. Leave it out for a couple with none. |
+| `twins` | array of [familytree-twins](#familytree-twins-object) | no | Children of one birth, each set written next to each other in `children`. |
+| `separated` | boolean | no | The relationship has ended: two short strokes across the partner line. |
+| `consanguineous` | boolean | no | The partners are related by blood: a double partner line. |
+
+### `meter-meter` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The meter's name. A second line after a newline is its caption, drawn plain under the name: what the reading is of — `This year's milestones only`. |
+| `amount` | number | **yes** | The reading, on the scale from `min` to `max`. Written with its `unit` in the readout; never as a percentage the author worked out. |
+| `max` | number | **yes** | The end of the scale: a thermometer's goal, a progress bar's whole, a dial's right-hand end. |
+| `min` | number | no | Where the scale starts, on a `dial` only (0 by default): a needle reads a position, so it may start anywhere. A bar's length is its amount, so a bar, a bullet and a thermometer start at 0. |
+| `unit` | string | no | What the numbers are in: `%`, a currency sign (`£`, `$`, `€`, `¥`, written before the number) or a word (`tasks`, after it). |
+| `target` | number | no | A mark on the scale — the plan, a stage of an appeal — drawn across the track and written in the readout. Inside the scale. |
+| `bands` | array of [meter-band](#meter-band-object), at least 2 | no | Named stretches of the scale, rising: each runs from the end of the one before (or `min`) to its own `to`, and the last ends at `max`. Required on a `bullet`, optional on a `dial`, refused on the others. Drawn in tones of the page's ink with their words on them, so a band is never told by colour alone. |
+| `role` | string — one of `step`, `emphasis` | no | `step` (the default) or `emphasis` (the meter the panel is about: its name and reading bold). |
+
+### `clock-face` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `time` | string | no | The time the hands show, `H:MM` or `HH:MM` from `0:00` to `23:59` — `15:40` for twenty to four in the afternoon. No seconds, no date. Leave it out for a face with no hands, to draw them on. |
+| `text` | string | no | A name or a prompt under the face: `Home time`, `Draw half past seven`. |
+| `since` | string | no | An earlier time, `H:MM`, up to 12 hours before `time`: the face shades what has passed since it, and the readout says how long. |
+
+### `rag-row` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The workstream or risk. A second line after a newline is a caption under it, at the label size: an owner, a reference. |
+| `rag` | string — one of `red`, `amber`, `green` | **yes** | The rating: `red`, `amber` or `green`. Drawn as the theme's word and shape for it (and its colour, when the theme has one), so it is never told by colour alone. |
+| `trend` | string — one of `better`, `same`, `worse` | no | The direction of travel since the last report: `better`, `same` or `worse`. Drawn as an arrow (up, across, down) with the theme's word beside it. |
+| `note` | string | no | Why: a sentence or two of commentary, wrapped in the last column. `**bold**` for a decision asked for. |
+
+### `meter-band` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The band's name, written on it: `Good`, `Strained`, or `Green` when that is the word the reader is taught. One or two short words. |
+| `to` | number | **yes** | Where the band ends; it starts where the band before ends. |
+
+### `familytree-twins` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `of` | array of string, at least 2 | **yes** | Two or three of the couple's children, next to each other in `children`: drawn from one point on the sibship line. |
+| `zygosity` | string — one of `monozygotic`, `dizygotic`, `unknown` | **yes** | `monozygotic` (identical: a bar joins their lines), `dizygotic` (fraternal) or `unknown` (a `?` between them). |
+
+### `mindmap-branch` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the branch the map is about: bold, its line heavy all the way from the centre; at most two) or `note` (context, not content: faint, and so is everything under it). |
+| `branches` | array of [mindmap-branch](#mindmap-branch-object), at least 1 | no | The branches off this one, drawn top to bottom in the order written. At most three levels below the centre: a branch, a twig, a leaf. |
+
+### `timing-signal` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The signal's name, drawn at the left of its lane: `SCLK`, `CS#`, `User`. Unique in the figure — an interval names its signal by it. |
+| `lane` | string — one of `bit`, `bus`, `state` | no | What the lane draws: `bit` (the default: levels and clock pulses), `bus` (a word per value, in the hexagon lanes of a datasheet) or `state` (a line stepping between the named `states`, UML's robust lifeline). |
+| `values` | array of string, at least 1 | **yes** | One string per time step, every signal the same length. A `bit` lane takes `0`, `1`, `z` (high impedance), `x` (unknown), `p` (a clock pulse, high then low) and `n` (low then high); a `bus` takes any word, with `x` and `z` reserved; a `state` lane takes one of its `states`. `.` carries the step before on: a clock keeps pulsing, a word holds without a new edge. |
+| `states` | array of string, at least 2 | no | A `state` lane's named states, 2 to 6, top to bottom in the order written — write the busiest or highest first. Required on a `state` lane, refused elsewhere. |
+| `group` | string | no | The name of the group this signal is in — `Controller`, `Peripheral` — drawn once over its signals. Signals in one group are written next to each other. |
+
+### `timing-marker` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `at` | number | **yes** | Where the marker stands, in steps from the start: `0` is the left edge, a whole number is the edge between two steps, and a half is the middle of one (where a clock pulse falls). |
+| `text` | string | no | The marker's name, over the figure: `S`, `Sr`, `P`, `sample`. |
+
+### `timing-interval` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | number | **yes** | The edge the interval starts at, in steps (whole or half), as a marker's `at`. |
+| `to` | number | **yes** | The edge it ends at, after `from`, in steps (whole or half). |
+| `text` | string | **yes** | What the interval is, over its arrow: `tSU;STA`, `setup`, `100 ms`. A name, not a measurement drawspec makes — the steps are not to scale in time. |
+| `signal` | string | no | The signal it is measured on, by its `text`: the arrow is drawn under that lane. Left out, it goes under the last lane. |
+
+### `usecase-actor` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the actors, use cases and systems; what a relation's `from` and `to` name. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `supporting` | boolean | no | Whether this actor is a supporting (secondary) one — a bank, a payment service, a librarian who serves the borrower: drawn on the right of the boundary, primary actors on the left. Left out, it is derived: an actor whose every use case an actor written before it already has is supporting. An actor that `inherits` stands on its parent's side. |
+
+### `usecase-case` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the actors, use cases and systems; what a relation's `from` and `to` name. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `system` | string | no | The id of the system whose boundary this use case is drawn in. Needed when there are two or more `systems`; with one it may be left out, and with none there is no boundary to name. |
+
+### `usecase-system` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the actors, use cases and systems; what a use case's `system` names. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `usecase-edge` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | string | **yes** | An association's actor or use case (either way round); the base use case that `include`s; the use case that `extend`s; the specialised actor or use case that `inherits`. |
+| `to` | string | **yes** | The other end: the use case included, the use case extended, the general actor or use case inherited from. |
+| `role` | string — one of `association`, `include`, `extend`, `inherits` | no | `association` (the default: an actor takes part in a use case, a solid line with no head), `include` (the base always does the other: a dashed arrow «include» to it), `extend` (this one sometimes adds to the other: a dashed arrow «extend» to the base) or `inherits` (a kind of the other, actor to actor or use case to use case: a hollow triangle at the general end). |
+
+### `packet-field` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | no | The field's name, written inside it: `Version`, `Source Port`, `TXEN`. Required, except on a `reserved` field, which may be left blank. Where it will not fit across the field it is broken at a space, then turned on its side, then replaced by `short`, and last by a number, the name going to the key under the drawing. |
+| `bits` | integer, greater than 0 | **yes** | How many bits wide the field is. Fields are laid end to end in the order written, left to right and row after row; one that crosses a row's end is split there and its continuation marked, so no field ever carries a position. |
+| `short` | string | no | The author's own abbreviation, used when the name will not fit across the field (`DF` for `Don't Fragment`); the key under the drawing spells it out. drawspec never abbreviates on its own. |
+| `holds` | string | no | What the field holds, written small under its name: a fixed value (`4`), a reset value (`0x00`), its access (`R/W`). Moved to the key when the field is too narrow for it. |
+| `note` | string | no | A sentence about the field, set in the key under the drawing beside its name, as an RFC lists its fields under the header. |
+| `role` | string — one of `field`, `reserved`, `emphasis` | no | `field` (the default), `reserved` (unused or reserved bits: hatched, and `text` may be left out) or `emphasis` (the field the diagram is about: a heavier outline and a bold name; at most two). |
+
+### `pert-activity` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | A handle for this activity, unique in the document, that another activity's `after` names: `A`, `excavate`. Not drawn; the box shows `text`. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `duration` | number | no | How long the activity takes, in the document's `unit`: zero or more. Write this, or the three PERT estimates, not both. |
+| `optimistic` | number | no | A PERT estimate: the shortest the activity could take. With `likely` and `pessimistic` in place of `duration`; the box carries the expected duration, (optimistic + 4 x likely + pessimistic) / 6. |
+| `likely` | number | no | A PERT estimate: the most likely duration, no less than `optimistic` and no more than `pessimistic`. |
+| `pessimistic` | number | no | A PERT estimate: the longest the activity could take. |
+| `after` | array of string | no | The ids of the activities that must finish before this one starts (finish-to-start). Leave it out of an activity that can start at once. No circles: drawspec refuses a loop and names it. |
+
+### `automaton-state` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | A handle for this state, unique in the document, that `start`, `accepting` and each transition's `from` and `to` name: `q0`, `even`. Drawn in the circle when there is no `text`. |
+| `text` | string | no | The name drawn in the circle, when it differs from the `id`: `q₀`, `S1`. One line of at most 12 characters, its `output` included: every circle is drawn the size of the widest name. |
+| `output` | string | no | A Moore machine's output in this state, drawn after its name as `q0 / 1`. Give it on every state or none, and never with a transition's `output`. |
+
+### `automaton-transition` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | string | **yes** | The id of the state the move leaves. |
+| `to` | string | **yes** | The id of the state the move enters. The same id as `from` is drawn as a loop on the circle. |
+| `on` | string | no | The input symbol the move reads: `0`, `a`, `coin`. One symbol per transition; two transitions between the same two states are drawn as one arrow labelled `a, b`. Leave it out of an empty move and write `epsilon` instead. |
+| `epsilon` | boolean | no | `true` makes this an empty move, taken without reading a symbol, labelled ε. Not with `on`, and never in a `deterministic` automaton. |
+| `output` | string | no | A Mealy machine's output on this move, drawn after its symbol as `a / 1`. Give it on every transition or none, and never with a state's `output`. |
+
+### `neuralnet-layer` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | no | A handle for this layer, unique in the document, that a `blocks` network's `skips` and `repeats` name: `conv1`, `add`. Needed only by a layer they name. |
+| `text` | string | no | The layer's name. In `neurons`, written under its column: `Input layer`, `Hidden 1`; may be left out. In `blocks`, required, and written in its box: `Conv 5x5, 6`, `Multi-head attention`. |
+| `size` | integer, greater than 0 | no | `neurons` only, and required there: how many neurons the layer holds. Up to 8 are drawn whole; a larger layer is drawn as its first three, a column of dots and its last two, with its size under it. |
+| `labels` | array of string | no | `neurons` only: a name inside each neuron, top to bottom — `x₁`, `x₂` — one per neuron, at most 4 characters each. Only on a layer drawn whole. |
+| `bias` | boolean | no | `neurons` only: `true` draws a bias unit, `+1`, above the column, joined to every neuron of the next layer. Not on the last layer, which feeds nothing. |
+| `type` | string | no | `blocks` only: what sort of layer this is — `conv`, `pool`, `dense`. Layers of one type share a fill, and a key names them; at most 4 types. |
+| `shape` | string | no | `blocks` only: the tensor the layer puts out, written beside its box in the label size: `28x28x6`, `512`. |
+| `branches` | array of [neuralnet-branch](#neuralnet-branch-object), at least 2 | no | `blocks` only: in place of a layer, 2 to 4 parallel branches, each a tower of layers, split from the layer before and joined by the layer after (a `concat`) — GoogLeNet's Inception module. Such an entry holds `branches` alone; never first or last, and never two in a row. |
+
+### `neuralnet-tower-layer` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | What the layer is, written in its box: `1x1 conv`, `3x3 max pool`. |
+| `type` | string | no | What sort of layer this is, sharing a fill and the key with the rest. |
+
+### `neuralnet-branch` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `layers` | array of [neuralnet-tower-layer](#neuralnet-tower-layer-object), at least 1 | **yes** | The branch's layers in order, 1 to 3, each with its `text` and `type` only: drawn as a tower beside the other branches. |
+
+### `neuralnet-skip` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | string | **yes** | The id of the layer whose output the connection carries. |
+| `to` | string | **yes** | The id of a later layer the connection feeds — an `add` layer for a residual connection, a `concat` for a dense one. Not the next layer: that is joined already. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `neuralnet-repeat` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `from` | string | **yes** | The id of the first layer of the repeated block. |
+| `to` | string | **yes** | The id of the last layer of the block; the same as `from` for one. |
+| `times` | integer, greater than 1 | **yes** | How many times the block is stacked: `6`, drawn `×6` by its frame. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `sunburst-node` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `children` | array of [sunburst-node](#sunburst-node-object), at least 1 | no | The sectors nested inside this one — the next ring, drawn clockwise in the order written. At most three rings in all; leave it out of a node that ends the hierarchy. |
+
+### `network-segment` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the networks; what a host's attachment names. |
+| `text` | string | no | The network's name, written in bold at the left of its bus. Left out, the `id` is the name. |
+| `address` | string | no | The network's address, written on its bus after the name — `210.x.x.x/24`, `10.0.1.0/24`. Words, not parsed: drawspec checks nothing about it. |
+
+### `network-attachment` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `network` | string | **yes** | The id of a network this host is on. |
+| `address` | string | no | The host's address on that network, written beside its line where it meets the bus — `.1`, `10.0.1.10`. Optional. |
+
+### `network-host` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the hosts; what a group's `members` name. |
+| `text` | string | no | The words in the host's box. Left out, the `id` is the name. A newline makes the first line a lead over a detail — `db01` over `primary`. |
+| `role` | string — one of `step`, `emphasis`, `store`, `person` | no | `step` (the default box: a server, a router, a firewall, any device), `emphasis` (the host the diagram is about; at most two), `store` (a drum: a database, a storage array) or `person` (a user's machine, a client). No device icons: say what a box is in its words. |
+| `networks` | array of [network-attachment](#network-attachment-object), at least 1 | **yes** | The networks this host is on, each with an optional address. A host on two or more is drawn between them, joining them — a router, a firewall, a dual-homed server. The column order is drawspec's, chosen so the line crosses no bus it is not on; where no order manages that, the line hops over the bus, a jump that does not join it, and the fewest hops win. |
+
+### `network-group` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | no | The group's name, at the top left of its backdrop. Optional. |
+| `members` | array of string, at least 1 | **yes** | The ids of the hosts drawn on this group's shaded backdrop, side by side. A host is in one group at most. |
+
+### `gitgraph-branch` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `name` | string | **yes** | The branch's name, as git spells it (`main`, `feature/login`): written at the head of its lane and named by every step on it. Unique in the document. |
+| `from` | string | no | Where the branch forks: the name of another branch — it forks from that branch's latest commit at the branch's first step — or the `id` of a commit written before then. Left out, it is the first branch; the first branch itself has none. |
+| `role` | string — one of `step`, `emphasis` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+
+### `gitgraph-step` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `on` | string | **yes** | The branch this commit is made on — one of `branches`. Steps are drawn in the order written, one place in time each. |
+| `text` | string | no | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `id` | string | no | A handle for this commit, unique in the document: what a `pick` or a branch's `from` names. Drawn as the label when there is no `text` (a short hash, `C2`). |
+| `merge` | string | no | Makes this a merge commit: the name of the branch merged into `on`, at its latest commit. The merged branch may carry on afterwards. |
+| `pick` | string | no | Makes this a cherry-pick: the `id` of an earlier commit on another branch, copied onto `on`. Its label is the original's unless `text` says otherwise. |
+| `tag` | string | no | A tag on this commit (`v1.0`), drawn as a tag beside it. Unique. |
+| `role` | string — one of `step`, `emphasis` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
+
+### `railroad-rule` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `name` | string | **yes** | The rule's name, drawn above its track and referred to by `{"rule": name}` boxes. Unique in the document; one line, drawn exactly as written. |
+| `expr` | [railroad-item object](#railroad-item-object) | **yes** | What the rule matches, as one item: usually a `seq`. The track runs from an entry bar on the left to an exit bar on the right; a long top-level `seq` wraps onto further lines, a return track leading each line into the next. |
+
+### `railroad-item` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `terminal` | string | no | Literal text the input must contain, drawn in a rounded box in monospace, exactly as written: a keyword, a punctuation mark, an option. |
+| `rule` | string | no | The name of another rule, drawn in a square box: one of `rules`, or a name listed in `external` when it is defined elsewhere. |
+| `special` | string | no | A set described in words rather than spelt out, drawn in a dashed box: `any digit 1-9`, `any character but a quote`. |
+| `comment` | string | no | Words written on the track with no box, the line breaking for them — what a branch means, or a loop's separator in words. Matches nothing. |
+| `seq` | array of [railroad-item](#railroad-item-object), at least 2 | no | Items one after another, left to right. A rule's top-level `seq` wraps onto further lines when it is wider than the canvas. |
+| `choice` | array of [railroad-item](#railroad-item-object), at least 2 | no | Alternatives, 2 to 10, stacked one under another and rejoining. The first is drawn on the main line, so put the usual one first; an empty alternative is an `optional` round the choice. |
+| `optional` | [railroad-item object](#railroad-item-object) | no | An item that may be left out: drawn on the line, with a bypass over it. |
+| `repeat` | [railroad-item object](#railroad-item-object) | no | An item that may be repeated: drawn on the line, with a loop back under it. `min` says whether it may also be left out. |
+| `separator` | [railroad-item object](#railroad-item-object) | no | With `repeat` only: what comes between repetitions, drawn on the loop — a `terminal`, `rule`, `special` or `comment`, such as `{"terminal": ","}`. |
+| `min` | integer | no | With `repeat`, and required there: `1` for one or more, `0` for zero or more (the loop with a bypass over it). |
+
+### `wardley-anchor` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the anchors and components; nothing needs an anchor. |
+| `text` | string | **yes** | The name, on one line, set beside its dot (an anchor's in bold). May carry inline spans — `code` and **bold** — because those are semantic, not typographic. A newline is refused: put the detail in a numbered `note`. |
+| `needs` | array of string, at least 1 | **yes** | The ids of the components this user or need depends on directly — the top of the value chain. The anchor is drawn above them, across the top row. |
+
+### `wardley-component` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the anchors and components; what a `needs` names. |
+| `text` | string | **yes** | The name, on one line, set beside its dot (an anchor's in bold). May carry inline spans — `code` and **bold** — because those are semantic, not typographic. A newline is refused: put the detail in a numbered `note`. |
+| `evolution` | string — one of `early genesis`, `genesis`, `late genesis`, `early custom`, `custom`, `late custom`, `early product`, `product`, `late product`, `early commodity`, `commodity`, `late commodity` | **yes** | How evolved this component is, by name: `genesis`, `custom` (custom-built), `product` (+rental) or `commodity` (+utility), optionally `early` or `late` in the stage (`late product`). Twelve places, left to right; never a number. |
+| `needs` | array of string | no | The ids of the components this one depends on. Each is drawn below it — lower in the value chain, less visible — joined by a straight line. |
+| `depth` | integer, greater than 0 | no | Which row of the value chain this sits on, the anchors being row 0. Left out, it is one row below the lowest thing that needs it; set it only to sink a component further, never above what needs it. |
+| `evolves` | string — one of `early genesis`, `genesis`, `late genesis`, `early custom`, `custom`, `late custom`, `early product`, `product`, `late product`, `early commodity`, `commodity`, `late commodity` | no | Where this component is heading: a place further right, in the same words as `evolution`. Drawn as a dashed arrow to a dashed circle on the same row. |
+| `inertia` | boolean | no | Something resists this component's evolution — an investment, a habit, a regulation. Drawn as a heavy bar on its right, the way it would move. |
+
+### `wardley-note` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `on` | array of string, at least 1 | **yes** | The ids of the anchors or components this note is about. Each is marked with the note's number, and the note is written out, numbered, under the map. |
+
+### `treemap-group` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | Unique among the groups; what a part's `group` names. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `effect` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `category` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `causes` | array of [cause](#cause-object), at least 1 | **yes** | What was investigated under this category, in reading order from the category's name inwards to the spine. Leaves: a cause has no causes. |
+
+### `cause` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `role` | string — one of `step`, `emphasis`, `note` | no | `step` (the default), `emphasis` (the confirmed root cause: its bone is drawn heavy up to the spine) or `note` (investigated and ruled out, its tick drawn light and dashed). |
 
 ### `group` object
 
@@ -153,6 +1279,20 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
 | `members` | array of string, at least 1 | **yes** | The ids of the nodes this band accompanies. Unlike a group's, they are a set rather than a container: a band names something that runs alongside those boxes, and the same box may be under any number of bands. |
+
+### `class` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `id` | string | **yes** | What a node's `class` names. Unique among the classes. |
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+
+### `phase` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `text` | string | **yes** | The words themselves. May carry inline spans — `code` for the monospace role and **bold** for emphasis — because those are semantic, not typographic. A newline says this label is a lead and a detail rather than one sentence; the theme's `[box] lead` decides what the first paragraph looks like. Prefer it to punctuating the two apart inside one line. |
+| `members` | array of string, at least 1 | **yes** | The ids of the steps in this phase, in any order and in any lane. Every step is in one phase, so a step left out or listed twice is refused. |
 
 ### `item` object
 
@@ -209,6 +1349,15 @@ name, so a misspelt key is an error at the point it was written.
 | `waypoints` | array of [waypoint](#waypoint-object), at least 2 | **yes** | The points the curve passes through, in order. Two is a line. |
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 
+### `entry` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `path` | string | **yes** | Where this sits, from the top of the tree: `src/app/main.py`. The folders it passes through are drawn without being listed. A trailing `/` makes it a folder — needed only for one with nothing listed inside. A last segment of `...` is a row standing for entries not listed. |
+| `note` | string | no | A short comment drawn after the name, in the smaller label type. |
+| `link` | string | no | Makes this entry a symbolic link, drawn with an arrow to this target. Written, never followed: the target need not be in the tree. |
+| `status` | string — one of `added`, `changed`, `removed` | no | What a change did to this entry, as a diff would say it. Drawn as a labelled mark after the name — never as a colour alone. |
+
 ### `position` object
 
 | Field | Type | Required | What it is |
@@ -226,6 +1375,7 @@ name, so a misspelt key is an error at the point it was written.
 | `role` | string — one of `start`, `step`, `decision`, `terminal`, `emphasis`, `note`, `group` | no | The semantic role, which the theme resolves to an appearance. Defaults to 'step'. |
 | `gate` | string | no | What stands between this stage and the next — the threshold a thing has to pass to get from one to the other, which is what makes a stage-gate model one. Drawn on the divider, which breaks to let it through. The last stage has no next stage, so it may not carry one. |
 | `note` | string | no | A short aside attached to this element. **Only `timeline` draws one** — it goes under the axis, beside the entry's own mark. Every other kind accepts the field and has nowhere to put it, so it is not drawn; for text belonging to the whole diagram, use the top-level `caption` instead. |
+| `amount` | number, greater than 0 | no | On a `funnel` stage: how many reached it. Written under the name, with the share kept from the stage before; the taper stays the drawing's own, not to scale. Every stage or none, never more than the stage before. |
 
 ### `span` object
 
@@ -250,7 +1400,7 @@ name, so a misspelt key is an error at the point it was written.
 | `unit` | string | no | What the numbers are in, written after the label. |
 | `min` | number | no | Where the axis starts. Omit to take it from the data. |
 | `max` | number | no | Where the axis ends. Omit to take it from the data. |
-| `categories` | array of string | no | Names for the positions 1, 2, 3 … along this axis, instead of numbers. What a bar chart's horizontal axis usually is: the quarters, the service models, the teams. |
+| `categories` | array of string | no | Names for the positions 1, 2, 3 … along this axis, instead of numbers. What a bar chart's horizontal axis usually is: the quarters, the service models, the teams. On a chart's vertical axis they make horizontal bars: every series a `bar`, each point `[amount, position]`, the first category the top row, names on the left. |
 
 ### `axes` object
 
@@ -258,6 +1408,39 @@ name, so a misspelt key is an error at the point it was written.
 |---|---|---|---|
 | `horizontal` | [axis object](#axis-object) | **yes** | The axis across. |
 | `vertical` | [axis object](#axis-object) | **yes** | The axis up. |
+
+### `axis-quadrant` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `label` | string | **yes** | Required: an unlabelled axis cannot be read. |
+| `unit` | string | no | What the scores are in, written after the label. |
+| `min` | number | no | Where the axis starts. Omit to take it from the positions. |
+| `max` | number | no | Where the axis ends. Omit to take it from the positions. |
+| `ends` | array of string, at least 2 | no | Two words for the low and the high end — `Low` and `High`, `Rarely` and `Often` — written at the two ends of the axis, as on a `numberline`. |
+
+### `axes-quadrant` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `horizontal` | [axis-quadrant object](#axis-quadrant-object) | **yes** | The judgement across. |
+| `vertical` | [axis-quadrant object](#axis-quadrant-object) | **yes** | The judgement up. |
+
+### `axis-continuous` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `label` | string | **yes** | Required: an unlabelled axis cannot be read. |
+| `unit` | string | no | What the numbers are in, written after the label. |
+| `min` | number | no | Where the axis starts. Omit to take it from the data. |
+| `max` | number | no | Where the axis ends. Omit to take it from the data. |
+
+### `axes-continuous` object
+
+| Field | Type | Required | What it is |
+|---|---|---|---|
+| `horizontal` | [axis-continuous object](#axis-continuous-object) | **yes** | The axis across, read as a measurement — unlike `quadrant`'s. |
+| `vertical` | [axis-continuous object](#axis-continuous-object) | **yes** | The axis up, read as a measurement — unlike `quadrant`'s. |
 
 ### `series` object
 
@@ -306,6 +1489,7 @@ drawing, and are exactly the wrong thing to say about one box in it.
 | `port` | Everywhere | edge geometry comes from the edge's semantic role |
 | `stroke` | Everywhere | appearance is a property of the role, not of the element |
 | `stroke_width` | Everywhere | appearance is a property of the role, not of the element |
+| `value` | Everywhere | a cell is filled by the `scale` step its `group` names, not by a number — bucket the values and name the buckets; the number can stay in the text |
 | `viewBox` | Everywhere | derived from width and the content |
 | `width` | On any object — legal at the document root | box geometry is derived from measured text plus theme padding |
 | `x` | Everywhere | coordinates are the tool's output, never its input |

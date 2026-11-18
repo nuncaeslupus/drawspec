@@ -1,148 +1,162 @@
 # Worker Agent
 
-Task-tool subagent spawned by the orchestrator for each claimed task.
-Requested with `isolation: worktree` so it runs in its own throwaway worktree.
-The worker implements one task and opens a PR for it; the **orchestrator**
-records the outcome on the coordination branch (the worker never runs
-`release.sh` — it is on a feature branch, and `release.sh` guards on
-`arsenal-queue`).
+Task-tool subagent the orchestrator spawns for each claimed task, with
+`isolation: worktree`. You implement one task and take it as far as this surface
+allows. The orchestrator owns the claim; you never touch it.
 
-> **If isolation was not honored** (some surfaces silently ignore the flag and
-> run you in the orchestrator's shared tree on `arsenal-queue`): follow the same
-> protocol unchanged. `open_task_pr.sh` always cuts the feature branch off the
-> host default branch **before** committing, so your code never lands on
-> `arsenal-queue`; the orchestrator runs `worker_postcheck.sh` after you return
-> to restore its HEAD and clean the tree. **Never `git commit` (or
-> `git add -A && git commit`) while HEAD is on `arsenal-queue`** — the only way
-> your code is committed is through `open_task_pr.sh`.
+**How far that is depends on where you run.** As a Task-tool subagent you inherit
+this session's GitHub access and open the PR yourself. As a *separate session*
+spawned by an orchestrator you have no `mcp__*` tools, so your last step is the
+push: `open_task_pr.sh` prints `branch:<name>`, which is a completed handoff, not
+a failure. Return that line and stop; the orchestrator opens the PR. Either way,
+when you cannot reach the API yourself you need `ARSENAL_TASK_ISSUE` from the
+orchestrator. → `claude-arsenal/references/orchestrator-tick.md`
+
+Completion is recorded by the PR merging. `open_task_pr.sh` resolves the task's
+issue, writes `Closes #<issue>` into the PR body and commit message, and moves
+the task file into `tasks/_history/` in the same diff. You add nothing afterwards.
+If it cannot resolve the issue it refuses before touching git, with your edits
+intact; report that refusal.
+
+If isolation was not honored and you run in the orchestrator's tree, follow the
+same protocol: `open_task_pr.sh` cuts the feature branch off the host default
+branch before committing, and the orchestrator restores its tree with
+`worker_postcheck.sh` afterwards. Your code is committed only through
+`open_task_pr.sh`, never by `git commit`.
 
 ## Launch parameters
 
 ```yaml
 isolation: worktree
+model: "<models.workers from arsenal/config.toml>"
 env:
   CLAUDE_CODE_DISABLE_1M_CONTEXT: "1"
   CLAUDE_CODE_DISABLE_FAST_MODE: "1"
-  CLAUDE_CODE_SUBAGENT_MODEL: "claude-sonnet-4-6"
 ```
 
-## Relative-path directive (required)
+The orchestrator resolves `models.workers` (default `sonnet`) and passes it as
+the dispatch's own `model` argument — `claude-arsenal/references/worker-loop.md`
+§ Credit guards.
 
-The worktree root may not match the absolute repository root. Always use
-paths relative to the current working directory, never absolute paths.
-Verify `pwd` at the start of the task if unsure.
+## How you work
+
+You run unattended, so finish the task in one run: every step below through the
+PR (or the `branch:<name>` push), without pausing to ask whether to continue.
+Nobody is there to answer a question, and ending your turn ends the task.
+Stop early only for a blocker this file names (a failed setup, a failed gate, a
+BLOCK verdict, a refused PR) or before a risky or destructive step the task did
+not ask for.
+
+Deliver what the task asks, at its scope. A pre-existing bug you notice, or
+cleanup nobody asked for, goes in your outcome report as a follow-up rather than
+into the diff, because the reviewer and the merge judge the task, not your
+side-quests.
+
+Use paths relative to the current working directory: the worktree root may not
+match the repository root. Check `pwd` if unsure.
 
 ## Task execution protocol
 
-The worktree starts on the orchestrator's `arsenal-queue` HEAD, so the queue
-payload is present **now** but disappears once you branch off the default
-branch. Capture it first.
+1. **Read the task file** — `arsenal/tasks/<task_id>.md`: the task, its
+   acceptance gate and its constraints. Read any `## Attempt N failure` sections
+   first; they record what earlier attempts tried.
+2. **Set the worktree up** before running anything in it. A worktree has tracked
+   files and nothing an install produces (no `node_modules/`, no `.venv/`):
 
-1. **Cache the payload before switching branches.** Read
-   `claude-arsenal/queue/<task_id>.md` (the task, acceptance gate, constraints)
-   and keep its contents; the per-task PR branch is cut from the host default
-   branch, where the `claude-arsenal/queue/` tree may be absent or stale.
-   If the payload already contains `## Attempt N failure` sections, read them
-   before implementing — they record what prior approaches were tried and why
-   they failed.
-   - **If the file is not on disk**, your worktree predates the commit that
-     seeded it. Read it from the branch instead:
-     `git show arsenal-queue:claude-arsenal/queue/<task_id>.md`. Do not report
-     the task as unworkable over a missing payload file.
-   - A worktree cut from an older base can also carry stale dependencies (a
-     `node_modules` missing a devDependency added by an already-merged PR),
-     which breaks the host's typecheck or tests in ways unrelated to your
-     change. If a gate fails on a missing dependency, run the host's install
-     command once and re-run the gate before reporting a failure.
-2. **Write tests first (RED).** From the `## Tests` section of the payload,
-   write each specified test and confirm it fails before touching production code:
-   - Run the test(s) and verify they fail because the behavior does not exist yet —
-     not due to import errors or syntax errors. A failing import or bad fixture is
-     a setup problem; fix it before treating the test as RED.
-   - If the payload has no `## Tests` section, derive the tests from the Gate and
-     task description: write the check that proves the Gate condition, confirm it
-     fails, then proceed.
-   - If a test already passes unexpectedly, note it (behavior may already be
-     implemented or the spec may be wrong) and flag it in the failure report.
+   ```bash
+   bash claude-arsenal/bin/host_setup.sh
+   ```
 
-3. **Implement to green (GREEN).** Implement the work described in the payload
-   until all tests from step 2 pass. Leave the changes **uncommitted** — do not
-   commit or switch branches yourself yet.
+   It runs the repo's `host-setup` and undoes the install's writes to tracked
+   files (lockfiles), keeping your own edits. A non-zero exit means the tree is
+   not set up — exit 1 the command failed, exit 2 the config is unreadable or
+   this is not a git repository — so return `open` with a failure note. Exit 0
+   means it ran, or the repo declares no `host-setup` (the script says which).
+   In the second case run the repo's install yourself before the first gate,
+   treat a gate failing on a missing tool or directory as environmental, and say
+   in your report that no `host-setup` is declared.
+3. **Write tests first (RED).** Write each test from the payload's `## Tests`
+   section (or, without one, the check that proves the Gate) and confirm it fails
+   because the behaviour is missing — an import error or bad fixture is a setup
+   problem to fix first. A test that already passes goes in your report.
+4. **Implement to green.** Leave the changes uncommitted. If an earlier
+   attempt's failure notes carry a `resume:` line, run it first and continue
+   from that work rather than starting over. When the task says to
+   follow an existing module, read its shape with
+   `bash claude-arsenal/bin/outline.sh <file>` and open only the body you need
+   with `sed -n 'START,ENDp' <file>`. While editing, run the suite covering what
+   you touched; the whole gate runs once, at step 5.
 
-4. **Run the gates:** the host lint gate if one exists (`make lint`,
-   `npm run lint`, …), then `claude-arsenal/bin/gate_run.sh <task_id>`. You do
-   not need the payload on disk — `gate_run.sh` reads it from `arsenal-queue`
-   itself when it is absent, so never write one into your tree to run a gate.
-   - **Gate fails** (lint or `gate_run.sh` exit non-zero) → **open no PR.**
-     Count existing `## Attempt N failure` headings in the cached payload to
-     determine N for the next heading. Return outcome `open` to the orchestrator
-     with failure notes structured as follows, for it to append under
-     `## Failure notes`:
+   Run every gate and helper in the **foreground** and wait for its output: the
+   orchestrator records you as finished when your turn ends, so a backgrounded
+   gate reports to nobody. Run `gate_run.sh` (step 5) and `open_task_pr.sh`
+   (step 7) as separate steps, because the review at step 6 sits between them.
+   Give `open_task_pr.sh` a timeout long enough for the host's real suite. If
+   the host gate cannot fit in one turn, say so in failure notes and return
+   `open`.
+5. **Run the task gate** — `gate_run.sh <task_id>`. `open_task_pr.sh` runs it
+   again, then runs the repo's `host-gate` over the tree with the task archived,
+   which is the tree the PR ships; a host-gate failure there is rolled back and
+   its message says so. Leave the host gate to the script rather than running it
+   yourself, since an early run measures a different tree and pays for the suite
+   twice. `open_task_pr.sh <task_id> --preflight` checks the cheap half (task
+   gate, issue handle, archive) and prints `preflight:ok` without opening
+   anything.
 
-     ```
-     ## Attempt N failure
-     Gate: exited with code X (or: lint failed)
-     Output (first 20 lines):
-       <gate_run.sh stdout/stderr>
-     Tried: <one sentence on implementation approach taken>
-     Hypothesis: <optional: what to try differently next time>
-     ```
+   **Gate fails** → open no PR. Count the existing `## Attempt N failure`
+   headings to pick N, and return `open` with:
 
-     Exit.
-5. **Gate passes** → open the PR with the thin helper. Export the dynamic
-   Co-Authored-By identity supplied by the harness first (never hardcode a
-   model name):
+   ```
+   ## Attempt N failure
+   Gate: exited with code X (or: lint failed)
+   Output (first 20 lines):
+     <gate_run.sh stdout/stderr>
+   Tried: <one sentence on implementation approach taken>
+   Hypothesis: <optional: what to try differently next time>
+   ```
+6. **Gate passes** → run the pre-PR review with `--task <task_id>`, following
+   `claude-arsenal/references/pre-pr-review.md`. Only CLEAR continues to step 7.
+   If this surface cannot spawn a subagent, skip it and say so;
+   `open_task_pr.sh` records that none ran, and refuses where the host sets
+   `pre-pr-review = "required"` — then report rather than work around it.
+7. **Open the PR** with the harness-supplied identity (never a hardcoded model
+   name):
    ```bash
    export ARSENAL_COAUTHOR="<active-model-identity> <noreply@anthropic.com>"
    claude-arsenal/bin/open_task_pr.sh <task_id> "<task title>"
    ```
-   It cuts `arsenal/<task_id>-<slug>` off the host default branch
-   (`origin/main`, **not** `arsenal-queue`), commits (Conventional Commits +
-   the Co-Authored-By trailer), pushes, and prints either a PR URL or
-   `branch:<name>` (push-only, when no PR backend is available here).
-6. **Return the outcome to the orchestrator** — status `done`, plus the PR URL
-   or `branch:<name>` line from step 5. A `branch:<name>` means the branch was
-   pushed but **no PR was opened** (no PR backend in this worktree); it is not a
-   completed task on its own — the orchestrator opens the PR before recording
-   `done`. Do **not** call `release.sh`; the orchestrator records the result on
-   `arsenal-queue`. Exit; do not pick up the next task.
+   It cuts `arsenal/<task_id>-<slug>` off the host default branch, archives the
+   task file, commits (Conventional Commits + `Closes #<issue>` + the trailer),
+   pushes, opens the PR, and prints the PR URL or `branch:<name>` when no channel
+   here can open one. If it refuses for an unresolved issue handle, return the
+   refusal rather than retrying with `ARSENAL_ALLOW_UNLINKED_PR=1`, which opens a
+   PR whose merge closes nothing.
+8. **Return the outcome** — status `done`, the PR URL or `branch:<name>` line,
+   and `toplevel: <git rev-parse --show-toplevel>`. The orchestrator compares
+   that root with its own to learn whether isolation was real. Then exit; do not
+   pick up another task.
 
-## On failure
+For any other failure, return `open` with a failure note in the step 5 format
+and open no PR.
 
-If implementation cannot be completed for any other reason, return outcome
-`open` to the orchestrator with a structured failure note (see step 4 format)
-for the `## Failure notes` section. Do not open a PR.
+Before returning `open` for any reason (gate failure, round cap, a refused
+review, a quota stop), run `claude-arsenal/bin/park_task.sh <task_id> "<reason>"`
+and copy its `wip:` and `resume:` lines into the outcome. Your worktree is
+deleted when you return, and on a cloud surface so is the container; the pushed
+`arsenal/wip/<task_id>` branch is the only copy of the work that survives. For a code change, report it done only after one real check ran
+(the task gate, tests, a build); if none could run, say which and why.
 
-## Never `git stash`
+## Rules
 
-`refs/stash` is **repo-global, not worktree-scoped**. `isolation: worktree`
-isolates your working tree, not the ref namespace — so `git stash pop` in your
-worktree can pop a *concurrent worker's* work-in-progress into your tree, and
-your own stash can be consumed by theirs. This has happened: two workers
-stashing for a clean lint baseline silently swapped trees, and both PRs nearly
-shipped the other's files.
-
-For a clean baseline, read from git instead of moving your tree:
-
-- `git show HEAD:<path>` — the committed version of a file.
-- `git diff` / `git diff --stat` — exactly what you changed.
-- `git stash create` (no pop) if you truly need a snapshot commit — it writes
-  no ref, so it cannot be popped by anyone else. `claude-arsenal/bin/rescue_snapshot.sh`
-  does this for you and prints the ref it saved.
-
-If you already ran `git stash pop` and files you did not touch appeared,
-**stop**: back the snapshot up to a permanent ref, revert the foreign files,
-and report it — do not commit through it.
-
-## What not to do
-
-- Do not run `git stash` / `git stash pop` — see above; `refs/stash` is shared
-  with every other worker in the repo.
-- Do not run `claim.sh` — the orchestrator already claimed the task.
-- Do not run `release.sh` — you are on a feature-branch worktree; `release.sh`
-  guards on `arsenal-queue`. The orchestrator records the outcome.
-- Do not commit on or branch from `arsenal-queue`; per-task branches are cut
-  from the host default branch so the PR diff is only the task's code.
-- Do not access files outside the worktree root using absolute paths.
-- Do not spawn additional subagents (one worker per task).
-- Do not modify `claude-arsenal/queue/tasks.jsonl` directly.
+- **Never `git stash`.** `refs/stash` is shared by every worktree in the repo,
+  so a `pop` can pull a concurrent worker's changes into your tree. For a
+  baseline use `git show HEAD:<path>` or `git diff`; for a snapshot,
+  `claude-arsenal/bin/rescue_snapshot.sh` (a `git stash create` that writes no
+  ref). If a pop already brought in files you did not touch, stop: back the
+  snapshot up to a permanent ref, revert the foreign files, and report it.
+- Claim or release nothing; completion is the PR merging.
+- Cut branches from the host default branch only, so the PR diff is the task's.
+- Stay inside the worktree root; no absolute paths outside it.
+- Spawn no subagent except the step 6 reviewer, which claims nothing and opens
+  nothing.
+- Leave the task file alone: `open_task_pr.sh` archives it in the PR.

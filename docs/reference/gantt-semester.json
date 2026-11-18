@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "kind": "gantt",
+  "title": "A research methods module, term by term",
+  "axis": {"label": "Month", "categories": ["Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"]},
+  "tasks": [
+    {"id": "lectures", "text": "Lectures on study design", "start": 1, "end": 4},
+    {"id": "proposal", "text": "Write a research proposal", "start": 2, "end": 4},
+    {"id": "submit", "text": "Proposal due", "at": 4, "role": "emphasis"},
+    {"id": "ethics", "text": "Ethics review", "start": 4, "end": 5, "role": "note"},
+    {"id": "collect", "text": "Collect data", "start": 5, "end": 7},
+    {"id": "analyse", "text": "Analyse and write up", "start": 6, "end": 8},
+    {"id": "report", "text": "Final report due", "at": 8}
+  ],
+  "groups": [
+    {"id": "autumn", "text": "Autumn term", "members": ["lectures", "proposal", "submit"]},
+    {"id": "spring", "text": "Spring term", "members": ["ethics", "collect", "analyse", "report"]}
+  ],
+  "edges": [
+    {"from": "proposal", "to": "submit"},
+    {"from": "submit", "to": "ethics"},
+    {"from": "ethics", "to": "collect"},
+    {"from": "analyse", "to": "report"}
+  ],
+  "marks": [{"text": "winter break", "at": 4.5}]
+}

@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "kind": "argument",
+  "title": "Should primary schools set homework?",
+  "description": "A debating club's map: a hidden premise stated as a co-premise, an objection to it, and the evidence for each side.",
+  "claim": "Primary schools should set no homework",
+  "points": [
+    {"id": "gain", "on": "claim", "stance": "for", "text": "Studies find little gain from homework before age 11"},
+    {"id": "only", "on": "claim", "stance": "for", "with": ["gain"], "text": "Homework is only worth setting for what it adds to learning"},
+    {"id": "habit", "on": "only", "stance": "against", "text": "It also builds the habit of working alone"},
+    {"id": "later", "on": "habit", "stance": "against", "text": "Reading at home builds that habit without set tasks"},
+    {"id": "review", "on": "gain", "stance": "for", "role": "note", "text": "A review of primary-age trials"},
+    {"id": "family", "on": "claim", "stance": "for", "text": "It widens gaps between homes with and without help"},
+    {"id": "clubs", "on": "family", "stance": "against", "text": "Homework clubs give every child that help"}
+  ]
+}

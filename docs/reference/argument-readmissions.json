@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "kind": "argument",
+  "title": "Does the follow-up call reduce readmissions?",
+  "description": "A research paper's discussion as an argument map: the trial result for the claim, two objections to it, a rebuttal of one, and a mechanism.",
+  "claim": "A nurse call at 48 h reduces 30-day readmissions",
+  "points": [
+    {"id": "rct", "on": "claim", "stance": "for", "text": "Randomised trial: fewer readmissions in the call arm"},
+    {"id": "single", "on": "rct", "stance": "against", "text": "One hospital, one season"},
+    {"id": "blind", "on": "rct", "stance": "against", "text": "Outcome assessors were not blinded"},
+    {"id": "records", "on": "blind", "stance": "against", "text": "Readmission is read from records, not judged by an assessor"},
+    {"id": "mech", "on": "claim", "stance": "for", "text": "Most avoided readmissions were medication errors the call caught"}
+  ]
+}

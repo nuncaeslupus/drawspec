@@ -1,0 +1,64 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "railroad",
+  "title": "A JSON value",
+  "description": "The value, object, array and whitespace rules of the JSON grammar, as JSON.org draws them; string and number are drawn in figures of their own.",
+  "caption": "After the figures on json.org.",
+  "external": ["string", "number"],
+  "rules": [
+    {
+      "name": "value",
+      "expr": {"seq": [
+        {"rule": "whitespace"},
+        {"choice": [
+          {"rule": "string"},
+          {"rule": "number"},
+          {"rule": "object"},
+          {"rule": "array"},
+          {"terminal": "true"},
+          {"terminal": "false"},
+          {"terminal": "null"}
+        ]},
+        {"rule": "whitespace"}
+      ]}
+    },
+    {
+      "name": "object",
+      "expr": {"seq": [
+        {"terminal": "{"},
+        {"choice": [
+          {"rule": "whitespace"},
+          {"repeat": {"seq": [
+            {"rule": "whitespace"},
+            {"rule": "string"},
+            {"rule": "whitespace"},
+            {"terminal": ":"},
+            {"rule": "value"}
+          ]}, "separator": {"terminal": ","}, "min": 1}
+        ]},
+        {"terminal": "}"}
+      ]}
+    },
+    {
+      "name": "array",
+      "expr": {"seq": [
+        {"terminal": "["},
+        {"choice": [
+          {"rule": "whitespace"},
+          {"repeat": {"rule": "value"}, "separator": {"terminal": ","}, "min": 1}
+        ]},
+        {"terminal": "]"}
+      ]}
+    },
+    {
+      "name": "whitespace",
+      "expr": {"repeat": {"choice": [
+        {"special": "space"},
+        {"special": "line feed"},
+        {"special": "carriage return"},
+        {"special": "horizontal tab"}
+      ]}, "min": 0}
+    }
+  ]
+}

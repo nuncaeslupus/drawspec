@@ -1,0 +1,31 @@
+{
+  "$description": "Tidemark's design tokens in the W3C format: a sample brand for `drawspec theme from`.",
+  "color": {
+    "$type": "color",
+    "teal": {
+      "500": { "$value": "#1592a3" },
+      "600": { "$value": "#0f7b8a" }
+    },
+    "accent": { "$value": "{color.teal.600}" },
+    "secondary": { "$value": { "colorSpace": "srgb", "components": [0.949, 0.761, 0.188], "hex": "#f2c230" } },
+    "muted": { "$value": "#6b7a86" },
+    "text": { "$value": "#1f2933" },
+    "background": { "$value": "#fafaf7" }
+  },
+  "font": {
+    "$type": "fontFamily",
+    "sans": { "$value": ["Tidemark Sans", "DejaVu Sans", "sans-serif"] },
+    "mono": { "$value": ["Tidemark Mono", "DejaVu Sans Mono", "monospace"] }
+  },
+  "radius": {
+    "$type": "dimension",
+    "md": { "$value": { "value": 6, "unit": "px" } }
+  },
+  "border": {
+    "width": { "$type": "dimension", "$value": { "value": 1.25, "unit": "px" } }
+  },
+  "space": {
+    "$type": "dimension",
+    "2": { "$value": { "value": 0.5, "unit": "rem" } }
+  }
+}

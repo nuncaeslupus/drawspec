@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "kind": "barmodel",
+  "title": "Red and blue beads are in the ratio 3 : 5, and there are 64 beads",
+  "description": "A ratio bar model: three equal units for red and five for blue, a total of 64 braced over both bars, and the red beads asked for.",
+  "bars": [
+    {"id": "red", "text": "Red", "parts": [{"id": "reds", "units": 3, "role": "emphasis"}]},
+    {"id": "blue", "text": "Blue", "parts": [{"units": 5}]}
+  ],
+  "braces": [
+    {"over": ["red", "blue"], "amount": 64, "text": "64 beads"},
+    {"over": ["reds"], "text": "red: ?"}
+  ]
+}

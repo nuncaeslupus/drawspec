@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "kind": "venn",
+  "title": "Who owns which part of a launch",
+  "sets": [
+    {
+      "id": "product",
+      "text": "Product"
+    },
+    {
+      "id": "design",
+      "text": "Design"
+    },
+    {
+      "id": "eng",
+      "text": "Engineering",
+      "role": "emphasis"
+    },
+    {
+      "id": "support",
+      "text": "Support"
+    }
+  ],
+  "regions": [
+    {
+      "in": [
+        "product"
+      ],
+      "text": "Pricing"
+    },
+    {
+      "in": [
+        "design"
+      ],
+      "text": "Visual style"
+    },
+    {
+      "in": [
+        "eng"
+      ],
+      "text": "Rollout"
+    },
+    {
+      "in": [
+        "support"
+      ],
+      "text": "Help pages"
+    },
+    {
+      "in": [
+        "product",
+        "design"
+      ],
+      "text": "Onboarding"
+    },
+    {
+      "in": [
+        "design",
+        "eng"
+      ],
+      "text": "Prototypes"
+    },
+    {
+      "in": [
+        "eng",
+        "support"
+      ],
+      "text": "Incidents"
+    },
+    {
+      "in": [
+        "product",
+        "support"
+      ],
+      "text": "Feedback"
+    },
+    {
+      "in": [
+        "product",
+        "eng"
+      ],
+      "text": "Scope"
+    },
+    {
+      "in": [
+        "product",
+        "design",
+        "eng"
+      ],
+      "text": "`beta` flag"
+    },
+    {
+      "in": [
+        "product",
+        "design",
+        "eng",
+        "support"
+      ],
+      "text": "Launch date",
+      "role": "emphasis"
+    }
+  ],
+  "caption": "Engineering, outlined heavier, is the team writing this plan; regions left blank have no shared owner."
+}

@@ -1,0 +1,12 @@
+#   Layer    Type          Output shape
+---------------------------------------
+1   Input                  32x32
+2   C1       convolution   6@28x28
+3   S2       subsampling   6@14x14
+4   C3       convolution   16@10x10
+5   S4       subsampling   16@5x5
+6   C5       full          120
+7   F6       full          84
+8   Output   full          10
+
+Each C layer convolves 5x5 kernels; each S layer averages 2x2 neighbourhoods.

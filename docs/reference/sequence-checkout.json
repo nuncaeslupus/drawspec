@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "kind": "sequence",
+  "title": "Placing an order",
+  "description": "The shop reserves the stock, asks the payment provider to charge the card, and learns the outcome later by webhook. A declined card releases the stock; an approved one sends the receipt and the shipping request at once.",
+  "participants": [
+    {"id": "shopper", "text": "Shopper"},
+    {"id": "shop", "text": "Shop backend", "role": "emphasis"},
+    {"id": "pay", "text": "Payment provider", "role": "note"},
+    {"id": "stock", "text": "Stock service"},
+    {"id": "mail", "text": "Mailer"}
+  ],
+  "messages": [
+    {"from": "shopper", "to": "shop", "text": "place the order"},
+    {"from": "shop", "to": "stock", "text": "reserve 2 items"},
+    {"from": "stock", "to": "shop", "text": "reserved", "role": "weak"},
+    {"from": "shop", "to": "pay", "text": "charge 48.00", "note": "the answer comes back by webhook"},
+    {"id": "declined", "from": "pay", "to": "shop", "text": "payment declined"},
+    {"from": "shop", "to": "pay", "text": "`200 OK`", "role": "weak"},
+    {"from": "shop", "to": "stock", "text": "release the items"},
+    {"from": "shop", "to": "shopper", "text": "card declined", "role": "weak"},
+    {"id": "approved", "from": "pay", "to": "shop", "text": "payment approved", "role": "strong"},
+    {"from": "shop", "to": "pay", "text": "`200 OK`", "role": "weak"},
+    {"id": "receipt", "from": "shop", "to": "mail", "text": "send the receipt"},
+    {"id": "ship", "from": "shop", "to": "stock", "text": "ship 2 items"},
+    {"id": "placed", "from": "shop", "to": "shopper", "text": "order placed", "role": "weak"}
+  ],
+  "fragments": [
+    {"operator": "alt", "from": "declined", "to": "placed", "text": "card declined",
+     "else": [{"at": "approved", "text": "card approved"}]},
+    {"operator": "par", "from": "receipt", "to": "ship", "else": [{"at": "ship"}]}
+  ]
+}

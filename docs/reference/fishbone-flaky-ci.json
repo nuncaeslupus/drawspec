@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "kind": "fishbone",
+  "title": "What makes CI fail without a code change",
+  "effect": {"text": "1 in 12 runs fails and passes on retry"},
+  "categories": [
+    {"text": "Tests", "causes": [{"text": "Shared fixtures mutate state"}, {"text": "Sleeps instead of waits"}]},
+    {"text": "Environment", "causes": [{"text": "Runners differ in CPU count"}, {"text": "Clock skew in containers"}]},
+    {"text": "Dependencies", "causes": [{"text": "Live calls to a sandbox API"}]}
+  ]
+}

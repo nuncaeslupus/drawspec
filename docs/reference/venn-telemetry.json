@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "kind": "venn",
+  "title": "What each signal can answer",
+  "caption": "Traces, outlined heavier, are the signal this quarter adds.",
+  "sets": [
+    {"id": "logs", "text": "Logs"},
+    {"id": "metrics", "text": "Metrics"},
+    {"id": "traces", "text": "Traces", "role": "emphasis"}
+  ],
+  "regions": [
+    {"in": ["logs"], "text": "The exact error text"},
+    {"in": ["metrics"], "text": "Trends over months"},
+    {"in": ["traces"], "text": "Where the time went"},
+    {"in": ["logs", "traces"], "text": "Which request failed"},
+    {"in": ["metrics", "traces"], "text": "`p99` per endpoint"},
+    {"in": ["logs", "metrics", "traces"], "text": "Is it broken right now?", "role": "emphasis"}
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "waterfall",
+  "title": "From last year's deficit to this year's plan",
+  "description": "A hospital trust's deficit bridge, every bar below zero: last year's deficit, made worse by support ending and an unfunded pay award, then reduced by efficiency, extra activity and a stretch target, with two subtotals on the way.",
+  "axis": {"label": "Surplus or deficit, £ million"},
+  "bars": [
+    {"text": "Last year", "total": -24.0},
+    {"text": "One-off support ends", "amount": -6.0},
+    {"text": "Unfunded pay award", "amount": -3.5},
+    {"text": "Underlying", "total": -33.5},
+    {"text": "Efficiency programme", "amount": 12.0},
+    {"text": "Extra activity", "amount": 4.5},
+    {"text": "Before stretch", "total": -17.0},
+    {"text": "Stretch target", "amount": 5.0, "role": "emphasis"},
+    {"text": "Plan", "total": -12.0}
+  ]
+}

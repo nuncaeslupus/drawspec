@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "kind": "neuralnet",
+  "title": "A multilayer perceptron",
+  "layers": [
+    {"text": "Input", "size": 3, "labels": ["x₁", "x₂", "x₃"], "bias": true},
+    {"text": "Hidden 1", "size": 4, "bias": true},
+    {"text": "Hidden 2", "size": 4, "bias": true},
+    {"text": "Output", "size": 2, "labels": ["ŷ₁", "ŷ₂"]}
+  ]
+}

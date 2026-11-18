@@ -20,7 +20,8 @@ surroundings:
     inherit from, so the theme's ink is resolved to an explicit value and the
     root carries `width` and `height`.
 
-Every other invariant is shared: no `<style>` element, ids namespaced to the
+Every other invariant is shared: no `<style>` element (one exception, scoped to the
+drawing's own root, in a multi-theme render — see `drawspec.variants`), ids namespaced to the
 document, no embedded or referenced font, and no colour literal the theme did
 not declare. `emit` runs that check on its own output and raises rather than
 returning SVG that would fail it.
@@ -29,6 +30,7 @@ returning SVG that would fail it.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from hashlib import blake2b
 from typing import Final
@@ -45,6 +47,7 @@ from drawspec.scene import (
     TextLine,
     TextRun,
 )
+from drawspec.sheet import Palette, Sheet
 from drawspec.theme import EdgeRole, NodeRole, Theme, load_theme
 
 #: The two embedding profiles, per specification §1.
@@ -58,6 +61,9 @@ PRECISION: Final = 3
 _ID_PATTERN: Final = re.compile(r'\bid="([^"]*)"')
 _URL_PATTERN: Final = re.compile(r"url\(#([^)]*)\)")
 _PAINT_PATTERN: Final = re.compile(r'\b(fill|stroke)="([^"]*)"')
+_TEXT_CONTENT: Final = re.compile(r"(</?(?:text|tspan|title|desc)\b[^>]*>)[^<]+")
+_STYLE_ELEMENT: Final = re.compile(r"<style>(.*?)</style>", re.DOTALL)
+_STYLE_ATTRIBUTE: Final = re.compile(r'\bstyle="([^"]*)"')
 _FONT_REFERENCE_PATTERN: Final = re.compile(
     r"@font-face|<font-face|\bhref=|\.woff2?\b|\.ttf\b|\.otf\b|data:font", re.IGNORECASE
 )
@@ -144,7 +150,7 @@ def ink_inset(scene: Scene, theme: Theme) -> float:
     return max(widths, default=0.0) / 2
 
 
-def namespace_for(scene: Scene, theme: Theme, profile: str) -> str:
+def namespace_for(scene: Scene, theme: Theme, profile: str, sheet: Sheet | None = None) -> str:
     """A short id prefix, derived from what is being drawn.
 
     Derived rather than random for two reasons: the same document must render to
@@ -155,7 +161,15 @@ def namespace_for(scene: Scene, theme: Theme, profile: str) -> str:
     digest.update(repr((scene.width, scene.height, scene.title, scene.description)).encode())
     for primitive in scene.primitives:
         digest.update(repr(primitive).encode())
+        if getattr(primitive, "strike", False):
+            digest.update(b"|strike")
+        if isinstance(primitive, TextRun) and primitive.opacity < 1:
+            digest.update(f"|opacity {primitive.opacity}".encode())
+        if isinstance(primitive, Ellipse) and primitive.fill:
+            digest.update(f"|{primitive.fill}|{primitive.fill_colour}".encode())
     digest.update(f"{theme.name}|{profile}".encode())
+    if sheet is not None:
+        digest.update(repr(sheet).encode())
     return f"ds{digest.hexdigest()}"
 
 
@@ -178,6 +192,7 @@ def _fill_paint(
     profile: str,
     chosen: str = "",
     colour: str = "",
+    patterns: Mapping[tuple[str, str], str] | None = None,
 ) -> str:
     """The paint for a closed figure. `chosen` is a fill the geometry asked for.
 
@@ -193,7 +208,7 @@ def _fill_paint(
     """
     pattern = chosen or role.fill_pattern
     if pattern in PATTERN_FILLS:
-        return f"url(#{_pattern_id(namespace, pattern, colour)})"
+        return f"url(#{_pattern_id(namespace, pattern, colour, patterns)})"
     if pattern == "solid":
         # `solid` is a legal entry in `[mark] fills`, so a mark can be a flat
         # wash rather than a hatch — and then the mark's own colour is the whole
@@ -237,7 +252,12 @@ def _stroke_attributes(
 
 
 def _shape_attributes(
-    primitive: Primitive, role: NodeRole | EdgeRole, namespace: str, theme: Theme, profile: str
+    primitive: Primitive,
+    role: NodeRole | EdgeRole,
+    namespace: str,
+    theme: Theme,
+    profile: str,
+    patterns: Mapping[tuple[str, str], str] | None = None,
 ) -> list[tuple[str, str]]:
     """Paint for one shape, decided by its role's kind.
 
@@ -267,11 +287,19 @@ def _shape_attributes(
             profile,
             getattr(primitive, "fill", ""),
             getattr(primitive, "fill_colour", ""),
+            patterns,
         ),
     )
+    paints = [fill]
+    if (
+        isinstance(primitive, Polygon | Rect | Ellipse)
+        and primitive.fill_opacity < 1
+        and fill[1] != "none"
+    ):
+        paints.append(("fill-opacity", format_number(primitive.fill_opacity)))
     if isinstance(primitive, Polygon) and primitive.region:
-        return [fill, ("stroke", "none")]
-    return [fill, *_stroke_attributes(role, theme, profile)]
+        return [*paints, ("stroke", "none")]
+    return [*paints, *_stroke_attributes(role, theme, profile)]
 
 
 # ---------------------------------------------------------------------------
@@ -279,7 +307,13 @@ def _shape_attributes(
 # ---------------------------------------------------------------------------
 
 
-def _element(primitive: Primitive, namespace: str, theme: Theme, profile: str) -> str:
+def _element(
+    primitive: Primitive,
+    namespace: str,
+    theme: Theme,
+    profile: str,
+    patterns: Mapping[tuple[str, str], str] | None = None,
+) -> str:
     role = theme.role_for(primitive.role)
 
     if isinstance(primitive, TextRun):
@@ -288,7 +322,7 @@ def _element(primitive: Primitive, namespace: str, theme: Theme, profile: str) -
     if isinstance(primitive, TextLine):
         return _text_line_element(primitive, theme, profile)
 
-    paint = _shape_attributes(primitive, role, namespace, theme, profile)
+    paint = _shape_attributes(primitive, role, namespace, theme, profile, patterns)
 
     if isinstance(primitive, Rect):
         # A rectangle may only stand for a role the theme draws as one. Drawing a
@@ -296,7 +330,7 @@ def _element(primitive: Primitive, namespace: str, theme: Theme, profile: str) -
         # produces a box sized for a diamond's inscribed rectangle, so the label
         # floats in a lot of empty space. It happened, in T7's spike harness,
         # and survived review; hence a check rather than a convention.
-        if isinstance(role, NodeRole) and role.shape not in ("rect", "pill"):
+        if isinstance(role, NodeRole) and role.shape not in ("rect", "pill", "subroutine"):
             raise EmitError(
                 f"a Rect is tagged with role {primitive.role!r}, which theme "
                 f"{theme.name!r} draws as a {role.shape!r}. Build shapes with "
@@ -348,9 +382,11 @@ def _text_element(run: TextRun, theme: Theme, profile: str) -> str:
         ("x", format_number(run.x)),
         ("y", format_number(run.y)),
         ("font-family", _font_family(theme.font.stacks()[run.font])),
-        ("font-size", format_number(theme.scale[run.level])),
-        ("fill", _resolve("currentColor", theme, profile)),
+        ("font-size", format_number(run.size or theme.scale[run.level])),
+        ("fill", _resolve(run.paint or "currentColor", theme, profile)),
     ]
+    if run.opacity < 1:
+        attributes.append(("fill-opacity", format_number(run.opacity)))
     if run.weight != "normal":
         attributes.append(("font-weight", run.weight))
     if run.anchor != "start":
@@ -383,6 +419,8 @@ def _text_line_element(line: TextLine, theme: Theme, profile: str) -> str:
     ]
     if line.anchor != "start":
         attributes.append(("text-anchor", line.anchor))
+    if line.strike:
+        attributes.append(("text-decoration", "line-through"))
     if line.rotate:
         attributes.append(
             (
@@ -447,14 +485,58 @@ _PATTERN_BODIES: Final = {
 }
 
 
-def _pattern_id(namespace: str, pattern: str, colour: str) -> str:
-    """The id of one pattern in one colour. Derived, so the same pair is one def."""
+def _pattern_id(
+    namespace: str,
+    pattern: str,
+    colour: str,
+    patterns: Mapping[tuple[str, str], str] | None = None,
+) -> str:
+    """The id of one pattern in one colour. Derived, so the same pair is one def.
+
+    `patterns`, when given, names each pair by the order it is first used in
+    instead — see `ordinal_patterns`.
+    """
+    if patterns is not None:
+        return patterns[(pattern, colour)]
     if not colour:
         return f"{namespace}-{pattern}"
     return f"{namespace}-{pattern}-{colour.lstrip('#')}"
 
 
-def _pattern_definitions(scene: Scene, namespace: str, theme: Theme, profile: str) -> list[str]:
+def _pattern_wanted(scene: Scene, theme: Theme) -> list[tuple[str, str]]:
+    """Each (pattern, colour) pair the scene fills with, in the order first used."""
+    wanted: dict[tuple[str, str], None] = {}
+    for primitive in scene.primitives:
+        role = theme.role_for(primitive.role)
+        if not isinstance(role, NodeRole):
+            continue
+        pattern = getattr(primitive, "fill", "") or role.fill_pattern
+        if pattern in PATTERN_FILLS:
+            wanted.setdefault((pattern, getattr(primitive, "fill_colour", "")), None)
+    return list(wanted)
+
+
+def ordinal_patterns(scene: Scene, theme: Theme, namespace: str) -> dict[tuple[str, str], str]:
+    """Pattern ids by first use — `{namespace}-p0`, `-p1`, … — not by colour.
+
+    The default id carries the colour, which is right for one theme and wrong
+    for several: the same hatch in two themes' inks would get two ids and sort
+    differently, and the drawings would differ in more than their colours. Named
+    by position, the n-th pattern is the n-th pattern in every theme, and only
+    its paint changes — which is what `drawspec.variants` needs to merge them.
+    """
+    return {
+        pair: f"{namespace}-p{index}" for index, pair in enumerate(_pattern_wanted(scene, theme))
+    }
+
+
+def _pattern_definitions(
+    scene: Scene,
+    namespace: str,
+    theme: Theme,
+    profile: str,
+    patterns: Mapping[tuple[str, str], str] | None = None,
+) -> list[str]:
     """`<pattern>` defs for the fill patterns this scene actually uses.
 
     Kept soft on purpose: a hatch that competes with the text on top of it makes
@@ -465,20 +547,13 @@ def _pattern_definitions(scene: Scene, namespace: str, theme: Theme, profile: st
     wants the same hatch in three inks — and a pattern is painted where it is
     defined, not where it is used.
     """
-    wanted = sorted(
-        {
-            (pattern, getattr(primitive, "fill_colour", ""))
-            for primitive in scene.primitives
-            if isinstance(role := theme.role_for(primitive.role), NodeRole)
-            and (pattern := getattr(primitive, "fill", "") or role.fill_pattern) in PATTERN_FILLS
-        }
-    )
+    wanted = list(patterns) if patterns is not None else sorted(_pattern_wanted(scene, theme))
     definitions = []
     for pattern, colour in wanted:
         template, tile = _PATTERN_BODIES[pattern]
         body = template.format(ink=_resolve(colour or "currentColor", theme, profile))
         definitions.append(
-            f'<pattern id="{_pattern_id(namespace, pattern, colour)}" width="{tile}" '
+            f'<pattern id="{_pattern_id(namespace, pattern, colour, patterns)}" width="{tile}" '
             f'height="{tile}" patternUnits="userSpaceOnUse">{body}</pattern>'
         )
     return definitions
@@ -495,8 +570,15 @@ def emit(
     profile: str = "inline",
     *,
     namespace: str | None = None,
+    sheet: Sheet | None = None,
+    ordinal: bool = False,
 ) -> str:
     """Serialise `scene` to SVG under `profile`, styled by `theme`.
+
+    `sheet` is drawing-sheet furniture laid out by `drawspec.sheet.around`, drawn
+    under the drawing in the `standalone` profile and ignored in `inline`.
+    `ordinal` names fill patterns by first use rather than by colour — see
+    `ordinal_patterns`; a multi-theme render needs it and nothing else does.
 
     Raises:
         EmitError: a primitive names a role the theme does not declare, or the
@@ -516,7 +598,9 @@ def emit(
             f"style is a programming error in the rendering family that produced it."
         )
 
-    prefix = namespace or namespace_for(scene, resolved_theme, profile)
+    if profile != "standalone":
+        sheet = None
+    prefix = namespace or namespace_for(scene, resolved_theme, profile, sheet)
 
     # The viewBox is the bounds of the ink, so a shape flush against the edge of
     # the drawing keeps its whole outline instead of half of it.
@@ -552,11 +636,27 @@ def emit(
     if scene.description:
         body.append(f'<desc id="{prefix}-desc">{escape(scene.description)}</desc>')
 
-    definitions = _pattern_definitions(scene, prefix, resolved_theme, profile)
+    if sheet is not None:
+        canvas = resolved_theme.canvas
+        palette = Palette(
+            ground=canvas.ground,
+            ink=canvas.ink,
+            soft=canvas.rule or canvas.ink,
+            grid=canvas.rule or canvas.ink,
+            accent=canvas.accent or canvas.ink,
+        )
+        family = _font_family(resolved_theme.font.stacks()["mono"])
+        body.append(sheet.drawn(prefix, palette, family, bleed=inset))
+
+    patterns = ordinal_patterns(scene, resolved_theme, prefix) if ordinal else None
+    definitions = _pattern_definitions(scene, prefix, resolved_theme, profile, patterns)
     if definitions:
         body.append("<defs>" + "".join(definitions) + "</defs>")
 
-    body += [_element(primitive, prefix, resolved_theme, profile) for primitive in scene.primitives]
+    body += [
+        _element(primitive, prefix, resolved_theme, profile, patterns)
+        for primitive in scene.primitives
+    ]
 
     svg = f"<svg{_attributes(root)}>" + "".join(body) + "</svg>"
 
@@ -575,7 +675,12 @@ def emit(
 
 
 def check_embedding_safety(
-    svg: str, theme: Theme, profile: str = "inline", *, namespace: str | None = None
+    svg: str,
+    theme: Theme,
+    profile: str = "inline",
+    *,
+    namespace: str | None = None,
+    variants: Sequence[Theme] = (),
 ) -> tuple[Violation, ...]:
     """Every embedding-safety rule, measured on finished SVG.
 
@@ -587,13 +692,43 @@ def check_embedding_safety(
         namespace: the id prefix every id must carry. When omitted it is taken
             from the first id in the document, which is what checking someone
             else's SVG looks like.
+        variants: the other themes of a multi-theme drawing (see
+            `drawspec.variants`). Their colours are allowed too, and so is the one
+            `<style>` such a drawing carries — when every rule in it is scoped to
+            this drawing's root and does nothing but set this drawing's own
+            colour properties.
     """
     violations: list[Violation] = []
 
-    if "<style" in svg:
+    # The rules are about markup. A label is text, and text may say `id="x"`,
+    # `report.ttf` or `url(#a)` without being any of those, so what sits between
+    # the tags of a text-bearing element is not searched.
+    svg = _TEXT_CONTENT.sub(r"\1", svg)
+
+    identifiers = _ID_PATTERN.findall(svg)
+    prefix = namespace
+    if prefix is None and identifiers:
+        prefix = identifiers[0].split("-")[0]
+
+    declared = theme.declared_colours().union(*(other.declared_colours() for other in variants))
+    styles = _STYLE_ELEMENT.findall(svg)
+    if "<style" in svg and not (
+        len(styles) == 1
+        and svg.count("<style") == 1
+        and prefix is not None
+        and _scoped_style(styles[0], prefix, declared)
+    ):
         violations.append(
             Violation("no-style-element", "a <style> element leaks into the host page")
         )
+    for style in _STYLE_ATTRIBUTE.findall(svg):
+        if prefix is None or not _scoped_declarations(style, prefix):
+            violations.append(
+                Violation(
+                    "no-style-element",
+                    f"style={style!r} does more than read this diagram's own colours",
+                )
+            )
 
     font_reference = _FONT_REFERENCE_PATTERN.search(svg)
     if font_reference:
@@ -603,10 +738,6 @@ def check_embedding_safety(
             )
         )
 
-    identifiers = _ID_PATTERN.findall(svg)
-    prefix = namespace
-    if prefix is None and identifiers:
-        prefix = identifiers[0].split("-")[0]
     for identifier in identifiers:
         if prefix is None or not identifier.startswith(f"{prefix}-"):
             violations.append(
@@ -622,7 +753,6 @@ def check_embedding_safety(
                 Violation("namespaced-ids", f"url(#{reference}) points outside this diagram")
             )
 
-    declared = theme.declared_colours()
     for attribute, value in _PAINT_PATTERN.findall(svg):
         if value.startswith("url(#") or value in declared:
             continue
@@ -645,6 +775,40 @@ def check_embedding_safety(
     return tuple(violations)
 
 
+def _scoped_style(css: str, prefix: str, declared: frozenset[str]) -> bool:
+    """True when `css` only sets `--{prefix}-cN` properties on `#{prefix}-svg`.
+
+    The grammar is closed on purpose — the root's own selector, the same under
+    an ancestor's `data-theme`, or the same inside a `prefers-color-scheme`
+    query — so a rule cannot reach anything outside the diagram, and every value
+    it sets is a colour one of the themes declares.
+    """
+    root = re.escape(f"#{prefix}-svg")
+    rule = re.compile(rf'(?:\[data-theme="[a-z][a-z0-9-]*"\] )?{root}\{{([^{{}}]*)\}}')
+    media = re.compile(
+        rf"@media \(prefers-color-scheme: (?:light|dark)\)\{{{root}\{{([^{{}}]*)\}}\}}"
+    )
+    position = 0
+    while position < len(css):
+        found = rule.match(css, position) or media.match(css, position)
+        if found is None:
+            return False
+        for declaration in filter(None, found.group(1).split(";")):
+            name, _, value = declaration.partition(":")
+            if not re.fullmatch(rf"--{re.escape(prefix)}-c\d+", name):
+                return False
+            if value not in declared and not value.startswith(f"url(#{prefix}-"):
+                return False
+        position = found.end()
+    return True
+
+
+def _scoped_declarations(style: str, prefix: str) -> bool:
+    """True when a `style` attribute only paints with this diagram's properties."""
+    paint = rf"(?:fill|stroke):var\(--{re.escape(prefix)}-c\d+\)"
+    return re.fullmatch(rf"{paint}(?:;{paint})*", style) is not None
+
+
 __all__ = [
     "PRECISION",
     "PROFILES",
@@ -654,4 +818,5 @@ __all__ = [
     "format_number",
     "ink_inset",
     "namespace_for",
+    "ordinal_patterns",
 ]

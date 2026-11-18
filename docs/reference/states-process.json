@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "kind": "states",
+  "title": "The five states of a process",
+  "initial": "new",
+  "final": ["exited"],
+  "states": [
+    {"id": "new", "text": "New"},
+    {"id": "ready", "text": "Ready"},
+    {"id": "running", "text": "Running", "role": "emphasis"},
+    {"id": "exited", "text": "Exited"},
+    {"id": "blocked", "text": "Blocked"}
+  ],
+  "transitions": [
+    {"from": "new", "to": "ready", "event": "admitted"},
+    {"from": "ready", "to": "running", "event": "dispatched"},
+    {"from": "running", "to": "ready", "event": "time slice used up"},
+    {"from": "running", "to": "blocked", "event": "waits for I/O"},
+    {"from": "blocked", "to": "ready", "event": "I/O completes"},
+    {"from": "running", "to": "exited", "event": "calls exit()"}
+  ]
+}

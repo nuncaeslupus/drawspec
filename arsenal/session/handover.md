@@ -1,0 +1,242 @@
+# Session Handover
+
+**Date**: 2026-10-25 · **Branch**: `ccr-35a28282-dg4nbb` · **PRs**: #157–#172 merged; #175 merged; #176 follow-up PR open
+
+## 2026-10-26: add-kind skill
+- #177 merged (Inception branches, arrows in and out). Docs were complete for both PRs.
+- New project skill `.claude/skills/add-kind/` (built to skill-workshop's rules, loaded from `nuncaeslupus/claude-arsenal`): the procedure for a new kind or a kind's new style/field/text form, a registration-points reference, and `scripts/audit_kind.py <kind>`, which fails when a kind is missing from any registration point, document or count word. `CLAUDE.md` now points at it.
+
+## 2026-10-25 (later): neuralnet
+- Owner asked for neural-network drawings. Task t-9dddc873 / issue #174; new `neuralnet` kind, one PR (`Closes #174`).
+  - `neurons` (default): columns of circles fully joined; >8 neurons cut with dots; `labels`, `bias`.
+  - `blocks`: boxes in sequence, `shape`, fills by `type` (≤4, keyed), `skips`, `repeats` (×N), `direction` right/down/up.
+  - Text form: model summary with parameter counts. Proposal and open owner questions in `docs/proposals/neuralnet.md`.
+- Not built: AlexNet-style 3D blocks. #175 merged.
+- Owner answers built (t-0327828e / #176): arrows into inputs and out of outputs in `neurons`; Inception `branches` in `blocks` (other branching refused).
+
+## 2026-10-25: more kinds, frame-border fix
+- #157, #161: a route's middle run no longer lies along a frame border (`routing.off_borders`); `tools/frames.py` flags "runs along the border". Fixed `flow-loops-town` (the arrow the owner reported) and `states-brand-station`.
+- New kinds, one PR each, evidence in `docs/proposals/<kind>.md`: timing #158, gitgraph #159, packet #160, network #162, railroad #163, usecase #164, tree `bracket` style #165, wardley #166, pert #167.
+- CodeRabbit allows ~1 review/hour; queue `@coderabbitai review` an hour apart. Its "CodeRabbit" status posts success ("review skipped") on push, so it does not block merges.
+- #167 (pert) was merged on the owner's "go merging" without a CodeRabbit review.
+- Open owner questions: text widths (timing/railroad 100 cols), gitgraph lane colours, packet field names `holds`/`numbering`, network refuse vs draw hops, usecase FitError vs drawing through an ellipse, bracket root side, wardley/pert canvas width, pert "Float" vs "Slack".
+- Owner answers applied: #169 network draws a hop over a bus instead of refusing; #170 gitgraph lane colours on by default, bracket `root` defaults to `right`; usecase already only refuses a canvas that cannot fit; pert keeps "Float"; text widths stay 100.
+- #171 new `automaton` kind (DFA/NFA/Mealy/Moore; text = transition table). Later ideas: circular placement for rings, optional "start" label, completeness/reachability checks for DFAs.
+- #167, #170 merged on the owner's "go merging" with our own review instead of CodeRabbit.
+
+## 2026-10-14: text output
+- Barcodes, QR codes and pixel art were ruled out of scope. Text output was proposed instead (`docs/proposals/text.md`) and accepted.
+- #120 (t-f26679ad, closes #119): text for tree, sequence, gantt, timeline, board, stack, rag and meter (bar style). `files` is exempt from the width check for now.
+- #121 (t-5355943b, closes #118): text for flow, states and lanes on a character-grid router. Size limit is 15 boxes and 3 crossings.
+  - Default width is 100 for lanes and sequence, 80 for the rest. The caller's width always wins.
+  - A sequence's labels are wrapped one at a time, only as much as the width needs.
+- New rule at the top of `CLAUDE.md`: any kind, field, role or format change updates README, docs, AGENTS.md, llms.txt, CHANGELOG, generated docs and schema, the gallery and the proposals index in the same PR.
+- #123: text for `meter` thermometer, gantt dependency lines (else listed as "B after A"), and timelines spaced by `at`.
+  - `dial` and `bullet` meters still refuse in text.
+  - Two CodeRabbit nitpicks were left: the `/meters` pointer in `meter._tube`, and the `shares`/`steps` guard in `grid.py`.
+- Merging: a required "CodeRabbit" check now gates every PR. Comment `@coderabbitai review`, since auto-review is off under 10 stars. If CodeRabbit won't review, review it ourselves, then merge when CI is green.
+- Open: `lanes-phases-purchase` needs 105 columns.
+
+## Previous session (2026-10-12)
+Compared drawspec with diagram-design and acted on it, without arsenal task files (owner: arsenal is unrelated tooling).
+Added: readability budget per kind, emphasis cap of 2, AGENTS.md routing guidance, `skills/drawspec/SKILL.md`, a CI gallery artifact,
+11 new kinds (states, sequence, lanes, entities, gantt, board, fishbone, venn, journey, treemap, sankey; 26 in total),
+features hub/scale/status, a flow self-loop fix, `drawspec theme from`, and a bar-chart overflow fix.
+**Owner reviews tomorrow:** `docs/review-2026-10.md` is the index (drawings, what to look at, 7 open questions).
+Waterfall and wardley were deferred until a real diagram needs them.
+
+**Later the same day:** merged #76, #79 (PNG export), #80/#81 (0.1.0 release and auto-tag on main), and #83 (blueprint theme, install from PyPI).
+**drawspec 0.1.0 is on PyPI**; Pages serves the gallery and schema.
+A release is now: bump the version, date `## [x.y.z] — YYYY-MM-DD` in CHANGELOG, merge. The workflow tags and publishes.
+
+**Round 2 (same day):** #99 merged (numberline, barmodel, waterfall, pie, four-set venn, causal loops, mindmap, argument); #101 adds familytree, meter, rag, clock.
+Evidence for each kind is in `docs/research/corpus-round2.md`; rows marked "(check)" came from search summaries only.
+
+**Kind audit (same day):** #103 merged (closes #102). `docs/research/kind-audit.md` has the per-kind verdicts.
+Built: horizontal bars, quadrant names and axis ends, funnel amounts, gantt `done`, the io/subroutine/store roles,
+tinted frames and lane stripes (on by default), lanes `phases`, and chart values printed at the precision written.
+Owner questions answered and built in #106 (t-29944b23): level shading, node classes (1–4, with a key), the `person` role, states orthogonal regions, sequence async messages and actor participants.
+#113 (closes #107, #108): states fork/join bars; edges now route around frames holding neither end, checked by `tools/frames.py`; the logo on the README heading and the gallery page.
+
+**Open tasks:** #68 (C4: sweep `nuncaeslupus/opos`; needs a session with that repo).
+**Remind the owner:** #65 still needs the GitHub repo **topics** (About ⚙️, one per Enter):
+`diagrams svg diagram-generator llm llm-tools documentation json-schema python dataviz declarative`.
+Re-upload `docs/hero.png` as the social preview if #110 did not already.
+
+---
+
+## Read this first
+
+**The task board is GitHub issues now, not a queue file.** List issues labelled
+`arsenal:task` (open and closed), then `python3 claude-arsenal/scripts/task_select.py`
+picks the next unblocked one — see `claude-arsenal/AGENTS.md`'s session-start
+protocol. The five pre-existing tasks below are unchanged in substance; only the
+mechanics of finding and claiming them changed.
+
+**Every one of the five pre-existing tasks still needs a laptop** — no code work
+is left for them. **One switch unblocks four of the five.**
+
+> **Settings → Pages → Source: Deploy from a branch → `main` / `/` (root)**
+
+| | | Blocked on |
+|---|---|---|
+| **C2** `lo-f0f8` (#66) | Flip Pages on, open the gallery, look at it | the switch |
+| **C3** `lo-70ef` (#67) | Run its gate; it fetches `SCHEMA_ID` and compares to the committed artefact | C2 |
+| **C1** `lo-2158` (#65) | Topics, homepage, description — values are paste-ready | C2 (supplies the homepage) |
+| **C4** `lo-52fa` (#68) | Sweep the consumer's 87 documents onto the new `$schema` | C2 |
+| **A3** `lo-666f` (#69) | PyPI: configure the trusted publisher, bump, tag, push | C3 |
+
+Every payload is self-contained: exact values, exact commands, and why the order
+is what it is. `C1` and `C2` are `laptop` because **the GitHub tooling in a cloud
+session has no repository-settings API** — no topics setter, no Pages toggle.
+That is a capability limit, not an oversight. `A3` is `laptop` because a cloud
+session cannot hold a PyPI credential; everything else about the release is
+built and merged.
+
+**The sixth task, `scatter` (`lo-825e` / #64), is done — merged as
+[#71](https://github.com/nuncaeslupus/drawspec/pull/71)**, which closed #64 and
+archived the task file automatically — `.github/workflows/arsenal-queue.yml`'s
+merge-completion path, confirmed working end to end on its first real merge.
+It needed no laptop: a 2-D kind, two continuous ticked axes, reusing
+`quadrant`'s axis machinery and `chart`'s tick furniture almost unchanged.
+
+## What this session did
+
+**R5-2** (`edge-from-a-group`) closed the old queue. Then the owner asked whether
+the project was in good shape to show people; it was audited, and the answer
+became an eleven-task round tagged `readiness`, of which seven shipped in #52 and
+two more in #53.
+
+**The audit's finding, which is the thing to carry forward:** the problem was
+never quality — it was that almost none of the quality was **reachable**. Strict
+mypy no consumer's checker could see; a 34-drawing gallery you had to clone to
+look at; a format an agent could not learn without reading 800 lines; a schema
+`$id` naming a domain that does not resolve; and `pip install drawspec` returning
+nothing.
+
+Shipped: `py.typed` and full PyPI metadata · **`AGENTS.md`** (185 lines, gated so
+it cannot drift) and `llms.txt` · `drawspec kinds` and `drawspec example <kind>`,
+with `validate` reading `-` so they compose · a README that shows three specs
+each above **its own** drawing · CONTRIBUTING, CHANGELOG, issue templates · the
+schema and gallery repointed at GitHub Pages · and a tag-triggered release
+workflow with trusted publishing.
+
+## Three things that cost time, so they are written down
+
+* **A gate's zero means nothing until something has tried to get past it.** This
+  bit twice. `AGENTS.md`'s example gate caught a skeleton document with
+  `"nodes": []` on its first run — the file would have shipped telling agents to
+  write something invalid. And the Pages coupling test I wrote was **vacuous**:
+  it searched the README for `SCHEMA_ID`'s host, which the README always
+  contains because it quotes `SCHEMA_ID` in full. Review caught it. It now parses
+  the gallery link out and compares hosts, verified by deleting the link and
+  watching it fail.
+* **A gate block containing a fenced ` ```json ` block must spell the fence in
+  hex** (`\x60\x60\x60`). A nested fence closes the outer one and the gate dies
+  on a `SyntaxError` instead of reporting a verdict. Two payloads hit this.
+* **`gate_run.sh` hardens the environment**, which breaks anything needing the
+  network — `uv build` fails TLS with `UnknownIssuer`. Use
+  `ARSENAL_GATE_INHERIT_ENV=1` for gates that fetch or build.
+
+## B3 shipped: the MCP server (#60)
+
+`pip install 'drawspec[mcp]'` and `drawspec-mcp` — `validate`, `render`, `kinds`
+over stdio, behind an extra so nobody rendering from Python pays for starlette.
+`validate`'s refusals now arrive as `{"pointer", "message"}` in the agent's own
+loop instead of as prose on stderr.
+
+Two things about it worth not relearning:
+
+* **`mcp>=2.0`, not looser.** The 2.0 SDK's server is the `on_list_tools` /
+  `on_call_tool` callback API; a wider floor resolves to something that imports
+  and then fails to serve. Also: construct its models with the **snake_case**
+  field names (`input_schema`, `is_error`) — mypy rejects the camelCase aliases,
+  and pydantic still puts camelCase on the wire.
+* **The tests drive the process over a pipe** rather than calling the handlers.
+  Every failure this server can have is a transport one, and none of those are
+  visible from inside the process.
+
+It closes a *convenience* gap, not a reach gap: an agent still has to know
+drawspec exists, which `A3` and `C1` address far more cheaply. **Still do those
+first.**
+
+## F1 shipped: `actor` (#62), and issue #48 is answered
+
+The thing worth carrying forward is **why it was stuck for two rounds and why it
+turned out to be small.** The diagnosis was: four non-colour channels, all spent
+on the eight roles, therefore no room for ownership. That was true, and it
+assumed ownership must be encoded as **appearance**. It need not be — the tag
+carries the actor's *name*, and text is distinguishable in greyscale by
+construction. So it costs none of the four channels and `theme check` needed no
+new axis, which is why the field is free text rather than an enum.
+
+Drawn as the box's **lead**, so the existing lead machinery reserves the space at
+measure time — the part that would otherwise have been hard.
+
+**Bands were measured, not argued about,** and both failures are now tests so
+nobody re-proposes them: a band's bar spans its members' *extent*, so a
+discontiguous owner's bar runs straight past a step it does not own; and a band
+over a single node cannot be named, because the name has to fit its members'
+span. Swimlanes remain deliberately unbuilt — revisit only with evidence that a
+per-node marker is not enough.
+
+Two reference documents carry it: `flow-actors` (the issue's pipeline) and
+`flow-actor-handover`, which is the same four steps `flow-bands` draws so the two
+sit side by side as *accompanying* versus *owning*.
+
+## After those
+
+What is left is not a task and should not be invented as one:
+
+* **Measure whether the readiness round worked.** Does an agent handed only
+  `AGENTS.md` produce valid documents? It is the claim the whole project rests
+  on and nothing has tested it — but *how* to test it is a real design question
+  (what counts as the subject, what counts as a pass), so it wants a decision
+  before a task. Checked, and deliberately not queued: a corpus re-measurement
+  would **not** serve here — `docs/kinds-wanted.md` already records all five
+  vocabulary gaps as closed, so re-running it would confirm what is written.
+* The owner's standing content decisions — sheets **01** and **27**, the glosses
+  on **53 / 74 / 81**, the English-against-Catalan redraws **27, 83, 86**.
+  Untouched across five rounds because they are judgement calls, not work.
+
+## Task-board mechanics worth knowing
+
+* **GitHub issues are the source of truth now, not a branch.** The old
+  `claude-arsenal/queue/tasks.jsonl`, `queue_sync.sh` and `queue_eval.sh` are
+  gone from the tree — removed by the v2.4.23 migration. The `arsenal-queue`
+  coordination branch is obsolete and no longer authoritative, but its
+  **remote deletion is still pending manual cleanup** — this session's push
+  access is restricted to its own branch, so `git push origin --delete
+  arsenal-queue` needs a human or a session without that restriction. Do not
+  read from it or push to it in the meantime; a task's real state is its
+  issue's open/closed state plus its `arsenal:claimed` label —
+  `python3 claude-arsenal/scripts/query_status.py` reads the board.
+* Each live task file (`arsenal/tasks/<id>.md`) carries an `arsenal-task: <id>`
+  line in its linked issue's body — that is the whole of how an issue resolves
+  to a task, so never strip it when editing an issue by hand.
+* PR #70 (the migration itself) had a CodeRabbit review flag ~14 real bugs in
+  the *vendored* bundle content it brought in (`claude-arsenal/`, the skills
+  under `.claude/skills/`, `.github/workflows/arsenal-queue.yml`) — things like
+  an unquoted curl arg, a `pull_request_target` authorization gap, and a
+  skill-edit gate that does not recognize `git restore`. None of that is
+  drawspec's to hand-patch (upstream owns that prefix and overwrites it on the
+  next refresh); filed upstream instead. Check
+  [nuncaeslupus/claude-arsenal](https://github.com/nuncaeslupus/claude-arsenal/issues)
+  for the tracking issue before assuming those are still open — a bundle
+  refresh may have already pulled the fixes in.
+* PR #71 (`scatter`) had a real bug too, this time in drawspec's own code, not
+  vendored content: its `axes` field originally reused the same `axis` object
+  type `chart`/`quadrant`/`curve` share, so a document with `categories` on a
+  scatter axis passed the *published* schema and only failed
+  `drawspec validate` — schema and runtime validator disagreeing, which
+  `build_schema()`'s own docstring says this project avoids. Fixed
+  structurally (`axis-continuous`/`axes-continuous`, no `categories` field at
+  all — the same `additionalProperties: false` teaching every other
+  restriction in this format already uses), not with a Python-only check:
+  check both `accepted_by_schema` and `accepted_by_parser` on the same
+  document whenever a new kind reuses a shared object type but doesn't use
+  all of its fields. A second, unrelated bug in the same review:
+  `build_schema()` grouped `oneOf` variants by field *name* alone, so
+  `quadrant` and `scatter` — same field names, different meanings — silently
+  shared one kind's field descriptions. Fixed by grouping on the full field
+  spec instead of just names.

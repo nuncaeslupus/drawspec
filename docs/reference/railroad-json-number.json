@@ -1,0 +1,39 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "railroad",
+  "title": "A JSON number",
+  "description": "The number rule of the JSON grammar, as JSON.org draws it: an optional minus, an integer part, an optional fraction and an optional exponent.",
+  "caption": "After the number figure on json.org.",
+  "rules": [
+    {
+      "name": "number",
+      "expr": {"seq": [
+        {"optional": {"terminal": "-"}},
+        {"choice": [
+          {"terminal": "0"},
+          {"seq": [
+            {"special": "digit 1-9"},
+            {"repeat": {"rule": "digit"}, "min": 0}
+          ]}
+        ]},
+        {"optional": {"seq": [
+          {"terminal": "."},
+          {"repeat": {"rule": "digit"}, "min": 1}
+        ]}},
+        {"optional": {"seq": [
+          {"choice": [{"terminal": "e"}, {"terminal": "E"}]},
+          {"optional": {"choice": [{"terminal": "+"}, {"terminal": "-"}]}},
+          {"repeat": {"rule": "digit"}, "min": 1}
+        ]}}
+      ]}
+    },
+    {
+      "name": "digit",
+      "expr": {"choice": [
+        {"terminal": "0"},
+        {"special": "digit 1-9"}
+      ]}
+    }
+  ]
+}

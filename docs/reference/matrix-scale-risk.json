@@ -1,0 +1,26 @@
+{
+  "$schema": "https://nuncaeslupus.github.io/drawspec/schema/drawspec-v1.schema.json",
+  "version": 1,
+  "kind": "matrix",
+  "title": "Risks to the payments migration",
+  "description": "A risk matrix: likelihood down the side, impact across the top, and each open risk written in the cell it was scored into. The cells are filled by how urgent that combination is, light to dark, so the corner that needs action now is the darkest wherever the eye lands.",
+  "columns": ["Minor impact", "Moderate impact", "Severe impact"],
+  "rows": ["Likely", "Possible", "Rare"],
+  "scale": ["low", "medium", "high"],
+  "key": [
+    {"group": "low", "text": "Accept and watch"},
+    {"group": "medium", "text": "Mitigate this quarter"},
+    {"group": "high", "text": "Mitigate before cut-over"}
+  ],
+  "cells": [
+    {"text": "Dashboards lag a day", "column": 0, "row": 0, "group": "medium"},
+    {"text": "Card retries double-charge", "column": 1, "row": 0, "group": "high"},
+    {"text": "Ledger totals disagree", "column": 2, "row": 0, "group": "high", "role": "emphasis"},
+    {"text": "Old receipts reformatted", "column": 0, "row": 1, "group": "low"},
+    {"text": "Refunds queue for hours", "column": 1, "row": 1, "group": "medium"},
+    {"text": "Webhook signatures rejected", "column": 2, "row": 1, "group": "high"},
+    {"text": "Currency symbols misplaced", "column": 0, "row": 2, "group": "low"},
+    {"text": "Sandbox keys expire", "column": 1, "row": 2, "group": "low"},
+    {"text": "Provider outage mid-switch", "column": 2, "row": 2, "group": "medium"}
+  ]
+}

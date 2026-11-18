@@ -28,7 +28,7 @@ from __future__ import annotations
 import tomllib
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
-from itertools import combinations
+from itertools import combinations, pairwise
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Final
@@ -40,24 +40,72 @@ THEME_VERSION: Final = 1
 
 #: Semantic node roles. The closed vocabulary a document's `role` field draws
 #: from — see specification §5.1.
-NODE_ROLES: Final = ("start", "step", "decision", "terminal", "emphasis", "note", "group")
+#: `io`, `subroutine` and `store` are the flowchart symbols that carry meaning
+#: across standards (ISO 5807, DFDs, Mermaid): data in or out, a process defined
+#: elsewhere, and where data rests; `person` is C4's and the use-case actor's: a
+#: human, as against a system. The theme draws every role, but a document may name
+#: those four only where a box is a step of a process (`schema.SHAPED_ROLES`).
+NODE_ROLES: Final = (
+    "start",
+    "step",
+    "decision",
+    "terminal",
+    "emphasis",
+    "note",
+    "group",
+    "io",
+    "subroutine",
+    "store",
+    "person",
+)
 
 #: Semantic edge roles. `link` is how "merely associated" is said, and `aside`
 #: how "loosely associated, and in no direction" is: dashed and headless, which
 #: is a pairing the other six could not make. `link` has no head but is solid,
 #: and `weak` is dashed but carries one, so an author annotating a diagram with a
 #: soft undirected association had to misstate one or the other.
-EDGE_ROLES: Final = ("flow", "link", "exchange", "weak", "owns", "strong", "aside")
+#:
+#: `inherits` and `realizes` are the theme's too — it draws every role — but a
+#: document may name them only in an `entities` diagram: which roles a kind
+#: accepts is the schema's decision, per kind (`schema.GRAPH_EDGE_ROLES`). So is
+#: `async`, a `sequence` message nobody waits on: solid, with an open head.
+EDGE_ROLES: Final = (
+    "flow",
+    "link",
+    "exchange",
+    "weak",
+    "owns",
+    "strong",
+    "aside",
+    "inherits",
+    "realizes",
+    "async",
+)
 
 #: Shapes a node role may take.
-NODE_SHAPES: Final = ("rect", "pill", "diamond", "ellipse", "none")
+#: `parallelogram` slants its sides, `subroutine` is a box with doubled vertical
+#: sides, `cylinder` is a drum with an elliptical lid, and `person` is a body with
+#: rounded shoulders under a round head (the C4 person).
+NODE_SHAPES: Final = (
+    "rect",
+    "pill",
+    "diamond",
+    "ellipse",
+    "parallelogram",
+    "subroutine",
+    "cylinder",
+    "person",
+    "none",
+)
 
 #: Fill treatments. A non-colour channel, so it counts toward greyscale safety.
 FILL_PATTERNS: Final = ("none", "solid", "hatch", "dots", "cross", "grid")
 
 #: End treatments an edge role may take. Closed, and it lives in the theme, so a
 #: document stays readable when the theme changes.
-EDGE_HEADS: Final = ("arrow", "open", "diamond", "circle", "bar", "none")
+#: `triangle` is hollow: the shaft stops at its base, so it reads as an outline
+#: and not as a filled arrow head — the mark a class diagram draws for "is a".
+EDGE_HEADS: Final = ("arrow", "open", "diamond", "circle", "bar", "triangle", "none")
 
 #: The four type levels. One size per level, and no element names its own.
 TYPE_LEVELS: Final = ("title", "heading", "body", "label")
@@ -70,6 +118,23 @@ COLOUR_KEYWORDS: Final = ("currentColor", "none")
 
 #: Minimum relative-luminance difference for two colours to survive greyscale.
 LUMINANCE_DELTA: Final = 0.25
+
+#: How many steps `[mark] ramp` must hold: one per step of the longest `scale` a
+#: `matrix` may declare, so every document draws under every theme.
+RAMP_STEPS: Final = 5
+
+#: The least two neighbouring ramp steps may differ by, in ink coverage — which
+#: is greyscale lightness, since a step is the page's ink laid down at that
+#: strength. Below it, two buckets side by side read as one tone. The first step
+#: is held to it as well, measured from the blank of an unfilled cell.
+RAMP_CONTRAST: Final = 0.08
+
+#: The heaviest a ramp step may be. Text sits on these cells, in the same ink as
+#: the tone, so the heavier the step the less the label stands out — on both
+#: pages. On white, half the ink still leaves a black label over 5:1; on a dark
+#: page the ink is light and a heavier step is a *lighter* cell, and past 0.4 a
+#: light label on it drops under 4.5:1 against `#121212`.
+RAMP_CEILING: Final = 0.4
 
 _THEMES_DIR: Final = Path(__file__).resolve().parent / "themes"
 
@@ -100,6 +165,13 @@ def relative_luminance(colour: str) -> float | None:
         for channel in channels
     ]
     return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+
+def contrast(first: str, second: str) -> float:
+    """WCAG contrast ratio between two hex colours, from 1 to 21."""
+    one = relative_luminance(first) or 0.0
+    two = relative_luminance(second) or 0.0
+    return (max(one, two) + 0.05) / (min(one, two) + 0.05)
 
 
 def _colour(value: object, where: str) -> str:
@@ -210,6 +282,16 @@ WIDTH_MODES: Final = ("fixed", "ink")
 #: What a theme may do to the first paragraph of a two-part label.
 LEAD_TREATMENTS: Final = ("bold", "plain", "rule")
 
+#: What a standalone sheet may have ruled on its ground.
+SHEET_PATTERNS: Final = ("none", "grid")
+
+#: How a standalone sheet may be framed.
+SHEET_BORDERS: Final = ("none", "zoned")
+
+#: WCAG 2.2's contrast floors: text (1.4.3) and the parts of a graphic (1.4.11).
+TEXT_CONTRAST: Final = 4.5
+GRAPHIC_CONTRAST: Final = 3.0
+
 #: Where a diagram-level caption sits relative to the drawing.
 CAPTION_POSITIONS: Final = ("below", "above")
 
@@ -301,13 +383,88 @@ class Canvas:
     than a converter default.
     """
 
+    ground: str = "none"
+    """The sheet's colour behind the drawing, in the `standalone` profile and PNG.
+
+    `none` draws no ground, and the drawing sits on whatever it is put on. Like
+    `ink`, the `inline` profile ignores it: an inline drawing is on the page's own
+    background, and a coloured rectangle pasted into somebody else's document is
+    not a figure. A ground is checked when the theme loads: `ink` must read on it
+    as text (4.5:1) and every other colour the theme declares as a line (3:1).
+    """
+
+    pattern: str = "none"
+    """What is ruled on the ground: `none`, or a fine drafting `grid`. Standalone only."""
+
+    border: str = "none"
+    """The sheet's frame: `none`, or `zoned` — a double border with zone numbers
+    and letters, centring arrows and registration marks. Standalone only.
+
+    The canvas grows to hold it: the drawing is moved inside the border, never
+    drawn under it, and every diagram in one theme still comes out one width.
+    """
+
+    title_block: bool = False
+    """Whether to draw an engineering title block below the drawing. Standalone only.
+
+    It is filled from the document: its `title` (or its kind, when it has none),
+    a drawing number derived from its content, its kind, the size of the
+    drawing, and its format `version`. It takes a strip of its own under the
+    drawing, so it can never cover any of it.
+    """
+
+    rule: str = ""
+    """The colour of the grid and of the sheet's quiet lettering — zone letters and
+    the title block's field names. Empty means `ink`."""
+
+    accent: str = ""
+    """The colour of the registration marks and the drawing number. Empty means `ink`."""
+
+    @property
+    def sheet(self) -> bool:
+        """True when the standalone canvas has any furniture to draw."""
+        return (
+            self.ground != "none"
+            or self.pattern != "none"
+            or self.border != "none"
+            or self.title_block
+        )
+
+    @property
+    def sheet_colours(self) -> tuple[str, ...]:
+        """Every colour the sheet paints, `none` aside, ground first."""
+        colours = (self.ground, self.rule or self.ink, self.accent or self.ink)
+        return tuple(colour for colour in colours if colour != "none")
+
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> Canvas:
         _reject_unknown(
             mapping,
-            ("width", "width_mode", "margin", "min_legible_size", "caption", "ink"),
+            (
+                "width",
+                "width_mode",
+                "margin",
+                "min_legible_size",
+                "caption",
+                "ink",
+                "ground",
+                "pattern",
+                "border",
+                "title_block",
+                "rule",
+                "accent",
+            ),
             "[canvas]",
         )
+        title_block = mapping.get("title_block", False)
+        if not isinstance(title_block, bool):
+            raise ThemeError(f"[canvas] title_block: expected true or false, got {title_block!r}")
+        ground = _colour(mapping.get("ground", "none"), "[canvas] ground")
+        if ground == "currentColor":
+            raise ThemeError(
+                "[canvas] ground: 'currentColor' is the ink, and ink on a ground of "
+                "itself is a blank sheet. Name a colour, or 'none' for no ground."
+            )
         return cls(
             width=_number(mapping.get("width", 640.0), "[canvas] width"),
             width_mode=_choice(
@@ -319,7 +476,27 @@ class Canvas:
             ),
             caption=_choice(mapping.get("caption", "below"), CAPTION_POSITIONS, "[canvas] caption"),
             ink=_colour(mapping.get("ink", "#1a1a1a"), "[canvas] ink"),
+            ground=ground,
+            pattern=_choice(mapping.get("pattern", "none"), SHEET_PATTERNS, "[canvas] pattern"),
+            border=_choice(mapping.get("border", "none"), SHEET_BORDERS, "[canvas] border"),
+            title_block=title_block,
+            rule=_sheet_colour(mapping.get("rule", ""), "[canvas] rule"),
+            accent=_sheet_colour(mapping.get("accent", ""), "[canvas] accent"),
         )
+
+
+def _sheet_colour(value: object, where: str) -> str:
+    """A sheet colour: empty for the ink, or a hex value — never a keyword.
+
+    `currentColor` would be the ink anyway, said less plainly, and `none` would
+    be furniture drawn in nothing.
+    """
+    if value == "":
+        return ""
+    colour = _colour(value, where)
+    if not colour.startswith("#"):
+        raise ThemeError(f"{where}: expected a hex colour, or empty for the ink; got {value!r}")
+    return colour
 
 
 @dataclass(frozen=True)
@@ -525,6 +702,21 @@ class BoxStyle:
     a distinction the weight already carries.
     """
 
+    rise: float = 2.0
+    """How much taller the last column of a rising series is than the first.
+
+    A `columns` document with `rise` says the series ascends; this says by how
+    much, so the author never writes a height and cannot get one wrong. The
+    shortest column is whatever its own text needs, so every label fits whatever
+    this is set to, and the rest are spread evenly up to this multiple of it.
+
+    Two, and not the five the hand-drawn originals reached, because the ascent
+    has to read as *ascending* and not as *a chart*: at five the first column is
+    a sliver holding a full label and the drawing turns into a bar chart with no
+    axis, which is a claim about quantity that an ordinal scale does not make.
+    A page that wants the steeper look raises it.
+    """
+
     widen_steps: int = 1
     """How far past the aspect floor a box may keep taking width to shed a line.
 
@@ -544,7 +736,9 @@ class BoxStyle:
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> BoxStyle:
         _reject_unknown(
-            mapping, ("padding", "line_height", "corner_radius", "lead", "widen_steps"), "[box]"
+            mapping,
+            ("padding", "line_height", "corner_radius", "lead", "widen_steps", "rise"),
+            "[box]",
         )
         defaults = cls()
         padding = defaults.padding
@@ -578,6 +772,7 @@ class BoxStyle:
                     positive=False,
                 )
             ),
+            rise=_number(mapping.get("rise", defaults.rise), "[box] rise"),
         )
 
 
@@ -689,6 +884,37 @@ class MarkStyle:
     """How much of a category's band is left empty around its bars, as a
     fraction. Zero draws bars that touch, which reads as one wide bar."""
 
+    ramp: tuple[float, ...] = (0.08, 0.16, 0.24, 0.32, 0.4)
+    """The tones an ordered `scale` is filled with, lightest first: how much of
+    the page's ink each step lays down, from 0 (blank) to 1.
+
+    An order, where `fills` is a set. Patterns cannot carry one — dots, hatch
+    and a grid are three different things, not three amounts of one thing — so
+    a heatmap's buckets are told apart the way a printed one is, by how dark they
+    are. That is lightness, the channel greyscale keeps, and the loader holds it
+    to that: at least five steps, each darker than the last by at least 0.08
+    (the first measured from a blank cell, which stays "not assessed"), none
+    darker than 0.5 so the cell's text stays readable. A shorter `scale` takes
+    steps spread across the whole ramp, so two buckets are its two ends.
+    """
+
+    def tone_for(self, index: int, count: int) -> float:
+        """The tone for step `index` of a `count`-step scale, spread across the ramp."""
+        if count <= 1:
+            return self.ramp[-1]
+        return self.ramp[round(index * (len(self.ramp) - 1) / (count - 1))]
+
+    def level_tone(self, index: int, count: int) -> float:
+        """The tone for level `index` of `count` graded levels, lightest first.
+
+        One ramp step per level from the lightest, so three levels stay light,
+        and spread across the whole ramp only when there are more levels than
+        steps — a graded shape is mostly area, where a heatmap is mostly cells.
+        """
+        if count <= len(self.ramp):
+            return self.ramp[index]
+        return self.tone_for(index, count)
+
     def fill_for(self, index: int) -> str:
         """The fill for the `index`-th filled mark, cycling if there are more."""
         return self.fills[index % len(self.fills)]
@@ -701,7 +927,7 @@ class MarkStyle:
 
     @classmethod
     def from_mapping(cls, mapping: Mapping[str, Any]) -> MarkStyle:
-        _reject_unknown(mapping, ("fills", "colours", "gap"), "[mark]")
+        _reject_unknown(mapping, ("fills", "colours", "gap", "ramp"), "[mark]")
         defaults = cls()
         fills = mapping.get("fills", list(defaults.fills))
         if not isinstance(fills, list) or not fills:
@@ -737,7 +963,44 @@ class MarkStyle:
         gap = _number(mapping.get("gap", defaults.gap), "[mark] gap", positive=False)
         if not 0.0 <= gap < 1.0:
             raise ThemeError(f"[mark] gap: expected a fraction below 1, got {gap!r}")
-        return cls(fills=tuple(fills), colours=painted, gap=gap)
+        return cls(
+            fills=tuple(fills),
+            colours=painted,
+            gap=gap,
+            ramp=_ramp(mapping.get("ramp", list(defaults.ramp))),
+        )
+
+
+def _ramp(value: object) -> tuple[float, ...]:
+    """`[mark] ramp`, held to the one property it exists for: an order you can see.
+
+    Checked here, at load, like the greyscale role pairing — a ramp whose two
+    neighbours are the same grey is a heatmap whose buckets merge, and nobody
+    finds out until a reader cannot tell *sometimes* from *often*.
+    """
+    if not isinstance(value, list) or len(value) < RAMP_STEPS:
+        raise ThemeError(
+            f"[mark] ramp: expected an array of at least {RAMP_STEPS} tones, one per step "
+            f"of the longest scale a matrix may declare; got {value!r}"
+        )
+    tones = tuple(_number(entry, "[mark] ramp") for entry in value)
+    previous = 0.0
+    for index, tone in enumerate(tones):
+        if tone - previous < RAMP_CONTRAST - 1e-9:
+            after = "a blank cell" if index == 0 else f"step {index - 1} ({previous:g})"
+            raise ThemeError(
+                f"[mark] ramp: step {index} ({tone:g}) is not at least {RAMP_CONTRAST:g} "
+                f"darker than {after}. Neighbouring steps that close are one grey in "
+                f"print, so two buckets of the scale would read as one."
+            )
+        previous = tone
+    if tones[-1] > RAMP_CEILING:
+        raise ThemeError(
+            f"[mark] ramp: {tones[-1]:g} is darker than {RAMP_CEILING:g}. A cell's text "
+            f"is drawn on its tone, and past that a label on the heaviest step stops "
+            f"being easy to read."
+        )
+    return tones
 
 
 @dataclass(frozen=True)
@@ -841,6 +1104,1134 @@ class FunnelStyle:
                 FUNNEL_DIRECTIONS,
                 "[funnel] direction",
             )
+        )
+
+
+@dataclass(frozen=True)
+class StatesStyle:
+    """How a state machine's pseudo-states are drawn. Appearance, so it lives here.
+
+    The author says which state the machine starts in and which it ends in; the
+    filled dot and the ringed dot that say so are marks with no words, and how big
+    they are is a question about the drawing. No field on the document reaches
+    either.
+    """
+
+    dot: float = 10.0
+    """The diameter of the initial pseudo-state's filled dot, and of the dot
+    inside a final pseudo-state's ring."""
+
+    ring: float = 3.0
+    """The daylight between a final pseudo-state's dot and the ring around it."""
+
+    bar: float = 6.0
+    """How thick a fork or join bar is, across the flow."""
+
+    bar_step: float = 44.0
+    """How much of a fork or join bar's length each of its arrows has: the bar is
+    at least this times the number of arrows on its busy side, so it grows with the
+    regions it splits into or gathers, and longer when it must reach over them."""
+
+    @property
+    def final(self) -> float:
+        """The diameter of a final pseudo-state, ring included."""
+        return self.dot + self.ring * 2
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> StatesStyle:
+        _reject_unknown(mapping, ("dot", "ring", "bar", "bar_step"), "[states]")
+        defaults = cls()
+        return cls(
+            dot=_number(mapping.get("dot", defaults.dot), "[states] dot"),
+            ring=_number(mapping.get("ring", defaults.ring), "[states] ring"),
+            bar=_number(mapping.get("bar", defaults.bar), "[states] bar"),
+            bar_step=_number(mapping.get("bar_step", defaults.bar_step), "[states] bar_step"),
+        )
+
+
+@dataclass(frozen=True)
+class SequenceStyle:
+    """How a sequence diagram's lifelines and activation bars are drawn.
+
+    The author writes who talks to whom and in what order; the bar that shows a
+    participant is busy is inferred from a call and its reply, and how wide it is
+    — like which line a lifeline is drawn in — is a question about the drawing.
+    """
+
+    activation: float = 10.0
+    """The width of an activation bar. A nested bar is set half this to the right."""
+
+    lifeline: str = "aside"
+    """The edge role a lifeline is drawn in, with no head: dashed and light by
+    default, so the messages across it are what the eye follows."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> SequenceStyle:
+        _reject_unknown(mapping, ("activation", "lifeline"), "[sequence]")
+        defaults = cls()
+        return cls(
+            activation=_number(
+                mapping.get("activation", defaults.activation), "[sequence] activation"
+            ),
+            lifeline=_choice(
+                mapping.get("lifeline", defaults.lifeline), EDGE_ROLES, "[sequence] lifeline"
+            ),
+        )
+
+
+#: How an `entities` relation's cardinality is drawn at its ends: crow's-foot
+#: marks, or UML's numbers (`1`, `0..1`, `*`, `0..*`, `1..*`).
+ENTITIES_NOTATIONS: Final = ("crowsfoot", "numeric")
+
+
+@dataclass(frozen=True)
+class EntitiesStyle:
+    """How an entity diagram says *how many* at each end of a relation.
+
+    The author states the cardinality — `one`, `zero-or-many` — and the theme the
+    notation, so the same document draws for a database chapter in crow's feet
+    and for a UML chapter in numbers.
+    """
+
+    notation: str = "crowsfoot"
+    """`crowsfoot` (marks across the line's end) or `numeric` (text beside it)."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> EntitiesStyle:
+        _reject_unknown(mapping, ("notation",), "[entities]")
+        defaults = cls()
+        return cls(
+            notation=_choice(
+                mapping.get("notation", defaults.notation),
+                ENTITIES_NOTATIONS,
+                "[entities] notation",
+            ),
+        )
+
+
+#: How a `gantt` milestone is drawn: a diamond, as most plans draw one, or a dot.
+GANTT_MILESTONES: Final = ("diamond", "circle")
+
+
+@dataclass(frozen=True)
+class GanttStyle:
+    """How a plan draws the two marks that are not bars.
+
+    The author says a task is a milestone and that a deadline falls at week 6;
+    whether the milestone is a diamond or a dot, and which line the deadline is
+    drawn in, are house style.
+    """
+
+    milestone: str = "diamond"
+    """`diamond` or `circle`: the mark a task with `at` is drawn as, filled."""
+
+    marks: str = "weak"
+    """The edge role a mark's line across the rows is drawn in, with no head."""
+
+    done: float = 0.7
+    """How much of the ink a task's `done` band takes, above 0 and at most 1. The
+    page's own ink at that strength, so a dark page draws it light."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> GanttStyle:
+        _reject_unknown(mapping, ("milestone", "marks", "done"), "[gantt]")
+        defaults = cls()
+        done = _number(mapping.get("done", defaults.done), "[gantt] done")
+        if not 0.0 < done <= 1.0:
+            raise ThemeError(
+                f"[gantt] done: expected a fraction above 0 and at most 1, got {done!r}"
+            )
+        return cls(
+            milestone=_choice(
+                mapping.get("milestone", defaults.milestone), GANTT_MILESTONES, "[gantt] milestone"
+            ),
+            marks=_choice(mapping.get("marks", defaults.marks), EDGE_ROLES, "[gantt] marks"),
+            done=done,
+        )
+
+
+@dataclass(frozen=True)
+class BoardStyle:
+    """How a board draws the two lines that are not card borders.
+
+    The author says the board has slices and that the first release ends at one
+    of them; which line runs between two slices and how heavy the cut is are
+    house style.
+    """
+
+    separator: str = "weak"
+    """The edge role the line between two rows (slices) is drawn in, with no head."""
+
+    cut: str = "strong"
+    """The edge role the cut under a row is drawn in, with no head: the board's one heavy line."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> BoardStyle:
+        _reject_unknown(mapping, ("separator", "cut"), "[board]")
+        defaults = cls()
+        return cls(
+            separator=_choice(
+                mapping.get("separator", defaults.separator), EDGE_ROLES, "[board] separator"
+            ),
+            cut=_choice(mapping.get("cut", defaults.cut), EDGE_ROLES, "[board] cut"),
+        )
+
+
+#: The narrowest and widest slant a fishbone's bones may take, in degrees from
+#: the spine. Below thirty a bone lies almost along the spine and its causes
+#: crowd it; ninety is a comb of upright bones.
+FISHBONE_SLANT_RANGE: Final = (30.0, 90.0)
+
+
+@dataclass(frozen=True)
+class FishboneStyle:
+    """How a fishbone draws its spine, its bones and the ticks its causes sit on.
+
+    The author says which causes fall under which category; the angle the bones
+    meet the spine at, and the weight of each line, are house style.
+    """
+
+    slant: float = 60.0
+    """The angle, in degrees from the spine, each bone meets it at: 30 to 90. A
+    fishbone's bones slant by convention — the one place drawspec draws a
+    diagonal on purpose, because the slant *is* the shape. `90` draws a comb of
+    upright bones for a theme that keeps right angles throughout."""
+
+    spine: str = "strong"
+    """The edge role the spine is drawn in, with no head: from the far end of the
+    last bone into the effect's box."""
+
+    bone: str = "flow"
+    """The edge role a category's bone is drawn in, with no head. The bone of a
+    confirmed root cause (`emphasis`) is drawn in the spine's role from that cause
+    to the spine, so the path from cause to effect is one weight."""
+
+    cause: str = "link"
+    """The edge role the tick a cause's words sit on is drawn in, with no head. A
+    ruled-out cause (`note`) is drawn in `aside` instead: light and dashed."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> FishboneStyle:
+        _reject_unknown(mapping, ("slant", "spine", "bone", "cause"), "[fishbone]")
+        defaults = cls()
+        slant = _number(mapping.get("slant", defaults.slant), "[fishbone] slant")
+        low, high = FISHBONE_SLANT_RANGE
+        if not low <= slant <= high:
+            raise ThemeError(
+                f"[fishbone] slant: {slant:g} is outside {low:g} to {high:g} degrees — below "
+                f"{low:g} a bone lies along the spine, and past {high:g} it leans away from "
+                f"the head"
+            )
+        return cls(
+            slant=slant,
+            spine=_choice(mapping.get("spine", defaults.spine), EDGE_ROLES, "[fishbone] spine"),
+            bone=_choice(mapping.get("bone", defaults.bone), EDGE_ROLES, "[fishbone] bone"),
+            cause=_choice(mapping.get("cause", defaults.cause), EDGE_ROLES, "[fishbone] cause"),
+        )
+
+
+@dataclass(frozen=True)
+class JourneyStyle:
+    """How a journey draws the lines that are not words: the feeling line and its rules.
+
+    The author names each stage's feeling; the weight of the line through them,
+    of the guides each level is named on, and of the rules between detail rows
+    are house style.
+    """
+
+    line: str = "strong"
+    """The edge role the feeling line is drawn in, with no head: the one heavy line,
+    through every stage's point."""
+
+    guide: str = "aside"
+    """The edge role each feeling level's guide is drawn in, across every stage: light,
+    so the line and not the grid is what is read."""
+
+    separator: str = "link"
+    """The edge role the rule above each detail row is drawn in, across the whole map."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> JourneyStyle:
+        _reject_unknown(mapping, ("line", "guide", "separator"), "[journey]")
+        defaults = cls()
+        return cls(
+            line=_choice(mapping.get("line", defaults.line), EDGE_ROLES, "[journey] line"),
+            guide=_choice(mapping.get("guide", defaults.guide), EDGE_ROLES, "[journey] guide"),
+            separator=_choice(
+                mapping.get("separator", defaults.separator), EDGE_ROLES, "[journey] separator"
+            ),
+        )
+
+
+#: How a `numberline` marks a range's end: a filled or hollow dot, as school
+#: texts in the UK and elsewhere draw it, or a bracket or parenthesis, as most US
+#: and college texts do. The same fact — the end is in, or it is out — so it is
+#: house style, not content.
+NUMBERLINE_ENDS: Final = ("dots", "brackets")
+
+
+@dataclass(frozen=True)
+class NumberlineStyle:
+    """How a number line marks whether a range's end belongs to it.
+
+    The author says an end is open or closed; whether that is drawn as a hollow
+    and a filled dot or as `(` and `[` is the convention of the course the drawing
+    is for, set once for every number line in it.
+    """
+
+    ends: str = "dots"
+    """`dots` (filled closed, hollow open) or `brackets` (`[` closed, `(` open). A
+    point is a dot either way."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> NumberlineStyle:
+        _reject_unknown(mapping, ("ends",), "[numberline]")
+        defaults = cls()
+        return cls(
+            ends=_choice(mapping.get("ends", defaults.ends), NUMBERLINE_ENDS, "[numberline] ends"),
+        )
+
+
+#: How a causal link's sign is written: `+` and a true minus, or `s` (same) and `o`
+#: (opposite), as some systems-thinking courses teach it.
+FLOW_POLARITIES: Final = ("+-", "so")
+
+#: The glyph each polarity is written as, by `[flow] polarity`.
+POLARITY_GLYPHS: Final = {"+-": {"+": "+", "-": "\u2212"}, "so": {"+": "s", "-": "o"}}
+
+
+@dataclass(frozen=True)
+class FlowStyle:
+    """How a causal loop diagram's signs are written.
+
+    The author says whether a link is positive or negative; whether that reads
+    `+` and a minus, or `s` and `o`, is house style, set once for a course's diagrams.
+    """
+
+    polarity: str = "+-"
+    """`+-` (a plus and a true minus) or `so` (`s` for same, `o` for opposite)."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> FlowStyle:
+        _reject_unknown(mapping, ("polarity",), "[flow]")
+        defaults = cls()
+        return cls(
+            polarity=_choice(
+                mapping.get("polarity", defaults.polarity), FLOW_POLARITIES, "[flow] polarity"
+            )
+        )
+
+
+#: How a `pie` is drawn: a full disc, or a ring with a hole in the middle.
+PIE_SHAPES: Final = ("pie", "donut")
+
+
+@dataclass(frozen=True)
+class PieStyle:
+    """Whether a pie is a disc or a ring.
+
+    The author says what the shares are; a ring instead of a disc is house style —
+    the round-2 corpus found donuts only in template galleries — so it is set once
+    for every pie in a report, never per document.
+    """
+
+    shape: str = "pie"
+    """`pie` (a disc, labels inside a sector when they fit) or `donut` (a ring with
+    a hole of about half the radius, every label outside on a leader)."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> PieStyle:
+        _reject_unknown(mapping, ("shape",), "[pie]")
+        defaults = cls()
+        return cls(shape=_choice(mapping.get("shape", defaults.shape), PIE_SHAPES, "[pie] shape"))
+
+
+#: How many levels below its centre a mind map's line weights are given for.
+MINDMAP_LEVELS: Final = 3
+
+
+@dataclass(frozen=True)
+class MindmapStyle:
+    """How a mind map draws its branches: their lines, and whether words are boxed.
+
+    The author says what branches off what; the thickness of each line and whether
+    a leaf sits on a line or in a box are house style.
+    """
+
+    boxes: bool = False
+    """`false` sets a twig or a leaf on a line, the mind-map convention, its branch
+    line running on under its words; `true` boxes them like the main branches."""
+
+    taper: tuple[float, ...] = (6.0, 3.0, 1.5)
+    """How thick a branch's line is where it leaves its parent, one width per level
+    below the centre, none thicker than the one before. Each line narrows to the
+    next level's width where it arrives (the last to two thirds of itself), so a
+    map thins from its centre outwards. An `emphasis` branch's line, and every
+    line between it and the centre, is drawn half as thick again."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> MindmapStyle:
+        _reject_unknown(mapping, ("boxes", "taper"), "[mindmap]")
+        defaults = cls()
+        boxes = mapping.get("boxes", defaults.boxes)
+        if not isinstance(boxes, bool):
+            raise ThemeError(f"[mindmap] boxes: expected true or false, got {boxes!r}")
+        raw = mapping.get("taper", list(defaults.taper))
+        if not isinstance(raw, list) or len(raw) != MINDMAP_LEVELS:
+            raise ThemeError(
+                f"[mindmap] taper: expected {MINDMAP_LEVELS} widths, one per level below the "
+                f"centre, got {raw!r}"
+            )
+        taper = tuple(_number(value, "[mindmap] taper") for value in raw)
+        if any(later > earlier for earlier, later in pairwise(taper)):
+            raise ThemeError(
+                f"[mindmap] taper: {list(taper)!r} thickens outwards; a map thins from its "
+                f"centre, so no width may be more than the one before it"
+            )
+        return cls(boxes=boxes, taper=taper)
+
+
+@dataclass(frozen=True)
+class PertStyle:
+    """Whether a project network carries a key to its boxes' cells.
+
+    The author says what the activities are and what each waits for; whether the
+    page explains which corner holds which time is house style — a textbook
+    teaching the layout wants it on every figure, a team that reads them daily
+    does not — so it is set once for every network in a report.
+    """
+
+    key: bool = True
+    """`true` draws a key under the network: one box with each cell named (`ES`,
+    `Dur`, `EF`; `LS`, `Float`, `LF`), the unit the durations are in, and that the
+    critical path is the heavy line. `false` leaves it out, and the unit, when
+    there is one, is written under the network on its own."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> PertStyle:
+        _reject_unknown(mapping, ("key",), "[pert]")
+        key = mapping.get("key", cls().key)
+        if not isinstance(key, bool):
+            raise ThemeError(f"[pert] key: expected true or false, got {key!r}")
+        return cls(key=key)
+
+
+#: How many line weights a sunburst is given: first-ring divider, ring boundary, deep.
+SUNBURST_WEIGHTS: Final = 3
+
+
+@dataclass(frozen=True)
+class SunburstStyle:
+    """How heavy a sunburst's three structural lines are.
+
+    The author says what the hierarchy is; how boldly its structure is drawn is
+    house style, so it is set once for every wheel in a report, never per document.
+    """
+
+    weights: tuple[float, ...] = (0.006, 0.0035, 0.002)
+    """The width of a first-ring divider and the rim, a ring boundary and the hub
+    circle, and a division two or more rings deep — each as a share of the wheel's
+    radius, floored at a hairline so a small wheel keeps its lines, so the structure
+    grows heavier on a wide wheel. Heaviest first; none heavier than the one before."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> SunburstStyle:
+        _reject_unknown(mapping, ("weights",), "[sunburst]")
+        defaults = cls()
+        raw = mapping.get("weights", list(defaults.weights))
+        if not isinstance(raw, list) or len(raw) != SUNBURST_WEIGHTS:
+            raise ThemeError(
+                f"[sunburst] weights: expected {SUNBURST_WEIGHTS} shares of the radius — a "
+                f"first-ring divider, a ring boundary, a deep division — got {raw!r}"
+            )
+        weights = tuple(_number(value, "[sunburst] weights") for value in raw)
+        if any(not weight < float("inf") for weight in weights):
+            raise ThemeError(
+                f"[sunburst] weights: expected finite shares of the radius, got {list(weights)!r}"
+            )
+        if any(later > earlier for earlier, later in pairwise(weights)):
+            raise ThemeError(
+                f"[sunburst] weights: {list(weights)!r} thickens outwards; the structure reads "
+                f"from the first-ring dividers out, so no weight may be more than the one before"
+            )
+        return cls(weights=weights)
+
+
+#: The words a Wardley map's axes carry, in the order they are checked.
+WARDLEY_WORDS: Final = (
+    "genesis",
+    "custom",
+    "product",
+    "commodity",
+    "visible",
+    "invisible",
+    "chain",
+    "evolution",
+)
+
+
+@dataclass(frozen=True)
+class WardleyStyle:
+    """The words on a Wardley map's two axes.
+
+    The author names a stage (`product`); what is written under the axis is house
+    wording, set once for every map in a report — Wardley's own, a translation, or
+    a team's (*Commodity* or *Utility*).
+    """
+
+    genesis: str = "Genesis"
+    """The first stage's name, under the leftmost quarter of the evolution axis."""
+
+    custom: str = "Custom-built"
+    """The second stage's name: what `custom` is written as."""
+
+    product: str = "Product (+rental)"
+    """The third stage's name: what `product` is written as."""
+
+    commodity: str = "Commodity (+utility)"
+    """The fourth stage's name, under the rightmost quarter."""
+
+    visible: str = "Visible"
+    """Written at the top of the value-chain axis, by the anchors."""
+
+    invisible: str = "Invisible"
+    """Written at the bottom of the value-chain axis."""
+
+    chain: str = "Value chain"
+    """The value-chain axis's name, beside it."""
+
+    evolution: str = "Evolution"
+    """The evolution axis's name, at its arrow's end."""
+
+    def stage(self, name: str) -> str:
+        return str(getattr(self, name))
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> WardleyStyle:
+        _reject_unknown(mapping, WARDLEY_WORDS, "[wardley]")
+        defaults = cls()
+        values: dict[str, str] = {}
+        for key in WARDLEY_WORDS:
+            value = mapping.get(key, getattr(defaults, key))
+            if not isinstance(value, str) or not value.strip() or "\n" in value:
+                raise ThemeError(f"[wardley] {key}: expected a word or a few, got {value!r}")
+            values[key] = value
+        stages = [values[key] for key in WARDLEY_WORDS[:4]]
+        if len(set(stages)) != len(stages):
+            raise ThemeError(
+                f"[wardley] genesis, custom, product, commodity: {stages!r} repeat a name; "
+                f"the four stages are told apart by their names."
+            )
+        return cls(**values)
+
+
+#: The darkest a network diagram's bus or group wash may be: words are read on it.
+NETWORK_TONE_MAX: Final = 0.4
+
+
+@dataclass(frozen=True)
+class NetworkStyle:
+    """How a network diagram washes its buses and its groups' backdrops.
+
+    Both are the page's ink at part opacity, so they follow the page into dark
+    mode and print as greys. A bus's name and address are written on it, and a
+    group's hosts stand on its backdrop, so neither may be dark.
+    """
+
+    bus: float = 0.16
+    """How much ink fills a network's bus, behind its name and address."""
+
+    group: float = 0.07
+    """How much ink fills a group's backdrop, behind its hosts. Lighter than a bus,
+    so a group reads as ground and a bus as a thing."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> NetworkStyle:
+        _reject_unknown(mapping, ("bus", "group"), "[network]")
+        defaults = cls()
+        values = {}
+        for key in ("bus", "group"):
+            value = _number(
+                mapping.get(key, getattr(defaults, key)), f"[network] {key}", positive=False
+            )
+            if not 0.0 <= value <= NETWORK_TONE_MAX:
+                raise ThemeError(
+                    f"[network] {key}: expected a share of the ink from 0 to "
+                    f"{NETWORK_TONE_MAX:g}, got {value!r}; words are read on it"
+                )
+            values[key] = value
+        return cls(bus=values["bus"], group=values["group"])
+
+
+#: The most of a step a timing transition may take: past half, a step is all slant.
+TIMING_SLEW_MAX: Final = 0.5
+
+
+@dataclass(frozen=True)
+class TimingStyle:
+    """How a timing figure draws its edges, and whether its steps are ruled.
+
+    The author says what each signal does at each step; how steeply an edge is
+    drawn and whether the steps are ruled is house style, set once for a report.
+    """
+
+    slew: float = 0.15
+    """How much of a step a change of word on a bus, or into and out of unknown,
+    takes to cross — the slant of a datasheet's hexagon lanes. Capped at a few
+    units on a wide step, so a slow bus does not look like a ramp; 0 draws the
+    changes upright. A level's edge (a clock, a select line) is always upright."""
+
+    grid: bool = False
+    """Whether every step edge is ruled faintly down the figure, as WaveDrom does.
+    Off by default: the clock's own edges are the ruler a datasheet reads by, and
+    markers rule the edges that matter."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> TimingStyle:
+        _reject_unknown(mapping, ("slew", "grid"), "[timing]")
+        defaults = cls()
+        slew = _number(mapping.get("slew", defaults.slew), "[timing] slew", positive=False)
+        if not 0 <= slew <= TIMING_SLEW_MAX:
+            raise ThemeError(
+                f"[timing] slew: expected a share of a step from 0 to {TIMING_SLEW_MAX}, "
+                f"got {slew!r}"
+            )
+        grid = mapping.get("grid", defaults.grid)
+        if not isinstance(grid, bool):
+            raise ThemeError(f"[timing] grid: expected true or false, got {grid!r}")
+        return cls(slew=slew, grid=grid)
+
+
+#: A git graph's lane colours unless a theme says otherwise: the trunk blue, then
+#: green, ochre, purple, red, grey. Each is a mid-tone at 3:1 or better against
+#: white and against `#121212`, so a dot reads as a mark on a light and a dark page.
+#: On a sheet whose ground they do not read on, a theme that left them as they are
+#: draws its lanes in ink instead (`_check_ground`); one that names its own is held
+#: to the ground like any other colour.
+GITGRAPH_COLOURS: Final = ("#2a6fc0", "#3e7a4a", "#b07a0c", "#8a4fb0", "#c0452a", "#7c8794")
+
+
+@dataclass(frozen=True)
+class GitgraphStyle:
+    """What colour a git graph's branches take, if any.
+
+    A branch is told apart by its lane and the name at the head of it, so colour
+    is never what carries; it is the convention readers of Mermaid and of the
+    git-flow figures expect, so it is on by default, one colour per lane, and a
+    theme may change the colours or turn them off.
+    """
+
+    colours: tuple[str, ...] = GITGRAPH_COLOURS
+    """A colour per branch, in the order the branches are written, cycling past the
+    last; empty draws every lane in the page's ink. A lane's commits are filled with
+    its colour and its name is set on a faint wash of it; the lines stay ink, so a
+    lane's colour never has to carry a crossing."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> GitgraphStyle:
+        _reject_unknown(mapping, ("colours",), "[gitgraph]")
+        raw = mapping.get("colours", list(GITGRAPH_COLOURS))
+        if not isinstance(raw, list):
+            raise ThemeError(f"[gitgraph] colours: expected an array of colours, got {raw!r}")
+        colours = tuple(_colour(entry, "[gitgraph] colours") for entry in raw)
+        if "none" in colours:
+            raise ThemeError(
+                "[gitgraph] colours: 'none' is not a colour a commit can be drawn in. Leave "
+                "`colours` out to draw every lane in the page's ink."
+            )
+        return cls(colours=colours)
+
+    def colour_for(self, lane: int) -> str:
+        """The colour of the `lane`-th branch, or empty for the page's ink."""
+        if not self.colours:
+            return ""
+        return self.colours[lane % len(self.colours)]
+
+
+#: The fills a reserved packet field may take: a pattern faint enough to read over.
+PACKET_FILLS: Final = ("hatch", "dots", "cross", "grid")
+
+
+@dataclass(frozen=True)
+class PacketStyle:
+    """How a packet marks its reserved bits.
+
+    The author says a field is `reserved`; the pattern that greys it out is house
+    style, set once for every header and register in a report.
+    """
+
+    reserved_fill: str = "hatch"
+    """The pattern a reserved field is filled with; every other field is plain. The
+    patterns are drawn faint, so a reserved field's name stays readable over it."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> PacketStyle:
+        _reject_unknown(mapping, ("reserved_fill",), "[packet]")
+        return cls(
+            reserved_fill=_choice(
+                mapping.get("reserved_fill", cls().reserved_fill),
+                PACKET_FILLS,
+                "[packet] reserved_fill",
+            )
+        )
+
+
+#: The fills an `against` box may take: a pattern faint enough to read words over.
+ARGUMENT_FILLS: Final = ("hatch", "dots", "cross", "grid")
+
+
+@dataclass(frozen=True)
+class ArgumentStyle:
+    """How an argument map says which way a point bears: its tag and its fill.
+
+    The author says `for` or `against`; the words a reader reads it aloud by, and
+    the pattern an objection is filled with, are house style. Stance is drawn on
+    both channels, so a map printed in greyscale still says it twice.
+    """
+
+    for_tag: str = "because"
+    """The tag over a `for` point, in its top margin at the left: the word a reader
+    says before it when reading the map aloud."""
+
+    against_tag: str = "but"
+    """The tag over an `against` point: an objection, and a rebuttal of one."""
+
+    against_fill: str = "hatch"
+    """The pattern an `against` box is filled with; a `for` box is plain. The
+    patterns are drawn faint, so the words over them stay readable."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> ArgumentStyle:
+        _reject_unknown(mapping, ("for_tag", "against_tag", "against_fill"), "[argument]")
+        defaults = cls()
+        tags = {}
+        for key in ("for_tag", "against_tag"):
+            value = mapping.get(key, getattr(defaults, key))
+            if not isinstance(value, str) or not value.strip() or "\n" in value:
+                raise ThemeError(f"[argument] {key}: expected a word or two, got {value!r}")
+            tags[key] = value
+        if tags["for_tag"] == tags["against_tag"]:
+            raise ThemeError(
+                f"[argument] for_tag and against_tag are both {tags['for_tag']!r}: the tag is "
+                f"one of the two things that tell a reason from an objection"
+            )
+        return cls(
+            for_tag=tags["for_tag"],
+            against_tag=tags["against_tag"],
+            against_fill=_choice(
+                mapping.get("against_fill", defaults.against_fill),
+                ARGUMENT_FILLS,
+                "[argument] against_fill",
+            ),
+        )
+
+
+#: The shapes a RAG mark may take. Three of them at once, all different, so a
+#: rating is told by its outline in greyscale as well as by its word.
+RAG_SHAPES: Final = ("circle", "triangle", "square", "diamond")
+
+#: The ratings and trends a `[rag]` table names, in the order its keys are read.
+_RAG_RATINGS: Final = ("red", "amber", "green")
+_RAG_TRENDS: Final = ("better", "same", "worse")
+
+
+@dataclass(frozen=True)
+class RagStyle:
+    """How a RAG report draws a rating: a word, a shape and, optionally, a colour.
+
+    The author says `red`, `amber` or `green`; what the reader sees is decided
+    here, once, for every report. Each rating is said at least twice without
+    colour, by its word and by its shape, and the loader holds both to that: the
+    three words differ, and so do the three shapes. A colour is added on top only
+    when a theme declares one, so removing it removes nothing the reader needs.
+    """
+
+    red: str = "Red"
+    """The word written beside a `red` mark. A house that says *Off track* sets it here."""
+
+    amber: str = "Amber"
+    """The word beside an `amber` mark: *Amber*, or *At risk*."""
+
+    green: str = "Green"
+    """The word beside a `green` mark: *Green*, or *On track*."""
+
+    red_shape: str = "square"
+    """The shape of a `red` mark: `circle`, `triangle`, `square` or `diamond`, each
+    different from the other two ratings' shapes."""
+
+    amber_shape: str = "triangle"
+    """The shape of an `amber` mark, the warning triangle by default."""
+
+    green_shape: str = "circle"
+    """The shape of a `green` mark."""
+
+    red_colour: str = ""
+    """The colour a `red` mark is filled with. Empty is the page's ink, as in the
+    default theme; the `accent` theme sets the three."""
+
+    amber_colour: str = ""
+    """The colour an `amber` mark is filled with, or empty for the page's ink."""
+
+    green_colour: str = ""
+    """The colour a `green` mark is filled with, or empty for the page's ink."""
+
+    better: str = "improving"
+    """The word beside a `better` trend's arrow, which points up."""
+
+    same: str = "no change"
+    """The word beside a `same` trend's arrow, which points across."""
+
+    worse: str = "worsening"
+    """The word beside a `worse` trend's arrow, which points down."""
+
+    def word(self, rating: str) -> str:
+        return str(getattr(self, rating))
+
+    def shape(self, rating: str) -> str:
+        return str(getattr(self, f"{rating}_shape"))
+
+    def colour(self, rating: str) -> str:
+        return str(getattr(self, f"{rating}_colour"))
+
+    @property
+    def colours(self) -> tuple[str, ...]:
+        return tuple(self.colour(rating) for rating in _RAG_RATINGS if self.colour(rating))
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> RagStyle:
+        keys = (
+            *_RAG_RATINGS,
+            *(f"{rating}_shape" for rating in _RAG_RATINGS),
+            *(f"{rating}_colour" for rating in _RAG_RATINGS),
+            *_RAG_TRENDS,
+        )
+        _reject_unknown(mapping, keys, "[rag]")
+        defaults = cls()
+        values: dict[str, str] = {}
+        for key in (*_RAG_RATINGS, *_RAG_TRENDS):
+            value = mapping.get(key, getattr(defaults, key))
+            if not isinstance(value, str) or not value.strip() or "\n" in value:
+                raise ThemeError(f"[rag] {key}: expected a word or two, got {value!r}")
+            values[key] = value
+        for group in (_RAG_RATINGS, _RAG_TRENDS):
+            words = [values[key] for key in group]
+            if len(set(words)) != len(words):
+                raise ThemeError(
+                    f"[rag] {', '.join(group)}: {words!r} repeat a word. The word is how a "
+                    f"reader who cannot see colour tells them apart, so each must differ."
+                )
+        for rating in _RAG_RATINGS:
+            key = f"{rating}_shape"
+            values[key] = _choice(
+                mapping.get(key, getattr(defaults, key)), RAG_SHAPES, f"[rag] {key}"
+            )
+            key = f"{rating}_colour"
+            raw = mapping.get(key, "")
+            values[key] = _colour(raw, f"[rag] {key}") if raw else ""
+            if values[key] == "none":
+                raise ThemeError(f"[rag] {key}: a mark must be visible; use `currentColor`")
+        shapes = [values[f"{rating}_shape"] for rating in _RAG_RATINGS]
+        if len(set(shapes)) != len(shapes):
+            raise ThemeError(
+                f"[rag] red_shape, amber_shape, green_shape: {shapes!r} repeat a shape. The "
+                f"shape is what a greyscale print keeps, so the three must differ."
+            )
+        return cls(**values)
+
+
+#: How a family tree marks a carrier: the standard's dot in the middle of the
+#: symbol, or the left half filled, as exam pedigrees draw a heterozygote.
+FAMILYTREE_CARRIERS: Final = ("dot", "half")
+
+
+@dataclass(frozen=True)
+class FamilytreeStyle:
+    """How a family tree draws its one non-default mark of house style: a carrier.
+
+    Affected is filled and unaffected is empty in every convention; a carrier is
+    the one status two conventions draw differently, and both survive greyscale.
+    """
+
+    carrier: str = "dot"
+    """`dot`, a filled dot in the middle of the symbol (the standard nomenclature's
+    carrier), or `half`, the left half filled (the textbook heterozygote)."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> FamilytreeStyle:
+        _reject_unknown(mapping, ("carrier",), "[familytree]")
+        return cls(
+            carrier=_choice(
+                mapping.get("carrier", cls().carrier), FAMILYTREE_CARRIERS, "[familytree] carrier"
+            )
+        )
+
+
+#: Which way a `lanes` diagram's lanes run: across the page, stacked top to
+#: bottom (`rows`), or down it, side by side (`columns`). `auto` tries rows and
+#: takes columns when rows do not fit the width.
+LANES_ORIENTATIONS: Final = ("rows", "columns", "auto")
+
+
+@dataclass(frozen=True)
+class LanesStyle:
+    """How a swimlane diagram lays its lanes out and divides them.
+
+    The author says whose each step is; whether the parties' strips run across
+    the page or down it is a question about the drawing, answered here like
+    direction everywhere else — never by the document.
+    """
+
+    orientation: str = "auto"
+    """`rows`, `columns`, or `auto`: rows when they fit the width, else columns."""
+
+    separator: str = "link"
+    """The edge role the line between two lanes is drawn in, with no head."""
+
+    stripe: float = 0.0
+    """How much of the page's ink every second lane is washed with, from 0 (no
+    stripes) to `TONE_CEILING`. A tint, not a colour, so dark mode and greyscale
+    keep it. Off unless a theme sets it; the bundled default theme does."""
+
+    phase: str = "aside"
+    """The edge role the line between two phases is drawn in, across every lane:
+    lighter than a lane's own separator, since a phase is crossed by every lane."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> LanesStyle:
+        _reject_unknown(mapping, ("orientation", "separator", "stripe", "phase"), "[lanes]")
+        defaults = cls()
+        return cls(
+            stripe=_tone(mapping.get("stripe", defaults.stripe), "[lanes] stripe"),
+            orientation=_choice(
+                mapping.get("orientation", defaults.orientation),
+                LANES_ORIENTATIONS,
+                "[lanes] orientation",
+            ),
+            separator=_choice(
+                mapping.get("separator", defaults.separator), EDGE_ROLES, "[lanes] separator"
+            ),
+            phase=_choice(mapping.get("phase", defaults.phase), EDGE_ROLES, "[lanes] phase"),
+        )
+
+
+#: The most ink a container's wash or a lane's stripe may lay down. A frame is
+#: behind words and boxes, so its tone has to stay well under a matrix cell's.
+TONE_CEILING: Final = 0.1
+
+
+def _tone(value: Any, where: str) -> float:
+    """A wash strength: a fraction of the ink from 0 to `TONE_CEILING`.
+
+    `false` is read as 0, so a theme can say "off" in the words it would use for
+    a switch; `true` is refused, since it names no strength.
+    """
+    if value is False:
+        return 0.0
+    if value is True:
+        raise ThemeError(
+            f"{where}: expected a fraction from 0 to {TONE_CEILING} (or false), got true"
+        )
+    tone = _number(value, where, positive=False)
+    if not 0.0 <= tone <= TONE_CEILING:
+        raise ThemeError(f"{where}: expected a fraction from 0 to {TONE_CEILING}, got {tone!r}")
+    return tone
+
+
+@dataclass(frozen=True)
+class FramesStyle:
+    """How a container is told from the page: washed with a little of the ink.
+
+    A group's frame (`flow` and `tree` groups, a state's composite) and a
+    sequence diagram's group are filled with `tone` of the page's ink, drawn as
+    `currentColor` at part opacity, so it follows the page into dark mode and
+    prints as a light grey. Frames inside frames lay their wash over their
+    parent's, so each level of nesting reads one step darker, up to `levels`
+    deep; deeper frames add no more.
+    """
+
+    tone: float = 0.0
+    """The share of the ink one frame lays down, from 0 (outlines only) to
+    `TONE_CEILING`. Off unless a theme sets it; the bundled default theme does."""
+
+    levels: int = 3
+    """How many levels of nesting deepen the wash; a frame deeper than this is
+    outlined only."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> FramesStyle:
+        _reject_unknown(mapping, ("tone", "levels"), "[frames]")
+        defaults = cls()
+        levels = mapping.get("levels", defaults.levels)
+        if isinstance(levels, bool) or not isinstance(levels, int) or not 1 <= levels <= 5:
+            raise ThemeError(
+                f"[frames] levels: expected a whole number from 1 to 5, got {levels!r}"
+            )
+        return cls(tone=_tone(mapping.get("tone", defaults.tone), "[frames] tone"), levels=levels)
+
+    def tone_at(self, depth: int) -> float:
+        """The wash a frame `depth` levels inside others lays down, or 0."""
+        return self.tone if depth < self.levels else 0.0
+
+
+@dataclass(frozen=True)
+class LevelsStyle:
+    """Whether the levels of a `pyramid`, `funnel`, `rings` and `stack` are graded.
+
+    Each level, stage, ring or layer is filled from `[mark] ramp`, the tones a
+    matrix `scale` uses: the first written lightest, one ramp step darker per
+    level after it (spread across the ramp when there are more levels than
+    steps). The page's ink at part opacity, never a colour, so it follows a dark
+    page and prints as greys, and the ramp's own ceiling keeps text legible on
+    the darkest step. A `note` level stays unfilled, and so does a level whose
+    role the theme already fills.
+    """
+
+    shade: bool = False
+    """Whether levels are graded from the ramp; `false` draws outlines only. Off unless
+    a theme sets it; the bundled default theme does."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> LevelsStyle:
+        _reject_unknown(mapping, ("shade",), "[levels]")
+        shade = mapping.get("shade", cls().shade)
+        if shade in (0, 1) and not isinstance(shade, float):
+            shade = bool(shade)
+        if not isinstance(shade, bool):
+            raise ThemeError(f"[levels] shade: expected true or false, got {shade!r}")
+        return cls(shade=shade)
+
+
+#: How many fills `[classes] fills` must hold: one per class a document may declare
+#: (`schema.CLASSES_MAX`, kept equal by a test rather than an import).
+CLASS_FILLS: Final = 4
+
+
+@dataclass(frozen=True)
+class ClassesStyle:
+    """How a `flow`, `tree` or `lanes` drawing's node classes are told apart.
+
+    A class takes the entry at its own position in `fills`, in the order the
+    document declares its classes, and the key under the drawing shows the same
+    fill beside the class's name. `solid` is a grey wash — the page's ink at
+    `tone` — and every other entry is one of the faint patterns a chart's marks
+    use, drawn in the ink: never a colour, so greyscale and dark mode keep it.
+    """
+
+    fills: tuple[str, ...] = ("solid", "dots", "hatch", "grid")
+    """The fill each class takes, in declaration order; distinct, none `none`."""
+
+    tone: float = 0.14
+    """How much of the ink a `solid` class's wash lays down: light enough that
+    its text reads on a white page and on a dark one."""
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> ClassesStyle:
+        _reject_unknown(mapping, ("fills", "tone"), "[classes]")
+        defaults = cls()
+        fills = mapping.get("fills", list(defaults.fills))
+        allowed = tuple(pattern for pattern in FILL_PATTERNS if pattern != "none")
+        if not isinstance(fills, list) or len(fills) < CLASS_FILLS:
+            raise ThemeError(
+                f"[classes] fills: expected an array of at least {CLASS_FILLS} fills, one "
+                f"per class a document may declare, got {fills!r}"
+            )
+        for entry in fills:
+            if entry not in allowed:
+                raise ThemeError(f"[classes] fills: {entry!r} is not one of {', '.join(allowed)}")
+        if len(set(fills)) != len(fills):
+            raise ThemeError(
+                "[classes] fills: the entries must be distinct — two classes sharing a fill "
+                "cannot be told apart."
+            )
+        tone = _number(mapping.get("tone", defaults.tone), "[classes] tone")
+        if not 0.0 < tone <= RAMP_CEILING:
+            raise ThemeError(
+                f"[classes] tone: expected a fraction above 0 and at most {RAMP_CEILING:g}, "
+                f"so text on the wash stays readable; got {tone!r}"
+            )
+        return cls(fills=tuple(fills), tone=tone)
+
+    def fill_for(self, index: int) -> tuple[str, str, float]:
+        """The `index`-th class's fill pattern, its ink and how much of it shows."""
+        fill = self.fills[index]
+        if fill == "solid":
+            return fill, "currentColor", self.tone
+        return fill, "", 1.0
+
+
+#: What a `files` page says about its file's type.
+FILES_TYPES: Final = ("labels", "pictures", "none")
+
+#: Where a `files` tree sits on the canvas.
+FILES_ALIGNS: Final = ("left", "centre")
+
+
+@dataclass(frozen=True)
+class FilesStyle:
+    """How a `files` tree draws its pictures. Appearance, so it lives here.
+
+    The document says what is in the tree and whether to draw pictures at all;
+    whether a folder is a tinted shape or an outline, whether a file carries its
+    extension on a badge, and what colour either is, are questions about the
+    drawing. Colour is optional here as everywhere: with no `colours` a tree is
+    drawn in the page's ink, and one that declares them still tells a folder from
+    a file by shape and a type by its badge, so nothing is lost in greyscale.
+    """
+
+    tint: float = 0.25
+    """How strongly a folder is filled, from 0 (an outline) to 1 (solid). The same
+    strength paints a file whose type has a colour below."""
+
+    types: str = "labels"
+    """What a file's page says about its type. `labels` writes the extension on a
+    small tag across the page — `PDF`, `JSON` — lettered as part of the picture;
+    `pictures` draws one of five shapes (code, data, text, image, archive);
+    `none` draws a plain page."""
+
+    label_ink: str = ""
+    """The colour a label's letters are drawn in when its tag is filled with a
+    colour below — white on a red `PDF`, say. Empty is the page's ink."""
+
+    align: str = "left"
+    """Where a tree sits on the canvas: `left`, as a listing reads, or `centre`,
+    like every other kind."""
+
+    colours: Mapping[str, str] = MappingProxyType({})
+    """Fill colour by extension (`pdf`), by type family (`code`, `data`, `text`,
+    `image`, `archive`), or `folder`. An extension wins over its family. Anything
+    not named is drawn in the page's ink."""
+
+    def colour_for(self, key: str) -> str:
+        return self.colours.get(key, "")
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> FilesStyle:
+        _reject_unknown(mapping, ("tint", "types", "label_ink", "align", "colours"), "[files]")
+        defaults = cls()
+        tint = _number(mapping.get("tint", defaults.tint), "[files] tint", positive=False)
+        if not 0 <= tint <= 1:
+            raise ThemeError(f"[files] tint: expected a fraction from 0 to 1, got {tint!r}")
+        types = _choice(mapping.get("types", defaults.types), FILES_TYPES, "[files] types")
+        align = _choice(mapping.get("align", defaults.align), FILES_ALIGNS, "[files] align")
+        ink = mapping.get("label_ink", defaults.label_ink)
+        label_ink = _colour(ink, "[files] label_ink") if ink else ""
+        colours = mapping.get("colours", {})
+        if not isinstance(colours, Mapping):
+            raise ThemeError(f"[files] colours: expected a table, got {colours!r}")
+        painted: dict[str, str] = {}
+        for key, value in colours.items():
+            if key != key.lower() or key.startswith("."):
+                raise ThemeError(
+                    f"[files] colours: {key!r} — name an extension in lower case and "
+                    f"without its dot, as `pdf`, a type family such as `code`, or `folder`."
+                )
+            painted[key] = _colour(value, f"[files] colours.{key}")
+        return cls(
+            tint=tint,
+            types=types,
+            label_ink=label_ink,
+            align=align,
+            colours=MappingProxyType(painted),
         )
 
 
@@ -970,8 +2361,34 @@ _TOP_LEVEL_KEYS: Final = (
     "edge",
     "mark",
     "title",
+    "frames",
+    "levels",
+    "classes",
     "cycle",
     "funnel",
+    "files",
+    "states",
+    "sequence",
+    "lanes",
+    "entities",
+    "gantt",
+    "board",
+    "fishbone",
+    "journey",
+    "numberline",
+    "pie",
+    "flow",
+    "mindmap",
+    "sunburst",
+    "wardley",
+    "network",
+    "timing",
+    "gitgraph",
+    "packet",
+    "pert",
+    "argument",
+    "familytree",
+    "rag",
     "role",
     "edge_role",
 )
@@ -993,6 +2410,33 @@ class Theme:
     title: TitleStyle = TitleStyle()
     cycle: CycleStyle = CycleStyle()
     funnel: FunnelStyle = FunnelStyle()
+    files: FilesStyle = FilesStyle()
+    states: StatesStyle = StatesStyle()
+    sequence: SequenceStyle = SequenceStyle()
+    lanes: LanesStyle = LanesStyle()
+    frames: FramesStyle = FramesStyle()
+    levels: LevelsStyle = LevelsStyle()
+    classes: ClassesStyle = ClassesStyle()
+    entities: EntitiesStyle = EntitiesStyle()
+    gantt: GanttStyle = GanttStyle()
+    board: BoardStyle = BoardStyle()
+    fishbone: FishboneStyle = FishboneStyle()
+    journey: JourneyStyle = JourneyStyle()
+    numberline: NumberlineStyle = NumberlineStyle()
+    pie: PieStyle = PieStyle()
+    mindmap: MindmapStyle = MindmapStyle()
+    sunburst: SunburstStyle = SunburstStyle()
+    wardley: WardleyStyle = WardleyStyle()
+    network: NetworkStyle = NetworkStyle()
+
+    timing: TimingStyle = TimingStyle()
+    gitgraph: GitgraphStyle = GitgraphStyle()
+    packet: PacketStyle = PacketStyle()
+    pert: PertStyle = PertStyle()
+    argument: ArgumentStyle = ArgumentStyle()
+    familytree: FamilytreeStyle = FamilytreeStyle()
+    rag: RagStyle = RagStyle()
+    flow: FlowStyle = FlowStyle()
     roles: Mapping[str, NodeRole] = MappingProxyType({})
     edge_roles: Mapping[str, EdgeRole] = MappingProxyType({})
 
@@ -1042,6 +2486,32 @@ class Theme:
             title=TitleStyle.from_mapping(_section(mapping, "title")),
             cycle=CycleStyle.from_mapping(_section(mapping, "cycle")),
             funnel=FunnelStyle.from_mapping(_section(mapping, "funnel")),
+            files=FilesStyle.from_mapping(_section(mapping, "files")),
+            states=StatesStyle.from_mapping(_section(mapping, "states")),
+            sequence=SequenceStyle.from_mapping(_section(mapping, "sequence")),
+            lanes=LanesStyle.from_mapping(_section(mapping, "lanes")),
+            frames=FramesStyle.from_mapping(_section(mapping, "frames")),
+            levels=LevelsStyle.from_mapping(_section(mapping, "levels")),
+            classes=ClassesStyle.from_mapping(_section(mapping, "classes")),
+            entities=EntitiesStyle.from_mapping(_section(mapping, "entities")),
+            gantt=GanttStyle.from_mapping(_section(mapping, "gantt")),
+            board=BoardStyle.from_mapping(_section(mapping, "board")),
+            fishbone=FishboneStyle.from_mapping(_section(mapping, "fishbone")),
+            journey=JourneyStyle.from_mapping(_section(mapping, "journey")),
+            numberline=NumberlineStyle.from_mapping(_section(mapping, "numberline")),
+            pie=PieStyle.from_mapping(_section(mapping, "pie")),
+            mindmap=MindmapStyle.from_mapping(_section(mapping, "mindmap")),
+            sunburst=SunburstStyle.from_mapping(_section(mapping, "sunburst")),
+            wardley=WardleyStyle.from_mapping(_section(mapping, "wardley")),
+            network=NetworkStyle.from_mapping(_section(mapping, "network")),
+            timing=TimingStyle.from_mapping(_section(mapping, "timing")),
+            gitgraph=GitgraphStyle.from_mapping(_section(mapping, "gitgraph")),
+            packet=PacketStyle.from_mapping(_section(mapping, "packet")),
+            pert=PertStyle.from_mapping(_section(mapping, "pert")),
+            argument=ArgumentStyle.from_mapping(_section(mapping, "argument")),
+            familytree=FamilytreeStyle.from_mapping(_section(mapping, "familytree")),
+            rag=RagStyle.from_mapping(_section(mapping, "rag")),
+            flow=FlowStyle.from_mapping(_section(mapping, "flow")),
             roles=MappingProxyType(roles),
             edge_roles=MappingProxyType(edge_roles),
         )
@@ -1056,6 +2526,8 @@ class Theme:
                 f"{LUMINANCE_DELTA}, or a reader printing in greyscale cannot tell them "
                 f"apart."
             )
+        theme = _lanes_for_ground(theme)
+        _check_ground(theme)
         return theme
 
     # -- derived views ----------------------------------------------------
@@ -1081,7 +2553,18 @@ class Theme:
         `stroke` in the output that is not in this set, which is what stops a
         colour being decided anywhere but here.
         """
-        colours: set[str] = {"currentColor", "none", self.canvas.ink, *self.mark.colours}
+        colours: set[str] = {
+            "currentColor",
+            "none",
+            self.canvas.ink,
+            *self.mark.colours,
+            *self.files.colours.values(),
+            *self.rag.colours,
+            *self.gitgraph.colours,
+            *self.canvas.sheet_colours,
+        }
+        if self.files.label_ink:
+            colours.add(self.files.label_ink)
         for role in self.roles.values():
             colours.update(role.colours)
         for edge_role in self.edge_roles.values():
@@ -1186,6 +2669,50 @@ def _build_edge_roles(declared: Mapping[str, Any]) -> dict[str, EdgeRole]:
     return {name: EdgeRole.from_mapping(name, table, EdgeRole()) for name, table in tables.items()}
 
 
+def _lanes_for_ground(theme: Theme) -> Theme:
+    """The default lane colours, dropped to ink on a ground they do not read on.
+
+    They are on by default for a white or a dark page. A sheet with a ground of its
+    own (a cyanotype, a brand's dark slide) that never mentioned a git graph should
+    not be refused for colours it did not choose, so its lanes are drawn in its ink:
+    a lane is told apart by its place and name anyway. Colours a theme names itself
+    are left for `_check_ground` to hold to the ground.
+    """
+    ground = theme.canvas.ground
+    if ground == "none" or theme.gitgraph.colours != GITGRAPH_COLOURS:
+        return theme
+    if all(contrast(colour, ground) >= GRAPHIC_CONTRAST for colour in GITGRAPH_COLOURS):
+        return theme
+    return replace(theme, gitgraph=GitgraphStyle(colours=()))
+
+
+def _check_ground(theme: Theme) -> None:
+    """Every colour the theme draws in must read on its sheet's ground.
+
+    A ground is the page of a standalone drawing, so the check a brand import
+    makes against white and near-black is made here against the ground instead:
+    the ink as text, everything else as line work.
+    """
+    ground = theme.canvas.ground
+    if ground == "none":
+        return
+    ink = theme.canvas.ink
+    if contrast(ink, ground) < TEXT_CONTRAST:
+        raise ThemeError(
+            f"theme {theme.name!r}: [canvas] ink {ink} on ground {ground} is "
+            f"{contrast(ink, ground):.1f}:1, and text needs {TEXT_CONTRAST}:1."
+        )
+    drawn = theme.declared_colours() - {"currentColor", "none", ink, ground}
+    faint = sorted(colour for colour in drawn if contrast(colour, ground) < GRAPHIC_CONTRAST)
+    if faint:
+        raise ThemeError(
+            f"theme {theme.name!r}: {', '.join(faint)} read at under "
+            f"{GRAPHIC_CONTRAST}:1 on [canvas] ground {ground}. A sheet's ground is the "
+            f"page a standalone drawing is read on, so every colour drawn on it must "
+            f"stand out from it."
+        )
+
+
 def _indistinguishable(first: NodeRole | EdgeRole, second: NodeRole | EdgeRole) -> bool:
     """True when nothing but colour separates two roles, and colour is too close."""
     if first.channels != second.channels:
@@ -1278,9 +2805,16 @@ __all__ = [
     "EDGE_ROLES",
     "FILL_PATTERNS",
     "FONT_ROLES",
+    "GRAPHIC_CONTRAST",
     "LUMINANCE_DELTA",
     "NODE_ROLES",
     "NODE_SHAPES",
+    "RAMP_CEILING",
+    "RAMP_CONTRAST",
+    "RAMP_STEPS",
+    "SHEET_BORDERS",
+    "SHEET_PATTERNS",
+    "TEXT_CONTRAST",
     "THEME_VERSION",
     "TYPE_LEVELS",
     "WIDTH_MODES",
@@ -1296,6 +2830,7 @@ __all__ = [
     "Theme",
     "TitleStyle",
     "TypeScale",
+    "contrast",
     "load_theme",
     "relative_luminance",
 ]
