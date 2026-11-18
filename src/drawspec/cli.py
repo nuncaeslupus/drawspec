@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from collections.abc import Sequence
@@ -234,8 +235,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run one command and return its exit code.
 
     Returns rather than exits, and catches argparse's own `SystemExit`, so the
-    codes in §5.4 are testable as values instead of as process outcomes.
+    codes in §5.4 are testable as values instead of as process outcomes. What the
+    machine refuses — an unreadable or unwritable path — and a document nested
+    deeper than Python can read are refusals too, not tracebacks.
     """
+    try:
+        return _main(argv)
+    except OSError as error:
+        where = f": {error.filename}" if error.filename else ""
+        print(f"drawspec: {error.strerror or error}{where}", file=sys.stderr)
+        return REFUSED
+    except RecursionError:
+        print("drawspec: the document is nested too deeply to read", file=sys.stderr)
+        return REFUSED
+
+
+def _main(argv: Sequence[str] | None) -> int:
     parser = build_parser()
     try:
         arguments = parser.parse_args(argv)
@@ -327,6 +342,12 @@ def _render(arguments: argparse.Namespace) -> int:
         )
         return USAGE
 
+    for flag in ("width", "height"):
+        value = getattr(arguments, flag)
+        if value is not None and not value > 0:  # `not >` also refuses NaN
+            print(f"drawspec: --{flag} must be greater than 0", file=sys.stderr)
+            return USAGE
+
     try:
         document = _read(arguments.document)
         if arguments.width is not None and output_format != "text":
@@ -355,16 +376,27 @@ def _render(arguments: argparse.Namespace) -> int:
 
     if output_format == "png":
         if arguments.out:
-            Path(arguments.out).write_bytes(image)
+            _write_atomically(Path(arguments.out), image)
         else:
             sys.stdout.buffer.write(image)
             sys.stdout.flush()
         return OK
     if arguments.out:
-        Path(arguments.out).write_text(svg, encoding="utf-8")
+        _write_atomically(Path(arguments.out), svg.encode("utf-8"))
     else:
         print(svg)
     return OK
+
+
+def _write_atomically(path: Path, data: bytes) -> None:
+    """Write beside the target and rename over it, so a failure leaves the old file."""
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        temporary.write_bytes(data)
+        temporary.replace(path)
+    except BaseException:
+        temporary.unlink(missing_ok=True)
+        raise
 
 
 def _output_format(arguments: argparse.Namespace) -> str | None:

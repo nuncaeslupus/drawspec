@@ -97,13 +97,14 @@ def test_gallery_escapes_a_skip_message_into_the_page() -> None:
 
 @pytest.mark.parametrize("profile", ["inline", "standalone"])
 def test_gallery_builds_in_both_profiles(profile: str) -> None:
-    entries = gallery.build(profile)
+    entries = ENTRIES if profile == "inline" else gallery.build(profile)
     assert any(entry.rendered for entry in entries)
 
 
 def test_gallery_check_mode_writes_nothing_and_succeeds(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    monkeypatch.setattr(gallery, "build", lambda profile="inline": ENTRIES)
     monkeypatch.setattr(gallery, "GALLERY_DIR", tmp_path / "gallery")
     monkeypatch.setattr(gallery, "PAGE", tmp_path / "gallery" / "index.html")
     assert gallery.main(["--check"]) == 0
@@ -114,6 +115,7 @@ def test_gallery_writes_the_page_and_one_svg_per_rendered_document(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     out = tmp_path / "gallery"
+    monkeypatch.setattr(gallery, "build", lambda profile="inline": ENTRIES)
     monkeypatch.setattr(gallery, "GALLERY_DIR", out)
     monkeypatch.setattr(gallery, "PAGE", out / "index.html")
     assert gallery.main([]) == 0

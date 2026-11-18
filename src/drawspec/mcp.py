@@ -381,6 +381,8 @@ def _number(arguments: dict[str, Any], name: str) -> float | None:
         return None
     if isinstance(value, bool) or not isinstance(value, int | float):
         raise _ArgumentError("InvalidArgument", f"`{name}` must be a number")
+    if name in ("width", "height") and not value > 0:
+        raise _ArgumentError("InvalidArgument", f"`{name}` must be greater than 0")
     return float(value)
 
 
@@ -418,6 +420,11 @@ def _render(arguments: dict[str, Any]) -> str | bytes:
     it afterwards would scale a picture that had already decided it fitted.
     """
     document = _document(arguments)
+    output_format = arguments.get("format") or "svg"
+    if output_format not in ("svg", "png", "text"):
+        raise _ArgumentError(
+            "InvalidArgument", f"unknown format {str(output_format)[:20]!r}; use svg, png or text"
+        )
     theme = _theme(arguments.get("theme"))
     variants = arguments.get("variants") or None
     if variants is not None:

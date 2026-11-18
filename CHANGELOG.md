@@ -10,6 +10,24 @@ against it would stop working. Everything below is about the *package*.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The CLI no longer ends in a traceback** when it cannot write the output (a missing
+  directory, a full disk) or the document is nested past Python's recursion limit: it
+  says why on stderr and exits 1. `-o` now writes beside the target and renames over it,
+  so a failed write leaves the previous file whole.
+- **`--width` and `--height` (CLI) and `width` and `height` (MCP) must be greater than 0**;
+  `0` and negative values were treated as unset or failed deep inside fitting.
+- **MCP `render_document` refuses an unknown `format`** (`jpeg`, `PNG`) instead of
+  returning an SVG, and a `document` passed as a JSON string now says to pass the object.
+
+### Changed
+
+- **A misspelt kind or field names the nearest match** (`Did you mean 'flow'?`), as
+  references to ids already did.
+- **The published JSON Schema states the 2000-character cap** on every free string as
+  `maxLength`, so a schema-validating client refuses an overlong text before `validate`.
+
 ### Added
 
 - **`drawspec agents`** prints the `AGENTS.md` that ships inside the installed package, so

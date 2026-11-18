@@ -466,3 +466,22 @@ def test_text_beyond_the_cap_is_refused_before_any_drawing(client: Client) -> No
     body = _body(client.tool("validate_document", document=long))
     assert body["violations"][0]["pointer"] == "/nodes/0/text"
     assert str(MAX_TEXT_LENGTH) in body["violations"][0]["message"]
+
+
+def test_an_unknown_format_is_refused_not_answered_with_svg(client: Client) -> None:
+    for name in ("jpeg", "PNG"):
+        result = client.tool("render_document", document=GOOD, format=name)
+        assert result["isError"] is True, result
+        assert _body(result)["error"] == "InvalidArgument"
+
+
+def test_a_document_passed_as_a_string_is_told_to_pass_the_object(client: Client) -> None:
+    result = client.tool("render_document", document=json.dumps(GOOD))
+    assert result["isError"] is True
+    assert "not its text" in json.dumps(_body(result))
+
+
+@pytest.mark.parametrize("size", [0, -5])
+def test_a_size_override_must_be_positive(client: Client, size: int) -> None:
+    result = client.tool("render_document", document=GOOD, width=size)
+    assert _body(result)["error"] == "InvalidArgument"
