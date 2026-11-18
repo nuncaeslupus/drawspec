@@ -113,8 +113,6 @@ def render_png(
         )
     if not 0 < scale <= MAX_SCALE:
         raise ValueError(f"scale must be above 0 and at most {MAX_SCALE:g}, got {scale:g}")
-    rasterise = _renderer()
-
     parsed = document if isinstance(document, Document) else parse_document(document)
     resolved = load_theme(theme if theme is not None else (parsed.theme or None))
     if background == "dark":
@@ -131,6 +129,7 @@ def render_png(
                 "Lower `scale` or the document's `width` and `height`."
             )
 
+    rasterise = _renderer()
     page = {"light": LIGHT_PAGE, "dark": DARK_PAGE, "transparent": None}[background]
     return rasterise(
         svg_string=svg,
