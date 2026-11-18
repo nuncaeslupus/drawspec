@@ -209,6 +209,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     example.add_argument("kind", choices=KINDS, help="which kind to write")
 
+    commands.add_parser(
+        "agents",
+        help="write AGENTS.md, the format on one page, as shipped with this version",
+        description=(
+            "Write the AGENTS.md that belongs to the installed package, so the format "
+            "an agent reads is the one this version accepts, offline."
+        ),
+    )
+
     # The same server as `drawspec-mcp`, reachable as `drawspec mcp` so a launcher
     # that can only run the package's own command (`uvx --from 'drawspec[mcp]'
     # drawspec mcp`, the MCP Registry's entry) gets to it too.
@@ -244,6 +253,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _validate(arguments)
     if arguments.command == "kinds":
         return _kinds()
+    if arguments.command == "agents":
+        return _agents()
     if arguments.command == "mcp":
         from drawspec.mcp import main as serve_mcp
 
@@ -498,6 +509,28 @@ def _theme_from(arguments: argparse.Namespace) -> int:
         Path(arguments.out).write_text(derived.toml, encoding="utf-8")
     else:
         sys.stdout.write(derived.toml)
+    return OK
+
+
+def _agents() -> int:
+    """Print AGENTS.md as it ships with the installed version.
+
+    The wheel carries one copy (force-included from the repository root, so there is
+    no second file to drift); a source checkout reads the root file directly.
+    """
+    shipped = Path(__file__).with_name("AGENTS.md")
+    source = Path(__file__).resolve().parents[2] / "AGENTS.md"
+    path = shipped if shipped.is_file() else source
+    if not path.is_file():
+        print("drawspec: AGENTS.md is not part of this installation", file=sys.stderr)
+        return USAGE
+    text = path.read_text(encoding="utf-8")
+    buffer = getattr(sys.stdout, "buffer", None)
+    if buffer is not None:  # bytes, so a cp1252 console cannot refuse the `≤`
+        buffer.write(text.encode("utf-8"))
+        buffer.flush()
+    else:
+        sys.stdout.write(text)
     return OK
 
 

@@ -3,6 +3,7 @@ id: t-281dc4ac
 title: "review: Release workflow pushes the tag before the suite runs"
 priority: 5
 requires: [human:gate]
+status: merged
 ---
 
 Imported from issue #195

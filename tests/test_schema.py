@@ -737,3 +737,15 @@ def test_the_edge_id_space_widens_only_where_containers_are_drawn() -> None:
     """`CONTAINER_KINDS` is the boundary, and it is narrower than `GRAPH_KINDS`."""
     assert set(CONTAINER_KINDS) < set(GRAPH_KINDS)
     assert "cycle" not in CONTAINER_KINDS
+
+
+def test_the_published_schema_states_the_top_level_readability_budgets() -> None:
+    """A flow past 15 nodes fails the schema, and a bracket tree (which budgets leaves) does not."""
+    from drawspec.schema import build_schema
+
+    variants = {v["title"]: v for v in build_schema()["oneOf"]}
+    flow = next(v for t, v in variants.items() if t.split(" / ")[0] == "flow")
+    assert flow["properties"]["nodes"]["maxItems"] == 15
+    assert flow["properties"]["edges"]["maxItems"] == 16
+    tree = next(v for t, v in variants.items() if "tree" in t.split(" / "))
+    assert "maxItems" not in tree["properties"]["nodes"]
