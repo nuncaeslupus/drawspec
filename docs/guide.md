@@ -404,7 +404,9 @@ asking for a PNG is refused with exit 1 and the install line above.
   light page you do not control.
 * **`--scale`** is pixels per SVG unit, `2` by default, so a 640-wide drawing is
   about 1,330 pixels across and stays crisp on a high-density screen. `1` is the
-  smallest file; the most is `8`.
+  smallest file; the most is `8`. A picture of more than 16 million pixels (about
+  4000 × 4000, after the scale) is refused with the size it would have been, so an
+  oversized `width` cannot allocate gigabytes: lower the scale or the width.
 * **The text is set in the fonts it was measured with.** The renderer ignores
   the machine's fonts and loads the files drawspec measured against — the bundled
   ones unless your theme names a family you have installed — so a label that
@@ -845,6 +847,15 @@ Then point a client at it. For anything that reads the conventional JSON config:
   }
 }
 ```
+
+**Limits, so a caller cannot hold the server.** `theme` (and a document's own `theme`,
+and each `variants` value) takes a bundled theme name only; a path is refused with one
+message whether or not the file exists. To offer your own themes, start the server with
+`DRAWSPEC_THEME_DIR` set to a directory, and a caller may name a `.toml` file directly
+inside it. A refusal lists each violation once, in `violations`, and at most 50 of them
+(`message` says how many were left out). A bug in drawspec comes back as an
+`InternalError` result rather than a protocol error. A string over 2000 characters, or
+a PNG over 16 million pixels, is refused. These numbers are starting values.
 
 **`validate_document` is the one that earns the server.** Shelling out to the CLI works,
 and it hands a model prose on stderr that it has to read to discover that

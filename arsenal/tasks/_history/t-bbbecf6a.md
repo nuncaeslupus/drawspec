@@ -3,6 +3,7 @@ id: t-bbbecf6a
 title: "review: Theme paths let a document or MCP caller probe arbitrary files on the server"
 priority: 5
 requires: [human:gate]
+status: merged
 ---
 
 Imported from issue #190

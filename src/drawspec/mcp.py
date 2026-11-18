@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, Final
@@ -56,7 +57,7 @@ except ImportError as error:  # pragma: no cover - the extra is installed in CI
 
 from drawspec import __version__
 from drawspec import theme as _theme_module
-from drawspec.errors import DrawspecError
+from drawspec.errors import DrawspecError, ThemeError
 from drawspec.examples import EXAMPLES, PURPOSE
 from drawspec.export import BACKGROUNDS, DEFAULT_SCALE, MAX_SCALE, render_png
 from drawspec.kinds import TEXT_KINDS
@@ -85,8 +86,9 @@ _BUNDLED_THEMES: Final[tuple[str, ...]] = tuple(
 _THEME: Final[dict[str, Any]] = {
     "type": "string",
     "description": (
-        f"A bundled theme name ({', '.join(_BUNDLED_THEMES)}) or a path to a `.toml` theme "
-        "file on the server's disk, e.g. `blueprint`. Omit for `default`."
+        f"A bundled theme name ({', '.join(_BUNDLED_THEMES)}), e.g. `blueprint`. Omit for "
+        "`default`. A server started with DRAWSPEC_THEME_DIR also accepts the name of a "
+        "`.toml` file inside that directory; any other path is refused."
     ),
 }
 
@@ -268,7 +270,8 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
                     "additionalProperties": {"type": "string"},
                     "description": (
                         "svg only: more themes for the same drawing, by the name a page "
-                        'selects each with, e.g. `{"dark": "./dark.toml"}`. The SVG '
+                        'selects each with, e.g. `{"dark": "dark"}`, each a theme `theme` accepts. '
+                        "The SVG "
                         "switches on an ancestor's `data-theme`, and `dark` also follows "
                         "`prefers-color-scheme`; `theme` is the base and answers to `light`. "
                         "A variant may change colours only."
@@ -282,8 +285,33 @@ TOOLS: Final[tuple[types.Tool, ...]] = (
 )
 
 
-def _refusal(error: DrawspecError) -> dict[str, Any]:
-    """A drawspec failure as data, in one shape whatever raised it.
+#: The most violations one refusal lists. A starting value: enough for an agent to fix
+#: a round of edits, small enough that a 4000-entry document with bad references does
+#: not answer with hundreds of kilobytes. The message says how many were left out.
+MAX_REFUSAL_VIOLATIONS: Final = 50
+
+#: Names a directory of `.toml` themes the server may load by file name, in addition to
+#: the bundled ones. Unset means bundled themes only.
+THEME_DIR_ENV: Final = "DRAWSPEC_THEME_DIR"
+
+
+class _ArgumentError(Exception):
+    """The call's arguments are wrong, as opposed to the document or drawspec."""
+
+    def __init__(self, error: str, message: str) -> None:
+        super().__init__(message)
+        self.error = error
+
+
+def _result(error: str, message: str, violations: list[dict[str, str]]) -> types.CallToolResult:
+    body = {"ok": False, "error": error, "message": message, "violations": violations}
+    return types.CallToolResult(
+        content=[types.TextContent(type="text", text=json.dumps(body, indent=2))], is_error=True
+    )
+
+
+def _refusal(error: DrawspecError) -> types.CallToolResult:
+    """A drawspec failure as a result, in one shape whatever raised it.
 
     **The shape does not vary**, which is the point: `violations` is always a
     non-empty list, so a caller never has to branch on whether the failure
@@ -291,17 +319,69 @@ def _refusal(error: DrawspecError) -> dict[str, Any]:
     fit, a theme that fails the greyscale invariant and an emitter refusal are
     all statements about the document as a whole, and RFC 6901 spells that as the
     empty pointer.
+
+    A `DocumentError`'s own message already lists every violation, so `message` is
+    a one-line summary and the list is sent once, as `violations`: deduplicated
+    and capped at `MAX_REFUSAL_VIOLATIONS`, with the number left out stated.
     """
-    located = [
-        {"pointer": violation.pointer, "message": violation.message}
-        for violation in getattr(error, "violations", ())
-    ]
-    return {
-        "ok": False,
-        "error": type(error).__name__,
-        "message": str(error),
-        "violations": located or [{"pointer": "", "message": str(error)}],
-    }
+    seen: set[tuple[str, str]] = set()
+    located: list[dict[str, str]] = []
+    for violation in getattr(error, "violations", ()):
+        key = (violation.pointer, violation.message)
+        if key not in seen:
+            seen.add(key)
+            located.append({"pointer": key[0], "message": key[1]})
+    if not located:
+        return _result(type(error).__name__, str(error), [{"pointer": "", "message": str(error)}])
+    omitted = len(located) - MAX_REFUSAL_VIOLATIONS
+    noun = "problem" if len(located) == 1 else "problems"
+    message = f"the document has {len(located)} {noun}; see `violations`"
+    if omitted > 0:
+        located = located[:MAX_REFUSAL_VIOLATIONS]
+        message += f" (the first {MAX_REFUSAL_VIOLATIONS} are listed, {omitted} omitted)"
+    return _result(type(error).__name__, message, located)
+
+
+def _internal(error: Exception) -> types.CallToolResult:
+    message = (
+        f"internal error ({type(error).__name__}); this is a bug in drawspec, "
+        "please report the document that caused it"
+    )
+    return _result("InternalError", message, [{"pointer": "", "message": message}])
+
+
+def _theme(value: object) -> str | None:
+    """A `theme` argument or a document's own `theme`, if this server may load it.
+
+    Bundled names always. A file only by its name inside `DRAWSPEC_THEME_DIR`, when
+    that is set. Everything else, a missing file included, is refused with one
+    message, so a caller cannot use the server to find out which paths exist.
+    """
+    if value is None or value == "":
+        return None
+    if not isinstance(value, str):
+        raise _ArgumentError("InvalidArgument", "a theme is a name, as a string")
+    if value in _BUNDLED_THEMES:
+        return value
+    directory = os.environ.get(THEME_DIR_ENV)
+    if directory:
+        root = Path(directory).resolve()
+        candidate = (root / value).resolve()
+        if candidate.suffix == ".toml" and candidate.parent == root and candidate.is_file():
+            return str(candidate)
+    raise ThemeError(
+        f"theme {value[:60]!r} is not available here; this server accepts "
+        f"{', '.join(_BUNDLED_THEMES)}"
+    )
+
+
+def _number(arguments: dict[str, Any], name: str) -> float | None:
+    value = arguments.get(name)
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        raise _ArgumentError("InvalidArgument", f"`{name}` must be a number")
+    return float(value)
 
 
 def _document(arguments: dict[str, Any]) -> Document:
@@ -310,7 +390,10 @@ def _document(arguments: dict[str, Any]) -> Document:
     Raises:
         DrawspecError: with every violation, the way `parse_document` does.
     """
-    return parse_document(arguments["document"])
+    if "document" not in arguments:
+        raise _ArgumentError("MissingArgument", "'document' is required")
+    document = parse_document(arguments["document"])
+    return replace(document, theme=_theme(document.theme) or "")
 
 
 def _validate(arguments: dict[str, Any]) -> dict[str, Any]:
@@ -323,7 +406,7 @@ def _validate(arguments: dict[str, Any]) -> dict[str, Any]:
     reasoning, and the same call, as `drawspec validate`.
     """
     document = _document(arguments)
-    render_document(document, arguments.get("theme") or None)
+    render_document(document, _theme(arguments.get("theme")))
     return {"ok": True, "kind": document.kind, "message": f"a valid {document.kind} document"}
 
 
@@ -335,28 +418,40 @@ def _render(arguments: dict[str, Any]) -> str | bytes:
     it afterwards would scale a picture that had already decided it fitted.
     """
     document = _document(arguments)
+    theme = _theme(arguments.get("theme"))
     variants = arguments.get("variants") or None
+    if variants is not None:
+        if not isinstance(variants, dict):
+            raise _ArgumentError("InvalidArgument", "`variants` maps a name to a bundled theme")
+        variants = {str(name): _theme(value) for name, value in variants.items()}
     if variants and arguments.get("format", "svg") != "svg":
         raise DrawspecError("`variants` applies to format svg only")
+    width, height = _number(arguments, "width"), _number(arguments, "height")
     if arguments.get("format") == "text":
-        width = arguments.get("width")
         return render_text(
             document,
             width=None if width is None else int(width),
             charset=str(arguments.get("charset", "unicode")),
         )
-    if arguments.get("width") is not None:
-        document = replace(document, width=float(arguments["width"]))
-    if arguments.get("height") is not None:
-        document = replace(document, height=float(arguments["height"]))
+    if width is not None:
+        document = replace(document, width=width)
+    if height is not None:
+        document = replace(document, height=height)
     if arguments.get("format", "svg") == "png":
-        return render_png(
-            document,
-            arguments.get("theme") or None,
-            scale=float(arguments.get("scale", DEFAULT_SCALE)),
-            background=str(arguments.get("background", "light")),
-        )
-    return render_document(document, arguments.get("theme") or None, variants=variants)
+        scale = _number(arguments, "scale")
+        scale = DEFAULT_SCALE if scale is None else scale
+        background = str(arguments.get("background", "light"))
+        if not 0 < scale <= MAX_SCALE:
+            raise _ArgumentError(
+                "InvalidArgument", f"scale must be above 0 and at most {MAX_SCALE:g}"
+            )
+        if background not in BACKGROUNDS:
+            raise _ArgumentError(
+                "InvalidArgument",
+                f"unknown background {background!r}; expected one of {', '.join(BACKGROUNDS)}",
+            )
+        return render_png(document, theme, scale=scale, background=background)
+    return render_document(document, theme, variants=variants)
 
 
 def _kinds() -> dict[str, Any]:
@@ -370,9 +465,13 @@ def _kinds() -> dict[str, Any]:
 
 def _kind(arguments: dict[str, Any]) -> str:
     """The `kind` argument, checked: an unknown kind is the arguments' fault."""
+    if "kind" not in arguments:
+        raise _ArgumentError("MissingArgument", "'kind' is required")
     kind = str(arguments["kind"])
     if kind not in KINDS:
-        raise ValueError(f"unknown kind {kind!r}; `list_kinds` names the {len(KINDS)} kinds")
+        raise _ArgumentError(
+            "InvalidArgument", f"unknown kind {kind!r}; `list_kinds` names the {len(KINDS)} kinds"
+        )
     return kind
 
 
@@ -462,7 +561,7 @@ async def _on_call_tool(
     exception escape would hand the agent a protocol-level error whose text it
     would have to scrape — the exact thing this server exists to stop. So every
     `DrawspecError` comes back as `isError` with the located violations in the
-    body, and only a genuine bug in drawspec propagates.
+    body, and a genuine bug in drawspec comes back as an `InternalError` result.
     """
     arguments = dict(params.arguments or {})
     try:
@@ -478,53 +577,13 @@ async def _on_call_tool(
         if params.name == "get_schema":
             return _text(_schema(arguments))
     except DrawspecError as error:
-        return types.CallToolResult(
-            content=[types.TextContent(type="text", text=json.dumps(_refusal(error), indent=2))],
-            is_error=True,
-        )
-    except ValueError as error:
-        # An out-of-range `scale`, an unknown `background` or `kind`: the arguments,
-        # not the document, so there is nothing to locate.
-        message = str(error)
-        return types.CallToolResult(
-            content=[
-                types.TextContent(
-                    type="text",
-                    text=json.dumps(
-                        {
-                            "ok": False,
-                            "error": "InvalidArgument",
-                            "message": message,
-                            "violations": [{"pointer": "", "message": message}],
-                        },
-                        indent=2,
-                    ),
-                )
-            ],
-            is_error=True,
-        )
-    except KeyError as error:
-        # A required argument was not supplied. Reported in the same shape as
-        # every other refusal, so a caller has one error path.
-        return types.CallToolResult(
-            content=[
-                types.TextContent(
-                    type="text",
-                    text=json.dumps(
-                        {
-                            "ok": False,
-                            "error": "MissingArgument",
-                            "message": f"{error.args[0]!r} is required",
-                            "violations": [
-                                {"pointer": "", "message": f"{error.args[0]!r} is required"}
-                            ],
-                        },
-                        indent=2,
-                    ),
-                )
-            ],
-            is_error=True,
-        )
+        return _refusal(error)
+    except _ArgumentError as error:
+        return _result(error.error, str(error), [{"pointer": "", "message": str(error)}])
+    except Exception as error:
+        # A bug in drawspec is still a tool result, never a protocol error. Only the
+        # type is sent: the text of an internal error can carry paths and values.
+        return _internal(error)
 
     known = ", ".join(tool.name for tool in TOOLS)
     return types.CallToolResult(

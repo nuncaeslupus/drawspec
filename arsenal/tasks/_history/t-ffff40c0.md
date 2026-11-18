@@ -3,6 +3,7 @@ id: t-ffff40c0
 title: "review: MCP refusals carry every violation twice and are unbounded in size"
 priority: 5
 requires: [human:gate]
+status: merged
 ---
 
 Imported from issue #189
