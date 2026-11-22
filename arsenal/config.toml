@@ -42,7 +42,7 @@ host-gate = "uv run ruff check . && uv run ruff format --check . && uv run mypy 
 attribution = true
 bot-triggers = ["coderabbitai[bot]=@coderabbitai review"]
 review-bots = ["coderabbitai[bot]"]
-setup-interview = "2026-11-18"
+setup-interview = "2026-11-22"
 
 [models]
 orchestrator = ""
