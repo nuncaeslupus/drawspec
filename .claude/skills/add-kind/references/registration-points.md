@@ -15,7 +15,10 @@ prefix (`NEURALNET`).
 
 ## Schema
 
-All in `src/drawspec/schema.py`.
+All in the `src/drawspec/schema/` package: constants in `_constants.py`, field tables in
+`_fields.py`, the `Document` and its dataclasses in `_model.py`, the dispatch in `_validate.py`,
+and a kind's own checks, refusals and parse in its `kind_<kind>.py`. Names a symbol below
+mentions as `schema.py` mean that package.
 
 | Symbol | What to add |
 |---|---|

@@ -1,6 +1,6 @@
 ---
 name: add-kind
-description: Adds a diagram kind to drawspec, or a style, field or text form to an existing one, from the originals to the merged pull request. Use when the user asks for a new kind of drawing in this repository — "add a kind", "support neural network diagrams", "a new style for tree" — or a change to src/drawspec/kinds/ or the field tables in src/drawspec/schema.py. Owns scripts audit_kind.py. Do NOT use for writing a drawspec document of an existing kind; the drawspec skill does that.
+description: Adds a diagram kind to drawspec, or a style, field or text form to an existing one, from the originals to the merged pull request. Use when the user asks for a new kind of drawing in this repository — "add a kind", "support neural network diagrams", "a new style for tree" — or a change to src/drawspec/kinds/ or the field tables in src/drawspec/schema/ Owns scripts audit_kind.py. Do NOT use for writing a drawspec document of an existing kind; the drawspec skill does that.
 ---
 
 # add-kind
@@ -46,7 +46,7 @@ Search for the originals in one batch:
 
 Wire the kind into each point in
 [registration-points.md](references/registration-points.md) (load it before
-editing `schema.py`). Write the renderer in `src/drawspec/kinds/<kind>.py` on
+editing `schema/`). Write the renderer in `src/drawspec/kinds/<kind>.py` on
 the model of the newest kind of a similar shape, and a text form when the kind
 reads well as a table or a character grid.
 
@@ -87,7 +87,7 @@ uv run pytest -q
 ## References
 
 - [Registration points](references/registration-points.md) — load before
-  editing `schema.py`, or when `audit_kind.py` names a missing piece.
+  editing `schema/`, or when `audit_kind.py` names a missing piece.
 
 ## Gotchas
 
@@ -98,7 +98,7 @@ uv run pytest -q
 - **A nested object that refers back to its parent recurses.** Validation
   follows the reference into itself until Python's stack runs out; give the
   child its own object with only the fields it draws.
-- **Editing `schema.py` while the full suite runs fails the schema test.** The
+- **Editing `schema/` while the full suite runs fails the schema test.** The
   committed schema is compared with the field tables read mid-run; rerun
   `tests/test_schema.py` after `make schema` before believing the failure.
 - **A fresh virtual environment has no `pytest`.** `uv sync --all-extras`

@@ -27,7 +27,7 @@ if you do:
 | `schema/drawspec-v1.schema.json` | `make schema` |
 
 They are generated **from the code they describe** — the field tables in
-`src/drawspec/schema.py` and the argument parser in `src/drawspec/cli.py` are the
+`src/drawspec/schema/` and the argument parser in `src/drawspec/cli.py` are the
 single source of truth. That is deliberate: a reference that can drift from the
 tool is worse than no reference, because an editor will tell an author their
 document is fine while `drawspec validate` rejects it. So if you add a field,

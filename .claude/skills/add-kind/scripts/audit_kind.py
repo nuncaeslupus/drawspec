@@ -95,6 +95,9 @@ def _drawn_line(graph: str) -> str:
 
 def read(root: Path, name: str) -> str:
     path = root / name
+    package = path.with_suffix("")
+    if not path.is_file() and package.is_dir():  # `schema.py` became the `schema/` package
+        return "\n".join(f.read_text(encoding="utf-8") for f in sorted(package.glob("*.py")))
     return path.read_text(encoding="utf-8") if path.is_file() else ""
 
 
@@ -232,7 +235,7 @@ def main() -> int:
     parser.add_argument("--repo-root", default=".", help="the drawspec checkout (default: .)")
     args = parser.parse_args()
     root = Path(args.repo_root)
-    if not (root / "src/drawspec/schema.py").is_file():
+    if not (root / "src/drawspec/schema").is_dir():
         print(f"error: {root} is not a drawspec checkout", file=sys.stderr)
         return 2
     missing, thin = audit(root, args.kind)
