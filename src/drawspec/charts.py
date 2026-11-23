@@ -287,15 +287,20 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
         *primitives_for(key, theme, measurer, left, height - legend, width - left),
     ]
 
+    # Every value label already placed, as a box: a point label must not land on
+    # a bar's number, nor on the number of a series drawn before it (#173).
+    taken: list[tuple[float, float, float, float]] = []
     if document.values and marked.bars:
-        primitives.extend(
-            _bar_labels(
-                marked.bars,
-                theme,
-                measurer,
-                plot_top,
-                _point_decimals(tuple(item for item in document.series if item.mark == "bar")),
-            )
+        bar_labels = _bar_labels(
+            marked.bars,
+            theme,
+            measurer,
+            plot_top,
+            _point_decimals(tuple(item for item in document.series if item.mark == "bar")),
+        )
+        primitives.extend(bar_labels)
+        taken.extend(
+            _run_box(run, theme, measurer) for run in bar_labels if isinstance(run, TextRun)
         )
 
     lines = tuple(item for item in document.series if item.mark == "line")
@@ -323,6 +328,7 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
                     plot_top,
                     plot_bottom,
                     decimals,
+                    taken,
                 )
             )
 
@@ -333,6 +339,14 @@ def chart_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
         title=document.title,
         description=document.description,
     )
+
+
+def _run_box(
+    run: TextRun, theme: Theme, measurer: TextMeasurer
+) -> tuple[float, float, float, float]:
+    """`(left, top, right, bottom)` of a label run, as `_label_box` draws it."""
+    extents = measurer.measure(run.text, theme.font.default, theme.scale["label"])
+    return _label_box(run.x, run.y, run.anchor, extents.width, extents.height, extents.width / 2)
 
 
 # ---------------------------------------------------------------------------
@@ -913,8 +927,13 @@ def _point_labels(
     top: float,
     bottom: float,
     decimals: int,
+    taken: list[tuple[float, float, float, float]] | None = None,
 ) -> tuple[Primitive, ...]:
     """Labels for every point in a series, or none of them.
+
+    `taken` holds the boxes of value labels already placed (bars, earlier
+    series); a label never lands on one, and this series' own labels are
+    appended to it once the series is placed.
 
     Above first, then below, then beside — and each of the two vertical positions
     in three alignments, because a point sitting *on* an axis has a centred label
@@ -927,6 +946,7 @@ def _point_labels(
     size = theme.scale["label"]
     gap = theme.box.padding.top
     labels: list[Primitive] = []
+    placed: list[tuple[float, float, float, float]] = []
 
     for (x, y), (_, value) in zip(points, series.data, strict=True):
         text = f"{value:.{decimals}f}"
@@ -953,6 +973,9 @@ def _point_labels(
                 continue
             if any(_crosses(box, path) for path in every_path):
                 continue
+            if any(_overlap(box, other) for other in [*(taken or ()), *placed]):
+                continue
+            placed.append(box)
             labels.append(
                 TextRun(
                     series.role,
@@ -968,7 +991,18 @@ def _point_labels(
         else:
             # One point with nowhere clean to go costs the series its labels.
             return ()
+    if taken is not None:
+        taken.extend(placed)
     return tuple(labels)
+
+
+def _overlap(
+    first: tuple[float, float, float, float], second: tuple[float, float, float, float]
+) -> bool:
+    """Whether two label boxes come within `LABEL_DAYLIGHT` of each other."""
+    a = _grown(first, LABEL_DAYLIGHT / 2)
+    b = _grown(second, LABEL_DAYLIGHT / 2)
+    return a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]
 
 
 def _label_box(

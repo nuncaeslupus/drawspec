@@ -12,6 +12,12 @@ against it would stop working. Everything below is about the *package*.
 
 ### Fixed
 
+- **`cycle`: the arrow between two wide bottom steps keeps a visible shaft.** The ring
+  radius now grows until the worst arrow, measured outside its two real boxes and
+  after the clearance at both ends, reaches the theme's minimum shaft length (#154).
+- **`chart`: a line point's value label no longer lands on a bar's number** (or an
+  earlier series' number) at the same x; it moves to the next free position (#173).
+
 - **The CLI no longer ends in a traceback** when it cannot write the output (a missing
   directory, a full disk) or the document is nested past Python's recursion limit: it
   says why on stderr and exits 1. `render -o` now replaces an existing file by renaming a staged copy over it

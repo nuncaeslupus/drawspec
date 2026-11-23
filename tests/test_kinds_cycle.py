@@ -783,3 +783,39 @@ def test_an_edge_label_with_no_room_beside_the_ring_is_refused_by_name() -> None
     narrow["edges"][3]["label"] = "Next sprint, and then the one after it"
     with pytest.raises(FitError, match="'retro' to 'planning'"):
         cycle_scene(parse_document(narrow), THEME, MEASURER)
+
+
+def _shaft_lengths(scene: Scene) -> list[float]:
+    return [
+        sum(math.dist(a, b) for a, b in pairwise(p.points))
+        for p in scene.primitives
+        if isinstance(p, Path)
+    ]
+
+
+def test_odd_ring_of_wide_boxes_keeps_the_minimum_shaft_between_its_bottom_steps() -> None:
+    """#154: the arrow between the two bottom steps of a 7-step ring was a 9-unit
+    stub, because the radius was sized from one box's diagonal and ignored the
+    clearance `_arc` takes off at both ends. Every arrow must keep the minimum."""
+    labels = (
+        "Alpha step one here",
+        "Bravo step two here",
+        "Charlie step three",
+        "Delta step four here",
+        "Echo step five here",
+        "Foxtrot step six",
+        "Golf step seven",
+    )
+    ids = [f"n{i}" for i in range(len(labels))]
+    document = parse_document(
+        {
+            "version": 1,
+            "kind": "cycle",
+            "width": 800,
+            "nodes": [{"id": i, "text": t} for i, t in zip(ids, labels, strict=True)],
+            "edges": [{"from": ids[i], "to": ids[(i + 1) % len(ids)]} for i in range(len(ids))],
+        }
+    )
+    shafts = _shaft_lengths(cycle_scene(document, THEME, MEASURER))
+    assert len(shafts) == len(labels)
+    assert min(shafts) >= THEME.edge.min_shaft_length
