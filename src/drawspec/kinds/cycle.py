@@ -73,6 +73,11 @@ MINIMUM_NODES: Final = 2
 #: document render to the same bytes twice.
 _BISECTIONS: Final = 40
 
+#: How far the ring grows per try while making room for the minimum shaft, and
+#: how many tries it gets. A fixed step keeps the answer the same on every run.
+SHAFT_GROWTH: Final = 1.0
+_GROWTH_LIMIT: Final = 2000
+
 
 def cycle_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Scene:
     """Render a `cycle` document to a `Scene`.
@@ -92,7 +97,7 @@ def cycle_scene(document: Document, theme: Theme, measurer: TextMeasurer) -> Sce
     order = _ring_order(document)
     width = document.width if document.width else theme.canvas.width
     boxes = _boxes(document, theme, measurer, width)
-    radius = _radius(boxes, theme)
+    radius = _radius(boxes, theme, order)
     hub = _hub_box(document.hub, theme, measurer, width)
     spokes = _spokes(document)
     if hub is not None:
@@ -529,7 +534,7 @@ def _boxes(
     return dict(zip((node.id for node in document.nodes), normalise(sized), strict=True))
 
 
-def _radius(boxes: dict[str, Box], theme: Theme) -> float:
+def _radius(boxes: dict[str, Box], theme: Theme, order: tuple[str, ...] | None = None) -> float:
     """The ring radius its steps alone demand.
 
     Two constraints, and the radius is the larger of what each demands. The ring
@@ -550,7 +555,54 @@ def _radius(boxes: dict[str, Box], theme: Theme) -> float:
     shaft = theme.edge.min_shaft_length + theme.edge.head_length + diagonal
     from_shaft = shaft * count / (2 * math.pi)
 
-    return max(from_spacing, from_shaft)
+    radius = max(from_spacing, from_shaft)
+
+    # Those two are estimates from one box's diagonal. What the reader sees is
+    # the shaft left *outside the two real boxes* of each neighbouring pair, less
+    # the clearance at both ends, so measure that and grow until the worst pair
+    # carries the minimum — two wide boxes side by side on the bottom of an odd
+    # ring are the pair the estimate gets wrong.
+    ring = tuple(boxes) if order is None else order
+    for _ in range(_GROWTH_LIMIT):
+        if min_visible_shaft(radius, ring, boxes, theme) >= theme.edge.min_shaft_length:
+            break
+        radius += SHAFT_GROWTH
+    return radius
+
+
+def min_visible_shaft(
+    radius: float, order: tuple[str, ...], boxes: dict[str, Box], theme: Theme
+) -> float:
+    """The shortest visible shaft, in length units, over every ring arrow.
+
+    Measured exactly as `_arc` draws it: the arc between the two boxes' outlines,
+    less the clearance at each end and the head.
+    """
+    count = len(order)
+    # A band's head is as wide as the ribbon, not the thin arrow's head_length.
+    head = (
+        theme.cycle.width * ARROW_ASPECT
+        if theme.cycle.connector == "band"
+        else theme.edge.head_length
+    )
+    placed = [
+        boxes[node_id].moved_to(
+            radius * math.cos(_angle(index, count)) - boxes[node_id].width / 2,
+            radius * math.sin(_angle(index, count)) - boxes[node_id].height / 2,
+        )
+        for index, node_id in enumerate(order)
+    ]
+    origin = (0.0, 0.0)
+    worst = math.inf
+    for index in range(count):
+        begin = _leaves(origin, radius, _angle(index, count), placed[index], theme, forwards=True)
+        finish = _leaves(
+            origin, radius, _angle(index + 1, count), placed[(index + 1) % count], theme,
+            forwards=False,
+        )  # fmt: skip
+        free = (finish - begin) * radius - 2 * theme.edge.clearance - head
+        worst = min(worst, free)
+    return worst
 
 
 def _extent(radius: float, boxes: dict[str, Box], width: float, hub: Box | None) -> float:

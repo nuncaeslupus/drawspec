@@ -424,6 +424,22 @@ def test_a_band_connector_is_one_closed_figure_not_a_shaft_and_a_head() -> None:
     assert not [item for item in built.primitives if isinstance(item, Path)]
 
 
+@pytest.mark.parametrize("texts", [tuple("ABCDEFGH"), tuple("ABCDEFG")])
+def test_a_band_keeps_the_minimum_visible_shaft_behind_its_own_head(texts: tuple[str, ...]) -> None:
+    """The ring is sized for the head a band really draws, not the thin arrow's."""
+    built = _wheel(*texts)
+    bands = [item for item in built.primitives if isinstance(item, Polygon)]
+    steps = 12  # ARC_SEGMENTS: points 0..12 run begin -> shoulder along the outer edge
+    for band in bands:
+        points = band.points
+        begin = tuple((a + b) / 2 for a, b in zip(points[0], points[-1], strict=True))
+        shoulder = tuple(
+            (a + b) / 2 for a, b in zip(points[steps], points[-1 - steps], strict=True)
+        )
+        shaft = math.dist(begin, shoulder)
+        assert shaft >= WHEEL.edge.min_shaft_length - 0.5, shaft
+
+
 def test_a_band_is_wider_than_the_arc_it_replaces() -> None:
     """It is the same arrow drawn fat: the point of the theme."""
     assert WHEEL.cycle.connector == "band"
@@ -783,3 +799,39 @@ def test_an_edge_label_with_no_room_beside_the_ring_is_refused_by_name() -> None
     narrow["edges"][3]["label"] = "Next sprint, and then the one after it"
     with pytest.raises(FitError, match="'retro' to 'planning'"):
         cycle_scene(parse_document(narrow), THEME, MEASURER)
+
+
+def _shaft_lengths(scene: Scene) -> list[float]:
+    return [
+        sum(math.dist(a, b) for a, b in pairwise(p.points))
+        for p in scene.primitives
+        if isinstance(p, Path)
+    ]
+
+
+def test_odd_ring_of_wide_boxes_keeps_the_minimum_shaft_between_its_bottom_steps() -> None:
+    """#154: the arrow between the two bottom steps of a 7-step ring was a 9-unit
+    stub, because the radius was sized from one box's diagonal and ignored the
+    clearance `_arc` takes off at both ends. Every arrow must keep the minimum."""
+    labels = (
+        "Alpha step one here",
+        "Bravo step two here",
+        "Charlie step three",
+        "Delta step four here",
+        "Echo step five here",
+        "Foxtrot step six",
+        "Golf step seven",
+    )
+    ids = [f"n{i}" for i in range(len(labels))]
+    document = parse_document(
+        {
+            "version": 1,
+            "kind": "cycle",
+            "width": 800,
+            "nodes": [{"id": i, "text": t} for i, t in zip(ids, labels, strict=True)],
+            "edges": [{"from": ids[i], "to": ids[(i + 1) % len(ids)]} for i in range(len(ids))],
+        }
+    )
+    shafts = _shaft_lengths(cycle_scene(document, THEME, MEASURER))
+    assert len(shafts) == len(labels)
+    assert min(shafts) >= THEME.edge.min_shaft_length

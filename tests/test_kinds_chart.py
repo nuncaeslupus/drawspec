@@ -1704,3 +1704,39 @@ def test_whole_values_still_print_whole() -> None:
     built = marked({"name": "Count", "mark": "bar", "data": [[1, 12], [2, 8], [3, 5.0]]})
     printed = {text.text for text in labels(built)}
     assert {"12", "8", "5"} <= printed
+
+
+def test_bar_and_line_value_labels_at_one_x_do_not_overlap() -> None:
+    """#173: a line point whose value is close to its bar's drew its number on
+    top of the bar's, so `8034` and `7938` read as one wrong number."""
+    parsed = parse_document(
+        {
+            "version": 1,
+            "kind": "chart",
+            "width": 600,
+            "values": True,
+            "axes": {
+                "horizontal": {"label": "Quarter", "categories": ["Q1", "Q2", "Q3"]},
+                "vertical": {"label": "Euros", "min": 0},
+            },
+            "series": [
+                {"name": "Spend", "mark": "bar", "data": [[1, 5000], [2, 8034], [3, 9000]]},
+                {
+                    "name": "Income",
+                    "mark": "line",
+                    "data": [[1, 7000], [2, 7938], [3, 6000]],
+                },
+            ],
+        }
+    )
+    scene = chart_scene(parsed, THEME, MEASURER)
+    numbers = [p for p in scene.primitives if isinstance(p, TextRun) and p.text.isdigit()]
+    values = {"5000", "8034", "9000", "7000", "7938", "6000"}
+    labels = [p for p in numbers if p.text in values and p.anchor != "end"]
+    assert len(labels) == len(values)  # nothing dropped to dodge the collision
+    boxes = []
+    for run in labels:
+        size = MEASURER.measure(run.text, THEME.font.default, THEME.scale["label"])
+        boxes.append(_label_box(run.x, run.y, run.anchor, size.width, size.height, size.width / 2))
+    for a, b in combinations(boxes, 2):
+        assert a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1]
