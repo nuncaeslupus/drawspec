@@ -579,6 +579,12 @@ def min_visible_shaft(
     less the clearance at each end and the head.
     """
     count = len(order)
+    # A band's head is as wide as the ribbon, not the thin arrow's head_length.
+    head = (
+        theme.cycle.width * ARROW_ASPECT
+        if theme.cycle.connector == "band"
+        else theme.edge.head_length
+    )
     placed = [
         boxes[node_id].moved_to(
             radius * math.cos(_angle(index, count)) - boxes[node_id].width / 2,
@@ -594,7 +600,7 @@ def min_visible_shaft(
             origin, radius, _angle(index + 1, count), placed[(index + 1) % count], theme,
             forwards=False,
         )  # fmt: skip
-        free = (finish - begin) * radius - 2 * theme.edge.clearance - theme.edge.head_length
+        free = (finish - begin) * radius - 2 * theme.edge.clearance - head
         worst = min(worst, free)
     return worst
 
