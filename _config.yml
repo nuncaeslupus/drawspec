@@ -30,3 +30,7 @@ exclude:
   - Makefile
   - pyproject.toml
   - uv.lock
+
+# Writes sitemap.xml at the site root for search engines.
+plugins:
+  - jekyll-sitemap
