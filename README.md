@@ -307,3 +307,5 @@ By the same author:
 ## License
 
 MIT — see [`LICENSE`](https://github.com/nuncaeslupus/drawspec/blob/main/LICENSE).
+
+More tools by the same author: [github.com/nuncaeslupus](https://github.com/nuncaeslupus).
