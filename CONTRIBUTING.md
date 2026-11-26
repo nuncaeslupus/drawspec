@@ -1,5 +1,13 @@
 # Contributing to drawspec
 
+> **Issues are welcome; pull requests are not accepted for now.** This project is
+> maintained by one person who reviews and writes every change themselves, so
+> outside pull requests are closed without review. If you have a fix, describe it
+> in an [issue](https://github.com/nuncaeslupus/drawspec/issues/new/choose) — a snippet
+> or diff pasted there is fine, and you will be credited if it is used. Security
+> problems: see [SECURITY.md](SECURITY.md). The rest of this page describes how the
+> project is built, for reference.
+
 Thank you for looking. This page is short on ceremony and long on the two or
 three things that are genuinely easy to get wrong here.
 
